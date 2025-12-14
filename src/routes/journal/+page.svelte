@@ -248,7 +248,7 @@
   
   <header class="sticky top-0 z-30 w-full bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 rounded-b-3xl transition-colors duration-300">
     <div class="max-w-3xl mx-auto px-6 h-20 flex items-center justify-between">
-      <h1 class="text-xl font-bold tracking-tight">Journal</h1>
+      <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100">Journal</h1>
       
       <div class="flex items-center gap-2">
         <div class="relative hidden sm:block">
