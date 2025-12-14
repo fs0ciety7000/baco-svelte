@@ -94,10 +94,12 @@
     if (!email) return;
     isLoading = true;
     try {
-        // CORRECTION: Remplacement de 'user_id' par 'id' (clé primaire du profil)
+        // CORRECTION: Suppression des colonnes 'created_at' et 'last_sign_in_at' 
+        // car elles causent l'erreur "column profiles.created_at does not exist" 
+        // et sont généralement dans la table auth.users et non la table profiles.
         const { data: user, error } = await supabase
             .from('profiles')
-            .select('id, full_name, username, avatar_url, role, updated_at, created_at, email, last_sign_in_at') 
+            .select('id, full_name, username, avatar_url, role, updated_at, email') 
             .eq('email', email)
             .single();
 
@@ -244,8 +246,6 @@
         banned_until_status: shouldBan ? 'banned' : null
       };
 
-      // NOTE: Si 'user_id' provient du RPC, cela devrait être l'ID de l'utilisateur. 
-      // Si la colonne dans la table 'profiles' est nommée 'id', cette ligne fonctionne si 'user.user_id' est bien l'ID du profil.
       const { error } = await supabase.from('profiles').update(updates).eq('id', user.user_id);
       if (error) throw error;
 
