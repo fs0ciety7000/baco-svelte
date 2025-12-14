@@ -17,7 +17,8 @@
         },
         {
           "key": "Access-Control-Allow-Origin",
-          "value": "*" 
+          
+          "value": "https://www.baco.day, https://baco-inky.vercel.app, *"
         },
         {
           "key": "Access-Control-Allow-Methods",
@@ -25,7 +26,8 @@
         },
         {
           "key": "Access-Control-Allow-Headers",
-          "value": "Authorization, Content-Type, apikey, x-client-info" 
+         
+          "value": "Authorization, Content-Type, apikey, x-client-info, x-supabase-api-version" 
         }
       ]
     }
