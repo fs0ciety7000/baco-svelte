@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabase';
   import { 
-    Send, Paperclip, Search, Filter, AlertTriangle, BookCopy,
+    Send, Paperclip, Search, Filter, AlertTriangle, 
     Trash2, Pencil, FileText, Image, Loader2, X 
   } from 'lucide-svelte';
 
@@ -247,21 +247,9 @@
 <div class="min-h-screen bg-gray-50/50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans pb-10">
   
   <header class="sticky top-0 z-30 w-full bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 rounded-b-3xl transition-colors duration-300">
-   <div class="py-6"> 
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-      <BookCopy class="w-8 h-8 text-blue-500" />
-            Journal
-        </h1>
-        </div>
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700">
-        <p class="text-gray-600 dark:text-gray-400">
-            Ici, vous trouverez le journal de bord et l'historique des actions. 
-        </p>
-    </div>
- </div>
-</header>
-
+    <div class="max-w-3xl mx-auto px-6 h-20 flex items-center justify-between">
+      <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100">Journal</h1>
+      
       <div class="flex items-center gap-2">
         <div class="relative hidden sm:block">
           <select bind:value={selectedAuthor} on:change={() => loadLogs(true)} class="pl-3 pr-8 py-1.5 text-xs rounded-xl bg-gray-100 dark:bg-gray-700 border-none focus:ring-2 focus:ring-blue-500 cursor-pointer text-gray-700 dark:text-gray-200">
@@ -274,7 +262,7 @@
         <input type="date" bind:value={selectedDate} on:change={() => loadLogs(true)} class="py-1.5 px-3 text-xs rounded-xl bg-gray-100 dark:bg-gray-700 border-none focus:ring-2 focus:ring-blue-500 text-gray-700 dark:text-gray-200" />
       </div>
     </div>
-  
+  </header>
 
   <main class="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-8">
     
