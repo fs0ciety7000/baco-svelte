@@ -258,7 +258,7 @@
             Ici, vous trouverez le journal de bord et l'historique des actions. 
         </p>
     </div>
-</div>  
+ 
 
       <div class="flex items-center gap-2">
         <div class="relative hidden sm:block">
