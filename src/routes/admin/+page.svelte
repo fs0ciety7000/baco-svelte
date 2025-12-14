@@ -2,13 +2,14 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { supabase } from '$lib/supabase';
+  import { page } from '$app/stores'; // <-- AJOUTÉ
   import { 
     Shield, UserPlus, Search, User, UserX, UserCheck, 
     KeyRound, FileWarning, History, Loader2, X, Copy, 
-    AlertOctagon, CheckCircle, ShieldAlert
+    AlertOctagon, CheckCircle, ShieldAlert, ChevronLeft, Save, Edit2, UserCog // <-- AJOUTÉ
   } from 'lucide-svelte';
-
-  // --- ÉTAT ---
+  
+  // --- ÉTAT EXISTANT ---
   let users = [];
   let isLoading = true;
   let isCreating = false;
@@ -16,21 +17,40 @@
 
   // Formulaire Création
   let newUser = { email: "", password: "", role: "user" };
-
   // Modales
   let showInfractionModal = false;
   let showHistoryModal = false;
   let showResetModal = false;
-
   // Données Modales
   let selectedUser = null;
   let infractionData = { type: 'yellow', reason: '' };
   let historyData = { list: [], loading: false };
   let resetData = { password: '', loading: false, status: '' };
 
+  // --- NOUVEAU ÉTAT POUR L'ÉDITION ---
+  $: targetEmail = $page.url.searchParams.get('email'); // Lire le paramètre d'URL
+  let targetUser = null;
+  let isSaving = false;
+  let form = {
+      full_name: '',
+      avatar_url: '',
+      role: ''
+  };
+
+  // Met à jour les états du formulaire lorsque l'utilisateur cible change
+  $: if (targetUser) {
+      form.full_name = targetUser.full_name;
+      form.avatar_url = targetUser.avatar_url;
+      form.role = targetUser.role;
+  }
+  
   onMount(async () => {
     await checkAdminAccess();
     await loadUsers();
+    // Charge le profil ciblé si un email est présent dans l'URL après le chargement initial
+    if (targetEmail) {
+        await loadTargetUser(targetEmail);
+    }
   });
 
   // --- SÉCURITÉ ---
@@ -46,7 +66,6 @@
       .select('role')
       .eq('id', user.id)
       .single();
-
     if (profile?.role !== 'admin') {
       alert("Accès refusé. Réservé aux administrateurs.");
       goto('/');
@@ -58,7 +77,8 @@
   async function loadUsers() {
     isLoading = true;
     try {
-      const { data, error } = await supabase.rpc('get_all_users');
+      // NOTE: Assurez-vous que votre RPC 'get_all_users' renvoie le champ 'email' et 'user_id'
+      const { data, error } = await supabase.rpc('get_all_users'); 
       if (error) throw error;
       users = data || [];
     } catch (e) {
@@ -69,7 +89,85 @@
     }
   }
 
-  // --- CRÉATION UTILISATEUR ---
+  // --- NOUVELLE FONCTION: Charger l'utilisateur ciblé ---
+  async function loadTargetUser(email) {
+    if (!email) return;
+    isLoading = true;
+    try {
+        // Supposons que l'email est unique et peut être utilisé pour cibler le profil
+        const { data: user, error } = await supabase
+            .from('profiles')
+            .select('id, user_id, full_name, username, avatar_url, role, updated_at, created_at, email, last_sign_in_at')
+            .eq('email', email)
+            .single();
+
+        if (error || !user) {
+            console.error("Erreur chargement utilisateur cible:", error);
+            targetUser = null;
+            alert("Utilisateur non trouvé ou erreur de chargement.");
+            goto('/admin'); 
+            return;
+        }
+        targetUser = user;
+    } catch(e) {
+        console.error("Erreur lors du chargement de l'utilisateur cible:", e);
+        targetUser = null;
+    } finally {
+        isLoading = false;
+    }
+  }
+
+  // --- NOUVELLE FONCTION: Sauvegarder le profil ---
+  async function saveProfile() {
+      if (!targetUser || isSaving) return;
+
+      isSaving = true;
+      
+      // Validation simple du rôle
+      if (!['admin', 'moderator', 'user'].includes(form.role)) {
+          alert("Rôle invalide.");
+          isSaving = false;
+          return;
+      }
+
+      try {
+        const { error } = await supabase
+            .from('profiles')
+            .update({
+                full_name: form.full_name,
+                avatar_url: form.avatar_url,
+                role: form.role,
+                updated_at: new Date().toISOString() 
+            })
+            .eq('id', targetUser.id); // Utiliser l'ID du profil (colonne `id` de la table `profiles`)
+
+        if (error) throw error;
+
+        alert("Profil mis à jour avec succès !");
+        
+        // Recharger la liste et effacer le paramètre d'URL pour revenir à la vue liste
+        loadUsers();
+        goto('/admin'); 
+
+      } catch (e) {
+          alert(`Erreur de sauvegarde: ${e.message}`);
+          console.error(e);
+      } finally {
+        isSaving = false;
+      }
+  }
+
+  // --- NOUVELLE FONCTION: Gérer la navigation ---
+  function goBackToList() {
+      targetUser = null;
+      goto('/admin');
+  }
+
+  function handleViewEdit(email) {
+      goto(`/admin?email=${email}`);
+  }
+
+  // --- CRÉATION UTILISATEUR (unchanged) ---
 
   async function handleCreateUser() {
     if (!newUser.email || !newUser.password) return;
@@ -92,12 +190,10 @@
       });
 
       if (signUpError) throw signUpError;
-
       const { error: restoreError } = await supabase.auth.setSession({
         access_token: adminSession.access_token,
         refresh_token: adminSession.refresh_token
       });
-
       if (restoreError) throw restoreError;
 
       alert(`Utilisateur ${newUser.email} créé avec succès !`);
@@ -114,7 +210,7 @@
     }
   }
 
-  // --- ACTIONS UTILISATEUR ---
+  // --- ACTIONS UTILISATEUR (unchanged) ---
 
   async function handleChangeRole(user, nextRole) {
     if (user.user_id === currentAdminId) return alert("Impossible de modifier votre propre rôle.");
@@ -135,7 +231,6 @@
   async function handleBanUser(user, shouldBan) {
     if (user.user_id === currentAdminId) return alert("Impossible de vous bannir.");
     if (!confirm(shouldBan ? "Bannir cet utilisateur ?" : "Débannir cet utilisateur ?")) return;
-
     try {
       let banDate = null;
       if (shouldBan) {
@@ -162,7 +257,7 @@
     }
   }
 
-  // --- GESTION DES MODALES ---
+  // --- GESTION DES MODALES (unchanged) ---
 
   function openInfractionModal(user) {
     selectedUser = user;
@@ -200,7 +295,8 @@
         .order('created_at', { ascending: false });
       if (error) throw error;
       historyData.list = data || [];
-    } catch (e) { console.error(e); } finally { historyData.loading = false; }
+    } catch (e) { console.error(e); } finally { historyData.loading = false;
+    }
   }
 
   async function pardonInfraction(infractionId) {
@@ -210,7 +306,8 @@
       if (error) throw error;
       await loadUsers();
       await openHistoryModal(selectedUser);
-    } catch (e) { alert("Erreur: " + e.message); }
+    } catch (e) { alert("Erreur: " + e.message);
+    }
   }
 
   function openResetModal(user) {
@@ -246,7 +343,7 @@
     alert("Mot de passe copié !");
   }
 
-  // --- UI HELPERS ---
+  // --- UI HELPERS (unchanged) ---
   function getNextRole(current) {
     if (current === 'user') return { role: 'moderator', icon: Shield, label: 'Promouvoir Modérateur', color: 'text-purple-600' };
     if (current === 'moderator') return { role: 'admin', icon: ShieldAlert, label: 'Promouvoir Admin', color: 'text-blue-600' };
@@ -279,44 +376,112 @@
 
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
     
-    <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-      <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-        <UserPlus size={20} class="text-blue-500"/> Créer un utilisateur
-      </h2>
-      
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-        <div><label class={labelClass}>Email</label><input type="email" bind:value={newUser.email} class={inputClass} placeholder="user@baco.be"></div>
-        <div><label class={labelClass}>Mot de passe</label><input type="text" bind:value={newUser.password} class={inputClass} placeholder="Secret123"></div>
-        <div>
-          <label class={labelClass}>Rôle</label>
-          <select bind:value={newUser.role} class={inputClass}>
-            <option value="user">Utilisateur</option>
-            <option value="moderator">Modérateur</option>
-            <option value="admin">Administrateur</option>
-          </select>
+    {#if isLoading && !targetUser}
+        <div class="text-center p-10 text-xl text-gray-500">
+          <Loader2 class="w-6 h-6 animate-spin mx-auto mb-2" />
+          Chargement des données...
         </div>
-        <button on:click={handleCreateUser} disabled={isCreating} class="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-sm transition-all disabled:opacity-50">
-          {#if isCreating} <Loader2 class="animate-spin" size={18}/> {:else} <UserPlus size={18}/> Créer {/if}
-        </button>
-      </div>
-    </div>
+    {:else if targetUser}
+        <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <button on:click={goBackToList} class="flex items-center gap-1 text-blue-500 hover:text-blue-400 mb-4">
+              <ChevronLeft class="w-4 h-4"/> Retour à la gestion des utilisateurs
+          </button>
+          <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2 border-b pb-4 border-gray-200 dark:border-gray-700">
+              <UserCog class="w-6 h-6 text-yellow-500"/> Éditer le profil de {targetUser.full_name || targetUser.email}
+          </h2>
+          
+          <form on:submit|preventDefault={saveProfile} class="space-y-6 max-w-xl mx-auto">
+              <div class="flex items-center gap-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+                  <img src={form.avatar_url || '/default-avatar.png'} alt="Avatar" class="w-20 h-20 rounded-full object-cover shadow-lg">
+                  <div>
+                      <p class="text-gray-500 dark:text-gray-400">Email:</p>
+                      <p class="text-xl font-mono text-gray-900 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-lg">{targetUser.email}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">ID: {targetUser.id}</p>
+                  </div>
+              </div>
 
-    <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead class="bg-gray-50 dark:bg-gray-900/50">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Utilisateur</th>
-              <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Rôle</th>
-              <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Statut</th>
-              <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Cartons</th>
-              <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Dernière Connexion</th>
-              <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100 dark:divide-gray-700/50">
+              <div>
+                  <label for="full_name" class={labelClass}>Nom Complet</label>
+                  <input type="text" id="full_name" bind:value={form.full_name} 
+                         class={inputClass}
+                  />
+              </div>
+
+              <div>
+                  <label for="avatar_url" class={labelClass}>URL Avatar</label>
+                  <input type="url" id="avatar_url" bind:value={form.avatar_url} 
+                         class={inputClass}
+                  />
+              </div>
+              
+              <div>
+                  <label for="role" class={labelClass}>Rôle de l'utilisateur</label>
+                  <select id="role" bind:value={form.role} 
+                          class="{inputClass} capitalize"
+                  >
+                      <option value="user">User</option>
+                      <option value="moderator">Modérateur</option>
+                      <option value="admin">Admin</option>
+                  </select>
+                  <p class="text-xs mt-1 text-gray-500 dark:text-gray-400">Attention: Changer le rôle affecte les droits d'accès.</p>
+              </div>
+
+              <div class="pt-4 flex justify-end">
+                  <button type="submit" disabled={isSaving}
+                          class="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition duration-150 disabled:opacity-50"
+                  >
+                      {#if isSaving}
+                          <Loader2 class="w-4 h-4 animate-spin" />
+                          Sauvegarde...
+                      {:else}
+                          <Save class="w-4 h-4" />
+                          Sauvegarder les modifications
+                      {/if}
+                  </button>
+              </div>
+          </form>
+        </div>
+    {:else}
+        <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <UserPlus size={20} class="text-blue-500"/> Créer un utilisateur
+          </h2>
+          
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div><label class={labelClass}>Email</label><input type="email" bind:value={newUser.email} class={inputClass} placeholder="user@baco.be"></div>
+            <div><label class={labelClass}>Mot de passe</label><input type="text" bind:value={newUser.password} class={inputClass} placeholder="Secret123"></div>
+            <div>
+              <label class={labelClass}>Rôle</label>
+              <select bind:value={newUser.role} class={inputClass}>
+                <option value="user">Utilisateur</option>
+                <option value="moderator">Modérateur</option>
+                <option value="admin">Administrateur</option>
+            </select>
+            </div>
+            <button on:click={handleCreateUser} disabled={isCreating} class="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-sm transition-all disabled:opacity-50">
+              {#if isCreating} <Loader2 class="animate-spin" size={18}/> {:else} <UserPlus size={18}/> Créer {/if}
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="overflow-x-auto">
+           
+          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead class="bg-gray-50 dark:bg-gray-900/50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Utilisateur</th>
+                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Rôle</th>
+                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Statut</th>
+                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Cartons</th>
+                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Dernière Connexion</th>
+                <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Actions</th>
+                <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Éditer</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-700/50">
             {#if isLoading}
-              <tr><td colspan="6" class="py-10 text-center"><Loader2 class="animate-spin mx-auto text-blue-500" /></td></tr>
+                <tr><td colspan="7" class="py-10 text-center"><Loader2 class="animate-spin mx-auto text-blue-500" /></td></tr>
             {:else}
               {#each users as user}
                 {@const isBanned = user.banned_until && new Date(user.banned_until) > new Date()}
@@ -325,6 +490,7 @@
                 <tr class="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors">
                   
                   <td class="px-6 py-4 whitespace-nowrap">
+                    
                     <div class="flex items-center gap-4">
                       <img class="h-10 w-10 rounded-full object-cover border border-gray-200 dark:border-gray-600 shadow-sm" src={user.avatar_url} alt="">
                       <div>
@@ -389,16 +555,28 @@
                       <span class="text-xs text-gray-400 italic">Vous</span>
                     {/if}
                   </td>
+                  
+                  <td class="px-6 py-4 whitespace-nowrap text-center">
+                    {#if user.user_id !== currentAdminId}
+                        <button on:click={() => handleViewEdit(user.email)} class="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded-lg" title="Éditer le profil">
+                            <Edit2 size={16} />
+                        </button>
+                    {:else}
+                        <span class="text-xs text-gray-400 italic">N/A</span>
+                    {/if}
+                  </td>
+
                 </tr>
               {/each}
             {/if}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
-
-  </main>
-
+    {/if}
+    
+    </main>
+  
   {#if showInfractionModal}
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md p-6 shadow-xl border border-gray-200 dark:border-gray-700">
