@@ -50,6 +50,6 @@
   </main>
 
   {#if !isLoginPage}
-    <Footer />
+    <Footer /> 
   {/if}
 </div>
