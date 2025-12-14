@@ -94,10 +94,10 @@
     if (!email) return;
     isLoading = true;
     try {
-        // Supposons que l'email est unique et peut être utilisé pour cibler le profil
+        // CORRECTION: Remplacement de 'user_id' par 'id' (clé primaire du profil)
         const { data: user, error } = await supabase
             .from('profiles')
-            .select('id, user_id, full_name, username, avatar_url, role, updated_at, created_at, email, last_sign_in_at')
+            .select('id, full_name, username, avatar_url, role, updated_at, created_at, email, last_sign_in_at') 
             .eq('email', email)
             .single();
 
@@ -139,7 +139,7 @@
                 role: form.role,
                 updated_at: new Date().toISOString() 
             })
-            .eq('id', targetUser.id); // Utiliser l'ID du profil (colonne `id` de la table `profiles`)
+            .eq('id', targetUser.id); // Utilise targetUser.id pour l'ID du profil
 
         if (error) throw error;
 
@@ -244,6 +244,8 @@
         banned_until_status: shouldBan ? 'banned' : null
       };
 
+      // NOTE: Si 'user_id' provient du RPC, cela devrait être l'ID de l'utilisateur. 
+      // Si la colonne dans la table 'profiles' est nommée 'id', cette ligne fonctionne si 'user.user_id' est bien l'ID du profil.
       const { error } = await supabase.from('profiles').update(updates).eq('id', user.user_id);
       if (error) throw error;
 
