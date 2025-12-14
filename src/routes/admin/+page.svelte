@@ -476,12 +476,11 @@
                 <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Cartons</th>
                 <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Dernière Connexion</th>
                 <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Actions</th>
-                <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Éditer</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 dark:divide-gray-700/50">
             {#if isLoading}
-                <tr><td colspan="7" class="py-10 text-center"><Loader2 class="animate-spin mx-auto text-blue-500" /></td></tr>
+                <tr><td colspan="6" class="py-10 text-center"><Loader2 class="animate-spin mx-auto text-blue-500" /></td></tr>
             {:else}
               {#each users as user}
                 {@const isBanned = user.banned_until && new Date(user.banned_until) > new Date()}
@@ -490,14 +489,20 @@
                 <tr class="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors">
                   
                   <td class="px-6 py-4 whitespace-nowrap">
-                    
-                    <div class="flex items-center gap-4">
-                      <img class="h-10 w-10 rounded-full object-cover border border-gray-200 dark:border-gray-600 shadow-sm" src={user.avatar_url} alt="">
+                    <button 
+                        on:click={() => handleViewEdit(user.email)} 
+                        disabled={user.user_id === currentAdminId}
+                        class="flex items-center gap-4 w-full text-left 
+                               {user.user_id !== currentAdminId ? 'cursor-pointer hover:text-blue-500' : 'cursor-default opacity-80'}
+                               focus:outline-none"
+                        title={user.user_id !== currentAdminId ? "Éditer le profil" : "Votre profil"}
+                    >
+                      <img class="h-10 w-10 rounded-full object-cover border border-gray-200 dark:border-gray-600 shadow-sm flex-shrink-0" src={user.avatar_url} alt="">
                       <div>
-                        <div class="text-sm font-bold text-gray-900 dark:text-white">{user.full_name || user.email}</div>
+                        <div class="text-sm font-bold {user.user_id !== currentAdminId ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}">{user.full_name || user.email}</div>
                         <div class="text-xs text-gray-500 dark:text-gray-400">{user.email}</div>
                       </div>
-                    </div>
+                    </button>
                   </td>
 
                   <td class="px-6 py-4 whitespace-nowrap">
@@ -555,17 +560,6 @@
                       <span class="text-xs text-gray-400 italic">Vous</span>
                     {/if}
                   </td>
-                  
-                  <td class="px-6 py-4 whitespace-nowrap text-center">
-                    {#if user.user_id !== currentAdminId}
-                        <button on:click={() => handleViewEdit(user.email)} class="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded-lg" title="Éditer le profil">
-                            <Edit2 size={16} />
-                        </button>
-                    {:else}
-                        <span class="text-xs text-gray-400 italic">N/A</span>
-                    {/if}
-                  </td>
-
                 </tr>
               {/each}
             {/if}
