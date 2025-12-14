@@ -218,11 +218,11 @@
         {:else}
            {#each journalEntries as entry}
              <div class="bg-white dark:bg-gray-900 shadow border border-gray-200 dark:border-gray-700 rounded-lg flex gap-4 p-4 mx-4">
-               <img src={entry.profiles?.avatar_url || 'https://via.placeholder.com/40'} alt="avatar" class="w-10 h-10 rounded-full object-cover hidden sm:block">
+               <img src={entry.profiles?.avatar_url} alt="avatar" class="w-10 h-10 rounded-full object-cover hidden sm:block">
                <div class="flex-1">
                  <div class="flex justify-between items-center mb-2">
                    <div class="flex items-center gap-2">
-                     <img src={entry.profiles?.avatar_url || 'https://via.placeholder.com/40'} alt="avatar" class="w-8 h-8 rounded-full object-cover sm:hidden">
+                     <img src={entry.profiles?.avatar_url} alt="avatar" class="w-8 h-8 rounded-full object-cover sm:hidden">
                      <span class="font-semibold text-gray-900 dark:text-gray-100">{entry.profiles?.full_name || 'Utilisateur inconnu'}</span>
                      <span class="text-xs text-gray-500 dark:text-gray-400">{formatLogDate(entry.created_at)}</span>
                    </div>

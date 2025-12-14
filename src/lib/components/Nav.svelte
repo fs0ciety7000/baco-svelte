@@ -185,7 +185,7 @@
             <div class="relative rounded-full {isAdmin ? 'p-[2px] bg-gradient-to-r from-blue-500 to-pink-500' : ''}">
                 <button on:click={(e) => toggleDropdown('profile', e)} class="block rounded-full focus:outline-none">
                     <img 
-                      src={userProfile?.avatar_url || 'https://via.placeholder.com/40'} 
+                      src={userProfile?.avatar_url} 
                       alt="Avatar" 
                       class="w-10 h-10 rounded-full object-cover border-2 border-gray-700"
                     >

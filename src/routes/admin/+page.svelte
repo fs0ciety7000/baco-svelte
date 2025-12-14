@@ -326,7 +326,7 @@
                   
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center gap-4">
-                      <img class="h-10 w-10 rounded-full object-cover border border-gray-200 dark:border-gray-600 shadow-sm" src={user.avatar_url || 'https://via.placeholder.com/40'} alt="">
+                      <img class="h-10 w-10 rounded-full object-cover border border-gray-200 dark:border-gray-600 shadow-sm" src={user.avatar_url} alt="">
                       <div>
                         <div class="text-sm font-bold text-gray-900 dark:text-white">{user.full_name || user.email}</div>
                         <div class="text-xs text-gray-500 dark:text-gray-400">{user.email}</div>
