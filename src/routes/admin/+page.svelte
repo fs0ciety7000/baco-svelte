@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { supabase } from '$lib/supabase';
-  import { page } from '$app/stores'; // <-- AJOUTÉ
+  import { page } from '$app/stores'; // <-- UTILISÉ POUR LIRE L'URL
   import { 
     Shield, UserPlus, Search, User, UserX, UserCheck, 
     KeyRound, FileWarning, History, Loader2, X, Copy, 
@@ -27,8 +27,9 @@
   let historyData = { list: [], loading: false };
   let resetData = { password: '', loading: false, status: '' };
 
-  // --- NOUVEAU ÉTAT POUR L'ÉDITION ---
-  $: targetEmail = $page.url.searchParams.get('email'); // Lire le paramètre d'URL
+  // --- ÉTAT POUR L'ÉDITION ---
+  // Lit l'email de l'utilisateur ciblé dans l'URL
+  $: targetEmail = $page.url.searchParams.get('email'); 
   let targetUser = null;
   let isSaving = false;
   let form = {
@@ -46,14 +47,10 @@
   
   onMount(async () => {
     await checkAdminAccess();
-    await loadUsers();
-    // Charge le profil ciblé si un email est présent dans l'URL après le chargement initial
-    if (targetEmail) {
-        await loadTargetUser(targetEmail);
-    }
+    await loadUsers(); // loadUsers s'occupe de la logique de chargement du profil ciblé.
   });
 
-  // --- SÉCURITÉ ---
+  // --- SÉCURITÉ (unchanged) ---
 
   async function checkAdminAccess() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -77,10 +74,23 @@
   async function loadUsers() {
     isLoading = true;
     try {
-      // NOTE: Assurez-vous que votre RPC 'get_all_users' renvoie le champ 'email' et 'user_id'
+      // NOTE: Le RPC est nécessaire pour joindre les données auth.users (email, last_sign_in_at) et profiles
       const { data, error } = await supabase.rpc('get_all_users'); 
       if (error) throw error;
       users = data || [];
+      
+      // NOUVEAU: Si un email est ciblé, trouve l'utilisateur et charge son profil
+      if (targetEmail) {
+          const foundUser = users.find(u => u.email === targetEmail);
+          if (foundUser) {
+              // Utilise l'ID de l'utilisateur pour faire la requête détaillée sur la table profiles.
+              await loadTargetProfile(foundUser.user_id, foundUser.email, foundUser.last_sign_in_at);
+          } else {
+              console.error("Utilisateur ciblé dans l'URL non trouvé dans la liste.");
+              goto('/admin');
+          }
+      }
+
     } catch (e) {
       console.error("Erreur chargement users:", e);
       alert("Erreur chargement utilisateurs: " + e.message);
@@ -89,37 +99,41 @@
     }
   }
 
-  // --- NOUVELLE FONCTION: Charger l'utilisateur ciblé ---
-  async function loadTargetUser(email) {
-    if (!email) return;
+  // --- NOUVELLE FONCTION: Charger le profil ciblé par ID (Séparée de l'info auth) ---
+  // Cette fonction est optimisée pour ne sélectionner que les colonnes qui existent dans 'profiles'.
+  async function loadTargetProfile(id, email, last_sign_in_at) {
+    if (!id) return;
     isLoading = true;
     try {
-        // CORRECTION: Suppression des colonnes 'created_at' et 'last_sign_in_at' 
-        // car elles causent l'erreur "column profiles.created_at does not exist" 
-        // et sont généralement dans la table auth.users et non la table profiles.
-        const { data: user, error } = await supabase
+        // CORRECTION: Sélectionne uniquement les colonnes confirmées dans la table 'profiles'
+        const { data: profileData, error } = await supabase
             .from('profiles')
-            .select('id, full_name, username, avatar_url, role, updated_at, email') 
-            .eq('email', email)
+            .select('id, full_name, username, avatar_url, role, updated_at') 
+            .eq('id', id)
             .single();
 
-        if (error || !user) {
-            console.error("Erreur chargement utilisateur cible:", error);
-            targetUser = null;
-            alert("Utilisateur non trouvé ou erreur de chargement.");
-            goto('/admin'); 
-            return;
-        }
-        targetUser = user;
+        if (error || !profileData) throw error || new Error("Profile data missing.");
+
+        // Reconstruit l'objet targetUser en fusionnant les données Auth (email, last_sign_in_at) 
+        // fournies par la liste initiale, avec les données de profil fraîches.
+        targetUser = {
+            id: profileData.id,
+            user_id: profileData.id, 
+            email: email, 
+            last_sign_in_at: last_sign_in_at,
+            ...profileData
+        };
+
     } catch(e) {
-        console.error("Erreur lors du chargement de l'utilisateur cible:", e);
+        console.error("Erreur lors du chargement du profil ciblé:", e);
         targetUser = null;
+        goto('/admin');
     } finally {
         isLoading = false;
     }
   }
 
-  // --- NOUVELLE FONCTION: Sauvegarder le profil ---
+  // --- Sauvegarder le profil (unchanged logic) ---
   async function saveProfile() {
       if (!targetUser || isSaving) return;
 
@@ -141,13 +155,12 @@
                 role: form.role,
                 updated_at: new Date().toISOString() 
             })
-            .eq('id', targetUser.id); // Utilise targetUser.id pour l'ID du profil
+            .eq('id', targetUser.id); 
 
         if (error) throw error;
 
         alert("Profil mis à jour avec succès !");
         
-        // Recharger la liste et effacer le paramètre d'URL pour revenir à la vue liste
         loadUsers();
         goto('/admin'); 
 
@@ -159,7 +172,7 @@
       }
   }
 
-  // --- NOUVELLE FONCTION: Gérer la navigation ---
+  // --- Gérer la navigation (unchanged) ---
   function goBackToList() {
       targetUser = null;
       goto('/admin');
