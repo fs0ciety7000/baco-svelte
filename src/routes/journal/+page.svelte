@@ -247,7 +247,7 @@
 <div class="min-h-screen bg-gray-50/50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans pb-10">
   
   <header class="sticky top-0 z-30 w-full bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 rounded-b-3xl transition-colors duration-300">
-    <div class="max-w-3xl mx-auto px-6 h-20 flex justify-between">
+    <div class="max-w-3xl mx-auto px-6 h-20 flex items-center justify-between mb-6">
       <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100">Journal</h1>
       
       <div class="flex items-center gap-2">
