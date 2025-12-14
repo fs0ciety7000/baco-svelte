@@ -1,0 +1,39 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/api-proxy",
+      "destination": "https://mgljaheyimizrydazrxh.supabase.co"
+    },
+    {
+      "source": "/api-proxy/:path*",
+      "destination": "https://mgljaheyimizrydazrxh.supabase.co/:path*"
+    }
+  ],
+
+  "headers": [
+    {
+      "source": "/api-proxy/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Credentials",
+          "value": "true"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          
+          "value": "*" 
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          
+          "value": "Authorization, Content-Type, apikey" 
+        }
+      ]
+    }
+  ]
+}
