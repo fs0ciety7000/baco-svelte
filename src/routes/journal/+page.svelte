@@ -255,7 +255,7 @@
         </div>
         <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700">
         <p class="text-gray-600 dark:text-gray-400">
-            Ici, vous trouverez le journal de bord et l'historique des actions. (En développement)
+            Ici, vous trouverez le journal de bord et l'historique des actions. 
         </p>
     </div>
 </div>  
