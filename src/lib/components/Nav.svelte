@@ -9,7 +9,7 @@
     Shield, Accessibility, ChevronDown, Combine, Users, BookUser, 
     Bus, Car, Database, Train, Tag, Map, Folder, BookCopy, 
     ClipboardPaste, Search, CalendarDays, Bell, UserCog, 
-    ShieldCheck, BarChart2, History, LogOut, Menu, X 
+    ShieldCheck, BarChart2, History, LogOut, Menu, X, ChevronLeft, ChevronRight
   } from 'lucide-svelte';
   
   export let user; // Reçu depuis +layout.svelte
@@ -21,17 +21,27 @@
   let isModerator = false;
   let notificationsCount = 0;
   
-  // NOUVEAU: Données du calendrier
-  let currentYear = new Date().getFullYear();
-  let weeksInYear = [];
+  // --- NOUVEAUX ÉTATS POUR LE CALENDRIER ---
+  // Date actuellement affichée dans le widget (initialisée au 1er du mois actuel)
+  let currentDate = new Date();
+  currentDate.setDate(1); 
+  $: displayedMonth = currentDate.getMonth();
+  $: displayedYear = currentDate.getFullYear();
+
+  // Les jours du mois à afficher (générés dynamiquement)
+  let days = [];
+
+  // Mise à jour des jours si le mois change
+  $: {
+    days = generateCalendarDays(displayedYear, displayedMonth);
+  }
+  // ------------------------------------------
 
   // --- RÉACTIVITÉ CRUCIALE POUR L'AVATAR ---
-  // Dès que 'user' change (ex: connexion terminée), on charge le profil
   $: if (user) loadUserProfile();
   
-  // Dès que le composant est monté, on génère le calendrier
   onMount(() => {
-    generateYearCalendar(currentYear);
+    // Le calendrier se génère automatiquement via le bloc réactif ci-dessus
   });
   
   async function loadUserProfile() {
@@ -47,7 +57,6 @@
         isModerator = data.role === 'moderator';
       }
 
-      // Charger les notifs en même temps
       const { count } = await supabase
         .from('notifications')
         .select('*', { count: 'exact', head: true })
@@ -60,6 +69,8 @@
     }
   }
 
+  // --- FONCTIONS CALENDRIER ---
+  
   // Fonction pour calculer le numéro de semaine ISO 8601
   function getWeekNumber(d) {
     // Clone date object.
@@ -73,47 +84,72 @@
     return weekNo;
   }
   
-  // NOUVEAU: Fonction pour générer le calendrier annuel
-  function generateYearCalendar(year) {
-    weeksInYear = [];
-    let d = new Date(year, 0, 1);
-    let currentWeek = -1;
+  function generateCalendarDays(year, month) {
+    const calendarDays = [];
+    const date = new Date(year, month);
+    const today = new Date();
+    
+    // ISO standard: Monday=1, Sunday=7. JS: Sunday=0, Monday=1...
+    const getISOWeekday = (d) => (d.getDay() === 0 ? 7 : d.getDay());
 
-    // Début de l'année précédente si le 1er janvier est après jeudi
-    if (d.getDay() > 4) {
-      d.setDate(d.getDate() + (1 - d.getDay()) + 7);
-    }
+    // Déterminer le jour de la semaine du premier jour du mois (Lundi = 1)
+    let startDayOfWeek = getISOWeekday(date);
+    
+    // Reculer jusqu'au lundi de la première semaine affichée
+    let day = new Date(date);
+    day.setDate(day.getDate() - (startDayOfWeek - 1));
 
-    while (d.getFullYear() <= year) {
-      let weekNo = getWeekNumber(d);
+    // Boucle pour générer 5 à 6 semaines complètes
+    let loops = 0;
+    while (loops < 42 && (day.getMonth() !== month || loops < 7)) { // Toujours 6 lignes pour l'esthétique
+      const dayData = {
+        date: new Date(day),
+        dayOfMonth: day.getDate(),
+        isCurrentMonth: day.getMonth() === month,
+        isToday: day.toDateString() === today.toDateString(),
+        weekNumber: getWeekNumber(day),
+        isStartOfWeek: getISOWeekday(day) === 1 // Lundi
+      };
 
-      if (weekNo !== currentWeek) {
-        let month = d.getMonth() + 1; // Mois base 1
-        weeksInYear.push({
-          week: weekNo,
-          month: month,
-          // Formatage simple pour l'affichage du début de semaine
-          start: new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
-          isCurrent: weekNo === getWeekNumber(new Date()) && year === new Date().getFullYear()
-        });
-        currentWeek = weekNo;
-      }
-
-      // Avance d'une semaine (7 jours)
-      d.setDate(d.getDate() + 7);
+      calendarDays.push(dayData);
       
-      // S'assurer de ne pas dépasser la fin de l'année suivante
-      if (d.getFullYear() > year && getWeekNumber(d) === 1) {
-          break; 
-      }
+      day.setDate(day.getDate() + 1);
+      loops++;
     }
     
-    // Correction pour la semaine 52/53 qui pourrait être ajoutée après le break
-    if (weeksInYear[weeksInYear.length - 1]?.month === 1 && weeksInYear[weeksInYear.length - 1]?.week !== 1) {
-        weeksInYear.pop();
+    // S'assurer qu'on affiche 6 semaines complètes (42 jours) pour une grille uniforme
+    while (calendarDays.length < 42) {
+      const lastDate = calendarDays[calendarDays.length - 1].date;
+      lastDate.setDate(lastDate.getDate() + 1);
+      calendarDays.push({
+        date: new Date(lastDate),
+        dayOfMonth: lastDate.getDate(),
+        isCurrentMonth: false,
+        isToday: lastDate.toDateString() === today.toDateString(),
+        weekNumber: getWeekNumber(lastDate),
+        isStartOfWeek: getISOWeekday(lastDate) === 1
+      });
     }
+
+    return calendarDays;
+  }
+  
+  function goToPreviousMonth() {
+    currentDate = new Date(displayedYear, displayedMonth - 1, 1);
   }
 
+  function goToNextMonth() {
+    currentDate = new Date(displayedYear, displayedMonth + 1, 1);
+  }
+
+  function goToToday() {
+    currentDate = new Date();
+    currentDate.setDate(1);
+  }
+  
+  const monthNames = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
+  const dayNames = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+  // ------------------------------------------
 
   function closeDropdowns() {
     activeDropdown = null;
@@ -233,37 +269,46 @@
             </button>
             
             {#if activeDropdown === 'calendar'}
-                <div class="absolute top-full right-0 mt-2 w-[350px] max-h-[400px] overflow-y-auto bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 p-4 text-sm text-gray-400">
-                    <h3 class="font-bold text-white text-lg mb-3 border-b border-gray-700 pb-2 flex justify-between items-center">
-                        Calendrier {currentYear}
-                    </h3>
+                <div class="absolute top-full right-0 mt-2 w-[340px] bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 p-3 text-sm text-gray-400">
                     
-                    <div class="grid grid-cols-12 gap-y-1 gap-x-2 text-xs font-mono text-center">
-                        <div class="col-span-3 text-gray-500 font-semibold">Mois</div>
-                        <div class="col-span-3 text-gray-500 font-semibold">Semaine</div>
-                        <div class="col-span-6 text-gray-500 font-semibold">Début de Semaine (Lun)</div>
-                        
-                        {#each weeksInYear as week}
-                            {#if week.week === 1 || (week.month !== weeksInYear[weeksInYear.indexOf(week) - 1]?.month && weeksInYear.indexOf(week) !== 0)}
-                                <div class="col-span-12 h-px bg-gray-700/50 my-1"></div>
-                            {/if}
-
-                            <div class="col-span-3 text-center text-gray-300">
-                                {new Date(currentYear, week.month - 1).toLocaleDateString('fr-FR', { month: 'short' }).toUpperCase()}
-                            </div>
-                            <div class="col-span-3">
-                                <span class="block px-1 py-0.5 rounded {week.isCurrent ? 'bg-blue-600 text-white font-bold' : 'bg-gray-700 text-gray-200'}">
-                                    {week.week}
-                                </span>
-                            </div>
-                            <div class="col-span-6 text-left text-gray-400 pl-4">
-                                {week.start}
-                            </div>
-                        {/each}
+                    <div class="flex justify-between items-center mb-3">
+                        <button on:click|stopPropagation={goToPreviousMonth} class="p-1 rounded-full hover:bg-gray-700 text-white">
+                            <ChevronLeft class="w-5 h-5" />
+                        </button>
+                        <span class="text-white font-bold text-lg cursor-pointer hover:text-blue-400" on:click={goToToday}>
+                            {monthNames[displayedMonth]} {displayedYear}
+                        </span>
+                        <button on:click|stopPropagation={goToNextMonth} class="p-1 rounded-full hover:bg-gray-700 text-white">
+                            <ChevronRight class="w-5 h-5" />
+                        </button>
                     </div>
 
-                    <div class="text-center mt-4 pt-3 border-t border-gray-700">
-                        <span class="text-gray-500">Affichage annuel ISO 8601.</span>
+                    <div class="grid grid-cols-8 gap-1 text-center">
+                        <div class="text-xs font-semibold text-gray-500">S</div> 
+                        
+                        {#each dayNames as day}
+                            <div class="text-xs font-semibold text-gray-500">{day}</div>
+                        {/each}
+
+                        {#each days as day}
+                            {#if day.isStartOfWeek}
+                                <div class="text-xs text-gray-500 pt-1 border-r border-gray-700/50">
+                                    {day.weekNumber}
+                                </div>
+                            {/if}
+
+                            <button
+                                on:click|stopPropagation
+                                class="w-full h-7 rounded text-xs font-medium 
+                                {day.isCurrentMonth ? '' : 'text-gray-600 dark:text-gray-600'}
+                                {day.isToday ? 'bg-red-600 text-white font-bold ring-2 ring-red-400' : 'hover:bg-gray-700'}
+                                {day.isCurrentMonth && !day.isToday ? 'text-gray-200' : ''}
+                                "
+                                title={day.date.toLocaleDateString('fr-FR')}
+                            >
+                                {day.dayOfMonth}
+                            </button>
+                        {/each}
                     </div>
                 </div>
             {/if}
@@ -272,48 +317,3 @@
             <button on:click={(e) => toggleDropdown('notifications', e)} class="p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 relative">
                 <Bell class="w-5 h-5" />
                 {#if notificationsCount > 0}
-                    <span class="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white">{notificationsCount}</span>
-                {/if}
-            </button>
-            {#if activeDropdown === 'notifications'}
-                <div class="absolute top-full right-0 mt-2 w-72 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 p-4 text-sm text-gray-400">
-                    Aucune nouvelle notification.
-                </div>
-            {/if}
-        </div>
-
-        <div class="relative">
-            <div class="relative rounded-full {isAdmin ? 'p-[2px] bg-gradient-to-r from-blue-500 to-pink-500' : ''}">
-                <button on:click={(e) => toggleDropdown('profile', e)} class="block rounded-full focus:outline-none">
-                    <img 
-                      src={userProfile?.avatar_url} 
-                      alt="Avatar" 
-                      class="w-10 h-10 rounded-full object-cover border-2 border-gray-700"
-                    >
-                </button>
-            </div>
-            
-            {#if activeDropdown === 'profile'}
-                <div class="absolute top-full right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50">
-                    <div class="p-2">
-                        <div class="px-3 py-2 text-sm text-gray-400 border-b border-gray-700 mb-1">
-                          {userProfile?.full_name || 'Utilisateur'}
-                        </div>
-                        <a href="/profil" class="flex items-center gap-3 w-full px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"><UserCog class="w-4 h-4"/> Profil</a>
-                        {#if isAdmin}
-                            <hr class="border-gray-700 my-2">
-                            <a href="/admin" class="flex items-center gap-3 w-full px-3 py-2 text-sm text-yellow-400 hover:bg-gray-700"><ShieldCheck class="w-4 h-4"/> Admin</a>
-                            <a href="/audit" class="flex items-center gap-3 w-full px-3 py-2 text-sm text-yellow-400 hover:bg-gray-700"><ShieldCheck class="w-4 h-4"/> Audit Log</a>
-                            {/if}
-                        <button on:click={handleLogout} class="flex items-center gap-3 w-full px-3 py-2 text-sm text-red-400 hover:bg-red-900/30 rounded mt-1">
-                            <LogOut class="w-4 h-4"/> Déconnexion
-                        </button>
-                    </div>
-                </div>
-            {/if}
-        </div>
-
-      </div>
-    </div>
-  </div>
-</nav>
