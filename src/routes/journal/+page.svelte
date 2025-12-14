@@ -261,7 +261,10 @@
             </h1>
             </div>
 
-            <div class="mt-4 md:mt-0">
+           
+    </header>
+
+     <div class="mt-4 md:mt-0">
                 <div class="relative hidden sm:block">
                     <select bind:value={selectedAuthor} on:change={() => loadLogs(true)} class="pl-3 pr-8 py-1.5 text-xs rounded-xl bg-gray-100 dark:bg-gray-700 border-none focus:ring-2 focus:ring-blue-500 cursor-pointer text-gray-700 dark:text-gray-200">
                         <option value="all">Tous les auteurs</option>
@@ -273,8 +276,6 @@
                 <input type="date" bind:value={selectedDate} on:change={() => loadLogs(true)} class="py-1.5 px-3 text-xs rounded-xl bg-gray-100 dark:bg-gray-700 border-none focus:ring-2 focus:ring-blue-500 text-gray-700 dark:text-gray-200" />
             </div>
       
-    </header>
-
 
     <main class="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-8">
         
