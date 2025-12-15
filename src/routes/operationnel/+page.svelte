@@ -144,7 +144,7 @@
 
 <div class="min-h-full">
   
-  <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+  <header class="bg-white dark:bg-gray-800 rounded-b-3xl shadow-sm border-b border-gray-200 dark:border-gray-700">
     <div class="container mx-auto p-6 md:flex md:justify-between md:items-center">
       <div>
         <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100">Base de Connaissances</h1>
