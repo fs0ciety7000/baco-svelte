@@ -1,9 +1,11 @@
 <script>
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabase';
+  import { toast } from '$lib/stores/toast.js'; 
+  import { openConfirmModal } from '$lib/stores/modal.js';
   import { 
     Send, Paperclip, Search, Filter, AlertTriangle, BookCopy, 
-    Trash2, Pencil, FileText, Image, Loader2, X 
+    Trash2, Pencil, FileText, Image, Loader2, X, Save 
   } from 'lucide-svelte';
 
   // --- CONFIG ---
@@ -132,18 +134,17 @@
 
     if (!newMessage.trim() && !newFile) return;
     isSubmitting = true;
-
     try {
       let attachmentPath = null;
       let attachmentType = null;
-
       if (newFile) {
         const ext = newFile.name.split('.').pop();
         const fileName = `journal/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${ext}`;
         const { error: upError } = await supabase.storage.from('documents').upload(fileName, newFile);
         if (upError) throw upError;
         attachmentPath = fileName;
-        attachmentType = newFile.type.startsWith('image/') ? 'image' : 'file';
+        attachmentType = newFile.type.startsWith('image/') ?
+        'image' : 'file';
       }
 
       const { error } = await supabase.from('main_courante').insert({
@@ -153,7 +154,6 @@
         attachment_path: attachmentPath,
         attachment_type: attachmentType
       });
-
       if (error) throw error;
 
       newMessage = "";
@@ -161,15 +161,20 @@
       newFile = null;
       if (fileInput) fileInput.value = "";
       loadLogs(true);
+      // >>> TOAST DE SUCCÈS
+      toast.success("Le message a été publié avec succès.");
+      // <<<
 
     } catch (e) {
-      alert("Erreur: " + e.message);
+      // >>> REMPLACEMENT DE alert() PAR toast.error
+      toast.error("Erreur lors de la publication: " + e.message);
+      // <<<
     } finally {
       isSubmitting = false;
     }
   }
 
-  async function saveEditedEntry() {
+async function saveEditedEntry() {
     if (!editingLog.message_content.trim()) return;
     isSubmitting = true;
     try {
@@ -181,23 +186,46 @@
           updated_at: new Date()
         })
         .eq('id', editingLog.id);
-
       if (error) throw error;
 
       closeModal();
       loadLogs(true);
+      // >>> TOAST DE SUCCÈS
+      toast.success("Le message a été modifié avec succès.");
+      // <<<
+
     } catch (e) {
-      alert("Erreur modif: " + e.message);
+      // >>> REMPLACEMENT DE alert() PAR toast.error
+      toast.error("Erreur lors de la modification: " + e.message);
+      // <<<
     } finally {
       isSubmitting = false;
     }
   }
 
+ // Fonction qui exécute la suppression après confirmation
+  function executeDeleteLog(id) {
+    return async () => {
+      const { error } = await supabase.from('main_courante').delete().eq('id', id);
+      
+      if (!error) {
+        loadLogs(true);
+        // >>> TOAST DE SUCCÈS
+        toast.success("Le message a été supprimé du journal.");
+      } else {
+        // >>> UTILISATION DE toast.error
+        toast.error("Erreur: " + error.message);
+      }
+    };
+  }
+  
+  // Fonction qui appelle la modale de confirmation
   async function deleteLog(id) {
-    if (!confirm("Supprimer ce message ?")) return;
-    const { error } = await supabase.from('main_courante').delete().eq('id', id);
-    if (!error) loadLogs(true);
-    else alert("Erreur: " + error.message);
+    // Remplacement du confirm() natif
+    openConfirmModal(
+        "Voulez-vous vraiment supprimer ce message du journal ? Cette action est irréversible.",
+        executeDeleteLog(id) // Passe la logique d'exécution en callback
+    );
   }
 
   async function toggleReaction(logId, emoji, currentReaction) {
