@@ -7,7 +7,8 @@
     // Import des icônes
     import { 
         CalendarDays, Plus, Loader2, ChevronLeft, ChevronRight, Users, 
-        Edit, Trash2, X, Save, Shield, ListTodo 
+        Edit, Trash2, X, Save, Shield, ListTodo,
+        Cake // <-- NOUVEAU : Import de Cake
     } from 'lucide-svelte';
     
     // --- ÉTATS GLOBAUX ---
@@ -15,6 +16,7 @@
     let isSubmitting = false;
     let user = null;
     let leaveRequests = []; 
+    let allProfiles = []; // <-- NOUVEAU : Pour stocker les anniversaires de tous les profils
 
     // --- ÉTATS DU FORMULAIRE ET MODALE ---
     
@@ -33,7 +35,7 @@
 
     const LEAVE_TYPES = [
         { value: 'CN', label: 'CN' },
-        { value: 'UNPAID', label: 'JC' },
+        { value: 'JC', label: 'JC' },
         { value: 'ZM', label: 'ZM' },
         { value: 'BT', label: 'Blessé' },
     ];
@@ -91,12 +93,29 @@
             end.setHours(0, 0, 0, 0);
             current.setHours(0, 0, 0, 0);
 
-            // Inclure toutes les demandes, peu importe le statut
             return current >= start && current <= end;
         });
     }
 
-    // --- LOGIQUE CALENDRIER (Fonctions inchangées) ---
+    /**
+     * NOUVEAU : Vérifie si un jour donné est un anniversaire.
+     */
+    function getBirthdaysForDay(dayDate) {
+        const currentMonth = dayDate.getMonth();
+        const currentDay = dayDate.getDate();
+        
+        return allProfiles
+            .filter(p => {
+                if (!p.birthday) return false;
+                // Créer une Date pour l'anniversaire à partir de la chaîne YYYY-MM-DD
+                const bday = new Date(p.birthday); 
+                // Assurez-vous d'ignorer l'année de naissance, en ne comparant que le jour et le mois
+                return bday.getDate() === currentDay && bday.getMonth() === currentMonth;
+            })
+            .map(p => p.full_name);
+    }
+
+    // --- LOGIQUE CALENDRIER (Fonctions inchangées, sauf generateCalendarDays) ---
     
     let currentDate = new Date();
     currentDate.setDate(1); 
@@ -134,7 +153,8 @@
                 isToday: day.toDateString() === today.toDateString(),
                 weekNumber: getWeekNumber(day),
                 isStartOfWeek: getISOWeekday(day) === 1,
-                leaves: getLeavesForDay(day)
+                leaves: getLeavesForDay(day),
+                birthdays: getBirthdaysForDay(day) // <-- AJOUT ANNIVERSAIRES
             };
             calendarDays.push(dayData);
             
@@ -157,7 +177,8 @@
                 isToday: lastDate.toDateString() === today.toDateString(),
                 weekNumber: getWeekNumber(lastDate),
                 isStartOfWeek: getISOWeekday(lastDate) === 1,
-                leaves: getLeavesForDay(lastDate)
+                leaves: getLeavesForDay(lastDate),
+                birthdays: getBirthdaysForDay(lastDate) // <-- AJOUT ANNIVERSAIRES
             };
             calendarDays.push(dayData);
         }
@@ -185,15 +206,14 @@
         const { data: { user: sessionUser } } = await supabase.auth.getUser();
         user = sessionUser;
         
-        // Pas de chargement du rôle admin
-        
-        await loadLeaveRequests();
+        await loadPlanningData(); // <-- Renommée de loadLeaveRequests
         
         isLoading = false;
     });
 
-    async function loadLeaveRequests() {
-        const { data, error } = await supabase
+    async function loadPlanningData() { // <-- Renommée de loadLeaveRequests
+        // 1. Charger les demandes de congés
+        const { data: leaves, error: leaveError } = await supabase
             .from('leave_requests')
             .select(`
                 id, user_id, start_date, end_date, type, status, reason,
@@ -201,13 +221,26 @@
             `)
             .order('start_date', { ascending: true });
             
-        if (data) {
-            leaveRequests = data;
+        if (leaves) {
+            leaveRequests = leaves;
         }
-        if (error) {
-            console.error("Erreur chargement congés:", error);
+        if (leaveError) {
+            console.error("Erreur chargement congés:", leaveError);
             toast.push({ message: "Erreur lors du chargement des demandes de congés.", type: "error" });
         }
+        
+        // 2. Charger tous les profils pour les anniversaires (NOUVEAU)
+        const { data: profiles, error: profileError } = await supabase
+            .from('profiles')
+            .select('id, full_name, birthday'); // <-- Récupération de la date de naissance
+        
+        if (profiles) {
+            allProfiles = profiles;
+        }
+        if (profileError) {
+            console.error("Erreur chargement profils:", profileError);
+        }
+
         days = generateCalendarDays(displayedYear, displayedMonth);
     }
 
@@ -280,7 +313,7 @@
                 successMessage = "Demande de congé soumise et en attente d'approbation.";
             }
     
-            await loadLeaveRequests(); 
+            await loadPlanningData(); // <-- Appel mis à jour
             closeModal();
             toast.push({ message: successMessage, type: "success" });
             
@@ -305,7 +338,7 @@
 
             if (error) throw error;
 
-            await loadLeaveRequests();
+            await loadPlanningData(); // <-- Appel mis à jour
             toast.push({ message: "Demande de congé supprimée avec succès.", type: "success" });
             
         } catch (e) {
@@ -314,7 +347,7 @@
         }
     }
     
-    // Nouvelle fonction de gestion du statut par l'utilisateur (NOUVEAU)
+    // Fonction de gestion du statut par l'utilisateur
     async function handleStatusChange(id, newStatus) {
         if (!user) return; // Sécurité
 
@@ -334,7 +367,6 @@
                 return req;
             });
             
-            // Recharger les jours du calendrier après la mise à jour des requêtes
             days = generateCalendarDays(displayedYear, displayedMonth);
 
             toast.push({ message: `Statut de votre demande mis à jour à "${STATUS_MAP[newStatus]}".`, type: "success" });
@@ -351,15 +383,18 @@
     /** Renvoie les demandes de l'utilisateur actuel. */
     $: myLeaveRequests = leaveRequests.filter(req => user && req.user_id === user.id);
 
-    /** Affiche les détails d'un jour. */
+    /** Affiche les détails d'un jour (congés + anniversaires). */
     function showLeaveDetails(day) {
         const leaves = day.leaves.map(l => {
             const name = l.profiles?.full_name || 'Inconnu';
             return `- ${name} : ${l.type} (Statut: ${STATUS_MAP[l.status] || l.status})`;
         }).join('\n');
-        if (leaves) {
+        
+        const bdays = day.birthdays.length > 0 ? `\n\n🎂 Anniversaire(s) : ${day.birthdays.join(', ')}` : ''; // <-- AJOUT ANNIVERSAIRES
+        
+        if (leaves || bdays) {
             toast.push({ 
-                message: `Congés le ${day.date.toLocaleDateString('fr-FR')}:\n${leaves}`, 
+                message: `Congés le ${day.date.toLocaleDateString('fr-FR')}:\n${leaves}${bdays}`, // <-- AFFICHAGE FINAL
                 type: 'info',
                 duration: 5000 
             });
@@ -460,20 +495,26 @@
                         {/if}
 
                         <div
-                            on:click={() => day.leaves.length > 0 && showLeaveDetails(day)}
+                            on:click={() => (day.leaves.length > 0 || day.birthdays.length > 0) && showLeaveDetails(day)}
                             class="w-full h-16 rounded-lg text-xs font-medium relative overflow-hidden transition-shadow duration-100 p-0.5 
                                 {day.isCurrentMonth ? 'dark:text-gray-200' : 'text-gray-400 dark:text-gray-600'}
                                 {day.isToday ? 'border-2 border-red-500' : 'hover:shadow-inner hover:bg-gray-100 dark:hover:bg-gray-700/50'}
-                                {day.leaves.length > 0 ? 'cursor-pointer' : ''}"
+                                {(day.leaves.length > 0 || day.birthdays.length > 0) ? 'cursor-pointer' : ''}"
                         >
                             <span class="block absolute top-1 left-1 font-bold 
                                 {day.isToday ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-200'}">
                                 {day.dayOfMonth}
                             </span>
                             
+                            {#if day.birthdays.length > 0}
+                                <span class="absolute top-1 right-1 text-yellow-500" title="Anniversaire(s) : {day.birthdays.join(', ')}">
+                                    <Cake class="w-3 h-3 fill-current" />
+                                </span>
+                            {/if}
+                            
                             <div class="absolute bottom-0 left-0 right-0 p-[2px] space-y-[1px]">
                                 {#each day.leaves as leave, i (leave.id)}
-                                  
+                                    
 
                                     <div 
                                         class="h-3.5 w-full rounded-sm text-center font-bold overflow-hidden text-white transition-opacity duration-300 {getUserColor(leave.user_id)}"
@@ -492,7 +533,7 @@
                 </div>
                 
                 <p class="text-sm text-gray-500 dark:text-gray-400 pt-4 border-t dark:border-gray-700/50">
-                    *Les demandes de congés **approuvées** (couleur pleine) et **en attente/refusées** (opacité réduite) sont affichées sur le calendrier.
+                    *Les demandes de congés **approuvées** (couleur pleine) et **en attente/refusées** (opacité réduite) sont affichées sur le calendrier. L'icône 🎂 indique les anniversaires.
                 </p>
             </div>
         </div>
@@ -560,7 +601,7 @@
                     bind:value={currentLeave.reason} 
                     rows="3"
                     class="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-white"
-                    placeholder="Ex: CN, longs termes, JC..."
+                    placeholder="Ex: CN, long terme, JC..."
                 ></textarea>
             </div>
 

@@ -5,8 +5,7 @@
   import { 
     User, Mail, Shield, Camera, Lock, Save, 
     FileWarning, AlertOctagon, Loader2, CheckCircle,
-    // --- AJOUT DE TAG ICI ---
-    Tag 
+    Tag, Cake // <-- AJOUTER Cake
   } from 'lucide-svelte';
 // --- ÉTAT ---
   let isLoading = true;
@@ -24,7 +23,8 @@
     full_name: "",
     email: "", // Traitement spécial
     role: "user",
-    fonction: "", // <-- AJOUT DE LA FONCTION
+    fonction: "",
+    birthday: null, // <-- AJOUT DE LA DATE DE NAISSANCE
     avatar_url: null
   };
 // Mot de passe
@@ -82,7 +82,7 @@
   async function loadTargetProfile() {
     const { data, error } = await supabase
       .from('profiles')
-      .select('username, full_name, avatar_url, role, fonction') // <-- AJOUT DE FONCTION DANS LE SELECT
+      .select('username, full_name, avatar_url, role, fonction, birthday') // <-- AJOUT DE birthday
       .eq('id', targetUserId)
       .single();
     if (error) {
@@ -117,7 +117,7 @@
       const updates = {
         username: profileData.username,
         full_name: profileData.full_name,
-        // N'oubliez pas d'ajouter la fonction si elle est modifiable, sinon ce n'est pas nécessaire ici.
+        birthday: profileData.birthday, // <-- ENREGISTREMENT DE LA DATE DE NAISSANCE
         updated_at: new Date()
       };
       const { error } = await supabase
@@ -293,7 +293,20 @@
                
                   <input type="text" bind:value={profileData.full_name} class={inputClass} disabled={!isMyProfile && !isAdmin}>
                 </div>
-              </div>
+                
+                <div>
+                  <label class={labelClass}>Date de Naissance</label>
+                  <div class="relative">
+                    <Cake size={16} class="absolute left-3 top-3.5 text-gray-400" />
+                    <input 
+                      type="date" 
+                      bind:value={profileData.birthday} 
+                      class="{inputClass} pl-10" 
+                      disabled={!isMyProfile && !isAdmin}
+                    >
+                  </div>
+                </div>
+                </div>
 
               <div class="grid grid-cols-1 gap-5">
                 <div>
