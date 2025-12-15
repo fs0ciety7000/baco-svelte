@@ -33,3 +33,62 @@
     border: none !important;
   }
 }
+
+/* --- AJOUT SPÉCIFIQUE DU THÈME NOËL --- */
+
+/* 1. Définir une couleur de fond festive pour la NAV */
+.christmas-nav {
+  /* Vert sapin foncé */
+  background-color: #1a472a !important; 
+  /* Légère ombre rouge/or */
+  box-shadow: 0 4px 10px rgba(139, 0, 0, 0.5), 0 0 15px rgba(255, 215, 0, 0.3);
+}
+
+/* 2. Base de la guirlande (positionnement) */
+.garland {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 10px; /* Hauteur de la zone */
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 60; /* Au-dessus de la nav */
+}
+
+/* 3. Création et animation des lumières (utilise un dégradé répété) */
+.garland-lights {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 200%; /* Plus large pour l'effet de défilement */
+  height: 100%;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 20px,
+    #ff4500 20px 40px, /* Rouge Noël */
+    transparent 40px 60px,
+    #ffc700 60px 80px, /* Or/Jaune */
+    transparent 80px 100px,
+    #009933 100px 120px, /* Vert Vif */
+    transparent 120px 140px
+  );
+  background-size: 700px 10px; /* Taille du motif répété */
+  animation: pulse-lights 5s linear infinite;
+}
+
+@keyframes pulse-lights {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: -700px 0; /* Défilement de la guirlande */
+  }
+}
+
+/* 4. Toucher de Noël pour les liens/hover (pour un petit effet global) */
+.dark a:hover:not(.christmas-nav a) {
+    /* Utilise une couleur d'accent rouge pour le thème sombre */
+    @apply text-red-300; 
+}
+/* --- FIN AJOUT SPÉCIFIQUE DU THÈME NOËL --- */

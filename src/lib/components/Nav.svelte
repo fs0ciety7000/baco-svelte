@@ -13,6 +13,7 @@
   } from 'lucide-svelte';
   export let user; // Reçu depuis +layout.svelte
 
+  let isChristmasTheme = true;
   let isMobileMenuOpen = false;
   let activeDropdown = null;
   let userProfile = null;
@@ -241,7 +242,12 @@
 
 <svelte:window on:click={closeDropdowns} />
 
-<nav class="bg-gray-900 text-white shadow-lg relative z-50">
+<nav class="bg-gray-900 text-white shadow-lg relative z-50 {isChristmasTheme ? 'christmas-nav' : ''}">
+  {#if isChristmasTheme}
+    <div class="garland">
+      <div class="garland-lights"></div>
+    </div>
+  {/if}
   <div class="container mx-auto px-6 py-3">
     
     <div class="flex justify-between items-center">
