@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { page } from '$app/stores';
+  import { page } from '$app/stores'; // <-- $page est nécessaire pour la réactivité à l'URL
   import { supabase } from '$lib/supabase';
   import { 
     User, Mail, Shield, Camera, Lock, Save, 
@@ -13,7 +13,7 @@
   let isUploading = false;
 // Utilisateurs
   let currentUser = null; // Moi (session)
-  let targetUserId = null;
+  let targetUserId = null; // ID du profil actuellement affiché
 // Le profil qu'on regarde
   let isMyProfile = false;
   let isAdmin = false;
@@ -36,50 +36,60 @@
   let trustLabel = "Chargement...";
 
   onMount(async () => {
-    await initProfile();
+    // 1. Charger l'utilisateur courant (seul onMount doit faire ceci)
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    currentUser = user;
+
+    // 2. Vérifier mon rôle (Admin ?)
+    const { data: myProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+    isAdmin = myProfile?.role === 'admin';
+    
+    // Note: Le chargement des données (loadProfileData) se fera via le bloc réactif ci-dessous
+    // dès que $page et currentUser sont définis.
   });
-// --- INITIALISATION ---
 
-  async function initProfile() {
-    try {
-      // 1. Qui suis-je ?
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-// Redirection login gérée ailleurs normalement
-      currentUser = user;
-// Vérifier mon rôle (Admin ?)
-      const { data: myProfile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-      isAdmin = myProfile?.role === 'admin';
+// --- LOGIQUE RÉACTIVE QUI OBSERVE L'URL ET LANCE LE CHARGEMENT ---
+$: if ($page.url.searchParams && currentUser) {
+    const urlParams = $page.url.searchParams;
+    const paramId = urlParams.get('id');
 
-      // 2. Qui regarde-t-on ?
-// Récupérer l'ID depuis l'URL (?id=...) ou utiliser le mien
-      const urlParams = new URLSearchParams(window.location.search);
-      const paramId = urlParams.get('id');
-      
-      if (paramId && paramId !== user.id) {
-        targetUserId = paramId;
-        isMyProfile = false;
-      } else {
-        targetUserId = user.id;
-        isMyProfile = true;
-      }
+    // Déterminer le nouvel ID cible (soit l'ID du paramètre, soit l'ID de l'utilisateur courant)
+    const newTargetUserId = (paramId && paramId !== currentUser.id) ? paramId : currentUser.id;
 
-      // 3. Charger le profil cible
-      await loadTargetProfile();
-      await loadInfractions();
-
-    } catch (e) {
-      console.error("Erreur init:", e);
-    } finally {
-      isLoading = false;
+    // Si l'ID cible a changé ou si c'est la première exécution
+    if (newTargetUserId !== targetUserId) {
+        targetUserId = newTargetUserId;
+        isMyProfile = targetUserId === currentUser.id;
+        
+        // Charger les données pour le nouvel utilisateur
+        loadProfileData(); 
     }
-  }
+}
 
-  async function loadTargetProfile() {
+
+// --- FONCTIONS DE CHARGEMENT GROUPÉES ---
+
+async function loadProfileData() {
+    isLoading = true; 
+    try {
+        await Promise.all([
+            loadTargetProfile(), 
+            loadInfractions()
+        ]);
+    } catch (e) {
+        console.error("Erreur lors du chargement des données du profil:", e);
+        // Ne rien faire de plus, les fonctions individuelles gèrent l'alerte
+    } finally {
+        isLoading = false;
+    }
+}
+
+async function loadTargetProfile() {
     const { data, error } = await supabase
       .from('profiles')
       .select('username, full_name, avatar_url, role, fonction, birthday') 
@@ -105,9 +115,9 @@
     } else {
       profileData.email = "Confidentiel";
     }
-  }
+}
 
-  // --- ACTIONS ---
+  // --- ACTIONS (inchangées) ---
 
   async function handleUpdateProfile() {
     if (!isMyProfile && !isAdmin) return;
@@ -118,7 +128,7 @@
         username: profileData.username,
         full_name: profileData.full_name,
         birthday: profileData.birthday, 
-        fonction: profileData.fonction, // <-- CORRECTION : LA FONCTION EST MAINTENANT INCLUSE
+        fonction: profileData.fonction, 
         updated_at: new Date()
       };
       const { error } = await supabase
