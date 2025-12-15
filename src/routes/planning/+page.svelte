@@ -43,15 +43,14 @@
   }
 
   /**
-   * Vérifie si un jour donné fait partie d'une demande de congé.
+   * Vérifie si un jour donné fait partie d'une demande de congé (peu importe le statut).
    * @param {Date} date - Le jour à vérifier.
    * @returns {Array} - Les demandes de congé qui tombent ce jour-là.
    */
   function getLeavesForDay(date) {
     const dayString = date.toISOString().split('T')[0];
     return leaveRequests.filter(req => {
-      // On ne veut afficher que les congés approuvés
-      if (req.status !== 'APPROVED') return false; 
+      // MODIFICATION: Afficher toutes les demandes, indépendamment du statut.
       
       const start = new Date(req.start_date);
       const end = new Date(req.end_date);
@@ -104,7 +103,7 @@
         isToday: day.toDateString() === today.toDateString(),
         weekNumber: getWeekNumber(day),
         isStartOfWeek: getISOWeekday(day) === 1,
-        leaves: getLeavesForDay(day) // Ajoute les congés pour ce jour
+        leaves: getLeavesForDay(day) // Ajoute les congés pour ce jour (tous statuts)
       };
       calendarDays.push(dayData);
       
@@ -182,9 +181,10 @@
   }
 
   function showLeaveDetails(day) {
+    // Cette fonction affiche les détails de toutes les demandes sur ce jour
     const leaves = day.leaves.map(l => {
         const name = l.profiles?.full_name || 'Inconnu';
-        return `- ${name} : ${l.type} (${l.status})`;
+        return `- ${name} : ${l.type} (Statut: ${l.status})`;
     }).join('\n');
     if (leaves) {
         alert(`Congés le ${day.date.toLocaleDateString('fr-FR')}:\n${leaves}`);
@@ -238,7 +238,7 @@
 
             <div class="space-y-4">
                 <h2 class="text-xl font-semibold dark:text-white flex items-center gap-2">
-                    <Users class="w-5 h-5 text-blue-500" /> Congés de l'Équipe
+                    <Users class="w-5 h-5 text-blue-500" /> Calendrier de l'Équipe
                 </h2>
 
                 <div class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 rounded-xl p-3">
@@ -278,40 +278,28 @@
                                 {day.dayOfMonth}
                             </span>
                             
-                            <div class="absolute bottom-0 left-0 right-0 p-[2px] space-y-[1px]">
-                                {#each day.leaves as leave (leave.id)}
-                                    <div 
-                                        class="h-3.5 w-full rounded-sm text-center font-bold overflow-hidden"
-                                        class:bg-gray-400={leave.status !== 'APPROVED'}
-                                        class:text-white={leave.status !== 'APPROVED'}
-                                        style="background-color: {leave.status === 'APPROVED' ? '' : '#9ca3af'};"
-                                        title="{leave.profiles?.full_name || 'Inconnu'} - {leave.type}"
-                                        class:bg-blue-500/80={leave.status === 'APPROVED' && getUserColor(leave.user_id).includes('blue')}
-                                        class:bg-green-500/80={leave.status === 'APPROVED' && getUserColor(leave.user_id).includes('green')}
-                                        class:bg-indigo-500/80={leave.status === 'APPROVED' && getUserColor(leave.user_id).includes('indigo')}
-                                        class:bg-yellow-500/80={leave.status === 'APPROVED' && getUserColor(leave.user_id).includes('yellow')}
-                                        class:text-gray-900={leave.status === 'APPROVED' && getUserColor(leave.user_id).includes('yellow')}
-                                        class:bg-red-500/80={leave.status === 'APPROVED' && getUserColor(leave.user_id).includes('red')}
-                                        class:bg-purple-500/80={leave.status === 'APPROVED' && getUserColor(leave.user_id).includes('purple')}
-                                        class:bg-pink-500/80={leave.status === 'APPROVED' && getUserColor(leave.user_id).includes('pink')}
-                                        class:bg-teal-500/80={leave.status === 'APPROVED' && getUserColor(leave.user_id).includes('teal')}
-                                    >
-                                        <span class="text-[8px] leading-3 whitespace-nowrap overflow-hidden">
-                                            {leave.profiles?.full_name.substring(0, 1) || '?'}{day.leaves.length > 1 ? '+' : ''}
-                                        </span>
-                                    </div>
-                                    
-                                    {#if day.leaves.indexOf(leave) >= 2}
-                                        {@break}
-                                    {/if}
-                                {/each}
-                            </div>
-                        </div>
-                    {/each}
-                </div>
+                          <div class="absolute bottom-0 left-0 right-0 p-[2px] space-y-[1px]">
+    {#each day.leaves as leave, i (leave.id)}
+        
+        {#if i >= 3}
+            {@break}
+        {/if}
+        
+        <div 
+            class="h-3.5 w-full rounded-sm text-center font-bold overflow-hidden text-white transition-opacity duration-300 {getUserColor(leave.user_id)}"
+            class:opacity-50={leave.status !== 'APPROVED'} 
+            title="{leave.profiles?.full_name || 'Inconnu'} - {leave.type} (Statut: {leave.status})"
+        >
+            <span class="text-[8px] leading-3 whitespace-nowrap overflow-hidden">
+                {leave.profiles?.full_name.substring(0, 1) || '?'}{day.leaves.length > 1 && i === 2 ? '+' : ''}
+            </span>
+        </div>
+        
+    {/each}
+</div>
                 
                 <p class="text-sm text-gray-500 dark:text-gray-400 pt-4 border-t dark:border-gray-700/50">
-                    *Les congés sont colorés et affichent la première lettre du nom de l'utilisateur. Cliquez sur un jour marqué pour voir les détails. Seules les demandes **approuvées** sont affichées sur le planning.
+                    *Les congés sont colorés et affichent la première lettre du nom de l'utilisateur. Les demandes **en attente/refusées** sont affichées avec une **opacité réduite** pour les distinguer des demandes **approuvées** (couleur pleine). Cliquez sur un jour marqué pour voir les détails.
                 </p>
             </div>
         </div>
