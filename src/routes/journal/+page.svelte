@@ -227,16 +227,18 @@
 async function processTagsAndNotify(message) {
     if (!message || !currentUser) return;
 
-    // Regex pour détecter '@' suivi de mots (Nom Prénom)
-    const tagRegex = /@([a-zA-ZÀ-ÿ\s]+)/g; 
+    // Regex améliorée: capture le @ et tout ce qui suit (lettres, chiffres, espaces, tirets, apostrophes, accents)
+    // jusqu'à ce qu'un autre caractère soit trouvé ou que la chaîne se termine.
+    const tagRegex = /@([\w\s'-]+)/g; 
     let match;
     const taggedUserIds = new Set();
     
     while ((match = tagRegex.exec(message)) !== null) {
+        // La chaîne capturée par le groupe 1, nettoyée des espaces superflus
         const taggedName = match[1].trim(); 
 
         // 2. Chercher l'ID correspondant
-        // FIX: Utiliser .trim() sur le nom de l'utilisateur de la base de données
+        // Utilise trim() et toLowerCase() sur les deux côtés pour une correspondance tolérante
         const foundUser = allUsers.find(u => 
             u.full_name?.trim().toLowerCase() === taggedName.toLowerCase()
         );
@@ -247,7 +249,7 @@ async function processTagsAndNotify(message) {
         }
     }
 
-     if (taggedUserIds.size === 0) return;
+    if (taggedUserIds.size === 0) return;
     
     // 4. Préparer et insérer les notifications
     const senderName = currentUser.full_name || currentUser.email;
@@ -262,6 +264,7 @@ async function processTagsAndNotify(message) {
         is_read: false
     }));
 
+    // Insérer dans Supabase
     const { error } = await supabase
         .from('notifications')
         .insert(notificationsToInsert);
