@@ -13,15 +13,15 @@
 let newLeaveRequest = {
     start_date: '',
     end_date: '',
-    type: 'PAID', // Défaut: Congé Payé
+    type: 'CN', // Défaut: Congé Payé
     reason: ''
   };
 
   const LEAVE_TYPES = [
-    { value: 'PAID', label: 'Congé Payé (CP)' },
-    { value: 'UNPAID', label: 'Congé sans Solde (CSS)' },
-    { value: 'RTT', label: 'RTT' },
-    { value: 'SICK', label: 'Arrêt Maladie' }, // Bien que rarement demandé via un formulaire...
+    { value: 'CN', label: 'Congé (CN)' },
+    { value: 'JC', label: 'JC' },
+    { value: 'BT', label: 'Blessé' },
+    { value: 'ZM', label: 'Arrêt Maladie' }, // Bien que rarement demandé via un formulaire...
   ];
 
   function handleNewRequest() {
@@ -34,7 +34,7 @@ let newLeaveRequest = {
     newLeaveRequest = {
         start_date: '',
         end_date: '',
-        type: 'PAID',
+        type: 'CN',
         reason: ''
     };
   }
