@@ -336,7 +336,7 @@ const WIDGET_MAX_HEIGHT_CLOSED = 'max-h-[5rem]';
       {/if}
     </div>
     
-  </div>
+
     
   </div>
   <div class="mb-10">
