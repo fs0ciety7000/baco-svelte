@@ -21,8 +21,12 @@
   let currentUser = null;
   let userRole = 'user'; // 'user', 'moderator', 'admin'
 
-  // --- NOUVEAU : Utilisateurs pour le tagging ---
+  // --- NOUVEAU : Utilisateurs pour le tagging et l'Auto-Complétion ---
   let allUsers = []; 
+  let textareaElement; // Référence à la zone de texte
+  let showSuggestions = false;
+  let filteredUsers = [];
+  let tagSearchQuery = '';
   // --- FIN NOUVEAU ---
 
   // Filtres
@@ -44,7 +48,6 @@
 
   onMount(async () => {
     await loadUserAndRole();
-    // MODIFIÉ : Chargement de tous les profils pour le tagging et le filtre
     await Promise.all([loadAllProfiles(), loadLogs(true)]);
   });
 
@@ -62,7 +65,6 @@
         .single();
       if (profile) {
         userRole = profile.role || 'user';
-        // Mettre à jour currentUser avec le nom et l'email pour le toast/notification
         currentUser = { ...user, ...profile };
       }
     }
@@ -70,18 +72,16 @@
 
   function canEdit(entry) {
     if (!currentUser) return false;
-    // L'auteur, ou un admin/modérateur peut modifier/supprimer
     return entry.user_id === currentUser.id || ['admin', 'moderator'].includes(userRole);
   }
   
   // --- CHARGEMENT ---
   
-  // MODIFIÉ : Nouvelle fonction pour charger tous les profils (pour le filtre et le tagging)
   async function loadAllProfiles() {
     const { data } = await supabase.from('profiles').select('id, full_name, email').order('full_name');
     if (data) {
-      allUsers = data; // Pour la détection de tags
-      authors = data;  // Pour le filtre (conserve la compatibilité)
+      allUsers = data; 
+      authors = data; 
     }
   }
 
@@ -136,25 +136,97 @@
     }
     isLoading = false;
   }
+  
+  // --- NOUVEAU : Logique d'Auto-Complétion et de Tagging ---
 
-  // --- NOUVEAU : Fonction de traitement des tags et de notification ---
+  // Gère l'affichage de l'auto-complétion
+  function handleInput(e) {
+    const value = e.target.value;
+    const cursor = e.target.selectionStart;
+
+    // 1. Trouver le dernier '@' avant le curseur
+    const textBeforeCursor = value.substring(0, cursor);
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+
+    if (lastAtIndex === -1) {
+      showSuggestions = false;
+      return;
+    }
+
+    // 2. Extraire la requête de recherche
+    const query = textBeforeCursor.substring(lastAtIndex + 1).trim();
+    
+    // Vérifier si la requête est encore 'attachée' au @ et n'a pas d'espace
+    if (query.includes(' ')) {
+        showSuggestions = false;
+        return;
+    }
+    
+    tagSearchQuery = query;
+
+    // 3. Filtrer les utilisateurs
+    if (tagSearchQuery.length > 0) {
+      const lowerQuery = tagSearchQuery.toLowerCase();
+      filteredUsers = allUsers.filter(user => 
+        user.full_name?.toLowerCase().includes(lowerQuery)
+      ).slice(0, 5); // Limiter à 5 suggestions
+      showSuggestions = filteredUsers.length > 0;
+    } else {
+      // Afficher tous les utilisateurs (ou les 5 premiers) si l'utilisateur vient de taper '@'
+      filteredUsers = allUsers.slice(0, 5); 
+      showSuggestions = true;
+    }
+  }
+
+  // Insère le nom complet de l'utilisateur à la position du tag
+  function selectUser(user) {
+    if (!textareaElement) return;
+
+    const value = newMessage;
+    const cursor = textareaElement.selectionStart;
+    const textBefore = value.substring(0, cursor);
+    const lastAtIndex = textBefore.lastIndexOf('@');
+
+    if (lastAtIndex === -1) return;
+
+    // Le format de tag utilisé pour la détection est @Nom Prénom
+    const tagToInsert = `@${user.full_name} `; 
+    
+    // Remplacer le texte de '@' jusqu'au curseur par le tag complet
+    const newText = value.substring(0, lastAtIndex) + tagToInsert + value.substring(cursor);
+    newMessage = newText;
+
+    // Positionner le curseur après le nom inséré
+    const newCursorPosition = lastAtIndex + tagToInsert.length;
+
+    // Mettre à jour l'état et s'assurer que le focus est sur le champ pour positionner le curseur
+    // Svelte gère le bind:value, mais nous devons le forcer pour le positionnement
+    // Utiliser un timeout pour que Svelte mette à jour le DOM avant de positionner le curseur
+    setTimeout(() => {
+        textareaElement.selectionStart = newCursorPosition;
+        textareaElement.selectionEnd = newCursorPosition;
+        textareaElement.focus();
+    }, 0); 
+
+    showSuggestions = false;
+  }
+  
+  // NOUVEAU : Fonction de traitement des tags et de notification (légèrement ajustée pour la nouvelle regex simple)
   async function processTagsAndNotify(message) {
       if (!message || !currentUser) return;
 
       // Regex pour détecter '@' suivi de mots (Lettres, espaces)
-      // Ceci est simple et peut nécessiter le nom complet exact pour fonctionner
       const tagRegex = /@([a-zA-ZÀ-ÿ\s]+)/g; 
       let match;
       const taggedUserIds = new Set();
       
-      // 1. Détecter les tags
       while ((match = tagRegex.exec(message)) !== null) {
           const taggedName = match[1].trim(); 
 
-          // 2. Chercher l'ID correspondant (correspondance sur full_name insensible à la casse)
+          // Chercher l'ID correspondant (correspondance sur full_name insensible à la casse)
           const foundUser = allUsers.find(u => u.full_name?.toLowerCase() === taggedName.toLowerCase());
           
-          // 3. Ajouter l'ID s'il est trouvé et n'est pas l'utilisateur courant
+          // Ajouter l'ID s'il est trouvé et n'est pas l'utilisateur courant
           if (foundUser && foundUser.id !== currentUser.id) {
               taggedUserIds.add(foundUser.id);
           }
@@ -162,7 +234,7 @@
 
       if (taggedUserIds.size === 0) return;
       
-      // 4. Préparer et insérer les notifications
+      // Préparer et insérer les notifications
       const senderName = currentUser.full_name || currentUser.email;
       const notificationMessage = message.substring(0, 100) + (message.length > 100 ? '...' : '');
 
@@ -183,7 +255,7 @@
           console.error("Erreur insertion notifications:", error);
       }
   }
-  // --- FIN NOUVEAU ---
+  // --- FIN NOUVEAU : Logique d'Auto-Complétion et de Tagging ---
 
 
   // --- ACTIONS ---
@@ -219,7 +291,7 @@
       });
       if (error) throw error;
 
-      // NOUVEAU: Traiter les tags après la publication réussie
+      // Traiter les tags après la publication réussie
       await processTagsAndNotify(newMessage);
       
       newMessage = "";
@@ -227,21 +299,16 @@
       newFile = null;
       if (fileInput) fileInput.value = "";
       loadLogs(true);
-      // >>> TOAST DE SUCCÈS
       toast.success("Le message a été publié avec succès.");
-      // <<<
 
     } catch (e) {
-      // >>> REMPLACEMENT DE alert() PAR toast.error
       toast.error("Erreur lors de la publication: " + e.message);
-      // <<<
     } finally {
       isSubmitting = false;
     }
   }
 
 async function saveEditedEntry() {
-    // ... (Logique saveEditedEntry existante) ...
     if (!editingLog.message_content.trim()) return;
     isSubmitting = true;
     try {
@@ -257,14 +324,10 @@ async function saveEditedEntry() {
 
       closeModal();
       loadLogs(true);
-      // >>> TOAST DE SUCCÈS
       toast.success("Le message a été modifié avec succès.");
-      // <<<
 
     } catch (e) {
-      // >>> REMPLACEMENT DE alert() PAR toast.error
       toast.error("Erreur lors de la modification: " + e.message);
-      // <<<
     } finally {
       isSubmitting = false;
     }
@@ -277,10 +340,8 @@ async function saveEditedEntry() {
       
       if (!error) {
         loadLogs(true);
-        // >>> TOAST DE SUCCÈS
         toast.success("Le message a été supprimé du journal.");
       } else {
-        // >>> UTILISATION DE toast.error
         toast.error("Erreur: " + error.message);
       }
     };
@@ -288,10 +349,9 @@ async function saveEditedEntry() {
   
   // Fonction qui appelle la modale de confirmation
   async function deleteLog(id) {
-    // Remplacement du confirm() natif
     openConfirmModal(
         "Voulez-vous vraiment supprimer ce message du journal ? Cette action est irréversible.",
-        executeDeleteLog(id) // Passe la logique d'exécution en callback
+        executeDeleteLog(id) 
     );
   }
 
@@ -364,14 +424,34 @@ async function saveEditedEntry() {
 
   <main class="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-8">
     
-    <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 transition-all focus-within:shadow-md focus-within:border-blue-300">
+    <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 transition-all focus-within:shadow-md focus-within:border-blue-300 relative">
       <textarea 
         bind:value={newMessage} 
+        bind:this={textareaElement}
+        on:input={handleInput}
         rows="3" 
         class="w-full bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl p-3 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none text-base placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white transition-colors" 
         placeholder="Quoi de neuf aujourd'hui ? (Utilisez @Nom Prénom pour taguer un utilisateur, ex: @Jean Dupont)"
       ></textarea>
       
+      {#if showSuggestions}
+        <div class="absolute z-40 top-full left-4 right-4 mt-1 bg-white dark:bg-gray-700 rounded-xl shadow-lg border border-gray-200 dark:border-gray-600 max-h-48 overflow-y-auto">
+          {#each filteredUsers as user}
+            <button on:click={() => selectUser(user)} class="w-full text-left flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors cursor-pointer">
+              {#if user.avatar_url}
+                <img src={user.avatar_url} alt="avatar" class="w-6 h-6 rounded-full object-cover" />
+              {:else}
+                <div class="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-300 text-xs font-bold">
+                  {user.full_name?.charAt(0) || '?'}
+                </div>
+              {/if}
+              <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{user.full_name}</span>
+            </button>
+          {:else}
+            <div class="p-3 text-sm text-gray-500 dark:text-gray-400">Aucun utilisateur trouvé.</div>
+          {/each}
+        </div>
+      {/if}
       {#if newFile}
         <div class="flex items-center gap-2 mb-3 mt-3 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-xl text-sm text-blue-700 dark:text-blue-300">
           <Paperclip size={14} /> 
@@ -500,9 +580,8 @@ async function saveEditedEntry() {
         </div>
       {/if}
     </div>
-
   </main>
-
+  
   {#if editingLog}
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
       <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-md transition-opacity" on:click={closeModal}></div>
@@ -545,5 +624,4 @@ async function saveEditedEntry() {
       </div>
     </div>
   {/if}
-
 </div>
