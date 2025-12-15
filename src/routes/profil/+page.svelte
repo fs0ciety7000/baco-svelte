@@ -24,6 +24,7 @@
     full_name: "",
     email: "", // Traitement spécial
     role: "user",
+    fonction: "",
     avatar_url: null
   };
 
@@ -85,7 +86,7 @@
   async function loadTargetProfile() {
     const { data, error } = await supabase
       .from('profiles')
-      .select('username, full_name, avatar_url, role')
+      .select('username, full_name, avatar_url, role, fonction')
       .eq('id', targetUserId)
       .single();
 
@@ -314,6 +315,14 @@
                     <input type="text" value={profileData.email} class="{inputClass} pl-10" disabled>
                   </div>
                 </div>
+                <div>
+                  <label class={labelClass}>Fonction</label>
+                  <div class="relative">
+                    <Tag size={16} class="absolute left-3 top-3.5 text-gray-400" />
+                    <input type="text" value={profileData.fonction.toUpperCase() || 'N/A'} class="{inputClass} pl-10" disabled>
+                  </div>
+                </div>
+                
                 <div>
                   <label class={labelClass}>Rôle</label>
                   <div class="relative">

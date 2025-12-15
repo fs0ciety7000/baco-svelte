@@ -230,7 +230,7 @@
 </script>
 
 <svelte:head>
-  <title>Bus | BACO</title>
+  <title>BACO</title>
 </svelte:head>
 
 <div class="space-y-6">

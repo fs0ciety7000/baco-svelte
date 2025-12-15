@@ -44,7 +44,7 @@
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('avatar_url, role, full_name')
+        .select('avatar_url, role, full_name, fonction')
         .eq('id', user.id)
         .single();
       if (data) {
@@ -298,7 +298,9 @@ text-gray-300 hover:bg-gray-700 hover:text-white"><Car class="w-4 h-4"/> Taxi</a
         <a href="/journal" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 {isActive('journal')}">
             <BookCopy class="w-4 h-4" /><span>Journal</span>
         </a>
-
+<a href="/planning" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 {isActive('planning')}">
+            <CalendarDays class="w-4 h-4" /><span>Planning</span> 
+        </a>
      
     {#if isAdmin || isModerator}
            {/if}
