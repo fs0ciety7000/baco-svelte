@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabase';
+  import { fade } from 'svelte/transition';
   import { CalendarDays, Plus, Loader2, ListTodo, ChevronLeft, ChevronRight, Users } from 'lucide-svelte';
   
   // --- ÉTATS ---
