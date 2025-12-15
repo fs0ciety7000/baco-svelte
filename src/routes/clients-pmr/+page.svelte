@@ -281,7 +281,7 @@ on:click={() => deleteClient(client.id, client.nom)} class="p-2 text-red-600 hov
                 {/if}
               </div>
               <div class="px-6 py-3 bg-gray-50/50 dark:bg-gray-900/30 border-t border-gray-100 dark:border-gray-700 text-[10px] text-gray-400 dark:text-gray-500">
-                {#if client.updated_at}Modifié le {new Date(client.updated_at).toLocaleDateString()} {/* {#if client.profiles} par {client.profiles.full_name}{/if} */}{/if}
+                <!-- {#if client.updated_at}Modifié le {new Date(client.updated_at).toLocaleDateString()} {/* {#if client.profiles} par {client.profiles.full_name}{/if} }{/if} -->
               </div>
     
             </div>
