@@ -48,6 +48,7 @@
 
   onMount(async () => {
     await loadUserAndRole();
+    // MODIFIÉ : Chargement de tous les profils pour le tagging et le filtre
     await Promise.all([loadAllProfiles(), loadLogs(true)]);
   });
 
@@ -77,11 +78,13 @@
   
   // --- CHARGEMENT ---
   
+  // MODIFIÉ : Correction de la requête RLS pour éviter l'erreur 400
   async function loadAllProfiles() {
-    const { data } = await supabase.from('profiles').select('id, full_name, email').order('full_name');
+    // RLS FIX: Sélectionne uniquement les champs non sensibles (id, full_name) + avatar_url pour l'UI
+    const { data } = await supabase.from('profiles').select('id, full_name, avatar_url').order('full_name', { ascending: true });
     if (data) {
       allUsers = data; 
-      authors = data; 
+      authors = data;  
     }
   }
 
@@ -154,27 +157,35 @@
     }
 
     // 2. Extraire la requête de recherche
-    const query = textBeforeCursor.substring(lastAtIndex + 1).trim();
+    // Récupère tout ce qui suit le dernier '@' jusqu'au curseur
+    const query = textBeforeCursor.substring(lastAtIndex + 1);
     
-    // Vérifier si la requête est encore 'attachée' au @ et n'a pas d'espace
-    if (query.includes(' ')) {
+    // Si la requête contient une nouvelle ligne ou plusieurs espaces après le '@', on arrête
+    if (query.includes('\n')) {
         showSuggestions = false;
         return;
     }
     
-    tagSearchQuery = query;
+    tagSearchQuery = query.trim();
 
     // 3. Filtrer les utilisateurs
-    if (tagSearchQuery.length > 0) {
+    if (tagSearchQuery.length >= 0) {
       const lowerQuery = tagSearchQuery.toLowerCase();
+      
+      // Filtrer sur le début du full_name
       filteredUsers = allUsers.filter(user => 
-        user.full_name?.toLowerCase().includes(lowerQuery)
+        user.full_name?.toLowerCase().startsWith(lowerQuery)
       ).slice(0, 5); // Limiter à 5 suggestions
-      showSuggestions = filteredUsers.length > 0;
+      showSuggestions = filteredUsers.length > 0 || tagSearchQuery.length > 0;
     } else {
       // Afficher tous les utilisateurs (ou les 5 premiers) si l'utilisateur vient de taper '@'
       filteredUsers = allUsers.slice(0, 5); 
       showSuggestions = true;
+    }
+
+    // Cacher les suggestions si l'utilisateur a tapé un espace après un '@' vide, ou si la recherche est vide
+    if(tagSearchQuery.length === 0 && query.trim() !== query) {
+         showSuggestions = false;
     }
   }
 
@@ -189,19 +200,20 @@
 
     if (lastAtIndex === -1) return;
 
-    // Le format de tag utilisé pour la détection est @Nom Prénom
+    // Déterminer la partie à remplacer (du '@' jusqu'au curseur)
+    const startReplaceIndex = lastAtIndex;
+
+    // Le format de tag utilisé pour la détection est @Nom Prénom 
     const tagToInsert = `@${user.full_name} `; 
     
-    // Remplacer le texte de '@' jusqu'au curseur par le tag complet
-    const newText = value.substring(0, lastAtIndex) + tagToInsert + value.substring(cursor);
+    // Nouvelle construction du message
+    const newText = value.substring(0, startReplaceIndex) + tagToInsert + value.substring(cursor);
     newMessage = newText;
 
     // Positionner le curseur après le nom inséré
-    const newCursorPosition = lastAtIndex + tagToInsert.length;
+    const newCursorPosition = startReplaceIndex + tagToInsert.length;
 
-    // Mettre à jour l'état et s'assurer que le focus est sur le champ pour positionner le curseur
-    // Svelte gère le bind:value, mais nous devons le forcer pour le positionnement
-    // Utiliser un timeout pour que Svelte mette à jour le DOM avant de positionner le curseur
+    // Utiliser un timeout pour s'assurer que Svelte met à jour la valeur avant de repositionner le curseur
     setTimeout(() => {
         textareaElement.selectionStart = newCursorPosition;
         textareaElement.selectionEnd = newCursorPosition;
@@ -211,11 +223,11 @@
     showSuggestions = false;
   }
   
-  // NOUVEAU : Fonction de traitement des tags et de notification (légèrement ajustée pour la nouvelle regex simple)
+  // Fonction de traitement des tags et de notification
   async function processTagsAndNotify(message) {
       if (!message || !currentUser) return;
 
-      // Regex pour détecter '@' suivi de mots (Lettres, espaces)
+      // Regex pour détecter '@' suivi de mots (Nom Prénom)
       const tagRegex = /@([a-zA-ZÀ-ÿ\s]+)/g; 
       let match;
       const taggedUserIds = new Set();
@@ -435,7 +447,7 @@ async function saveEditedEntry() {
       ></textarea>
       
       {#if showSuggestions}
-        <div class="absolute z-40 top-full left-4 right-4 mt-1 bg-white dark:bg-gray-700 rounded-xl shadow-lg border border-gray-200 dark:border-gray-600 max-h-48 overflow-y-auto">
+        <div class="absolute z-40 top-[5.25rem] left-4 right-4 mt-1 bg-white dark:bg-gray-700 rounded-xl shadow-lg border border-gray-200 dark:border-gray-600 max-h-48 overflow-y-auto">
           {#each filteredUsers as user}
             <button on:click={() => selectUser(user)} class="w-full text-left flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors cursor-pointer">
               {#if user.avatar_url}
