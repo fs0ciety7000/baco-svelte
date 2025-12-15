@@ -4,6 +4,8 @@
   import { supabase } from '$lib/supabase';
   import { toast } from '$lib/stores/toast.js';
   import { page } from '$app/stores'; // <-- UTILISÉ POUR LIRE L'URL
+  import { openConfirmModal } from '$lib/stores/modal.js';
+
   import { 
     Shield, UserPlus, Search, User, UserX, UserCheck, 
     KeyRound, FileWarning, History, Loader2, X, Copy, 
@@ -315,16 +317,32 @@
     }
   }
 
-  async function pardonInfraction(infractionId) {
-    if (!confirm("Pardonner ce carton ?")) return;
-    try {
-      const { error } = await supabase.rpc('admin_pardon_infraction', { p_infraction_id: infractionId });
-      if (error) throw error;
-      await loadUsers();
-      await openHistoryModal(selectedUser);
-    } catch (e) { toast.error("Erreur: " + e.message);
-    }
-  }
+function executePardonInfraction(infractionId) {
+    // Cette fonction contient la logique que nous voulons exécuter
+    // après que l'utilisateur ait cliqué sur "Confirmer"
+    return async () => {
+        try {
+            const { error } = await supabase.rpc('admin_pardon_infraction', { p_infraction_id: infractionId });
+            if (error) throw error;
+            
+            // Rechargement et toast de succès
+            await loadUsers();
+            await openHistoryModal(selectedUser);
+            toast.success("L'infraction a été pardonnée avec succès !");
+
+        } catch (e) { 
+            toast.error("Erreur: " + e.message);
+        }
+    };
+}
+
+async function pardonInfraction(infractionId) {
+    // Au lieu du 'confirm' natif, on ouvre la modale personnalisée :
+    openConfirmModal(
+        "Êtes-vous sûr de vouloir pardonner cette infraction ? Cette action est irréversible.",
+        executePardonInfraction(infractionId) // On passe la fonction d'exécution en callback
+    );
+}
 
   function openResetModal(user) {
     selectedUser = user;

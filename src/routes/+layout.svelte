@@ -8,6 +8,7 @@
   import Footer from '$lib/components/Footer.svelte';
   import GlobalSearch from '$lib/components/GlobalSearch.svelte';
   import ToastContainer from '$lib/components/ToastContainer.svelte';
+  import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 
   let user = null;
   let loading = true;
@@ -54,4 +55,5 @@
     <Footer /> 
   {/if}
   <ToastContainer />
+  <ConfirmModal />
 </div>
