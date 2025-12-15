@@ -228,23 +228,48 @@
     }
   }
 
-  // --- ACTIONS UTILISATEUR (unchanged) ---
+ // Fonction interne contenant la logique métier (à exécuter APRÈS confirmation)
+function executeHandleChangeRole(user, nextRole) {
+    return async () => {
+        try {
+            // 1. Appel à la fonction RPC Supabase
+            const { error: rpcError } = await supabase.rpc('admin_update_user_role', {
+                p_user_id: user.user_id,
+                p_new_role: nextRole
+            });
+            
+            if (rpcError) {
+                throw rpcError;
+            }
 
-  async function handleChangeRole(user, nextRole) {
-    if (user.user_id === currentAdminId) return toast.error("Impossible de modifier votre propre rôle.");
-    if (!confirm(`Passer cet utilisateur en ${nextRole.toUpperCase()} ?`)) return;
+            // 2. Rechargement des données
+            loadUsers();
+            
+            // ********* AJOUT DU TOAST DE SUCCÈS *********
+            toast.success(`Le rôle de l'utilisateur a été mis à jour à ${nextRole.toUpperCase()}.`);
+            // ********************************************
 
-    try {
-      const { error } = await supabase.rpc('admin_update_user_role', {
-        p_user_id: user.user_id,
-        p_new_role: nextRole
-      });
-      if (error) throw error;
-      loadUsers();
-    } catch (e) {
-      toast.error("Erreur: " + e.message);
+        } catch (e) {
+            toast.error("Erreur lors de la modification du rôle: " + e.message);
+        }
+    };
+}
+
+async function handleChangeRole(user, nextRole) {
+    // 1. Vérification initiale (Non-Modale)
+    if (user.user_id === currentAdminId) {
+        return toast.error("Impossible de modifier votre propre rôle.");
     }
-  }
+
+    // 2. Détermination du message de confirmation
+    const confirmationMessage = `Voulez-vous vraiment changer le rôle de cet utilisateur pour ${nextRole.toUpperCase()} ?`;
+
+    // 3. Remplacement du 'confirm()' natif par la modale personnalisée
+    openConfirmModal(
+        confirmationMessage,
+        executeHandleChangeRole(user, nextRole) // Passe la fonction d'exécution en callback
+    );
+}
 
   // Fonction interne contenant la logique métier (à exécuter APRÈS confirmation)
 function executeHandleBanUser(user, shouldBan) {
