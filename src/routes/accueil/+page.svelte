@@ -9,6 +9,11 @@
     CalendarDays, Cake, ListTodo, Save // Ajout des icônes pour les nouveaux widgets
   } from 'lucide-svelte'; 
   
+
+  const WIDGET_MAX_HEIGHT_OPEN = 'max-h-screen';
+const WIDGET_MAX_HEIGHT_CLOSED = 'max-h-[5rem]';
+
+
   // --- ÉTATS (DATA) ---
   let userProfile = null;
   let pmrIssues = [];
@@ -229,10 +234,16 @@
   
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
     
-    <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+ <div 
+        on:click|self={() => toggleWidget('leaves')}
+        class="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4 cursor-pointer overflow-hidden transition-[max-height] duration-500" 
+        class:max-h-screen={isLeavesOpen}
+        class:max-h-[5rem]={!isLeavesOpen}
+        title={!isLeavesOpen ? 'Cliquer pour développer' : ''}
+    >
       <button 
-        on:click={() => toggleWidget('leaves')}
-        class="w-full text-left text-xl font-semibold text-gray-800 dark:text-gray-100 flex items-center justify-between gap-2 p-2 rounded-lg transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
+        on:click|stopPropagation={() => toggleWidget('leaves')}
+        class="w-full text-left text-xl font-semibold text-gray-800 dark:text-gray-100 flex items-center justify-between gap-2 p-2 rounded-lg transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 -m-2"
         title="Afficher/Masquer les congés à venir"
       >
         <span class="flex items-center gap-2">
@@ -275,10 +286,16 @@
       {/if}
     </div>
     
-    <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+    <div 
+        on:click|self={() => toggleWidget('birthdays')}
+        class="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4 cursor-pointer overflow-hidden transition-[max-height] duration-500"
+        class:max-h-screen={isBirthdaysOpen}
+        class:max-h-[5rem]={!isBirthdaysOpen}
+        title={!isBirthdaysOpen ? 'Cliquer pour développer' : ''}
+    >
       <button 
-        on:click={() => toggleWidget('birthdays')}
-        class="w-full text-left text-xl font-semibold text-gray-800 dark:text-gray-100 flex items-center justify-between gap-2 p-2 rounded-lg transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
+        on:click|stopPropagation={() => toggleWidget('birthdays')}
+        class="w-full text-left text-xl font-semibold text-gray-800 dark:text-gray-100 flex items-center justify-between gap-2 p-2 rounded-lg transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 -m-2"
         title="Afficher/Masquer les anniversaires"
       >
         <span class="flex items-center gap-2">
@@ -318,6 +335,8 @@
         </div>
       {/if}
     </div>
+    
+  </div>
     
   </div>
   <div class="mb-10">
