@@ -121,3 +121,41 @@
 }
 
 /* --- FIN AJOUT SPÉCIFIQUE DES RENNES VOLANTS --- */
+
+/* --- AJOUT SPÉCIFIQUE EFFET NEIGE --- */
+
+.snowfall-effect {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5; /* Au-dessus de l'arrière-plan, mais sous la nav et le contenu */
+    
+    /* Création des flocons via des ombres multiples */
+    background: transparent;
+    animation: snowfall 10s linear infinite;
+    
+    /* Utilisation de deux calques pour un effet de profondeur */
+    box-shadow: 
+        /* Petit flocons - Vitesse normale */
+        0 0 0 1px rgba(255, 255, 255, 0.4),
+        /* Gros flocons - Vitesse lente */
+        0 0 0 2px rgba(255, 255, 255, 0.6);
+}
+
+/* Définition des flocons (vous devrez adapter ce code pour qu'il soit plus complet si nécessaire) */
+@keyframes snowfall {
+  0% {
+    transform: translate3d(0, -100vh, 0);
+  }
+  100% {
+    transform: translate3d(0, 100vh, 0);
+  }
+}
+
+/* Vous pouvez désactiver l'arrière-plan de la neige s'il est trop lourd */
+/* .christmas-theme .snowfall-effect { background-image: ... } */
+
+/* --- FIN AJOUT SPÉCIFIQUE EFFET NEIGE --- */

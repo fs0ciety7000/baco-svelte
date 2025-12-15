@@ -12,7 +12,7 @@
 
   let user = null;
   let loading = true;
-
+let isChristmasTheme = false;
   // Détecter si on est sur la page de login (racine)
   $: isLoginPage = $page.url.pathname === '/';
 
@@ -28,6 +28,17 @@
     if (user && isLoginPage) {
         goto('/accueil');
     }
+
+
+// Lire l'état du thème depuis le localStorage
+    if (typeof localStorage !== 'undefined') {
+      isChristmasTheme = localStorage.getItem('bacoChristmasTheme') !== 'false';
+    }
+    
+    // Écouter les changements de l'événement (nécessite d'émettre un événement dans Nav.svelte ou de passer un store)
+    // Pour simplifier ici, le thème sera appliqué uniquement au chargement ou en utilisant l'état initial.
+
+
 
     loading = false;
 
@@ -45,6 +56,9 @@
   {#if !isLoginPage}
     <Nav {user} />
     <GlobalSearch />
+    {#if isChristmasTheme}
+        <div class="snowfall-effect"></div>
+    {/if}
   {/if}
 
   <main class="flex-grow {isLoginPage ? '' : 'container mx-auto px-4 py-8'}">
