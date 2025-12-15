@@ -259,7 +259,7 @@ async function loadTargetProfile() {
   <title>{isMyProfile ? 'Mon Profil' : profileData.full_name || 'Chargement...'} - BACO</title>
 </svelte:head>
 
-{#key profileKey}
+
 <div class="min-h-screen bg-gray-50/50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans pb-10">
   
   <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -470,5 +470,3 @@ async function loadTargetProfile() {
     {/if}
   </main>
 </div>
-
-{/key}
