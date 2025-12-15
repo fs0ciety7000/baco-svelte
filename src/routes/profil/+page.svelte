@@ -333,7 +333,15 @@ async function loadTargetProfile() {
                   <label class={labelClass}>Fonction</label>
                   <div class="relative">
                     <Tag size={16} class="absolute left-3 top-3.5 text-gray-400" />
-                    <input type="text" bind:value={profileData.fonction} class="{inputClass} pl-10" disabled={!isMyProfile && !isAdmin}>
+                   <select
+                        bind:value={profileData.fonction} 
+                        class="{inputClass} pl-10" 
+                        disabled={!isMyProfile && !isAdmin}
+                    >
+                        <option value={null}>-- Non spécifié --</option>
+                        <option value="PACO">PACO</option>
+                        <option value="RCCA">RCCA</option>
+                    </select>
                   </div>
                 </div>
                 <div>
