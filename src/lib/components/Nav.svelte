@@ -450,7 +450,7 @@ w-72 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 p-2 text-sm te
                     {#each notifications as notif (notif.id)}
     
                     <a 
-                        href={notif.link_to || '#'} 
+                        href={notif.link_to || '/journal'} 
                         on:click={closeDropdowns} 
                         class="flex items-start gap-3 p-2 rounded-lg transition-colors duration-200 cursor-pointer
                                 {notif.is_read ? 'hover:bg-gray-700' : 'bg-gray-700/50 hover:bg-gray-700 text-gray-200'}">

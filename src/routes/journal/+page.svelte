@@ -223,50 +223,53 @@
     showSuggestions = false;
   }
   
-  // Fonction de traitement des tags et de notification
-  async function processTagsAndNotify(message) {
-      if (!message || !currentUser) return;
+ // --- NOUVEAU : Fonction de traitement des tags et de notification (CORRIGÉE) ---
+async function processTagsAndNotify(message) {
+    if (!message || !currentUser) return;
 
-      // Regex pour détecter '@' suivi de mots (Nom Prénom)
-      const tagRegex = /@([a-zA-ZÀ-ÿ\s]+)/g; 
-      let match;
-      const taggedUserIds = new Set();
-      
-      while ((match = tagRegex.exec(message)) !== null) {
-          const taggedName = match[1].trim(); 
+    // Regex pour détecter '@' suivi de mots (Nom Prénom)
+    const tagRegex = /@([a-zA-ZÀ-ÿ\s]+)/g; 
+    let match;
+    const taggedUserIds = new Set();
+    
+    while ((match = tagRegex.exec(message)) !== null) {
+        const taggedName = match[1].trim(); 
 
-          // Chercher l'ID correspondant (correspondance sur full_name insensible à la casse)
-          const foundUser = allUsers.find(u => u.full_name?.toLowerCase() === taggedName.toLowerCase());
-          
-          // Ajouter l'ID s'il est trouvé et n'est pas l'utilisateur courant
-          if (foundUser && foundUser.id !== currentUser.id) {
-              taggedUserIds.add(foundUser.id);
-          }
-      }
+        // 2. Chercher l'ID correspondant
+        // FIX: Utiliser .trim() sur le nom de l'utilisateur de la base de données
+        const foundUser = allUsers.find(u => 
+            u.full_name?.trim().toLowerCase() === taggedName.toLowerCase()
+        );
+        
+        // Ajouter l'ID s'il est trouvé et n'est pas l'utilisateur courant
+        if (foundUser && foundUser.id !== currentUser.id) {
+            taggedUserIds.add(foundUser.id);
+        }
+    }
 
-      if (taggedUserIds.size === 0) return;
-      
-      // Préparer et insérer les notifications
-      const senderName = currentUser.full_name || currentUser.email;
-      const notificationMessage = message.substring(0, 100) + (message.length > 100 ? '...' : '');
+     if (taggedUserIds.size === 0) return;
+    
+    // 4. Préparer et insérer les notifications
+    const senderName = currentUser.full_name || currentUser.email;
+    const notificationMessage = message.substring(0, 100) + (message.length > 100 ? '...' : '');
 
-      const notificationsToInsert = Array.from(taggedUserIds).map(userId => ({
-          user_id_target: userId,
-          title: `Vous avez été mentionné par ${senderName}`,
-          message: notificationMessage,
-          type: 'mention',
-          link_to: `/journal`, 
-          is_read: false
-      }));
+    const notificationsToInsert = Array.from(taggedUserIds).map(userId => ({
+        user_id_target: userId,
+        title: `Vous avez été mentionné par ${senderName}`,
+        message: notificationMessage,
+        type: 'mention',
+        link_to: `/journal`, 
+        is_read: false
+    }));
 
-      const { error } = await supabase
-          .from('notifications')
-          .insert(notificationsToInsert);
+    const { error } = await supabase
+        .from('notifications')
+        .insert(notificationsToInsert);
 
-      if (error) {
-          console.error("Erreur insertion notifications:", error);
-      }
-  }
+    if (error) {
+        console.error("Erreur insertion notifications:", error);
+    }
+}
   // --- FIN NOUVEAU : Logique d'Auto-Complétion et de Tagging ---
 
 
