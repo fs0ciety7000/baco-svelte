@@ -426,39 +426,24 @@ async function saveReport() {
                                                     </div>
 
                                                     {#if reportData[period][func].services[service].length > 0}
-    <ul class="space-y-3 mt-2 text-xs bg-gray-100 dark:bg-gray-700 p-3 rounded-xl border border-gray-200 dark:border-gray-600 max-h-40 overflow-y-auto">
-        {#each reportData[period][func].services[service] as transport}
-            <li class="p-2 rounded-lg bg-white dark:bg-gray-800 shadow-sm border dark:border-gray-700">
-                <div class="flex justify-between items-start">
-                    <span class="font-bold text-base text-blue-600 dark:text-blue-400">
-                        {transport.time}
-                    </span>
-                    <button on:click={() => removeTransport(period, func, service, transport.id)} class="text-red-500 hover:text-red-700 transition-colors" title="Supprimer la prestation">
-                        <X class="w-3 h-3" />
-                    </button>
-                </div>
-                
-                <p class="text-xs text-gray-600 dark:text-gray-400 font-medium mb-1">{transport.company_name}</p>
-
-                <div class="space-y-0.5 text-xs text-gray-700 dark:text-gray-300">
-                    {#if service === 'BUS'}
-                        <p>➡️ Trajet: {transport.origin} - {transport.destination}</p>
-                        <p># Relation TC: <span class="font-medium">{transport.tc_relation}</span></p>
-                    {:else if service === 'TAXIS' || service === 'TAXIS_PMR'}
-                        <p>👤 {transport.persons} Pers. | De: {transport.origin} à {transport.destination}</p>
-                        
-                        {#if service === 'TAXIS_PMR'}
-                            <p>📁 Dossier PMR: <span class="font-medium text-red-600 dark:text-red-400">{transport.file_number}</span></p>
-                        {/if}
-                    {/if}
-                </div>
-            </li>
-        {/each}
-    </ul>
-{:else}
-    <p class="text-xs text-gray-500 dark:text-gray-400 italic">Aucune prestation détaillée enregistrée.</p>
-{/if}
-                                        
+                                                        <ul class="space-y-1 mt-2 text-xs bg-gray-100 dark:bg-gray-700 p-2 rounded-lg max-h-40 overflow-y-auto">
+                                                            {#each reportData[period][func].services[service] as transport}
+                                                                <li class="flex justify-between items-center border-b pb-1 dark:border-gray-600 last:border-b-0">
+                                                                    <span class="font-medium text-gray-800 dark:text-gray-200">
+                                                                        {transport.time} | {transport.company_name}
+                                                                    </span>
+                                                                    <button on:click={() => removeTransport(period, func, service, transport.id)} class="text-red-500 hover:text-red-700">
+                                                                        <X class="w-3 h-3" />
+                                                                    </button>
+                                                                </li>
+                                                            {/each}
+                                                        </ul>
+                                                    {:else}
+                                                        <p class="text-xs text-gray-500 dark:text-gray-400 italic">Aucune prestation enregistrée.</p>
+                                                    {/if}
+                                                </div>
+                                                {/if}
+                                            {/each}
                                         </div>
 
                                         <div class="mt-4">
