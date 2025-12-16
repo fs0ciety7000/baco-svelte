@@ -709,5 +709,8 @@
         </form>
 
     </div>
+    <div class="planning-calendar-wrapper" bind:this={calendarContent} id="planning-calendar">
+    
+    </div>
 </div>
 {/if}
