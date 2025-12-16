@@ -74,9 +74,15 @@
         isLoading = false;
     });
 
-    // Rechargement si la date change
-    $: if (selectedDate && currentUser && !isLoading) {
-        loadReport(selectedDate);
+    function changeDate(days) {
+        const date = new Date(selectedDate);
+        date.setDate(date.getDate() + days);
+        selectedDate = date.toISOString().split('T')[0];
+        
+        // Charger immédiatement le rapport pour la nouvelle date
+        if (currentUser) {
+            loadReport(selectedDate);
+        }
     }
     
     // Chargement des listes de référence
@@ -90,29 +96,33 @@
         if (taxiRes.data) taxiCompanies = taxiRes.data;
     }
 
-    async function loadReport(date) {
-        isLoading = true;
-        
-        const { data, error } = await supabase
-            .from('b201_reports')
-            .select('id, report_data')
-            .eq('report_date', date)
-            .single();
+    aasync function loadReport(date) {
+    isLoading = true;
+    
+    const { data, error } = await supabase
+        .from('b201_reports')
+        .select('id, report_data')
+        .eq('report_date', date)
+        .single();
 
-        if (error && error.code !== 'PGRST116') {
-            console.error("Erreur chargement rapport B201:", error);
-            toast.error("Erreur lors du chargement du rapport.");
-        }
+    // Vérification si l'erreur est due à l'absence de ligne
+    const reportNotFound = error && error.code === 'PGRST116';
 
-        if (data) {
-            reportId = data.id;
-            reportData = { ...getDefaultReportData(), ...data.report_data };
-        } else {
-            reportId = null;
-            reportData = getDefaultReportData();
-        }
-        isLoading = false;
+    if (error && !reportNotFound) {
+        console.error("Erreur chargement rapport B201:", error);
+        toast.error("Erreur lors du chargement du rapport. Vérifiez la connexion Supabase.");
     }
+
+    if (data) {
+        reportId = data.id;
+        // Fusionner les données existantes avec la structure par défaut pour éviter les erreurs de référence
+        reportData = { ...getDefaultReportData(), ...data.report_data };
+    } else {
+        reportId = null;
+        reportData = getDefaultReportData();
+    }
+    isLoading = false;
+}
 
     async function saveReport() {
         if (!currentUser || isLoading) return;
