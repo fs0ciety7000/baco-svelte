@@ -250,11 +250,7 @@
         return new Date(dateString).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
     }
     
-    function changeDate(days) {
-        const date = new Date(selectedDate);
-        date.setDate(date.getDate() + days);
-        selectedDate = date.toISOString().split('T')[0];
-    }
+   
     
     // --- EXPORT PDF (Simplifié pour le rapport détaillé) ---
 
