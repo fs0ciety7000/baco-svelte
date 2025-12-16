@@ -18,6 +18,7 @@
     let user = null;
     let leaveRequests = []; 
     let allProfiles = []; 
+    // FIX: Déclaration de la référence
     let calendarContent;
 
     // --- ÉTATS DU FORMULAIRE ET MODALE ---
@@ -227,7 +228,7 @@
         }
         if (leaveError) {
             console.error("Erreur chargement congés:", leaveError);
-            toast.error("Erreur lors du chargement des demandes de congés."); // CORRECTION
+            toast.error("Erreur lors du chargement des demandes de congés."); 
         }
         
         // 2. Charger tous les profils pour les anniversaires
@@ -274,7 +275,7 @@
 
     async function saveLeave() {
         if (!user || !currentLeave.start_date || !currentLeave.end_date) {
-            toast.error("Veuillez remplir toutes les dates requises."); // CORRECTION
+            toast.error("Veuillez remplir toutes les dates requises."); 
             return;
         }
         
@@ -316,11 +317,11 @@
     
             await loadPlanningData(); 
             closeModal();
-            toast.success(successMessage); // CORRECTION
+            toast.success(successMessage); 
             
         } catch (e) {
             console.error("Erreur lors de l'opération de congé:", e);
-            toast.error(`Échec de l'opération. ${e.message ? '(' + e.message + ')' : ''}`); // CORRECTION
+            toast.error(`Échec de l'opération. ${e.message ? '(' + e.message + ')' : ''}`); 
         } finally {
             isSubmitting = false;
         }
@@ -349,11 +350,11 @@
             if (error) throw error;
 
             await loadPlanningData();
-            toast.success("Demande de congé supprimée avec succès."); // CORRECTION
+            toast.success("Demande de congé supprimée avec succès."); 
             
         } catch (e) {
             console.error("Erreur lors de la suppression:", e);
-            toast.error(`Échec de la suppression : ${e.message}`); // CORRECTION
+            toast.error(`Échec de la suppression : ${e.message}`); 
         }
     }
     
@@ -379,11 +380,11 @@
             
             days = generateCalendarDays(displayedYear, displayedMonth);
 
-            toast.success(`Statut de votre demande mis à jour à "${STATUS_MAP[newStatus]}."`); // CORRECTION
+            toast.success(`Statut de votre demande mis à jour à "${STATUS_MAP[newStatus]}."`); 
             
         } catch (e) {
             console.error("Erreur mise à jour statut:", e);
-            toast.error(`Échec de la mise à jour du statut : ${e.message}`); // CORRECTION
+            toast.error(`Échec de la mise à jour du statut : ${e.message}`); 
         }
     }
 
@@ -403,7 +404,7 @@
         const bdays = day.birthdays.length > 0 ? `\n\n🎂 Anniversaire(s) : ${day.birthdays.join(', ')}` : '';
         
         if (leaves || bdays) {
-            toast.info(`Congés le ${day.date.toLocaleDateString('fr-FR')}:\n${leaves}${bdays}`, 5000); // CORRECTION (garder duration)
+            toast.info(`Congés le ${day.date.toLocaleDateString('fr-FR')}:\n${leaves}${bdays}`, 5000); 
         }
     }
 
@@ -412,44 +413,42 @@
     async function exportPlanningToPDF() {
         if (!calendarContent) {
             console.error("Élément du calendrier non trouvé.");
+            // Ajoutez un toast ici pour informer l'utilisateur que le calendrier n'est pas prêt.
+            toast.error("Le calendrier n'est pas chargé. Veuillez attendre que les données apparaissent.");
             return;
         }
 
+        // Utilisation de displayedMonth/Year car currentMonth n'existe pas dans ce script
         const dateString = new Date().toLocaleDateString('fr-FR');
-        const monthYear = new Date(currentMonth).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+        const monthYear = new Date(displayedYear, displayedMonth).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 
         // 1. Désactiver temporairement les styles spécifiques au survol/impression
         const originalBg = calendarContent.style.backgroundColor;
-        calendarContent.style.backgroundColor = '#ffffff'; // S'assurer que le fond est blanc pour le PDF
+        calendarContent.style.backgroundColor = '#ffffff'; 
 
         // 2. Capturer le contenu du calendrier en tant qu'image (canvas)
         const canvas = await html2canvas(calendarContent, {
-            scale: 2, // Augmenter l'échelle pour une meilleure résolution dans le PDF
+            scale: 2, 
             useCORS: true,
             logging: false,
         });
 
         const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('l', 'mm', 'a4'); // 'l' pour paysage (Landscape), A4
+        const pdf = new jsPDF('l', 'mm', 'a4'); 
 
-        const imgWidth = 280; // Largeur A4 en mm (paysage) moins marges
-        const pageHeight = 210; // Hauteur A4 en mm
+        const imgWidth = 280; 
+        const pageHeight = 210; 
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        let heightLeft = imgHeight;
-        let position = 10; // Marge supérieure
+        let position = 10; 
 
-        // 3. Ajouter un titre (facultatif mais recommandé)
+        // 3. Ajouter un titre 
         pdf.setFontSize(16);
-        pdf.text(`Planning du mois de ${monthYear}`, 148.5, 15, { align: 'center' }); // Centre le titre
+        pdf.text(`Planning du mois de ${monthYear}`, 148.5, 15, { align: 'center' }); 
         pdf.setFontSize(10);
         pdf.text(`Exporté le ${dateString}`, 10, 20);
 
-        // 4. Ajouter l'image au PDF (avec gestion des pages si le calendrier est très long)
+        // 4. Ajouter l'image au PDF
         pdf.addImage(imgData, 'PNG', 10, position + 10, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-
-        // Note: Pour un calendrier mensuel, il est peu probable que la pagination soit nécessaire,
-        // mais cette approche garantit que tout le contenu est capturé.
 
         // 5. Réactiver les styles originaux
         calendarContent.style.backgroundColor = originalBg;
@@ -561,58 +560,58 @@
                         <ChevronRight class="w-5 h-5" />
                     </button>
                 </div>
-
-                <div class="grid grid-cols-8 gap-1 text-center border border-gray-200 dark:border-gray-700 rounded-xl p-2">
-                    <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 border-r dark:border-gray-700">S</div> 
-                    {#each dayNames as day}
-                        <div class="text-xs font-semibold text-gray-500 dark:text-gray-400">{day}</div>
-                    {/each}
-
-                    {#each days as day}
-                        {#if day.isStartOfWeek}
-                            <div class="text-xs text-gray-500 dark:text-gray-500 pt-1 border-r dark:border-gray-700">
-                                {day.weekNumber}
-                            </div>
-                        {/if}
-
-                        <div
-                            on:click={() => (day.leaves.length > 0 || day.birthdays.length > 0) && showLeaveDetails(day)}
-                            class="w-full h-16 rounded-lg text-xs font-medium relative overflow-hidden transition-shadow duration-100 p-0.5 
-                                {day.isCurrentMonth ? 'dark:text-gray-200' : 'text-gray-400 dark:text-gray-600'}
-                                {day.isToday ? 'border-2 border-red-500' : 'hover:shadow-inner hover:bg-gray-100 dark:hover:bg-gray-700/50'}
-                                {(day.leaves.length > 0 || day.birthdays.length > 0) ? 'cursor-pointer' : ''}"
-                        >
-                            <span class="block absolute top-1 left-1 font-bold 
-                                {day.isToday ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-200'}">
-                                {day.dayOfMonth}
-                            </span>
-                            
-                            {#if day.birthdays.length > 0}
-                                <span class="absolute top-1 right-1 text-yellow-500" title="Anniversaire(s) : {day.birthdays.join(', ')}">
-                                    <Cake class="w-3 h-3 fill-current" />
-                                </span>
-                            {/if}
-                            
-                            <div class="absolute bottom-0 left-0 right-0 p-[2px] space-y-[1px]">
-                                {#each day.leaves as leave, i (leave.id)}
-                                    
-
-                                    <div 
-                                        class="h-3.5 w-full rounded-sm text-center font-bold overflow-hidden text-white transition-opacity duration-300 {getUserColor(leave.user_id)}"
-                                        class:opacity-50={leave.status !== 'APPROVED'} 
-                                        title="{leave.profiles?.full_name || 'Inconnu'} - {leave.type} (Statut: {STATUS_MAP[leave.status]})"
-                                    >
-                                        <span class="text-[8px] leading-3 whitespace-nowrap overflow-hidden">
-                                            {leave.profiles?.full_name.substring(0, 1) || '?'}{day.leaves.length > 3 && i === 2 ? '+' : ''}
-                                        </span>
-                                    </div>
-                                    
-                                {/each}
-                            </div>
-                        </div>
-                    {/each}
-                </div>
                 
+                <div class="planning-calendar-wrapper" bind:this={calendarContent} id="planning-calendar">
+                    <div class="grid grid-cols-8 gap-1 text-center border border-gray-200 dark:border-gray-700 rounded-xl p-2">
+                        <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 border-r dark:border-gray-700">S</div> 
+                        {#each dayNames as day}
+                            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400">{day}</div>
+                        {/each}
+
+                        {#each days as day}
+                            {#if day.isStartOfWeek}
+                                <div class="text-xs text-gray-500 dark:text-gray-500 pt-1 border-r dark:border-gray-700">
+                                    {day.weekNumber}
+                                </div>
+                            {/if}
+
+                            <div
+                                on:click={() => (day.leaves.length > 0 || day.birthdays.length > 0) && showLeaveDetails(day)}
+                                class="w-full h-16 rounded-lg text-xs font-medium relative overflow-hidden transition-shadow duration-100 p-0.5 
+                                    {day.isCurrentMonth ? 'dark:text-gray-200' : 'text-gray-400 dark:text-gray-600'}
+                                    {day.isToday ? 'border-2 border-red-500' : 'hover:shadow-inner hover:bg-gray-100 dark:hover:bg-gray-700/50'}
+                                    {(day.leaves.length > 0 || day.birthdays.length > 0) ? 'cursor-pointer' : ''}"
+                            >
+                                <span class="block absolute top-1 left-1 font-bold 
+                                    {day.isToday ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-200'}">
+                                    {day.dayOfMonth}
+                                </span>
+                                
+                                {#if day.birthdays.length > 0}
+                                    <span class="absolute top-1 right-1 text-yellow-500" title="Anniversaire(s) : {day.birthdays.join(', ')}">
+                                        <Cake class="w-3 h-3 fill-current" />
+                                    </span>
+                                {/if}
+                                
+                                <div class="absolute bottom-0 left-0 right-0 p-[2px] space-y-[1px]">
+                                    {#each day.leaves as leave, i (leave.id)}
+                                        
+                                        <div 
+                                            class="h-3.5 w-full rounded-sm text-center font-bold overflow-hidden text-white transition-opacity duration-300 {getUserColor(leave.user_id)}"
+                                            class:opacity-50={leave.status !== 'APPROVED'} 
+                                            title="{leave.profiles?.full_name || 'Inconnu'} - {leave.type} (Statut: {STATUS_MAP[leave.status]})"
+                                        >
+                                            <span class="text-[8px] leading-3 whitespace-nowrap overflow-hidden">
+                                                {leave.profiles?.full_name.substring(0, 1) || '?'}{day.leaves.length > 3 && i === 2 ? '+' : ''}
+                                            </span>
+                                        </div>
+                                        
+                                    {/each}
+                                </div>
+                            </div>
+                        {/each}
+                    </div>
+                </div> 
                 <p class="text-sm text-gray-500 dark:text-gray-400 pt-4 border-t dark:border-gray-700/50">
                     *Les demandes de congés **approuvées** (couleur pleine) et **en attente/refusées** (opacité réduite) sont affichées sur le calendrier. L'icône 🎂 indique les anniversaires.
                 </p>
@@ -708,9 +707,6 @@
             </div>
         </form>
 
-    </div>
-    <div class="planning-calendar-wrapper" bind:this={calendarContent} id="planning-calendar">
-    
     </div>
 </div>
 {/if}
