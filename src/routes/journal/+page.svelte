@@ -46,7 +46,7 @@
   // Édition
   let editingLog = null; 
 
-  // Fonction de normalisation (maintenue pour la recherche visuelle, mais pas pour le matching final)
+  // Fonction de normalisation (maintenue pour la recherche visuelle)
   const normalizeName = (name) => {
     if (!name) return '';
     return name.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -111,7 +111,7 @@
         profiles ( full_name, avatar_url ),
         log_reactions ( user_id, emoji )
       `)
-      .order('created_at', { ascending: false })
+      .order('created:at', { ascending: false })
       .range(from, to);
 
     if (selectedAuthor !== 'all') query = query.eq('user_id', selectedAuthor);
@@ -284,9 +284,10 @@
         'image' : 'file';
       }
 
-      // NOUVEAU : On remplace le format interne (@|UUID|Nom) par le @Nom Prénom pour l'affichage final
-      // Ceci est optionnel mais rend le message affiché plus propre.
-      const displayMessage = newMessage.replace(/@\|[0-9a-fA-F-]{36}\|([^ ]+ [^ ]+) /g, "@$1 ");
+      // NOUVEAU FIX: Nettoyage du message pour l'affichage (enlève uniquement le |UUID|)
+      // Cela évite que la Regex complexe d'affichage n'interfère avec la variable 'newMessage' 
+      // utilisée pour la détection des notifications.
+      const displayMessage = newMessage.replace(/@\|[0-9a-fA-F-]{36}\|/g, "@");
       
       const { error } = await supabase.from('main_courante').insert({
         message_content: displayMessage, // Enregistre le message nettoyé pour l'affichage
@@ -297,7 +298,8 @@
       });
       if (error) throw error;
 
-      // Traiter les tags AVANT de réinitialiser le newMessage (utilise le format interne)
+      // Traiter les tags
+      // Ceci utilise le format brut (avec l'ID) stocké dans newMessage
       await processTagsAndNotify(newMessage);
       
       newMessage = "";
