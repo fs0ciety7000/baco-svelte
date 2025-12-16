@@ -71,7 +71,7 @@
     // --- VUES RÉACTIVES ---
     $: currentPlayer = game.players[game.currentPlayerIndex];
     $: isX01Mode = game.mode === '301' || game.mode === '501';
-    $: canThrow = game.status === 'playing' && game.hitCount < 3 && currentPlayer?.id === session?.user.id;
+    $: canThrow = game.status === 'playing' && game.hitCount < 3 && currentPlayer?.id && session?.user.id === currentPlayer.id;
 </script>
 
 <svelte:head>
@@ -154,22 +154,22 @@
             
             <div class="md:col-span-2 space-y-6">
                 
-                <div class="flex items-center justify-between p-4 bg-blue-600/10 dark:bg-blue-900/20 rounded-xl border border-blue-600/50">
-                    <h2 class="text-xl font-bold dark:text-white flex items-center gap-3">
-                        <Zap class="w-6 h-6 text-yellow-500 fill-yellow-500" />
-                        AU TOUR DE : <span class="text-blue-600 dark:text-blue-400">{currentPlayer?.name || '...'}</span>
-                    </h2>
-                    {#if game.mode === 'SHANGHAI'}
-                        <span class="text-lg font-bold text-gray-700 dark:text-gray-300">Cible : {currentPlayer.round}</span>
-                    {:else}
-                        <span class="text-lg font-bold text-gray-700 dark:text-gray-300">Score restant : <span class="text-red-600">{currentPlayer?.score}</span></span>
-                    {/if}
-                </div>
-                
-                <Dartboard 
-                    on:throw={({ detail }) => dartsStore.throwDart(detail.segment, detail.type)} 
-                    disabled={!canThrow}
-                />
+              <div class="flex items-center justify-between p-4 bg-blue-600/10 dark:bg-blue-900/20 rounded-xl border border-blue-600/50">
+    <h2 class="text-xl font-bold dark:text-white flex items-center gap-3">
+        <Zap class="w-6 h-6 text-yellow-500 fill-yellow-500" />
+        AU TOUR DE : <span class="text-blue-600 dark:text-blue-400">{currentPlayer?.name || '...'}</span>
+    </h2>
+    {#if game.mode === 'SHANGHAI'}
+        <span class="text-lg font-bold text-gray-700 dark:text-gray-300">Cible : {currentPlayer?.round || '...'}</span>
+    {:else}
+        <span class="text-lg font-bold text-gray-700 dark:text-gray-300">Score restant : <span class="text-red-600">{currentPlayer?.score || '...'}</span></span>
+    {/if}
+</div>
+
+<Dartboard 
+    on:throw={({ detail }) => dartsStore.throwDart(detail.segment, detail.type)} 
+    disabled={!canThrow}
+/>
                 
                 <div class="flex justify-center gap-4 pt-4 border-t pt-6 dark:border-gray-700">
                     {#each [1, 2, 3] as i}
