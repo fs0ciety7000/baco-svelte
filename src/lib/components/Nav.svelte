@@ -523,6 +523,8 @@ w-72 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 p-2 text-sm te
                             <a href="/audit" class="flex 
 items-center gap-3 w-full px-3 py-2 text-sm text-yellow-400 hover:bg-gray-700"><ShieldCheck class="w-4 h-4"/> Audit 
 Log</a>
+                            <a href="/darts" class="flex items-center gap-3 w-full px-3 py-2 text-sm text-yellow-400 hover:bg-gray-700"><ShieldCheck class="w-4 h-4"/> Fléchettes</a>
+
                             {/if}
                         <button on:click={handleLogout} class="flex items-center gap-3 w-full px-3 py-2 text-sm text-red-400 hover:bg-red-900/30 rounded mt-1">
                          
