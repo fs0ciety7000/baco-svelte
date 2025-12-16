@@ -87,18 +87,35 @@ const WIDGET_MAX_HEIGHT_CLOSED = 'max-h-[5rem]';
   async function loadPlanningWidgetsData() {
     loadingPlanning = true;
     const today = new Date();
-    const todayString = today.toISOString().split('T')[0];
+    
+    // 1. Calculer Demain (pour filtrer les congés qui commencent après aujourd'hui)
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowString = tomorrow.toISOString().split('T')[0];
 
-    // 1. Congés à venir (Approuvés, dans les 60 prochains jours)
+    // 2. Calculer la fin de la fenêtre de 60 jours
+    const endWindow = new Date(today);
+    endWindow.setDate(endWindow.getDate() + 180);
+    const endWindowString = endWindow.toISOString().split('T')[0];
+
+    // 1. Congés à venir (Approuvés ou en attente, dans les 60 prochains jours)
     const { data: leaves, error: leaveError } = await supabase
         .from('leave_requests')
         .select(`type, profiles(full_name)`)
         .in('status', ['pending', 'approved'])
-        .gte('end_date', todayString)
+        
+        // MODIFICATION CRITIQUE : Filtre sur la DATE DE DÉBUT (commence demain ou après)
+        .gte('start_date', tomorrowString)
+        
+        // Assurez-vous que le congé commence dans les 60 jours
+        .lte('start_date', endWindowString)
+        
         .order('start_date', { ascending: true })
         .limit(5); // Limiter l'affichage à 5 demandes
 
     if (!leaveError) {
+        // Optionnel : Inclure les congés actifs (qui ont commencé aujourd'hui)
+        // Vous pouvez ajouter une logique ici si vous voulez voir les congés actifs *et* futurs.
         upcomingLeaves = leaves || [];
     } else {
         console.error("Erreur chargement congés:", leaveError);
@@ -248,7 +265,7 @@ const WIDGET_MAX_HEIGHT_CLOSED = 'max-h-[5rem]';
       >
         <span class="flex items-center gap-2">
           <ListTodo class="w-5 h-5 text-blue-500" />
-          <span>Congés à venir (Approuvés)</span>
+          <span>Congés à venir</span>
         </span>
         {#if isLeavesOpen}
           <ChevronUp class="w-5 h-5 text-gray-500 dark:text-gray-400" />
