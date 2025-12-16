@@ -96,7 +96,7 @@
         if (taxiRes.data) taxiCompanies = taxiRes.data;
     }
 
-    aasync function loadReport(date) {
+    async function loadReport(date) {
     isLoading = true;
     
     const { data, error } = await supabase
