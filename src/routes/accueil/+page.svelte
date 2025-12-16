@@ -146,8 +146,6 @@ const WIDGET_MAX_HEIGHT_CLOSED = 'max-h-[5rem]';
         console.error("Erreur chargement congés:", leaveError);
     }
     
-    loadingPlanning = false;
-}
 
     // 2. Anniversaires (Charger tous les profils avec date de naissance)
     const { data: profiles, error: profileError } = await supabase
