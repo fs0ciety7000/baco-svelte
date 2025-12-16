@@ -409,23 +409,32 @@
     }
 
 
-    // --- NOUVELLE FONCTION : EXPORT PDF ---
-    async function exportPlanningToPDF() {
-        if (!calendarContent) {
-            console.error("Élément du calendrier non trouvé.");
-            // Ajoutez un toast ici pour informer l'utilisateur que le calendrier n'est pas prêt.
-            toast.error("Le calendrier n'est pas chargé. Veuillez attendre que les données apparaissent.");
-            return;
-        }
+   // --- NOUVELLE FONCTION : EXPORT PDF (CORRIGÉE pour le problème oklch) ---
+async function exportPlanningToPDF() {
+    if (!calendarContent) {
+        toast.error("Le calendrier n'est pas chargé. Veuillez attendre que les données apparaissent.");
+        return;
+    }
 
-        // Utilisation de displayedMonth/Year car currentMonth n'existe pas dans ce script
-        const dateString = new Date().toLocaleDateString('fr-FR');
-        const monthYear = new Date(displayedYear, displayedMonth).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    const dateString = new Date().toLocaleDateString('fr-FR');
+    // Utilisation de displayedMonth/Year car currentMonth n'existe pas dans ce script
+    const monthYear = new Date(displayedYear, displayedMonth).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 
-        // 1. Désactiver temporairement les styles spécifiques au survol/impression
-        const originalBg = calendarContent.style.backgroundColor;
-        calendarContent.style.backgroundColor = '#ffffff'; 
+    // --- FIX : Enregistrer les styles originaux et préparer l'élément pour html2canvas ---
+    const originalBg = calendarContent.style.backgroundColor;
+    const originalClasses = calendarContent.className; 
+    
+    // Simplifier les classes potentiellement problématiques (ombres, dark mode, opacités complexes)
+    let tempClasses = originalClasses.replace(/\bshadow-[a-z0-9-]+\b/g, '') // Enlève toutes les classes shadow-*
+                                     .replace(/\bdark:bg-[a-z0-9-]+\b/g, 'dark:bg-white') // Simplifie les fonds sombres
+                                     .replace(/\bbg-[a-z0-9-]+\/[a-z0-9-]+\b/g, ''); // Enlève les opacités complexes
+    
+    calendarContent.className = tempClasses.trim() + ' bg-white'; // Assurer un fond blanc sûr
+    calendarContent.style.backgroundColor = '#ffffff'; 
+    
+    // --- FIN FIX ---
 
+    try {
         // 2. Capturer le contenu du calendrier en tant qu'image (canvas)
         const canvas = await html2canvas(calendarContent, {
             scale: 2, 
@@ -450,12 +459,21 @@
         // 4. Ajouter l'image au PDF
         pdf.addImage(imgData, 'PNG', 10, position + 10, imgWidth, imgHeight);
 
-        // 5. Réactiver les styles originaux
+    } catch (e) {
+        console.error("Erreur lors de l'export PDF:", e);
+        // Fournir un message d'erreur plus spécifique à l'utilisateur
+        toast.error("Échec de l'export PDF. Le système n'a pas pu traiter les couleurs. Veuillez réessayer.");
+    } finally {
+        // 5. Réactiver les styles originaux, même en cas d'erreur
         calendarContent.style.backgroundColor = originalBg;
-
-        // 6. Sauvegarder le fichier
-        pdf.save(`Planning_${monthYear.replace(' ', '_')}.pdf`);
+        calendarContent.className = originalClasses; // Restaurer les classes d'origine
+        
+        // 6. Sauvegarder le fichier (déplacé ici pour ne pas sauvegarder si l'erreur s'est produite AVANT l'image)
+        if (pdf) {
+            pdf.save(`Planning_${monthYear.replace(' ', '_')}.pdf`);
+        }
     }
+}
     // --- FIN NOUVELLE FONCTION ---
 
 </script>
