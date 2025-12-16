@@ -235,7 +235,7 @@
         }
     }
     // --- FIN NOUVELLE FONCTION ---
-    
+
 </script>
 
 <svelte:head>
@@ -244,37 +244,27 @@
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
     <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b pb-4 border-gray-200 dark:border-gray-700">
-        <h1 class="text-3xl font-bold tracking-tight text-gray-800 dark:text-gray-100 flex items-center gap-3">
-            <CheckSquare class="w-8 h-8 text-blue-500" />
-            Remise de Service B201
-        </h1>
-        <button on:click={saveReport} disabled={isSubmitting || isLoading || !currentUser} class="mt-2 sm:mt-0 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold transition-colors flex items-center gap-2 disabled:opacity-50">
-            <Save class="w-4 h-4" /> Enregistrer le Rapport
-        </button>
-    </header>
-
-    <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 flex flex-col md:flex-row justify-between items-center gap-4">
-        
-        <button on:click={() => changeDate(-1)} class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-600 font-bold">
-            &lt; Jour Précédent
+    <h1 class="text-3xl font-bold tracking-tight text-gray-800 dark:text-gray-100 flex items-center gap-3">
+        <CheckSquare class="w-8 h-8 text-blue-500" />
+        Remise de Service B201
+    </h1>
+    
+    <div class="flex gap-3 mt-2 sm:mt-0">
+        <button on:click={exportReportToPDF} disabled={isSubmitting || isLoading || !currentUser || !reportId} class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-colors flex items-center gap-2 disabled:opacity-50">
+            <Download class="w-4 h-4" /> Export PDF
         </button>
 
-        <div class="flex items-center gap-3 bg-gray-100 dark:bg-gray-700 p-3 rounded-xl border border-gray-200 dark:border-gray-600">
-            <Calendar class="w-5 h-5 text-gray-500" />
-            <span class="text-lg font-semibold dark:text-white">{formatDate(selectedDate)}</span>
-            <input type="date" bind:value={selectedDate} class="bg-transparent text-gray-700 dark:text-gray-300 font-medium cursor-pointer" />
-        </div>
-        
-        <button on:click={() => changeDate(1)} class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-600 font-bold">
-            Jour Suivant &gt;
+        <button on:click={saveReport} disabled={isSubmitting || isLoading || !currentUser} class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold transition-colors flex items-center gap-2 disabled:opacity-50">
+            <Save class="w-4 h-4" /> Enregistrer
         </button>
     </div>
+</header>
 
-    {#if isLoading}
-        <div class="flex justify-center py-20"><Loader2 class="animate-spin text-blue-600" /></div>
-    {:else}
+{#if isLoading}
+    <div class="flex justify-center py-20"><Loader2 class="animate-spin text-blue-600" /></div>
+{:else}
+    <div class="b201-report-content" bind:this={reportContent} id="b201-content-export">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
             {#each PERIODS as period}
                 <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 space-y-6">
                     
@@ -283,7 +273,7 @@
                         <svelte:component this={getPeriodIcon(period)} class="w-6 h-6 fill-current" />
                         {getPeriodLabel(period)}
                     </h2>
-
+                    
                     <div class="space-y-4">
                         {#each FUNCTIONS as func}
                             {#if reportData[period][func]}
@@ -356,11 +346,11 @@
                 </div>
             {/each}
         </div>
-        
-        <div class="flex justify-center mt-8">
-            <button on:click={saveReport} disabled={isSubmitting || !currentUser} class="px-8 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold transition-colors flex items-center gap-2 disabled:opacity-50">
-                <Save class="w-5 h-5" /> Enregistrer le Rapport {formatDate(selectedDate)}
-            </button>
-        </div>
-    {/if}
+    </div>
+    <div class="flex justify-center mt-8">
+        <button on:click={saveReport} disabled={isSubmitting || !currentUser} class="px-8 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold transition-colors flex items-center gap-2 disabled:opacity-50">
+            <Save class="w-5 h-5" /> Enregistrer le Rapport {formatDate(selectedDate)}
+        </button>
+    </div>
+{/if}
 </div>
