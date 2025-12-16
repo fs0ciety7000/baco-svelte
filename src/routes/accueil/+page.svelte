@@ -132,6 +132,8 @@ const WIDGET_MAX_HEIGHT_CLOSED = 'max-h-[5rem]';
         .order('start_date', { ascending: true }) // Trier du plus tôt au plus tard
         .limit(5); 
 
+        console.log(leaves)
+        
     if (!leaveError) {
         // Optionnel : Filtrer en JavaScript pour s'assurer que le congé se termine dans la fenêtre de 6 mois
         const filteredLeaves = (leaves || []).filter(leave => {
