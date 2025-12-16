@@ -85,20 +85,27 @@
     /**
      * Vérifie si un jour donné fait partie d'une demande de congé (tous statuts).
      */
-    function getLeavesForDay(date) {
-        const dayString = date.toISOString().split('T')[0];
-        return leaveRequests.filter(req => {
-            const start = new Date(req.start_date);
-            const end = new Date(req.end_date);
-            const current = new Date(dayString);
-            
-            start.setHours(0, 0, 0, 0);
-            end.setHours(0, 0, 0, 0);
-            current.setHours(0, 0, 0, 0);
+  function getLeavesForDay(date) {
+    // Crée une date de référence locale pour le jour
+    const targetDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    
+    return leaveRequests.filter(req => {
+        // Interpréter la chaîne de date Supabase comme étant locale (YYYY/MM/DD)
+        // Note: Remplacer les tirets par des barres obliques pour garantir l'interprétation locale dans Chrome/Firefox
+        const start = new Date(req.start_date.replace(/-/g, '/'));
+        const end = new Date(req.end_date.replace(/-/g, '/'));
+        
+        // Mettre les heures à 0 (minuit local)
+        start.setHours(0, 0, 0, 0);
+        end.setHours(0, 0, 0, 0);
 
-            return current >= start && current <= end;
-        });
-    }
+        // Assurez-vous que targetDay est aussi minuit local
+        targetDay.setHours(0, 0, 0, 0);
+
+        // La comparaison est maintenant basée sur les valeurs locales
+        return targetDay >= start && targetDay <= end;
+    });
+}
 
     /**
      * Vérifie si un jour donné est un anniversaire.
@@ -164,26 +171,26 @@
             loops++;
         }
         
-        while (calendarDays.length < 42) {
-            const lastDate = calendarDays[calendarDays.length - 1]?.date || new Date(year, month, 1);
-            if(calendarDays.length > 0) {
-                lastDate.setDate(lastDate.getDate() + 1);
-            } else {
-                lastDate.setDate(lastDate.getDate()); 
-            }
-            
-            const dayData = {
-                date: new Date(lastDate),
-                dayOfMonth: lastDate.getDate(),
-                isCurrentMonth: false,
-                isToday: lastDate.toDateString() === today.toDateString(),
-                weekNumber: getWeekNumber(lastDate),
-                isStartOfWeek: getISOWeekday(lastDate) === 1,
-                leaves: getLeavesForDay(lastDate),
-                birthdays: getBirthdaysForDay(lastDate)
-            };
-            calendarDays.push(dayData);
-        }
+    while (calendarDays.length < 42) {
+    // Récupérer la date du dernier jour ajouté
+    const lastDayDate = calendarDays[calendarDays.length - 1].date; 
+    
+    // Créer une NOUVELLE date basée sur le jour suivant
+    const nextDay = new Date(lastDayDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+
+    const dayData = {
+        date: nextDay, // Utiliser la nouvelle date
+        dayOfMonth: nextDay.getDate(),
+        isCurrentMonth: false, // Ces jours sont toujours du mois suivant/précédent
+        isToday: nextDay.toDateString() === today.toDateString(),
+        weekNumber: getWeekNumber(nextDay),
+        isStartOfWeek: getISOWeekday(nextDay) === 1,
+        leaves: getLeavesForDay(nextDay),
+        birthdays: getBirthdaysForDay(nextDay)
+    };
+    calendarDays.push(dayData);
+}
 
         return calendarDays;
     }
