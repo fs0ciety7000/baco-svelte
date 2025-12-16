@@ -23,7 +23,7 @@
 
   // --- Utilisateurs pour le tagging et l'Auto-Complétion ---
   let allUsers = []; 
-  let textareaElement; 
+  let textareaElement; // Référence à la zone de texte
   let showSuggestions = false;
   let filteredUsers = [];
   let tagSearchQuery = '';
@@ -46,13 +46,11 @@
   // Édition
   let editingLog = null; 
 
-  // --- NOUVEAU : Fonction de Normalisation ---
-  // Rendre les comparaisons robustes aux multiples espaces et aux majuscules/minuscules
+  // Fonction de normalisation (maintenue pour la recherche visuelle, mais pas pour le matching final)
   const normalizeName = (name) => {
     if (!name) return '';
     return name.trim().toLowerCase().replace(/\s+/g, ' ');
   };
-  // --- FIN NOUVEAU ---
 
 
   onMount(async () => {
@@ -187,6 +185,7 @@
     }
   }
 
+  // --- MODIFIÉ : Insère le tag formaté avec l'ID ---
   function selectUser(user) {
     if (!textareaElement) return;
 
@@ -198,7 +197,9 @@
     if (lastAtIndex === -1) return;
 
     const startReplaceIndex = lastAtIndex;
-    const tagToInsert = `@${user.full_name} `; 
+    
+    // NOUVEAU FORMAT : @|USER_ID|Nom Prénom 
+    const tagToInsert = `@|${user.id}|${user.full_name} `; 
     
     const newText = value.substring(0, startReplaceIndex) + tagToInsert + value.substring(cursor);
     newMessage = newText;
@@ -214,31 +215,23 @@
     showSuggestions = false;
   }
   
-  // --- NOUVEAU : Fonction de traitement des tags et de notification (CORRIGÉE) ---
+  // --- MODIFIÉ : Détection des tags par ID ---
   async function processTagsAndNotify(message) {
       if (!message || !currentUser) return;
 
-      // Regex pour détecter '@' suivi de tous les caractères pouvant faire partie d'un nom (y compris accents, tirets, espaces)
-      const tagRegex = /@([a-zA-ZÀ-ÿ\s'-]+)/g; 
+      // NOUVELLE REGEX : Capture l'ID entre | et |
+      // Format : @|UUID|Nom Prénom...
+      // La Regex capture l'UUID (groupe 1)
+      const tagRegex = /@\|([0-9a-fA-F-]{36})\|/g; 
       let match;
       const taggedUserIds = new Set();
       
       while ((match = tagRegex.exec(message)) !== null) {
-          // La chaîne capturée par le groupe 1, nettoyée des espaces superflus
-          const taggedName = match[1].trim(); 
+          const taggedUserId = match[1]; // Capture l'UUID
 
-          // 2. Chercher l'ID correspondant
-          const foundUser = allUsers.find(u => {
-              // FIX CRUCIAL: Normaliser les deux chaînes avant la comparaison
-              const normalizedDbName = normalizeName(u.full_name);
-              const normalizedCapturedName = normalizeName(taggedName);
-              
-              return normalizedDbName === normalizedCapturedName;
-          });
-          
-          // Ajouter l'ID s'il est trouvé et n'est pas l'utilisateur courant
-          if (foundUser && foundUser.id !== currentUser.id) {
-              taggedUserIds.add(foundUser.id);
+          // 2. Vérification simple : L'ID est présent et n'est pas l'utilisateur courant
+          if (taggedUserId && taggedUserId !== currentUser.id) {
+              taggedUserIds.add(taggedUserId);
           }
       }
 
@@ -249,7 +242,7 @@
       const notificationMessage = message.substring(0, 100) + (message.length > 100 ? '...' : '');
 
       const notificationsToInsert = Array.from(taggedUserIds).map(userId => ({
-          user_id_target: userId,
+          user_id_target: userId, // Utilisation directe de l'ID unique
           title: `Vous avez été mentionné par ${senderName}`,
           message: notificationMessage,
           type: 'mention',
@@ -265,7 +258,7 @@
           console.error("Erreur insertion notifications:", error);
       }
   }
-  // --- FIN NOUVEAU : Fonction de traitement des tags et de notification ---
+  // --- FIN MODIFICATIONS ---
 
 
   // --- ACTIONS ---
@@ -291,8 +284,12 @@
         'image' : 'file';
       }
 
+      // NOUVEAU : On remplace le format interne (@|UUID|Nom) par le @Nom Prénom pour l'affichage final
+      // Ceci est optionnel mais rend le message affiché plus propre.
+      const displayMessage = newMessage.replace(/@\|[0-9a-fA-F-]{36}\|([^ ]+ [^ ]+) /g, "@$1 ");
+      
       const { error } = await supabase.from('main_courante').insert({
-        message_content: newMessage,
+        message_content: displayMessage, // Enregistre le message nettoyé pour l'affichage
         is_urgent: isUrgent,
         user_id: currentUser.id,
         attachment_path: attachmentPath,
@@ -300,7 +297,7 @@
       });
       if (error) throw error;
 
-      // Traiter les tags après la publication réussie
+      // Traiter les tags AVANT de réinitialiser le newMessage (utilise le format interne)
       await processTagsAndNotify(newMessage);
       
       newMessage = "";
@@ -461,6 +458,7 @@ async function saveEditedEntry() {
           {/each}
         </div>
       {/if}
+
       {#if newFile}
         <div class="flex items-center gap-2 mb-3 mt-3 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-xl text-sm text-blue-700 dark:text-blue-300">
           <Paperclip size={14} /> 
