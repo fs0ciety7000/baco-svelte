@@ -55,6 +55,7 @@
 
   onMount(async () => {
     await loadUserAndRole();
+    // MODIFIÉ : Charger le username
     await Promise.all([loadAllProfiles(), loadLogs(true)]);
   });
 
@@ -85,10 +86,10 @@
   // --- CHARGEMENT ---
   
   async function loadAllProfiles() {
-    // RLS FIX: Sélectionne uniquement les champs non sensibles
-    const { data } = await supabase.from('profiles').select('id, full_name, avatar_url').order('full_name', { ascending: true });
+    // MODIFIÉ : Sélectionne 'username' en plus pour le tagging
+    const { data } = await supabase.from('profiles').select('id, full_name, username, avatar_url').order('full_name', { ascending: true });
     if (data) {
-      allUsers = data; 
+      allUsers = data.filter(u => u.username); // Filtre les profils sans username pour éviter les erreurs
       authors = data;  
     }
   }
@@ -111,7 +112,6 @@
         profiles ( full_name, avatar_url ),
         log_reactions ( user_id, emoji )
       `)
-      // FIX: Remplacer 'created:at' par 'created_at'
       .order('created_at', { ascending: false }) 
       .range(from, to);
 
@@ -162,7 +162,8 @@
 
     const query = textBeforeCursor.substring(lastAtIndex + 1); 
     
-    if (query.includes('\n')) {
+    // MODIFIÉ : On bloque si un espace est tapé après le @
+    if (query.includes('\n') || query.trim() !== query) {
         showSuggestions = false;
         return;
     }
@@ -171,22 +172,19 @@
 
     const lowerQuery = tagSearchQuery.toLowerCase();
     
-    // Filtre utilisant includes() pour la tolérance aux noms composés
+    // FIX: Filtrer par username (commence par) OU full_name (contient)
     filteredUsers = allUsers.filter(user => 
-        user.full_name?.toLowerCase().includes(lowerQuery)
+        (user.username && user.username.toLowerCase().startsWith(lowerQuery)) || 
+        (user.full_name && user.full_name.toLowerCase().includes(lowerQuery))
     ).slice(0, 5); 
 
     const hasResults = filteredUsers.length > 0;
-    const hasTrailingSpace = tagSearchQuery.length === 0 && query.trim() !== query;
-
-    showSuggestions = hasResults || (tagSearchQuery.length === 0 && query.length === 1); 
     
-    if (hasTrailingSpace) {
-        showSuggestions = false;
-    }
+    // Afficher les suggestions si on a des résultats
+    showSuggestions = hasResults;
   }
 
-  // --- Insère le tag formaté avec l'ID ---
+  // --- MODIFIÉ : Insère @username ---
   function selectUser(user) {
     if (!textareaElement) return;
 
@@ -195,12 +193,12 @@
     const textBefore = value.substring(0, cursor);
     const lastAtIndex = textBefore.lastIndexOf('@');
 
-    if (lastAtIndex === -1) return;
+    if (lastAtIndex === -1 || !user.username) return;
 
     const startReplaceIndex = lastAtIndex;
     
-    // NOUVEAU FORMAT : @|USER_ID|Nom Prénom 
-    const tagToInsert = `@|${user.id}|${user.full_name} `; 
+    // NOUVEAU FORMAT : @username (simple et propre)
+    const tagToInsert = `@${user.username} `; 
     
     const newText = value.substring(0, startReplaceIndex) + tagToInsert + value.substring(cursor);
     newMessage = newText;
@@ -216,23 +214,27 @@
     showSuggestions = false;
   }
   
-  // --- Détection des tags par ID ---
+  // --- MODIFIÉ : Détection des tags par username ---
   async function processTagsAndNotify(message) {
       if (!message || !currentUser) return;
 
-      // NOUVELLE REGEX : Capture l'ID entre | et |
-      // Format : @|UUID|Nom Prénom...
-      // La Regex capture l'UUID (groupe 1)
-      const tagRegex = /@\|([0-9a-fA-F-]{36})\|/g; 
+      // NOUVELLE REGEX : Capture un mot (username) après le @
+      // Capturera : @thomas.buet
+      const tagRegex = /@([a-zA-Z0-9._-]+)/g; 
       let match;
       const taggedUserIds = new Set();
       
       while ((match = tagRegex.exec(message)) !== null) {
-          const taggedUserId = match[1]; // Capture l'UUID
+          const taggedUsername = match[1].trim().toLowerCase(); // Capture le username
+          
+          // 2. Chercher l'ID correspondant par Username
+          const foundUser = allUsers.find(u => 
+              u.username?.toLowerCase() === taggedUsername
+          );
 
-          // 2. Vérification simple : L'ID est présent et n'est pas l'utilisateur courant
-          if (taggedUserId && taggedUserId !== currentUser.id) {
-              taggedUserIds.add(taggedUserId);
+          // 3. Ajouter l'ID s'il est trouvé et n'est pas l'utilisateur courant
+          if (foundUser && foundUser.id !== currentUser.id) {
+              taggedUserIds.add(foundUser.id);
           }
       }
 
@@ -243,7 +245,7 @@
       const notificationMessage = message.substring(0, 100) + (message.length > 100 ? '...' : '');
 
       const notificationsToInsert = Array.from(taggedUserIds).map(userId => ({
-          user_id_target: userId, // Utilisation directe de l'ID unique
+          user_id_target: userId, // Utilisation de l'ID unique
           title: `Vous avez été mentionné par ${senderName}`,
           message: notificationMessage,
           type: 'mention',
@@ -283,13 +285,10 @@
         attachmentType = newFile.type.startsWith('image/') ?
         'image' : 'file';
       }
-
-      // FIX: Nettoyage du message pour l'affichage (enlève uniquement le |UUID|)
-      // On remplace le format interne (@|UUID|Nom Prénom) par le format affiché (@Nom Prénom)
-      const displayMessage = newMessage.replace(/@\|[0-9a-fA-F-]{36}\|/g, "@");
       
+      // NOUVEAU : Pas de nettoyage nécessaire, le message est stocké tel quel (@username)
       const { error } = await supabase.from('main_courante').insert({
-        message_content: displayMessage, // Enregistre le message nettoyé pour l'affichage
+        message_content: newMessage, // Stockage du message @username
         is_urgent: isUrgent,
         user_id: currentUser.id,
         attachment_path: attachmentPath,
@@ -297,7 +296,7 @@
       });
       if (error) throw error;
 
-      // Traiter les tags (utilise le format brut avec l'ID)
+      // Traiter les tags (utilise le format brut @username)
       await processTagsAndNotify(newMessage);
       
       newMessage = "";
@@ -437,7 +436,7 @@ async function saveEditedEntry() {
         on:input={handleInput}
         rows="3" 
         class="w-full bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl p-3 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none text-base placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white transition-colors" 
-        placeholder="Quoi de neuf aujourd'hui ? (Utilisez @Nom Prénom pour taguer un utilisateur, ex: @Jean Dupont)"
+        placeholder="Quoi de neuf aujourd'hui ? (Utilisez @username pour taguer un utilisateur, ex: @thomas.buet)"
       ></textarea>
       
       {#if showSuggestions}
@@ -452,6 +451,7 @@ async function saveEditedEntry() {
                 </div>
               {/if}
               <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{user.full_name}</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400 ml-auto">@{user.username}</span>
             </button>
           {:else}
             <div class="p-3 text-sm text-gray-500 dark:text-gray-400">Aucun utilisateur trouvé.</div>
