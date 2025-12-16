@@ -96,7 +96,7 @@ const WIDGET_MAX_HEIGHT_CLOSED = 'max-h-[5rem]';
         .in('status', ['APPROVED', 'PENDING'])
         .gte('end_date', todayString)
         .order('start_date', { ascending: true })
-        .limit(5); // Limiter l'affichage à 5 demandes
+        .limit(10); // Limiter l'affichage à 5 demandes
 
     if (!leaveError) {
         upcomingLeaves = leaves || [];
@@ -248,7 +248,7 @@ const WIDGET_MAX_HEIGHT_CLOSED = 'max-h-[5rem]';
       >
         <span class="flex items-center gap-2">
           <ListTodo class="w-5 h-5 text-blue-500" />
-          <span>Congés à venir (Approuvés)</span>
+          <span>Congés à venir</span>
         </span>
         {#if isLeavesOpen}
           <ChevronUp class="w-5 h-5 text-gray-500 dark:text-gray-400" />
