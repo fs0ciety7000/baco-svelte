@@ -234,7 +234,7 @@
 
 <svelte:window on:click={closeDropdowns} />
 
-<nav class="sticky top-4 mx-4 rounded-2xl z-50 transition-all duration-300 glass-panel">
+<nav class="top-4 mx-4 rounded-2xl z-50 transition-all duration-300 glass-panel">
   
 
   <div class="container mx-auto px-6 py-3">

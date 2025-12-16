@@ -377,61 +377,62 @@ const WIDGET_MAX_HEIGHT_CLOSED = 'max-h-[5rem]';
 
     
   </div>
-  <div class="mb-10">
-    <button 
-      on:click={() => toggleWidget('pmr')}
-      class="w-full text-left text-2xl font-semibold text-gray-800 dark:text-gray-100 flex items-center justify-between gap-2 
-      p-2 rounded-lg transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
-      title="Afficher/Masquer les problèmes en cours"
-    >
-      <span class="flex items-center gap-2">
-        <Activity class="w-6 h-6 text-red-500" />
-        <span>Problèmes en cours (Rampes PMR)</span>
-      </span>
-      {#if isPmrOpen}
-        <ChevronUp class="w-6 h-6 text-gray-500 dark:text-gray-400" />
-      {:else}
-        <ChevronDown class="w-6 h-6 text-gray-500 dark:text-gray-400" />
-    
-      {/if}
-    </button>
-    
-    {#if isPmrOpen}
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 transition-all duration-300">
-        {#if loadingPmr}
-           <div class="col-span-full text-center text-gray-500">Chargement...</div>
-        {:else if pmrIssues.length === 0}
-          <div class="col-span-full flex items-center justify-center p-6 bg-white dark:bg-gray-900 border border-green-200 dark:border-green-700 rounded-lg">
-            <CheckCircle2 class="w-6 h-6 
-              text-green-500" />
-            <span class="ml-3 text-gray-700 dark:text-gray-200">Aucun problème signalé sur les rampes.</span>
-          </div>
-        {:else}
-          {#each pmrIssues as issue}
-            <a href="/pmr?search={issue.rampe_id ||
-              issue.gare}" 
-               class="block p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:border-blue-500 hover:shadow-md transition-all">
-              <div class="flex justify-between items-center mb-2">
-                <h4 class="font-bold text-lg text-blue-700 dark:text-blue-400">{issue.gare}</h4>
-                <span class="px-2.5 py-0.5 text-xs font-bold rounded-full {issue.etat_rampe === 'HS' ?
-                  'text-red-800 bg-red-100 dark:text-red-200 dark:bg-red-900' : 'text-gray-600 bg-gray-100 dark:text-gray-300 dark:bg-gray-700'}">
-                  {issue.etat_rampe}
-                </span>
-              </div>
-              <p class="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                <MapPin class="w-3 h-3" /> Quai: <strong>{issue.quai || 'N/A'}</strong>
- 
-              </p>
-              <p class="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                <Hash class="w-3 h-3" /> ID: <strong>{issue.rampe_id || 'N/A'}</strong>
-              </p>
-            </a>
-          {/each}
-        
-        {/if}
+<div class="mb-10 glass-panel rounded-3xl p-1 transition-all duration-500">
+  <button 
+    on:click={() => toggleWidget('pmr')}
+    class="w-full text-left p-5 flex items-center justify-between group"
+  >
+    <div class="flex items-center gap-3">
+      <div class="p-2 rounded-xl bg-red-500/20 text-red-400 group-hover:text-red-300 transition-colors shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+        <Activity class="w-6 h-6" />
       </div>
-    {/if}
-  </div>
+      <span class="text-xl font-bold text-white">Problèmes en cours (Rampes PMR)</span>
+    </div>
+    <div class="text-white/50 transition-transform duration-300 {isPmrOpen ? 'rotate-180' : ''}">
+      <ChevronDown class="w-6 h-6" />
+    </div>
+  </button>
+  
+  {#if isPmrOpen}
+    <div class="p-5 pt-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" transition:slide>
+      {#if loadingPmr}
+         <div class="col-span-full py-8 text-center text-gray-400 animate-pulse">Recherche des données...</div>
+      {:else if pmrIssues.length === 0}
+        <div class="col-span-full flex flex-col items-center justify-center p-8 border border-dashed border-green-500/30 rounded-2xl bg-green-500/5">
+          <CheckCircle2 class="w-10 h-10 text-green-400 mb-2 shadow-[0_0_20px_rgba(74,222,128,0.4)] rounded-full" />
+          <span class="text-green-200 font-medium">Aucun problème signalé. Tout est opérationnel.</span>
+        </div>
+      {:else}
+        {#each pmrIssues as issue}
+          <a href="/pmr?search={issue.rampe_id || issue.gare}" 
+             class="relative overflow-hidden block p-4 rounded-xl border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 hover:border-red-500/40 transition-all hover:-translate-y-1 group">
+            
+            <div class="absolute left-0 top-0 bottom-0 w-1 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.6)]"></div>
+
+            <div class="flex justify-between items-start mb-2 pl-2">
+              <h4 class="font-bold text-lg text-white group-hover:text-red-300 transition-colors">{issue.gare}</h4>
+              <span class="flex h-3 w-3 relative">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+              </span>
+            </div>
+            
+            <div class="pl-2 space-y-1">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-mono text-red-200/70 bg-red-900/40 px-2 py-0.5 rounded">
+                        {issue.etat_rampe}
+                    </span>
+                    <span class="text-sm text-gray-300 flex items-center gap-1">
+                        <MapPin class="w-3 h-3 text-red-400" /> Quai {issue.quai || '?'}
+                    </span>
+                </div>
+            </div>
+          </a>
+        {/each}
+      {/if}
+    </div>
+  {/if}
+</div>
 
   <div class="mb-10">
     <button 
