@@ -183,7 +183,7 @@
         <h2 class="text-3xl font-bold text-white tracking-tight">
           Bonjour, <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">{userProfile?.full_name || 'Utilisateur'}</span>
         </h2>
-        <p class="text-gray-400 text-sm">Bienvenue sur le portail opérationnel.</p>
+        <p class="text-gray-400 text-sm">Bienvenue sur BACO.</p>
       </div>
     </div>
   </header>
