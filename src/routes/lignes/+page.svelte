@@ -3,36 +3,45 @@
   import { supabase } from '$lib/supabase';
   import { fly, fade } from 'svelte/transition';
   import { 
-    Route, MapPin, TrainTrack, Milestone, Building2, Tag, Info, Loader2, Filter, CheckSquare, Square 
-  } from 'lucide-svelte';
+    Route, MapPin, TrainTrack, Milestone, Building2, Tag, Info, Loader2, Filter, CheckSquare, Square, Map 
+  } from 'lucide-svelte'; // J'ai ajouté l'icône Map si dispo, sinon Building2 fera l'affaire
 
   // --- ÉTAT ---
   let availableLines = [];
+  let linesToDistricts = {}; // Nouveau : Map ligne -> district
   let isLoadingFilters = true;
   let isLoadingResults = false;
 
   // Sélections
-  let selectedCategories = []; // ['Lignes', 'Adresse PN', 'Zone SPI']
+  let selectedDistricts = []; // Nouveau : ['DSO', 'DSE']
+  let selectedCategories = []; 
   let selectedLines = [];
-  let selectedZones = []; // ['FTY', 'FMS', 'FCR']
+  let selectedZones = []; 
 
   // Résultats structurés
-  let results = {}; 
+  let results = {};
 
   onMount(async () => {
     await loadLineFilters();
   });
 
   // --- CHARGEMENT FILTRES ---
-
   async function loadLineFilters() {
     isLoadingFilters = true;
     try {
+      // Modifié : On récupère aussi le 'district' dans ligne_data
       const [pn, spi, gares] = await Promise.all([
         supabase.from('pn_data').select('ligne_nom'),
         supabase.from('spi_data').select('ligne_nom'),
-        supabase.from('ligne_data').select('ligne_nom')
+        supabase.from('ligne_data').select('ligne_nom, district') 
       ]);
+
+      // Nouveau : On construit le dictionnaire Ligne -> District
+      (gares.data || []).forEach(g => {
+        if (g.ligne_nom && g.district) {
+            linesToDistricts[g.ligne_nom] = g.district;
+        }
+      });
 
       const allLines = [
         ...(pn.data || []).map(i => i.ligne_nom),
@@ -45,7 +54,6 @@
         const parseLine = (str) => parseFloat(str.replace('L.', '').replace('A', '.1').replace('C', '.2'));
         return parseLine(a) - parseLine(b);
       });
-
     } catch (e) {
       console.error("Erreur chargement lignes:", e);
     } finally {
@@ -53,9 +61,28 @@
     }
   }
 
-  // --- CHARGEMENT RÉSULTATS ---
+  // --- LOGIQUE DE FILTRAGE DYNAMIQUE ---
+  // Nouveau : On calcule les lignes à afficher selon le district choisi
+  $: filteredAvailableLines = availableLines.filter(line => {
+    // Si aucun district sélectionné, on montre tout (ou rien, selon votre préférence. Ici tout).
+    if (selectedDistricts.length === 0) return true;
+    
+    // On récupère le district de la ligne
+    const dist = linesToDistricts[line];
+    
+    // On garde la ligne si son district est dans la sélection
+    return dist && selectedDistricts.includes(dist);
+  });
 
+  // Si la liste filtrée change, on doit nettoyer les lignes sélectionnées qui ne sont plus visibles
+  $: {
+     const visibleLines = new Set(filteredAvailableLines);
+     selectedLines = selectedLines.filter(l => visibleLines.has(l));
+  }
+
+  // --- CHARGEMENT RÉSULTATS ---
   async function updateDisplay() {
+    // (Le reste de la fonction reste identique...)
     if (selectedCategories.length === 0 || selectedLines.length === 0) {
       results = {};
       return;
@@ -63,14 +90,12 @@
 
     isLoadingResults = true;
     const newResults = {};
-    
     selectedLines.forEach(line => {
       newResults[line] = { gares: [], pn: [], spi: [] };
     });
 
     try {
       const promises = [];
-
       // 1. Gares
       if (selectedCategories.includes("Lignes")) {
         promises.push(
@@ -81,28 +106,24 @@
             .then(res => ({ type: 'gares', data: res.data || [] }))
         );
       }
-
-      // 2. PN
+      // ... (Le reste des appels PN et SPI reste identique)
+      
+      // ... (Suite de la fonction updateDisplay inchangée)
+      
+      // Pour abréger ici, je ne remets pas tout le bloc try/catch s'il est inchangé, 
+      // assurez-vous de garder le code existant pour PN et SPI.
+      
+      // Restauration du code original pour la complétion :
       if (selectedCategories.includes("Adresse PN")) {
-        promises.push(
-          supabase.from('pn_data')
-            .select('*')
-            .in('ligne_nom', selectedLines)
-            .then(res => ({ type: 'pn', data: res.data || [] }))
-        );
+        promises.push(supabase.from('pn_data').select('*').in('ligne_nom', selectedLines).then(res => ({ type: 'pn', data: res.data || [] })));
       }
-
-      // 3. SPI
       if (selectedCategories.includes("Zone SPI")) {
         let q = supabase.from('spi_data').select('*').in('ligne_nom', selectedLines);
-        if (selectedZones.length > 0) {
-          q = q.in('zone', selectedZones);
-        }
+        if (selectedZones.length > 0) q = q.in('zone', selectedZones);
         promises.push(q.then(res => ({ type: 'spi', data: res.data || [] })));
       }
 
       const responses = await Promise.all(promises);
-
       responses.forEach(res => {
         res.data.forEach(item => {
           if (newResults[item.ligne_nom]) {
@@ -110,7 +131,6 @@
           }
         });
       });
-
       results = newResults;
 
     } catch (e) {
@@ -120,11 +140,10 @@
     }
   }
 
-  $: if (selectedCategories || selectedLines || selectedZones) {
-    updateDisplay(); 
+  $: if (selectedCategories || selectedLines || selectedZones || selectedDistricts) {
+    updateDisplay();
   }
 
-  // Styles communs Glass
   const toggleBtnClass = (active) => `flex items-center space-x-2 px-4 py-2 border rounded-full transition-all duration-300 text-sm font-medium shadow-sm hover:scale-105 active:scale-95 ${active ? 'bg-blue-500/20 border-blue-500/40 text-blue-300 shadow-[0_0_10px_rgba(59,130,246,0.2)]' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white hover:border-white/20'}`;
 </script>
 
@@ -148,9 +167,25 @@
 
   <main class="space-y-8">
     
-    <div class="bg-black/20 border border-white/5 rounded-2xl p-6" in:fly={{ y: 20, duration: 600, delay: 100 }}>
+    <div class="bg-black/20 border border-white/5 rounded-2xl p-6" in:fly={{ y: 20, duration: 600, delay: 50 }}>
       <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
         <div class="w-6 h-6 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center text-xs font-bold border border-blue-500/20">1</div>
+        Choisir le District
+      </h3>
+      <div class="flex flex-wrap gap-3">
+        {#each ['DSO', 'DSE'] as dist}
+          <label class="{toggleBtnClass(selectedDistricts.includes(dist))} cursor-pointer select-none">
+            <input type="checkbox" value={dist} bind:group={selectedDistricts} class="hidden">
+            {#if selectedDistricts.includes(dist)}<CheckSquare class="w-4 h-4 text-blue-400" />{:else}<Square class="w-4 h-4" />{/if}
+            <span>{dist}</span>
+          </label>
+        {/each}
+      </div>
+    </div>
+
+    <div class="bg-black/20 border border-white/5 rounded-2xl p-6" in:fly={{ y: 20, duration: 600, delay: 100 }}>
+      <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+        <div class="w-6 h-6 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center text-xs font-bold border border-blue-500/20">2</div>
         Choisir les catégories
       </h3>
       <div class="flex flex-wrap gap-3">
@@ -167,17 +202,21 @@
     {#if selectedCategories.length > 0}
       <div class="bg-black/20 border border-white/5 rounded-2xl p-6" in:fly={{ y: 20, duration: 600 }}>
         <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
-          <div class="w-6 h-6 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center text-xs font-bold border border-blue-500/20">2</div>
-          Sélectionner les lignes
+          <div class="w-6 h-6 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center text-xs font-bold border border-blue-500/20">3</div>
+          Sélectionner les lignes 
+          {#if selectedDistricts.length > 0}<span class="text-gray-500 font-normal ml-2 text-[10px] normal-case">({selectedDistricts.join(', ')})</span>{/if}
         </h3>
         
         {#if isLoadingFilters}
           <div class="flex items-center gap-2 text-gray-500 p-4"><Loader2 size={20} class="animate-spin text-blue-500/50"/> Chargement...</div>
-        {:else if availableLines.length === 0}
-          <p class="text-red-400 p-4">Aucune ligne disponible.</p>
+        
+        {:else if filteredAvailableLines.length === 0}
+          <div class="p-4 text-center border border-dashed border-white/10 rounded-xl">
+             <p class="text-gray-400 text-sm">Aucune ligne trouvée pour ce district.</p>
+          </div>
         {:else}
           <div class="flex flex-wrap gap-2 max-h-60 overflow-y-auto custom-scrollbar p-1">
-            {#each availableLines as line}
+            {#each filteredAvailableLines as line}
               <label class="{toggleBtnClass(selectedLines.includes(line))} cursor-pointer select-none py-1.5 px-3 text-xs">
                 <input type="checkbox" value={line} bind:group={selectedLines} class="hidden">
                 {#if selectedLines.includes(line)}<CheckSquare class="w-3.5 h-3.5 text-blue-400" />{:else}<Square class="w-3.5 h-3.5" />{/if}
@@ -192,7 +231,7 @@
     {#if selectedCategories.includes('Zone SPI') && selectedLines.length > 0}
       <div class="bg-black/20 border border-white/5 rounded-2xl p-6" in:fly={{ y: 20, duration: 600 }}>
         <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
-          <div class="w-6 h-6 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center text-xs font-bold border border-purple-500/20">3</div>
+          <div class="w-6 h-6 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center text-xs font-bold border border-purple-500/20">4</div>
           Filtres SPI (Optionnel)
         </h3>
         <div class="flex flex-wrap gap-3">
@@ -207,6 +246,7 @@
       </div>
     {/if}
 
+    
     <div class="border-t border-white/10 my-8"></div>
 
     <div id="resultDisplay" class="min-h-[200px]">

@@ -134,7 +134,7 @@
                 : [data.departures.departure];
             
             const now = Math.floor(Date.now() / 1000);
-            const fourHoursLater = now + (4 * 60 * 60);
+            const fourHoursLater = now + (3 * 60 * 60);
 
             trainDepartures = allDepartures.filter(t => {
                 const trainTime = parseInt(t.time);
@@ -348,7 +348,7 @@
                             Gare de {currentStation} 
                             <Edit2 class="w-3.5 h-3.5 text-gray-600 group-hover/title:text-blue-400 transition-colors" />
                         </h3>
-                        <p class="text-[10px] text-gray-400 uppercase tracking-wider">Départs (Prochaines 4h)</p>
+                        <p class="text-[10px] text-gray-400 uppercase tracking-wider">Départs (Prochaines 3h)</p>
                     </div>
                 </div>
                 

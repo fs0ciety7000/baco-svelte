@@ -29,6 +29,7 @@
   let searchTerm = "";
   let sortOrder = 'az'; // 'az' ou 'za'
   let viewMode = 'grid'; // 'grid' ou 'list'
+let rawContactData = [];
 
   // UI
   let loading = false;
@@ -47,11 +48,6 @@
     categorie: '',
     zone: '',
     groupe: ''
-  };
-
-  const ZONES_AUTORISEES = {
-    'MIA': ['FBC','FCR', 'FMS', 'FTY'],
-    'DSE': ['FL', 'FNR', 'GV', 'LL', 'LRB', 'LT']
   };
 
 
@@ -75,48 +71,57 @@
 
   // --- LOGIQUE DE CHARGEMENT ---
 
-  async function loadCategories() {
+ async function loadCategories() {
     loadingCategories = true;
-    const { data } = await supabase.from('contacts_repertoire').select('categorie_principale');
+    
+    // On récupère les couples Categorie/Zone existants
+    const { data } = await supabase.from('contacts_repertoire').select('categorie_principale, zone');
+    
     if (data) {
+      rawContactData = data; // On garde ces données en mémoire pour le filtrage dynamique
       categories = [...new Set(data.map(i => i.categorie_principale))].filter(Boolean).sort();
     }
+    
     loadingCategories = false;
+    
+    // On force une mise à jour des filtres au cas où
+    handleCategoryChange();
   }
 
   $: if (selectedCategories) handleCategoryChange();
   $: if (selectedCategories || selectedZones || searchTerm || sortOrder) loadContacts();
 
-  async function handleCategoryChange() {
-    // 1. On regarde quelles catégories "zonables" sont sélectionnées
-    const activeZonableCats = selectedCategories.filter(cat => ['MIA', 'DSE'].includes(cat));
-    
-    if (activeZonableCats.length > 0) {
-      showZoneFilters = true;
-      
-      // 2. On construit la liste des zones à afficher selon les règles
-      let allowedZones = [];
-      activeZonableCats.forEach(cat => {
-        if (ZONES_AUTORISEES[cat]) {
-          allowedZones = [...allowedZones, ...ZONES_AUTORISEES[cat]];
-        }
-      });
 
-      // 3. On met à jour l'affichage des boutons (Unique et Trié)
-      zones = [...new Set(allowedZones)].sort();
+function handleCategoryChange() {
+    if (selectedCategories.length === 0) {
+        showZoneFilters = false;
+        zones = [];
+        selectedZones = []; 
+        return;
+    }
 
-      // 4. Nettoyage : Si une zone était sélectionnée mais n'est plus autorisée (ex: switch MIA -> DSE), on la décoche
-      selectedZones = selectedZones.filter(z => zones.includes(z));
+    // On cherche toutes les zones qui appartiennent aux catégories sélectionnées
+    const availableZones = rawContactData
+        .filter(d => selectedCategories.includes(d.categorie_principale) && d.zone)
+        .map(d => d.zone);
+        
+    // On dédoublonne et on trie
+    const distinctZones = [...new Set(availableZones)].sort();
 
+    if (distinctZones.length > 0) {
+        showZoneFilters = true;
+        zones = distinctZones;
+        // On décoche les zones qui ne sont plus pertinentes (ex: si on décoche MIA, on décoche FMS)
+        selectedZones = selectedZones.filter(z => zones.includes(z));
     } else {
-      // Si ni MIA ni DSE ne sont cochés
-      showZoneFilters = false;
-      selectedZones = []; 
-      zones = [];
+        showZoneFilters = false;
+        zones = [];
+        selectedZones = [];
     }
   }
+ 
 
-  async function loadContacts() {
+async function loadContacts() {
     if (selectedCategories.length === 0 && !searchTerm) {
         displayedContacts = {};
         return;
@@ -129,27 +134,26 @@
         .order('nom', { ascending: sortOrder === 'az' });
 
     const orFilters = [];
-    const zonable = ['MIA', 'DSE'];
-    
-    const catsWithZones = selectedCategories.filter(c => zonable.includes(c));
-    const catsWithoutZones = selectedCategories.filter(c => !zonable.includes(c));
 
-    catsWithoutZones.forEach(cat => orFilters.push(`categorie_principale.eq.${cat}`));
+    // Pour chaque catégorie sélectionnée, on construit son filtre spécifique
+    selectedCategories.forEach(cat => {
+        // Quelles sont les zones valides pour CETTE catégorie dans la base ?
+        const validZonesForCat = rawContactData
+           .filter(d => d.categorie_principale === cat && d.zone)
+           .map(d => d.zone);
 
-    if (catsWithZones.length > 0) {
-      if (selectedZones.length > 0) {
-        selectedZones.forEach(zone => {
-          if (zone === 'FTY') {
-             if (catsWithZones.includes('MIA')) orFilters.push(`and(categorie_principale.eq.MIA,zone.eq.FTY),and(categorie_principale.eq.MIA,zone.eq.FMS,groupe.eq.TL/MPI)`);
-             if (catsWithZones.includes('DSE')) orFilters.push(`and(categorie_principale.eq.DSE,zone.eq.FTY)`);
-          } else {
-             catsWithZones.forEach(cat => orFilters.push(`and(categorie_principale.eq.${cat},zone.eq.${zone})`));
-          }
-        });
-      } else {
-        catsWithZones.forEach(cat => orFilters.push(`categorie_principale.eq.${cat}`));
-      }
-    }
+        // Parmi les zones cochées par l'utilisateur, lesquelles s'appliquent à CETTE catégorie ?
+        const appliedZones = selectedZones.filter(z => validZonesForCat.includes(z));
+
+        if (appliedZones.length > 0) {
+            // Si l'utilisateur a coché des zones spécifiques à cette catégorie, on filtre
+            // Exemple : (Categorie = MIA AND Zone IN (FMS, FTY))
+            orFilters.push(`and(categorie_principale.eq.${cat},zone.in.(${appliedZones.join(',')}))`);
+        } else {
+            // Sinon, on prend tout pour cette catégorie
+            orFilters.push(`categorie_principale.eq.${cat}`);
+        }
+    });
 
     if (orFilters.length > 0) query = query.or(orFilters.join(','));
     
@@ -158,7 +162,7 @@
     }
 
     const { data, error } = await query;
-    if (error) { console.error(error); return; }
+    if (error) { console.error(error); loading = false; return; }
 
     const groups = {};
     (data || []).forEach(c => {
@@ -169,7 +173,6 @@
         }
         groups[g].push(c);
     });
-
     displayedContacts = groups;
     loading = false;
   }
