@@ -10,7 +10,7 @@
     CalendarDays, Cake, ListTodo, Zap,
     // NOUVELLES ICONES :
     Cloud, Sun, CloudRain, CloudSnow, CloudLightning, Wind,
-    TrainFront, Clock, AlertCircle, Edit2, X,
+    TrainFront, Clock, AlertCircle, Edit2, X, TriangleAlert, Megaphone, Info
   } from 'lucide-svelte';
 
   // --- ÉTATS (DATA) ---
@@ -23,6 +23,8 @@
   // NOUVEAUX ÉTATS
   let weatherData = null;
   let trainDepartures = [];
+let disturbances = [];
+  let loadingDisturbances = true;
 
   // États de chargement
   let loadingPmr = true;
@@ -76,6 +78,8 @@
       if (savedStation) currentStation = savedStation;
     }
 
+    fetchDisturbances();
+
     // Chargement parallèle
     loadAllStations();
     loadWeatherMons(); 
@@ -84,6 +88,34 @@
     loadRecentJournal();
     loadPlanningWidgetsData();
   });
+
+  // --- Fonction pour récupérer les perturbations iRail ---
+  async function fetchDisturbances() {
+    try {
+      loadingDisturbances = true;
+      // On récupère les perturbations en français
+      const response = await fetch('https://api.irail.be/disturbances/?format=json&lang=fr');
+      const data = await response.json();
+      
+      // L'API renvoie un objet 'disturbance' qui peut être un tableau ou vide
+      if (data && data.disturbance) {
+        // Parfois c'est un objet unique, parfois un tableau, on normalise en tableau
+        disturbances = Array.isArray(data.disturbance) ? data.disturbance : [data.disturbance];
+      } else {
+        disturbances = [];
+      }
+    } catch (e) {
+      console.error("Erreur perturbations:", e);
+    } finally {
+      loadingDisturbances = false;
+    }
+  }
+  
+  // Fonction utilitaire pour formater le temps (timestamp iRail est en secondes)
+  const formatTime = (timestamp) => {
+      if (!timestamp) return '';
+      return new Date(timestamp * 1000).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+  };
 
   // --- FONCTIONS DE CHARGEMENT ---
 
@@ -423,6 +455,70 @@
     </div>
   </div>
 
+  <div class="glass-panel p-6 rounded-2xl border border-white/10 relative overflow-hidden flex flex-col h-[400px]">
+        
+        <div class="flex justify-between items-center mb-4 z-10">
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <div class="p-2 rounded-lg bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                    <TriangleAlert class="w-5 h-5" />
+                </div>
+                Info Trafic
+            </h2>
+            
+            {#if disturbances.length > 0}
+                <span class="px-2 py-1 bg-red-500/20 text-red-300 text-xs font-bold rounded-full border border-red-500/30 animate-pulse">
+                    {disturbances.length} incident(s)
+                </span>
+            {:else}
+                <span class="px-2 py-1 bg-green-500/20 text-green-300 text-xs font-bold rounded-full border border-green-500/30">
+                    Réseau fluide
+                </span>
+            {/if}
+        </div>
+
+        <div class="flex-1 overflow-y-auto custom-scrollbar z-10 space-y-3 pr-2">
+            
+            {#if loadingDisturbances}
+                <div class="flex flex-col items-center justify-center h-full text-gray-500 gap-2">
+                    <div class="w-6 h-6 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin"></div>
+                    <span class="text-xs">Chargement des infos...</span>
+                </div>
+
+            {:else if disturbances.length === 0}
+                <div class="flex flex-col items-center justify-center h-full text-gray-500 opacity-60">
+                    <ShieldCheck class="w-12 h-12 mb-2 text-green-400/50" />
+                    <p class="text-sm">Aucune perturbation majeure signalée.</p>
+                </div>
+
+            {:else}
+                {#each disturbances as dist}
+                    <div class="bg-black/20 border border-white/5 rounded-xl p-4 hover:bg-black/30 transition-colors group">
+                        <div class="flex justify-between items-start gap-3 mb-2">
+                            <h3 class="text-sm font-bold text-orange-200 group-hover:text-orange-100 leading-tight">
+                                {dist.title}
+                            </h3>
+                            <span class="text-[10px] font-mono text-gray-500 bg-black/40 px-1.5 py-0.5 rounded whitespace-nowrap">
+                                {formatTime(dist.timestamp)}
+                            </span>
+                        </div>
+                        
+                        <p class="text-xs text-gray-400 leading-relaxed">
+                            {dist.description}
+                        </p>
+
+                        {#if dist.link}
+                            <a href={dist.link} target="_blank" class="mt-2 inline-flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 hover:underline">
+                                <Info class="w-3 h-3"/> Plus d'infos
+                            </a>
+                        {/if}
+                    </div>
+                {/each}
+            {/if}
+        </div>
+
+        <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-orange-500/10 rounded-full blur-3xl pointer-events-none"></div>
+    </div>
+
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-8" in:fly={{ y: 20, duration: 800, delay: 200 }}>
     <div class="{glassCardBase} p-0">
       <button on:click={() => toggleWidget('leaves')} class="w-full text-left p-5 flex items-center justify-between group cursor-pointer">
@@ -605,3 +701,21 @@
   </div>
 
 </div>
+
+<style>
+  /* Custom Scrollbar pour le widget perturbations */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+</style>
