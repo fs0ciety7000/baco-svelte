@@ -10,7 +10,7 @@
     CalendarDays, Cake, ListTodo, Zap,
     // NOUVELLES ICONES :
     Cloud, Sun, CloudRain, CloudSnow, CloudLightning, Wind,
-    TrainFront, Clock, AlertCircle
+    TrainFront, Clock, AlertCircle, Edit2, X,
   } from 'lucide-svelte';
 
   // --- ÉTATS (DATA) ---
@@ -28,14 +28,25 @@
   let loadingPmr = true;
   let loadingJournal = true;
   let loadingPlanning = true;
-  let loadingWeather = true; // Nouveau
-  let loadingTrains = true;  // Nouveau
+  let loadingWeather = true; 
+  let loadingTrains = true;  
   
   // États d'ouverture des widgets
   let isPmrOpen = true;
   let isJournalOpen = true;
   let isLeavesOpen = true;
   let isBirthdaysOpen = true;
+
+  // --- ETATS SELECTION GARE ---
+  let currentStation = 'Mons'; // Gare par défaut
+  let allStations = []; // Liste complète des gares
+  let stationSearch = ''; // Texte de recherche
+  let showStationSelector = false; // Afficher/Masquer le sélecteur
+
+  // Filtrage dynamique des gares selon la recherche
+  $: filteredStations = allStations.filter(s => 
+      s.name.toLowerCase().includes(stationSearch.toLowerCase())
+  ).slice(0, 10); 
 
   // --- STYLES GLASSMORPHIC & NÉON ---
   const glassCardBase = "relative overflow-hidden rounded-2xl border border-white/5 bg-white/5 backdrop-blur-md transition-all duration-300 group hover:bg-white/10 hover:border-white/20 hover:shadow-[0_8px_32px_0_rgba(0,0,0,0.36)]";
@@ -59,17 +70,42 @@
       isJournalOpen = localStorage.getItem('bacoJournalWidgetState') !== 'closed';
       isLeavesOpen = localStorage.getItem('bacoLeavesWidgetState') !== 'closed';
       isBirthdaysOpen = localStorage.getItem('bacoBirthdaysWidgetState') !== 'closed';
+    
+      // Récupérer la gare sauvegardée
+      const savedStation = localStorage.getItem('bacoFavoriteStation');
+      if (savedStation) currentStation = savedStation;
     }
 
     // Chargement parallèle
+    loadAllStations();
+    loadWeatherMons(); 
+    loadTrains();
     loadPmrIssues();
     loadRecentJournal();
     loadPlanningWidgetsData();
-    loadWeatherMons(); // Nouveau
-    loadTrainsMons();  // Nouveau
   });
 
-  // --- NOUVELLES FONCTIONS DE CHARGEMENT ---
+  // --- FONCTIONS DE CHARGEMENT ---
+
+  async function loadAllStations() {
+      try {
+          const res = await fetch('https://api.irail.be/stations/?format=json&lang=fr');
+          const data = await res.json();
+          allStations = data.station;
+      } catch (e) {
+          console.error("Erreur chargement liste gares", e);
+      }
+  }
+
+  async function selectStation(stationName) {
+      currentStation = stationName;
+      showStationSelector = false;
+      stationSearch = ''; 
+      if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('bacoFavoriteStation', currentStation);
+      }
+      loadTrains(); 
+  }
 
   async function loadWeatherMons() {
     loadingWeather = true;
@@ -84,41 +120,33 @@
     loadingWeather = false;
   }
 
-async function loadTrainsMons() {
+  async function loadTrains() {
     loadingTrains = true;
+    trainDepartures = []; 
+
     try {
-        // On interroge l'API. Elle renvoie naturellement les prochains trains à partir de maintenant.
-        const res = await fetch('https://api.irail.be/liveboard/?station=Mons&format=json&lang=fr');
+        const res = await fetch(`https://api.irail.be/liveboard/?station=${encodeURIComponent(currentStation)}&format=json&lang=fr`);
         const data = await res.json();
         
         if (data && data.departures && data.departures.departure) {
-            // Parfois l'API renvoie un objet unique s'il n'y a qu'un train, on s'assure que c'est un tableau
             const allDepartures = Array.isArray(data.departures.departure) 
                 ? data.departures.departure 
                 : [data.departures.departure];
             
-            // Calcul limite +4h (en secondes)
             const now = Math.floor(Date.now() / 1000);
             const fourHoursLater = now + (4 * 60 * 60);
 
             trainDepartures = allDepartures.filter(t => {
                 const trainTime = parseInt(t.time);
-                // On garde tout ce qui est avant la limite de +4h
-                // On NE filtre PAS ">= now" pour inclure les trains en retard 
-                // (prévus il y a 5min mais qui ne sont pas encore partis)
-                return trainTime <= fourHoursLater;
+                return trainTime <= fourHoursLater; 
             });
-        } else {
-            trainDepartures = [];
         }
     } catch (e) {
         console.error("Erreur trains", e);
-        trainDepartures = [];
     }
     loadingTrains = false;
   }
 
-  // --- FONCTIONS EXISTANTES ---
   async function loadPmrIssues() {
     loadingPmr = true;
     const { data, error } = await supabase.from('pmr_data').select('gare, quai, etat_rampe, rampe_id').in('etat_rampe', ['HS', 'En attente']).order('gare', { ascending: true });
@@ -274,35 +302,72 @@ async function loadTrainsMons() {
         </div>
     </div>
 
- <div class="{glassCardBase} p-0 lg:col-span-2 flex flex-col h-full min-h-[300px]">
-        <div class="p-5 border-b border-white/5 flex justify-between items-center bg-white/[0.02] sticky top-0 z-20 backdrop-blur-xl">
-             <div class="flex items-center gap-3">
-                <div class="p-2 rounded-lg bg-blue-600/20 text-blue-300 border border-blue-500/30">
-                    <TrainFront class="w-5 h-5" />
+    <div class="{glassCardBase} p-0 lg:col-span-2 flex flex-col h-full min-h-[350px] relative">
+        
+        <div class="p-5 border-b border-white/5 flex justify-between items-center bg-white/[0.02] sticky top-0 z-20 backdrop-blur-xl min-h-[80px]">
+             
+             {#if showStationSelector}
+                <div class="flex-1 flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div class="relative flex-1">
+                        <Search class="absolute left-3 top-2.5 w-4 h-4 text-gray-400"/>
+                        <input 
+                            type="text" 
+                            bind:value={stationSearch} 
+                            placeholder="Chercher une gare (ex: Namur)..." 
+                            class="w-full bg-black/40 border border-blue-500/50 rounded-xl py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                            autoFocus
+                        />
+                        {#if stationSearch.length > 1}
+                            <div class="absolute top-full left-0 right-0 mt-2 bg-[#1a1d24] border border-white/10 rounded-xl shadow-2xl z-50 max-h-60 overflow-y-auto custom-scrollbar">
+                                {#each filteredStations as station}
+                                    <button 
+                                        on:click={() => selectStation(station.name)}
+                                        class="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-blue-600 hover:text-white transition-colors border-b border-white/5 last:border-0"
+                                    >
+                                        {station.name}
+                                    </button>
+                                {/each}
+                                {#if filteredStations.length === 0}
+                                    <div class="p-3 text-xs text-gray-500 text-center">Aucune gare trouvée.</div>
+                                {/if}
+                            </div>
+                        {/if}
+                    </div>
+                    <button on:click={() => showStationSelector = false} class="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors">
+                        <X class="w-5 h-5" />
+                    </button>
                 </div>
-                <div>
-                    <h3 class="text-lg font-bold text-white">Gare de Mons</h3>
-                    <p class="text-[10px] text-gray-400 uppercase tracking-wider">Départs (Prochaines 4h)</p>
+
+             {:else}
+                <div class="flex items-center gap-3 group/title cursor-pointer" on:click={() => { showStationSelector = true; setTimeout(() => document.querySelector('input[type="text"]')?.focus(), 100); }}>
+                    <div class="p-2 rounded-lg bg-blue-600/20 text-blue-300 border border-blue-500/30 group-hover/title:bg-blue-500 group-hover/title:text-white transition-colors">
+                        <TrainFront class="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                            Gare de {currentStation} 
+                            <Edit2 class="w-3.5 h-3.5 text-gray-600 group-hover/title:text-blue-400 transition-colors" />
+                        </h3>
+                        <p class="text-[10px] text-gray-400 uppercase tracking-wider">Départs (Prochaines 4h)</p>
+                    </div>
                 </div>
-             </div>
-             {#if !loadingTrains}
-                <div class="flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-500/10 border border-green-500/20">
-                    <div class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-                    <span class="text-[10px] font-bold text-green-400 uppercase">Live EMMA</span>
-                </div>
+                
+                {#if !loadingTrains}
+                    <div class="flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-500/10 border border-green-500/20">
+                        <div class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                        <span class="text-[10px] font-bold text-green-400 uppercase">Live</span>
+                    </div>
+                {/if}
              {/if}
         </div>
 
         <div class="flex-1 overflow-y-auto custom-scrollbar max-h-[300px]">
             {#if loadingTrains}
-                <div class="p-6 space-y-3">
-                    {#each Array(4) as _}
-                        <div class="flex justify-between items-center animate-pulse">
-                            <div class="h-4 w-12 bg-white/10 rounded"></div>
-                            <div class="h-4 w-32 bg-white/10 rounded"></div>
-                            <div class="h-4 w-8 bg-white/10 rounded"></div>
-                        </div>
-                    {/each}
+                <div class="p-6 space-y-4">
+                    <div class="flex flex-col items-center justify-center h-40 gap-3">
+                        <div class="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+                        <p class="text-xs text-blue-400 animate-pulse">Chargement de {currentStation}...</p>
+                    </div>
                 </div>
             {:else if trainDepartures.length > 0}
                 <div class="divide-y divide-white/5 text-sm">
@@ -348,13 +413,16 @@ async function loadTrainsMons() {
             {:else}
                 <div class="flex flex-col items-center justify-center h-40 text-gray-500 gap-2">
                     <Clock class="w-8 h-8 opacity-50" />
-                    <p class="text-sm">Aucun départ prévu dans les 4h.</p>
-                    <p class="text-xs opacity-50">(Vérifiez l'heure, il est peut-être la nuit ?)</p>
+                    <p class="text-sm">Aucun départ affiché.</p>
+                    <p class="text-xs opacity-50 text-center px-4">
+                        Il n'y a peut-être aucun train prévu à {currentStation} dans les 4 prochaines heures.
+                    </p>
                 </div>
             {/if}
         </div>
     </div>
   </div>
+
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-8" in:fly={{ y: 20, duration: 800, delay: 200 }}>
     <div class="{glassCardBase} p-0">
       <button on:click={() => toggleWidget('leaves')} class="w-full text-left p-5 flex items-center justify-between group cursor-pointer">
