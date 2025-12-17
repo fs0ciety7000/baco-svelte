@@ -235,6 +235,13 @@
   const inputClass = "block w-full rounded-xl border-white/10 bg-black/40 p-3 text-sm font-medium text-white placeholder-gray-600 focus:border-blue-500/50 focus:ring-blue-500/50 transition-all outline-none disabled:opacity-50 disabled:cursor-not-allowed";
   const labelClass = "block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1";
 
+// --- STYLE DYNAMIQUE (Correction @const) ---
+  $: borderClass = profileData.role === 'admin' 
+      ? 'bg-gradient-to-br from-yellow-300/80 via-amber-400/50 to-yellow-500/80 shadow-[0_0_35px_rgba(245,158,11,0.6)] ring-1 ring-yellow-400/50' // Doré
+      : profileData.role === 'moderator'
+      ? 'bg-gradient-to-br from-purple-500 to-fuchsia-600 shadow-[0_0_30px_rgba(168,85,247,0.6)] animate-pulse' // Violet
+      : 'bg-gradient-to-br from-blue-500/50 to-purple-500/50 shadow-[0_0_30px_rgba(59,130,246,0.2)]'; // Défaut
+
 </script>
 
 <div class="container mx-auto p-4 md:p-8 space-y-8 min-h-screen">
@@ -270,21 +277,23 @@
           <div class="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-blue-900/20 to-transparent pointer-events-none"></div>
 
           <div class="relative flex flex-col items-center mb-8">
-  <div class="relative group">
-    <div class="w-36 h-36 rounded-full p-1 bg-gradient-to-br from-blue-500/50 to-purple-500/50 shadow-[0_0_30px_rgba(59,130,246,0.2)]">
+
+<div class="relative group">
+    <div class="w-36 h-36 rounded-full p-1 transition-all duration-500 {borderClass}">
         <img 
           src={profileData.avatar_url || 'https://via.placeholder.com/150'} 
           alt="Avatar" 
           class="w-full h-full rounded-full object-cover border-4 border-[#0f1115]"
         >
     </div>
+
     {#if isMyProfile || isAdmin}
       <label class="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-all cursor-pointer text-white backdrop-blur-sm m-1">
         {#if isUploading} <Loader2 class="animate-spin w-8 h-8"/> {:else} <Camera size={32} /> {/if}
         <input type="file" class="hidden" accept="image/*" on:change={handleAvatarUpload} disabled={isUploading}>
       </label>
     {/if}
-  </div>
+</div>
   
   <h2 class="text-2xl font-bold text-white mt-4">{profileData.full_name || 'Sans Nom'}</h2>
   <p class="text-gray-400 text-sm">@{profileData.username || 'username'}</p>

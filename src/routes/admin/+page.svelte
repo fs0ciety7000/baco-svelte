@@ -504,12 +504,11 @@ async function pardonInfraction(infractionId) {
                 
                 <tr class="group hover:bg-white/[0.02] transition-colors">
                   
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <button 
-                        on:click={() => handleViewEdit(user.email)} 
-                        disabled={user.user_id === currentAdminId}
-                        class="flex items-center gap-4 w-full text-left 
-                               {user.user_id !== currentAdminId ? 'cursor-pointer group-hover:text-blue-400' : 'cursor-default opacity-60'}
+                 <td class="px-6 py-4 whitespace-nowrap">
+                    <a 
+                        href="/admin/utilisateur/{user.user_id}"
+                        class="flex items-center gap-4 w-full text-left block
+                               {user.user_id !== currentAdminId ? 'cursor-pointer group-hover:text-blue-400' : 'cursor-default opacity-60 pointer-events-none'}
                                focus:outline-none transition-colors"
                     >
                       <img class="h-10 w-10 rounded-full object-cover border border-white/10 shadow-sm flex-shrink-0" src={user.avatar_url} alt="">
@@ -517,7 +516,7 @@ async function pardonInfraction(infractionId) {
                         <div class="text-sm font-bold text-gray-200">{user.full_name || user.email}</div>
                         <div class="text-xs text-gray-500">{user.email}</div>
                       </div>
-                    </button>
+                    </a>
                   </td>
 
                   <td class="px-6 py-4 whitespace-nowrap">
