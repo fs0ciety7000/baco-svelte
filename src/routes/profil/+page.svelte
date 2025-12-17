@@ -270,24 +270,39 @@
           <div class="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-blue-900/20 to-transparent pointer-events-none"></div>
 
           <div class="relative flex flex-col items-center mb-8">
-            <div class="relative group">
-              <div class="w-36 h-36 rounded-full p-1 bg-gradient-to-br from-blue-500/50 to-purple-500/50 shadow-[0_0_30px_rgba(59,130,246,0.2)]">
-                  <img 
-                    src={profileData.avatar_url || 'https://via.placeholder.com/150'} 
-                    alt="Avatar" 
-                    class="w-full h-full rounded-full object-cover border-4 border-[#0f1115]"
-                  >
-              </div>
-              {#if isMyProfile || isAdmin}
-                <label class="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-all cursor-pointer text-white backdrop-blur-sm m-1">
-                  {#if isUploading} <Loader2 class="animate-spin w-8 h-8"/> {:else} <Camera size={32} /> {/if}
-                  <input type="file" class="hidden" accept="image/*" on:change={handleAvatarUpload} disabled={isUploading}>
-                </label>
-              {/if}
-            </div>
-            <h2 class="text-2xl font-bold text-white mt-4">{profileData.full_name || 'Sans Nom'}</h2>
-            <p class="text-gray-400 text-sm">@{profileData.username || 'username'}</p>
-          </div>
+  <div class="relative group">
+    <div class="w-36 h-36 rounded-full p-1 bg-gradient-to-br from-blue-500/50 to-purple-500/50 shadow-[0_0_30px_rgba(59,130,246,0.2)]">
+        <img 
+          src={profileData.avatar_url || 'https://via.placeholder.com/150'} 
+          alt="Avatar" 
+          class="w-full h-full rounded-full object-cover border-4 border-[#0f1115]"
+        >
+    </div>
+    {#if isMyProfile || isAdmin}
+      <label class="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-all cursor-pointer text-white backdrop-blur-sm m-1">
+        {#if isUploading} <Loader2 class="animate-spin w-8 h-8"/> {:else} <Camera size={32} /> {/if}
+        <input type="file" class="hidden" accept="image/*" on:change={handleAvatarUpload} disabled={isUploading}>
+      </label>
+    {/if}
+  </div>
+  
+  <h2 class="text-2xl font-bold text-white mt-4">{profileData.full_name || 'Sans Nom'}</h2>
+  <p class="text-gray-400 text-sm">@{profileData.username || 'username'}</p>
+  
+  {#if profileData.role === 'admin'}
+      <div class="
+          mt-5 
+          inline-flex items-center gap-2 px-4 py-1.5 rounded-full
+          bg-gradient-to-br from-yellow-500/10 to-amber-600/20 
+          border border-yellow-500/30 
+          shadow-[0_0_15px_rgba(234,179,8,0.2)] 
+          backdrop-blur-md
+      ">
+          <Shield size={14} class="text-yellow-200 drop-shadow-[0_0_8px_rgba(253,224,71,0.5)]" />
+          <span class="text-xs font-bold tracking-widest uppercase text-yellow-100 drop-shadow-sm">Administrateur</span>
+      </div>
+  {/if}
+</div>
 
           <div class="space-y-6">
             <div class="grid grid-cols-1 gap-5">
