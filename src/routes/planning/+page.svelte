@@ -98,6 +98,18 @@
         return check >= start && check <= end;
     };
     
+    // --- FONCTION UTILITAIRE SEMAINE ISO ---
+    function getWeekNumber(d) {
+        // Copie de la date pour ne pas modifier l'originale
+        d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        // Ajustement au jeudi le plus proche
+        d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+        // 1er janvier
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        // Calcul
+        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    }
+
     function generateCalendarDays(year, month) {
         const calendarDays = [];
         const firstDayOfMonth = new Date(year, month, 1);
@@ -124,7 +136,9 @@
                 dayOfMonth: day.getDate(),
                 isCurrentMonth: day.getMonth() === month,
                 isToday: day.toDateString() === today.toDateString(),
-                leaves: dayLeaves
+                leaves: dayLeaves,
+                weekNumber: getWeekNumber(currentDayObj),
+                isMonday: currentDayObj.getDay() === 1
             });
             day.setDate(day.getDate() + 1);
             loops++;
@@ -459,9 +473,19 @@
                             {day.isCurrentMonth ? '' : 'bg-black/60 opacity-50'}
                             {day.isToday ? 'bg-blue-900/10 shadow-[inset_0_0_20px_rgba(59,130,246,0.1)]' : ''}"
                         >
-                            <div class="flex justify-between items-start p-2">
-                                <span class="text-xs font-bold {day.isToday ? 'text-blue-400' : 'text-gray-500'}">{day.dayOfMonth}</span>
-                            </div>
+                           <div class="flex justify-between items-start p-2">
+    {#if day.isMonday}
+        <span class="text-[9px] font-mono font-bold text-blue-300 bg-blue-500/20 px-1.5 rounded border border-blue-500/30">
+            S{day.weekNumber}
+        </span>
+    {:else}
+        <span></span>
+    {/if}
+
+    <span class="text-xs font-bold {day.isToday ? 'text-blue-400' : 'text-gray-500'}">
+        {day.dayOfMonth}
+    </span>
+</div>
 
                             {#if day.leaves.length > 0}
                                 <div class="px-1 flex flex-col gap-1 mb-2 relative z-10 group/leaves">

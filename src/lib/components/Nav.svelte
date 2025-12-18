@@ -98,13 +98,16 @@ const activeTile = `
       notificationsCount = count || 0;
     } catch (err) { console.error(err); }
   }
-
-  function getWeekNumber(d) {
-    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+function getWeekNumber(date) {
+    // On copie la date pour ne pas modifier l'originale
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    // On ajuste au jeudi le plus proche
     d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-    var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    // On récupère le 1er janvier de cette année
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    // Calcul du numéro de semaine
     return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-  }
+}
   
   function generateCalendarDays(year, month) {
     const calendarDays = [];
@@ -120,7 +123,7 @@ const activeTile = `
         dayOfMonth: day.getDate(),
         isCurrentMonth: day.getMonth() === month,
         isToday: day.toDateString() === today.toDateString(),
-        weekNumber: getWeekNumber(day),
+        weekNum: getWeekNumber(day),
         isStartOfWeek: getISOWeekday(day) === 1
       });
       day.setDate(day.getDate() + 1);
@@ -324,15 +327,22 @@ const activeTile = `
                           <div class="grid grid-cols-7 gap-1 text-center mb-2">
                               {#each dayNames as day}<div class="text-[10px] font-bold text-gray-500 uppercase">{day}</div>{/each}
                           </div>
-                          <div class="grid grid-cols-7 gap-1 text-center">
-                              {#each days as day}
-                                  <div class="w-full aspect-square rounded-md flex items-center justify-center text-xs font-medium 
-                                      {day.isCurrentMonth ? 'text-gray-300' : 'text-gray-600'} 
-                                      {day.isToday ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'hover:bg-white/10 cursor-pointer'}">
-                                      {day.dayOfMonth}
-                                  </div>
-                              {/each}
-                          </div>
+                         <div class="grid grid-cols-7 gap-1 text-center">
+    {#each days as day}
+        <div class="w-full aspect-square rounded-md flex items-center justify-center text-xs font-medium relative
+            {day.isCurrentMonth ? 'text-gray-300' : 'text-gray-600'} 
+            {day.isToday ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'hover:bg-white/10 cursor-pointer'}">
+
+            {#if day.isStartOfWeek}
+                <span class="absolute top-0.5 left-0.5 text-[8px] font-mono opacity-50 {day.isToday ? 'text-white' : 'text-blue-400'}">
+                    S{day.weekNum}
+                </span>
+            {/if}
+
+            {day.dayOfMonth}
+        </div>
+    {/each}
+</div>
                       </div>
                   {/if}
               </div>
