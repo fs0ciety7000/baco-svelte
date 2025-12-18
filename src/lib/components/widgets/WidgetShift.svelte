@@ -1,12 +1,12 @@
 <script>
     import { onMount, onDestroy } from 'svelte';
-    import { Clock, Briefcase, Coffee, LogOut, AlertCircle } from 'lucide-svelte';
+    import { Clock, Briefcase, Coffee, LogOut, AlertCircle, Timer } from 'lucide-svelte';
     import { fade, fly } from 'svelte/transition';
     import { toast } from '$lib/stores/toast';
   
     // --- PROPS ---
     export let id = 'default'; 
-    export let maxHours = 9; // "x heures" avant reset forcé (Sécurité)
+    export let maxHours = 12;
 
     // --- CONFIG ---
     const SHIFTS = {
@@ -19,8 +19,9 @@
     let activeShift = null; 
     let progress = 0;
     let timeString = "";
+    let remainingString = ""; // AJOUT : Temps restant formaté (ex: 2h 15m)
     let interval;
-    let isOvertime = false; // Si on a dépassé 100%
+    let isOvertime = false;
 
     const STORAGE_KEY = `baco_shift_checkin_${id}`;
 
@@ -58,6 +59,7 @@
         activeShift = null;
         progress = 0;
         isOvertime = false;
+        remainingString = "";
         localStorage.removeItem(STORAGE_KEY);
     }
   
@@ -67,50 +69,51 @@
         const now = new Date();
         const config = SHIFTS[activeShift];
         
-        // 1. Déterminer les bornes temporelles
         let startDate = new Date(now);
         startDate.setHours(config.start, 0, 0, 0);
         
         let endDate = new Date(now);
         endDate.setHours(config.end, 0, 0, 0);
 
-        // Gestion Nuit & Chevauchement de jours
         if (config.isNight) {
-            // Si on est le matin (0h-12h), le shift a commencé hier soir
             if (now.getHours() < 12) {
                 startDate.setDate(startDate.getDate() - 1);
             } else {
-                // Si on est le soir (12h-24h), le shift finit demain
                 endDate.setDate(endDate.getDate() + 1);
             }
-        } else {
-            // Pour AM/PM, si on est très tôt le matin (ex: 1h du mat) et qu'on regarde le shift PM (14h-22h)
-            // On regarde probablement celui d'hier si on est encore connecté ? 
-            // La logique "hoursSinceStart" ci-dessous gérera la déconnexion.
         }
 
-        // 2. Calcul du temps écoulé
         const elapsedMs = now - startDate;
         const totalDurationMs = endDate - startDate;
         const elapsedHours = elapsedMs / (1000 * 60 * 60);
 
-        // 3. SÉCURITÉ : AUTO-CHECKOUT (Si > x heures)
-        // Permet de nettoyer les sessions oubliées
+        // Sécurité
         if (elapsedHours > maxHours) {
-            checkOut(true); // True = Automatique
+            checkOut(true);
             return;
         }
 
-        // 4. Calcul Pourcentage
+        // Calcul pourcentage
         let pct = (elapsedMs / totalDurationMs) * 100;
+
+        // AJOUT : Calcul du temps restant
+        const remainingMs = totalDurationMs - elapsedMs;
         
-        // Si > 100%, on est en "Overtime" (mais < maxHours)
-        if (pct >= 100) {
-            progress = 100;
-            isOvertime = true;
-        } else {
-            progress = Math.max(pct, 0);
+        if (remainingMs > 0) {
+            // Conversion en heures / minutes
+            const h = Math.floor(remainingMs / (1000 * 60 * 60));
+            const m = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+            remainingString = `${h}h ${m.toString().padStart(2, '0')}m`;
             isOvertime = false;
+            progress = Math.max(pct, 0);
+        } else {
+            // Temps dépassé
+            isOvertime = true;
+            progress = 100;
+            const overdueMs = Math.abs(remainingMs);
+            const h = Math.floor(overdueMs / (1000 * 60 * 60));
+            const m = Math.floor((overdueMs % (1000 * 60 * 60)) / (1000 * 60));
+            remainingString = `+ ${h}h ${m}m`;
         }
     }
 </script>
@@ -183,18 +186,21 @@
                         on:click={() => checkOut(false)}
                         class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/20 transition-colors"
                     >
-                        <LogOut class="w-3 h-3" /> Stop
+                        <LogOut class="w-3 h-3" /> Check-Out
                     </button>
                     
-                    {#if isOvertime}
-                         <span class="text-xs font-bold text-red-400 flex items-center gap-1">
-                            <AlertCircle class="w-3 h-3"/> +{(new Date().getHours() - SHIFTS[activeShift].end)}h
-                         </span>
-                    {:else}
-                        <span class="text-xs font-bold text-white bg-white/10 px-2 py-1 rounded border border-white/5">
-                            {Math.round(progress)}%
+                    <div class="flex items-center gap-2">
+                        <span class="flex items-center gap-1 text-xs font-mono {isOvertime ? 'text-red-400 font-bold' : 'text-gray-400'}">
+                            {#if !isOvertime}<Timer class="w-3 h-3" />{/if}
+                            {remainingString}
                         </span>
-                    {/if}
+
+                        {#if !isOvertime}
+                            <span class="text-xs font-bold text-white bg-white/10 px-2 py-1 rounded border border-white/5">
+                                {Math.round(progress)}%
+                            </span>
+                        {/if}
+                    </div>
                 </div>
             </div>
         {/if}
