@@ -206,11 +206,11 @@
     </div>
   </div>
 
-  <section 
+ <section 
     use:dndzone={{items, flipDurationMs, dropTargetStyle: { outline: '2px dashed rgba(59,130,246,0.5)', borderRadius: '1rem' }}} 
     on:consider={handleDndConsider} 
     on:finalize={handleDndFinalize}
-    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20 min-h-[50vh]"
+    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 auto-rows-[180px] gap-6 pb-20 min-h-[50vh]"
   >
     {#each items as item (item.id)}
       <div 
