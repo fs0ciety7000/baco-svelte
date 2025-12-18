@@ -1,28 +1,43 @@
 <script>
   import { onMount } from 'svelte';
-  import { Save, Eraser, PenLine } from 'lucide-svelte';
+  import { Eraser, PenLine } from 'lucide-svelte';
   import { fade } from 'svelte/transition';
 
-  // L'ID est passé par le parent (+page.svelte) pour rendre le stockage unique
   export let id; 
 
   let content = "";
-  let saveStatus = "saved"; // 'saving', 'saved', 'modified'
+  let saveStatus = "saved"; 
   let timeout;
+  let textareaEl; // Référence vers l'élément HTML
 
   const STORAGE_KEY = `baco_notepad_${id}`;
 
   onMount(() => {
-    // Charger le contenu spécifique à CE widget
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) content = saved;
+    if (saved) {
+        content = saved;
+    }
+    // Ajuster la hauteur au chargement (après que le DOM soit prêt)
+    setTimeout(autoResize, 0);
   });
+
+  function autoResize() {
+    if (!textareaEl) return;
+    
+    // 1. On réinitialise la hauteur pour permettre de RÉDUIRE si on efface du texte
+    textareaEl.style.height = 'auto';
+    
+    // 2. On applique la nouvelle hauteur basée sur le contenu (+ un petit padding)
+    textareaEl.style.height = textareaEl.scrollHeight + 'px';
+  }
 
   function handleInput() {
     saveStatus = "modified";
-    clearTimeout(timeout);
     
-    // Auto-save (Debounce 1s)
+    // Ajustement de la taille à chaque frappe
+    autoResize();
+
+    clearTimeout(timeout);
     timeout = setTimeout(() => {
         saveStatus = "saving";
         localStorage.setItem(STORAGE_KEY, content);
@@ -35,12 +50,14 @@
         content = "";
         localStorage.removeItem(STORAGE_KEY);
         saveStatus = "saved";
+        autoResize(); // Réinitialiser la taille après effacement
     }
   }
 </script>
 
-<div class="h-full flex flex-col bg-[#0f1115]/50 rounded-xl border border-white/5 backdrop-blur-sm overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-    <div class="flex justify-between items-center px-4 py-3 border-b border-white/5 bg-white/5">
+<div class="flex flex-col bg-[#0f1115]/50 rounded-xl border border-white/5 backdrop-blur-sm overflow-hidden shadow-sm hover:shadow-md transition-shadow min-h-[160px]">
+    
+    <div class="flex justify-between items-center px-4 py-3 border-b border-white/5 bg-white/5 shrink-0">
         <div class="flex items-center gap-2 text-yellow-400">
             <PenLine class="w-4 h-4" />
             <span class="text-sm font-bold uppercase tracking-wider">Note Rapide</span>
@@ -60,9 +77,11 @@
     </div>
 
     <textarea 
+        bind:this={textareaEl}
         bind:value={content}
         on:input={handleInput}
         placeholder="Numéro de bus, rappel, nom..."
-        class="flex-grow w-full bg-transparent p-4 text-sm text-gray-300 placeholder-gray-600 resize-none focus:outline-none custom-scrollbar leading-relaxed"
+        rows="1"
+        class="w-full bg-transparent p-4 text-sm text-gray-300 placeholder-gray-600 resize-none focus:outline-none custom-scrollbar leading-relaxed overflow-hidden"
     ></textarea>
 </div>
