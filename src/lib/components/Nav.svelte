@@ -3,6 +3,7 @@
   import { supabase } from '$lib/supabase';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { currentThemeId } from '$lib/stores/theme';
   import { slide, fly } from 'svelte/transition';
 
   // Icônes
@@ -24,20 +25,28 @@
   let isModerator = false;
   let notificationsCount = 0;
   let notifications = [];
-  let isChristmasTheme = false;
+$: isChristmasTheme = $currentThemeId === 'christmas';
+
+
+
 
   // --- STYLES "GLASS & NÉON" ---
   const glassTileBase = "relative flex items-center justify-center rounded-xl border border-white/5 bg-white/5 backdrop-blur-md transition-all duration-300 group";
 
+const activeTile = `
+    bg-[rgba(var(--color-primary),0.1)] 
+    border-[rgba(var(--color-primary),0.3)] 
+    text-gray-100 
+    shadow-[0_0_15px_rgba(var(--color-primary),0.25)]
+    [&>svg]:text-[rgb(var(--color-primary))] 
+    [&>svg]:drop-shadow-[0_0_8px_rgba(var(--color-primary),0.6)]
+  `;
+
   const neonHover = `
     hover:bg-white/10 hover:border-white/20 hover:-translate-y-0.5 hover:shadow-[0_4px_20px_-5px_rgba(0,0,0,0.5)]
     [&>svg]:transition-all [&>svg]:duration-300 
-    hover:[&>svg]:text-blue-300 hover:[&>svg]:drop-shadow-[0_0_8px_rgba(147,197,253,0.8)]
-  `;
-
-  const activeTile = `
-    bg-blue-600/10 border-blue-500/30 text-blue-100 shadow-[0_0_15px_rgba(59,130,246,0.25)]
-    [&>svg]:text-blue-300 [&>svg]:drop-shadow-[0_0_8px_rgba(147,197,253,0.6)]
+    hover:[&>svg]:text-[rgb(var(--color-glow))] 
+    hover:[&>svg]:drop-shadow-[0_0_8px_rgba(var(--color-primary),0.8)]
   `;
 
   const inactiveTile = "text-gray-400 hover:text-white";
@@ -71,11 +80,8 @@
   });
 
   function toggleChristmasTheme() {
-    activeDropdown = null;
-    isChristmasTheme = !isChristmasTheme;
-    if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('bacoChristmasTheme', isChristmasTheme.toString());
-    }
+      if ($currentThemeId === 'christmas') currentThemeId.set('default');
+      else currentThemeId.set('christmas');
   }
 
   async function loadUserProfile() {
@@ -208,8 +214,11 @@
     </div>
   {/if}
 
-  <nav class="relative rounded-2xl transition-all duration-300 glass-panel border border-white/10 {isChristmasTheme ? 'christmas-nav' : 'bg-[#0f1115]/80 backdrop-blur-xl'} shadow-2xl z-20">
-    <div class="px-6 py-2">
+<nav class="relative rounded-2xl transition-all duration-300 glass-panel 
+     {isChristmasTheme ? 'christmas-nav' : 'bg-[#0f1115]/80 backdrop-blur-xl'} z-20"
+     style="border-color: var(--glass-border)">
+     
+     <div class="px-6 py-2">
       
       <div class="flex justify-between items-center">
         
@@ -237,7 +246,7 @@
                   </button>
                   {#if activeDropdown === 'pmr'}
                       <div transition:fly={{ y: 10, duration: 200 }} class={dropdownBaseClass}>
-                          <a href="/pmr" class={dropdownLinkClass}><Combine class="w-4 h-4 text-blue-400"/> Rampes</a>
+                          <a href="/pmr" class={dropdownLinkClass}><Combine class="w-4 h-4 text-[rgb(var(--color-primary))]"/> Rampes</a>
                           <a href="/clients-pmr" class={dropdownLinkClass}><Users class="w-4 h-4 text-pink-400"/> Clients</a>
                       </div>
                   {/if}

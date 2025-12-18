@@ -4,6 +4,7 @@
   import { page } from '$app/stores'; // <-- Import important
   import { supabase } from '$lib/supabase';
   import { goto } from '$app/navigation';
+  import { currentThemeId } from '$lib/stores/theme';
   import Nav from '$lib/components/Nav.svelte';
   import Footer from '$lib/components/Footer.svelte';
   import GlobalSearch from '$lib/components/GlobalSearch.svelte';
@@ -20,6 +21,19 @@ let isChristmasTheme = false;
     const { data: { session } } = await supabase.auth.getSession();
     user = session?.user;
 
+    if (user) {
+      // Récupérer la préférence de thème
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('theme')
+        .eq('id', user.id)
+        .single();
+        
+      if (profile?.theme) {
+          currentThemeId.set(profile.theme);
+      }
+  }
+  
     // Redirection automatique si non connecté et qu'on essaie d'accéder à une page interne
     if (!user && !isLoginPage) {
         goto('/');

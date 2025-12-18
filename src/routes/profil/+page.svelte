@@ -3,10 +3,11 @@
   import { page } from '$app/stores'; 
   import { supabase } from '$lib/supabase';
   import { fly, fade } from 'svelte/transition';
+  import { currentThemeId, themesConfig, applyTheme } from '$lib/stores/theme';
   import { 
     User, Mail, Shield, Camera, Lock, Save, 
     FileWarning, AlertOctagon, Loader2, CheckCircle,
-    Tag, Cake, Calendar // Ajout de Calendar manquant dans les imports lucide
+    Tag, Cake, Calendar, Palette // Ajout de Calendar manquant dans les imports lucide
   } from 'lucide-svelte';
   
   // IMPORT TOAST
@@ -90,7 +91,7 @@
   async function loadTargetProfile() {
     const { data, error } = await supabase
       .from('profiles')
-      .select('username, full_name, avatar_url, role, fonction, birthday') 
+      .select('username, full_name, avatar_url, role, fonction, birthday, theme') 
       .eq('id', targetUserId)
       .single();
 
@@ -142,6 +143,28 @@
     } finally {
       isSaving = false;
     }
+  }
+
+  async function saveTheme(themeKey) {
+     if (!isMyProfile) return;
+     
+     // 1. Mise à jour immédiate (UI optimiste)
+     currentThemeId.set(themeKey);
+     profileData.theme = themeKey;
+     
+     // 2. Persistance
+     try {
+         const { error } = await supabase
+            .from('profiles')
+            .update({ theme: themeKey, updated_at: new Date() })
+            .eq('id', currentUser.id);
+            
+         if (error) throw error;
+         toast.success(`Thème ${themesConfig[themeKey].name} appliqué !`);
+     } catch (e) {
+         toast.error("Erreur sauvegarde thème");
+         console.error(e);
+     }
   }
 
   async function handleAvatarUpload(e) {
@@ -467,36 +490,36 @@
           </div>
         </div>
 
-        {#if isMyProfile}
-          <div class="bg-black/20 border border-white/5 rounded-3xl p-8 shadow-sm">
-            <h2 class="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
-              <Lock size={20} class="text-purple-400" /> Sécurité
-            </h2>
-            <div class="space-y-5">
-              <div>
-                <label class={labelClass}>Nouveau mot de passe</label>
-                <div class="relative">
-                    <Lock size={16} class="absolute left-3 top-3.5 text-gray-500" />
-                    <input type="password" bind:value={passwordData.new} class="{inputClass} pl-10" placeholder="••••••••">
+{#if isMyProfile}
+  <div class="bg-black/20 border border-white/5 rounded-3xl p-8 shadow-sm mt-8" in:fly={{ x: 20, duration: 600, delay: 300 }}>
+    <h2 class="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
+      <Palette size={20} class="text-theme-primary" /> Personnalisation
+    </h2>
+    
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {#each Object.entries(themesConfig) as [key, theme]}
+            <button 
+                on:click={() => saveTheme(key)}
+                class="relative p-4 rounded-xl border transition-all duration-300 flex items-center gap-3 overflow-hidden group
+                {profileData.theme === key ? 'border-[rgba(var(--color-primary),1)] bg-white/5' : 'border-white/10 hover:border-white/30 bg-black/20'}"
+            >
+                <div class="flex -space-x-2">
+                    <div class="w-6 h-6 rounded-full border border-white/20" style="background-color: rgb({theme.colors['--color-primary']})"></div>
+                    <div class="w-6 h-6 rounded-full border border-white/20" style="background: linear-gradient(135deg, {theme.colors['--bg-gradient-from']}, {theme.colors['--bg-gradient-to']})"></div>
                 </div>
-              </div>
-              <div>
-                <label class={labelClass}>Confirmer</label>
-                <div class="relative">
-                    <Lock size={16} class="absolute left-3 top-3.5 text-gray-500" />
-                    <input type="password" bind:value={passwordData.confirm} class="{inputClass} pl-10" placeholder="••••••••">
-                </div>
-              </div>
-              <button 
-                on:click={handleChangePassword} 
-                disabled={isSaving}
-                class="w-full py-3 bg-white/5 border border-white/10 text-gray-300 rounded-xl font-bold hover:bg-white/10 hover:text-white transition-all shadow-sm"
-              >
-                Changer le mot de passe
-              </button>
-            </div>
-          </div>
-        {/if}
+                
+                <span class="text-sm font-bold {profileData.theme === key ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}">
+                    {theme.name}
+                </span>
+
+                {#if profileData.theme === key}
+                    <div class="absolute inset-0 bg-[rgb(var(--color-primary))] opacity-5 blur-xl"></div>
+                {/if}
+            </button>
+        {/each}
+    </div>
+  </div>
+{/if}
 
       </div>
    
