@@ -52,14 +52,14 @@
     traffic: { 
         label: 'Info Trafic', 
         component: WidgetTraffic, 
-        defaultSize: 'col-span-1',
+        defaultSize: 'ol-span-1 md:col-span-2',
         icon: Car,
         desc: 'État des routes et incidents.'
     },
     trains:  { 
         label: 'Trains', 
         component: WidgetTrains, 
-        defaultSize: 'col-span-1',
+        defaultSize: 'ol-span-1 md:col-span-2',
         icon: TrainFront,
         desc: 'Prochains départs en gare.'
     },
