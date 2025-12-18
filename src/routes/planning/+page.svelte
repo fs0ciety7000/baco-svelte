@@ -7,7 +7,7 @@
     import { dndzone } from 'svelte-dnd-action';
     
     import { 
-        CalendarDays, Plus, Loader2, ChevronLeft, ChevronRight, 
+        CalendarDays, Calendar, Plus, Loader2, ChevronLeft, ChevronRight, 
         Edit, Trash2, X, Save, Check, Ban, FileText, Briefcase, 
         AlertCircle, MoreHorizontal, Eye
     } from 'lucide-svelte';
