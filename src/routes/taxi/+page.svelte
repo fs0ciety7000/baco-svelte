@@ -7,9 +7,11 @@
     Pencil, Trash2, X, CheckSquare, Square, Loader2, RefreshCw, 
     Info, Home, Mail 
   } from 'lucide-svelte';
-  
   import jsPDF from 'jspdf';
   import autoTable from 'jspdf-autotable';
+  
+  // IMPORT TOAST
+  import { toast } from '$lib/stores/toast.js';
 
   // --- ÉTATS ---
   let user = null;
@@ -18,8 +20,7 @@
   // Filtres
   let lieuxDisponibles = []; 
   let loadingFilters = true;
-  let selectedLieux = []; 
-
+  let selectedLieux = [];
   let taxis = [];
   let loading = false;
   let searchTerm = "";
@@ -57,15 +58,14 @@
     try {
       const { data, error } = await supabase.from('taxis').select('lieux');
       if (error) throw error;
-
       const allLieux = (data || []).flatMap(row => row.lieux || []);
       const uniqueLieux = [...new Set(allLieux)]
         .filter(l => l && l !== 'nihil' && l.trim() !== '')
         .sort();
-
       lieuxDisponibles = uniqueLieux;
     } catch (err) {
       console.error("Erreur chargement filtres:", err);
+      toast.error("Erreur lors du chargement des secteurs.");
     } finally {
       loadingFilters = false;
     }
@@ -100,9 +100,9 @@
         adresse: t.adresse || [],
         remarques: t.remarques || []
       }));
-
     } catch (err) {
       console.error("Erreur chargement taxis:", err);
+      toast.error("Impossible de charger la liste des taxis.");
     } finally {
       loading = false;
     }
@@ -155,13 +155,13 @@
   }
 
   async function handleSubmit() {
-    if (!modalForm.societe) return alert("Le nom est requis.");
+    if (!modalForm.societe) return toast.warning("Le nom de la société est requis.");
     modalLoading = true;
 
     const lieuxArray = modalForm.lieux.split(',').map(l => l.trim()).filter(Boolean);
     
     if (lieuxArray.length === 0) {
-        alert("Veuillez entrer au moins un lieu.");
+        toast.warning("Veuillez entrer au moins un secteur/lieu.");
         modalLoading = false;
         return;
     }
@@ -185,8 +185,10 @@
     }
 
     modalLoading = false;
-    if (error) alert("Erreur: " + error.message);
-    else {
+    if (error) {
+      toast.error("Erreur: " + error.message);
+    } else {
+      toast.success(isEditMode ? "Taxi modifié avec succès !" : "Taxi ajouté avec succès !");
       showModal = false;
       await loadFilters();
       loadTaxis();
@@ -195,16 +197,21 @@
 
   async function deleteTaxi(id, nom) {
     if (!confirm(`Supprimer le taxi "${nom}" ?`)) return;
+    
     const { error } = await supabase.from('taxis').delete().eq('id', id);
     if (!error) {
-        await loadFilters(); 
+        toast.success(`Taxi "${nom}" supprimé.`);
+        await loadFilters();
         loadTaxis();
+    } else {
+        toast.error("Erreur lors de la suppression.");
     }
   }
 
   // --- EXPORT PDF ---
   function exportPDF() {
-    if (filteredTaxis.length === 0) return alert("Aucune donnée.");
+    if (filteredTaxis.length === 0) return toast.warning("Aucune donnée à exporter.");
+    
     const doc = new jsPDF();
     doc.text(`Taxis - Lieux : ${selectedLieux.join(', ')}`, 14, 15);
     
@@ -224,7 +231,9 @@
       theme: 'grid',
       styles: { fontSize: 8, cellPadding: 2 }
     });
+    
     doc.save('taxis.pdf');
+    toast.success("PDF téléchargé avec succès !");
   }
 
   // Styles communs Inputs
