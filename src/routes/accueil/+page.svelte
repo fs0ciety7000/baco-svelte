@@ -13,6 +13,8 @@
   import WidgetLinks from '$lib/components/widgets/WidgetLinks.svelte';
   import WidgetPlanning from '$lib/components/widgets/WidgetPlanning.svelte';
   import WidgetJournal from '$lib/components/widgets/WidgetJournal.svelte';
+  import WidgetNotepad from '$lib/components/widgets/WidgetNotepad.svelte';
+import WidgetShift from '$lib/components/widgets/WidgetShift.svelte';
 
   // Icônes
   import { Plus, LayoutGrid, Save, Cloud, Loader2 } from 'lucide-svelte';
@@ -27,7 +29,17 @@
     pmr:     { label: 'PMR', component: WidgetPmr, defaultSize: 'col-span-1 md:col-span-2' },
     links:   { label: 'Liens Rapides', component: WidgetLinks, defaultSize: 'col-span-1' },
     planning:{ label: 'Planning', component: WidgetPlanning, defaultSize: 'col-span-1 md:col-span-2' },
-    journal: { label: 'Journal', component: WidgetJournal, defaultSize: 'col-span-full' }
+    journal: { label: 'Journal', component: WidgetJournal, defaultSize: 'col-span-full' },
+    notepad: { 
+        label: 'Bloc-notes', 
+        component: WidgetNotepad, 
+        defaultSize: 'col-span-1' 
+    },
+    shift: { 
+        label: 'Mon Service', 
+        component: WidgetShift, 
+        defaultSize: 'col-span-1 md:col-span-2' // Plus large pour voir la barre
+    }
   };
 
   // --- ÉTAT ---
@@ -190,13 +202,11 @@
     class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20"
   >
     {#each items as item (item.id)}
-      <div 
-        animate:flip={{duration: flipDurationMs}}
-        class="{WIDGET_REGISTRY[item.type]?.defaultSize || 'col-span-1'} relative group"
-      >
-        {#if WIDGET_REGISTRY[item.type]}
-            <svelte:component this={WIDGET_REGISTRY[item.type].component} />
-        {:else}
+    <div animate:flip={{duration: flipDurationMs}} class="{WIDGET_REGISTRY[item.type]?.defaultSize || 'col-span-1'} relative group">
+
+       {#if WIDGET_REGISTRY[item.type]}
+        <svelte:component this={WIDGET_REGISTRY[item.type].component} {...item} />
+    {:else}
             <div class="p-4 bg-red-500/10 border border-red-500 rounded-xl text-red-500">Widget inconnu: {item.type}</div>
         {/if}
 
