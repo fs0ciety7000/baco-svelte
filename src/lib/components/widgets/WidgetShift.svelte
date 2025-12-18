@@ -8,18 +8,19 @@
     export let id = 'default'; 
     export let maxHours = 12;
 
-    // --- CONFIG ---
+ // --- CONFIG ---
     const SHIFTS = {
-        AM:   { label: 'Matin',      start: 6,  end: 14, color: 'bg-yellow-400' },
-        PM:   { label: 'Après-midi', start: 14, end: 22, color: 'bg-orange-500' },
-        NUIT: { label: 'Nuit',       start: 22, end: 6,  color: 'bg-indigo-500', isNight: true }
+        AM:    { label: 'Matin',       start: 6,  end: 14, color: 'bg-yellow-400' },
+        EXTRA: { label: 'Extra 10-18', start: 10, end: 18, color: 'bg-pink-500' },   // <--- NOUVEL AJOUT
+        PM:    { label: 'Après-midi',  start: 14, end: 22, color: 'bg-orange-500' },
+        NUIT:  { label: 'Nuit',        start: 22, end: 6,  color: 'bg-indigo-500', isNight: true }
     };
 
     // --- ÉTAT ---
     let activeShift = null; 
     let progress = 0;
     let timeString = "";
-    let remainingString = ""; // AJOUT : Temps restant formaté (ex: 2h 15m)
+    let remainingString = ""; // Temps restant formaté (ex: 2h 15m)
     let interval;
     let isOvertime = false;
 
@@ -96,18 +97,16 @@
         // Calcul pourcentage
         let pct = (elapsedMs / totalDurationMs) * 100;
 
-        // AJOUT : Calcul du temps restant
+        // Calcul du temps restant
         const remainingMs = totalDurationMs - elapsedMs;
         
         if (remainingMs > 0) {
-            // Conversion en heures / minutes
             const h = Math.floor(remainingMs / (1000 * 60 * 60));
             const m = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
             remainingString = `${h}h ${m.toString().padStart(2, '0')}m`;
             isOvertime = false;
             progress = Math.max(pct, 0);
         } else {
-            // Temps dépassé
             isOvertime = true;
             progress = 100;
             const overdueMs = Math.abs(remainingMs);
@@ -117,7 +116,7 @@
         }
     }
 </script>
-  
+
 <div class="h-full flex flex-col bg-gradient-to-br from-[#0f1115] to-[#1a1d24] rounded-xl border border-white/5 relative overflow-hidden group shadow-lg">
     
     <div class="flex justify-between items-start p-5 pb-0 z-10">
@@ -145,11 +144,11 @@
             <p class="text-2xl font-mono text-white font-bold tracking-wider">{timeString}</p>
         </div>
     </div>
-  
+
     <div class="flex-grow p-5 pt-4 relative z-10">
         
         {#if !activeShift}
-            <div class="grid grid-cols-3 gap-2 h-full" in:fly={{ y: 20, duration: 300 }}>
+            <div class="grid grid-cols-2 gap-2 h-full" in:fly={{ y: 20, duration: 300 }}>
                 {#each Object.entries(SHIFTS) as [key, conf]}
                     <button 
                         on:click={() => checkIn(key)} 
@@ -222,10 +221,9 @@
                 </div>
             </div>
         {/if}
-
-        <style>
-            @keyframes shimmer {
-  0% { transform: translateX(-150%); }
-  100% { transform: translateX(400%); }
-}
-        </style>
+    </div> </div> <style>
+    @keyframes shimmer {
+        0% { transform: translateX(-150%); }
+        100% { transform: translateX(400%); }
+    }
+</style>
