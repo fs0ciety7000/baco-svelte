@@ -254,7 +254,7 @@
 {/if}
 
 <div 
-    class="fixed inset-y-0 right-0 w-96 bg-[#0f1115] border-l border-white/10 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col"
+    class="fixed inset-y-0 right-0 w-96 bg-[#0f1115]/95 backdrop-blur-xl border-l border-white/10 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col"
     class:translate-x-0={isDrawerOpen}
     class:translate-x-full={!isDrawerOpen}
 >
