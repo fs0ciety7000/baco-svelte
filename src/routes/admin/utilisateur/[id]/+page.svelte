@@ -10,8 +10,11 @@
     Tag, Cake, ChevronLeft, Copy, KeyRound, UserX, UserCheck,
     Plus, X, History
   } from 'lucide-svelte';
+  
+  // IMPORT TOAST
+  import { toast } from '$lib/stores/toast.js';
 
-  // --- ÉTATS ---
+  // --- ÉTAT ---
   let isLoading = true;
   let isSaving = false;
   let isUploading = false;
@@ -80,7 +83,7 @@
 
     } catch (e) {
         console.error("Erreur chargement:", e);
-        alert("Impossible de charger ce profil.");
+        toast.error("Impossible de charger ce profil.");
     } finally {
         isLoading = false;
     }
@@ -105,9 +108,9 @@
         .eq('id', targetUserId);
 
       if (error) throw error;
-      alert("Profil mis à jour avec succès !");
+      toast.success("Profil mis à jour avec succès !");
     } catch (e) {
-      alert("Erreur: " + e.message);
+      toast.error("Erreur: " + e.message);
     } finally {
       isSaving = false;
     }
@@ -137,9 +140,10 @@
       if (dbError) throw dbError;
 
       profileData.avatar_url = publicURL;
+      toast.success("Avatar mis à jour !");
     } catch (err) {
       console.error(err);
-      alert("Échec de l'upload.");
+      toast.error("Échec de l'upload.");
     } finally {
       isUploading = false;
     }
@@ -155,7 +159,7 @@
 
   // 2. Soumettre une nouvelle sanction
   async function submitInfraction() {
-      if (!infractionData.reason) return alert("Le motif est obligatoire.");
+      if (!infractionData.reason) return toast.warning("Le motif est obligatoire.");
       infractionLoading = true;
       
       try {
@@ -167,11 +171,11 @@
 
           if (error) throw error;
 
-          alert("Sanction appliquée !");
+          toast.success("Sanction appliquée !");
           showInfractionModal = false;
           await loadInfractions(); // Recharger pour voir l'impact sur le score
       } catch (e) {
-          alert("Erreur: " + e.message);
+          toast.error("Erreur: " + e.message);
       } finally {
           infractionLoading = false;
       }
@@ -185,9 +189,10 @@
           const { error } = await supabase.rpc('admin_pardon_infraction', { p_infraction_id: infractionId });
           if (error) throw error;
           
+          toast.success("Sanction pardonnée.");
           await loadInfractions(); // Recalculer le score
       } catch (e) {
-          alert("Erreur: " + e.message);
+          toast.error("Erreur: " + e.message);
       }
   }
 
@@ -206,8 +211,9 @@
         });
         if (error) throw error;
         generatedPassword = newPass;
+        toast.success("Nouveau mot de passe généré !");
     } catch (e) {
-        alert("Erreur reset: " + e.message);
+        toast.error("Erreur reset: " + e.message);
     } finally {
         resetLoading = false;
     }
@@ -229,17 +235,17 @@
         if (error) throw error;
         
         profileData.banned_until = updates.banned_until;
-        alert(`Utilisateur ${isBanned ? 'débanni' : 'banni'} !`);
+        toast.success(`Utilisateur ${isBanned ? 'débanni' : 'banni'} !`);
         // On recharge aussi les infractions car un ban peut impacter l'état global
         loadInfractions(); 
     } catch(e) {
-        alert("Erreur: " + e.message);
+        toast.error("Erreur: " + e.message);
     }
   }
 
   function copyPassword() {
     navigator.clipboard.writeText(generatedPassword);
-    alert("Mot de passe copié !");
+    toast.success("Mot de passe copié !");
   }
 
   // --- LOGIQUE TRUST METER ---
