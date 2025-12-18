@@ -45,7 +45,7 @@
     notepad: { 
         label: 'Bloc-notes', 
         component: WidgetNotepad, 
-        defaultSize: 'col-span-1 row-span-2',
+        defaultSize: 'col-span-1',
         icon: PenLine,
         desc: 'Notes rapides persistantes.'
     },
