@@ -13,6 +13,9 @@
   import autoTable from 'jspdf-autotable';
   import * as XLSX from 'xlsx';
 
+  // IMPORT TOAST
+  import { toast } from '$lib/stores/toast.js';
+
   // --- ÉTATS ---
   let user = null;
   let isAdmin = false;
@@ -29,7 +32,7 @@
   let searchTerm = "";
   let sortOrder = 'az'; // 'az' ou 'za'
   let viewMode = 'grid'; // 'grid' ou 'list'
-let rawContactData = [];
+  let rawContactData = [];
 
   // UI
   let loading = false;
@@ -251,8 +254,10 @@ async function loadContacts() {
     }
 
     modalLoading = false;
-    if (error) alert("Erreur: " + error.message);
-    else {
+    if (error) {
+        toast.error("Erreur: " + error.message);
+    } else {
+      toast.success(isEditMode ? "Contact modifié avec succès !" : "Contact ajouté avec succès !");
       showModal = false;
       loadContacts();
     }
@@ -260,8 +265,14 @@ async function loadContacts() {
 
   async function deleteContact(id) {
     if(!confirm("Supprimer ce contact ?")) return;
-    await supabase.from('contacts_repertoire').delete().eq('id', id);
-    loadContacts();
+    const { error } = await supabase.from('contacts_repertoire').delete().eq('id', id);
+    
+    if (error) {
+        toast.error("Erreur lors de la suppression.");
+    } else {
+        toast.success("Contact supprimé.");
+        loadContacts();
+    }
   }
 
   // --- EXPORT ---
@@ -275,23 +286,29 @@ async function loadContacts() {
         "Zone": c.zone || ''
     }));
 
-    if (flatData.length === 0) return alert("Rien à exporter.");
+    if (flatData.length === 0) return toast.warning("Rien à exporter.");
 
-    if (type === 'xlsx') {
-        const ws = XLSX.utils.json_to_sheet(flatData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Repertoire");
-        XLSX.writeFile(wb, "repertoire.xlsx");
-    } else {
-        const doc = new jsPDF();
-        doc.text("Répertoire Téléphonique", 14, 15);
-        autoTable(doc, {
-            startY: 25,
-            head: [['Nom', 'Groupe', 'Tel', 'Email', 'Cat', 'Zone']],
-            body: flatData.map(Object.values),
-            styles: { fontSize: 8 }
-        });
-        doc.save("repertoire.pdf");
+    try {
+        if (type === 'xlsx') {
+            const ws = XLSX.utils.json_to_sheet(flatData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Repertoire");
+            XLSX.writeFile(wb, "repertoire.xlsx");
+        } else {
+            const doc = new jsPDF();
+            doc.text("Répertoire Téléphonique", 14, 15);
+            autoTable(doc, {
+                startY: 25,
+                head: [['Nom', 'Groupe', 'Tel', 'Email', 'Cat', 'Zone']],
+                body: flatData.map(Object.values),
+                styles: { fontSize: 8 }
+            });
+            doc.save("repertoire.pdf");
+        }
+        toast.success("Export réussi !");
+    } catch (e) {
+        console.error(e);
+        toast.error("Erreur lors de l'export.");
     }
   }
 

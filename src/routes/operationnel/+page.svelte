@@ -8,6 +8,9 @@
   // Import des icônes
   import { Search, Plus, Pencil, Trash2, X, Book, FolderOpen, FileText, Loader2 } from 'lucide-svelte';
 
+  // IMPORT TOAST
+  import { toast } from '$lib/stores/toast.js';
+
   // --- ÉTAT ---
   let procedures = [];
   let categories = [];
@@ -59,6 +62,7 @@
     const { data, error } = await query;
     if (error) {
       console.error("Erreur: " + error.message);
+      toast.error("Impossible de charger les procédures.");
     } else {
       procedures = data;
     }
@@ -87,8 +91,9 @@
 
     isSaving = false;
     if (error) {
-        alert("Erreur lors de la sauvegarde : " + error.message);
+        toast.error("Erreur lors de la sauvegarde : " + error.message);
     } else {
+        toast.success(editingProcedure.id ? "Procédure modifiée avec succès !" : "Nouvelle procédure créée !");
         closeModal();
         loadProcedures();
         loadCategories();
@@ -97,11 +102,13 @@
 
   async function deleteProcedure(id, titre) {
     if (!confirm(`Supprimer la procédure "${titre}" ?`)) return;
+    
     const { error } = await supabase.from('procedures').delete().eq('id', id);
     if (!error) {
+        toast.success("Procédure supprimée.");
         loadProcedures();
     } else {
-        alert("Erreur : " + error.message);
+        toast.error("Erreur lors de la suppression : " + error.message);
     }
   }
 

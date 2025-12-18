@@ -7,6 +7,9 @@
     Eye, Download, Loader2, FolderOpen, File 
   } from 'lucide-svelte';
 
+  // IMPORT TOAST
+  import { toast } from '$lib/stores/toast.js';
+
   // --- ÉTAT ---
   let documents = [];
   let categories = [];
@@ -53,7 +56,7 @@
     
     if (error) {
       console.error("Erreur:", error);
-      alert("Erreur lors du chargement des documents.");
+      toast.error("Erreur lors du chargement des documents.");
     } else {
       documents = data || [];
     }
@@ -68,7 +71,7 @@
     
     const categorie = prompt(`Catégorie pour "${file.name}" :`, "Procédures");
     if (!categorie) {
-      alert("Upload annulé : catégorie requise.");
+      toast.warning("Upload annulé : catégorie requise.");
       event.target.value = null; 
       return;
     }
@@ -99,13 +102,13 @@
       if (metadataError) throw metadataError;
 
       uploadStatus = "";
-      alert(`Fichier importé avec succès !`);
+      toast.success(`Fichier importé avec succès !`);
       
       await Promise.all([loadCategories(), loadDocuments()]);
 
     } catch (error) {
       console.error(error);
-      alert(`Erreur d'upload : ${error.message}`);
+      toast.error(`Erreur d'upload : ${error.message}`);
       uploadStatus = "";
     } finally {
       isUploading = false;
@@ -131,11 +134,12 @@
 
       if (storageError) throw storageError;
 
+      toast.success("Document supprimé.");
       await loadCategories(); 
       await loadDocuments();
 
     } catch (error) {
-      alert(`Erreur suppression : ${error.message}`);
+      toast.error(`Erreur suppression : ${error.message}`);
     }
   }
 
