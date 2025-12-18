@@ -6,22 +6,25 @@
   import { 
     User, Mail, Shield, Camera, Lock, Save, 
     FileWarning, AlertOctagon, Loader2, CheckCircle,
-    Tag, Cake 
+    Tag, Cake, Calendar // Ajout de Calendar manquant dans les imports lucide
   } from 'lucide-svelte';
+  
+  // IMPORT TOAST
+  import { toast } from '$lib/stores/toast';
 
   // --- ÉTAT ---
   let isLoading = true;
   let isSaving = false;
   let isUploading = false;
-  
+
   // Utilisateurs
   let currentUser = null; 
-  let targetUserId = null; 
-  
+  let targetUserId = null;
+
   // Le profil qu'on regarde
   let isMyProfile = false;
   let isAdmin = false;
-  
+
   // Données Formulaire
   let profileData = {
     username: "",
@@ -32,10 +35,10 @@
     birthday: null, 
     avatar_url: null
   };
-  
+
   // Mot de passe
   let passwordData = { new: "", confirm: "" };
-  
+
   // Infractions (Trust Meter)
   let infractions = [];
   let trustScore = 100;
@@ -70,7 +73,7 @@
 
   // --- CHARGEMENT ---
   async function loadProfileData() {
-    isLoading = true; 
+    isLoading = true;
     try {
         await Promise.all([
             loadTargetProfile(), 
@@ -78,6 +81,7 @@
         ]);
     } catch (e) {
         console.error("Erreur chargement profil:", e);
+        toast.error("Impossible de charger les données du profil.");
     } finally {
         isLoading = false;
     }
@@ -89,8 +93,9 @@
       .select('username, full_name, avatar_url, role, fonction, birthday') 
       .eq('id', targetUserId)
       .single();
+
     if (error) {
-      alert("Profil introuvable.");
+      toast.error("Profil introuvable.");
       return;
     }
 
@@ -123,14 +128,17 @@
         fonction: profileData.fonction, 
         updated_at: new Date()
       };
+
       const { error } = await supabase
         .from('profiles')
         .update(updates)
         .eq('id', targetUserId);
+
       if (error) throw error;
-      alert("Profil mis à jour avec succès !");
+      
+      toast.success("Profil mis à jour avec succès !");
     } catch (e) {
-      alert("Erreur: " + e.message);
+      toast.error("Erreur: " + e.message);
     } finally {
       isSaving = false;
     }
@@ -139,6 +147,7 @@
   async function handleAvatarUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
+
     isUploading = true;
     try {
       const ext = file.name.split('.').pop();
@@ -148,6 +157,7 @@
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file, { upsert: true });
+
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
@@ -157,13 +167,15 @@
         .from('profiles')
         .update({ avatar_url: publicURL, updated_at: new Date() })
         .eq('id', targetUserId);
+
       if (dbError) throw dbError;
 
       profileData.avatar_url = publicURL;
+      toast.success("Photo de profil mise à jour !");
       
     } catch (err) {
       console.error(err);
-      alert("Échec de l'upload de l'avatar.");
+      toast.error("Échec de l'upload de l'avatar.");
     } finally {
       isUploading = false;
     }
@@ -171,17 +183,23 @@
 
   async function handleChangePassword() {
     if (!isMyProfile) return;
-    if (passwordData.new.length < 6) return alert("Le mot de passe doit faire 6 caractères min.");
-    if (passwordData.new !== passwordData.confirm) return alert("Les mots de passe ne correspondent pas.");
+
+    if (passwordData.new.length < 6) {
+        return toast.warning("Le mot de passe doit faire 6 caractères min.");
+    }
+    if (passwordData.new !== passwordData.confirm) {
+        return toast.warning("Les mots de passe ne correspondent pas.");
+    }
 
     isSaving = true;
     try {
       const { error } = await supabase.auth.updateUser({ password: passwordData.new });
       if (error) throw error;
-      alert("Mot de passe modifié !");
+
+      toast.success("Mot de passe modifié avec succès !");
       passwordData = { new: "", confirm: "" };
     } catch (e) {
-      alert("Erreur: " + e.message);
+      toast.error("Erreur: " + e.message);
     } finally {
       isSaving = false;
     }
@@ -196,6 +214,7 @@
       .eq('is_active', true)
       .or('card_type.eq.red, and(card_type.eq.yellow,expires_at.gt.now())')
       .order('created_at', { ascending: false });
+
     infractions = data || [];
     calculateTrustScore();
   }
@@ -210,15 +229,19 @@
 
     let yellow = 0, red = 0;
     const MAX_POINTS = 6;
+
     infractions.forEach(i => {
       if (i.card_type === 'yellow') yellow++;
       if (i.card_type === 'red') red++;
     });
+
     const totalPoints = (red * MAX_POINTS) + yellow;
     let percentage = 100 - ((totalPoints / MAX_POINTS) * 100);
+
     if (percentage < 0) percentage = 0;
 
     trustScore = Math.round(percentage);
+
     if (totalPoints < 3) {
       trustColor = "bg-gradient-to-r from-yellow-300 to-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.4)]";
       trustLabel = "Attention (Moyen)";
@@ -235,7 +258,7 @@
   const inputClass = "block w-full rounded-xl border-white/10 bg-black/40 p-3 text-sm font-medium text-white placeholder-gray-600 focus:border-blue-500/50 focus:ring-blue-500/50 transition-all outline-none disabled:opacity-50 disabled:cursor-not-allowed";
   const labelClass = "block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1";
 
-// --- STYLE DYNAMIQUE (Correction @const) ---
+  // --- STYLE DYNAMIQUE ---
   $: borderClass = profileData.role === 'admin' 
       ? 'bg-gradient-to-br from-yellow-300/80 via-amber-400/50 to-yellow-500/80 shadow-[0_0_35px_rgba(245,158,11,0.6)] ring-1 ring-yellow-400/50' // Doré
       : profileData.role === 'moderator'
@@ -278,40 +301,40 @@
 
           <div class="relative flex flex-col items-center mb-8">
 
-<div class="relative group">
-    <div class="w-36 h-36 rounded-full p-1 transition-all duration-500 {borderClass}">
-        <img 
-          src={profileData.avatar_url || 'https://via.placeholder.com/150'} 
-          alt="Avatar" 
-          class="w-full h-full rounded-full object-cover border-4 border-[#0f1115]"
-        >
-    </div>
+            <div class="relative group">
+                <div class="w-36 h-36 rounded-full p-1 transition-all duration-500 {borderClass}">
+                    <img 
+                      src={profileData.avatar_url || 'https://via.placeholder.com/150'} 
+                      alt="Avatar" 
+                      class="w-full h-full rounded-full object-cover border-4 border-[#0f1115]"
+                    >
+                </div>
 
-    {#if isMyProfile || isAdmin}
-      <label class="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-all cursor-pointer text-white backdrop-blur-sm m-1">
-        {#if isUploading} <Loader2 class="animate-spin w-8 h-8"/> {:else} <Camera size={32} /> {/if}
-        <input type="file" class="hidden" accept="image/*" on:change={handleAvatarUpload} disabled={isUploading}>
-      </label>
-    {/if}
-</div>
-  
-  <h2 class="text-2xl font-bold text-white mt-4">{profileData.full_name || 'Sans Nom'}</h2>
-  <p class="text-gray-400 text-sm">@{profileData.username || 'username'}</p>
-  
-  {#if profileData.role === 'admin'}
-      <div class="
-          mt-5 
-          inline-flex items-center gap-2 px-4 py-1.5 rounded-full
-          bg-gradient-to-br from-yellow-500/10 to-amber-600/20 
-          border border-yellow-500/30 
-          shadow-[0_0_15px_rgba(234,179,8,0.2)] 
-          backdrop-blur-md
-      ">
-          <Shield size={14} class="text-yellow-200 drop-shadow-[0_0_8px_rgba(253,224,71,0.5)]" />
-          <span class="text-xs font-bold tracking-widest uppercase text-yellow-100 drop-shadow-sm">Administrateur</span>
-      </div>
-  {/if}
-</div>
+                {#if isMyProfile || isAdmin}
+                  <label class="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-all cursor-pointer text-white backdrop-blur-sm m-1">
+                    {#if isUploading} <Loader2 class="animate-spin w-8 h-8"/> {:else} <Camera size={32} /> {/if}
+                    <input type="file" class="hidden" accept="image/*" on:change={handleAvatarUpload} disabled={isUploading}>
+                  </label>
+                {/if}
+            </div>
+            
+            <h2 class="text-2xl font-bold text-white mt-4">{profileData.full_name || 'Sans Nom'}</h2>
+            <p class="text-gray-400 text-sm">@{profileData.username || 'username'}</p>
+            
+            {#if profileData.role === 'admin'}
+                <div class="
+                    mt-5 
+                    inline-flex items-center gap-2 px-4 py-1.5 rounded-full
+                    bg-gradient-to-br from-yellow-500/10 to-amber-600/20 
+                    border border-yellow-500/30 
+                    shadow-[0_0_15px_rgba(234,179,8,0.2)] 
+                    backdrop-blur-md
+                ">
+                    <Shield size={14} class="text-yellow-200 drop-shadow-[0_0_8px_rgba(253,224,71,0.5)]" />
+                    <span class="text-xs font-bold tracking-widest uppercase text-yellow-100 drop-shadow-sm">Administrateur</span>
+                </div>
+            {/if}
+          </div>
 
           <div class="space-y-6">
             <div class="grid grid-cols-1 gap-5">
@@ -349,7 +372,7 @@
                     <label class={labelClass}>Fonction</label>
                     <div class="relative">
                       <Tag size={16} class="absolute left-3 top-3.5 text-gray-500" />
-                     <select
+                      <select 
                           bind:value={profileData.fonction} 
                           class="{inputClass} pl-10 appearance-none" 
                           disabled={!isMyProfile && !isAdmin}

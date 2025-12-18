@@ -114,7 +114,7 @@
                                         <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full {leave.status === 'APPROVED' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'}">
                                             {leave.status === 'APPROVED' ? 'Validé' : 'En attente'}
                                         </span>
-                                        <p class="text-[9px] text-gray-400 mt-0.5">
+                                        <p class="text-[11px] text-gray-300 mt-1 font-medium">
                                             {new Date(leave.start_date).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short'})} → {new Date(leave.end_date).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short'})}
                                         </p>
                                     </div>
