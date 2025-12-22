@@ -10,6 +10,8 @@
   import { toast } from '$lib/stores/toast.js'; 
   import { openConfirmModal } from '$lib/stores/modal.js';
   import { fly, fade } from 'svelte/transition';
+  import EmojiPicker from '$lib/components/EmojiPicker.svelte'; // <--- IMPORT
+
   import { 
     Send, Paperclip, Search, Filter, AlertTriangle, BookCopy, 
     Trash2, Pencil, FileText, Image, Loader2, X, Save, ThumbsUp, Eye, ChevronDown, Calendar, User
@@ -24,13 +26,14 @@
   let isLoading = true;
   let isSubmitting = false;
   let datePickerElement;
-let flatpickrInstance;
+  let flatpickrInstance;
+
   // User & Rôles
   let currentUser = null;
   let userRole = 'user'; 
 
   // Autocomplétion
-  let allUsers = []; 
+  let allUsers = [];
   let textareaElement;
   let showSuggestions = false;
   let filteredUsers = [];
@@ -51,7 +54,7 @@ let flatpickrInstance;
   let hasMore = true;
 
   // Édition
-  let editingLog = null; 
+  let editingLog = null;
 
   // Config Réactions
   const reactionConfig = {
@@ -72,7 +75,6 @@ let flatpickrInstance;
     }
   };
 
-  // Normalisation
   const normalizeName = (name) => {
     if (!name) return '';
     return name.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -82,7 +84,6 @@ let flatpickrInstance;
     await loadUserAndRole();
     await Promise.all([loadAllProfiles(), loadLogs(true)]);
 
-   // CORRECTION ICI : On stocke l'instance dans la variable
     if (typeof window !== 'undefined' && window.flatpickr && datePickerElement) {
       flatpickrInstance = window.flatpickr(datePickerElement, {
         locale: "fr",
@@ -97,7 +98,6 @@ let flatpickrInstance;
     }
   });
 
-  // 3. Ajouter cette fonction pour nettoyer le calendrier en quittant la page
   onDestroy(() => {
     if (flatpickrInstance) {
       flatpickrInstance.destroy();
@@ -105,7 +105,6 @@ let flatpickrInstance;
   });
 
   // --- AUTH & RÔLES ---
-
   async function loadUserAndRole() {
     const { data: { user } } = await supabase.auth.getUser();
     currentUser = user;
@@ -116,7 +115,6 @@ let flatpickrInstance;
         .select('role, full_name')
         .eq('id', user.id)
         .single();
-      
       if (profile) {
         userRole = (profile.role || 'user').toLowerCase();
         currentUser = { ...user, ...profile };
@@ -126,23 +124,19 @@ let flatpickrInstance;
     }
   }
 
-  // Fonction réactive pour les permissions
   function canEdit(entry, currentRole) {
     if (!currentUser) return false;
-    // 1. C'est mon message
     if (entry.user_id === currentUser.id) return true;
-    // 2. Je suis Admin ou Modérateur
     const role = (currentRole || '').toLowerCase();
     return ['admin', 'moderator'].includes(role);
   }
   
   // --- CHARGEMENT ---
-  
   async function loadAllProfiles() {
     const { data } = await supabase.from('profiles').select('id, full_name, username, avatar_url').order('full_name', { ascending: true });
     if (data) {
       allUsers = data.filter(u => u.username || u.full_name);
-      authors = data;  
+      authors = data;
     }
   }
 
@@ -174,12 +168,10 @@ let flatpickrInstance;
     }
 
     const { data, error } = await query;
-    
     if (error) {
       console.error("Erreur:", error);
     } else {
       if (data.length < ROWS_PER_PAGE) hasMore = false;
-      
       const processedData = data.map(log => {
         const reactionsMap = { '👍': 0, '👀': 0, '⚠️': 0 };
         let myReaction = null;
@@ -191,28 +183,31 @@ let flatpickrInstance;
         }
         return { ...log, reactionsMap, myReaction };
       });
-
       logs = reset ? processedData : [...logs, ...processedData];
       currentPage++;
     }
     isLoading = false;
   }
   
-  // --- AUTO-COMPLÉTION ---
+  // --- HELPERS EMOJI [NOUVEAU] ---
+  function handleEmoji(emojiChar) {
+    newMessage += emojiChar;
+    // Focus sur le textarea après ajout
+    if(textareaElement) textareaElement.focus();
+  }
 
+  // --- AUTO-COMPLÉTION ---
   function handleInput(e) {
     const value = e.target.value;
     const cursor = e.target.selectionStart;
     const textBeforeCursor = value.substring(0, cursor);
     const lastAtIndex = textBeforeCursor.lastIndexOf('@');
-
     if (lastAtIndex === -1) {
       showSuggestions = false;
       return;
     }
 
-    const query = textBeforeCursor.substring(lastAtIndex + 1); 
-    
+    const query = textBeforeCursor.substring(lastAtIndex + 1);
     if (query.includes('\n') || query.trim() !== query) {
         showSuggestions = false;
         return;
@@ -220,13 +215,11 @@ let flatpickrInstance;
     
     tagSearchQuery = query.trim();
     const lowerQuery = tagSearchQuery.toLowerCase();
-    
     filteredUsers = allUsers.filter(user => {
         const usernameMatch = user.username && user.username.toLowerCase().startsWith(lowerQuery);
         const nameMatch = user.full_name && user.full_name.toLowerCase().includes(lowerQuery);
         return usernameMatch || nameMatch;
-    }).slice(0, 5); 
-
+    }).slice(0, 5);
     showSuggestions = filteredUsers.length > 0;
   }
 
@@ -238,22 +231,19 @@ let flatpickrInstance;
     const textBefore = value.substring(0, cursor);
     const lastAtIndex = textBefore.lastIndexOf('@');
     const tagLabel = user.username || user.full_name.replace(/\s+/g, '.').toLowerCase();
-
     if (lastAtIndex === -1) return;
 
     const startReplaceIndex = lastAtIndex;
-    const tagToInsert = `@${tagLabel} `; 
+    const tagToInsert = `@${tagLabel} `;
     const newText = value.substring(0, startReplaceIndex) + tagToInsert + value.substring(cursor);
     
     newMessage = newText;
     const newCursorPosition = startReplaceIndex + tagToInsert.length;
-
     setTimeout(() => {
         textareaElement.selectionStart = newCursorPosition;
         textareaElement.selectionEnd = newCursorPosition;
         textareaElement.focus();
-    }, 0); 
-
+    }, 0);
     showSuggestions = false;
   }
   
@@ -262,7 +252,6 @@ let flatpickrInstance;
       const tagRegex = /@([a-zA-Z0-9._-]+)/g; 
       let match;
       const taggedUserIds = new Set();
-      
       while ((match = tagRegex.exec(message)) !== null) {
           const taggedLabel = match[1].trim().toLowerCase();
           const foundUser = allUsers.find(u => {
@@ -276,10 +265,8 @@ let flatpickrInstance;
       }
 
       if (taggedUserIds.size === 0) return;
-      
       const senderName = currentUser.full_name || currentUser.email;
       const notificationMessage = message.substring(0, 100) + (message.length > 100 ? '...' : '');
-
       const notificationsToInsert = Array.from(taggedUserIds).map(userId => ({
           user_id_target: userId,
           title: `Mentionné par ${senderName}`,
@@ -288,12 +275,10 @@ let flatpickrInstance;
           link_to: `/journal`, 
           is_read: false
       }));
-
       await supabase.from('notifications').insert(notificationsToInsert);
   }
 
   // --- ACTIONS ---
-
   async function handlePost() {
     if (editingLog) {
       await saveEditedEntry();
@@ -385,7 +370,6 @@ let flatpickrInstance;
 
   async function toggleReaction(logId, emoji, currentReaction) {
     if (!currentUser) return;
-
     logs = logs.map(l => {
         if (l.id === logId) {
             const newMap = { ...l.reactionsMap };
@@ -412,7 +396,6 @@ let flatpickrInstance;
   }
 
   // --- UI HELPERS ---
-
   function openModal(log) { editingLog = { ...log }; }
   function closeModal() { editingLog = null; }
 
@@ -448,7 +431,6 @@ let flatpickrInstance;
     </div>
     
    <div class="flex items-center gap-3">
-      
       <div class="relative hidden sm:block group">
         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 group-hover:text-blue-400 transition-colors">
             <User size={14} />
@@ -480,7 +462,6 @@ let flatpickrInstance;
           class="pl-9 pr-3 py-2 text-xs rounded-xl bg-black/30 border border-white/10 text-gray-300 placeholder-gray-500 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/50 hover:bg-white/5 transition-all outline-none shadow-sm cursor-pointer w-32 font-medium" 
         />
       </div>
-
     </div>
   </header>
 
@@ -501,7 +482,7 @@ let flatpickrInstance;
           {#each filteredUsers as user}
             <button on:click={() => selectUser(user)} class="w-full text-left flex items-center gap-3 p-3 hover:bg-white/5 transition-colors cursor-pointer">
               {#if user.avatar_url}
-                <img src={user.avatar_url} alt="avatar" class="w-6 h-6 rounded-full object-cover" />
+                 <img src={user.avatar_url} alt="avatar" class="w-6 h-6 rounded-full object-cover" />
               {:else}
                 <div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-300 text-xs font-bold">
                   {user.full_name?.charAt(0) || '?'}
@@ -526,6 +507,9 @@ let flatpickrInstance;
 
       <div class="flex items-center justify-between pt-2 border-t border-white/5 mt-2">
         <div class="flex items-center gap-2">
+          
+          <EmojiPicker onselect={handleEmoji} />
+
           <label class="p-2 text-gray-400 hover:text-blue-400 hover:bg-white/5 rounded-full cursor-pointer transition-colors" title="Joindre un fichier">
             <Paperclip size={20} />
             <input type="file" class="hidden" bind:this={fileInput} on:change={handleFileSelect} />
@@ -572,7 +556,7 @@ let flatpickrInstance;
             <div class="flex justify-between items-start mb-4">
               <div class="flex items-center gap-3">
                 {#if log.profiles?.avatar_url}
-                  <img src={log.profiles.avatar_url} alt="avatar" class="w-10 h-10 rounded-full object-cover border border-white/10" />
+                 <img src={log.profiles.avatar_url} alt="avatar" class="w-10 h-10 rounded-full object-cover border border-white/10" />
                 {:else}
                   <div class="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-300 font-bold border border-blue-500/10">
                     {log.profiles?.full_name?.charAt(0) || '?'}
@@ -582,7 +566,7 @@ let flatpickrInstance;
                   <div class="flex items-center gap-2">
                     <span class="font-bold text-gray-200">{log.profiles?.full_name || 'Inconnu'}</span>
                     {#if log.is_urgent}
-                      <span class="px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-extrabold uppercase animate-pulse">Urgent</span>
+                       <span class="px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-extrabold uppercase animate-pulse">Urgent</span>
                     {/if}
                   </div>
                   <span class="text-xs text-gray-500">
@@ -593,11 +577,11 @@ let flatpickrInstance;
               </div>
 
               {#if canEdit(log, userRole)}
-                <div class="flex gap-2">
+                  <div class="flex gap-2">
                   <button on:click={() => openModal(log)} class="p-2 text-gray-400 hover:text-blue-400 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5" title="Modifier">
                     <Pencil size={16} />
                   </button>
-                  <button on:click={() => deleteLog(log.id)} class="p-2 text-gray-400 hover:text-red-400 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5" title="Supprimer">
+                 <button on:click={() => deleteLog(log.id)} class="p-2 text-gray-400 hover:text-red-400 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5" title="Supprimer">
                     <Trash2 size={16} />
                   </button>
                 </div>
@@ -622,7 +606,7 @@ let flatpickrInstance;
 
             <div class="flex gap-2 pt-4 border-t border-white/5 pl-[3.25rem]">
               {#each Object.entries(reactionConfig) as [emojiKey, config]}
-                <button 
+                 <button 
                   type="button" 
                   on:click|preventDefault={() => toggleReaction(log.id, emojiKey, log.myReaction)}
                   class="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 border backdrop-blur-sm
@@ -636,7 +620,6 @@ let flatpickrInstance;
                     size={14} 
                     class={log.myReaction === emojiKey ? 'scale-110 transition-transform' : ''} 
                   />
-                  
                   {#if log.reactionsMap[emojiKey] > 0}
                     <span>{log.reactionsMap[emojiKey]}</span>
                   {/if}
@@ -742,29 +725,29 @@ let flatpickrInstance;
     border-radius: 16px !important;
     color: #e2e8f0 !important;
     font-family: inherit !important;
-  }
+}
 
   /* La flèche du haut */
   :global(.flatpickr-calendar:before),
   :global(.flatpickr-calendar:after) {
     border-bottom-color: rgba(15, 23, 42, 0.85) !important;
-  }
+}
 
   /* En-tête (Mois / Année) */
   :global(.flatpickr-months) {
     background: transparent !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
     padding-top: 10px !important;
-  }
+}
   :global(.flatpickr-current-month .flatpickr-monthDropdown-months) {
     background: transparent !important;
     color: #fff !important;
     font-weight: 700 !important;
-  }
+}
   :global(.flatpickr-current-month input.cur-year) {
     color: #fff !important;
     font-weight: 700 !important;
-  }
+}
   :global(.flatpickr-prev-month), :global(.flatpickr-next-month) {
     fill: #94a3b8 !important; /* Gris clair */
   }
@@ -775,11 +758,11 @@ let flatpickrInstance;
   /* Jours de la semaine (Lun, Mar...) */
   :global(.flatpickr-weekdays) {
     background: transparent !important;
-  }
+}
   :global(span.flatpickr-weekday) {
     color: #64748b !important; /* Gris muet */
     font-weight: 600 !important;
-  }
+}
 
   /* Les jours (chiffres) */
   :global(.flatpickr-day) {
@@ -787,11 +770,11 @@ let flatpickrInstance;
     border-radius: 8px !important;
     border: 1px solid transparent !important;
     transition: all 0.2s ease !important;
-  }
+}
   :global(.flatpickr-day:hover) {
     background: rgba(255, 255, 255, 0.1) !important;
     border-color: rgba(255, 255, 255, 0.1) !important;
-  }
+}
 
   /* Jour sélectionné (Le Bleu Néon) */
   :global(.flatpickr-day.selected), 
@@ -817,17 +800,17 @@ let flatpickrInstance;
     border-color: transparent !important;
     color: #fff !important;
     font-weight: bold !important;
-  }
+}
 
   /* Aujourd'hui */
   :global(.flatpickr-day.today) {
     border-color: rgba(96, 165, 250, 0.5) !important; /* Bordure bleu clair */
     color: #60a5fa !important;
-  }
+}
   :global(.flatpickr-day.today:hover) {
     background: rgba(96, 165, 250, 0.1) !important;
     color: #fff !important;
-  }
+}
 
   /* Jours désactivés / autre mois */
   :global(.flatpickr-day.flatpickr-disabled), 

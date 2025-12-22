@@ -2,10 +2,8 @@
   import { onMount } from 'svelte';
   import { dndzone } from 'svelte-dnd-action';
   import { flip } from 'svelte/animate';
-  import { supabase } from '$lib/supabase';
-  import { fade, fly, slide } from 'svelte/transition';
+  import { fade } from 'svelte/transition';
   
-  // Imports Widgets
   import WidgetWeather from '$lib/components/widgets/WidgetWeather.svelte';
   import WidgetTraffic from '$lib/components/widgets/WidgetTraffic.svelte';
   import WidgetTrains from '$lib/components/widgets/WidgetTrains.svelte';
@@ -24,35 +22,25 @@
   } from 'lucide-svelte';
   import { toast } from '$lib/stores/toast';
 
+  let { data } = $props();
+
+  let session = $derived(data.session);
+  let savedConfig = $derived(data.savedConfig);
+  let widgetsData = $derived(data.widgetsData);
+  let supabase = $derived(data.supabase);
+
   const WIDGET_REGISTRY = {
-    weather: { label: 'Météo', component: WidgetWeather, defaultSize: 'col-span-1', defaultRows: 'row-span-1', icon: Sun, desc: 'Prévisions et conditions actuelles.' },
+    weather: { label: 'Météo', component: WidgetWeather, defaultSize: 'col-span-1', defaultRows: 'row-span-1', icon: Sun, desc: 'Prévisions.' },
     shift: { label: 'Mon Service', component: WidgetShift, defaultSize: 'col-span-1 md:col-span-2', defaultRows: 'row-span-1', icon: Briefcase, desc: 'Suivi de shift.' },
-    notepad: { label: 'Bloc-notes', component: WidgetNotepad, defaultSize: 'col-span-1', defaultRows: 'row-span-1', icon: PenLine, desc: 'Notes rapides.' },
+    notepad: { label: 'Bloc-notes', component: WidgetNotepad, defaultSize: 'col-span-1', defaultRows: 'row-span-1', icon: PenLine, desc: 'Notes.' },
     traffic: { label: 'Info Trafic', component: WidgetTraffic, defaultSize: 'col-span-1', defaultRows: 'row-span-1', icon: Car, desc: 'Incidents.' },
     trains:  { label: 'Trains', component: WidgetTrains, defaultSize: 'col-span-1 md:col-span-2', defaultRows: 'row-span-1', icon: TrainFront, desc: 'Départs.' },
     pmr:     { label: 'PMR', component: WidgetPmr, defaultSize: 'col-span-1 md:col-span-2', defaultRows: 'row-span-1', icon: Accessibility, desc: 'Assistances.' },
-    links:   { label: 'Raccourcis', component: WidgetLinks, defaultSize: 'col-span-1', defaultRows: 'row-span-1', icon: Link, desc: 'Liens utiles.' },
+    links:   { label: 'Raccourcis', component: WidgetLinks, defaultSize: 'col-span-1', defaultRows: 'row-span-1', icon: Link, desc: 'Liens.' },
     planning:{ label: 'Planning', component: WidgetPlanning, defaultSize: 'col-span-1', defaultRows: 'row-span-2', icon: Calendar, desc: 'Effectifs.' },
     journal: { label: 'Journal', component: WidgetJournal, defaultSize: 'col-span-full', defaultRows: 'row-span-1', icon: BookOpen, desc: 'Main courante.' },
-    teamboard: { 
-        label: 'Tableau Équipe', 
-        component: WidgetTeamBoard, 
-        defaultSize: 'col-span-1 md:col-span-2', 
-        defaultRows: 'row-span-1', 
-        icon: Users, 
-        desc: 'Zone de texte partagée en temps réel.' 
-    },
+    teamboard: { label: 'Tableau Équipe', component: WidgetTeamBoard, defaultSize: 'col-span-1 md:col-span-2', defaultRows: 'row-span-1', icon: Users, desc: 'Infos équipe.' },
   };
-
-  // --- ÉTAT AVEC RUNES ---
-  let items = $state([]);
-  let user = $state(null);
-  let isSaving = $state(false);
-  let isDrawerOpen = $state(false);
-  
-  // Variables locales
-  let saveTimeout;
-  const flipDurationMs = 300;
 
   const DEFAULT_LAYOUT = [
     { id: 'def-1', type: 'weather' },
@@ -61,25 +49,22 @@
     { id: 'def-4', type: 'trains' }
   ];
 
-  onMount(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    user = session?.user;
+  let items = $state([]); 
+  let isSaving = $state(false);
+  let isDrawerOpen = $state(false);
+  let saveTimeout;
+  const flipDurationMs = 300;
 
-    const localConfig = localStorage.getItem('baco_dashboard_config_v2');
-    if (localConfig) {
-      items = JSON.parse(localConfig);
+  onMount(() => {
+    if (data.savedConfig) {
+        items = data.savedConfig;
     } else {
-      items = DEFAULT_LAYOUT.map(i => ({ ...i, id: crypto.randomUUID() }));
-    }
-
-    if (user) {
-       try {
-         const { data } = await supabase.from('user_preferences').select('dashboard_config').eq('user_id', user.id).single();
-         if (data?.dashboard_config) {
-             items = data.dashboard_config;
-             saveToLocal(items);
-         }
-       } catch (e) { console.error(e); }
+        const localConfig = localStorage.getItem('baco_dashboard_config_v2');
+        if (localConfig) {
+            items = JSON.parse(localConfig);
+        } else {
+            items = DEFAULT_LAYOUT.map(i => ({ ...i, id: crypto.randomUUID() }));
+        }
     }
   });
 
@@ -87,7 +72,6 @@
 
   function addWidget(type) {
     const newWidget = { id: crypto.randomUUID(), type: type };
-    // Réassignation pour déclencher la réactivité Svelte 5
     items = [newWidget, ...items];
     triggerSave();
     toast.success(`${WIDGET_REGISTRY[type].label} ajouté`);
@@ -104,21 +88,25 @@
 
   function triggerSave() {
     saveToLocal(items);
-    if (user) {
+    if (data.session?.user) {
         isSaving = true;
         clearTimeout(saveTimeout);
         saveTimeout = setTimeout(async () => {
-            await supabase.from('user_preferences').upsert({ 
-                user_id: user.id, 
-                dashboard_config: items,
-                updated_at: new Date()
-            }, { onConflict: 'user_id' });
-            isSaving = false;
+            try {
+                await data.supabase.from('user_preferences').upsert({ 
+                    user_id: data.session.user.id, 
+                    dashboard_config: items,
+                    updated_at: new Date()
+                }, { onConflict: 'user_id' });
+            } catch (err) {
+                console.error("Erreur sauvegarde", err);
+            } finally {
+                isSaving = false;
+            }
         }, 2000);
     }
   }
 
-  // Handlers DND
   function handleDndConsider(e) { items = e.detail.items; }
   function handleDndFinalize(e) { items = e.detail.items; triggerSave(); }
 </script>
@@ -163,11 +151,16 @@
     {#each items as item (item.id)}
       <div 
         animate:flip={{duration: flipDurationMs}}
-        class="{WIDGET_REGISTRY[item.type]?.defaultSize || 'col-span-1'} {WIDGET_REGISTRY[item.type]?.defaultRows || 'row-span-1'} relative group"
+        class="{WIDGET_REGISTRY[item.type]?.defaultSize || 'col-span-1'} {WIDGET_REGISTRY[item.type]?.defaultRows || 'row-span-1'} relative group hover:z-50 focus-within:z-50 transition-all duration-200"
       >
         {#if WIDGET_REGISTRY[item.type]}
+            {@const WidgetComponent = WIDGET_REGISTRY[item.type].component}
+            
             <div class="h-full w-full {isDrawerOpen ? 'pointer-events-none opacity-80' : ''}">
-                <svelte:component this={WIDGET_REGISTRY[item.type].component} {...item} />
+                <WidgetComponent 
+                    {...item} 
+                    ssrData={data.widgetsData ? data.widgetsData[item.type] : null}
+                />
             </div>
         {/if}
 
@@ -207,6 +200,7 @@
 
     <div class="flex-grow overflow-y-auto p-6 space-y-4 custom-scrollbar">
         {#each Object.entries(WIDGET_REGISTRY) as [type, def]}
+             {@const Icon = def.icon}
             <button 
                 onclick={() => addWidget(type)}
                 class="w-full text-left group relative bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/50 
@@ -214,7 +208,7 @@
             >
                 <div class="flex items-start gap-4 relative z-10">
                     <div class="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-blue-400 group-hover:text-blue-300 group-hover:scale-110 transition-transform duration-300">
-                        <svelte:component this={def.icon} size={24} />
+                        <Icon size={24} />
                     </div>
                     
                     <div>
