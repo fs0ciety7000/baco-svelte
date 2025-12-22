@@ -4,6 +4,8 @@
   import { flip } from 'svelte/animate';
   import { fade } from 'svelte/transition';
   
+  // --- VÉRIFICATION DES IMPORTS (L'erreur était probablement ici) ---
+  import { supabase } from '$lib/supabase';
   import WidgetWeather from '$lib/components/widgets/WidgetWeather.svelte';
   import WidgetTraffic from '$lib/components/widgets/WidgetTraffic.svelte';
   import WidgetTrains from '$lib/components/widgets/WidgetTrains.svelte';
@@ -24,22 +26,95 @@
 
   let { data } = $props();
 
+  // Props dérivées (Svelte 5)
   let session = $derived(data.session);
   let savedConfig = $derived(data.savedConfig);
   let widgetsData = $derived(data.widgetsData);
-  let supabase = $derived(data.supabase);
+  // supabase est déjà importé du module, mais si passé par data :
+  // let supabaseClient = $derived(data.supabase); 
 
+  // --- REGISTRE DES WIDGETS ---
   const WIDGET_REGISTRY = {
-    weather: { label: 'Météo', component: WidgetWeather, defaultSize: 'col-span-1', defaultRows: 'row-span-1', icon: Sun, desc: 'Prévisions.' },
-    shift: { label: 'Mon Service', component: WidgetShift, defaultSize: 'col-span-1 md:col-span-2', defaultRows: 'row-span-1', icon: Briefcase, desc: 'Suivi de shift.' },
-    notepad: { label: 'Bloc-notes', component: WidgetNotepad, defaultSize: 'col-span-1', defaultRows: 'row-span-1', icon: PenLine, desc: 'Notes.' },
-    traffic: { label: 'Info Trafic', component: WidgetTraffic, defaultSize: 'col-span-1', defaultRows: 'row-span-1', icon: Car, desc: 'Incidents.' },
-    trains:  { label: 'Trains', component: WidgetTrains, defaultSize: 'col-span-1 md:col-span-2', defaultRows: 'row-span-1', icon: TrainFront, desc: 'Départs.' },
-    pmr:     { label: 'PMR', component: WidgetPmr, defaultSize: 'col-span-1 md:col-span-2', defaultRows: 'row-span-1', icon: Accessibility, desc: 'Assistances.' },
-    links:   { label: 'Raccourcis', component: WidgetLinks, defaultSize: 'col-span-1', defaultRows: 'row-span-1', icon: Link, desc: 'Liens.' },
-    planning:{ label: 'Planning', component: WidgetPlanning, defaultSize: 'col-span-1', defaultRows: 'row-span-2', icon: Calendar, desc: 'Effectifs.' },
-    journal: { label: 'Journal', component: WidgetJournal, defaultSize: 'col-span-full', defaultRows: 'row-span-1', icon: BookOpen, desc: 'Main courante.' },
-    teamboard: { label: 'Tableau Équipe', component: WidgetTeamBoard, defaultSize: 'col-span-1 md:col-span-2', defaultRows: 'row-span-1', icon: Users, desc: 'Infos équipe.' },
+    weather: { 
+        label: 'Météo', 
+        component: WidgetWeather, 
+        defaultSize: 'col-span-1', 
+        defaultRows: 'row-span-1', 
+        icon: Sun, 
+        desc: 'Prévisions et conditions.' 
+    },
+    shift: { 
+        label: 'Mon Service', 
+        component: WidgetShift, 
+        defaultSize: 'col-span-1 md:col-span-2', 
+        defaultRows: 'row-span-1', 
+        icon: Briefcase, 
+        desc: 'Suivi de shift.' 
+    },
+    notepad: { 
+        label: 'Bloc-notes', 
+        component: WidgetNotepad, 
+        defaultSize: 'col-span-1', 
+        defaultRows: 'row-span-1', 
+        icon: PenLine, 
+        desc: 'Notes rapides.' 
+    },
+    traffic: { 
+        label: 'Info Trafic', 
+        component: WidgetTraffic, 
+        defaultSize: 'col-span-1', 
+        defaultRows: 'row-span-1', 
+        icon: Car, 
+        desc: 'Incidents réseau.' 
+    },
+    trains: { 
+        label: 'Trains', 
+        component: WidgetTrains, 
+        defaultSize: 'col-span-1 md:col-span-2', 
+        defaultRows: 'row-span-1', 
+        icon: TrainFront, 
+        desc: 'Départs en gare.' 
+    },
+    pmr: { 
+        label: 'PMR', 
+        component: WidgetPmr, 
+        defaultSize: 'col-span-1 md:col-span-2', 
+        defaultRows: 'row-span-1', 
+        icon: Accessibility, 
+        desc: 'Assistances & Rampes.' 
+    },
+    links: { 
+        label: 'Raccourcis', 
+        component: WidgetLinks, 
+        defaultSize: 'col-span-1', 
+        defaultRows: 'row-span-1', 
+        icon: Link, 
+        desc: 'Liens utiles.' 
+    },
+    planning: { 
+        label: 'Planning', 
+        component: WidgetPlanning, 
+        defaultSize: 'col-span-1', 
+        defaultRows: 'row-span-2', 
+        icon: Calendar, 
+        desc: 'Effectifs du jour.' 
+    },
+    journal: { 
+        label: 'Journal', 
+        component: WidgetJournal, 
+        defaultSize: 'col-span-full', 
+        defaultRows: 'row-span-1', 
+        icon: BookOpen, 
+        desc: 'Main courante.' 
+    },
+    teamboard: { 
+        label: 'Tableau Équipe', 
+        component: WidgetTeamBoard, 
+        defaultSize: 'col-span-1 md:col-span-2', 
+        defaultRows: 'row-span-1', 
+        icon: Users, 
+        desc: 'Comms équipe.' 
+    },
   };
 
   const DEFAULT_LAYOUT = [
@@ -49,15 +124,17 @@
     { id: 'def-4', type: 'trains' }
   ];
 
-  let items = $state([]); 
+  // --- ÉTAT ---
+  let items = $state([]);
   let isSaving = $state(false);
   let isDrawerOpen = $state(false);
   let saveTimeout;
   const flipDurationMs = 300;
 
+  // --- INITIALISATION ---
   onMount(() => {
-    if (data.savedConfig) {
-        items = data.savedConfig;
+    if (savedConfig) {
+        items = savedConfig;
     } else {
         const localConfig = localStorage.getItem('baco_dashboard_config_v2');
         if (localConfig) {
@@ -71,6 +148,12 @@
   function toggleDrawer() { isDrawerOpen = !isDrawerOpen; }
 
   function addWidget(type) {
+    // Vérification de sécurité
+    if (!WIDGET_REGISTRY[type]) {
+        console.error(`Type de widget inconnu: ${type}`);
+        return;
+    }
+    
     const newWidget = { id: crypto.randomUUID(), type: type };
     items = [newWidget, ...items];
     triggerSave();
@@ -88,13 +171,15 @@
 
   function triggerSave() {
     saveToLocal(items);
-    if (data.session?.user) {
+    if (session?.user) {
         isSaving = true;
         clearTimeout(saveTimeout);
         saveTimeout = setTimeout(async () => {
             try {
-                await data.supabase.from('user_preferences').upsert({ 
-                    user_id: data.session.user.id, 
+                // Utilisation du client Supabase passé via data (SSR) ou importé
+                const client = data.supabase || supabase;
+                await client.from('user_preferences').upsert({ 
+                    user_id: session.user.id, 
                     dashboard_config: items,
                     updated_at: new Date()
                 }, { onConflict: 'user_id' });
@@ -159,7 +244,7 @@
             <div class="h-full w-full {isDrawerOpen ? 'pointer-events-none opacity-80' : ''}">
                 <WidgetComponent 
                     {...item} 
-                    ssrData={data.widgetsData ? data.widgetsData[item.type] : null}
+                    ssrData={widgetsData ? widgetsData[item.type] : null}
                 />
             </div>
         {/if}
