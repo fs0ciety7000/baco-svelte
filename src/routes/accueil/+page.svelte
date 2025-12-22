@@ -3,9 +3,9 @@
   import { dndzone } from 'svelte-dnd-action';
   import { flip } from 'svelte/animate';
   import { supabase } from '$lib/supabase';
-  import { fade, fly } from 'svelte/transition';
+  import { fade, fly, slide } from 'svelte/transition';
   
-  // Imports Widgets et Icônes (inchangés)
+  // Imports Widgets
   import WidgetWeather from '$lib/components/widgets/WidgetWeather.svelte';
   import WidgetTraffic from '$lib/components/widgets/WidgetTraffic.svelte';
   import WidgetTrains from '$lib/components/widgets/WidgetTrains.svelte';
@@ -15,11 +15,12 @@
   import WidgetJournal from '$lib/components/widgets/WidgetJournal.svelte';
   import WidgetNotepad from '$lib/components/widgets/WidgetNotepad.svelte';
   import WidgetShift from '$lib/components/widgets/WidgetShift.svelte';
+  import WidgetTeamBoard from '$lib/components/widgets/WidgetTeamBoard.svelte';
 
   import { 
     LayoutGrid, Cloud, Loader2, Plus, X, 
     Sun, Car, TrainFront, Accessibility, Link, Calendar, BookOpen, PenLine, Briefcase,
-    Settings2 
+    Settings2, Users 
   } from 'lucide-svelte';
   import { toast } from '$lib/stores/toast';
 
@@ -32,7 +33,15 @@
     pmr:     { label: 'PMR', component: WidgetPmr, defaultSize: 'col-span-1 md:col-span-2', defaultRows: 'row-span-1', icon: Accessibility, desc: 'Assistances.' },
     links:   { label: 'Raccourcis', component: WidgetLinks, defaultSize: 'col-span-1', defaultRows: 'row-span-1', icon: Link, desc: 'Liens utiles.' },
     planning:{ label: 'Planning', component: WidgetPlanning, defaultSize: 'col-span-1', defaultRows: 'row-span-2', icon: Calendar, desc: 'Effectifs.' },
-    journal: { label: 'Journal', component: WidgetJournal, defaultSize: 'col-span-full', defaultRows: 'row-span-1', icon: BookOpen, desc: 'Main courante.' }
+    journal: { label: 'Journal', component: WidgetJournal, defaultSize: 'col-span-full', defaultRows: 'row-span-1', icon: BookOpen, desc: 'Main courante.' },
+    teamboard: { 
+        label: 'Tableau Équipe', 
+        component: WidgetTeamBoard, 
+        defaultSize: 'col-span-1 md:col-span-2', 
+        defaultRows: 'row-span-1', 
+        icon: Users, 
+        desc: 'Zone de texte partagée en temps réel.' 
+    },
   };
 
   // --- ÉTAT AVEC RUNES ---
@@ -41,7 +50,7 @@
   let isSaving = $state(false);
   let isDrawerOpen = $state(false);
   
-  // Variables locales (non réactives au sens Svelte, juste des références)
+  // Variables locales
   let saveTimeout;
   const flipDurationMs = 300;
 
@@ -78,8 +87,7 @@
 
   function addWidget(type) {
     const newWidget = { id: crypto.randomUUID(), type: type };
-    // Avec $state, on peut souvent faire items.push(newWidget), 
-    // mais pour dndzone, il vaut mieux réassigner le tableau.
+    // Réassignation pour déclencher la réactivité Svelte 5
     items = [newWidget, ...items];
     triggerSave();
     toast.success(`${WIDGET_REGISTRY[type].label} ajouté`);
@@ -150,7 +158,7 @@
     use:dndzone={{items, flipDurationMs, dropTargetStyle: { outline: '2px dashed rgba(59,130,246,0.5)', borderRadius: '1rem' }}} 
     onconsider={handleDndConsider} 
     onfinalize={handleDndFinalize}
-    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6 pb-20 min-h-[50vh] auto-rows-[280px]"
+    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20 min-h-[50vh] auto-rows-[280px] grid-flow-dense"
   >
     {#each items as item (item.id)}
       <div 
@@ -181,3 +189,50 @@
     {/each}
   </section>
 </div>
+
+<div 
+    class="fixed inset-y-0 right-0 w-96 bg-[#0f1115]/95 backdrop-blur-xl border-l border-white/10 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col"
+    class:translate-x-0={isDrawerOpen}
+    class:translate-x-full={!isDrawerOpen}
+>
+    <div class="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+        <div>
+            <h3 class="text-xl font-bold text-white">Ajouter un widget</h3>
+            <p class="text-sm text-gray-400">Cliquez pour ajouter</p>
+        </div>
+        <button onclick={toggleDrawer} class="text-gray-400 hover:text-white transition-colors cursor-pointer">
+             <X size={24} />
+        </button>
+    </div>
+
+    <div class="flex-grow overflow-y-auto p-6 space-y-4 custom-scrollbar">
+        {#each Object.entries(WIDGET_REGISTRY) as [type, def]}
+            <button 
+                onclick={() => addWidget(type)}
+                class="w-full text-left group relative bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/50 
+                p-4 rounded-2xl transition-all duration-200 hover:shadow-lg hover:-translate-y-1 overflow-hidden cursor-pointer"
+            >
+                <div class="flex items-start gap-4 relative z-10">
+                    <div class="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-blue-400 group-hover:text-blue-300 group-hover:scale-110 transition-transform duration-300">
+                        <svelte:component this={def.icon} size={24} />
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-bold text-gray-200 group-hover:text-white text-lg">{def.label}</h4>
+                        <p class="text-xs text-gray-400 leading-relaxed mt-1">{def.desc}</p>
+                    </div>
+
+                    <div class="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity -mr-2 group-hover:mr-0 text-blue-400">
+                        <Plus size={24} />
+                    </div>
+                </div>
+            </button>
+        {/each}
+    </div>
+</div>
+
+<style>
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+</style>
