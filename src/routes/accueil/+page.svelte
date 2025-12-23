@@ -1,3 +1,4 @@
+
 <script>
   import { onMount, onDestroy, tick } from 'svelte';
   import { fade } from 'svelte/transition';
@@ -297,7 +298,7 @@
     /* FORCE LA LARGEUR ET LE COMPORTEMENT */
     :global(.grid-stack) {
         width: 100% !important; 
-        min-width: 100% !important;
+      
         /* Une hauteur min pour que le ResizeObserver ait qqch à détecter au début */
         min-height: 500px; 
     }
