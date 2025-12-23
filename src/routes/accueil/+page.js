@@ -23,14 +23,13 @@ export async function load({ parent }) {
             .from('user_preferences')
             .select('dashboard_config, theme')
             .eq('user_id', session.user.id)
-            .single();
+            .maybeSingle(); // <--- REMPLACEZ .single() PAR CECI
 
         if (!error && data) {
             savedConfig = data.dashboard_config || [];
             savedTheme = data.theme || 'default';
         }
     }
-
     // 4. On renvoie tout à la page +page.svelte
     return {
         savedConfig,

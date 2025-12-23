@@ -6,7 +6,6 @@
       "destination": "https://mgljaheyimizrydazrxh.supabase.co/$1"
     }
   ],
-
   "headers": [
     {
       "source": "/api-proxy/(.*)",
@@ -17,8 +16,7 @@
         },
         {
           "key": "Access-Control-Allow-Origin",
-          
-          "value": "https://baco-inky.vercel.app, *"
+          "value": "https://baco-inky.vercel.app" 
         },
         {
           "key": "Access-Control-Allow-Methods",
@@ -26,8 +24,7 @@
         },
         {
           "key": "Access-Control-Allow-Headers",
-         
-          "value": "Authorization, Content-Type, apikey, x-client-info, x-supabase-api-version" 
+          "value": "Authorization, Content-Type, apikey, x-client-info, x-supabase-api-version, Prefer, Range, Accept" 
         }
       ]
     }
