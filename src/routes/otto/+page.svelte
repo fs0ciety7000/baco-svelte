@@ -706,24 +706,27 @@ async function generatePDF() {
             </div>
         </div>
 
-        <div class="fixed bottom-0 left-0 w-full z-50 flex justify-end items-center gap-4 p-4 border-t border-white/5 bg-[#0f1115]/60 backdrop-blur-2xl shadow-[0_-4px_30px_rgba(0,0,0,0.5)]">
-            <button on:click={() => generatePDF()} class="px-5 py-2.5 rounded-full text-sm font-bold text-emerald-400/90 bg-emerald-500/5 border border-emerald-500/10 hover:bg-emerald-500/10 hover:border-emerald-500/30 hover:text-emerald-300 hover:shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-2 backdrop-blur-md">
-                <Printer class="w-4 h-4" /> <span class="hidden sm:inline">Télécharger PDF</span>
-            </button>
-            <button 
-    on:click={() => showEmailExport = true} 
-    class="px-5 py-2.5 rounded-full text-sm font-bold text-blue-400 bg-blue-500/5 border border-blue-500/10 hover:bg-blue-500/10 hover:border-blue-500/30 transition-all flex items-center gap-2"
->
-    <Mail class="w-4 h-4" /> <span>E-mail</span>
-</button>
+<div class="fixed bottom-4 left-4 right-4 z-50 flex flex-wrap justify-end items-center gap-4 p-4 border border-white/10 bg-[#0f1115]/80 backdrop-blur-2xl shadow-2xl rounded-2xl" in:fly={{ y: 20 }}>
+    
+    <button 
+        on:click={() => showEmailExport = true} 
+        class="px-5 py-2.5 rounded-full text-sm font-bold text-blue-400 bg-blue-500/5 border border-blue-500/10 hover:bg-blue-500/10 hover:border-blue-500/30 transition-all flex items-center gap-2"
+    >
+        <Mail class="w-4 h-4" /> <span class="hidden sm:inline">E-mail</span>
+    </button>
 
-            <button on:click={() => saveCommande('brouillon')} disabled={isSaving} class="px-6 py-2.5 rounded-full text-sm font-medium text-gray-400 bg-white/5 border border-white/5 hover:bg-white/10 hover:text-white hover:border-white/10 transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                <Save class="w-4 h-4" /> <span>Brouillon</span>
-            </button>
-            <button on:click={() => saveCommande('envoye')} disabled={isSaving} class="px-6 py-2.5 rounded-full text-sm font-bold text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/40 shadow-[0_0_0_1px_rgba(239,68,68,0.05)] hover:shadow-[0_0_20px_rgba(239,68,68,0.3)] transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                {#if isSaving}<Loader2 class="w-4 h-4 animate-spin"/>{:else}<CheckCircle class="w-4 h-4" />{/if} <span>Clôturer</span>
-            </button>
-        </div>
+    <button on:click={() => generatePDF()} class="px-5 py-2.5 rounded-full text-sm font-bold text-emerald-400/90 bg-emerald-500/5 border border-emerald-500/10 hover:bg-emerald-500/10 hover:border-emerald-500/30 hover:text-emerald-300 hover:shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-2 backdrop-blur-md">
+        <Printer class="w-4 h-4" /> <span class="hidden sm:inline">Télécharger PDF</span>
+    </button>
+
+    <button on:click={() => saveCommande('brouillon')} disabled={isSaving} class="px-6 py-2.5 rounded-full text-sm font-medium text-gray-400 bg-white/5 border border-white/5 hover:bg-white/10 hover:text-white hover:border-white/10 transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+        <Save class="w-4 h-4" /> <span>Brouillon</span>
+    </button>
+
+    <button on:click={() => saveCommande('envoye')} disabled={isSaving} class="px-6 py-2.5 rounded-full text-sm font-bold text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/40 shadow-[0_0_20px_rgba(239,68,68,0.3)] transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+        {#if isSaving}<Loader2 class="w-4 h-4 animate-spin"/>{:else}<CheckCircle class="w-4 h-4" />{/if} <span>Clôturer</span>
+    </button>
+</div>
         <div class="h-24"></div>
     {/if}
 
