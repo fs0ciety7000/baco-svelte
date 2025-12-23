@@ -49,9 +49,9 @@
     <div class="flex justify-between items-center {compact ? 'mb-2' : 'mb-3'} shrink-0 h-6">
         <div class="flex items-center gap-2 text-pink-300">
             <PenLine class="{compact ? 'w-4 h-4' : 'w-5 h-5'}" />
-            {#if !compact}
+           
                 <span class="text-base font-bold text-white">Bloc-notes</span>
-            {/if}
+           
         </div>
 
         <div class="flex items-center gap-2">
