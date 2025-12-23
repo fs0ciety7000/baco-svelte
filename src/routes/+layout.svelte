@@ -5,14 +5,12 @@
   import { supabase } from '$lib/supabase';
   import { goto } from '$app/navigation';
   
-  // --- IMPORTS COMPOSANTS ---
   import Nav from '$lib/components/Nav.svelte';
   import Footer from '$lib/components/Footer.svelte';
   import GlobalSearch from '$lib/components/GlobalSearch.svelte';
   import ToastContainer from '$lib/components/ToastContainer.svelte';
   import ConfirmModal from '$lib/components/ConfirmModal.svelte';
   
-  // --- UTILS ---
   import DashboardSkeleton from '$lib/components/DashboardSkeleton.svelte';
   import { zenMode } from '$lib/stores/zen';
   import { toast } from '$lib/stores/toast.js'; 
@@ -22,15 +20,12 @@
 
   // --- VARIABLES ---
   let user = null;
-  let loading = true; 
-  let isChristmasTheme = false;
-  let isScreenshotFlashing = false; // Pour le flou flash lors du screenshot
+  let loading = true;
+  let isScreenshotFlashing = false;
 
   $: isLoginPage = $page.url.pathname === '/';
 
-  // --- LOGIQUE CLAVIER ---
   function handleKeydown(event) {
-    // Quitter le mode Zen avec Echap
     if (event.key === 'Escape' && $zenMode) {
         zenMode.set(false);
     }
@@ -39,53 +34,48 @@
   onMount(async () => {
     // --- 1. LOGIQUE DE FLOU FLASH (SCREENSHOT) ---
     const handlePrintScreen = async (e) => {
-      // Détection de la touche PrintScreen (Code 44 ou nom de touche)
+      // On vérifie la touche PrintScreen (Code 44 ou 'PrintScreen')
       if (e.key === 'PrintScreen' || e.keyCode === 44) {
-        // Activer le flou immédiatement
+        // Activation immédiate du flou
         isScreenshotFlashing = true;
         
-        toast.warning("Capture d'écran : Les données sensibles ont été floutées par sécurité.");
+        toast.warning("Sécurité : Les données ont été floutées pour la capture.");
 
-        // Tenter de vider le presse-papier pour écraser l'image capturée (si supporté)
+        // Tentative d'écrasement du presse-papier
         try {
           await navigator.clipboard.writeText("Contenu protégé - BACO");
-        } catch (err) {}
+        } catch (err) {
+          // Échec silencieux si le navigateur bloque l'accès
+        }
 
-        // Retirer le flou après 1 seconde (laisse le temps au système de finir la capture)
+        // On laisse le flou pendant 1.5 seconde pour couvrir le délai du système
         setTimeout(() => {
           isScreenshotFlashing = false;
-        }, 1000); 
+        }, 1500); 
       }
     };
 
-    // On écoute le KEYDOWN pour flouter AVANT que le système ne capture au KEYUP
+    // IMPORTANT : On utilise 'keydown' pour flouter AVANT la capture système
     window.addEventListener('keydown', handlePrintScreen);
 
-    // --- 2. AUTHENTICATION & SESSION ---
+    // --- 2. AUTHENTICATION ---
     const { data: { session } } = await supabase.auth.getSession();
     user = session?.user;
 
-    // Redirections de sécurité
     if (!user && !isLoginPage) {
         goto('/');
     } else if (user && isLoginPage) {
         goto('/accueil');
     }
-
-    // Récupération thème Noël
-    if (typeof localStorage !== 'undefined') {
-      isChristmasTheme = localStorage.getItem('bacoChristmasTheme') !== 'false';
-    }
     
     loading = false;
 
-    // Écouteur de changement d'état Auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       user = session?.user;
       if (event === 'SIGNED_OUT') goto('/');
     });
 
-    // --- 3. NETTOYAGE DES ÉCOUTEURS ---
+    // --- 3. NETTOYAGE ---
     return () => {
       window.removeEventListener('keydown', handlePrintScreen);
       subscription.unsubscribe();
@@ -98,7 +88,7 @@
 {#if loading && !isLoginPage}
   <DashboardSkeleton />
 {:else}
-  <div class="min-h-screen flex flex-col bg-deep-space text-gray-900 dark:text-gray-100 transition-all duration-300 relative {isScreenshotFlashing ? 'blur-3xl scale-95 pointer-events-none' : ''}">
+  <div class="min-h-screen flex flex-col bg-deep-space text-gray-900 dark:text-gray-100 transition-all duration-300 relative {isScreenshotFlashing ? 'blur-3xl scale-95 pointer-events-none select-none' : ''}">
     
     {#if !isLoginPage && !$zenMode}
       <div transition:fade={{ duration: 200 }}>
@@ -140,7 +130,6 @@
           on:click={() => zenMode.set(false)}
           transition:fade
           class="fixed bottom-6 right-6 z-50 p-3 rounded-full bg-white/10 hover:bg-red-500/20 text-white/50 hover:text-white border border-white/5 backdrop-blur-md shadow-2xl transition-all hover:scale-110 group"
-          title="Quitter le mode Zen (Échap)"
       >
           <Minimize class="w-6 h-6" />
       </button>
@@ -152,7 +141,6 @@
 {/if}
 
 <style>
-  /* Interdiction absolue d'imprimer la page */
   @media print {
     :global(body) { display: none !important; }
   }
