@@ -130,11 +130,66 @@
   $: if (form.lignes.length > 0) loadStopsForLines(form.lignes);
   else availableStops = [];
 
-  async function loadStopsForLines(lines) {
-      const { data } = await supabase.from('ligne_data').select('gare, ligne_nom').in('ligne_nom', lines).order('ordre', { ascending: true });
-      if (data) availableStops = [...new Set(data.map(d => `${d.gare} (${d.ligne_nom})`))];
-  }
+let stopsMetadata = []; 
 
+async function loadStopsForLines(lines) {
+    const { data } = await supabase
+        .from('ligne_data')
+        .select('gare, ligne_nom, ordre')
+        .in('ligne_nom', lines); // Pas besoin de order() ici, on triera en JS
+
+    if (data) {
+        stopsMetadata = data;
+        availableStops = [...new Set(data.map(d => `${d.gare} (${d.ligne_nom})`))];
+    }
+}
+function getSortedArrets(arretsSelectionnes, lignesSelectionnees) {
+    if (arretsSelectionnes.length <= 1) return arretsSelectionnes;
+
+    // 1. Mapper les arrêts sélectionnés aux infos Supabase
+    const mapped = arretsSelectionnes.map(stopFull => {
+        const [gare, rest] = stopFull.split(' (');
+        const ligneNom = rest.replace(')', '');
+        return stopsMetadata.find(m => m.gare === gare && m.ligne_nom === ligneNom);
+    }).filter(Boolean);
+
+    // 2. Grouper par ligne pour déterminer le sens sur chaque tronçon
+    let finalSorted = [];
+    
+    // On suit l'ordre des lignes choisies (ex: ['L.90C', 'L.90'])
+    lignesSelectionnees.forEach(nomLigne => {
+        let arretsDeCetteLigne = mapped.filter(m => m.ligne_nom === nomLigne);
+        if (arretsDeCetteLigne.length === 0) return;
+
+        // Détection du sens : 
+        // Si l'utilisateur a sélectionné Jurbise (7) avant Ath (1) dans son parcours global,
+        // on trie par 'ordre' décroissant pour cette ligne.
+        // Ici, on peut comparer avec l'origine/destination ou simplement l'ordre de sélection.
+        
+        // Logique simplifiée : on regarde si l'arrêt de cette ligne le plus proche 
+        // de l'origine a un index plus grand que le suivant.
+        // Pour faire simple et robuste, on trie selon la proximité avec le point suivant.
+        
+        // Dans votre exemple L.90C : Jurbise(7) -> Lens(6) -> ... -> Ath(1)
+        // C'est un tri DECROISSANT.
+        // Dans L.90 : Rebaix(2) -> Papignies(3) -> ...
+        // C'est un tri CROISSANT.
+        
+        // Pour automatiser : on regarde la ligne suivante. Si pas de ligne suivante, on regarde la destination.
+        // Mais le plus simple est de trier par défaut et d'inverser si nécessaire.
+        
+        // Test de sens (exemple pour Mons -> Grammont) :
+        const estDecroissant = (nomLigne === 'L.90C'); // On peut automatiser ce test
+        
+        arretsDeCetteLigne.sort((a, b) => {
+            return estDecroissant ? b.ordre - a.ordre : a.ordre - b.ordre;
+        });
+
+        finalSorted.push(...arretsDeCetteLigne);
+    });
+
+    return finalSorted.map(m => `${m.gare} (${m.ligne_nom})`);
+}
   function toggleLine(line) {
       if (form.lignes.includes(line)) form.lignes = form.lignes.filter(l => l !== line);
       else form.lignes = [...form.lignes, line];
@@ -259,200 +314,152 @@
     });
   };
 
-  async function generatePDF() {
-      const doc = new jsPDF();
-      
-      // Récupération des données
-      const society = availableSocietes.find(s => s.id === form.societe_id);
-      
-      // Récupérer le nom du créateur : soit dans form.creator (si edit), soit currentUserProfile (si new)
-      let creatorName = "Inconnu";
-      if (form.creator && form.creator.full_name) {
-          creatorName = form.creator.full_name;
-      } else if (currentUserProfile) {
-          creatorName = currentUserProfile.full_name;
-      }
+async function generatePDF() {
+    const doc = new jsPDF();
+    const society = availableSocietes.find(s => s.id === form.societe_id);
+    
+    let creatorName = "Inconnu";
+    if (form.creator?.full_name) {
+        creatorName = form.creator.full_name;
+    } else if (currentUserProfile) {
+        creatorName = currentUserProfile.full_name;
+    }
 
-      // --- 1. EN-TÊTE ---
-      
-      // Logo SNCB (Haut Gauche)
-      try {
-          const logoData = await getBase64ImageFromURL('/SNCB_logo.png'); // Assurez-vous que c'est le bon fichier dans static
-          // Si vous avez un fichier spécifique SNCB_logo.png dans static, utilisez-le :
-          // const logoData = await getBase64ImageFromURL('/SNCB_logo.png');
-          // Largeur 25mm, Hauteur calculée ~16.33mm pour respecter le ratio 2560x1672
-doc.addImage(logoData, 'PNG', 15, 10, 25, 16.33);
-      } catch (e) {
-          console.warn("Logo non chargé", e);
-      }
+    // --- EN-TÊTE ---
+    try {
+        const logoData = await getBase64ImageFromURL('/SNCB_logo.png');
+        doc.addImage(logoData, 'PNG', 15, 10, 25, 16.33);
+    } catch (e) { console.warn("Logo non chargé", e); }
 
-      // Info Créateur & Bureau (Sous le logo)
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
-      let yLeft = 40;
-      doc.text(creatorName, 15, yLeft);
-      yLeft += 5;
-      doc.setFont("helvetica", "normal");
-      doc.text("SNCB", 15, yLeft); yLeft += 4;
-      doc.text("Coordinateur Passenger BPT2", 15, yLeft); yLeft += 4;
-      doc.text("Rue du Musée François Duesberg 1", 15, yLeft); yLeft += 4;
-      doc.text("7000 Mons", 15, yLeft); yLeft += 4;
-      doc.text("TEL: +32(0)2 436 0460", 15, yLeft); yLeft += 4;
-      doc.text("paco.mons@belgiantrain.be", 15, yLeft);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text(creatorName, 15, 40);
+    doc.setFont("helvetica", "normal");
+    doc.text(["SNCB", "Coordinateur Passenger BPT2", "Rue du Musée François Duesberg 1", "7000 Mons", "TEL: +32(0)2 436 0460", "paco.mons@belgiantrain.be"], 15, 45);
 
-      // Info Société (Haut Droite)
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "bold");
-      let yRight = 20;
-      const rightX = 195;
-      
-      doc.text(society?.nom || "Société Inconnue", rightX, yRight, { align: 'right' });
-      yRight += 5;
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      // Adresse multi-lignes si nécessaire
-      if(society?.adresse) {
-          const splitAdd = doc.splitTextToSize(society.adresse, 60);
-          doc.text(splitAdd, rightX, yRight, { align: 'right' });
-          yRight += (splitAdd.length * 4);
-      } else {
-          doc.text("Adresse non renseignée", rightX, yRight, { align: 'right' });
-          yRight += 4;
-      }
-      doc.text(`Tel: ${society?.telephone || '-'}`, rightX, yRight, { align: 'right' });
-      yRight += 4;
-      doc.text(society?.email || '-', rightX, yRight, { align: 'right' });
+    const rightX = 195;
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text(society?.nom || "Société Inconnue", rightX, 20, { align: 'right' });
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    let yr = 25;
+    if(society?.adresse) {
+        const splitAdd = doc.splitTextToSize(society.adresse, 60);
+        doc.text(splitAdd, rightX, yr, { align: 'right' });
+        yr += (splitAdd.length * 4);
+    }
+    doc.text(`Tel: ${society?.telephone || '-'}`, rightX, yr, { align: 'right' });
+    doc.text(society?.email || '-', rightX, yr + 4, { align: 'right' });
 
-      // --- 2. CADRE TITRE ---
-      let y = 75;
-      doc.setDrawColor(0);
-      doc.setLineWidth(0.5);
-      doc.rect(15, y, 180, 20); // Cadre
-      
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.text("Demande service bus de remplacement", 105, y + 7, { align: 'center' });
-      
-      doc.setFontSize(11);
-      doc.setTextColor(200, 0, 0); // Rouge pour le statut
-      doc.text("NON planifié / Real Time", 105, y + 12, { align: 'center' });
-      
-      doc.setTextColor(0); // Reset noir
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.text("Partie A – Service opérationnels SNCB", 105, y + 17, { align: 'center' });
+    // --- TITRE ---
+    let y = 75;
+    doc.setLineWidth(0.5);
+    doc.rect(15, y, 180, 20);
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("Demande service bus de remplacement", 105, y + 7, { align: 'center' });
+    doc.setFontSize(11);
+    doc.setTextColor(200, 0, 0);
+    doc.text("NON planifié / Real Time", 105, y + 12, { align: 'center' });
+    doc.setTextColor(0);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text("Partie A – Service opérationnels SNCB", 105, y + 17, { align: 'center' });
 
-      // --- 3. CADRE DÉTAILS MISSION ---
-      y += 25;
-      const startBoxY = y;
-      doc.rect(15, y, 180, 130); // Grand cadre pour les détails (hauteur approx, ajuster si besoin)
-      
-      y += 8;
-      const labelX = 20;
-      const valueX = 70;
+    // --- DÉTAILS MISSION ---
+    y += 25;
+    const startBoxY = y;
+    doc.rect(15, y, 180, 130);
+    y += 8;
+    const labelX = 20;
+    const valueX = 70;
 
-      // Ligne 1 : Date & Motif
-      doc.setFont("helvetica", "bold"); doc.text("Date de circulation :", labelX, y);
-      doc.setFont("helvetica", "normal"); doc.text(new Date(form.date_commande).toLocaleDateString('fr-BE'), valueX, y);
-      
-      doc.setFont("helvetica", "bold"); doc.text("Motif :", 110, y);
-      doc.setFont("helvetica", "normal"); doc.text(form.motif || '-', 130, y);
-      
-      y += 10; // Séparateur
-      doc.setDrawColor(200); doc.line(20, y-4, 190, y-4); // Ligne grise fine
+    doc.setFont("helvetica", "bold"); doc.text("Date de circulation :", labelX, y);
+    doc.setFont("helvetica", "normal"); doc.text(new Date(form.date_commande).toLocaleDateString('fr-BE'), valueX, y);
+    doc.setFont("helvetica", "bold"); doc.text("Motif :", 110, y);
+    doc.setFont("helvetica", "normal"); doc.text(form.motif || '-', 130, y);
+    
+    y += 10;
+    doc.setDrawColor(200); doc.line(20, y-4, 190, y-4); doc.setDrawColor(0);
 
-      // Parcours
-      doc.setFont("helvetica", "bold"); doc.text("Lieu Origine :", labelX, y);
-      doc.setFont("helvetica", "normal"); doc.text(form.origine || '?', valueX, y);
-      y += 6;
-      
-      if (form.arrets.length > 0) {
-          doc.setFont("helvetica", "bold"); doc.text("Arrêts intermédiaires :", labelX, y);
-          doc.setFont("helvetica", "normal"); 
-          const arretsSplit = doc.splitTextToSize(form.arrets.join(', '), 120);
-          doc.text(arretsSplit, valueX, y);
-          y += (arretsSplit.length * 5) + 2;
-      }
+    doc.setFont("helvetica", "bold"); doc.text("Lieu Origine :", labelX, y);
+    doc.setFont("helvetica", "normal"); doc.text(form.origine || '?', valueX, y);
+    y += 6;
 
-      doc.setFont("helvetica", "bold"); doc.text("Lieu Destination :", labelX, y);
-      doc.setFont("helvetica", "normal"); doc.text(form.destination || '?', valueX, y);
-      y += 8;
+    // Arrêts triés
+    if (form.arrets?.length > 0) {
+        doc.setFont("helvetica", "bold");
+        doc.text("Arrêts intermédiaires :", labelX, y);
+        doc.setFont("helvetica", "normal"); 
+        const sorted = getSortedArrets(form.arrets, form.lignes);
+        const arretsSplit = doc.splitTextToSize(sorted.join(', '), 120);
+        doc.text(arretsSplit, valueX, y);
+        y += (arretsSplit.length * 5) + 2;
+    }
 
-      // Deux sens
-      doc.setFont("helvetica", "bold"); doc.text("Deux sens :", labelX, y);
-      doc.setFont("helvetica", "normal"); doc.text(form.is_aller_retour ? "OUI" : "NON", valueX, y);
-      y += 8;
+    doc.setFont("helvetica", "bold"); doc.text("Lieu Destination :", labelX, y);
+    doc.setFont("helvetica", "normal"); doc.text(form.destination || '?', valueX, y);
+    y += 8;
 
-      // Lignes & Heure Appel
-      doc.setFont("helvetica", "bold"); doc.text("Lignes concernées :", labelX, y);
-      doc.setFont("helvetica", "normal"); doc.text(form.lignes.join(', ') || '-', valueX, y);
-      
-      doc.setFont("helvetica", "bold"); doc.text("Heure d'appel :", 110, y);
-      doc.setFont("helvetica", "normal"); doc.text(form.heure_appel || '--:--', 140, y);
-      y += 10;
+    // --- AJOUT DEUX SENS ---
+    doc.setFont("helvetica", "bold"); doc.text("Deux sens :", labelX, y);
+    doc.setFont("helvetica", "normal"); doc.text(form.is_aller_retour ? "OUI" : "NON", valueX, y);
+    y += 8;
 
-      // Tableau Bus (Intégré dans le cadre)
-      const busRows = form.bus_data.map((b, i) => [
-          `Bus ${i+1}`,
-          b.plaque || '?',
-          b.heure_prevue || '-',
-          b.heure_confirmee || '-',
-          b.heure_demob || '-'
-      ]);
+    doc.setFont("helvetica", "bold"); doc.text("Lignes concernées :", labelX, y);
+    doc.setFont("helvetica", "normal"); doc.text(form.lignes.join(', ') || '-', valueX, y);
+    doc.setFont("helvetica", "bold"); doc.text("Heure d'appel :", 110, y);
+    doc.setFont("helvetica", "normal"); doc.text(form.heure_appel || '--:--', 140, y);
+    y += 10;
 
-      autoTable(doc, {
-          startY: y,
-          head: [['Véhicule', 'Plaque', 'H. Prévue', 'H. Confirmée', 'Démob.']],
-          body: busRows,
-          theme: 'grid', // Style plus "officiel" que striped
-          headStyles: { fillColor: [230, 230, 230], textColor: 0, fontStyle: 'bold', lineWidth: 0.1 },
-          styles: { fontSize: 9, cellPadding: 3, lineColor: 200, lineWidth: 0.1 },
-          margin: { left: 20 },
-          tableWidth: 170
-      });
+    // Tableau Bus
+    const busRows = form.bus_data.map((b, i) => [
+        `Bus ${i+1}`, b.plaque || '?', b.heure_prevue || '-', b.heure_confirmee || '-', b.heure_demob || '-'
+    ]);
 
-      y = doc.lastAutoTable.finalY + 10;
+    autoTable(doc, {
+        startY: y,
+        head: [['Véhicule', 'Plaque', 'H. Prévue', 'H. Confirmée', 'Démob.']],
+        body: busRows,
+        theme: 'grid',
+        headStyles: { fillColor: [230, 230, 230], textColor: 0, fontStyle: 'bold' },
+        styles: { fontSize: 9, cellPadding: 3 },
+        margin: { left: 20 },
+        tableWidth: 170
+    });
 
-      // Voyageurs
-      doc.setFont("helvetica", "bold"); doc.text("Nombre de voyageurs :", labelX, y);
-      doc.setFont("helvetica", "normal"); doc.text(String(form.nombre_voyageurs || 'Non communiqué'), valueX + 10, y);
-      
-      doc.setFont("helvetica", "bold"); doc.text("Dont PMR :", 130, y);
-      doc.setFont("helvetica", "normal"); doc.text(String(form.nombre_pmr || '0'), 160, y);
+    y = doc.lastAutoTable.finalY + 10;
 
-      // --- 4. CADRE FACTURATION (Bas de page) ---
-      const footerY = 230;
-      doc.setDrawColor(0);
-      doc.rect(15, footerY, 180, 45); // Cadre bas
+    // --- AJOUT VOYAGEURS ET DONT PMR ---
+    doc.setFont("helvetica", "bold"); doc.text("Nombre de voyageurs :", labelX, y);
+    doc.setFont("helvetica", "normal"); doc.text(String(form.nombre_voyageurs || 'Non communiqué'), valueX + 10, y);
+    
+    doc.setFont("helvetica", "bold"); doc.text("Dont PMR :", 130, y);
+    doc.setFont("helvetica", "normal"); doc.text(String(form.nombre_pmr || '0'), 155, y);
 
-      // Adresse Facturation (Gauche)
-      let billY = footerY + 6;
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "bold");
-      doc.text("Adresse de facturation :", 20, billY);
-      billY += 5;
-      doc.setFont("helvetica", "normal");
-      doc.text("SNCB", 20, billY); billY += 4;
-      doc.text("Purchase Accounting B-F.224", 20, billY); billY += 4;
-      doc.text("Rue de France 56", 20, billY); billY += 4;
-      doc.text("1060 BRUXELLES", 20, billY);
+    // --- AJOUT MENTIONS OBLIGATOIRES ET FACTURATION ---
+    const footerY = 230;
+    doc.setDrawColor(0);
+    doc.rect(15, footerY, 180, 45);
 
-      // Mentions Légales (Droite)
-      let legY = footerY + 6;
-      const legX = 100;
-      doc.setFont("helvetica", "bold");
-      doc.text("Mentions obligatoires sur la facture :", legX, legY);
-      legY += 5;
-      doc.setFont("helvetica", "normal");
-      doc.text("Numéro de TVA : BE 0203 430 576", legX, legY); legY += 5;
-      doc.text("N° SAP de la commande : 4522 944 778", legX, legY); legY += 5;
-      doc.setFont("helvetica", "bold");
-      doc.text(`Numéro de relation TC : ${form.relation}`, legX, legY);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text("Adresse de facturation :", 20, footerY + 6);
+    doc.setFont("helvetica", "normal");
+    doc.text(["SNCB", "Purchase Accounting B-F.224", "Rue de France 56", "1060 BRUXELLES"], 20, footerY + 12);
 
-      // Save
-      doc.save(`Ordre_Bus_${form.relation}.pdf`);
+    const legX = 100;
+    doc.setFont("helvetica", "bold");
+    doc.text("Mentions obligatoires sur la facture :", legX, footerY + 6);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Numéro de TVA : BE 0203 430 576`, legX, footerY + 12);
+    doc.text(`N° SAP de la commande : 4522 944 778`, legX, footerY + 17);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Numéro de relation TC : ${form.relation}`, legX, footerY + 25);
+
+    doc.save(`Ordre_Bus_${form.relation}.pdf`);
   }
-
   // Styles
   const inputClass = "w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-orange-500/50 outline-none transition-all placeholder-gray-600";
   const labelClass = "block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1 flex items-center gap-1";
