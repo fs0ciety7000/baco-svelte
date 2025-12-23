@@ -25,7 +25,7 @@
   import { 
     LayoutGrid, Cloud, Loader2, Plus, X, 
     Sun, Car, TrainFront, Accessibility, Link, Calendar, BookOpen, PenLine, Briefcase,
-    Settings2, Users, Palette, Check
+    Settings2, Users, Palette, Check, AlertTriangle
   } from 'lucide-svelte';
 
   import 'gridstack/dist/gridstack.min.css';
