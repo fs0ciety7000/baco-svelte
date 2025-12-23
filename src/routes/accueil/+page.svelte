@@ -1,12 +1,11 @@
 <script>
   import { onMount, onDestroy, tick } from 'svelte';
   import { fade, fly } from 'svelte/transition';
-  import { supabase } from '$lib/supabase'; // Assurez-vous que le chemin est bon
+  import { supabase } from '$lib/supabase';
   import { toast } from '$lib/stores/toast';
 
-  // --- IMPORTS GRIDSTACK ---
-  import 'gridstack/dist/gridstack.min.css';
-  import { GridStack } from 'gridstack';
+  // --- STORES & THÈMES (Réintégration) ---
+  import { themesConfig, currentThemeId, applyTheme } from '$lib/stores/theme';
 
   // --- IMPORTS WIDGETS ---
   import WidgetWeather from '$lib/components/widgets/WidgetWeather.svelte';
@@ -24,8 +23,11 @@
   import { 
     LayoutGrid, Cloud, Loader2, Plus, X, 
     Sun, Car, TrainFront, Accessibility, Link, Calendar, BookOpen, PenLine, Briefcase,
-    Settings2, Users, Save
+    Settings2, Users, Palette, Check
   } from 'lucide-svelte';
+
+  // --- CSS GRIDSTACK ---
+  import 'gridstack/dist/gridstack.min.css';
 
   let { data } = $props();
   
@@ -34,9 +36,7 @@
   let savedConfig = $derived(data.savedConfig);
   let widgetsData = $derived(data.widgetsData);
 
-  // --- CONFIGURATION WIDGETS (Avec mapping Gridstack) ---
-  // w = largeur (sur 12 colonnes ou 4 selon config), h = hauteur (unité arbitraire)
-  // Ici on part sur une grille de 4 colonnes pour matcher votre ancien layout CSS
+  // --- CONFIGURATION WIDGETS ---
   const WIDGET_REGISTRY = {
     weather: { label: 'Météo', component: WidgetWeather, defaultW: 1, defaultH: 1, icon: Sun, desc: 'Prévisions et conditions.' },
     shift: { label: 'Mon Service', component: WidgetShift, defaultW: 2, defaultH: 1, icon: Briefcase, desc: 'Suivi de shift.' },
@@ -46,156 +46,147 @@
     pmr: { label: 'PMR', component: WidgetPmr, defaultW: 2, defaultH: 1, icon: Accessibility, desc: 'Assistances & Rampes.' },
     links: { label: 'Raccourcis', component: WidgetLinks, defaultW: 1, defaultH: 1, icon: Link, desc: 'Liens utiles.' },
     planning: { label: 'Planning', component: WidgetPlanning, defaultW: 1, defaultH: 2, icon: Calendar, desc: 'Effectifs du jour.' },
-    journal: { label: 'Journal', component: WidgetJournal, defaultW: 4, defaultH: 1, icon: BookOpen, desc: 'Main courante.' }, // Full width
+    journal: { label: 'Journal', component: WidgetJournal, defaultW: 4, defaultH: 1, icon: BookOpen, desc: 'Main courante.' },
     teamboard: { label: 'Tableau Équipe', component: WidgetTeamBoard, defaultW: 2, defaultH: 1, icon: Users, desc: 'Comms équipe.' },
   };
 
-  // Layout par défaut (Fallback)
   const DEFAULT_LAYOUT = [
     { type: 'weather', x: 0, y: 0, w: 1, h: 1 },
-    { type: 'planning', x: 1, y: 0, w: 1, h: 2 }, // Planning à côté météo
-    { type: 'links', x: 0, y: 1, w: 1, h: 1 },    // Liens sous météo
-    { type: 'trains', x: 2, y: 0, w: 2, h: 1 }    // Trains à droite
+    { type: 'planning', x: 1, y: 0, w: 1, h: 2 },
+    { type: 'links', x: 0, y: 1, w: 1, h: 1 },
+    { type: 'trains', x: 2, y: 0, w: 2, h: 1 }
   ];
 
   // --- ÉTAT ---
   let items = $state([]);
   let isSaving = $state(false);
   let isDrawerOpen = $state(false);
+  let drawerTab = $state('widgets'); // 'widgets' ou 'themes'
+  
   let grid = null; // Instance Gridstack
+  let GridStackModule = null; // Module chargé dynamiquement
   let saveTimeout;
 
   // --- INITIALISATION ---
   onMount(async () => {
-    // 1. Charger la config
+    // 1. Import dynamique pour éviter l'erreur 500 (SSR)
+    const module = await import('gridstack');
+    GridStackModule = module.GridStack;
+
+    // 2. Chargement de la config
     let loadedItems = [];
     if (savedConfig && savedConfig.length > 0) {
         loadedItems = savedConfig;
     } else {
-        const local = localStorage.getItem('baco_dashboard_config_v3'); // v3 pour Gridstack
+        const local = localStorage.getItem('baco_dashboard_config_v3');
         if (local) loadedItems = JSON.parse(local);
         else loadedItems = DEFAULT_LAYOUT.map(i => ({ ...i, id: crypto.randomUUID() }));
     }
 
-    // 2. Migration des anciennes données (si nécessaire)
-    // Si on vient de v2 (classes CSS), on convertit en x,y,w,h
+    // Migration v2 -> v3 si nécessaire
     items = loadedItems.map(item => {
         if (item.w === undefined) {
              const reg = WIDGET_REGISTRY[item.type];
-             return {
-                 ...item,
-                 x: 0, y: 0, // Gridstack auto-place si x/y indéfini, mais on initialise
-                 w: reg?.defaultW || 1,
-                 h: reg?.defaultH || 1,
-                 autoPosition: true // Laisse Gridstack trouver une place
-             };
+             return { ...item, x: 0, y: 0, w: reg?.defaultW || 1, h: reg?.defaultH || 1, autoPosition: true };
         }
         return item;
     });
 
-    // 3. Initialisation Gridstack (après le rendu Svelte)
     await tick();
     initGridStack();
   });
 
   onDestroy(() => {
      if (grid) {
-         grid.destroy(false); // false = garde le DOM
-         grid = null; // <--- AJOUT CRITIQUE pour éviter d'utiliser une grille morte
+         grid.destroy(false);
+         grid = null;
      }
   });
 
-function initGridStack() {
-      // Sécurité anti-doublon
-      if (grid) return;
-
+  function initGridStack() {
+      if (grid || !GridStackModule) return;
       const el = document.querySelector('.grid-stack');
-      if (!el) return; // Sécurité si le DOM n'est pas prêt
+      if (!el) return;
 
-      grid = GridStack.init({
+      // Initialisation SANS staticGrid: true pour éviter les bugs de drag
+      // On désactive plutôt le drag/resize explicitement
+      grid = GridStackModule.init({
           column: 4,
           cellHeight: 280,
           margin: 10,
-          float: false,
+          float: false, // Les widgets remontent (gravité)
           disableOneColumnMode: false,
           animate: true,
-          staticGrid: true, // Commence en mode statique (verrouillé)
-          disableResize: true,
+          disableDrag: true,   // Verrouillé par défaut
+          disableResize: true, // Verrouillé par défaut
+          draggable: {
+            handle: '.widget-drag-handle', // Zone de drag spécifique (optionnel mais recommandé)
+            scroll: true 
+          }
       }, el);
 
-      // Écouter les changements
-      grid.on('change', (event, changeItems) => {
+      grid.on('change', () => {
           updateItemsFromGrid();
           triggerSave();
       });
   }
 
-  // --- LOGIQUE MÉTIER ---
+  // --- LOGIQUE GRIDSTACK ---
 
-function toggleDrawer() {
+  function toggleDrawer() {
       isDrawerOpen = !isDrawerOpen;
       
       if (grid) {
-          try {
-            // On active/désactive le mouvement selon l'état du tiroir
-            grid.enableMove(isDrawerOpen);
-            grid.enableResize(isDrawerOpen);
-            
-            // Gestion manuelle de la classe 'static' pour cacher/montrer les poignées
-            // (C'est ce que setStatic fait en interne, mais on le fait à la main pour éviter le crash)
-            if (grid.el) {
-                if (isDrawerOpen) {
-                    grid.el.classList.remove('grid-stack-static');
-                } else {
-                    grid.el.classList.add('grid-stack-static');
-                }
-            }
-          } catch (err) {
-              console.warn("Erreur GridStack sécurisée:", err);
+          // On active/désactive le mouvement selon l'état du tiroir
+          if (isDrawerOpen) {
+              grid.enableMove(true);
+              grid.enableResize(true);
+              grid.el.classList.remove('grid-stack-locked');
+          } else {
+              grid.enableMove(false);
+              grid.enableResize(false);
+              grid.el.classList.add('grid-stack-locked');
           }
       }
   }
 
   function addWidget(type) {
     if (!WIDGET_REGISTRY[type]) return;
-    
     const def = WIDGET_REGISTRY[type];
+    
+    // Ajout Svelte
     const newItem = {
         id: crypto.randomUUID(),
         type,
-        x: 0, y: 0, // Gridstack trouvera la première place libre
-        w: def.defaultW,
-        h: def.defaultH,
+        x: 0, y: 0, 
+        w: def.defaultW, h: def.defaultH,
         autoPosition: true 
     };
-    
-    // Ajout à l'état Svelte -> L'action `use:widgetAction` s'occupera de l'ajouter à Gridstack
     items = [...items, newItem];
+    
     toast.success(`${def.label} ajouté`);
     
-    // On attend que le DOM soit à jour, puis on scroll vers le bas
+    // Une fois ajouté au DOM par Svelte, on demande à Gridstack de le gérer
     tick().then(() => {
-        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        if (grid) {
+            // Le widgetAction le fera, mais on force un compactage si besoin
+            grid.compact();
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        }
     });
   }
 
   function removeWidget(id) {
-      // Pour supprimer proprement avec Gridstack + Svelte :
-      // 1. On trouve l'élément DOM
       const el = document.querySelector(`[gs-id="${id}"]`);
       if (el && grid) {
-          grid.removeWidget(el, false); // false = Gridstack oublie le widget, mais Svelte gère la suppression DOM
+          grid.removeWidget(el, false); // false = Svelte gère le DOM
       }
       items = items.filter(i => i.id !== id);
       triggerSave();
   }
 
-  // Action Svelte pour lier chaque item DOM à Gridstack
   function widgetAction(node, item) {
-      if (grid) {
-          // On s'assure que Gridstack prend en compte ce nouveau noeud
-          grid.makeWidget(node);
-      }
+      if (grid) grid.makeWidget(node);
       return {
           destroy() {
               if (grid) grid.removeWidget(node, false);
@@ -204,7 +195,6 @@ function toggleDrawer() {
   }
 
   function updateItemsFromGrid() {
-      // Synchronise l'état interne avec la réalité de la grille
       const gridItems = grid.getGridItems();
       items = items.map(item => {
           const el = gridItems.find(el => el.getAttribute('gs-id') === item.id);
@@ -215,12 +205,14 @@ function toggleDrawer() {
                   y: parseInt(el.getAttribute('gs-y') || 0),
                   w: parseInt(el.getAttribute('gs-w') || 1),
                   h: parseInt(el.getAttribute('gs-h') || 1),
-                  autoPosition: false // Une fois placé, on ne veut plus d'auto
+                  autoPosition: false
               };
           }
           return item;
       });
   }
+
+  // --- LOGIQUE DE SAUVEGARDE & THÈMES ---
 
   function saveToLocal(newItems) {
     localStorage.setItem('baco_dashboard_config_v3', JSON.stringify(newItems));
@@ -236,7 +228,7 @@ function toggleDrawer() {
                 const client = data.supabase || supabase;
                 await client.from('user_preferences').upsert({ 
                     user_id: session.user.id, 
-                    dashboard_config: items, // JSONB stockera x,y,w,h
+                    dashboard_config: items,
                     updated_at: new Date()
                 }, { onConflict: 'user_id' });
             } catch (err) {
@@ -244,28 +236,35 @@ function toggleDrawer() {
             } finally {
                 isSaving = false;
             }
-        }, 1500); // Debounce un peu plus court
+        }, 1500);
     }
+  }
+
+  function selectTheme(key) {
+      currentThemeId.set(key);
+      applyTheme(key);
+      toast.success(`Thème ${themesConfig[key].name} activé`);
   }
 </script>
 
 <style>
-    /* Ajustement des poignées de redimensionnement */
     :global(.grid-stack-item-content) {
-        /* Important pour que le contenu prenne toute la place */
         height: 100% !important; 
         overflow: hidden !important;
     }
-    
-    /* Couleur du placeholder lors du drag */
     :global(.grid-stack-placeholder > .placeholder-content) {
         background-color: rgba(59, 130, 246, 0.2) !important;
         border: 2px dashed rgba(59, 130, 246, 0.5);
         border-radius: 1rem;
     }
+    /* Pour cacher les poignées de resize quand verrouillé */
+    :global(.grid-stack-locked .ui-resizable-handle) {
+        display: none !important;
+    }
 </style>
 
 <div class="space-y-6 relative pb-20">
+  
   <div class="flex justify-between items-center bg-white/5 border border-white/10 p-4 rounded-xl backdrop-blur-md">
     <div class="flex items-center gap-3">
         <LayoutGrid class="text-blue-400" />
@@ -300,22 +299,23 @@ function toggleDrawer() {
       {#each items as item (item.id)}
          <div 
             class="grid-stack-item"
-            gs-id={item.id}
-            gs-x={item.x}
-            gs-y={item.y}
-            gs-w={item.w}
-            gs-h={item.h}
+            gs-id={item.id} gs-x={item.x} gs-y={item.y} gs-w={item.w} gs-h={item.h}
             use:widgetAction={item} 
          >
-            <div class="grid-stack-item-content p-2"> <div class="relative w-full h-full group">
+            <div class="grid-stack-item-content p-2">
+                <div class="relative w-full h-full group">
                     
                     {#if WIDGET_REGISTRY[item.type]}
                         {@const WidgetComponent = WIDGET_REGISTRY[item.type].component}
                         
-                        <div class="h-full w-full rounded-2xl overflow-hidden transition-all duration-300
+                        <div class="h-full w-full rounded-2xl overflow-hidden transition-all duration-300 relative
                             {isDrawerOpen ? 'ring-2 ring-blue-500/50 scale-[0.98]' : ''}">
                             
-                            <div class="h-full w-full {isDrawerOpen ? 'pointer-events-none' : ''}">
+                            {#if isDrawerOpen}
+                                <div class="absolute inset-0 z-20 cursor-move bg-transparent"></div>
+                            {/if}
+
+                            <div class="h-full w-full {isDrawerOpen ? 'pointer-events-none opacity-80' : ''}">
                                 <WidgetComponent 
                                     {...item} 
                                     ssrData={widgetsData ? widgetsData[item.type] : null}
@@ -329,13 +329,10 @@ function toggleDrawer() {
                         <div class="absolute -top-2 -right-2 z-50">
                             <button 
                                 onclick={() => removeWidget(item.id)}
-                                class="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-full shadow-lg transform hover:scale-110 transition-all"
+                                class="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-full shadow-lg transform hover:scale-110 transition-all cursor-pointer"
                             >
                                 <X size={16} />
                             </button>
-                        </div>
-                        
-                        <div class="absolute inset-0 bg-blue-500/5 rounded-2xl pointer-events-none border border-blue-500/20 z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                         </div>
                     {/if}
                 </div>
@@ -350,42 +347,99 @@ function toggleDrawer() {
     class:translate-x-0={isDrawerOpen}
     class:translate-x-full={!isDrawerOpen}
 >
-    <div class="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
-        <div>
-            <h3 class="text-xl font-bold text-white">Ajouter un widget</h3>
-            <p class="text-sm text-gray-400">Glissez ou cliquez</p>
+    <div class="p-0 border-b border-white/10 bg-white/5">
+        <div class="flex justify-between items-center p-6 pb-2">
+            <div>
+                <h3 class="text-xl font-bold text-white">Personnaliser</h3>
+                <p class="text-sm text-gray-400">Configurez votre espace</p>
+            </div>
+            <button onclick={toggleDrawer} class="text-gray-400 hover:text-white transition-colors cursor-pointer">
+                <X size={24} />
+            </button>
         </div>
-        <button onclick={toggleDrawer} class="text-gray-400 hover:text-white transition-colors cursor-pointer">
-             <X size={24} />
-        </button>
+
+        <div class="flex px-6 gap-6 mt-2">
+            <button 
+                onclick={() => drawerTab = 'widgets'}
+                class="pb-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2
+                {drawerTab === 'widgets' ? 'border-blue-500 text-white' : 'border-transparent text-gray-500 hover:text-gray-300'}"
+            >
+                <LayoutGrid size={16} /> Widgets
+            </button>
+            <button 
+                onclick={() => drawerTab = 'themes'}
+                class="pb-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2
+                {drawerTab === 'themes' ? 'border-blue-500 text-white' : 'border-transparent text-gray-500 hover:text-gray-300'}"
+            >
+                <Palette size={16} /> Ambiance
+            </button>
+        </div>
     </div>
 
     <div class="flex-grow overflow-y-auto p-6 space-y-4 custom-scrollbar">
-        {#each Object.entries(WIDGET_REGISTRY) as [type, def]}
-             {@const Icon = def.icon}
-            <button 
-                onclick={() => addWidget(type)}
-                class="w-full text-left group relative bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/50 
-                p-4 rounded-2xl transition-all duration-200 hover:shadow-lg hover:-translate-y-1 overflow-hidden cursor-pointer"
-            >
-                <div class="flex items-start gap-4 relative z-10">
-                    <div class="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-blue-400 group-hover:text-blue-300 group-hover:scale-110 transition-transform duration-300">
-                        <Icon size={24} />
-                    </div>
-                    
-                    <div>
-                         <h4 class="font-bold text-gray-200 group-hover:text-white text-lg">{def.label}</h4>
-                        <p class="text-xs text-gray-400 leading-relaxed mt-1">{def.desc}</p>
-                        <div class="mt-2 text-[10px] uppercase tracking-wider font-bold text-gray-500 bg-black/20 inline-block px-2 py-0.5 rounded">
-                            Taille: {def.defaultW}x{def.defaultH}
+        
+        {#if drawerTab === 'widgets'}
+            {#each Object.entries(WIDGET_REGISTRY) as [type, def]}
+                {@const Icon = def.icon}
+                <button 
+                    onclick={() => addWidget(type)}
+                    class="w-full text-left group relative bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/50 
+                    p-4 rounded-2xl transition-all duration-200 hover:shadow-lg hover:-translate-y-1 overflow-hidden cursor-pointer"
+                >
+                    <div class="flex items-start gap-4 relative z-10">
+                        <div class="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-blue-400 group-hover:text-blue-300 group-hover:scale-110 transition-transform duration-300">
+                            <Icon size={24} />
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-200 group-hover:text-white text-lg">{def.label}</h4>
+                            <p class="text-xs text-gray-400 leading-relaxed mt-1">{def.desc}</p>
+                            <div class="mt-2 text-[10px] uppercase tracking-wider font-bold text-gray-500 bg-black/20 inline-block px-2 py-0.5 rounded">
+                                Taille: {def.defaultW}x{def.defaultH}
+                            </div>
+                        </div>
+                        <div class="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity -mr-2 group-hover:mr-0 text-blue-400">
+                            <Plus size={24} />
                         </div>
                     </div>
+                </button>
+            {/each}
 
-                    <div class="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity -mr-2 group-hover:mr-0 text-blue-400">
-                         <Plus size={24} />
-                    </div>
-                </div>
-            </button>
-        {/each}
+        {:else}
+            <div class="grid grid-cols-1 gap-4">
+                {#each Object.entries(themesConfig) as [key, theme]}
+                    <button 
+                        onclick={() => selectTheme(key)}
+                        class="relative w-full p-4 rounded-2xl border transition-all duration-300 group overflow-hidden text-left cursor-pointer
+                        {$currentThemeId === key 
+                            ? 'border-white/40 ring-2 ring-white/10 bg-white/10' 
+                            : 'border-white/10 hover:border-white/30 bg-white/5'}"
+                    >
+                        <div 
+                            class="absolute inset-0 opacity-20 transition-opacity duration-500"
+                            style="background: {theme.preview || 'transparent'}"
+                        ></div>
+
+                        <div class="relative z-10 flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <div 
+                                    class="w-12 h-12 rounded-full shadow-lg border border-white/20"
+                                    style="background: {theme.preview || 'gray'};"
+                                ></div>
+                                <div>
+                                    <h4 class="font-bold text-white text-lg">{theme.name}</h4>
+                                    <p class="text-xs text-gray-400">Thème {theme.type}</p>
+                                </div>
+                            </div>
+                            {#if $currentThemeId === key}
+                                <div class="bg-green-500/20 text-green-400 p-2 rounded-full border border-green-500/30">
+                                    <Check size={20} />
+                                </div>
+                            {/if}
+                        </div>
+                    </button>
+                {/each}
+            </div>
+        {/if}
+
     </div>
 </div>
