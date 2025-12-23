@@ -20,10 +20,10 @@
   import { 
     LayoutGrid, Cloud, Loader2, Plus, X, 
     Sun, Car, TrainFront, Accessibility, Link, Calendar, BookOpen, PenLine, Briefcase,
-    Settings2, Users 
+    Settings2, Users, Palette, LayoutGrid, Check 
   } from 'lucide-svelte';
   import { toast } from '$lib/stores/toast';
-
+import { themesConfig, currentThemeId, applyTheme } from '$lib/stores/theme';
   let { data } = $props();
 
   // Props dérivées (Svelte 5)
@@ -129,6 +129,7 @@
   let isSaving = $state(false);
   let isDrawerOpen = $state(false);
   let saveTimeout;
+  let drawerTab = $state('widgets');
   const flipDurationMs = 300;
 
   // --- INITIALISATION ---
@@ -194,6 +195,12 @@
 
   function handleDndConsider(e) { items = e.detail.items; }
   function handleDndFinalize(e) { items = e.detail.items; triggerSave(); }
+
+  function selectTheme(key) {
+      currentThemeId.set(key);
+      applyTheme(key);
+      toast.success(`Thème ${themesConfig[key].name} activé`);
+  }
 </script>
 
 <div class="space-y-6 relative">
@@ -273,40 +280,109 @@
     class:translate-x-0={isDrawerOpen}
     class:translate-x-full={!isDrawerOpen}
 >
-    <div class="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
-        <div>
-            <h3 class="text-xl font-bold text-white">Ajouter un widget</h3>
-            <p class="text-sm text-gray-400">Cliquez pour ajouter</p>
+    <div class="p-0 border-b border-white/10 bg-white/5">
+        <div class="flex justify-between items-center p-6 pb-2">
+            <div>
+                <h3 class="text-xl font-bold text-white">Personnaliser</h3>
+                <p class="text-sm text-gray-400">Configurez votre espace</p>
+            </div>
+            <button onclick={toggleDrawer} class="text-gray-400 hover:text-white transition-colors cursor-pointer">
+                <X size={24} />
+            </button>
         </div>
-        <button onclick={toggleDrawer} class="text-gray-400 hover:text-white transition-colors cursor-pointer">
-             <X size={24} />
-        </button>
+
+        <div class="flex px-6 gap-6 mt-2">
+            <button 
+                onclick={() => drawerTab = 'widgets'}
+                class="pb-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2
+                {drawerTab === 'widgets' ? 'border-blue-500 text-white' : 'border-transparent text-gray-500 hover:text-gray-300'}"
+            >
+                <LayoutGrid size={16} /> Widgets
+            </button>
+            <button 
+                onclick={() => drawerTab = 'themes'}
+                class="pb-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2
+                {drawerTab === 'themes' ? 'border-blue-500 text-white' : 'border-transparent text-gray-500 hover:text-gray-300'}"
+            >
+                <Palette size={16} /> Ambiance
+            </button>
+        </div>
     </div>
 
     <div class="flex-grow overflow-y-auto p-6 space-y-4 custom-scrollbar">
-        {#each Object.entries(WIDGET_REGISTRY) as [type, def]}
-             {@const Icon = def.icon}
-            <button 
-                onclick={() => addWidget(type)}
-                class="w-full text-left group relative bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/50 
-                p-4 rounded-2xl transition-all duration-200 hover:shadow-lg hover:-translate-y-1 overflow-hidden cursor-pointer"
-            >
-                <div class="flex items-start gap-4 relative z-10">
-                    <div class="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-blue-400 group-hover:text-blue-300 group-hover:scale-110 transition-transform duration-300">
-                        <Icon size={24} />
+        
+        {#if drawerTab === 'widgets'}
+            {#each Object.entries(WIDGET_REGISTRY) as [type, def]}
+                {@const Icon = def.icon}
+                <button 
+                    onclick={() => addWidget(type)}
+                    class="w-full text-left group relative bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/50 
+                    p-4 rounded-2xl transition-all duration-200 hover:shadow-lg hover:-translate-y-1 overflow-hidden cursor-pointer"
+                >
+                    <div class="flex items-start gap-4 relative z-10">
+                        <div class="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-blue-400 group-hover:text-blue-300 group-hover:scale-110 transition-transform duration-300">
+                            <Icon size={24} />
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-200 group-hover:text-white text-lg">{def.label}</h4>
+                            <p class="text-xs text-gray-400 leading-relaxed mt-1">{def.desc}</p>
+                        </div>
+                         <div class="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity -mr-2 group-hover:mr-0 text-blue-400">
+                            <Plus size={24} />
+                        </div>
                     </div>
-                    
-                    <div>
-                        <h4 class="font-bold text-gray-200 group-hover:text-white text-lg">{def.label}</h4>
-                        <p class="text-xs text-gray-400 leading-relaxed mt-1">{def.desc}</p>
-                    </div>
+                </button>
+            {/each}
 
-                    <div class="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity -mr-2 group-hover:mr-0 text-blue-400">
-                        <Plus size={24} />
+        {:else}
+            <div class="grid grid-cols-1 gap-4">
+                {#each Object.entries(themesConfig) as [key, theme]}
+                    <button 
+                        onclick={() => selectTheme(key)}
+                        class="relative w-full p-4 rounded-2xl border transition-all duration-300 group overflow-hidden text-left
+                        {$currentThemeId === key 
+                            ? 'border-white/40 ring-2 ring-white/10 bg-white/10' 
+                            : 'border-white/10 hover:border-white/30 bg-white/5'}"
+                    >
+                        <div 
+                            class="absolute inset-0 opacity-20 transition-opacity duration-500"
+                            style="background: {theme.preview || 'transparent'}"
+                        ></div>
+
+                        <div class="relative z-10 flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <div 
+                                    class="w-12 h-12 rounded-full shadow-lg border border-white/20"
+                                    style="background: {theme.preview || 'gray'};"
+                                ></div>
+                                
+                                <div>
+                                    <h4 class="font-bold text-white text-lg">{theme.name}</h4>
+                                    <p class="text-xs text-gray-400">Thème {theme.type}</p>
+                                </div>
+                            </div>
+
+                            {#if $currentThemeId === key}
+                                <div class="bg-green-500/20 text-green-400 p-2 rounded-full border border-green-500/30">
+                                    <Check size={20} />
+                                </div>
+                            {/if}
+                        </div>
+                    </button>
+                {/each}
+            </div>
+
+            <div class="mt-8 pt-6 border-t border-white/10">
+                <h4 class="text-sm font-bold text-gray-400 mb-4 uppercase tracking-wider">Accessibilité</h4>
+                <div class="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
+                    <span class="text-gray-300">Réduire les animations</span>
+                    <div class="w-10 h-6 bg-gray-700 rounded-full relative cursor-pointer opacity-50">
+                        <div class="w-4 h-4 bg-white rounded-full absolute top-1 left-1"></div>
                     </div>
                 </div>
-            </button>
-        {/each}
+            </div>
+        {/if}
+
     </div>
 </div>
 

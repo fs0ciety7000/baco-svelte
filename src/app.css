@@ -1,11 +1,14 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 @plugin "@tailwindcss/forms";
+
+/* Variante dark mode automatique */
 @variant dark (&:where(.dark, .dark *));
 
+/* --- COUCHE DE BASE --- */
 @layer base {
   :root {
-    /* Valeurs par défaut (fallback) */
+    /* Valeurs par défaut (Deep Space) */
     --color-primary: 59, 130, 246; 
     --color-glow: 147, 197, 253;
     --glass-border: rgba(255, 255, 255, 0.1);
@@ -19,144 +22,155 @@
   .dark body {
     @apply bg-gray-900 text-gray-100;
   }
-
 }
 
+/* --- CONFIGURATION DU THÈME --- */
 @theme {
-  /* Déclarez ici vos couleurs personnalisées */
-  /* La partie gauche (--color-primary) est le nom de l'utilitaire Tailwind (ex: bg-primary) */
-  /* La partie droite (var(--color-primary)) est la variable CSS injectée par votre JS */
-  
+  /* Mappe les variables CSS aux utilitaires Tailwind */
   --color-primary: var(--color-primary);
   --color-secondary: var(--color-secondary);
   --color-success: var(--color-success);
   --color-warning: var(--color-warning);
   --color-error: var(--color-error);
-  
-  /* Si vous avez des variations (hover, etc) */
   --color-primary-hover: var(--color-primary-hover);
 }
 
-
+/* --- UTILITAIRES PERSONNALISÉS --- */
 @layer utilities {
-  /* Le fond global devient dynamique */
+  /* 1. Le fond global "Cosmic" dynamique */
   .bg-deep-space {
     background-color: #0f172a;
     background-image: 
         radial-gradient(at 0% 0%, var(--bg-gradient-from) 0px, transparent 50%),
         radial-gradient(at 100% 0%, var(--bg-gradient-to) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.15) 0px, transparent 50%), /* Tu peux aussi rendre celui-ci dynamique */
+        /* Les deux suivants restent fixes pour donner de la profondeur, ou vous pouvez aussi créer des variables pour eux */
+        radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
         radial-gradient(at 0% 100%, rgba(16, 185, 129, 0.15) 0px, transparent 50%);
     background-attachment: fixed;
   }
 
-  /* Panneaux de verre avec bordure dynamique */
+  /* 2. Panneaux de verre avec bordure dynamique */
   .glass-panel {
     @apply bg-white/10 dark:bg-gray-900/30 backdrop-blur-md shadow-xl;
     border: 1px solid var(--glass-border);
   }
   
-  /* Classe pour coloriser le texte principal dynamiquement */
+  /* 3. Effet de survol pour le verre */
+  .glass-hover {
+    @apply transition-all duration-300 hover:bg-white/20 dark:hover:bg-gray-800/50 hover:scale-[1.02] hover:shadow-2xl hover:border-white/30;
+  }
+  
+  /* 4. Texte coloré dynamiquement selon le thème */
   .text-theme-primary {
     color: rgb(var(--color-primary));
   }
   
-  /* Classe pour les bordures/lueurs dynamiques */
+  /* 5. Bordure colorée dynamiquement selon le thème */
   .border-theme-primary {
     border-color: rgba(var(--color-primary), 0.3);
   }
 }
 
-/* --- AJOUT SPÉCIFIQUE POUR CARTA MARKDOWN --- */
+/* --- COMPOSANTS & OVERRIDES --- */
 @layer components {
-  /* Force l'application du plugin Typography (prose) sur la prévisualisation */
+  /* Carta Markdown Overrides */
   .carta-preview {
     @apply prose prose-sm max-w-none dark:prose-invert p-4;
     background-color: transparent;
   }
 
-  /* Corrige la couleur du texte dans l'éditeur en mode sombre */
   .dark .carta-input {
-    background-color: #1f2937 !important; /* gray-800 */
-    color: #e5e7eb !important; /* gray-200 */
+    background-color: #1f2937 !important;
+    color: #e5e7eb !important;
   }
   
-  /* Masque la bordure par défaut de l'éditeur */
   .carta-editor {
     border: none !important;
   }
 }
-/* --- AJOUT SPÉCIFIQUE DU THÈME NOËL --- */
 
-/* 1. Définir une couleur de fond festive pour la NAV */
-.christmas-nav {
-  /* Vert sapin foncé */
-  background-color: #1a472a !important; 
-  /* Légère ombre rouge/or */
-  box-shadow: 0 4px 10px rgba(139, 0, 0, 0.5), 0 0 15px rgba(255, 215, 0, 0.3);
+/* =========================================
+   THÈME SPÉCIFIQUE : NOËL (.theme-christmas)
+   ========================================= */
+
+/* Par défaut, on cache tous les éléments de Noël pour ne pas polluer les autres thèmes */
+.garland, 
+.garland-lights, 
+.sleigh-reindeer, 
+.snowfall-effect {
+    display: none;
 }
 
-/* 2. Base de la guirlande (positionnement) */
+/* Quand la classe .theme-christmas est active sur le body/html, on les affiche */
+.theme-christmas .garland, 
+.theme-christmas .garland-lights, 
+.theme-christmas .sleigh-reindeer, 
+.theme-christmas .snowfall-effect {
+    display: block;
+}
+
+/* 1. Modification de la NAV pour Noël */
+.theme-christmas nav, 
+.theme-christmas .nav-container { 
+    /* Ciblez ici la balise <nav> ou la classe de votre barre de navigation */
+    background-color: #1a472a !important; 
+    box-shadow: 0 4px 10px rgba(139, 0, 0, 0.5), 0 0 15px rgba(255, 215, 0, 0.3);
+    border-color: rgba(255, 215, 0, 0.3); /* Bordure dorée */
+}
+
+/* 2. Guirlande (Structure) */
 .garland {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
-  height: 10px; /* Hauteur de la zone */
+  height: 10px;
   overflow: hidden;
   pointer-events: none;
-  z-index: 60; /* Au-dessus de la nav */
+  z-index: 60;
 }
 
-/* 3. Création et animation des lumières (utilise un dégradé répété) */
+/* 3. Lumières de la guirlande */
 .garland-lights {
   position: absolute;
   top: 0;
   left: 0;
-  width: 200%; /* Plus large pour l'effet de défilement */
+  width: 200%;
   height: 100%;
   background: repeating-linear-gradient(
     90deg,
     transparent 0 20px,
-    #ff4500 20px 40px, /* Rouge Noël */
+    #ff4500 20px 40px, /* Rouge */
     transparent 40px 60px,
-    #ffc700 60px 80px, /* Or/Jaune */
+    #ffc700 60px 80px, /* Or */
     transparent 80px 100px,
-    #009933 100px 120px, /* Vert Vif */
+    #009933 100px 120px, /* Vert */
     transparent 120px 140px
   );
-  background-size: 700px 10px; /* Taille du motif répété */
+  background-size: 700px 10px;
   animation: pulse-lights 5s linear infinite;
 }
 
 @keyframes pulse-lights {
-  0% {
-    background-position: 0 0;
-  }
-  100% {
-    background-position: -700px 0; /* Défilement de la guirlande */
-  }
+  0% { background-position: 0 0; }
+  100% { background-position: -700px 0; }
 }
 
-/* 4. Toucher de Noël pour les liens/hover (pour un petit effet global) */
-.dark a:hover:not(.christmas-nav a) {
-    /* Utilise une couleur d'accent rouge pour le thème sombre */
+/* 4. Liens festifs au survol (seulement en thème Noël) */
+.theme-christmas .dark a:hover:not(nav a) {
     @apply text-red-300; 
 }
-/* --- FIN AJOUT SPÉCIFIQUE DU THÈME NOËL --- */
 
-/* --- AJOUT SPÉCIFIQUE DES RENNES VOLANTS --- */
-
-/* La silhouette du traîneau/rennes. Le contenu est généré par CSS (idéalement, utiliser une image SVG pour un vrai projet) */
+/* 5. Rennes volants */
 .sleigh-reindeer {
-    position: fixed; /* Reste visible même en scrollant */
-    top: 5px; /* Légèrement sous la guirlande */
-    left: -350px; /* Commence hors écran à gauche */
+    position: fixed;
+    top: 5px;
+    left: -350px;
     width: 300px;
     height: 50px;
-    z-index: 70; /* Au-dessus de la nav et de la guirlande */
+    z-index: 70;
     opacity: 0.9;
-    /* Remplacer le contenu ci-dessous par une image SVG si possible */
+    /* Image SVG en data URI */
     background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 50"><text x="0" y="45" style="font-family: Arial, sans-serif; font-size: 40px; fill: white; text-shadow: 1px 1px 2px black;">🦌🦌🦌🛷🎅</text></svg>') no-repeat center center;
     background-size: contain;
     filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.8));
@@ -164,18 +178,11 @@
 }
 
 @keyframes fly-across {
-    0% {
-        transform: translateX(0);
-    }
-    100% {
-        transform: translateX(calc(100vw + 350px)); /* Traverse l'écran */
-    }
+    0% { transform: translateX(0); }
+    100% { transform: translateX(calc(100vw + 350px)); }
 }
 
-/* --- FIN AJOUT SPÉCIFIQUE DES RENNES VOLANTS --- */
-
-/* --- AJOUT SPÉCIFIQUE EFFET NEIGE --- */
-
+/* 6. Effet Neige */
 .snowfall-effect {
     position: fixed;
     top: 0;
@@ -183,56 +190,15 @@
     width: 100%;
     height: 100%;
     pointer-events: none;
-    z-index: 5; /* Au-dessus de l'arrière-plan, mais sous la nav et le contenu */
-    
-    /* Création des flocons via des ombres multiples */
+    z-index: 5;
     background: transparent;
     animation: snowfall 10s linear infinite;
-    
-    /* Utilisation de deux calques pour un effet de profondeur */
     box-shadow: 
-        /* Petit flocons - Vitesse normale */
         0 0 0 1px rgba(255, 255, 255, 0.4),
-        /* Gros flocons - Vitesse lente */
         0 0 0 2px rgba(255, 255, 255, 0.6);
 }
 
-/* Définition des flocons (vous devrez adapter ce code pour qu'il soit plus complet si nécessaire) */
 @keyframes snowfall {
-  0% {
-    transform: translate3d(0, -100vh, 0);
-  }
-  100% {
-    transform: translate3d(0, 100vh, 0);
-  }
-}
-
-/* Vous pouvez désactiver l'arrière-plan de la neige s'il est trop lourd */
-/* .christmas-theme .snowfall-effect { background-image: ... } */
-
-/* --- FIN AJOUT SPÉCIFIQUE EFFET NEIGE --- */
-
-/* src/app.css */
-
-@layer utilities {
-  /* 1. Le fond global "Cosmic" */
-  .bg-deep-space {
-    background-color: #0f172a; /* Fallback */
-    background-image: 
-        radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.15) 0px, transparent 50%),
-        radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.15) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
-        radial-gradient(at 0% 100%, rgba(16, 185, 129, 0.15) 0px, transparent 50%);
-    background-attachment: fixed; /* Le fond reste fixe quand on scrolle */
-  }
-
-  /* 2. La classe magique "Verre" */
-  .glass-panel {
-    @apply bg-white/10 dark:bg-gray-900/30 backdrop-blur-md border border-white/20 dark:border-white/10 shadow-xl;
-  }
-  
-  /* 3. Effet de survol pour le verre */
-  .glass-hover {
-    @apply transition-all duration-300 hover:bg-white/20 dark:hover:bg-gray-800/50 hover:scale-[1.02] hover:shadow-2xl hover:border-white/30;
-  }
+  0% { transform: translate3d(0, -100vh, 0); }
+  100% { transform: translate3d(0, 100vh, 0); }
 }
