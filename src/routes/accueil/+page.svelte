@@ -1,7 +1,7 @@
 <script>
   import { onMount, onDestroy, tick } from 'svelte';
   import { fade, fly } from 'svelte/transition';
-  import { get } from 'svelte/store'; // Nécessaire pour lire le store thème
+  import { get } from 'svelte/store'; 
   import { supabase } from '$lib/supabase';
   import { toast } from '$lib/stores/toast';
 
@@ -47,7 +47,7 @@
     pmr: { label: 'PMR', component: WidgetPmr, defaultW: 2, defaultH: 1, icon: Accessibility, desc: 'Assistances & Rampes.' },
     links: { label: 'Raccourcis', component: WidgetLinks, defaultW: 1, defaultH: 1, icon: Link, desc: 'Liens utiles.' },
     planning: { label: 'Planning', component: WidgetPlanning, defaultW: 1, defaultH: 2, icon: Calendar, desc: 'Effectifs du jour.' },
-    journal: { label: 'Journal', component: WidgetJournal, defaultW: 2, defaultH: 1, icon: BookOpen, desc: 'Main courante.' }, // Taille réduite à 2
+    journal: { label: 'Journal', component: WidgetJournal, defaultW: 2, defaultH: 1, icon: BookOpen, desc: 'Main courante.' },
     teamboard: { label: 'Tableau Équipe', component: WidgetTeamBoard, defaultW: 2, defaultH: 1, icon: Users, desc: 'Comms équipe.' },
   };
 
@@ -103,7 +103,13 @@
         });
 
         await tick();
-        initGridStack();
+        
+        // --- MODIFICATION MAJEURE ICI ---
+        // On attend 50ms pour être sûr que le layout (largeur CSS) est calculé par le navigateur
+        // avant de lancer Gridstack. Cela corrige le bug d'affichage au retour sur la page.
+        setTimeout(() => {
+            initGridStack();
+        }, 50);
         
     } catch (e) {
         console.error("Erreur critique au chargement:", e);
@@ -128,7 +134,7 @@
               cellHeight: 280,
               margin: 10,
               float: false,
-              disableOneColumnMode: false,
+              disableOneColumnMode: false, // Important : empêche le passage forcé en 1 colonne mobile
               animate: true,
               disableDrag: true,   // Verrouillé par défaut
               disableResize: true, // Verrouillé par défaut
@@ -137,6 +143,12 @@
                 scroll: true 
               }
           }, el);
+
+          // --- FORÇAGE DU LAYOUT ---
+          // Ces 3 lignes forcent Gridstack à recalculer les positions proprement
+          grid.batchUpdate();
+          grid.compact();
+          grid.commit();
 
           grid.on('change', () => {
               updateItemsFromGrid();
@@ -155,7 +167,6 @@
       if (grid) {
           try {
               if (isDrawerOpen) {
-                  // On tente d'activer le mouvement
                   grid.enableMove(true);
                   grid.enableResize(true);
                   if (grid.el) grid.el.classList.remove('grid-stack-locked');
@@ -165,9 +176,7 @@
                   if (grid.el) grid.el.classList.add('grid-stack-locked');
               }
           } catch (err) {
-              console.warn("Erreur toggleDrawer (GridStack instable):", err);
-              // Si le grid est cassé, on force le reload au pire des cas
-              // ou on laisse juste le tiroir s'ouvrir visuellement (géré par Svelte)
+              console.warn("Erreur toggleDrawer:", err);
           }
       }
   }
@@ -208,17 +217,12 @@
       triggerSave();
   }
 
-  // Action Svelte pour lier les nouveaux éléments au moteur GridStack
   function widgetAction(node, item) {
-      // Petit délai pour laisser le DOM se stabiliser
       setTimeout(() => {
           if (grid) {
               try {
                   grid.makeWidget(node);
-              } catch (err) {
-                  // Ignorer si le widget est déjà géré (erreur addNode fréquente)
-                  // console.warn("Info: Widget déjà attaché ou erreur makeWidget", err);
-              }
+              } catch (err) {}
           }
       }, 50);
 
@@ -226,7 +230,6 @@
           destroy() {
               if (grid) {
                   try {
-                       // On vérifie si le noeud est encore dans le grid avant de remove
                        grid.removeWidget(node, false);
                   } catch (e) { }
               }
@@ -271,7 +274,6 @@
         saveTimeout = setTimeout(async () => {
             try {
                 const client = data.supabase || supabase;
-                // Récupération sécurisée du thème
                 let currentTheme = 'default';
                 try { currentTheme = get(currentThemeId); } catch(e){}
 
@@ -290,9 +292,6 @@
                 isSaving = false;
             }
         }, 1500);
-    } else {
-        // Mode déconnecté : on ne fait rien de plus que le localStorage
-        // console.log("Utilisateur non connecté : Sauvegarde locale uniquement.");
     }
   }
 
@@ -309,18 +308,16 @@
 <style>
     :global(.grid-stack-item-content) {
         height: 100% !important; 
-        overflow: visible !important; /* Important pour les menus déroulants */
+        overflow: visible !important; 
     }
     :global(.grid-stack-placeholder > .placeholder-content) {
         background-color: rgba(59, 130, 246, 0.2) !important;
         border: 2px dashed rgba(59, 130, 246, 0.5);
         border-radius: 1rem;
     }
-    /* Pour cacher les poignées de resize quand verrouillé */
     :global(.grid-stack-locked .ui-resizable-handle) {
         display: none !important;
     }
-    /* Z-Index gestion au survol pour que les popups passent devant */
     :global(.grid-stack-item:hover) {
         z-index: 1000 !important;
     }
