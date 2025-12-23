@@ -104,7 +104,7 @@
     {/if}
 
     {#if user}
-      <div class="fixed inset-0 pointer-events-none z-[9999] opacity-[0.03] flex flex-wrap gap-20 overflow-hidden select-none">
+      <div class="fixed inset-0 pointer-events-none z-[9999] opacity-[0.01] flex flex-wrap gap-20 overflow-hidden select-none">
         {#each Array(20) as _}
           <span class="text-white text-xl font-bold rotate-[-45deg] whitespace-nowrap">
             {user.email} - {new Date().toLocaleString()}
