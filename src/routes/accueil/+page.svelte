@@ -1,11 +1,14 @@
 <script>
-  import { onMount } from 'svelte';
-  import { dndzone } from 'svelte-dnd-action';
-  import { flip } from 'svelte/animate';
-  import { fade } from 'svelte/transition';
-  
-  // --- VÉRIFICATION DES IMPORTS (L'erreur était probablement ici) ---
-  import { supabase } from '$lib/supabase';
+  import { onMount, onDestroy, tick } from 'svelte';
+  import { fade, fly } from 'svelte/transition';
+  import { supabase } from '$lib/supabase'; // Assurez-vous que le chemin est bon
+  import { toast } from '$lib/stores/toast';
+
+  // --- IMPORTS GRIDSTACK ---
+  import 'gridstack/dist/gridstack.min.css';
+  import { GridStack } from 'gridstack';
+
+  // --- IMPORTS WIDGETS ---
   import WidgetWeather from '$lib/components/widgets/WidgetWeather.svelte';
   import WidgetTraffic from '$lib/components/widgets/WidgetTraffic.svelte';
   import WidgetTrains from '$lib/components/widgets/WidgetTrains.svelte';
@@ -17,157 +20,187 @@
   import WidgetShift from '$lib/components/widgets/WidgetShift.svelte';
   import WidgetTeamBoard from '$lib/components/widgets/WidgetTeamBoard.svelte';
 
+  // --- ICONS ---
   import { 
     LayoutGrid, Cloud, Loader2, Plus, X, 
     Sun, Car, TrainFront, Accessibility, Link, Calendar, BookOpen, PenLine, Briefcase,
-    Settings2, Users, Palette, Check 
+    Settings2, Users, Save
   } from 'lucide-svelte';
-  import { toast } from '$lib/stores/toast';
-import { themesConfig, currentThemeId, applyTheme } from '$lib/stores/theme';
-  let { data } = $props();
 
-  // Props dérivées (Svelte 5)
+  let { data } = $props();
+  
+  // --- RUNES ---
   let session = $derived(data.session);
   let savedConfig = $derived(data.savedConfig);
   let widgetsData = $derived(data.widgetsData);
-  // supabase est déjà importé du module, mais si passé par data :
-  // let supabaseClient = $derived(data.supabase); 
 
-  // --- REGISTRE DES WIDGETS ---
+  // --- CONFIGURATION WIDGETS (Avec mapping Gridstack) ---
+  // w = largeur (sur 12 colonnes ou 4 selon config), h = hauteur (unité arbitraire)
+  // Ici on part sur une grille de 4 colonnes pour matcher votre ancien layout CSS
   const WIDGET_REGISTRY = {
-    weather: { 
-        label: 'Météo', 
-        component: WidgetWeather, 
-        defaultSize: 'col-span-1', 
-        defaultRows: 'row-span-1', 
-        icon: Sun, 
-        desc: 'Prévisions et conditions.' 
-    },
-    shift: { 
-        label: 'Mon Service', 
-        component: WidgetShift, 
-        defaultSize: 'col-span-1 md:col-span-2', 
-        defaultRows: 'row-span-1', 
-        icon: Briefcase, 
-        desc: 'Suivi de shift.' 
-    },
-    notepad: { 
-        label: 'Bloc-notes', 
-        component: WidgetNotepad, 
-        defaultSize: 'col-span-1', 
-        defaultRows: 'row-span-1', 
-        icon: PenLine, 
-        desc: 'Notes rapides.' 
-    },
-    traffic: { 
-        label: 'Info Trafic', 
-        component: WidgetTraffic, 
-        defaultSize: 'col-span-1', 
-        defaultRows: 'row-span-1', 
-        icon: Car, 
-        desc: 'Incidents réseau.' 
-    },
-    trains: { 
-        label: 'Trains', 
-        component: WidgetTrains, 
-        defaultSize: 'col-span-1 md:col-span-2', 
-        defaultRows: 'row-span-1', 
-        icon: TrainFront, 
-        desc: 'Départs en gare.' 
-    },
-    pmr: { 
-        label: 'PMR', 
-        component: WidgetPmr, 
-        defaultSize: 'col-span-1 md:col-span-2', 
-        defaultRows: 'row-span-1', 
-        icon: Accessibility, 
-        desc: 'Assistances & Rampes.' 
-    },
-    links: { 
-        label: 'Raccourcis', 
-        component: WidgetLinks, 
-        defaultSize: 'col-span-1', 
-        defaultRows: 'row-span-1', 
-        icon: Link, 
-        desc: 'Liens utiles.' 
-    },
-    planning: { 
-        label: 'Planning', 
-        component: WidgetPlanning, 
-        defaultSize: 'col-span-1', 
-        defaultRows: 'row-span-2', 
-        icon: Calendar, 
-        desc: 'Effectifs du jour.' 
-    },
-    journal: { 
-        label: 'Journal', 
-        component: WidgetJournal, 
-        defaultSize: 'col-span-full', 
-        defaultRows: 'row-span-1', 
-        icon: BookOpen, 
-        desc: 'Main courante.' 
-    },
-    teamboard: { 
-        label: 'Tableau Équipe', 
-        component: WidgetTeamBoard, 
-        defaultSize: 'col-span-1 md:col-span-2', 
-        defaultRows: 'row-span-1', 
-        icon: Users, 
-        desc: 'Comms équipe.' 
-    },
+    weather: { label: 'Météo', component: WidgetWeather, defaultW: 1, defaultH: 1, icon: Sun, desc: 'Prévisions et conditions.' },
+    shift: { label: 'Mon Service', component: WidgetShift, defaultW: 2, defaultH: 1, icon: Briefcase, desc: 'Suivi de shift.' },
+    notepad: { label: 'Bloc-notes', component: WidgetNotepad, defaultW: 1, defaultH: 1, icon: PenLine, desc: 'Notes rapides.' },
+    traffic: { label: 'Info Trafic', component: WidgetTraffic, defaultW: 1, defaultH: 1, icon: Car, desc: 'Incidents réseau.' },
+    trains: { label: 'Trains', component: WidgetTrains, defaultW: 2, defaultH: 1, icon: TrainFront, desc: 'Départs en gare.' },
+    pmr: { label: 'PMR', component: WidgetPmr, defaultW: 2, defaultH: 1, icon: Accessibility, desc: 'Assistances & Rampes.' },
+    links: { label: 'Raccourcis', component: WidgetLinks, defaultW: 1, defaultH: 1, icon: Link, desc: 'Liens utiles.' },
+    planning: { label: 'Planning', component: WidgetPlanning, defaultW: 1, defaultH: 2, icon: Calendar, desc: 'Effectifs du jour.' },
+    journal: { label: 'Journal', component: WidgetJournal, defaultW: 4, defaultH: 1, icon: BookOpen, desc: 'Main courante.' }, // Full width
+    teamboard: { label: 'Tableau Équipe', component: WidgetTeamBoard, defaultW: 2, defaultH: 1, icon: Users, desc: 'Comms équipe.' },
   };
 
+  // Layout par défaut (Fallback)
   const DEFAULT_LAYOUT = [
-    { id: 'def-1', type: 'weather' },
-    { id: 'def-2', type: 'planning' },
-    { id: 'def-3', type: 'links' },
-    { id: 'def-4', type: 'trains' }
+    { type: 'weather', x: 0, y: 0, w: 1, h: 1 },
+    { type: 'planning', x: 1, y: 0, w: 1, h: 2 }, // Planning à côté météo
+    { type: 'links', x: 0, y: 1, w: 1, h: 1 },    // Liens sous météo
+    { type: 'trains', x: 2, y: 0, w: 2, h: 1 }    // Trains à droite
   ];
 
   // --- ÉTAT ---
   let items = $state([]);
   let isSaving = $state(false);
   let isDrawerOpen = $state(false);
+  let grid = null; // Instance Gridstack
   let saveTimeout;
-  let drawerTab = $state('widgets');
-  const flipDurationMs = 300;
 
   // --- INITIALISATION ---
-  onMount(() => {
-    if (savedConfig) {
-        items = savedConfig;
+  onMount(async () => {
+    // 1. Charger la config
+    let loadedItems = [];
+    if (savedConfig && savedConfig.length > 0) {
+        loadedItems = savedConfig;
     } else {
-        const localConfig = localStorage.getItem('baco_dashboard_config_v2');
-        if (localConfig) {
-            items = JSON.parse(localConfig);
-        } else {
-            items = DEFAULT_LAYOUT.map(i => ({ ...i, id: crypto.randomUUID() }));
-        }
+        const local = localStorage.getItem('baco_dashboard_config_v3'); // v3 pour Gridstack
+        if (local) loadedItems = JSON.parse(local);
+        else loadedItems = DEFAULT_LAYOUT.map(i => ({ ...i, id: crypto.randomUUID() }));
     }
+
+    // 2. Migration des anciennes données (si nécessaire)
+    // Si on vient de v2 (classes CSS), on convertit en x,y,w,h
+    items = loadedItems.map(item => {
+        if (item.w === undefined) {
+             const reg = WIDGET_REGISTRY[item.type];
+             return {
+                 ...item,
+                 x: 0, y: 0, // Gridstack auto-place si x/y indéfini, mais on initialise
+                 w: reg?.defaultW || 1,
+                 h: reg?.defaultH || 1,
+                 autoPosition: true // Laisse Gridstack trouver une place
+             };
+        }
+        return item;
+    });
+
+    // 3. Initialisation Gridstack (après le rendu Svelte)
+    await tick();
+    initGridStack();
   });
 
-  function toggleDrawer() { isDrawerOpen = !isDrawerOpen; }
+  onDestroy(() => {
+     if (grid) grid.destroy(false); // false = ne pas supprimer le DOM
+  });
+
+  function initGridStack() {
+      grid = GridStack.init({
+          column: 4, // 4 colonnes comme avant (grid-cols-4)
+          cellHeight: 280, // Hauteur fixe en px (correspond à auto-rows-[280px])
+          margin: 10, // Espace entre widgets
+          float: false, // FALSE = GRAVITÉ (remonte les trous)
+          disableOneColumnMode: false, // Passe en 1 colonne sur mobile
+          animate: true, // Animation fluide
+          staticGrid: true, // Par défaut verrouillé (pas de drag)
+          disableResize: true,
+      }, '.grid-stack');
+
+      // Écouter les changements pour sauvegarder
+      grid.on('change', (event, changeItems) => {
+          updateItemsFromGrid();
+          triggerSave();
+      });
+  }
+
+  // --- LOGIQUE MÉTIER ---
+
+  function toggleDrawer() {
+      isDrawerOpen = !isDrawerOpen;
+      if (grid) {
+          // Active le Drag & Drop seulement quand le tiroir est ouvert
+          grid.setStatic(!isDrawerOpen); 
+          grid.enableMove(isDrawerOpen);
+          grid.enableResize(isDrawerOpen);
+      }
+  }
 
   function addWidget(type) {
-    // Vérification de sécurité
-    if (!WIDGET_REGISTRY[type]) {
-        console.error(`Type de widget inconnu: ${type}`);
-        return;
-    }
+    if (!WIDGET_REGISTRY[type]) return;
     
-    const newWidget = { id: crypto.randomUUID(), type: type };
-    items = [newWidget, ...items];
-    triggerSave();
-    toast.success(`${WIDGET_REGISTRY[type].label} ajouté`);
+    const def = WIDGET_REGISTRY[type];
+    const newItem = {
+        id: crypto.randomUUID(),
+        type,
+        x: 0, y: 0, // Gridstack trouvera la première place libre
+        w: def.defaultW,
+        h: def.defaultH,
+        autoPosition: true 
+    };
+    
+    // Ajout à l'état Svelte -> L'action `use:widgetAction` s'occupera de l'ajouter à Gridstack
+    items = [...items, newItem];
+    toast.success(`${def.label} ajouté`);
+    
+    // On attend que le DOM soit à jour, puis on scroll vers le bas
+    tick().then(() => {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    });
   }
 
   function removeWidget(id) {
-    items = items.filter(item => item.id !== id);
-    triggerSave();
+      // Pour supprimer proprement avec Gridstack + Svelte :
+      // 1. On trouve l'élément DOM
+      const el = document.querySelector(`[gs-id="${id}"]`);
+      if (el && grid) {
+          grid.removeWidget(el, false); // false = Gridstack oublie le widget, mais Svelte gère la suppression DOM
+      }
+      items = items.filter(i => i.id !== id);
+      triggerSave();
+  }
+
+  // Action Svelte pour lier chaque item DOM à Gridstack
+  function widgetAction(node, item) {
+      if (grid) {
+          // On s'assure que Gridstack prend en compte ce nouveau noeud
+          grid.makeWidget(node);
+      }
+      return {
+          destroy() {
+              if (grid) grid.removeWidget(node, false);
+          }
+      };
+  }
+
+  function updateItemsFromGrid() {
+      // Synchronise l'état interne avec la réalité de la grille
+      const gridItems = grid.getGridItems();
+      items = items.map(item => {
+          const el = gridItems.find(el => el.getAttribute('gs-id') === item.id);
+          if (el) {
+              return {
+                  ...item,
+                  x: parseInt(el.getAttribute('gs-x') || 0),
+                  y: parseInt(el.getAttribute('gs-y') || 0),
+                  w: parseInt(el.getAttribute('gs-w') || 1),
+                  h: parseInt(el.getAttribute('gs-h') || 1),
+                  autoPosition: false // Une fois placé, on ne veut plus d'auto
+              };
+          }
+          return item;
+      });
   }
 
   function saveToLocal(newItems) {
-    localStorage.setItem('baco_dashboard_config_v2', JSON.stringify(newItems));
+    localStorage.setItem('baco_dashboard_config_v3', JSON.stringify(newItems));
   }
 
   function triggerSave() {
@@ -177,11 +210,10 @@ import { themesConfig, currentThemeId, applyTheme } from '$lib/stores/theme';
         clearTimeout(saveTimeout);
         saveTimeout = setTimeout(async () => {
             try {
-                // Utilisation du client Supabase passé via data (SSR) ou importé
                 const client = data.supabase || supabase;
                 await client.from('user_preferences').upsert({ 
                     user_id: session.user.id, 
-                    dashboard_config: items,
+                    dashboard_config: items, // JSONB stockera x,y,w,h
                     updated_at: new Date()
                 }, { onConflict: 'user_id' });
             } catch (err) {
@@ -189,21 +221,28 @@ import { themesConfig, currentThemeId, applyTheme } from '$lib/stores/theme';
             } finally {
                 isSaving = false;
             }
-        }, 2000);
+        }, 1500); // Debounce un peu plus court
     }
-  }
-
-  function handleDndConsider(e) { items = e.detail.items; }
-  function handleDndFinalize(e) { items = e.detail.items; triggerSave(); }
-
-  function selectTheme(key) {
-      currentThemeId.set(key);
-      applyTheme(key);
-      toast.success(`Thème ${themesConfig[key].name} activé`);
   }
 </script>
 
-<div class="space-y-6 relative">
+<style>
+    /* Ajustement des poignées de redimensionnement */
+    :global(.grid-stack-item-content) {
+        /* Important pour que le contenu prenne toute la place */
+        height: 100% !important; 
+        overflow: hidden !important;
+    }
+    
+    /* Couleur du placeholder lors du drag */
+    :global(.grid-stack-placeholder > .placeholder-content) {
+        background-color: rgba(59, 130, 246, 0.2) !important;
+        border: 2px dashed rgba(59, 130, 246, 0.5);
+        border-radius: 1rem;
+    }
+</style>
+
+<div class="space-y-6 relative pb-20">
   <div class="flex justify-between items-center bg-white/5 border border-white/10 p-4 rounded-xl backdrop-blur-md">
     <div class="flex items-center gap-3">
         <LayoutGrid class="text-blue-400" />
@@ -234,45 +273,53 @@ import { themesConfig, currentThemeId, applyTheme } from '$lib/stores/theme';
     </div>
   </div>
 
-  <section 
-    use:dndzone={{items, flipDurationMs, dropTargetStyle: { outline: '2px dashed rgba(59,130,246,0.5)', borderRadius: '1rem' }}} 
-    onconsider={handleDndConsider} 
-    onfinalize={handleDndFinalize}
-    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20 min-h-[50vh] auto-rows-[280px] grid-flow-dense"
-  >
-    {#each items as item (item.id)}
-      <div 
-        animate:flip={{duration: flipDurationMs}}
-        class="{WIDGET_REGISTRY[item.type]?.defaultSize || 'col-span-1'} {WIDGET_REGISTRY[item.type]?.defaultRows || 'row-span-1'} relative group hover:z-50 focus-within:z-50 transition-all duration-200"
-      >
-        {#if WIDGET_REGISTRY[item.type]}
-            {@const WidgetComponent = WIDGET_REGISTRY[item.type].component}
-            
-            <div class="h-full w-full {isDrawerOpen ? 'pointer-events-none opacity-80' : ''}">
-                <WidgetComponent 
-                    {...item} 
-                    ssrData={widgetsData ? widgetsData[item.type] : null}
-                />
-            </div>
-        {/if}
+  <div class="grid-stack w-full min-h-[500px]">
+      {#each items as item (item.id)}
+         <div 
+            class="grid-stack-item"
+            gs-id={item.id}
+            gs-x={item.x}
+            gs-y={item.y}
+            gs-w={item.w}
+            gs-h={item.h}
+            use:widgetAction={item} 
+         >
+            <div class="grid-stack-item-content p-2"> <div class="relative w-full h-full group">
+                    
+                    {#if WIDGET_REGISTRY[item.type]}
+                        {@const WidgetComponent = WIDGET_REGISTRY[item.type].component}
+                        
+                        <div class="h-full w-full rounded-2xl overflow-hidden transition-all duration-300
+                            {isDrawerOpen ? 'ring-2 ring-blue-500/50 scale-[0.98]' : ''}">
+                            
+                            <div class="h-full w-full {isDrawerOpen ? 'pointer-events-none' : ''}">
+                                <WidgetComponent 
+                                    {...item} 
+                                    ssrData={widgetsData ? widgetsData[item.type] : null}
+                                    compact={item.w === 1 && item.h === 1} 
+                                />
+                            </div>
+                        </div>
+                    {/if}
 
-        {#if isDrawerOpen}
-            <div 
-                transition:fade={{duration: 150}}
-                class="absolute inset-0 bg-blue-900/10 border-2 border-blue-500/50 rounded-xl z-20 flex items-center justify-center backdrop-blur-[2px]"
-            >
-                <button 
-                    onclick={() => removeWidget(item.id)}
-                    class="transform hover:scale-110 transition-transform bg-red-500 text-white p-3 rounded-full shadow-xl flex items-center gap-2 cursor-pointer"
-                >
-                    <X size={20} />
-                    <span class="font-bold text-sm">Supprimer</span>
-                </button>
+                    {#if isDrawerOpen}
+                        <div class="absolute -top-2 -right-2 z-50">
+                            <button 
+                                onclick={() => removeWidget(item.id)}
+                                class="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-full shadow-lg transform hover:scale-110 transition-all"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+                        
+                        <div class="absolute inset-0 bg-blue-500/5 rounded-2xl pointer-events-none border border-blue-500/20 z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        </div>
+                    {/if}
+                </div>
             </div>
-        {/if}
-      </div>
-    {/each}
-  </section>
+         </div>
+      {/each}
+  </div>
 </div>
 
 <div 
@@ -280,114 +327,42 @@ import { themesConfig, currentThemeId, applyTheme } from '$lib/stores/theme';
     class:translate-x-0={isDrawerOpen}
     class:translate-x-full={!isDrawerOpen}
 >
-    <div class="p-0 border-b border-white/10 bg-white/5">
-        <div class="flex justify-between items-center p-6 pb-2">
-            <div>
-                <h3 class="text-xl font-bold text-white">Personnaliser</h3>
-                <p class="text-sm text-gray-400">Configurez votre espace</p>
-            </div>
-            <button onclick={toggleDrawer} class="text-gray-400 hover:text-white transition-colors cursor-pointer">
-                <X size={24} />
-            </button>
+    <div class="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+        <div>
+            <h3 class="text-xl font-bold text-white">Ajouter un widget</h3>
+            <p class="text-sm text-gray-400">Glissez ou cliquez</p>
         </div>
-
-        <div class="flex px-6 gap-6 mt-2">
-            <button 
-                onclick={() => drawerTab = 'widgets'}
-                class="pb-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2
-                {drawerTab === 'widgets' ? 'border-blue-500 text-white' : 'border-transparent text-gray-500 hover:text-gray-300'}"
-            >
-                <LayoutGrid size={16} /> Widgets
-            </button>
-            <button 
-                onclick={() => drawerTab = 'themes'}
-                class="pb-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2
-                {drawerTab === 'themes' ? 'border-blue-500 text-white' : 'border-transparent text-gray-500 hover:text-gray-300'}"
-            >
-                <Palette size={16} /> Ambiance
-            </button>
-        </div>
+        <button onclick={toggleDrawer} class="text-gray-400 hover:text-white transition-colors cursor-pointer">
+             <X size={24} />
+        </button>
     </div>
 
     <div class="flex-grow overflow-y-auto p-6 space-y-4 custom-scrollbar">
-        
-        {#if drawerTab === 'widgets'}
-            {#each Object.entries(WIDGET_REGISTRY) as [type, def]}
-                {@const Icon = def.icon}
-                <button 
-                    onclick={() => addWidget(type)}
-                    class="w-full text-left group relative bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/50 
-                    p-4 rounded-2xl transition-all duration-200 hover:shadow-lg hover:-translate-y-1 overflow-hidden cursor-pointer"
-                >
-                    <div class="flex items-start gap-4 relative z-10">
-                        <div class="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-blue-400 group-hover:text-blue-300 group-hover:scale-110 transition-transform duration-300">
-                            <Icon size={24} />
-                        </div>
-                        <div>
-                            <h4 class="font-bold text-gray-200 group-hover:text-white text-lg">{def.label}</h4>
-                            <p class="text-xs text-gray-400 leading-relaxed mt-1">{def.desc}</p>
-                        </div>
-                         <div class="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity -mr-2 group-hover:mr-0 text-blue-400">
-                            <Plus size={24} />
+        {#each Object.entries(WIDGET_REGISTRY) as [type, def]}
+             {@const Icon = def.icon}
+            <button 
+                onclick={() => addWidget(type)}
+                class="w-full text-left group relative bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/50 
+                p-4 rounded-2xl transition-all duration-200 hover:shadow-lg hover:-translate-y-1 overflow-hidden cursor-pointer"
+            >
+                <div class="flex items-start gap-4 relative z-10">
+                    <div class="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-blue-400 group-hover:text-blue-300 group-hover:scale-110 transition-transform duration-300">
+                        <Icon size={24} />
+                    </div>
+                    
+                    <div>
+                         <h4 class="font-bold text-gray-200 group-hover:text-white text-lg">{def.label}</h4>
+                        <p class="text-xs text-gray-400 leading-relaxed mt-1">{def.desc}</p>
+                        <div class="mt-2 text-[10px] uppercase tracking-wider font-bold text-gray-500 bg-black/20 inline-block px-2 py-0.5 rounded">
+                            Taille: {def.defaultW}x{def.defaultH}
                         </div>
                     </div>
-                </button>
-            {/each}
 
-        {:else}
-            <div class="grid grid-cols-1 gap-4">
-                {#each Object.entries(themesConfig) as [key, theme]}
-                    <button 
-                        onclick={() => selectTheme(key)}
-                        class="relative w-full p-4 rounded-2xl border transition-all duration-300 group overflow-hidden text-left
-                        {$currentThemeId === key 
-                            ? 'border-white/40 ring-2 ring-white/10 bg-white/10' 
-                            : 'border-white/10 hover:border-white/30 bg-white/5'}"
-                    >
-                        <div 
-                            class="absolute inset-0 opacity-20 transition-opacity duration-500"
-                            style="background: {theme.preview || 'transparent'}"
-                        ></div>
-
-                        <div class="relative z-10 flex items-center justify-between">
-                            <div class="flex items-center gap-4">
-                                <div 
-                                    class="w-12 h-12 rounded-full shadow-lg border border-white/20"
-                                    style="background: {theme.preview || 'gray'};"
-                                ></div>
-                                
-                                <div>
-                                    <h4 class="font-bold text-white text-lg">{theme.name}</h4>
-                                    <p class="text-xs text-gray-400">Thème {theme.type}</p>
-                                </div>
-                            </div>
-
-                            {#if $currentThemeId === key}
-                                <div class="bg-green-500/20 text-green-400 p-2 rounded-full border border-green-500/30">
-                                    <Check size={20} />
-                                </div>
-                            {/if}
-                        </div>
-                    </button>
-                {/each}
-            </div>
-
-            <div class="mt-8 pt-6 border-t border-white/10">
-                <h4 class="text-sm font-bold text-gray-400 mb-4 uppercase tracking-wider">Accessibilité</h4>
-                <div class="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
-                    <span class="text-gray-300">Réduire les animations</span>
-                    <div class="w-10 h-6 bg-gray-700 rounded-full relative cursor-pointer opacity-50">
-                        <div class="w-4 h-4 bg-white rounded-full absolute top-1 left-1"></div>
+                    <div class="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity -mr-2 group-hover:mr-0 text-blue-400">
+                         <Plus size={24} />
                     </div>
                 </div>
-            </div>
-        {/if}
-
+            </button>
+        {/each}
     </div>
 </div>
-
-<style>
-    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
-</style>
