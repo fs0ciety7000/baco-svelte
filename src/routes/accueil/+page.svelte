@@ -345,14 +345,7 @@
     }
 </style>
 
-<div class="p-6 border-t border-white/10 mt-auto">
-    <button 
-        onclick={resetLayout}
-        class="w-full py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 font-bold hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2"
-    >
-        <AlertTriangle size={18} /> Réinitialiser l'affichage
-    </button>
-</div>
+
 
 <div 
     class="space-y-6 relative pb-20 transition-all duration-300 ease-in-out"
