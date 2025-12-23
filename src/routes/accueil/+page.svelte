@@ -229,7 +229,7 @@ onMount(async () => {
     localStorage.setItem('baco_dashboard_config_v3', JSON.stringify(newItems));
   }
 
-  function triggerSave() {
+function triggerSave() {
     saveToLocal(items);
     
     if (session?.user) {
@@ -239,28 +239,35 @@ onMount(async () => {
         saveTimeout = setTimeout(async () => {
             try {
                 const client = data.supabase || supabase;
-                
-                // Récupération de la valeur brute du thème depuis le store
                 const currentTheme = get(currentThemeId);
 
-                await client.from('user_preferences').upsert({ 
+                // --- MODIFICATION ICI : On récupère { error } ---
+                const { error } = await client.from('user_preferences').upsert({ 
                     user_id: session.user.id, 
-                    dashboard_config: items, // La grille
-                    theme: currentTheme,     // <--- Le thème sauvegardé
+                    dashboard_config: items,
+                    theme: currentTheme,
                     updated_at: new Date()
                 }, { onConflict: 'user_id' });
-                
+
+                // On vérifie explicitement s'il y a une erreur Supabase
+                if (error) {
+                    console.error("ERREUR SUPABASE:", error.message, error.details);
+                    // toast.error("Erreur de sauvegarde: " + error.message); // Optionnel
+                } else {
+                    console.log("Sauvegarde réussie dans Supabase");
+                }
+
             } catch (err) {
-    console.error("ERREUR CRITIQUE SUPABASE:", err);
-    console.log("Détails erreur:", err.message, err.details, err.hint);
-    alert("Erreur de sauvegarde: " + err.message); // Alerte temporaire pour être sûr de la voir
-} finally {
+                // Ce catch ne sert que pour les crashs JS (réseau coupé, variable undefined...)
+                console.error("Erreur Code/Réseau :", err);
+            } finally {
                 isSaving = false;
             }
-        }, 1500); // Debounce de 1.5s
+        }, 1500);
+    } else {
+        console.warn("Utilisateur non connecté, pas de sauvegarde Supabase");
     }
-  }
-
+}
 function selectTheme(key) {
       currentThemeId.set(key);
       applyTheme(key);
