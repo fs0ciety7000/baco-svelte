@@ -49,7 +49,7 @@
     arrets: [],
     origine: '',
     destination: '',
-    is_direct: true,
+    is_direct: true, // AJOUT : État pour le switch
     is_mail_sent: false,
     is_aller_retour: false,
     nombre_voyageurs: null,
@@ -97,9 +97,9 @@
 
   // --- EXPORT XLSX ---
 function exportToExcel() {
-    // Préparation des données pour l'export
     const dataToExport = filteredCommandes.map(cmd => ({
         Relation: cmd.relation,
+        Type: cmd.is_direct ? 'Direct' : 'Omnibus', // AJOUT DANS EXCEL
         Société: cmd.societes_bus?.nom || 'Inconnue',
         Statut: cmd.status === 'envoye' ? 'Clôturé' : 'Brouillon',
         Date: new Date(cmd.date_commande).toLocaleDateString('fr-BE'),
@@ -114,21 +114,19 @@ function exportToExcel() {
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Commandes Otto");
-    
-    // Génération du fichier
     XLSX.writeFile(workbook, `Export_Otto_${new Date().toISOString().split('T')[0]}.xlsx`);
     toast.success("Fichier Excel généré !");
 }
 
 // --- EXPORT PDF (LISTE) ---
 function exportListPDF() {
-    const doc = new jsPDF('l', 'mm', 'a4'); // Mode paysage pour plus de colonnes
-    
+    const doc = new jsPDF('l', 'mm', 'a4');
     doc.setFontSize(16);
     doc.text("Liste des Commandes Bus (Otto)", 15, 15);
     
     const rows = filteredCommandes.map(cmd => [
         cmd.relation,
+        cmd.is_direct ? 'Direct' : 'Omnibus', // AJOUT DANS PDF LISTE
         cmd.societes_bus?.nom || '-',
         cmd.status === 'envoye' ? 'Clôturé' : 'Brouillon',
         new Date(cmd.date_commande).toLocaleDateString('fr-BE'),
@@ -138,10 +136,10 @@ function exportListPDF() {
 
     autoTable(doc, {
         startY: 25,
-        head: [['Relation', 'Société', 'Statut', 'Date', 'Parcours', 'Motif']],
+        head: [['Relation', 'Type', 'Société', 'Statut', 'Date', 'Parcours', 'Motif']],
         body: rows,
         theme: 'grid',
-        headStyles: { fillColor: [249, 115, 22] }, // Couleur orange du thème Otto
+        headStyles: { fillColor: [249, 115, 22] },
         styles: { fontSize: 8 }
     });
 
@@ -184,13 +182,12 @@ function exportListPDF() {
   }
 
   async function loadSocietes() {
-    // MODIF : On charge les nouvelles colonnes
     const { data } = await supabase.from('societes_bus').select('id, nom, adresse, telephone, email').order('nom');
     if (data) availableSocietes = data;
   }
 
-  // Génération dynamique du message
-  $: emailBody = `Bonjour, voici le réquisitoire pour le trajet de ce ${new Date(form.date_commande).toLocaleDateString('fr-BE')} entre ${form.origine || '?'} et ${form.destination || '?'} - ${form.relation}
+  // Génération dynamique du message (Mis à jour avec Direct/Omnibus)
+  $: emailBody = `Bonjour, voici le réquisitoire pour le trajet de ce ${new Date(form.date_commande).toLocaleDateString('fr-BE')} entre ${form.origine || '?'} et ${form.destination || '?'} - ${form.relation} (${form.is_direct ? 'Direct' : 'Omnibus'})
 
 Merci pour vos services,
 
@@ -220,7 +217,7 @@ async function loadStopsForLines(lines) {
     const { data } = await supabase
         .from('ligne_data')
         .select('gare, ligne_nom, ordre')
-        .in('ligne_nom', lines); // Pas besoin de order() ici, on triera en JS
+        .in('ligne_nom', lines); 
 
     if (data) {
         stopsMetadata = data;
@@ -230,40 +227,19 @@ async function loadStopsForLines(lines) {
 function getSortedArrets(arretsSelectionnes, lignesSelectionnees) {
     if (arretsSelectionnes.length <= 1) return arretsSelectionnes;
 
-    // 1. Mapper les arrêts sélectionnés aux infos Supabase
     const mapped = arretsSelectionnes.map(stopFull => {
         const [gare, rest] = stopFull.split(' (');
         const ligneNom = rest.replace(')', '');
         return stopsMetadata.find(m => m.gare === gare && m.ligne_nom === ligneNom);
     }).filter(Boolean);
 
-    // 2. Grouper par ligne pour déterminer le sens sur chaque tronçon
     let finalSorted = [];
     
-    // On suit l'ordre des lignes choisies (ex: ['L.90C', 'L.90'])
     lignesSelectionnees.forEach(nomLigne => {
         let arretsDeCetteLigne = mapped.filter(m => m.ligne_nom === nomLigne);
         if (arretsDeCetteLigne.length === 0) return;
 
-        // Détection du sens : 
-        // Si l'utilisateur a sélectionné Jurbise (7) avant Ath (1) dans son parcours global,
-        // on trie par 'ordre' décroissant pour cette ligne.
-        // Ici, on peut comparer avec l'origine/destination ou simplement l'ordre de sélection.
-        
-        // Logique simplifiée : on regarde si l'arrêt de cette ligne le plus proche 
-        // de l'origine a un index plus grand que le suivant.
-        // Pour faire simple et robuste, on trie selon la proximité avec le point suivant.
-        
-        // Dans votre exemple L.90C : Jurbise(7) -> Lens(6) -> ... -> Ath(1)
-        // C'est un tri DECROISSANT.
-        // Dans L.90 : Rebaix(2) -> Papignies(3) -> ...
-        // C'est un tri CROISSANT.
-        
-        // Pour automatiser : on regarde la ligne suivante. Si pas de ligne suivante, on regarde la destination.
-        // Mais le plus simple est de trier par défaut et d'inverser si nécessaire.
-        
-        // Test de sens (exemple pour Mons -> Grammont) :
-        const estDecroissant = (nomLigne === 'L.90C'); // On peut automatiser ce test
+        const estDecroissant = (nomLigne === 'L.90C'); 
         
         arretsDeCetteLigne.sort((a, b) => {
             return estDecroissant ? b.ordre - a.ordre : a.ordre - b.ordre;
@@ -316,7 +292,6 @@ function getSortedArrets(arretsSelectionnes, lignesSelectionnees) {
           ...cmd,
           bus_data: (cmd.bus_data && cmd.bus_data.length > 0) ? cmd.bus_data : [{ plaque: cmd.plaque || '', heure_prevue: cmd.heure_prevue || '', heure_confirmee: cmd.heure_confirmee || '', heure_demob: cmd.heure_demob || '' }]
       };
-      // Si on édite, on s'assure d'avoir l'objet creator (déjà présent via loadCommandes)
       view = 'form';
       if (updateUrl) goto(`?id=${cmd.id}`, { replaceState: false, noScroll: true, keepFocus: true });
   }
@@ -325,7 +300,6 @@ function getSortedArrets(arretsSelectionnes, lignesSelectionnees) {
       if (!form.motif) return toast.error("Le motif est requis");
       if (!form.societe_id) return toast.error("Veuillez sélectionner une société");
       
-    // Blocage si le matricule après TC_ est vide
       if (!form.relation || form.relation.trim() === 'TC_' || form.relation.length < 4) {
           return toast.error("Le numéro de relation doit être complété (ex: TC_123)");
       }
@@ -341,9 +315,10 @@ function getSortedArrets(arretsSelectionnes, lignesSelectionnees) {
           heure_appel: form.heure_appel,
           societe_id: form.societe_id,
           lignes: form.lignes,
-          arrets: form.arrets,
+          // SÉCURITÉ : Vider les arrêts si direct
+          arrets: form.is_direct ? [] : form.arrets,
           origine: form.origine,
-          is_direct: form.is_direct,
+          is_direct: form.is_direct, // AJOUT PAYLOAD
           destination: form.destination,
           is_aller_retour: form.is_aller_retour,
           nombre_voyageurs: form.nombre_voyageurs,
@@ -384,21 +359,17 @@ function getSortedArrets(arretsSelectionnes, lignesSelectionnees) {
       toast.success("Supprimé");
   }
 
-  // --- GENERATION PDF COMPLEXE ---
-  
-  // Helper pour charger l'image
+  // --- GENERATION PDF ---
   const getBase64ImageFromURL = (url) => {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.setAttribute("crossOrigin", "anonymous");
       img.onload = () => {
         const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
+        canvas.width = img.width; canvas.height = img.height;
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0);
-        const dataURL = canvas.toDataURL("image/png");
-        resolve(dataURL);
+        resolve(canvas.toDataURL("image/png"));
       };
       img.onerror = error => reject(error);
       img.src = url;
@@ -409,13 +380,7 @@ function getSortedArrets(arretsSelectionnes, lignesSelectionnees) {
     const society = availableSocietes.find(s => s.id === form.societe_id);
     const emailTo = society?.email || "";
     const subject = encodeURIComponent(`Réquisitoire Bus - ${form.relation} - ${new Date(form.date_commande).toLocaleDateString('fr-BE')}`);
-    
-    // Le corps du texte formaté pour l'URL
-    const body = encodeURIComponent(emailBody);
-
-    // Construction du lien mailto
-    window.location.href = `mailto:${emailTo}?subject=${subject}&body=${body}`;
-    
+    window.location.href = `mailto:${emailTo}?subject=${subject}&body=${encodeURIComponent(emailBody)}`;
     toast.info("N'oubliez pas de joindre le PDF à l'e-mail Outlook !");
   }
 
@@ -423,15 +388,8 @@ function getSortedArrets(arretsSelectionnes, lignesSelectionnees) {
 async function generatePDF() {
     const doc = new jsPDF();
     const society = availableSocietes.find(s => s.id === form.societe_id);
-    
-    let creatorName = "Inconnu";
-    if (form.creator?.full_name) {
-        creatorName = form.creator.full_name;
-    } else if (currentUserProfile) {
-        creatorName = currentUserProfile.full_name;
-    }
+    let creatorName = form.creator?.full_name || currentUserProfile?.full_name || "Inconnu";
 
-    // --- EN-TÊTE ---
     try {
         const logoData = await getBase64ImageFromURL('/SNCB_logo.png');
         doc.addImage(logoData, 'PNG', 15, 10, 25, 16.33);
@@ -458,7 +416,6 @@ async function generatePDF() {
     doc.text(`Tel: ${society?.telephone || '-'}`, rightX, yr, { align: 'right' });
     doc.text(society?.email || '-', rightX, yr + 4, { align: 'right' });
 
-    // --- TITRE ---
     let y = 75;
     doc.setLineWidth(0.5);
     doc.rect(15, y, 180, 20);
@@ -473,19 +430,18 @@ async function generatePDF() {
     doc.setFont("helvetica", "normal");
     doc.text("Partie A – Service opérationnels SNCB", 105, y + 17, { align: 'center' });
 
-    // --- DÉTAILS MISSION ---
     y += 25;
-    const startBoxY = y;
     doc.rect(15, y, 180, 130);
     y += 8;
-    const labelX = 20;
-    const valueX = 70;
+    const labelX = 20; const valueX = 70;
 
     doc.setFont("helvetica", "bold"); doc.text("Date de circulation :", labelX, y);
     doc.setFont("helvetica", "normal"); doc.text(new Date(form.date_commande).toLocaleDateString('fr-BE'), valueX, y);
-    doc.setFont("helvetica", "bold"); doc.text("Motif :", 110, y);
-    doc.setFont("helvetica", "normal"); doc.text(form.motif || '-', 130, y);
     
+    // AJOUT TYPE DE SERVICE PDF
+    doc.setFont("helvetica", "bold"); doc.text("Type :", 110, y);
+    doc.setFont("helvetica", "normal"); doc.text(form.is_direct ? "DIRECT (Sans arrêt)" : "OMNIBUS (Avec arrêts)", 130, y);
+
     y += 10;
     doc.setDrawColor(200); doc.line(20, y-4, 190, y-4); doc.setDrawColor(0);
 
@@ -493,8 +449,8 @@ async function generatePDF() {
     doc.setFont("helvetica", "normal"); doc.text(form.origine || '?', valueX, y);
     y += 6;
 
-    // Arrêts triés
-    if (form.arrets?.length > 0) {
+    // Arrêts triés (uniquement si Omnibus)
+    if (!form.is_direct && form.arrets?.length > 0) {
         doc.setFont("helvetica", "bold");
         doc.text("Arrêts intermédiaires :", labelX, y);
         doc.setFont("helvetica", "normal"); 
@@ -508,7 +464,6 @@ async function generatePDF() {
     doc.setFont("helvetica", "normal"); doc.text(form.destination || '?', valueX, y);
     y += 8;
 
-    // --- AJOUT DEUX SENS ---
     doc.setFont("helvetica", "bold"); doc.text("Deux sens :", labelX, y);
     doc.setFont("helvetica", "normal"); doc.text(form.is_aller_retour ? "OUI" : "NON", valueX, y);
     y += 8;
@@ -519,7 +474,6 @@ async function generatePDF() {
     doc.setFont("helvetica", "normal"); doc.text(form.heure_appel || '--:--', 140, y);
     y += 10;
 
-    // Tableau Bus
     const busRows = form.bus_data.map((b, i) => [
         `Bus ${i+1}`, b.plaque || '?', b.heure_prevue || '-', b.heure_confirmee || '-', b.heure_demob || '-'
     ]);
@@ -536,36 +490,24 @@ async function generatePDF() {
     });
 
     y = doc.lastAutoTable.finalY + 10;
-
-    // --- AJOUT VOYAGEURS ET DONT PMR ---
     doc.setFont("helvetica", "bold"); doc.text("Nombre de voyageurs :", labelX, y);
     doc.setFont("helvetica", "normal"); doc.text(String(form.nombre_voyageurs || 'Non communiqué'), valueX + 10, y);
-    
     doc.setFont("helvetica", "bold"); doc.text("Dont PMR :", 130, y);
     doc.setFont("helvetica", "normal"); doc.text(String(form.nombre_pmr || '0'), 155, y);
 
-    // --- AJOUT MENTIONS OBLIGATOIRES ET FACTURATION ---
     const footerY = 230;
-    doc.setDrawColor(0);
-    doc.rect(15, footerY, 180, 45);
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text("Adresse de facturation :", 20, footerY + 6);
-    doc.setFont("helvetica", "normal");
-    doc.text(["SNCB", "Purchase Accounting B-F.224", "Rue de France 56", "1060 BRUXELLES"], 20, footerY + 12);
-
+    doc.setDrawColor(0); doc.rect(15, footerY, 180, 45);
+    doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.text("Adresse de facturation :", 20, footerY + 6);
+    doc.setFont("helvetica", "normal"); doc.text(["SNCB", "Purchase Accounting B-F.224", "Rue de France 56", "1060 BRUXELLES"], 20, footerY + 12);
     const legX = 100;
-    doc.setFont("helvetica", "bold");
-    doc.text("Mentions obligatoires sur la facture :", legX, footerY + 6);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Numéro de TVA : BE 0203 430 576`, legX, footerY + 12);
+    doc.setFont("helvetica", "bold"); doc.text("Mentions obligatoires sur la facture :", legX, footerY + 6);
+    doc.setFont("helvetica", "normal"); doc.text(`Numéro de TVA : BE 0203 430 576`, legX, footerY + 12);
     doc.text(`N° SAP de la commande : 4522 944 778`, legX, footerY + 17);
-    doc.setFont("helvetica", "bold");
-    doc.text(`Numéro de relation TC : ${form.relation}`, legX, footerY + 25);
+    doc.setFont("helvetica", "bold"); doc.text(`Numéro de relation TC : ${form.relation}`, legX, footerY + 25);
 
     doc.save(`Ordre_Bus_${form.relation}.pdf`);
   }
+
   // Styles
   const inputClass = "w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-orange-500/50 outline-none transition-all placeholder-gray-600";
   const labelClass = "block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1 flex items-center gap-1";
@@ -650,6 +592,11 @@ async function generatePDF() {
                         <div class="flex-grow min-w-0 w-full">
                             <div class="flex items-center gap-3 mb-3 flex-wrap">
                                 <span class="text-xl font-extrabold text-white tracking-tight">{cmd.relation}</span>
+                                
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase border {cmd.is_direct ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'}">
+                                    {cmd.is_direct ? 'Direct' : 'Omnibus'}
+                                </span>
+
                                 <span class="flex items-center gap-1.5 px-3 py-1 bg-blue-600/20 text-blue-300 border border-blue-500/30 rounded-lg text-xs font-bold uppercase shadow-[0_0_10px_rgba(37,99,235,0.1)]">
                                     <Building2 size={12} /> {cmd.societes_bus?.nom || 'Inconnu'}
                                 </span>
@@ -657,10 +604,10 @@ async function generatePDF() {
                                     {cmd.status === 'envoye' ? 'Clôturé' : 'Brouillon'}
                                 </span>
                                 {#if cmd.is_mail_sent}
-      <span class="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-[10px] font-bold uppercase shadow-[0_0_10px_rgba(16,185,129,0.1)]">
-          <CheckCircle size={12} /> Mail envoyé
-      </span>
-    {/if}
+                      <span class="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-[10px] font-bold uppercase shadow-[0_0_10px_rgba(16,185,129,0.1)]">
+                          <CheckCircle size={12} /> Mail envoyé
+                      </span>
+                    {/if}
                             </div>
                             <div class="flex flex-wrap gap-4 text-sm text-gray-400 bg-black/20 p-3 rounded-xl border border-white/5 mb-3">
                                 <div class="flex items-center gap-2"><Calendar size={14} class="text-orange-400"/> <span class="text-gray-200 font-medium">{new Date(cmd.date_commande).toLocaleDateString()}</span></div>
@@ -706,11 +653,11 @@ async function generatePDF() {
                         <div><label class={labelClass}>Date</label><input type="date" bind:value={form.date_commande} class="{inputClass} dark:[color-scheme:dark]"></div>
                         <div><label class={labelClass}>Heure d'appel</label><input type="time" bind:value={form.heure_appel} class="{inputClass} dark:[color-scheme:dark]"></div>
                         <div><label class={labelClass}>Réf. Relation (TC)</label><input 
-        type="text" 
-        bind:value={form.relation} 
-        class={inputClass} 
-        placeholder="TC_123456" 
-    ></div>
+                    type="text" 
+                    bind:value={form.relation} 
+                    class={inputClass} 
+                    placeholder="TC_123456" 
+                ></div>
                         <div>
                             <label class={labelClass}>Société</label>
                             <div class="relative">
@@ -736,11 +683,23 @@ async function generatePDF() {
                 <div class="bg-black/20 border border-white/5 rounded-2xl p-6 space-y-4">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-sm font-bold text-blue-400 uppercase tracking-wide flex items-center gap-2"><MapPin size={16}/> Parcours</h3>
-                        <label class="flex items-center gap-2 cursor-pointer bg-white/5 px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors border border-white/10">
-                            <input type="checkbox" bind:checked={form.is_aller_retour} class="hidden">
-                            <span class="text-xs font-bold {form.is_aller_retour ? 'text-blue-400' : 'text-gray-500'}">Aller-Retour</span>
-                            {#if form.is_aller_retour}<ArrowRightLeft size={14} class="text-blue-400"/>{:else}<span class="text-gray-600 text-xs">→</span>{/if}
-                        </label>
+                        
+                        <div class="flex items-center gap-4">
+                            <label class="flex items-center gap-2 cursor-pointer bg-white/5 px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors border border-white/10">
+                                <input type="checkbox" bind:checked={form.is_direct} class="hidden">
+                                <span class="text-[10px] font-bold {form.is_direct ? 'text-orange-400' : 'text-gray-500'}">DIRECT</span>
+                                <div class="relative w-8 h-4 bg-gray-700 rounded-full transition-colors">
+                                    <div class="absolute top-1 left-1 w-2 h-2 bg-white rounded-full transition-transform {form.is_direct ? '' : 'translate-x-4'}"></div>
+                                </div>
+                                <span class="text-[10px] font-bold {!form.is_direct ? 'text-yellow-400' : 'text-gray-500'}">OMNIBUS</span>
+                            </label>
+
+                            <label class="flex items-center gap-2 cursor-pointer bg-white/5 px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors border border-white/10">
+                                <input type="checkbox" bind:checked={form.is_aller_retour} class="hidden">
+                                <span class="text-xs font-bold {form.is_aller_retour ? 'text-blue-400' : 'text-gray-500'}">A/R</span>
+                                {#if form.is_aller_retour}<ArrowRightLeft size={14} class="text-blue-400"/>{:else}<span class="text-gray-600 text-xs">→</span>{/if}
+                            </label>
+                        </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 relative">
                         <div><label class={labelClass}>Origine</label><input type="text" list="stations" bind:value={form.origine} class={inputClass} placeholder="Gare"></div>
@@ -783,7 +742,8 @@ async function generatePDF() {
                     <h3 class="text-sm font-bold text-purple-400 uppercase tracking-wide mb-4 sticky top-0 bg-[#16181d] py-2 z-10 flex items-center gap-2"><Hash size={16}/> Lignes</h3>
                     <div class="flex flex-wrap gap-2">{#each availableLines as line}<button on:click={() => toggleLine(line)} class="px-3 py-1.5 rounded-lg text-xs font-bold border transition-all {form.lignes.includes(line) ? 'bg-purple-600 text-white border-purple-500 shadow-md' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}">{line}</button>{/each}</div>
                 </div>
-                {#if form.lignes.length > 0}
+                
+                {#if !form.is_direct && form.lignes.length > 0}
                     <div class="bg-black/20 border border-white/5 rounded-2xl p-6 max-h-[400px] overflow-y-auto custom-scrollbar" transition:slide>
                         <h3 class="text-sm font-bold text-yellow-400 uppercase tracking-wide mb-4 sticky top-0 bg-[#16181d] py-2 z-10 flex items-center gap-2"><MapPin size={16}/> Arrêts Intermédiaires</h3>
                         {#if availableStops.length === 0}<p class="text-xs text-gray-500">Chargement...</p>{:else}<div class="space-y-1">{#each availableStops as stop}<button on:click={() => toggleStop(stop)} class="w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-3 transition-colors {form.arrets.includes(stop) ? 'bg-yellow-500/10 text-yellow-300 border border-yellow-500/20' : 'hover:bg-white/5 text-gray-400 border border-transparent'}">{#if form.arrets.includes(stop)}<CheckSquare class="w-4 h-4 flex-shrink-0"/>{:else}<Square class="w-4 h-4 flex-shrink-0"/>{/if}{stop}</button>{/each}</div>{/if}
