@@ -3,7 +3,7 @@
     import { Users, Save, Loader2, RefreshCw } from 'lucide-svelte';
     import { usePolling } from '$lib/utils/poller';
     import { fade } from 'svelte/transition';
-    import EmojiPicker from '$lib/components/EmojiPicker.svelte';
+
 
     let { compact = false } = $props();
 
@@ -39,10 +39,7 @@
         saveTimeout = setTimeout(saveToSupabase, 1500);
     }
 
-    function addEmoji(emojiChar) {
-        content += emojiChar;
-        handleInput();
-    }
+    
 
     // 3. Sauvegarde
     async function saveToSupabase() {
@@ -113,7 +110,7 @@
             bind:value={content}
             oninput={handleInput}
             placeholder="Écrivez un message pour l'équipe..."
-            class="emoji-safe-area w-full h-full bg-transparent {compact ? 'p-2 text-xs' : 'p-3 text-sm'} text-gray-200 placeholder-gray-600 resize-none focus:outline-none focus:bg-white/[0.02] transition-colors leading-loose custom-scrollbar pb-8 rounded-xl"
+            class="w-full h-full bg-transparent {compact ? 'p-2 text-xs' : 'p-3 text-sm'} text-gray-200 placeholder-gray-600 resize-none focus:outline-none focus:bg-white/[0.02] transition-colors leading-loose custom-scrollbar pb-8 rounded-xl"
         ></textarea>
         
         <div class="absolute bottom-2 right-2 pointer-events-none opacity-50">
@@ -125,16 +122,8 @@
         </div>
 
         <div class="absolute bottom-2 left-2 opacity-0 group-hover/input:opacity-100 transition-opacity z-50">
-            <EmojiPicker onselect={addEmoji} align="left" />
+          
         </div>
     </div>
 </div>
 
-<style>
-    /* Force un affichage sécurisé pour les émojis */
-    .emoji-safe-area {
-        line-height: 2 !important; /* Force l'interligne (leading-loose) */
-        padding-top: 0.75rem; /* Espace vertical suffisant */
-        padding-bottom: 2rem; /* Espace pour le bouton en bas */
-    }
-</style>
