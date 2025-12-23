@@ -194,7 +194,7 @@ Merci pour vos services,
 Cordialement,
 
 ${form.validator?.full_name || currentUserProfile?.full_name || 'Équipe PACO'}
-PACO Sud_Ouest`;
+PACO Sud-Ouest`;
 
   async function copyToClipboard() {
     try {
