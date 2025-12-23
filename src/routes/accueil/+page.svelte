@@ -264,7 +264,8 @@
     }
 </style>
 
-<div class="space-y-6 relative pb-20">
+<div class="space-y-6 relative pb-20 transition-all duration-300 ease-in-out"
+     class:mr-96={isDrawerOpen} >
   
   <div class="flex justify-between items-center bg-white/5 border border-white/10 p-4 rounded-xl backdrop-blur-md">
     <div class="flex items-center gap-3">
@@ -332,16 +333,17 @@
                         </div>
                     {/if}
 
-                    {#if isDrawerOpen}
-                        <div class="absolute -top-2 -right-2 z-50">
-                            <button 
-                                onclick={() => removeWidget(item.id)}
-                                class="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-full shadow-lg transform hover:scale-110 transition-all cursor-pointer"
-                            >
-                                <X size={16} />
-                            </button>
-                        </div>
-                    {/if}
+                   {#if isDrawerOpen}
+    <div class="absolute top-2 right-2 z-50">
+        <button 
+            onclick={() => removeWidget(item.id)}
+            class="bg-red-500/90 hover:bg-red-600 text-white p-1.5 rounded-lg shadow-lg backdrop-blur-sm transform hover:scale-110 transition-all cursor-pointer border border-white/20"
+            title="Supprimer ce widget"
+        >
+            <X size={16} />
+        </button>
+    </div>
+{/if}
                 </div>
             </div>
          </div>
