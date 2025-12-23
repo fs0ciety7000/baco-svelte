@@ -35,6 +35,41 @@
   }
 
   onMount(async () => {
+
+    const handleVisibilityChange = () => {
+      // Flouter si l'onglet n'est plus actif ou si la fenêtre perd le focus
+      isHidden = document.hidden || !document.hasFocus();
+    };
+
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleVisibilityChange);
+    window.addEventListener('focus', () => isHidden = false);
+
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleVisibilityChange);
+      window.removeEventListener('focus', () => isHidden = false);
+    };
+    
+    const handlePrintScreen = async (e) => {
+    // Détecte la touche PrintScreen
+    if (e.key === 'PrintScreen' || e.keyCode === 44) {
+      // 1. Alerte l'utilisateur
+      toast.warning("Capture d'écran détectée : Les données sensibles sont protégées.");
+      
+      // 2. Tente de vider le presse-papier (nécessite l'autorisation de l'utilisateur)
+      try {
+        await navigator.clipboard.writeText("Contenu protégé - BACO");
+      } catch (err) {
+        console.log("Impossible de vider le presse-papier sans interaction préalable.");
+      }
+    }
+  };
+
+  window.addEventListener('keyup', handlePrintScreen);
+  return () => window.removeEventListener('keyup', handlePrintScreen);
+
+
     const { data: { session } } = await supabase.auth.getSession();
     user = session?.user;
 
@@ -77,6 +112,16 @@
           <GlobalSearch />
       </div>
     {/if}
+
+    {#if user}
+  <div class="fixed inset-0 pointer-events-none z-[9999] opacity-[0.03] flex flex-wrap gap-20 overflow-hidden select-none">
+    {#each Array(20) as _}
+      <span class="text-white text-xl font-bold rotate-[-45deg] whitespace-nowrap">
+        {user.email} - {new Date().toLocaleString()}
+      </span>
+    {/each}
+  </div>
+{/if}
 
     <main class="flex-grow grid grid-cols-1 grid-rows-1 {isLoginPage ? '' : ($zenMode ? 'h-screen overflow-hidden' : 'container mx-auto px-4 py-8')}">
       {#key $page.url.pathname}
