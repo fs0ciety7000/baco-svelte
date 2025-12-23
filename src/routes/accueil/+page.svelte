@@ -1,12 +1,11 @@
 <script>
   import { onMount, onDestroy, tick } from 'svelte';
   import { fade, fly } from 'svelte/transition';
+  import { get } from 'svelte/store'; // Nécessaire pour lire le store thème
   import { supabase } from '$lib/supabase';
-  import { get } from 'svelte/store';
   import { toast } from '$lib/stores/toast';
-  import { heartbeat } from '$lib/stores/heartbeat';
 
-  // --- STORES & THÈMES (Réintégration) ---
+  // --- STORES & THÈMES ---
   import { themesConfig, currentThemeId, applyTheme } from '$lib/stores/theme';
 
   // --- IMPORTS WIDGETS ---
@@ -48,7 +47,7 @@
     pmr: { label: 'PMR', component: WidgetPmr, defaultW: 2, defaultH: 1, icon: Accessibility, desc: 'Assistances & Rampes.' },
     links: { label: 'Raccourcis', component: WidgetLinks, defaultW: 1, defaultH: 1, icon: Link, desc: 'Liens utiles.' },
     planning: { label: 'Planning', component: WidgetPlanning, defaultW: 1, defaultH: 2, icon: Calendar, desc: 'Effectifs du jour.' },
-    journal: { label: 'Journal', component: WidgetJournal, defaultW: 2, defaultH: 1, icon: BookOpen, desc: 'Main courante.' },
+    journal: { label: 'Journal', component: WidgetJournal, defaultW: 2, defaultH: 1, icon: BookOpen, desc: 'Main courante.' }, // Taille réduite à 2
     teamboard: { label: 'Tableau Équipe', component: WidgetTeamBoard, defaultW: 2, defaultH: 1, icon: Users, desc: 'Comms équipe.' },
   };
 
@@ -63,53 +62,57 @@
   let items = $state([]);
   let isSaving = $state(false);
   let isDrawerOpen = $state(false);
-  let drawerTab = $state('widgets'); // 'widgets' ou 'themes'
+  let drawerTab = $state('widgets');
   
-  let grid = null; // Instance Gridstack
-  let GridStackModule = null; // Module chargé dynamiquement
+  let grid = null;
+  let GridStackModule = null; 
   let saveTimeout;
 
   // --- INITIALISATION ---
-onMount(async () => {
-    // 1. Import dynamique Gridstack (existant)
-    const module = await import('gridstack');
-    GridStackModule = module.GridStack;
+  onMount(async () => {
+    try {
+        // 1. Import dynamique ROBUSTE (gère named export vs default)
+        const module = await import('gridstack');
+        GridStackModule = module.GridStack || module.default || module;
+        
+        // Debug Session
+        console.log("État Session Supabase:", session ? "Connecté" : "Non connecté (null)");
 
-    // --- AJOUT : Application du thème sauvegardé ---
-    // data.savedTheme vient de notre nouveau fichier +page.js
-    if (data.savedTheme) {
-        selectTheme(data.savedTheme);
-    }
-    // -----------------------------------------------
-
-    // 2. Chargement de la config (existant)
-    // Vous pouvez simplifier cette partie car data.savedConfig est maintenant toujours défini (vide ou rempli)
-    let loadedItems = [];
-    if (savedConfig && savedConfig.length > 0) {
-        loadedItems = savedConfig;
-    } else {
-        // Fallback localStorage ou Défaut
-        const local = localStorage.getItem('baco_dashboard_config_v3');
-        if (local) loadedItems = JSON.parse(local);
-        else loadedItems = DEFAULT_LAYOUT.map(i => ({ ...i, id: crypto.randomUUID() }));
-    }
-
-    // Migration v2 -> v3 si nécessaire
-    items = loadedItems.map(item => {
-        if (item.w === undefined) {
-             const reg = WIDGET_REGISTRY[item.type];
-             return { ...item, x: 0, y: 0, w: reg?.defaultW || 1, h: reg?.defaultH || 1, autoPosition: true };
+        // 2. Application du thème sauvegardé
+        if (data.savedTheme) {
+            selectTheme(data.savedTheme, false); // false = ne pas re-sauvegarder tout de suite
         }
-        return item;
-    });
 
-    await tick();
-    initGridStack();
+        // 3. Chargement de la config
+        let loadedItems = [];
+        if (savedConfig && savedConfig.length > 0) {
+            loadedItems = savedConfig;
+        } else {
+            const local = localStorage.getItem('baco_dashboard_config_v3');
+            if (local) loadedItems = JSON.parse(local);
+            else loadedItems = DEFAULT_LAYOUT.map(i => ({ ...i, id: crypto.randomUUID() }));
+        }
+
+        // Migration & Nettoyage
+        items = loadedItems.map(item => {
+            if (item.w === undefined) {
+                 const reg = WIDGET_REGISTRY[item.type];
+                 return { ...item, x: 0, y: 0, w: reg?.defaultW || 1, h: reg?.defaultH || 1, autoPosition: true };
+            }
+            return item;
+        });
+
+        await tick();
+        initGridStack();
+        
+    } catch (e) {
+        console.error("Erreur critique au chargement:", e);
+    }
   });
 
   onDestroy(() => {
      if (grid) {
-         grid.destroy(false);
+         try { grid.destroy(false); } catch(e) {}
          grid = null;
      }
   });
@@ -119,27 +122,29 @@ onMount(async () => {
       const el = document.querySelector('.grid-stack');
       if (!el) return;
 
-      // Initialisation SANS staticGrid: true pour éviter les bugs de drag
-      // On désactive plutôt le drag/resize explicitement
-      grid = GridStackModule.init({
-          column: 4,
-          cellHeight: 280,
-          margin: 10,
-          float: false, // Les widgets remontent (gravité)
-          disableOneColumnMode: false,
-          animate: true,
-          disableDrag: true,   // Verrouillé par défaut
-          disableResize: true, // Verrouillé par défaut
-          draggable: {
-            handle: '.widget-drag-handle', // Zone de drag spécifique (optionnel mais recommandé)
-            scroll: true 
-          }
-      }, el);
+      try {
+          grid = GridStackModule.init({
+              column: 4,
+              cellHeight: 280,
+              margin: 10,
+              float: false,
+              disableOneColumnMode: false,
+              animate: true,
+              disableDrag: true,   // Verrouillé par défaut
+              disableResize: true, // Verrouillé par défaut
+              draggable: {
+                handle: '.widget-drag-handle',
+                scroll: true 
+              }
+          }, el);
 
-      grid.on('change', () => {
-          updateItemsFromGrid();
-          triggerSave();
-      });
+          grid.on('change', () => {
+              updateItemsFromGrid();
+              triggerSave();
+          });
+      } catch (err) {
+          console.error("Erreur init GridStack:", err);
+      }
   }
 
   // --- LOGIQUE GRIDSTACK ---
@@ -148,15 +153,21 @@ onMount(async () => {
       isDrawerOpen = !isDrawerOpen;
       
       if (grid) {
-          // On active/désactive le mouvement selon l'état du tiroir
-          if (isDrawerOpen) {
-              grid.enableMove(true);
-              grid.enableResize(true);
-              grid.el.classList.remove('grid-stack-locked');
-          } else {
-              grid.enableMove(false);
-              grid.enableResize(false);
-              grid.el.classList.add('grid-stack-locked');
+          try {
+              if (isDrawerOpen) {
+                  // On tente d'activer le mouvement
+                  grid.enableMove(true);
+                  grid.enableResize(true);
+                  if (grid.el) grid.el.classList.remove('grid-stack-locked');
+              } else {
+                  grid.enableMove(false);
+                  grid.enableResize(false);
+                  if (grid.el) grid.el.classList.add('grid-stack-locked');
+              }
+          } catch (err) {
+              console.warn("Erreur toggleDrawer (GridStack instable):", err);
+              // Si le grid est cassé, on force le reload au pire des cas
+              // ou on laisse juste le tiroir s'ouvrir visuellement (géré par Svelte)
           }
       }
   }
@@ -165,7 +176,6 @@ onMount(async () => {
     if (!WIDGET_REGISTRY[type]) return;
     const def = WIDGET_REGISTRY[type];
     
-    // Ajout Svelte
     const newItem = {
         id: crypto.randomUUID(),
         type,
@@ -177,12 +187,12 @@ onMount(async () => {
     
     toast.success(`${def.label} ajouté`);
     
-    // Une fois ajouté au DOM par Svelte, on demande à Gridstack de le gérer
     tick().then(() => {
         if (grid) {
-            // Le widgetAction le fera, mais on force un compactage si besoin
-            grid.compact();
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            try {
+                grid.compact();
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            } catch (e) { console.warn("Erreur compactage:", e); }
         }
     });
   }
@@ -190,37 +200,59 @@ onMount(async () => {
   function removeWidget(id) {
       const el = document.querySelector(`[gs-id="${id}"]`);
       if (el && grid) {
-          grid.removeWidget(el, false); // false = Svelte gère le DOM
+          try {
+              grid.removeWidget(el, false);
+          } catch (e) { console.warn("Erreur removeWidget:", e); }
       }
       items = items.filter(i => i.id !== id);
       triggerSave();
   }
 
+  // Action Svelte pour lier les nouveaux éléments au moteur GridStack
   function widgetAction(node, item) {
-      if (grid) grid.makeWidget(node);
+      // Petit délai pour laisser le DOM se stabiliser
+      setTimeout(() => {
+          if (grid) {
+              try {
+                  grid.makeWidget(node);
+              } catch (err) {
+                  // Ignorer si le widget est déjà géré (erreur addNode fréquente)
+                  // console.warn("Info: Widget déjà attaché ou erreur makeWidget", err);
+              }
+          }
+      }, 50);
+
       return {
           destroy() {
-              if (grid) grid.removeWidget(node, false);
+              if (grid) {
+                  try {
+                       // On vérifie si le noeud est encore dans le grid avant de remove
+                       grid.removeWidget(node, false);
+                  } catch (e) { }
+              }
           }
       };
   }
 
   function updateItemsFromGrid() {
-      const gridItems = grid.getGridItems();
-      items = items.map(item => {
-          const el = gridItems.find(el => el.getAttribute('gs-id') === item.id);
-          if (el) {
-              return {
-                  ...item,
-                  x: parseInt(el.getAttribute('gs-x') || 0),
-                  y: parseInt(el.getAttribute('gs-y') || 0),
-                  w: parseInt(el.getAttribute('gs-w') || 1),
-                  h: parseInt(el.getAttribute('gs-h') || 1),
-                  autoPosition: false
-              };
-          }
-          return item;
-      });
+      if (!grid) return;
+      try {
+          const gridItems = grid.getGridItems();
+          items = items.map(item => {
+              const el = gridItems.find(el => el.getAttribute('gs-id') === item.id);
+              if (el) {
+                  return {
+                      ...item,
+                      x: parseInt(el.getAttribute('gs-x') || 0),
+                      y: parseInt(el.getAttribute('gs-y') || 0),
+                      w: parseInt(el.getAttribute('gs-w') || 1),
+                      h: parseInt(el.getAttribute('gs-h') || 1),
+                      autoPosition: false
+                  };
+              }
+              return item;
+          });
+      } catch (e) { console.error("Erreur updateItems:", e); }
   }
 
   // --- LOGIQUE DE SAUVEGARDE & THÈMES ---
@@ -229,7 +261,7 @@ onMount(async () => {
     localStorage.setItem('baco_dashboard_config_v3', JSON.stringify(newItems));
   }
 
-function triggerSave() {
+  function triggerSave() {
     saveToLocal(items);
     
     if (session?.user) {
@@ -239,9 +271,10 @@ function triggerSave() {
         saveTimeout = setTimeout(async () => {
             try {
                 const client = data.supabase || supabase;
-                const currentTheme = get(currentThemeId);
+                // Récupération sécurisée du thème
+                let currentTheme = 'default';
+                try { currentTheme = get(currentThemeId); } catch(e){}
 
-                // --- MODIFICATION ICI : On récupère { error } ---
                 const { error } = await client.from('user_preferences').upsert({ 
                     user_id: session.user.id, 
                     dashboard_config: items,
@@ -249,40 +282,34 @@ function triggerSave() {
                     updated_at: new Date()
                 }, { onConflict: 'user_id' });
 
-                // On vérifie explicitement s'il y a une erreur Supabase
-                if (error) {
-                    console.error("ERREUR SUPABASE:", error.message, error.details);
-                    // toast.error("Erreur de sauvegarde: " + error.message); // Optionnel
-                } else {
-                    console.log("Sauvegarde réussie dans Supabase");
-                }
-
+                if (error) console.error("ERREUR SUPABASE:", error);
+                
             } catch (err) {
-                // Ce catch ne sert que pour les crashs JS (réseau coupé, variable undefined...)
-                console.error("Erreur Code/Réseau :", err);
+                console.error("Erreur sauvegarde réseau:", err);
             } finally {
                 isSaving = false;
             }
         }, 1500);
     } else {
-        console.warn("Utilisateur non connecté, pas de sauvegarde Supabase");
+        // Mode déconnecté : on ne fait rien de plus que le localStorage
+        // console.log("Utilisateur non connecté : Sauvegarde locale uniquement.");
     }
-}
-function selectTheme(key) {
-      currentThemeId.set(key);
-      applyTheme(key);
-      toast.success(`Thème ${themesConfig[key].name} activé`);
-      
-      // On force la sauvegarde immédiate de la préférence
-      triggerSave(); // <--- AJOUT ICI
   }
 
+  function selectTheme(key, doSave = true) {
+      currentThemeId.set(key);
+      applyTheme(key);
+      if (doSave) {
+          toast.success(`Thème activé`);
+          triggerSave();
+      }
+  }
 </script>
 
 <style>
     :global(.grid-stack-item-content) {
         height: 100% !important; 
-        overflow: hidden !important;
+        overflow: visible !important; /* Important pour les menus déroulants */
     }
     :global(.grid-stack-placeholder > .placeholder-content) {
         background-color: rgba(59, 130, 246, 0.2) !important;
@@ -293,10 +320,16 @@ function selectTheme(key) {
     :global(.grid-stack-locked .ui-resizable-handle) {
         display: none !important;
     }
+    /* Z-Index gestion au survol pour que les popups passent devant */
+    :global(.grid-stack-item:hover) {
+        z-index: 1000 !important;
+    }
 </style>
 
-<div class="space-y-6 relative pb-20 transition-all duration-300 ease-in-out"
-     class:mr-96={isDrawerOpen} >
+<div 
+    class="space-y-6 relative pb-20 transition-all duration-300 ease-in-out"
+    class:mr-96={isDrawerOpen}
+>
   
   <div class="flex justify-between items-center bg-white/5 border border-white/10 p-4 rounded-xl backdrop-blur-md">
     <div class="flex items-center gap-3">
@@ -305,12 +338,6 @@ function selectTheme(key) {
     </div>
 
     <div class="flex items-center gap-4">
-        <div class="flex items-center gap-2 px-2 py-1 bg-black/20 rounded-full border border-white/5" title="Activité Réseau">
-        <div class="w-2 h-2 rounded-full transition-all duration-150 shadow-[0_0_10px_currentColor]
-            {$heartbeat ? 'bg-green-400 scale-125 shadow-green-500' : 'bg-gray-600 scale-100 opacity-50'}">
-        </div>
-        <span class="text-[10px] font-mono text-gray-400">LIVE</span>
-    </div>
         {#if isSaving}
             <span class="text-xs text-blue-300 flex items-center gap-1" transition:fade>
                 <Loader2 class="w-3 h-3 animate-spin"/> Sauvegarde...
@@ -323,7 +350,7 @@ function selectTheme(key) {
 
         <button 
             onclick={toggleDrawer}
-            class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all border
+            class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all border cursor-pointer
             {isDrawerOpen 
                 ? 'bg-blue-600 border-blue-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' 
                 : 'bg-white/5 border-white/10 hover:bg-white/10 text-gray-300'}"
@@ -347,7 +374,7 @@ function selectTheme(key) {
                     {#if WIDGET_REGISTRY[item.type]}
                         {@const WidgetComponent = WIDGET_REGISTRY[item.type].component}
                         
-                        <div class="h-full w-full rounded-2xl overflow-hidden transition-all duration-300 relative
+                        <div class="h-full w-full rounded-2xl transition-all duration-300 relative
                             {isDrawerOpen ? 'ring-2 ring-blue-500/50 scale-[0.98]' : ''}">
                             
                             {#if isDrawerOpen}
@@ -364,17 +391,17 @@ function selectTheme(key) {
                         </div>
                     {/if}
 
-                   {#if isDrawerOpen}
-    <div class="absolute top-2 right-2 z-50">
-        <button 
-            onclick={() => removeWidget(item.id)}
-            class="bg-red-500/90 hover:bg-red-600 text-white p-1.5 rounded-lg shadow-lg backdrop-blur-sm transform hover:scale-110 transition-all cursor-pointer border border-white/20"
-            title="Supprimer ce widget"
-        >
-            <X size={16} />
-        </button>
-    </div>
-{/if}
+                    {#if isDrawerOpen}
+                        <div class="absolute top-2 right-2 z-50">
+                            <button 
+                                onclick={() => removeWidget(item.id)}
+                                class="bg-red-500/90 hover:bg-red-600 text-white p-1.5 rounded-lg shadow-lg backdrop-blur-sm transform hover:scale-110 transition-all cursor-pointer border border-white/20"
+                                title="Supprimer ce widget"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+                    {/if}
                 </div>
             </div>
          </div>
@@ -401,14 +428,14 @@ function selectTheme(key) {
         <div class="flex px-6 gap-6 mt-2">
             <button 
                 onclick={() => drawerTab = 'widgets'}
-                class="pb-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2
+                class="pb-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 cursor-pointer
                 {drawerTab === 'widgets' ? 'border-blue-500 text-white' : 'border-transparent text-gray-500 hover:text-gray-300'}"
             >
                 <LayoutGrid size={16} /> Widgets
             </button>
             <button 
                 onclick={() => drawerTab = 'themes'}
-                class="pb-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2
+                class="pb-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 cursor-pointer
                 {drawerTab === 'themes' ? 'border-blue-500 text-white' : 'border-transparent text-gray-500 hover:text-gray-300'}"
             >
                 <Palette size={16} /> Ambiance
@@ -480,7 +507,5 @@ function selectTheme(key) {
                 {/each}
             </div>
         {/if}
-
     </div>
 </div>
-
