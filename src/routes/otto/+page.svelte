@@ -4,6 +4,8 @@
   import { fly, fade, slide } from 'svelte/transition';
   import jsPDF from 'jspdf';
   import autoTable from 'jspdf-autotable';
+  import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
   import { 
     Bus, Calendar, Clock, MapPin, CheckSquare, Square, 
     FileText, Save, Trash2, Plus, Loader2, ArrowLeft,
@@ -18,15 +20,14 @@
   let isSaving = false;
   let commandes = [];
   
-  // Custom Select State
-  let showCompanyDropdown = false; // Pour gérer l'ouverture du menu société
-  
-  // Filtres
+  // User info pour le PDF (Créateur courant si nouvelle commande)
+  let currentUserProfile = null;
+
+  let showCompanyDropdown = false;
   let searchTerm = "";
   let statusFilter = "all";
   let dateFilter = "";
 
-  // Données de référence
   let availableLines = [];
   let availableStops = [];
   let uniqueStationNames = [];
@@ -57,7 +58,7 @@
   let form = JSON.parse(JSON.stringify(initialForm));
 
   onMount(async () => {
-    await Promise.all([loadCommandes(), loadLinesRef(), loadSocietes(), loadAllStops()]);
+    await Promise.all([loadCommandes(), loadLinesRef(), loadSocietes(), loadAllStops(), loadCurrentUser()]);
     isLoading = false;
   });
 
@@ -77,6 +78,14 @@
   });
 
   // --- CHARGEMENT ---
+  async function loadCurrentUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+          const { data } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
+          currentUserProfile = data;
+      }
+  }
+
   async function loadCommandes() {
     const { data, error } = await supabase
       .from('otto_commandes')
@@ -84,7 +93,7 @@
         *, 
         creator:user_id(full_name), 
         validator:validated_by(full_name),
-        societes_bus(nom)
+        societes_bus(nom, adresse, telephone, email)
       `)
       .order('created_at', { ascending: false });
     
@@ -93,6 +102,11 @@
         toast.error("Erreur chargement");
     } else {
         commandes = data;
+        const urlId = $page.url.searchParams.get('id');
+        if (urlId && view === 'list') {
+            const cmdToOpen = data.find(c => c.id == urlId);
+            if (cmdToOpen) openEdit(cmdToOpen, false);
+        }
     }
   }
 
@@ -107,27 +121,18 @@
   }
 
   async function loadSocietes() {
-    const { data } = await supabase.from('societes_bus').select('id, nom').order('nom');
+    // MODIF : On charge les nouvelles colonnes
+    const { data } = await supabase.from('societes_bus').select('id, nom, adresse, telephone, email').order('nom');
     if (data) availableSocietes = data;
   }
 
   // --- LOGIQUE METIER ---
-  $: if (form.lignes.length > 0) {
-      loadStopsForLines(form.lignes);
-  } else {
-      availableStops = [];
-  }
+  $: if (form.lignes.length > 0) loadStopsForLines(form.lignes);
+  else availableStops = [];
 
   async function loadStopsForLines(lines) {
-      const { data } = await supabase
-        .from('ligne_data')
-        .select('gare, ligne_nom')
-        .in('ligne_nom', lines)
-        .order('ordre', { ascending: true });
-      if (data) {
-          const stops = data.map(d => `${d.gare} (${d.ligne_nom})`);
-          availableStops = [...new Set(stops)];
-      }
+      const { data } = await supabase.from('ligne_data').select('gare, ligne_nom').in('ligne_nom', lines).order('ordre', { ascending: true });
+      if (data) availableStops = [...new Set(data.map(d => `${d.gare} (${d.ligne_nom})`))];
   }
 
   function toggleLine(line) {
@@ -142,37 +147,39 @@
 
   function addBus() {
       const lastBus = form.bus_data.length > 0 ? form.bus_data[form.bus_data.length - 1] : {};
-      form.bus_data = [...form.bus_data, { 
-          plaque: '', 
-          heure_prevue: lastBus.heure_prevue || '', 
-          heure_confirmee: '', 
-          heure_demob: lastBus.heure_demob || '' 
-      }];
+      form.bus_data = [...form.bus_data, { plaque: '', heure_prevue: lastBus.heure_prevue || '', heure_confirmee: '', heure_demob: lastBus.heure_demob || '' }];
   }
 
   function removeBus(index) {
       if (form.bus_data.length > 1) form.bus_data = form.bus_data.filter((_, i) => i !== index);
   }
 
-  // Helper pour sélectionner une société dans le menu custom
   function selectSociete(id) {
       form.societe_id = id;
       showCompanyDropdown = false;
   }
 
   // --- ACTIONS ---
+  function goBackToList() {
+      view = 'list';
+      goto('/otto', { replaceState: true, noScroll: true });
+  }
+
   function openNew() {
       form = JSON.parse(JSON.stringify(initialForm));
       form.relation = 'TC_';
       view = 'form';
+      goto('/otto', { replaceState: true, noScroll: true });
   }
 
-  function openEdit(cmd) {
+  function openEdit(cmd, updateUrl = true) {
       form = { 
           ...cmd,
           bus_data: (cmd.bus_data && cmd.bus_data.length > 0) ? cmd.bus_data : [{ plaque: cmd.plaque || '', heure_prevue: cmd.heure_prevue || '', heure_confirmee: cmd.heure_confirmee || '', heure_demob: cmd.heure_demob || '' }]
       };
+      // Si on édite, on s'assure d'avoir l'objet creator (déjà présent via loadCommandes)
       view = 'form';
+      if (updateUrl) goto(`?id=${cmd.id}`, { replaceState: false, noScroll: true, keepFocus: true });
   }
 
   async function saveCommande(targetStatus = 'brouillon') {
@@ -220,7 +227,7 @@
       } else {
           toast.success(targetStatus === 'envoye' ? "Commande clôturée !" : "Brouillon sauvegardé");
           await loadCommandes();
-          view = 'list';
+          goBackToList();
       }
   }
 
@@ -231,76 +238,163 @@
       toast.success("Supprimé");
   }
 
-  // --- PDF ---
-  function generatePDF() {
+  // --- GENERATION PDF COMPLEXE ---
+  
+  // Helper pour charger l'image
+  const getBase64ImageFromURL = (url) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.setAttribute("crossOrigin", "anonymous");
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        const dataURL = canvas.toDataURL("image/png");
+        resolve(dataURL);
+      };
+      img.onerror = error => reject(error);
+      img.src = url;
+    });
+  };
+
+  async function generatePDF() {
       const doc = new jsPDF();
-      const companyName = availableSocietes.find(s => s.id === form.societe_id)?.nom || '-';
-
-      doc.setFillColor(234, 88, 12);
-      doc.rect(0, 0, 210, 20, 'F');
-      doc.setFontSize(22);
-      doc.setTextColor(255, 255, 255);
-      doc.text("COMMANDE DE BUS", 105, 13, { align: "center" });
       
-      doc.setFontSize(10);
-      doc.setTextColor(100);
-      doc.text(`Réf: ${form.relation}`, 190, 30, { align: "right" });
-      doc.text(`Émis le: ${new Date().toLocaleDateString('fr-BE')}`, 190, 35, { align: "right" });
-
-      doc.setTextColor(0);
-      doc.setFontSize(11);
-      let y = 45;
-
-      const addSection = (title) => {
-          doc.setFont("helvetica", "bold");
-          doc.setFillColor(245, 245, 245);
-          doc.setDrawColor(200);
-          doc.rect(14, y - 6, 182, 8, 'FD');
-          doc.text(title, 18, y);
-          y += 12;
-      };
-
-      const addField = (label, val, x = 18) => {
-          doc.setFont("helvetica", "bold");
-          doc.text(label, x, y);
-          doc.setFont("helvetica", "normal");
-          doc.text(String(val || '-'), x + 35, y);
-      };
-
-      addSection("MISSION & TRAJET");
-      addField("Motif :", form.motif);
-      y += 8;
-      addField("Date Circ. :", new Date(form.date_commande).toLocaleDateString('fr-BE'));
-      addField("Heure Appel :", form.heure_appel || '--:--', 110);
-      y += 8;
-      addField("Lignes :", form.lignes.join(', '));
-      y += 8;
+      // Récupération des données
+      const society = availableSocietes.find(s => s.id === form.societe_id);
       
-      doc.setFont("helvetica", "bold");
-      doc.text("Parcours :", 18, y);
-      doc.setFont("helvetica", "normal");
-      doc.text(`${form.origine || '?'}  -->  ${form.destination || '?'}`, 53, y);
-      if (form.is_aller_retour) {
-          doc.setTextColor(234, 88, 12);
-          doc.text("(ALLER-RETOUR)", 130, y);
-          doc.setTextColor(0);
+      // Récupérer le nom du créateur : soit dans form.creator (si edit), soit currentUserProfile (si new)
+      let creatorName = "Inconnu";
+      if (form.creator && form.creator.full_name) {
+          creatorName = form.creator.full_name;
+      } else if (currentUserProfile) {
+          creatorName = currentUserProfile.full_name;
       }
-      y += 12;
 
-      addSection("TRANSPORTEUR & CAPACITÉ");
-      addField("Société :", companyName);
-      addField("Capacité min :", `${form.capacite_bus} pl.`, 110);
-      y += 8;
-      addField("Voyageurs :", form.nombre_voyageurs || 'Non spécifié');
-      addField("Dont PMR :", form.nombre_pmr || '0', 110);
-      y += 12;
-
-      addSection("DÉTAIL DES VÉHICULES");
-      y -= 2;
+      // --- 1. EN-TÊTE ---
       
+      // Logo SNCB (Haut Gauche)
+      try {
+          const logoData = await getBase64ImageFromURL('/SNCB_logo.png'); // Assurez-vous que c'est le bon fichier dans static
+          // Si vous avez un fichier spécifique SNCB_logo.png dans static, utilisez-le :
+          // const logoData = await getBase64ImageFromURL('/SNCB_logo.png');
+          // Largeur 25mm, Hauteur calculée ~16.33mm pour respecter le ratio 2560x1672
+doc.addImage(logoData, 'PNG', 15, 10, 25, 16.33);
+      } catch (e) {
+          console.warn("Logo non chargé", e);
+      }
+
+      // Info Créateur & Bureau (Sous le logo)
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      let yLeft = 40;
+      doc.text(creatorName, 15, yLeft);
+      yLeft += 5;
+      doc.setFont("helvetica", "normal");
+      doc.text("SNCB", 15, yLeft); yLeft += 4;
+      doc.text("Coordinateur Passenger BPT2", 15, yLeft); yLeft += 4;
+      doc.text("Rue du Musée François Duesberg 1", 15, yLeft); yLeft += 4;
+      doc.text("7000 Mons", 15, yLeft); yLeft += 4;
+      doc.text("TEL: +32(0)2 436 0460", 15, yLeft); yLeft += 4;
+      doc.text("paco.mons@belgiantrain.be", 15, yLeft);
+
+      // Info Société (Haut Droite)
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      let yRight = 20;
+      const rightX = 195;
+      
+      doc.text(society?.nom || "Société Inconnue", rightX, yRight, { align: 'right' });
+      yRight += 5;
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      // Adresse multi-lignes si nécessaire
+      if(society?.adresse) {
+          const splitAdd = doc.splitTextToSize(society.adresse, 60);
+          doc.text(splitAdd, rightX, yRight, { align: 'right' });
+          yRight += (splitAdd.length * 4);
+      } else {
+          doc.text("Adresse non renseignée", rightX, yRight, { align: 'right' });
+          yRight += 4;
+      }
+      doc.text(`Tel: ${society?.telephone || '-'}`, rightX, yRight, { align: 'right' });
+      yRight += 4;
+      doc.text(society?.email || '-', rightX, yRight, { align: 'right' });
+
+      // --- 2. CADRE TITRE ---
+      let y = 75;
+      doc.setDrawColor(0);
+      doc.setLineWidth(0.5);
+      doc.rect(15, y, 180, 20); // Cadre
+      
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Demande service bus de remplacement", 105, y + 7, { align: 'center' });
+      
+      doc.setFontSize(11);
+      doc.setTextColor(200, 0, 0); // Rouge pour le statut
+      doc.text("NON planifié / Real Time", 105, y + 12, { align: 'center' });
+      
+      doc.setTextColor(0); // Reset noir
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text("Partie A – Service opérationnels SNCB", 105, y + 17, { align: 'center' });
+
+      // --- 3. CADRE DÉTAILS MISSION ---
+      y += 25;
+      const startBoxY = y;
+      doc.rect(15, y, 180, 130); // Grand cadre pour les détails (hauteur approx, ajuster si besoin)
+      
+      y += 8;
+      const labelX = 20;
+      const valueX = 70;
+
+      // Ligne 1 : Date & Motif
+      doc.setFont("helvetica", "bold"); doc.text("Date de circulation :", labelX, y);
+      doc.setFont("helvetica", "normal"); doc.text(new Date(form.date_commande).toLocaleDateString('fr-BE'), valueX, y);
+      
+      doc.setFont("helvetica", "bold"); doc.text("Motif :", 110, y);
+      doc.setFont("helvetica", "normal"); doc.text(form.motif || '-', 130, y);
+      
+      y += 10; // Séparateur
+      doc.setDrawColor(200); doc.line(20, y-4, 190, y-4); // Ligne grise fine
+
+      // Parcours
+      doc.setFont("helvetica", "bold"); doc.text("Lieu Origine :", labelX, y);
+      doc.setFont("helvetica", "normal"); doc.text(form.origine || '?', valueX, y);
+      y += 6;
+      
+      if (form.arrets.length > 0) {
+          doc.setFont("helvetica", "bold"); doc.text("Arrêts intermédiaires :", labelX, y);
+          doc.setFont("helvetica", "normal"); 
+          const arretsSplit = doc.splitTextToSize(form.arrets.join(', '), 120);
+          doc.text(arretsSplit, valueX, y);
+          y += (arretsSplit.length * 5) + 2;
+      }
+
+      doc.setFont("helvetica", "bold"); doc.text("Lieu Destination :", labelX, y);
+      doc.setFont("helvetica", "normal"); doc.text(form.destination || '?', valueX, y);
+      y += 8;
+
+      // Deux sens
+      doc.setFont("helvetica", "bold"); doc.text("Deux sens :", labelX, y);
+      doc.setFont("helvetica", "normal"); doc.text(form.is_aller_retour ? "OUI" : "NON", valueX, y);
+      y += 8;
+
+      // Lignes & Heure Appel
+      doc.setFont("helvetica", "bold"); doc.text("Lignes concernées :", labelX, y);
+      doc.setFont("helvetica", "normal"); doc.text(form.lignes.join(', ') || '-', valueX, y);
+      
+      doc.setFont("helvetica", "bold"); doc.text("Heure d'appel :", 110, y);
+      doc.setFont("helvetica", "normal"); doc.text(form.heure_appel || '--:--', 140, y);
+      y += 10;
+
+      // Tableau Bus (Intégré dans le cadre)
       const busRows = form.bus_data.map((b, i) => [
-          `Bus #${i+1}`,
-          b.plaque || 'À confirmer',
+          `Bus ${i+1}`,
+          b.plaque || '?',
           b.heure_prevue || '-',
           b.heure_confirmee || '-',
           b.heure_demob || '-'
@@ -308,35 +402,54 @@
 
       autoTable(doc, {
           startY: y,
-          head: [['Véhicule', 'Plaque', 'H. Prévue', 'H. Confirmée', 'Démobilisation']],
+          head: [['Véhicule', 'Plaque', 'H. Prévue', 'H. Confirmée', 'Démob.']],
           body: busRows,
-          theme: 'striped',
-          headStyles: { fillColor: [50, 50, 50], textColor: 255, fontStyle: 'bold' },
-          styles: { cellPadding: 5, valign: 'middle', fontSize: 10, overflow: 'linebreak' }, 
-          columnStyles: { 0: { fontStyle: 'bold', cellWidth: 35 }, 1: { cellWidth: 45 } },
-          margin: { left: 14, right: 14 },
-          rowPageBreak: 'avoid'
+          theme: 'grid', // Style plus "officiel" que striped
+          headStyles: { fillColor: [230, 230, 230], textColor: 0, fontStyle: 'bold', lineWidth: 0.1 },
+          styles: { fontSize: 9, cellPadding: 3, lineColor: 200, lineWidth: 0.1 },
+          margin: { left: 20 },
+          tableWidth: 170
       });
 
-      y = doc.lastAutoTable.finalY + 15;
+      y = doc.lastAutoTable.finalY + 10;
 
-      addSection("ARRÊTS À DESSERVIR (Intermédiaires)");
-      if (form.arrets.length > 0) {
-          doc.setFontSize(9);
-          const arretsStr = form.arrets.join('  •  ');
-          doc.text(arretsStr, 18, y, { maxWidth: 175 });
-      } else {
-          doc.text("Aucun arrêt intermédiaire spécifié (Direct ou Omnibus selon plan).", 18, y);
-      }
+      // Voyageurs
+      doc.setFont("helvetica", "bold"); doc.text("Nombre de voyageurs :", labelX, y);
+      doc.setFont("helvetica", "normal"); doc.text(String(form.nombre_voyageurs || 'Non communiqué'), valueX + 10, y);
+      
+      doc.setFont("helvetica", "bold"); doc.text("Dont PMR :", 130, y);
+      doc.setFont("helvetica", "normal"); doc.text(String(form.nombre_pmr || '0'), 160, y);
 
-      const pageCount = doc.internal.getNumberOfPages();
-      for(let i = 1; i <= pageCount; i++) {
-          doc.setPage(i);
-          doc.setFontSize(8);
-          doc.setTextColor(150);
-          doc.text(`Page ${i}/${pageCount} - BACO Otto`, 105, 290, { align: 'center' });
-      }
+      // --- 4. CADRE FACTURATION (Bas de page) ---
+      const footerY = 230;
+      doc.setDrawColor(0);
+      doc.rect(15, footerY, 180, 45); // Cadre bas
 
+      // Adresse Facturation (Gauche)
+      let billY = footerY + 6;
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text("Adresse de facturation :", 20, billY);
+      billY += 5;
+      doc.setFont("helvetica", "normal");
+      doc.text("SNCB", 20, billY); billY += 4;
+      doc.text("Purchase Accounting B-F.224", 20, billY); billY += 4;
+      doc.text("Rue de France 56", 20, billY); billY += 4;
+      doc.text("1060 BRUXELLES", 20, billY);
+
+      // Mentions Légales (Droite)
+      let legY = footerY + 6;
+      const legX = 100;
+      doc.setFont("helvetica", "bold");
+      doc.text("Mentions obligatoires sur la facture :", legX, legY);
+      legY += 5;
+      doc.setFont("helvetica", "normal");
+      doc.text("Numéro de TVA : BE 0203 430 576", legX, legY); legY += 5;
+      doc.text("N° SAP de la commande : 4522 944 778", legX, legY); legY += 5;
+      doc.setFont("helvetica", "bold");
+      doc.text(`Numéro de relation TC : ${form.relation}`, legX, legY);
+
+      // Save
       doc.save(`Ordre_Bus_${form.relation}.pdf`);
   }
 
@@ -367,7 +480,7 @@
             <Plus class="w-5 h-5" /> Nouvelle Commande
         </button>
     {:else}
-        <button on:click={() => view = 'list'} class="bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-all">
+        <button on:click={goBackToList} class="bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-all">
             <ArrowLeft class="w-5 h-5" /> Retour liste
         </button>
     {/if}
@@ -413,35 +526,28 @@
             {:else}
                 {#each filteredCommandes as cmd}
                     <div class="bg-black/20 border border-white/5 hover:border-orange-500/30 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-4 transition-all group">
-                        
                         <div class="flex-grow min-w-0 w-full">
                             <div class="flex items-center gap-3 mb-3 flex-wrap">
                                 <span class="text-xl font-extrabold text-white tracking-tight">{cmd.relation}</span>
-                                
                                 <span class="flex items-center gap-1.5 px-3 py-1 bg-blue-600/20 text-blue-300 border border-blue-500/30 rounded-lg text-xs font-bold uppercase shadow-[0_0_10px_rgba(37,99,235,0.1)]">
                                     <Building2 size={12} /> {cmd.societes_bus?.nom || 'Inconnu'}
                                 </span>
-
-                                <span class="text-xs px-2 py-0.5 rounded border ml-auto md:ml-0 font-bold
-                                    {cmd.status === 'envoye' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-gray-500/10 text-gray-400 border-gray-500/20'}">
+                                <span class="text-xs px-2 py-0.5 rounded border ml-auto md:ml-0 font-bold {cmd.status === 'envoye' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-gray-500/10 text-gray-400 border-gray-500/20'}">
                                     {cmd.status === 'envoye' ? 'Clôturé' : 'Brouillon'}
                                 </span>
                             </div>
-
                             <div class="flex flex-wrap gap-4 text-sm text-gray-400 bg-black/20 p-3 rounded-xl border border-white/5 mb-3">
                                 <div class="flex items-center gap-2"><Calendar size={14} class="text-orange-400"/> <span class="text-gray-200 font-medium">{new Date(cmd.date_commande).toLocaleDateString()}</span></div>
                                 <div class="flex items-center gap-2"><Clock size={14} class="text-orange-400"/> <span>{cmd.heure_appel?.slice(0,5) || '--:--'}</span></div>
                                 <div class="flex items-center gap-2"><Bus size={14} class="text-orange-400"/> <span>{cmd.bus_data?.length || 1} bus</span></div>
                                 <div class="flex items-center gap-2 truncate text-gray-500"><span class="w-px h-4 bg-white/10 mx-1"></span>{cmd.motif}</div>
                             </div>
-
                             <div class="flex items-center gap-2 text-sm text-gray-400 mb-3">
                                 <span class="text-gray-500 text-xs font-bold uppercase">Parcours :</span>
                                 <span class="text-gray-300">{cmd.origine || '?'}</span>
                                 <ArrowRightLeft size={12} class="text-orange-500/50" />
                                 <span class="text-gray-300">{cmd.destination || '?'}</span>
                             </div>
-
                             <div class="flex items-center gap-4 text-xs pt-3 border-t border-white/5">
                                 {#if cmd.creator}
                                     <div class="flex items-center gap-1.5 text-gray-500" title="Créé par">
@@ -455,7 +561,6 @@
                                 {/if}
                             </div>
                         </div>
-
                         <div class="flex items-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity self-start mt-2 md:mt-0">
                             <button on:click={() => openEdit(cmd)} class="p-2 hover:bg-white/10 rounded-lg text-blue-400" title="Éditer"><FileText class="w-5 h-5" /></button>
                             <button on:click={() => deleteCommande(cmd.id)} class="p-2 hover:bg-red-500/10 rounded-lg text-red-400" title="Supprimer"><Trash2 class="w-5 h-5" /></button>
@@ -477,29 +582,16 @@
                         <div><label class={labelClass}>Réf. Relation (TC)</label><input type="text" bind:value={form.relation} class={inputClass}></div>
                         <div>
                             <label class={labelClass}>Société</label>
-                            
                             <div class="relative">
-                                <button 
-                                    type="button"
-                                    on:click={() => showCompanyDropdown = !showCompanyDropdown}
-                                    class="{inputClass} flex items-center justify-between text-left"
-                                >
-                                    <span class="{form.societe_id ? 'text-white' : 'text-gray-500'} truncate">
-                                        {availableSocietes.find(s => s.id === form.societe_id)?.nom || '-- Sélectionner --'}
-                                    </span>
+                                <button type="button" on:click={() => showCompanyDropdown = !showCompanyDropdown} class="{inputClass} flex items-center justify-between text-left">
+                                    <span class="{form.societe_id ? 'text-white' : 'text-gray-500'} truncate">{availableSocietes.find(s => s.id === form.societe_id)?.nom || '-- Sélectionner --'}</span>
                                     <ChevronDown size={16} class="text-gray-500 {showCompanyDropdown ? 'rotate-180' : ''} transition-transform"/>
                                 </button>
-
                                 {#if showCompanyDropdown}
                                     <div class="fixed inset-0 z-40 bg-transparent" on:click={() => showCompanyDropdown = false}></div>
-                                    
                                     <div class="absolute top-full left-0 w-full mt-2 bg-[#1a1d24] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 max-h-60 overflow-y-auto custom-scrollbar" transition:slide={{duration: 150}}>
                                         {#each availableSocietes as soc}
-                                            <button 
-                                                type="button"
-                                                on:click={() => selectSociete(soc.id)}
-                                                class="w-full text-left px-4 py-3 hover:bg-white/10 text-gray-300 hover:text-white transition-colors text-sm border-b border-white/5 last:border-0 flex justify-between items-center"
-                                            >
+                                            <button type="button" on:click={() => selectSociete(soc.id)} class="w-full text-left px-4 py-3 hover:bg-white/10 text-gray-300 hover:text-white transition-colors text-sm border-b border-white/5 last:border-0 flex justify-between items-center">
                                                 {soc.nom}
                                                 {#if form.societe_id === soc.id}<CheckCircle size={14} class="text-orange-400"/>{/if}
                                             </button>
@@ -507,7 +599,6 @@
                                     </div>
                                 {/if}
                             </div>
-
                         </div>
                     </div>
                 </div>
