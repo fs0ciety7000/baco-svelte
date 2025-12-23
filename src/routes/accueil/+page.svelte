@@ -64,9 +64,13 @@
   let isDrawerOpen = $state(false);
   let drawerTab = $state('widgets');
   
+  // NOUVEAU : État pour gérer l'affichage propre de la grille
+  let isGridReady = $state(false); 
+
   let grid = null;
   let GridStackModule = null; 
   let saveTimeout;
+  let resizeObserver; // Pour stocker l'observateur
 
   // --- INITIALISATION ---
   onMount(async () => {
@@ -100,9 +104,25 @@
         });
 
         await tick();
-        
-        // --- MODIFICATION ICI : On lance la boucle de vérification ---
-        waitForGridContainer();
+
+        // --- LA SOLUTION : RESIZE OBSERVER ---
+        // On n'initialise PAS Gridstack tout de suite avec un timer.
+        // On attend que le conteneur ait une vraie largeur physique.
+        const el = document.querySelector('.grid-stack');
+        if (el) {
+            resizeObserver = new ResizeObserver((entries) => {
+                for (const entry of entries) {
+                    // Si la largeur est > 300px (donc visible et non compressée par la transition)
+                    // ET que Gridstack n'est pas encore lancé
+                    if (entry.contentRect.width > 300 && !grid) {
+                        initGridStack();
+                        // Une fois lancé, on arrête d'observer pour la perf
+                        resizeObserver.disconnect();
+                    }
+                }
+            });
+            resizeObserver.observe(el);
+        }
         
     } catch (e) {
         console.error("Erreur critique au chargement:", e);
@@ -110,29 +130,12 @@
   });
 
   onDestroy(() => {
+     if (resizeObserver) resizeObserver.disconnect();
      if (grid) {
          try { grid.destroy(false); } catch(e) {}
          grid = null;
      }
   });
-
-  // --- NOUVELLE FONCTION DE SECURITE ---
-  function waitForGridContainer(attempts = 0) {
-      const el = document.querySelector('.grid-stack');
-      
-      // Si pas d'élément ou largeur nulle (transition en cours)
-      if (!el || el.clientWidth === 0) {
-          if (attempts < 20) { // On réessaie pendant 2 secondes max
-              setTimeout(() => waitForGridContainer(attempts + 1), 100);
-          } else {
-              initGridStack(); // Fallback si ça ne charge jamais
-          }
-          return;
-      }
-      
-      // La largeur est > 0, on peut lancer !
-      initGridStack();
-  }
 
   function initGridStack() {
       if (grid || !GridStackModule) return;
@@ -164,6 +167,9 @@
           grid.batchUpdate(); 
           grid.compact();
           grid.batchUpdate(false); 
+
+          // C'EST PRÊT : On révèle la grille à l'utilisateur
+          isGridReady = true;
 
           grid.on('change', () => {
               updateItemsFromGrid();
@@ -233,16 +239,15 @@
   }
 
   function widgetAction(node, item) {
-      // On utilise la même logique d'attente pour chaque widget individuel
       const attachWidget = () => {
           if (grid) {
               try { grid.makeWidget(node); } catch (err) {}
           } else {
+             // Si la grille n'est pas encore prête, on réessaie dans 50ms
              setTimeout(attachWidget, 50);
           }
       };
       
-      // Petit délai initial
       setTimeout(attachWidget, 50);
 
       return {
@@ -327,7 +332,8 @@
     :global(.grid-stack) {
         width: 100% !important; 
         min-width: 100% !important;
-        opacity: 1; /* S'assure qu'il est visible */
+        /* Une hauteur min pour que le ResizeObserver ait qqch à détecter au début */
+        min-height: 200px; 
     }
 
     :global(.grid-stack-item-content) {
@@ -382,7 +388,7 @@
     </div>
   </div>
 
-  <div class="grid-stack w-full min-h-[500px]">
+  <div class="grid-stack w-full min-h-[500px] transition-opacity duration-500 ease-out {isGridReady ? 'opacity-100' : 'opacity-0'}">
       {#each items as item (item.id)}
          <div 
             class="grid-stack-item"
