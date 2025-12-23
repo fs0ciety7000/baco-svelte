@@ -7,44 +7,48 @@
   import { 
     User, Mail, Shield, Camera, Lock, Save, 
     FileWarning, AlertOctagon, Loader2, CheckCircle,
-    Tag, Cake, Calendar, Palette // Ajout de Calendar manquant dans les imports lucide
+    Tag, Cake, Calendar, Palette 
   } from 'lucide-svelte';
   
   // IMPORT TOAST
   import { toast } from '$lib/stores/toast';
 
-  // --- ÉTAT ---
-  let isLoading = true;
-  let isSaving = false;
-  let isUploading = false;
+  let { data } = $props();
+  let session = $derived(data.session);
+  
+  // --- ÉTAT (Conversion en Runes) ---
+  let isLoading = $state(true);
+  let isSaving = $state(false);
+  let isUploading = $state(false);
 
   // Utilisateurs
-  let currentUser = null; 
-  let targetUserId = null;
+  let currentUser = $state(null); 
+  let targetUserId = $state(null);
 
   // Le profil qu'on regarde
-  let isMyProfile = false;
-  let isAdmin = false;
+  let isMyProfile = $state(false);
+  let isAdmin = $state(false);
 
   // Données Formulaire
-  let profileData = {
+  let profileData = $state({
     username: "",
     full_name: "",
     email: "", 
     role: "user",
     fonction: "", 
     birthday: null, 
-    avatar_url: null
-  };
+    avatar_url: null,
+    theme: "default"
+  });
 
   // Mot de passe
-  let passwordData = { new: "", confirm: "" };
+  let passwordData = $state({ new: "", confirm: "" });
 
   // Infractions (Trust Meter)
-  let infractions = [];
-  let trustScore = 100;
-  let trustColor = "bg-green-500";
-  let trustLabel = "Chargement...";
+  let infractions = $state([]);
+  let trustScore = $state(100);
+  let trustColor = $state("bg-green-500");
+  let trustLabel = $state("Chargement...");
 
   onMount(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -59,18 +63,20 @@
     isAdmin = myProfile?.role === 'admin';
   });
 
-  // --- LOGIQUE RÉACTIVE ---
-  $: if ($page.url.searchParams && currentUser) {
-    const urlParams = $page.url.searchParams;
-    const paramId = urlParams.get('id');
-    const newTargetUserId = (paramId && paramId !== currentUser.id) ? paramId : currentUser.id;
+  // --- LOGIQUE RÉACTIVE (Remplacement de $:) ---
+  $effect(() => {
+    if ($page.url.searchParams && currentUser) {
+        const urlParams = $page.url.searchParams;
+        const paramId = urlParams.get('id');
+        const newTargetUserId = (paramId && paramId !== currentUser.id) ? paramId : currentUser.id;
 
-    if (newTargetUserId !== targetUserId) {
-        targetUserId = newTargetUserId;
-        isMyProfile = targetUserId === currentUser.id;
-        loadProfileData(); 
+        if (newTargetUserId !== targetUserId) {
+            targetUserId = newTargetUserId;
+            isMyProfile = targetUserId === currentUser.id;
+            loadProfileData(); 
+        }
     }
-  }
+  });
 
   // --- CHARGEMENT ---
   async function loadProfileData() {
@@ -100,7 +106,8 @@
       return;
     }
 
-    profileData = { ...profileData, ...data };
+    // Mise à jour de l'objet réactif
+    Object.assign(profileData, data);
 
     if (isMyProfile) {
       profileData.email = currentUser.email;
@@ -148,18 +155,30 @@
   async function saveTheme(themeKey) {
      if (!isMyProfile) return;
      
-     // 1. Mise à jour immédiate (UI optimiste)
+     // 1. Mise à jour immédiate (UI optimiste & Store)
      currentThemeId.set(themeKey);
+     applyTheme(themeKey); // AJOUT : Applique le thème au DOM
      profileData.theme = themeKey;
      
-     // 2. Persistance
+     // 2. Persistance dans user_preferences (Source de vérité)
      try {
+         // Mise à jour de user_preferences (prioritaire)
          const { error } = await supabase
-            .from('profiles')
-            .update({ theme: themeKey, updated_at: new Date() })
-            .eq('id', currentUser.id);
+            .from('user_preferences')
+            .upsert({ 
+                user_id: currentUser.id, 
+                theme: themeKey,
+                updated_at: new Date()
+            }, { onConflict: 'user_id' });
             
          if (error) throw error;
+         
+         // On met aussi à jour le profil pour garder la trace (optionnel)
+         await supabase
+            .from('profiles')
+            .update({ theme: themeKey })
+            .eq('id', currentUser.id);
+
          toast.success(`Thème ${themesConfig[themeKey].name} appliqué !`);
      } catch (e) {
          toast.error("Erreur sauvegarde thème");
@@ -245,7 +264,7 @@
   function calculateTrustScore() {
     if (infractions.length === 0) {
       trustScore = 100;
-      trustColor = "bg-gradient-to-r from-green-400 to-green-600 shadow-[0_0_15px_rgba(34,197,94,0.4)]";
+      trustColor = "bg-green-500";
       trustLabel = "Dossier impeccable !";
       return;
     }
@@ -281,12 +300,12 @@
   const inputClass = "block w-full rounded-xl border-white/10 bg-black/40 p-3 text-sm font-medium text-white placeholder-gray-600 focus:border-blue-500/50 focus:ring-blue-500/50 transition-all outline-none disabled:opacity-50 disabled:cursor-not-allowed";
   const labelClass = "block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1";
 
-  // --- STYLE DYNAMIQUE ---
-  $: borderClass = profileData.role === 'admin' 
+  // --- STYLE DYNAMIQUE (Remplacement de $:) ---
+  let borderClass = $derived(profileData.role === 'admin' 
       ? 'bg-gradient-to-br from-yellow-300/80 via-amber-400/50 to-yellow-500/80 shadow-[0_0_35px_rgba(245,158,11,0.6)] ring-1 ring-yellow-400/50' // Doré
       : profileData.role === 'moderator'
       ? 'bg-gradient-to-br from-purple-500 to-fuchsia-600 shadow-[0_0_30px_rgba(168,85,247,0.6)] animate-pulse' // Violet
-      : 'bg-gradient-to-br from-blue-500/50 to-purple-500/50 shadow-[0_0_30px_rgba(59,130,246,0.2)]'; // Défaut
+      : 'bg-gradient-to-br from-blue-500/50 to-purple-500/50 shadow-[0_0_30px_rgba(59,130,246,0.2)]'); // Défaut
 
 </script>
 

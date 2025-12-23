@@ -6,10 +6,15 @@
   import { fly, fade, slide } from 'svelte/transition';
   
   // Import des icônes
-  import { Search, Plus, Pencil, Trash2, X, Book, FolderOpen, FileText, Loader2 } from 'lucide-svelte';
+  import { Search, Plus, Pencil, Trash2, X, Book, FolderOpen, FileText, Loader2, History, RotateCcw } from 'lucide-svelte';
 
   // IMPORT TOAST
   import { toast } from '$lib/stores/toast.js';
+
+  // --- VARIABLES DE VERSIONING ---
+  let showHistoryModal = false;
+  let procedureVersions = [];
+  let isLoadingVersions = false;
 
   // --- ÉTAT ---
   let procedures = [];
@@ -47,6 +52,39 @@
     if (!error && data) {
       categories = [...new Set(data.map(p => p.categorie))].sort();
     }
+  }
+
+  // 1. Charger l'historique d'une procédure
+  async function loadHistory(procId) {
+      if (!procId) return;
+      isLoadingVersions = true;
+      showHistoryModal = true;
+      
+      const { data, error } = await supabase
+          .from('procedure_versions')
+          .select('*, profiles(full_name)') // On récupère le nom de celui qui a archivé
+          .eq('procedure_id', procId)
+          .order('archived_at', { ascending: false });
+
+      if (error) {
+          toast.error("Erreur chargement historique");
+      } else {
+          procedureVersions = data;
+      }
+      isLoadingVersions = false;
+  }
+
+  // 2. Restaurer une version
+  function restoreVersion(version) {
+      if (!confirm(`Remplacer le contenu actuel par la version du ${new Date(version.archived_at).toLocaleDateString()} ?`)) return;
+      
+      // On met à jour l'objet d'édition avec les anciennes données
+      editingProcedure.titre = version.titre;
+      editingProcedure.categorie = version.categorie;
+      editingProcedure.contenu = version.contenu;
+      
+      toast.success("Version restaurée ! Cliquez sur Enregistrer pour valider.");
+      showHistoryModal = false; // On ferme le modal d'historique
   }
 
 async function loadProcedures() {
@@ -118,11 +156,32 @@ async function saveProcedure() {
     let savedId = editingProcedure.id; // Par défaut, l'id existant
     let error;
 
-    if (editingProcedure.id) {
-        // UPDATE
+   if (editingProcedure.id) {
+        // --- ÉTAPE 1 : ARCHIVAGE (VERSIONING) ---
+        // On récupère la version ACTUELLE en base avant de l'écraser
+        const { data: currentData } = await supabase
+            .from('procedures')
+            .select('*')
+            .eq('id', editingProcedure.id)
+            .single();
+
+        if (currentData) {
+            // On sauvegarde cette version dans l'historique
+            await supabase.from('procedure_versions').insert({
+                procedure_id: currentData.id,
+                titre: currentData.titre,
+                categorie: currentData.categorie,
+                contenu: currentData.contenu,
+                modified_by: user.id, // L'utilisateur qui déclenche la nouvelle sauvegarde
+                archived_at: new Date()
+            });
+        }
+
+        // --- ÉTAPE 2 : MISE À JOUR ---
         const res = await supabase.from('procedures').update(payload).eq('id', editingProcedure.id);
         error = res.error;
     } else {
+  
         // INSERT : On utilise .select() pour récupérer l'ID généré
         const res = await supabase.from('procedures').insert([payload]).select();
         error = res.error;
@@ -402,6 +461,14 @@ function openModal(proc = null) {
             {#if editingProcedure.id}<Pencil class="w-5 h-5 text-blue-400"/>{:else}<Plus class="w-5 h-5 text-green-400"/>{/if}
             {editingProcedure.id ? 'Modifier' : 'Nouvelle'} Procédure
         </h3>
+        {#if editingProcedure.id}
+                <button 
+                    on:click={() => loadHistory(editingProcedure.id)}
+                    class="text-xs bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 px-3 py-1.5 rounded-lg flex items-center gap-2 transition-colors"
+                >
+                    <History class="w-3.5 h-3.5" /> Historique
+                </button>
+            {/if}
         <button on:click={closeModal} class="text-gray-400 hover:text-white transition-colors">
           <X class="w-6 h-6" />
         </button>
@@ -535,6 +602,55 @@ function openModal(proc = null) {
                 <button on:click={() => showDocPicker = false} class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium">
                     Terminer
                 </button>
+            </div>
+        </div>
+    </div>
+{/if}
+
+{#if showHistoryModal}
+    <div class="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md" transition:fade>
+        <div class="bg-[#1a1d24] border border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[80vh]">
+            
+            <div class="p-4 border-b border-white/10 flex justify-between items-center bg-white/5">
+                <h3 class="font-bold text-white flex items-center gap-2">
+                    <History class="w-5 h-5 text-purple-400"/> Historique des versions
+                </h3>
+                <button on:click={() => showHistoryModal = false} class="text-gray-400 hover:text-white"><X class="w-5 h-5"/></button>
+            </div>
+
+            <div class="overflow-y-auto p-4 space-y-3 flex-1 custom-scrollbar">
+                {#if isLoadingVersions}
+                    <div class="text-center py-8 text-gray-500"><Loader2 class="w-6 h-6 animate-spin mx-auto"/> Chargement...</div>
+                {:else if procedureVersions.length === 0}
+                    <div class="text-center py-8 text-gray-500">Aucune ancienne version disponible.</div>
+                {:else}
+                    {#each procedureVersions as version}
+                        <div class="bg-white/5 border border-white/5 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:border-white/10 transition-colors">
+                            <div>
+                                <div class="text-white font-medium">
+                                    {new Date(version.archived_at).toLocaleString('fr-FR')}
+                                </div>
+                                <div class="text-xs text-gray-400 mt-1">
+                                    Par: <span class="text-gray-300">{version.profiles?.full_name || 'Utilisateur inconnu'}</span>
+                                </div>
+                                <div class="text-xs text-gray-500 mt-0.5">
+                                    Titre: {version.titre}
+                                </div>
+                            </div>
+                            
+                            <button 
+                                on:click={() => restoreVersion(version)}
+                                class="flex items-center gap-2 px-3 py-2 bg-purple-600/20 text-purple-300 hover:bg-purple-600 hover:text-white border border-purple-500/30 rounded-lg text-xs font-bold transition-all"
+                            >
+                                <RotateCcw class="w-3.5 h-3.5" /> Restaurer
+                            </button>
+                        </div>
+                    {/each}
+                {/if}
+            </div>
+
+            <div class="p-4 border-t border-white/10 bg-white/5 text-right text-xs text-gray-500">
+                La restauration remplace le contenu de l'éditeur (sans sauvegarder immédiatement).
             </div>
         </div>
     </div>
