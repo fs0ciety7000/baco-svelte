@@ -51,6 +51,8 @@
 
   /* 2. Panneaux de verre avec bordure dynamique */
   .glass-panel {
+    background-color: var(--glass-bg, rgba(255, 255, 255, 0.05)); /* Fallback au cas où */
+    backdrop-filter: blur(12px);
     @apply bg-white/10 dark:bg-gray-900/30 backdrop-blur-md shadow-xl;
     border: 1px solid var(--glass-border);
   }
@@ -306,4 +308,249 @@
 @keyframes grid-move {
     0% { transform: perspective(500px) rotateX(60deg) translateY(0); }
     100% { transform: perspective(500px) rotateX(60deg) translateY(40px); }
+}
+
+/* =========================================
+   CORRECTION DES THÈMES SPÉCIAUX
+   ========================================= */
+
+/* --- 1. THÈME RETROWAVE --- */
+.theme-retrowave .bg-deep-space {
+    background-color: #0f0518 !important;
+    /* On force l'image avec une grille */
+    background-image: 
+        linear-gradient(rgba(255, 0, 255, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 0, 255, 0.1) 1px, transparent 1px) !important;
+    background-size: 40px 40px !important;
+    background-position: center bottom;
+    background-attachment: scroll !important;
+    animation: gridMove 20s linear infinite;
+}
+/* Horizon violet */
+.theme-retrowave .bg-deep-space::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(to bottom, #0f0518 0%, transparent 80%);
+    pointer-events: none;
+    z-index: 0; 
+}
+
+
+/* --- 2. THÈME HACKER (TERMINAL / MATRIX) --- */
+.theme-hacker .bg-deep-space {
+    background-color: #050505 !important; /* Noir presque pur */
+    font-family: 'Courier New', Courier, monospace !important;
+    
+    /* 1. TEXTE LISIBLE (Gris clair par défaut) */
+    color: #e0e0e0 !important; 
+    
+    /* 2. FOND : Simulation de "Pluie Matrix" via dégradés */
+    background-image: 
+        /* Colonnes aléatoires simulées par des dégradés verticaux */
+        linear-gradient(180deg, transparent 0%, rgba(0, 255, 0, 0.1) 50%, transparent 100%),
+        /* Une grille fine pour le côté "Techno" */
+        linear-gradient(90deg, rgba(0, 255, 0, 0.03) 1px, transparent 1px) !important;
+        
+    background-size: 100% 200%, 40px 100% !important; /* La pluie fait 200% de haut pour défiler */
+    background-position: 0 -100%, 0 0 !important;
+    background-attachment: scroll !important;
+    
+    animation: matrixRain 3s linear infinite;
+    position: relative;
+}
+
+/* Animation de la pluie qui tombe */
+@keyframes matrixRain {
+    0% { background-position: 0 -100%, 0 0; }
+    100% { background-position: 0 100%, 0 0; }
+}
+
+/* 3. ACCENTS MATRIX (Titres, Gras, Icônes en Vert Fluo) */
+.theme-hacker .bg-deep-space h1,
+.theme-hacker .bg-deep-space h2,
+.theme-hacker .bg-deep-space h3,
+.theme-hacker .bg-deep-space h4,
+.theme-hacker .bg-deep-space strong,
+.theme-hacker .bg-deep-space b,
+.theme-hacker .bg-deep-space .lucide-icon, /* Cible les icônes lucide */
+.theme-hacker .bg-deep-space svg {
+    color: #00ff00 !important;
+    fill: #00ff00; /* Remplit les icônes si besoin */
+    text-shadow: 0 0 8px rgba(0, 255, 0, 0.6); /* Petit effet néon */
+    border-color: rgba(0, 255, 0, 0.5) !important;
+}
+
+/* 4. OVERLAY SCANLINES (Lignes TV Retro) */
+.theme-hacker .bg-deep-space::after {
+    content: " ";
+    display: block;
+    position: fixed; 
+    top: 0; left: 0; bottom: 0; right: 0;
+    /* Lignes horizontales fines + vignette sombre sur les bords */
+    background: 
+        linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+        radial-gradient(circle, transparent 60%, black 150%);
+    
+    background-size: 100% 3px, 100% 100%;
+    z-index: 999; 
+    pointer-events: none;
+    opacity: 0.2; /* Discret pour ne pas gêner la lecture */
+}
+
+/* --- 3. THÈME AURORA --- */
+.theme-aurora .bg-deep-space {
+    /* On sépare les propriétés pour être sûr d'écraser le défaut */
+    background-color: #0f172a !important;
+    background-image: linear-gradient(-45deg, #0f172a, #134e4a, #312e81, #0f172a) !important;
+    background-size: 400% 400% !important;
+    background-attachment: scroll !important; /* Fixed pose parfois problème avec l'anim */
+    
+    animation: auroraGradient 15s ease infinite;
+}
+
+/* Définition de l'animation (doit être présente) */
+@keyframes auroraGradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+@keyframes gridMove {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 40px; }
+}
+
+/* --- THÈME HOLOGRAPHIC --- */
+.theme-holographic .bg-deep-space {
+    background-color: #f3f4f6 !important; /* Gris très clair */
+    /* Dégradé arc-en-ciel pastel géant qui tourne */
+    background-image: 
+        linear-gradient(120deg, #a1c4fd 0%, #c2e9fb 100%),
+        radial-gradient(at 0% 0%, rgba(255, 0, 150, 0.1) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(0, 255, 255, 0.1) 0px, transparent 50%) !important;
+    position: relative;
+    overflow: hidden;
+    color: #1f2937 !important; /* Texte foncé pour la lisibilité sur fond clair */
+}
+
+/* Texte foncé forcé */
+.theme-holographic .bg-deep-space * {
+    color: #374151;
+    border-color: rgba(255, 255, 255, 0.5);
+}
+.theme-holographic .bg-deep-space h1, 
+.theme-holographic .bg-deep-space h2, 
+.theme-holographic .bg-deep-space strong {
+    color: #111827 !important;
+}
+
+/* L'effet aurore boréale holographique */
+.theme-holographic .bg-deep-space::before {
+    content: '';
+    position: fixed;
+    top: -50%; left: -50%; right: -50%; bottom: -50%;
+    background: conic-gradient(
+        from 0deg,
+        transparent 0deg,
+        rgba(168, 85, 247, 0.15) 60deg,
+        rgba(56, 189, 248, 0.15) 120deg,
+        rgba(236, 72, 153, 0.15) 180deg,
+        rgba(56, 189, 248, 0.15) 240deg,
+        rgba(168, 85, 247, 0.15) 300deg,
+        transparent 360deg
+    );
+    animation: holoSpin 20s linear infinite;
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(60px); /* Flou énorme pour fondre les couleurs */
+}
+
+@keyframes holoSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* --- THÈME MAGMA --- */
+.theme-magma .bg-deep-space {
+    background-color: #2a0a0a !important; /* Rouge très sombre */
+    background-image: none !important;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Blob 1 */
+.theme-magma .bg-deep-space::before {
+    content: '';
+    position: fixed;
+    top: 50%; left: 50%;
+    width: 60vw; height: 60vw;
+    background: radial-gradient(circle, rgba(220, 38, 38, 0.4) 0%, transparent 70%);
+    transform: translate(-50%, -50%);
+    animation: magmaMove1 15s ease-in-out infinite alternate;
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* Blob 2 (Orange) */
+.theme-magma .bg-deep-space::after {
+    content: '';
+    position: fixed;
+    top: 20%; left: 20%;
+    width: 40vw; height: 40vw;
+    background: radial-gradient(circle, rgba(251, 146, 60, 0.3) 0%, transparent 70%);
+    animation: magmaMove2 20s ease-in-out infinite alternate;
+    z-index: 0;
+    pointer-events: none;
+}
+
+@keyframes magmaMove1 {
+    0% { transform: translate(-50%, -50%) scale(1); }
+    100% { transform: translate(-30%, -60%) scale(1.2); }
+}
+@keyframes magmaMove2 {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(50vw, 20vh) scale(0.8); }
+}
+
+/* --- THÈME QUANTUM --- */
+.theme-quantum .bg-deep-space {
+    background-color: #020617 !important;
+    /* Motif de points */
+    background-image: radial-gradient(rgba(56, 189, 248, 0.2) 2px, transparent 2px) !important;
+    background-size: 40px 40px !important;
+    background-position: 0 0;
+    animation: quantumPan 60s linear infinite;
+    position: relative;
+}
+
+/* Effet de "vague" de lumière qui passe */
+.theme-quantum .bg-deep-space::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(circle at 50% 50%, transparent 0%, rgba(2, 6, 23, 0.8) 100%);
+    z-index: 1; /* Vignette pour assombrir les bords */
+    pointer-events: none;
+}
+
+/* Une lueur qui se déplace */
+.theme-quantum .bg-deep-space::after {
+    content: '';
+    position: fixed;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.07) 0%, transparent 40%);
+    animation: quantumPulse 10s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
+@keyframes quantumPan {
+    0% { background-position: 0 0; }
+    100% { background-position: 100px 100px; }
+}
+
+@keyframes quantumPulse {
+    0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+    50% { transform: translate(-10%, -10%) scale(1.1); opacity: 1; }
 }
