@@ -112,5 +112,24 @@
 
     <ToastContainer />
     <ConfirmModal />
-  </div>
-{/if}
+<div class="garland">
+        <div class="garland-lights"></div>
+    </div>
+    <div class="sleigh-reindeer"></div>
+    <div class="snowfall-effect"></div>
+
+    <div class="ocean-bubbles">
+        <div class="bubble-layer"></div>
+    </div>
+
+    <div class="forest-fireflies">
+        <div class="firefly"></div>
+        <div class="firefly"></div>
+        <div class="firefly"></div>
+        <div class="firefly"></div>
+        <div class="firefly"></div>
+    </div>
+
+    <div class="cyber-grid"></div>
+
+  </div> {/if}
