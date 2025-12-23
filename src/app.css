@@ -202,3 +202,127 @@
   0% { transform: translate3d(0, -100vh, 0); }
   100% { transform: translate3d(0, 100vh, 0); }
 }
+
+
+/* =========================================
+   NOUVEAUX ÉLÉMENTS D'AMBIANCE
+   ========================================= */
+
+/* --- 1. THÈME OCÉAN : BULLES --- */
+.ocean-bubbles {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1; /* Derrière le contenu */
+    pointer-events: none;
+}
+
+.theme-ocean .ocean-bubbles {
+    display: block;
+}
+
+.bubble-layer {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    /* Création de bulles via des dégradés radiaux multiples */
+    background-image: 
+        radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 2px),
+        radial-gradient(rgba(255, 255, 255, 0.10) 2px, transparent 3px),
+        radial-gradient(rgba(255, 255, 255, 0.20) 1px, transparent 2px);
+    background-size: 50px 50px, 100px 100px, 150px 150px;
+    background-position: 0 0, 0 0, 0 0;
+    animation: rise 20s linear infinite;
+}
+
+@keyframes rise {
+    0% { background-position: 0 100vh, 20px 100vh, 50px 100vh; }
+    100% { background-position: 20px -100px, 50px -100px, 0px -100px; }
+}
+
+/* --- 2. THÈME FORÊT : LUCIOLES --- */
+.forest-fireflies {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.theme-forest .forest-fireflies {
+    display: block;
+}
+
+.firefly {
+    position: absolute;
+    border-radius: 50%;
+    background-color: #bef264; /* Lime-300 */
+    box-shadow: 0 0 10px 2px rgba(190, 242, 100, 0.4);
+    opacity: 0;
+    animation: firefly-float 15s infinite ease-in-out;
+}
+
+/* On crée quelques lucioles manuelles via CSS */
+.firefly:nth-child(1) { width: 4px; height: 4px; left: 10%; top: 50%; animation-duration: 8s; animation-delay: 0s; }
+.firefly:nth-child(2) { width: 6px; height: 6px; left: 80%; top: 20%; animation-duration: 12s; animation-delay: 2s; }
+.firefly:nth-child(3) { width: 3px; height: 3px; left: 40%; top: 70%; animation-duration: 15s; animation-delay: 1s; }
+.firefly:nth-child(4) { width: 5px; height: 5px; left: 70%; top: 80%; animation-duration: 10s; animation-delay: 4s; }
+.firefly:nth-child(5) { width: 4px; height: 4px; left: 20%; top: 30%; animation-duration: 18s; animation-delay: 3s; }
+
+@keyframes firefly-float {
+    0%, 100% { transform: translate(0, 0); opacity: 0; }
+    20% { opacity: 0.8; }
+    50% { transform: translate(50px, -50px); opacity: 0.5; }
+    80% { opacity: 0.8; }
+}
+
+/* --- 3. THÈME CYBERPUNK/NEON : GRILLE RÉTRO --- */
+.cyber-grid {
+    display: none;
+    position: fixed;
+    bottom: -30%; /* Commence plus bas pour l'effet de perspective */
+    left: -50%;
+    width: 200%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    
+    /* Grille en perspective */
+    transform: perspective(500px) rotateX(60deg);
+    
+    background-image: 
+        linear-gradient(transparent 95%, rgba(234, 179, 8, 0.3) 95%), /* Lignes horizontales jaunes */
+        linear-gradient(90deg, transparent 95%, rgba(234, 179, 8, 0.3) 95%); /* Lignes verticales */
+    background-size: 40px 40px;
+    
+    /* Masque pour que la grille disparaisse au fond */
+    mask-image: linear-gradient(to top, black 40%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to top, black 40%, transparent 100%);
+
+    animation: grid-move 5s linear infinite;
+}
+
+/* Changement de couleur pour le thème Neon (Violet) */
+.theme-neon .cyber-grid {
+    display: block;
+    background-image: 
+        linear-gradient(transparent 95%, rgba(168, 85, 247, 0.3) 95%),
+        linear-gradient(90deg, transparent 95%, rgba(168, 85, 247, 0.3) 95%);
+}
+
+.theme-cyberpunk .cyber-grid {
+    display: block;
+    /* Garde le jaune par défaut défini ci-dessus */
+}
+
+@keyframes grid-move {
+    0% { transform: perspective(500px) rotateX(60deg) translateY(0); }
+    100% { transform: perspective(500px) rotateX(60deg) translateY(40px); }
+}
