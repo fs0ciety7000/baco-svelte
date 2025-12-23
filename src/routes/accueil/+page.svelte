@@ -20,7 +20,7 @@
   import { 
     LayoutGrid, Cloud, Loader2, Plus, X, 
     Sun, Car, TrainFront, Accessibility, Link, Calendar, BookOpen, PenLine, Briefcase,
-    Settings2, Users, Palette, LayoutGrid, Check 
+    Settings2, Users, Palette, Check 
   } from 'lucide-svelte';
   import { toast } from '$lib/stores/toast';
 import { themesConfig, currentThemeId, applyTheme } from '$lib/stores/theme';
