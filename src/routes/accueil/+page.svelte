@@ -71,19 +71,17 @@
   // --- INITIALISATION ---
   onMount(async () => {
     try {
-        // 1. Import dynamique ROBUSTE (gère named export vs default)
         const module = await import('gridstack');
         GridStackModule = module.GridStack || module.default || module;
         
-        // Debug Session
         console.log("État Session Supabase:", session ? "Connecté" : "Non connecté (null)");
 
-        // 2. Application du thème sauvegardé
+        // Application du thème sauvegardé
         if (data.savedTheme) {
-            selectTheme(data.savedTheme, false); // false = ne pas re-sauvegarder tout de suite
+            selectTheme(data.savedTheme, false);
         }
 
-        // 3. Chargement de la config
+        // Chargement de la config
         let loadedItems = [];
         if (savedConfig && savedConfig.length > 0) {
             loadedItems = savedConfig;
@@ -93,7 +91,6 @@
             else loadedItems = DEFAULT_LAYOUT.map(i => ({ ...i, id: crypto.randomUUID() }));
         }
 
-        // Migration & Nettoyage
         items = loadedItems.map(item => {
             if (item.w === undefined) {
                  const reg = WIDGET_REGISTRY[item.type];
@@ -104,12 +101,8 @@
 
         await tick();
         
-        // --- MODIFICATION MAJEURE ICI ---
-        // On attend 50ms pour être sûr que le layout (largeur CSS) est calculé par le navigateur
-        // avant de lancer Gridstack. Cela corrige le bug d'affichage au retour sur la page.
-        setTimeout(() => {
-            initGridStack();
-        }, 50);
+        // --- MODIFICATION ICI : On lance la boucle de vérification ---
+        waitForGridContainer();
         
     } catch (e) {
         console.error("Erreur critique au chargement:", e);
@@ -123,7 +116,25 @@
      }
   });
 
-function initGridStack() {
+  // --- NOUVELLE FONCTION DE SECURITE ---
+  function waitForGridContainer(attempts = 0) {
+      const el = document.querySelector('.grid-stack');
+      
+      // Si pas d'élément ou largeur nulle (transition en cours)
+      if (!el || el.clientWidth === 0) {
+          if (attempts < 20) { // On réessaie pendant 2 secondes max
+              setTimeout(() => waitForGridContainer(attempts + 1), 100);
+          } else {
+              initGridStack(); // Fallback si ça ne charge jamais
+          }
+          return;
+      }
+      
+      // La largeur est > 0, on peut lancer !
+      initGridStack();
+  }
+
+  function initGridStack() {
       if (grid || !GridStackModule) return;
       const el = document.querySelector('.grid-stack');
       if (!el) return;
@@ -134,7 +145,13 @@ function initGridStack() {
               cellHeight: 280,
               margin: 10,
               float: false,
-              disableOneColumnMode: false,
+              
+              // --- CONFIGURATION CRITIQUE ANTI-STACKING ---
+              disableOneColumnMode: true, // Interdit le mode pile
+              oneColumnSize: 0,           // Désactive le seuil de bascule
+              minWidth: 768,              // Force la grille
+              // -------------------------------------------
+              
               animate: true,
               disableDrag: true,
               disableResize: true,
@@ -144,15 +161,8 @@ function initGridStack() {
               }
           }, el);
 
-          // --- CORRECTION DU BUG L.commit ---
-          // On démarre le batch (bloque le rendu)
           grid.batchUpdate(); 
-          
-          // On compacte les widgets
           grid.compact();
-          
-          // On termine le batch (débloque le rendu et applique les changements)
-          // C'est ça qui remplace le "commit()" qui n'existait pas
           grid.batchUpdate(false); 
 
           grid.on('change', () => {
@@ -163,6 +173,7 @@ function initGridStack() {
           console.error("Erreur init GridStack:", err);
       }
   }
+
   // --- LOGIQUE GRIDSTACK ---
 
   function toggleDrawer() {
@@ -222,20 +233,22 @@ function initGridStack() {
   }
 
   function widgetAction(node, item) {
-      setTimeout(() => {
+      // On utilise la même logique d'attente pour chaque widget individuel
+      const attachWidget = () => {
           if (grid) {
-              try {
-                  grid.makeWidget(node);
-              } catch (err) {}
+              try { grid.makeWidget(node); } catch (err) {}
+          } else {
+             setTimeout(attachWidget, 50);
           }
-      }, 50);
+      };
+      
+      // Petit délai initial
+      setTimeout(attachWidget, 50);
 
       return {
           destroy() {
               if (grid) {
-                  try {
-                       grid.removeWidget(node, false);
-                  } catch (e) { }
+                  try { grid.removeWidget(node, false); } catch (e) { }
               }
           }
       };
@@ -310,6 +323,13 @@ function initGridStack() {
 </script>
 
 <style>
+    /* FORCE LA LARGEUR ET LE COMPORTEMENT */
+    :global(.grid-stack) {
+        width: 100% !important; 
+        min-width: 100% !important;
+        opacity: 1; /* S'assure qu'il est visible */
+    }
+
     :global(.grid-stack-item-content) {
         height: 100% !important; 
         overflow: visible !important; 
