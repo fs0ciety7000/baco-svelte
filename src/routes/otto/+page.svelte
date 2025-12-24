@@ -531,14 +531,13 @@ async function generatePDF() {
     </div>
     
     {#if view === 'list'}
-        <button on:click={openNew} class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all" style="
-    background-color: rgba(var(--color-primary), 0.2); 
-    border-color: rgba(var(--color-primary), 0.3);
-    color: rgb(var(--color-primary));
-  "
+        <button 
+  on:click={openNew} 
+  class="btn-themed px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all border"
+  style="--primary-rgb: var(--color-primary);"
 >
-            <Plus class="w-5 h-5" /> Nouvelle Commande
-        </button>
+  <Plus class="w-5 h-5" /> Nouvelle Commande
+</button>
     {:else}
         <button on:click={goBackToList} class="bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-all">
             <ArrowLeft class="w-5 h-5" /> Retour liste
@@ -849,3 +848,19 @@ async function generatePDF() {
     </div>
   </div>
 {/if}
+
+<style>
+  .btn-themed {
+    /* Utilisation de la variable passée dans l'attribut style */
+    background-color: rgba(var(--primary-rgb), 0.2);
+    border-color: rgba(var(--primary-rgb), 0.3);
+    color: rgb(var(--primary-rgb));
+  }
+
+  .btn-themed:hover {
+    /* Modification de l'opacité au survol */
+    background-color: rgba(var(--primary-rgb), 0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2);
+  }
+</style>
