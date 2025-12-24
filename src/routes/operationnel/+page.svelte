@@ -307,9 +307,12 @@ function openModal(proc = null) {
   <header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-white/10 pb-6" in:fly={{ y: -20, duration: 600 }}>
     <div class="space-y-2">
       <div class="flex items-center gap-3">
-        <div class="p-3 rounded-xl bg-blue-500/20 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.3)] border border-blue-500/30">
-            <Book class="w-8 h-8" />
-        </div>
+        <div 
+  class="icon-container p-3 rounded-xl border transition-all"
+  style="--primary-rgb: var(--color-primary);"
+>
+  <Book class="w-8 h-8" />
+</div>
         <h1 class="text-3xl font-bold text-white tracking-tight">Base de Connaissances</h1>
       </div>
       <p class="text-gray-400 pl-1">Procédures, fiches réflexes et documentation opérationnelle.</p>
@@ -342,35 +345,35 @@ function openModal(proc = null) {
         />
       </div>
       
-      <div class="glass-panel rounded-2xl p-4 space-y-2">
-        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-            <FolderOpen class="w-4 h-4" /> Catégories
-        </h3>
-        
-        <button 
-          on:click={() => { selectedCategory = 'all'; loadProcedures(); }}
-          class="w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 flex items-center justify-between
-          {selectedCategory === 'all' 
-            ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.2)]' 
-            : 'text-gray-400 hover:bg-white/5 hover:text-white'}"
-        >
-          <span>Tout voir</span>
-          {#if selectedCategory === 'all'}<div class="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_5px_currentColor]"></div>{/if}
-        </button>
+   <div class="glass-panel rounded-2xl p-4 space-y-2" style="--primary-rgb: var(--color-primary);">
+  <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+    <FolderOpen class="w-4 h-4" /> Catégories
+  </h3>
+  
+  <button 
+    on:click={() => { selectedCategory = 'all'; loadProcedures(); }}
+    class="category-btn w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 flex items-center justify-between
+    {selectedCategory === 'all' ? 'active' : 'inactive'}"
+  >
+    <span>Tout voir</span>
+    {#if selectedCategory === 'all'}
+      <div class="dot"></div>
+    {/if}
+  </button>
 
-        {#each categories as cat}
-          <button 
-            on:click={() => { selectedCategory = cat; loadProcedures(); }}
-            class="w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 flex items-center justify-between
-            {selectedCategory === cat 
-              ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.2)]' 
-              : 'text-gray-400 hover:bg-white/5 hover:text-white'}"
-          >
-            <span class="truncate">{cat}</span>
-             {#if selectedCategory === cat}<div class="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_5px_currentColor]"></div>{/if}
-          </button>
-        {/each}
-      </div>
+  {#each categories as cat}
+    <button 
+      on:click={() => { selectedCategory = cat; loadProcedures(); }}
+      class="category-btn w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 flex items-center justify-between
+      {selectedCategory === cat ? 'active' : 'inactive'}"
+    >
+      <span class="truncate">{cat}</span>
+      {#if selectedCategory === cat}
+        <div class="dot"></div>
+      {/if}
+    </button>
+  {/each}
+</div>
     </aside>
 
     <main class="flex-1 space-y-6">
@@ -746,5 +749,40 @@ function openModal(proc = null) {
 
   .btn-save:active:not(:disabled) {
     transform: scale(0.98);
+  }
+
+  .icon-container {
+    /* Fond avec 20% d'opacité */
+    background-color: rgba(var(--primary-rgb), 0.2);
+    /* Couleur de l'icône (Lucide utilise 'currentColor' par défaut) */
+    color: rgb(var(--primary-rgb));
+    /* Bordure avec 30% d'opacité */
+    border-color: rgba(var(--primary-rgb), 0.3);
+    /* Lueur (glow) basée sur la couleur du thème */
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.3);
+  }
+
+  .category-btn.inactive {
+    color: rgb(156, 163, 175); /* text-gray-400 */
+  }
+
+  .category-btn.inactive:hover {
+    background-color: rgba(255, 255, 255, 0.05); /* hover:bg-white/5 */
+    color: white; /* hover:text-white */
+  }
+
+  .category-btn.active {
+    background-color: rgba(var(--primary-rgb), 0.2);
+    color: rgb(var(--primary-rgb));
+    border: 1px solid rgba(var(--primary-rgb), 0.3);
+    box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.2);
+  }
+
+  .dot {
+    width: 0.375rem; /* 1.5 */
+    height: 0.375rem;
+    border-radius: 9999px;
+    background-color: rgb(var(--primary-rgb));
+    box-shadow: 0 0 5px rgb(var(--primary-rgb));
   }
 </style>
