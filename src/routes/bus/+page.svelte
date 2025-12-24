@@ -216,7 +216,7 @@
     if (!error) { toast.success("Supprimé"); fetchLinesStructure(); loadSocietes(); }
   }
 
-  const inputClass = "block w-full rounded-xl border-white/10 bg-black/40 p-3 text-sm text-white focus:border-blue-500/50 transition-all outline-none";
+  const inputClass = "block w-full rounded-xl border border-white/10 bg-black/40 p-3 text-sm text-white transition-all outline-none input-themed";
   const labelClass = "block text-xs font-bold text-gray-400 mb-1.5 uppercase tracking-wide";
 </script>
 
@@ -395,4 +395,25 @@
   .checkbox-themed { accent-color: rgb(var(--primary-rgb)); }
   .contact-link { color: rgb(var(--primary-rgb)); background-color: rgba(var(--primary-rgb), 0.1); border-color: rgba(var(--primary-rgb), 0.2); }
   .contact-link:hover { background-color: rgba(var(--primary-rgb), 0.2); border-color: rgba(var(--primary-rgb), 0.4); box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.2); }
+
+  /* On s'assure que la variable est accessible via le scope du composant */
+  .input-themed {
+    --primary-rgb: var(--color-primary);
+  }
+
+  .input-themed:focus {
+    /* Bordure à 50% d'opacité de la couleur du thème */
+    border-color: rgba(var(--primary-rgb), 0.5);
+    
+    /* Optionnel : ajout d'un halo (ring) assorti pour renforcer l'effet glow */
+    box-shadow: 0 0 0 4px rgba(var(--primary-rgb), 0.1);
+    
+    /* Légère clarification du fond au focus */
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+
+  /* Style pour le placeholder pour rester dans le thème sombre */
+  .input-themed::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+  }
 </style>
