@@ -374,9 +374,14 @@ async function loadContacts() {
             <button on:click={() => exportData('pdf')} class="p-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl transition-all" title="Export PDF"><FileText class="w-5 h-5"/></button>
         {/if}
         {#if isAdmin}
-            <button on:click={() => openModal()} class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-100 border border-blue-500/30 px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all hover:scale-105 shadow-lg shadow-blue-900/10">
-                <Plus class="w-5 h-5" /> <span class="hidden sm:inline font-bold">Ajouter</span>
-            </button>
+           <button 
+  on:click={() => openModal()} 
+  class="btn-themed px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all hover:scale-105 shadow-lg border"
+  style="--primary-rgb: var(--color-primary);"
+>
+  <Plus class="w-5 h-5" /> 
+  <span class="hidden sm:inline font-bold">Ajouter</span>
+</button>
         {/if}
       </div>
     </div>
@@ -574,11 +579,61 @@ async function loadContacts() {
             <button on:click={() => showModal = false} class="px-4 py-2 bg-white/5 border border-white/10 text-gray-300 rounded-xl hover:bg-white/10 hover:text-white transition-all">
                 Annuler
             </button>
-            <button on:click={handleSubmit} disabled={modalLoading} class="px-4 py-2 bg-blue-600/80 text-white rounded-xl hover:bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)] flex items-center transition-all disabled:opacity-50 group">
-                {#if modalLoading}<Loader2 class="w-4 h-4 animate-spin mr-2"/>{/if}
-                <Save class="w-4 h-4 mr-2 group-hover:scale-110 transition-transform"/> Enregistrer
-            </button>
+           <button 
+  on:click={handleSubmit} 
+  disabled={modalLoading} 
+  class="btn-submit px-4 py-2 text-white rounded-xl flex items-center transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+  style="--primary-rgb: var(--color-primary);"
+>
+  {#if modalLoading}
+    <Loader2 class="w-4 h-4 animate-spin mr-2"/>
+  {:else}
+    <Save class="w-4 h-4 mr-2 group-hover:scale-110 transition-transform"/>
+  {/if}
+  Enregistrer
+</button>
         </div>
     </div>
   </div>
 {/if}
+
+<style>
+  .btn-themed {
+    /* Fond léger basé sur le thème (20% d'opacité) */
+    background-color: rgba(var(--primary-rgb), 0.2);
+    /* Bordure assortie (30% d'opacité) */
+    border-color: rgba(var(--primary-rgb), 0.3);
+    /* Texte à la couleur du thème */
+    color: rgb(var(--primary-rgb));
+  }
+
+  .btn-themed:hover {
+    /* Accentuation de l'opacité au survol */
+    background-color: rgba(var(--primary-rgb), 0.3);
+    border-color: rgba(var(--primary-rgb), 0.5);
+    /* Lueur (glow) dynamique basée sur la couleur du thème */
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.2);
+  }
+
+  .btn-themed:active {
+    transform: scale(0.95);
+  }
+
+  .btn-submit {
+    /* Utilise l'opacité 0.8 pour l'action principale comme dans votre original */
+    background-color: rgba(var(--primary-rgb), 0.8);
+    /* Lueur dynamique basée sur le thème actuel */
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.3);
+  }
+
+  .btn-submit:hover:not(:disabled) {
+    /* Opacité pleine et lueur accentuée au survol */
+    background-color: rgb(var(--primary-rgb));
+    box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.5);
+    transform: translateY(-1px);
+  }
+
+  .btn-submit:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+</style>

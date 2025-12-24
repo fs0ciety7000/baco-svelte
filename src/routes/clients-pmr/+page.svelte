@@ -202,10 +202,14 @@
           <button on:click={() => setView('list')} class="p-2 rounded-lg transition-all {viewMode === 'list' ? 'bg-white/10 text-blue-300 shadow-sm' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}" title="Vue Liste"><List size={18} /></button>
         </div>
         
-        <button on:click={() => openModal()} class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-100 border border-blue-500/30 px-5 py-3 rounded-xl flex items-center gap-2 transition-all hover:scale-105 group shadow-lg shadow-blue-900/10">
-          <Plus size={20} class="group-hover:rotate-90 transition-transform" />
-          <span class="font-semibold hidden sm:inline">Nouveau Client</span>
-        </button>
+        <button 
+  on:click={() => openModal()} 
+  class="btn-themed px-5 py-3 rounded-xl flex items-center gap-2 transition-all hover:scale-105 group border shadow-lg"
+  style="--primary-rgb: var(--color-primary);"
+>
+  <Plus size={20} class="group-hover:rotate-90 transition-transform" />
+  <span class="font-semibold hidden sm:inline">Nouveau Client</span>
+</button>
     </div>
   </header>
 
@@ -394,15 +398,57 @@
             Annuler
           </button>
           <button 
-            on:click={saveClient} 
-            disabled={isSaving} 
-            class="px-5 py-2.5 text-sm font-bold text-white bg-blue-600/80 hover:bg-blue-500/90 border border-blue-500/30 rounded-xl shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_20px_rgba(59,130,246,0.5)] transition-all duration-300 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group"
-          >
-            <Save size={18} class="group-hover:scale-110 transition-transform"/> 
-            {isSaving ? 'Enregistrement...' : 'Enregistrer'}
-          </button>
+  on:click={saveClient} 
+  disabled={isSaving} 
+  class="btn-save px-5 py-2.5 text-sm font-bold text-white border rounded-xl transition-all duration-300 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group"
+  style="--primary-rgb: var(--color-primary);"
+>
+  <Save size={18} class="group-hover:scale-110 transition-transform"/> 
+  {isSaving ? 'Enregistrement...' : 'Enregistrer'}
+</button>
         </div>
       </div>
     </div>
   {/if}
 </div>
+
+<style>
+  .btn-themed {
+    /* Fond léger basé sur le thème (20% d'opacité) */
+    background-color: rgba(var(--primary-rgb), 0.2);
+    /* Bordure assortie (30% d'opacité) */
+    border-color: rgba(var(--primary-rgb), 0.3);
+    /* Texte à la couleur du thème */
+    color: rgb(var(--primary-rgb));
+  }
+
+  .btn-themed:hover {
+    /* Augmentation de l'opacité et lueur au survol */
+    background-color: rgba(var(--primary-rgb), 0.3);
+    border-color: rgba(var(--primary-rgb), 0.5);
+    /* Lueur (glow) dynamique basée sur la couleur du thème actuel */
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.4);
+  }
+
+  .btn-themed:active {
+    transform: scale(0.95);
+  }
+  .btn-save {
+    /* Utilise l'opacité 0.8 pour l'action principale comme votre original */
+    background-color: rgba(var(--primary-rgb), 0.8);
+    border-color: rgba(var(--primary-rgb), 0.3);
+    /* Lueur dynamique basée sur la couleur du thème actuel */
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.3);
+  }
+
+  .btn-save:hover:not(:disabled) {
+    /* Opacité pleine et lueur accentuée au survol */
+    background-color: rgba(var(--primary-rgb), 0.9);
+    box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.5);
+    transform: translateY(-1px);
+  }
+
+  .btn-save:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+</style>

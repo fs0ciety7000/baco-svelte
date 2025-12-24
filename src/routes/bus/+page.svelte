@@ -427,10 +427,14 @@ async function loadSocietes() {
     
     <div class="flex gap-3">
         {#if isAdmin}
-            <button on:click={() => openModal()} class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-100 border border-blue-500/30 px-5 py-3 rounded-xl flex items-center gap-2 transition-all hover:scale-105 group shadow-lg shadow-blue-900/10">
-                <Plus class="w-5 h-5 group-hover:rotate-90 transition-transform" />
-                <span class="font-semibold hidden sm:inline">Ajouter</span>
-            </button>
+            <button 
+  on:click={() => openModal()} 
+  class="btn-add px-5 py-3 rounded-xl flex items-center gap-2 transition-all hover:scale-105 group border shadow-lg"
+  style="--primary-rgb: var(--color-primary);"
+>
+  <Plus class="w-5 h-5 group-hover:rotate-90 transition-transform" />
+  <span class="font-semibold hidden sm:inline">Ajouter</span>
+</button>
         {/if}
     </div>
   </header>
@@ -703,11 +707,61 @@ async function loadSocietes() {
         <button on:click={() => showModal = false} class="px-4 py-2 bg-white/5 border border-white/10 text-gray-300 rounded-xl hover:bg-white/10 hover:text-white transition-all">
           Annuler
         </button>
-        <button on:click={handleSubmit} disabled={modalLoading} class="px-4 py-2 bg-blue-600/80 text-white rounded-xl hover:bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)] flex items-center transition-all disabled:opacity-50">
-          {#if modalLoading}<Loader2 class="w-4 h-4 animate-spin mr-2"/>{/if}
-          Enregistrer
-        </button>
+      <button 
+  on:click={handleSubmit} 
+  disabled={modalLoading} 
+  class="btn-submit px-4 py-2 text-white rounded-xl flex items-center transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+  style="--primary-rgb: var(--color-primary);"
+>
+  {#if modalLoading}
+    <Loader2 class="w-4 h-4 animate-spin mr-2"/>
+  {/if}
+  Enregistrer
+</button>
       </div>
     </div>
   </div>
 {/if}
+
+<style>
+  .btn-add {
+    /* Fond léger basé sur le thème (20% d'opacité) */
+    background-color: rgba(var(--primary-rgb), 0.2);
+    /* Bordure assortie (30% d'opacité) */
+    border-color: rgba(var(--primary-rgb), 0.3);
+    /* Texte à la couleur du thème */
+    color: rgb(var(--primary-rgb));
+    /* Ombre légère basée sur la couleur du thème */
+    shadow-color: rgba(var(--primary-rgb), 0.1);
+  }
+
+  .btn-add:hover {
+    /* Augmentation de l'opacité au survol */
+    background-color: rgba(var(--primary-rgb), 0.3);
+    border-color: rgba(var(--primary-rgb), 0.5);
+    /* Lueur (glow) dynamique */
+    box-shadow: 0 10px 15px -3px rgba(var(--primary-rgb), 0.2);
+  }
+
+  .btn-add:active {
+    transform: scale(0.95);
+  }
+
+  .btn-submit {
+    /* Utilise la couleur primaire du thème avec 80% d'opacité */
+    background-color: rgba(var(--primary-rgb), 0.8);
+    /* Lueur (glow) dynamique basée sur le thème actuel */
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.3);
+  }
+
+  .btn-submit:hover:not(:disabled) {
+    /* Opacité pleine et lueur accentuée au survol */
+    background-color: rgb(var(--primary-rgb));
+    box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.5);
+    transform: translateY(-1px);
+  }
+
+  .btn-submit:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+</style>

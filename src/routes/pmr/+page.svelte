@@ -80,10 +80,14 @@
       </div>
     </div>
     
-    <button on:click={() => openModal()} class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-100 border border-blue-500/30 px-5 py-3 rounded-xl flex items-center gap-2 transition-all hover:scale-105 group shadow-lg shadow-blue-900/10">
-      <Plus size={20} class="group-hover:rotate-90 transition-transform" />
-      <span class="font-semibold">Nouvelle Entrée</span>
-    </button>
+ <button 
+  on:click={() => openModal()} 
+  class="btn-themed px-5 py-3 rounded-xl flex items-center gap-2 transition-all hover:scale-105 group border shadow-lg"
+  style="--primary-rgb: var(--color-primary);"
+>
+  <Plus size={20} class="group-hover:rotate-90 transition-transform" />
+  <span class="font-semibold">Nouvelle Entrée</span>
+</button>
   </header>
 
   <div class="bg-black/20 border border-white/5 rounded-2xl p-6" in:fly={{ y: 20, duration: 600, delay: 100 }}>
@@ -298,17 +302,61 @@
             Annuler
           </button>
 
-          <button 
-            on:click={handleSave} 
-            disabled={isSaving} 
-            class="px-5 py-2.5 text-sm font-bold text-white bg-blue-600/80 hover:bg-blue-500/90 border border-blue-500/30 rounded-xl shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_20px_rgba(59,130,246,0.5)] transition-all duration-300 backdrop-blur-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none group"
-          >
-            <Save size={18} class="group-hover:scale-110 transition-transform"/> 
-            {isSaving ? 'Enregistrement...' : 'Enregistrer'}
-          </button>
+         <button 
+  on:click={handleSave} 
+  disabled={isSaving} 
+  class="btn-save px-5 py-2.5 text-sm font-bold text-white border rounded-xl transition-all duration-300 backdrop-blur-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none group"
+  style="--primary-rgb: var(--color-primary);"
+>
+  <Save size={18} class="group-hover:scale-110 transition-transform"/> 
+  {isSaving ? 'Enregistrement...' : 'Enregistrer'}
+</button>
         </div>
 
       </div>
     </div>
   {/if}
 </div>
+
+<style>
+  .btn-themed {
+    /* Fond léger basé sur le thème (20% d'opacité) */
+    background-color: rgba(var(--primary-rgb), 0.2);
+    /* Bordure assortie (30% d'opacité) */
+    border-color: rgba(var(--primary-rgb), 0.3);
+    /* Texte à la couleur du thème */
+    color: rgb(var(--primary-rgb));
+  }
+
+  .btn-themed:hover {
+    /* Augmentation de l'opacité et lueur au survol */
+    background-color: rgba(var(--primary-rgb), 0.3);
+    border-color: rgba(var(--primary-rgb), 0.5);
+    /* Lueur (glow) dynamique basée sur la couleur du thème */
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.4);
+  }
+
+  .btn-themed:active {
+    transform: scale(0.95);
+  }
+
+  .btn-save {
+    /* Utilisation de l'opacité 0.8 pour l'action principale */
+    background-color: rgba(var(--primary-rgb), 0.8);
+    /* Bordure basée sur le thème */
+    border-color: rgba(var(--primary-rgb), 0.3);
+    /* Lueur (glow) dynamique */
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.3);
+  }
+
+  .btn-save:hover:not(:disabled) {
+    /* Augmentation de l'opacité et de la lueur au survol */
+    background-color: rgba(var(--primary-rgb), 0.9);
+    box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.5);
+    transform: translateY(-1px);
+  }
+
+  .btn-save:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+</style>
