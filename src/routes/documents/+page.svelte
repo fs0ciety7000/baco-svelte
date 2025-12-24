@@ -191,23 +191,48 @@
 
   <main class="flex flex-col lg:flex-row gap-8">
     
-    <aside class="w-full lg:w-64 flex-shrink-0 space-y-6" in:fly={{ x: -20, duration: 600, delay: 100 }}>
-      
-      <div class="relative group">
-        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 group-focus-within:text-blue-400 transition-colors">
-          <Search size={16} />
-        </div>
-        <input 
-          type="text" 
-          placeholder="Nom du fichier..." 
-          bind:value={searchQuery} 
-          on:input={loadDocuments} 
-          class="block w-full pl-9 pr-3 py-3 bg-black/20 border border-white/10 rounded-2xl text-sm text-gray-200 focus:ring-2 focus:ring-blue-500/30 focus:border-transparent transition-all outline-none placeholder-gray-600"
-        />
-      </div>
+<aside class="w-full lg:w-64 flex-shrink-0 space-y-6" in:fly={{ x: -20, duration: 600, delay: 100 }} style="--primary-rgb: var(--color-primary);">
+  
+  <div class="relative group">
+    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 search-icon transition-colors">
+      <Search size={16} />
+    </div>
+    <input 
+      type="text" 
+      placeholder="Nom du fichier..." 
+      bind:value={searchQuery} 
+      on:input={loadDocuments} 
+      class="block w-full pl-9 pr-3 py-3 bg-black/20 border border-white/10 rounded-2xl text-sm text-gray-200 input-search transition-all outline-none placeholder-gray-600"
+    />
+  </div>
 
+  <nav class="space-y-2 bg-black/20 border border-white/5 rounded-2xl p-4">
+    <h3 class="px-2 text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Catégories</h3>
+    
+    <button 
+      on:click={() => { selectedCategory = 'all'; loadDocuments(); }}
+      class="nav-item w-full flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all 
+      {selectedCategory === 'all' ? 'active' : 'inactive'}"
+    >
+      <Folder size={16} class="mr-3 icon-state" /> 
+      Tout voir
+    </button>
+    
+    <div class="h-px bg-white/5 my-2 mx-2"></div>
 
-    </aside>
+    {#each categories as cat}
+      <button 
+        on:click={() => { selectedCategory = cat; loadDocuments(); }}
+        class="nav-item w-full flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all 
+        {selectedCategory === cat ? 'active' : 'inactive'}"
+      >
+        <Folder size={16} class="mr-3 icon-state" />
+        {cat}
+      </button>
+    {/each}
+  </nav>
+
+</aside>
 
  <div class="flex-grow" in:fade={{ duration: 600 }} style="--primary-rgb: var(--color-primary);">
   {#if isLoading}
@@ -367,5 +392,15 @@
     background-color: rgba(var(--primary-rgb), 0.1);
     border-color: rgba(var(--primary-rgb), 0.2);
     box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.1);
+  }
+
+  /* Style pour la recherche */
+  .input-search:focus {
+    border-color: rgba(var(--primary-rgb), 0.4);
+    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.2);
+  }
+
+  .group:focus-within .search-icon {
+    color: rgb(var(--primary-rgb));
   }
 </style>
