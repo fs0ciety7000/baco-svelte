@@ -439,9 +439,19 @@
           </label>
           <button on:click={() => isUrgent = !isUrgent} class="p-2 rounded-full transition-colors {isUrgent ? 'text-red-400 bg-red-500/10' : 'text-gray-400 hover:text-red-400 hover:bg-white/5'}" title="Marquer comme Urgent"><AlertTriangle size={20} /></button>
         </div>
-        <button on:click={handlePost} disabled={isSubmitting || (!newMessage && !newFile)} class="inline-flex items-center gap-2 px-6 py-2 rounded-xl font-bold text-white transition-all bg-blue-600/80 hover:bg-blue-500 border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.4)] hover:shadow-[0_0_25px_rgba(59,130,246,0.6)] disabled:opacity-50">
-          {#if isSubmitting}<Loader2 size={18} class="animate-spin text-white/80" />{:else}<span>Publier</span><Send size={16} />{/if}
-        </button>
+        <button 
+  on:click={handlePost} 
+  disabled={isSubmitting || (!newMessage && !newFile)} 
+  class="btn-publish inline-flex items-center gap-2 px-6 py-2 rounded-xl font-bold text-white transition-all border disabled:opacity-50 disabled:cursor-not-allowed"
+  style="--primary-rgb: var(--color-primary);"
+>
+  {#if isSubmitting}
+    <Loader2 size={18} class="animate-spin text-white/80" />
+  {:else}
+    <span>Publier</span>
+    <Send size={16} />
+  {/if}
+</button>
       </div>
     </div>
 
@@ -542,9 +552,19 @@
         <div class="px-6 py-4 border-t border-white/10 bg-white/5 flex justify-end gap-3 relative overflow-hidden">
           <div class="absolute inset-0 bg-gradient-to-t from-blue-500/5 to-transparent pointer-events-none"></div>
           <button on:click={closeModal} class="px-5 py-2.5 text-sm font-medium text-gray-300 border border-white/10 rounded-xl bg-white/5 hover:bg-white/10 hover:text-white transition-all backdrop-blur-md">Annuler</button>
-          <button on:click={saveEditedEntry} disabled={isSubmitting} class="px-5 py-2.5 text-sm font-bold text-white bg-blue-600/80 hover:bg-blue-500 border border-blue-500/30 rounded-xl shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_25px_rgba(59,130,246,0.5)] transition-all flex items-center gap-2 disabled:opacity-50 backdrop-blur-md">
-            {#if isSubmitting}<Loader2 size={16} class="animate-spin" />{:else}<Save size={16} />{/if} Enregistrer
-          </button>
+          <button 
+  on:click={saveEditedEntry} 
+  disabled={isSubmitting} 
+  class="btn-save px-5 py-2.5 text-sm font-bold text-white border rounded-xl transition-all flex items-center gap-2 disabled:opacity-50 backdrop-blur-md"
+  style="--primary-rgb: var(--color-primary);"
+>
+  {#if isSubmitting}
+    <Loader2 size={16} class="animate-spin" />
+  {:else}
+    <Save size={16} />
+  {/if} 
+  Enregistrer
+</button>
         </div>
       </div>
     </div>
@@ -575,4 +595,42 @@
   .prose ul { list-style-type: disc; padding-left: 1.5em; }
   .prose blockquote { border-left: 4px solid #4b5563; padding-left: 1em; color: #9ca3af; font-style: italic; }
   .prose code { background: rgba(255,255,255,0.1); padding: 0.2em 0.4em; border-radius: 4px; font-family: monospace; }
+
+  .btn-publish {
+    /* Fond avec 80% d'opacité comme dans votre version originale */
+    background-color: rgba(var(--primary-rgb), 0.8);
+    border-color: rgba(var(--primary-rgb), 0.3);
+    /* Ombre portée dynamique basée sur le thème */
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.4);
+  }
+
+  .btn-publish:hover:not(:disabled) {
+    /* Version plus lumineuse au survol (100% opacité) */
+    background-color: rgb(var(--primary-rgb));
+    box-shadow: 0 0 25px rgba(var(--primary-rgb), 0.6);
+    transform: translateY(-1px);
+  }
+
+  .btn-publish:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  .btn-save {
+    /* Utilise l'opacité 0.8 pour un bouton d'action principale */
+    background-color: rgba(var(--primary-rgb), 0.8);
+    border-color: rgba(var(--primary-rgb), 0.3);
+    /* Lueur (glow) basée sur la couleur du thème actuel */
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.3);
+  }
+
+  .btn-save:hover:not(:disabled) {
+    /* Pleine opacité au survol */
+    background-color: rgb(var(--primary-rgb));
+    box-shadow: 0 0 25px rgba(var(--primary-rgb), 0.5);
+    transform: translateY(-1px);
+  }
+
+  .btn-save:active:not(:disabled) {
+    transform: scale(0.98);
+  }
 </style>

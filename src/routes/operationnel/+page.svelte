@@ -315,10 +315,14 @@ function openModal(proc = null) {
       <p class="text-gray-400 pl-1">Procédures, fiches réflexes et documentation opérationnelle.</p>
     </div>
     
-    <button on:click={() => openModal()} class="glass-panel hover:bg-blue-500/20 text-white px-5 py-3 rounded-xl flex items-center gap-2 transition-all hover:scale-105 hover:shadow-[0_0_15px_rgba(59,130,246,0.4)] border-blue-500/30 group">
-        <Plus class="w-5 h-5 group-hover:rotate-90 transition-transform" />
-        <span class="font-semibold">Nouvelle Procédure</span>
-    </button>
+    <button 
+  on:click={() => openModal()} 
+  class="btn-themed px-5 py-3 rounded-xl flex items-center gap-2 transition-all hover:scale-105 group border"
+  style="--primary-rgb: var(--color-primary);"
+>
+  <Plus class="w-5 h-5 group-hover:rotate-90 transition-transform" />
+  <span class="font-semibold">Nouvelle Procédure</span>
+</button>
   </header>
 
   <div class="flex flex-col lg:flex-row gap-8">
@@ -549,14 +553,17 @@ function openModal(proc = null) {
         <button on:click={closeModal} class="px-4 py-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
           Annuler
         </button>
-        <button 
-          on:click={saveProcedure}
-          disabled={isSaving}
-          class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium shadow-lg shadow-blue-900/20 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {#if isSaving}<Loader2 class="w-4 h-4 animate-spin"/>{/if}
-          {isSaving ? 'Enregistrement...' : 'Enregistrer'}
-        </button>
+       <button 
+  on:click={saveProcedure}
+  disabled={isSaving}
+  class="btn-save px-5 py-2 text-white rounded-xl font-medium transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+  style="--primary-rgb: var(--color-primary);"
+>
+  {#if isSaving}
+    <Loader2 class="w-4 h-4 animate-spin"/>
+  {/if}
+  {isSaving ? 'Enregistrement...' : 'Enregistrer'}
+</button>
       </div>
 
     </div>
@@ -702,5 +709,42 @@ function openModal(proc = null) {
   :global(.EasyMDEContainer .editor-preview) {
     background-color: #0f1115 !important; /* Fond très sombre opaque pour la lecture */
     color: #e2e8f0 !important;
+  }
+
+  .btn-themed {
+    /* Utilise le panneau de verre (glass-panel) avec la teinte du thème */
+    background-color: rgba(var(--primary-rgb), 0.1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-color: rgba(var(--primary-rgb), 0.2);
+    color: white;
+  }
+
+  .btn-themed:hover {
+    /* Accentuation de la couleur et lueur au survol */
+    background-color: rgba(var(--primary-rgb), 0.2);
+    border-color: rgba(var(--primary-rgb), 0.4);
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.4);
+  }
+
+  .btn-themed:active {
+    transform: scale(0.95);
+  }
+  .btn-save {
+    /* Utilisation de l'opacité 0.8 pour l'action principale */
+    background-color: rgba(var(--primary-rgb), 0.8);
+    /* Lueur basée sur la couleur du thème (ex: Bleu pour Deep Space, Vert pour Forest) */
+    box-shadow: 0 10px 15px -3px rgba(var(--primary-rgb), 0.2);
+  }
+
+  .btn-save:hover:not(:disabled) {
+    /* Passage à l'opacité pleine au survol */
+    background-color: rgb(var(--primary-rgb));
+    transform: translateY(-1px);
+    box-shadow: 0 20px 25px -5px rgba(var(--primary-rgb), 0.3);
+  }
+
+  .btn-save:active:not(:disabled) {
+    transform: scale(0.98);
   }
 </style>
