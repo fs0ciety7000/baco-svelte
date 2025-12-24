@@ -185,33 +185,7 @@
 
 <div class="container mx-auto p-4 md:p-8 space-y-8 min-h-screen">
   
-  <header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-white/5 pb-6" in:fly={{ y: -20, duration: 600 }}>
-    <div class="flex items-center gap-3">
-        <div class="p-3 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.15)]">
-          <Users size={32} />
-        </div>
-        <div>
-          <h1 class="text-3xl font-bold text-gray-200 tracking-tight">Clients PMR</h1>
-          <p class="text-gray-500 text-sm mt-1">Répertoire et suivi des voyageurs PMR.</p>
-        </div>
-    </div>
 
-    <div class="flex items-center gap-3">
-        <div class="flex bg-black/20 rounded-xl p-1 border border-white/5">
-          <button on:click={() => setView('grid')} class="p-2 rounded-lg transition-all {viewMode === 'grid' ? 'bg-white/10 text-blue-300 shadow-sm' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}" title="Vue Grille"><LayoutGrid size={18} /></button>
-          <button on:click={() => setView('list')} class="p-2 rounded-lg transition-all {viewMode === 'list' ? 'bg-white/10 text-blue-300 shadow-sm' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}" title="Vue Liste"><List size={18} /></button>
-        </div>
-        
-        <button 
-  on:click={() => openModal()} 
-  class="btn-themed px-5 py-3 rounded-xl flex items-center gap-2 transition-all hover:scale-105 group border shadow-lg"
-  style="--primary-rgb: var(--color-primary);"
->
-  <Plus size={20} class="group-hover:rotate-90 transition-transform" />
-  <span class="font-semibold hidden sm:inline">Nouveau Client</span>
-</button>
-    </div>
-  </header>
 
   <main>
     
@@ -450,5 +424,42 @@
 
   .btn-save:active:not(:disabled) {
     transform: scale(0.98);
+  }
+
+  /* Conteneur de l'icône principale */
+  .main-icon-container {
+    background-color: rgba(var(--primary-rgb), 0.1);
+    color: rgb(var(--primary-rgb));
+    border-color: rgba(var(--primary-rgb), 0.2);
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.15);
+  }
+
+  /* Bouton d'action principal */
+  .btn-themed {
+    background-color: rgba(var(--primary-rgb), 0.2);
+    border-color: rgba(var(--primary-rgb), 0.3);
+    color: rgb(var(--primary-rgb));
+  }
+
+  .btn-themed:hover {
+    background-color: rgba(var(--primary-rgb), 0.3);
+    border-color: rgba(var(--primary-rgb), 0.5);
+    box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.2);
+  }
+
+  /* Sélecteur de vue (Grid/List) */
+  .view-btn.active {
+    background-color: rgba(var(--primary-rgb), 0.2);
+    color: rgb(var(--primary-rgb));
+    box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.1);
+  }
+
+  .view-btn.inactive {
+    color: rgb(107, 114, 128); /* text-gray-500 */
+  }
+
+  .view-btn.inactive:hover {
+    color: rgb(209, 213, 219); /* text-gray-300 */
+    background-color: rgba(255, 255, 255, 0.05);
   }
 </style>

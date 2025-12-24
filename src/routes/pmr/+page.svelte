@@ -70,9 +70,12 @@
   <header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-white/5 pb-6" in:fly={{ y: -20, duration: 600 }}>
     <div class="space-y-2">
       <div class="flex items-center gap-3">
-        <div class="p-3 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.15)]">
-          <Accessibility size={32} />
-        </div>
+        <div 
+  class="icon-box-themed p-3 rounded-xl border transition-all duration-300"
+  style="--primary-rgb: var(--color-primary);"
+>
+  <Accessibility size={32} />
+</div>
         <div>
           <h1 class="text-3xl font-bold text-gray-200 tracking-tight">Gestion PMR & Rampes</h1>
           <p class="text-gray-500 text-sm mt-1">Suivi des équipements et de l'accessibilité en gare.</p>
@@ -169,7 +172,9 @@
                 {#if item.type_assistance && item.type_assistance !== 'N/A'}
                     <div class="bg-black/30 p-2 rounded-lg border border-white/5">
                         <span class="block text-xs text-gray-500 uppercase">Assistance</span>
-                        <span class="font-medium text-blue-400">{item.type_assistance}</span>
+                       <span class="font-medium text-themed">
+  {item.type_assistance}
+</span>
                     </div>
                 {/if}
             </div>
@@ -358,5 +363,29 @@
 
   .btn-save:active:not(:disabled) {
     transform: scale(0.98);
+  }
+
+  .icon-box-themed {
+    /* Fond très léger (10% d'opacité) */
+    background-color: rgba(var(--primary-rgb), 0.1);
+    /* Couleur de l'icône Lucide */
+    color: rgb(var(--primary-rgb));
+    /* Bordure assortie */
+    border-color: rgba(var(--primary-rgb), 0.2);
+    /* Lueur (glow) dynamique */
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.15);
+  }
+
+  /* Optionnel : petit effet au survol si c'est interactif */
+  .icon-box-themed:hover {
+    background-color: rgba(var(--primary-rgb), 0.2);
+    box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.25);
+  }
+
+  .text-themed {
+    /* Utilisation de la variable globale injectée par votre theme.js */
+    color: rgb(var(--color-primary));
+    /* Optionnel : ajout d'un très léger glow textuel si le thème est sombre */
+    text-shadow: 0 0 10px rgba(var(--color-primary), 0.3);
   }
 </style>
