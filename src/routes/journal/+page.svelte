@@ -362,9 +362,12 @@
 
 <div class="container mx-auto p-4 md:p-8 space-y-8 min-h-screen">
   
-  <header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-white/5 pb-6" in:fly={{ y: -20, duration: 600 }}>
+  <header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-white/5 pb-6" 
+          in:fly={{ y: -20, duration: 600 }}
+          style="--primary-rgb: var(--color-primary);">
     <div class="flex items-center gap-3">
-        <div class="p-3 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.15)]">
+        <div class="p-3 rounded-xl border transition-all duration-500"
+             style="background-color: rgba(var(--primary-rgb), 0.1); color: rgb(var(--primary-rgb)); border-color: rgba(var(--primary-rgb), 0.2); box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.15);">
           <BookCopy size={32} />
         </div>
         <div>
@@ -375,27 +378,33 @@
     
    <div class="flex items-center gap-3">
       <div class="relative hidden sm:block group">
-        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 group-hover:text-blue-400 transition-colors">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 group-hover:text-themed transition-colors">
             <User size={14} />
         </div>
-        <select bind:value={selectedAuthor} on:change={() => loadLogs(true)} class="appearance-none pl-9 pr-8 py-2 text-xs rounded-xl bg-black/20 border border-white/10 text-gray-300 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/50 hover:bg-white/5 transition-all cursor-pointer outline-none shadow-sm font-medium">
+        <select bind:value={selectedAuthor} on:change={() => loadLogs(true)} 
+                class="appearance-none pl-9 pr-8 py-2 text-xs rounded-xl bg-black/20 border border-white/10 text-gray-300 focus:ring-2 focus:border-transparent hover:bg-white/5 transition-all cursor-pointer outline-none shadow-sm font-medium"
+                style="--tw-ring-color: rgba(var(--primary-rgb), 0.3); focus-within: border-color: rgba(var(--primary-rgb), 0.5);">
           <option value="all" class="bg-gray-900 text-gray-300">Tous les auteurs</option>
           {#each authors as author}
             <option value={author.id} class="bg-gray-900 text-gray-300">{author.full_name}</option>
           {/each}
         </select>
-        <div class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 group-hover:text-blue-400 transition-colors"><ChevronDown size={14} /></div>
+        <div class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 group-hover:text-themed transition-colors"><ChevronDown size={14} /></div>
       </div>
       <div class="relative group">
-        <div class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 group-hover:text-blue-400 transition-colors z-10"><Calendar size={14} /></div>
-        <input bind:this={datePickerElement} type="text" placeholder="Date..." class="pl-9 pr-3 py-2 text-xs rounded-xl bg-black/30 border border-white/10 text-gray-300 placeholder-gray-500 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/50 hover:bg-white/5 transition-all outline-none shadow-sm cursor-pointer w-32 font-medium" />
+        <div class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 group-hover:text-themed transition-colors z-10"><Calendar size={14} /></div>
+        <input bind:this={datePickerElement} type="text" placeholder="Date..." 
+               class="pl-9 pr-3 py-2 text-xs rounded-xl bg-black/30 border border-white/10 text-gray-300 placeholder-gray-500 focus:ring-2 focus:border-transparent hover:bg-white/5 transition-all outline-none shadow-sm cursor-pointer w-32 font-medium" 
+               style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);"/>
       </div>
     </div>
   </header>
 
-  <main class="max-w-3xl mx-auto space-y-8">
+  <main class="max-w-3xl mx-auto space-y-8" style="--primary-rgb: var(--color-primary);">
     
-    <div class="bg-black/20 border border-white/5 rounded-3xl p-4 transition-all focus-within:bg-black/30 focus-within:border-white/10 relative shadow-sm" in:fly={{ y: 20, duration: 600, delay: 100 }}>
+    <div class="bg-black/20 border border-white/5 rounded-3xl p-4 transition-all focus-within:bg-black/30 relative shadow-sm" 
+         in:fly={{ y: 20, duration: 600, delay: 100 }}
+         style="focus-within: border-color: rgba(var(--primary-rgb), 0.2);">
       
       <MarkdownToolbar textarea={textareaElement} bind:value={newMessage} />
 
@@ -415,7 +424,8 @@
               {#if user.avatar_url}
                  <img src={user.avatar_url} alt="avatar" class="w-6 h-6 rounded-full object-cover" />
               {:else}
-                <div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-300 text-xs font-bold">{user.full_name?.charAt(0) || '?'}</div>
+                <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
+                     style="background-color: rgba(var(--primary-rgb), 0.2); color: rgb(var(--primary-rgb));">{user.full_name?.charAt(0) || '?'}</div>
               {/if}
               <span class="text-sm font-medium text-gray-200">{user.full_name}</span>
             </button>
@@ -424,40 +434,38 @@
       {/if}
 
       {#if newFile}
-        <div class="flex items-center gap-2 mb-3 mt-2 bg-blue-500/10 px-3 py-2 rounded-xl text-sm text-blue-300 border border-blue-500/20">
+        <div class="flex items-center gap-2 mb-3 mt-2 px-3 py-2 rounded-xl text-sm border"
+             style="background-color: rgba(var(--primary-rgb), 0.1); color: rgb(var(--primary-rgb)); border-color: rgba(var(--primary-rgb), 0.2);">
           <Paperclip size={14} /> <span class="truncate max-w-xs">{newFile.name}</span>
-          <button on:click={() => { newFile = null; fileInput.value = ""; }} class="ml-auto text-blue-400 hover:text-white"><X size={14}/></button>
+          <button on:click={() => { newFile = null; fileInput.value = ""; }} class="ml-auto hover:text-white" style="color: rgb(var(--primary-rgb));"><X size={14}/></button>
         </div>
       {/if}
 
       <div class="flex items-center justify-between pt-2 border-t border-white/5 mt-2">
         <div class="flex items-center gap-2">
           <EmojiPicker onselect={handleEmoji} />
-          <label class="p-2 text-gray-400 hover:text-blue-400 hover:bg-white/5 rounded-full cursor-pointer transition-colors" title="Joindre un fichier">
+          <label class="p-2 text-gray-400 hover:text-themed hover:bg-white/5 rounded-full cursor-pointer transition-colors" title="Joindre un fichier">
             <Paperclip size={20} />
             <input type="file" class="hidden" bind:this={fileInput} on:change={handleFileSelect} />
           </label>
           <button on:click={() => isUrgent = !isUrgent} class="p-2 rounded-full transition-colors {isUrgent ? 'text-red-400 bg-red-500/10' : 'text-gray-400 hover:text-red-400 hover:bg-white/5'}" title="Marquer comme Urgent"><AlertTriangle size={20} /></button>
         </div>
-        <button 
-  on:click={handlePost} 
-  disabled={isSubmitting || (!newMessage && !newFile)} 
-  class="btn-publish inline-flex items-center gap-2 px-6 py-2 rounded-xl font-bold text-white transition-all border disabled:opacity-50 disabled:cursor-not-allowed"
-  style="--primary-rgb: var(--color-primary);"
->
-  {#if isSubmitting}
-    <Loader2 size={18} class="animate-spin text-white/80" />
-  {:else}
-    <span>Publier</span>
-    <Send size={16} />
-  {/if}
-</button>
+        <button on:click={handlePost} 
+                disabled={isSubmitting || (!newMessage && !newFile)} 
+                class="btn-publish inline-flex items-center gap-2 px-6 py-2 rounded-xl font-bold text-white transition-all border disabled:opacity-50 disabled:cursor-not-allowed">
+          {#if isSubmitting}
+            <Loader2 size={18} class="animate-spin text-white/80" />
+          {:else}
+            <span>Publier</span>
+            <Send size={16} />
+          {/if}
+        </button>
       </div>
     </div>
 
     <div class="space-y-6">
       {#if isLoading && logs.length === 0}
-        <div class="flex justify-center py-10"><Loader2 class="animate-spin text-blue-600" /></div>
+        <div class="flex justify-center py-10"><Loader2 class="animate-spin themed-spinner" /></div>
       {:else if logs.length === 0}
         <div class="text-center py-12 text-gray-500 bg-black/20 rounded-3xl border border-dashed border-white/5">Aucun message pour le moment.</div>
       {:else}
@@ -468,7 +476,8 @@
                 {#if log.profiles?.avatar_url}
                  <img src={log.profiles.avatar_url} alt="avatar" class="w-10 h-10 rounded-full object-cover border border-white/10" />
                 {:else}
-                  <div class="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-300 font-bold border border-blue-500/10">{log.profiles?.full_name?.charAt(0) || '?'}</div>
+                  <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold border"
+                       style="background-color: rgba(var(--primary-rgb), 0.2); color: rgb(var(--primary-rgb)); border-color: rgba(var(--primary-rgb), 0.1);">{log.profiles?.full_name?.charAt(0) || '?'}</div>
                 {/if}
                 <div>
                   <div class="flex items-center gap-2">
@@ -480,8 +489,8 @@
               </div>
               {#if canEdit(log, userRole)}
                   <div class="flex gap-2">
-                  <button on:click={() => openModal(log)} class="p-2 text-gray-400 hover:text-blue-400 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5" title="Modifier"><Pencil size={16} /></button>
-                 <button on:click={() => deleteLog(log.id)} class="p-2 text-gray-400 hover:text-red-400 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5" title="Supprimer"><Trash2 size={16} /></button>
+                  <button on:click={() => openModal(log)} class="p-2 text-gray-400 hover:text-themed bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5" title="Modifier"><Pencil size={16} /></button>
+                  <button on:click={() => deleteLog(log.id)} class="p-2 text-gray-400 hover:text-red-400 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5" title="Supprimer"><Trash2 size={16} /></button>
                 </div>
               {/if}
             </div>
@@ -502,7 +511,8 @@
 
             <div class="flex gap-2 pt-4 border-t border-white/5 pl-[3.25rem]">
               {#each Object.entries(reactionConfig) as [emojiKey, config]}
-                 <button type="button" on:click|preventDefault={() => toggleReaction(log.id, emojiKey, log.myReaction)} class="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 border backdrop-blur-sm {log.myReaction === emojiKey ? config.activeClass : 'bg-white/5 border-white/5 text-gray-500 hover:bg-white/10 hover:text-gray-300 hover:border-white/10'}">
+                 <button type="button" on:click|preventDefault={() => toggleReaction(log.id, emojiKey, log.myReaction)} 
+                         class="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 border backdrop-blur-sm {log.myReaction === emojiKey ? config.activeClass : 'bg-white/5 border-white/5 text-gray-500 hover:bg-white/10 hover:text-gray-300 hover:border-white/10'}">
                   <svelte:component this={config.icon} size={14} class={log.myReaction === emojiKey ? 'scale-110 transition-transform' : ''} />
                   {#if log.reactionsMap[emojiKey] > 0}<span>{log.reactionsMap[emojiKey]}</span>{/if}
                 </button>
@@ -512,7 +522,12 @@
         {/each}
       {/if}
       {#if hasMore}
-        <div class="flex justify-center pt-4"><button on:click={() => loadLogs()} disabled={isLoading} class="px-6 py-2 bg-white/5 border border-white/10 rounded-full text-sm font-bold text-gray-400 hover:bg-white/10 hover:text-white transition-all">{isLoading ? 'Chargement...' : 'Voir plus anciens'}</button></div>
+        <div class="flex justify-center pt-4">
+          <button on:click={() => loadLogs()} disabled={isLoading} 
+                  class="px-6 py-2 bg-white/5 border border-white/10 rounded-full text-sm font-bold text-gray-400 hover:bg-white/10 hover:text-white transition-all">
+            {isLoading ? 'Chargement...' : 'Voir plus anciens'}
+          </button>
+        </div>
       {/if}
     </div>
   </main>
@@ -521,21 +536,22 @@
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" transition:fade>
       <div class="w-full max-w-lg rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-white/10 ring-1 ring-white/5 bg-gray-900/90 backdrop-blur-xl transition-all" transition:fly={{ y: 20, duration: 300 }}>
         <div class="flex items-center justify-between px-6 py-5 border-b border-white/10 bg-white/5">
-          <h2 class="text-xl font-bold text-gray-100 tracking-tight flex items-center gap-2"><Pencil size={18} class="text-blue-400" /> Modifier le message</h2>
+          <h2 class="text-xl font-bold text-gray-100 tracking-tight flex items-center gap-2">
+            <Pencil size={18} style="color: rgb(var(--primary-rgb));" /> Modifier le message
+          </h2>
           <button on:click={closeModal} class="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors"><X size={20} /></button>
         </div>
         <div class="p-6 space-y-5">
           <div>
             <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">Contenu</label>
-            
             <MarkdownToolbar textarea={editTextareaElement} bind:value={editingLog.message_content} />
-
             <textarea 
               bind:this={editTextareaElement}
               rows="5" 
               bind:value={editingLog.message_content} 
-              class="w-full rounded-b-xl border border-white/10 bg-black/40 p-4 text-sm font-medium text-gray-200 placeholder-gray-600 focus:border-blue-500/50 focus:ring-blue-500/50 focus:bg-black/60 transition-all outline-none resize-none shadow-inner" 
+              class="w-full rounded-b-xl border border-white/10 bg-black/40 p-4 text-sm font-medium text-gray-200 placeholder-gray-600 focus:bg-black/60 transition-all outline-none resize-none shadow-inner" 
               placeholder="Votre message..."
+              style="focus: border-color: rgba(var(--primary-rgb), 0.5); ring-color: rgba(var(--primary-rgb), 0.5);"
             ></textarea>
           </div>
           <div>
@@ -550,21 +566,18 @@
           </div>
         </div>
         <div class="px-6 py-4 border-t border-white/10 bg-white/5 flex justify-end gap-3 relative overflow-hidden">
-          <div class="absolute inset-0 bg-gradient-to-t from-blue-500/5 to-transparent pointer-events-none"></div>
+          <div class="absolute inset-0 pointer-events-none" style="background-image: linear-gradient(to top, rgba(var(--primary-rgb), 0.05), transparent);"></div>
           <button on:click={closeModal} class="px-5 py-2.5 text-sm font-medium text-gray-300 border border-white/10 rounded-xl bg-white/5 hover:bg-white/10 hover:text-white transition-all backdrop-blur-md">Annuler</button>
-          <button 
-  on:click={saveEditedEntry} 
-  disabled={isSubmitting} 
-  class="btn-save px-5 py-2.5 text-sm font-bold text-white border rounded-xl transition-all flex items-center gap-2 disabled:opacity-50 backdrop-blur-md"
-  style="--primary-rgb: var(--color-primary);"
->
-  {#if isSubmitting}
-    <Loader2 size={16} class="animate-spin" />
-  {:else}
-    <Save size={16} />
-  {/if} 
-  Enregistrer
-</button>
+          <button on:click={saveEditedEntry} 
+                  disabled={isSubmitting} 
+                  class="btn-save px-5 py-2.5 text-sm font-bold text-white border rounded-xl transition-all flex items-center gap-2 disabled:opacity-50 backdrop-blur-md">
+            {#if isSubmitting}
+              <Loader2 size={16} class="animate-spin" />
+            {:else}
+              <Save size={16} />
+            {/if} 
+            Enregistrer
+          </button>
         </div>
       </div>
     </div>
@@ -572,6 +585,42 @@
 </div>
 
 <style>
+
+  .text-themed { color: rgb(var(--primary-rgb)); }
+  .themed-spinner { color: rgba(var(--primary-rgb), 0.5); }
+
+  /* Vos styles Flatpickr existants adaptés au thème */
+  :global(.flatpickr-day.selected) { background: rgb(var(--primary-rgb)) !important; box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.5) !important; }
+  :global(.flatpickr-day.today) { border-color: rgba(var(--primary-rgb), 0.5) !important; color: rgb(var(--primary-rgb)) !important; }
+  
+  .btn-publish {
+    background-color: rgba(var(--primary-rgb), 0.8);
+    border-color: rgba(var(--primary-rgb), 0.3);
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.4);
+  }
+
+  .btn-publish:hover:not(:disabled) {
+    background-color: rgb(var(--primary-rgb));
+    box-shadow: 0 0 25px rgba(var(--primary-rgb), 0.6);
+    transform: translateY(-1px);
+  }
+
+  .btn-save {
+    background-color: rgba(var(--primary-rgb), 0.8);
+    border-color: rgba(var(--primary-rgb), 0.3);
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.3);
+  }
+
+  .btn-save:hover:not(:disabled) {
+    background-color: rgb(var(--primary-rgb));
+    box-shadow: 0 0 25px rgba(var(--primary-rgb), 0.5);
+    transform: translateY(-1px);
+  }
+
+  /* Style pour le rendu Markdown */
+  .prose a { color: rgb(var(--primary-rgb)); text-decoration: underline; }
+  .prose code { background: rgba(var(--primary-rgb), 0.1); color: rgb(var(--primary-rgb)); }
+  
   /* Vos styles Flatpickr restent inchangés */
   :global(.flatpickr-calendar) { background: rgba(15, 23, 42, 0.85) !important; backdrop-filter: blur(12px) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important; border-radius: 16px !important; color: #e2e8f0 !important; font-family: inherit !important; }
   :global(.flatpickr-calendar:before), :global(.flatpickr-calendar:after) { border-bottom-color: rgba(15, 23, 42, 0.85) !important; }

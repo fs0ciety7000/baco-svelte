@@ -18,7 +18,7 @@
   
   let isLoading = true;
 
-  // Configuration des zones (Statique)
+  // Configuration des zones (Statique - couleurs adaptées ou thémées)
   const zonePolygons = {
     'FTY': {
       coordinates: [[50.7610, 3.2240], [50.7166, 3.2403], [50.4569, 3.7785], [50.7211, 4.1717], [50.71352307887864, 4.178040380091445]],
@@ -60,8 +60,6 @@
     });
   }
 
-  // --- CHARGEMENT DONNÉES ---
-
   async function loadLines() {
     const { data } = await supabase.from('pn_data').select('ligne_nom');
     if (data) {
@@ -81,8 +79,6 @@
     isLoading = false;
   }
 
-  // --- CARTE LEAFLET ---
-
   function initMap() {
     if (!mapElement) return;
 
@@ -90,7 +86,7 @@
       center: [50.63, 4.47],
       zoom: 9,
       fullscreenControl: true,
-      zoomControl: false // On déplace le zoom
+      zoomControl: false 
     });
 
     L.control.zoom({ position: 'topright' }).addTo(map);
@@ -112,7 +108,6 @@
     markersLayer = L.layerGroup().addTo(map);
     zoneBoundariesLayer = L.layerGroup().addTo(map);
 
-    // Contrôle des couches personnalisé
     L.control.layers(layers, {
       "Zones SPI": zoneBoundariesLayer,
       "Passages à Niveau": markersLayer
@@ -131,8 +126,6 @@
       .addTo(zoneBoundariesLayer);
     });
   }
-
-  // --- FILTRAGE ET MISE À JOUR ---
 
   $: filteredPn = allPnData.filter(pn => {
     const lineMatch = selectedLines.includes(pn.ligne_nom);
@@ -158,7 +151,6 @@
       const [lat, lon] = pn.geo.split(',').map(parseFloat);
       
       if (!isNaN(lat) && !isNaN(lon)) {
-        // Contenu HTML pour la popup Glass
         const popupContent = `
           <div class="glass-popup-content">
             <div class="header">
@@ -199,11 +191,7 @@
 
   function toggleAllLines(e) {
     showAllLines = e.target.checked;
-    if (showAllLines) {
-      selectedLines = [...availableLines];
-    } else {
-      selectedLines = [];
-    }
+    selectedLines = showAllLines ? [...availableLines] : [];
   }
 
   function handleLineChange(line) {
@@ -225,9 +213,12 @@
 
 <div class="container mx-auto p-4 md:p-8 space-y-8 min-h-screen">
   
-  <header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-white/5 pb-6" in:fly={{ y: -20, duration: 600 }}>
+  <header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-white/5 pb-6" 
+          in:fly={{ y: -20, duration: 600 }}
+          style="--primary-rgb: var(--color-primary);">
     <div class="flex items-center gap-3">
-      <div class="p-3 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.15)]">
+      <div class="p-3 rounded-xl border transition-all duration-500"
+           style="background-color: rgba(var(--primary-rgb), 0.1); color: rgb(var(--primary-rgb)); border-color: rgba(var(--primary-rgb), 0.2); box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.15);">
         <MapIcon size={32} />
       </div>
       <div>
@@ -237,17 +228,18 @@
     </div>
   </header>
 
-  <div class="flex flex-col lg:flex-row gap-8">
+  <div class="flex flex-col lg:flex-row gap-8" style="--primary-rgb: var(--color-primary);">
     
     <aside class="w-full lg:w-1/4 space-y-6" in:fly={{ x: -20, duration: 600, delay: 100 }}>
       
       <div class="relative group">
-        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 group-focus-within:text-blue-400 transition-colors"><Search size={18} /></div>
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 group-focus-within:text-themed transition-colors"><Search size={18} /></div>
         <input 
           type="text" 
           placeholder="PN 121 ou 124.500..." 
           bind:value={searchQuery}
-          class="block w-full pl-10 pr-3 py-3 bg-black/20 border border-white/10 rounded-2xl text-sm text-gray-200 focus:ring-2 focus:ring-blue-500/30 focus:border-transparent transition-all outline-none placeholder-gray-600"
+          class="block w-full pl-10 pr-3 py-3 bg-black/20 border border-white/10 rounded-2xl text-sm text-gray-200 focus:ring-2 focus:border-transparent transition-all outline-none placeholder-gray-600"
+          style="--tw-ring-color: rgba(var(--primary-rgb), 0.3); border-color: rgba(var(--primary-rgb), 0.1);"
         />
       </div>
 
@@ -257,11 +249,11 @@
         </h3>
         
         {#if isLoading}
-          <div class="flex items-center gap-2 text-sm text-gray-500 py-4"><Loader2 size={16} class="animate-spin"/> Chargement...</div>
+          <div class="flex items-center gap-2 text-sm text-gray-500 py-4"><Loader2 size={16} class="animate-spin themed-spinner"/> Chargement...</div>
         {:else}
           <label class="flex items-center space-x-3 p-2.5 rounded-xl hover:bg-white/5 cursor-pointer transition-colors group mb-2 border border-transparent hover:border-white/5">
             <input type="checkbox" checked={showAllLines} on:change={toggleAllLines} class="hidden">
-            {#if showAllLines}<CheckSquare class="w-5 h-5 text-blue-400" />{:else}<Square class="w-5 h-5 text-gray-600 group-hover:text-gray-400" />{/if}
+            {#if showAllLines}<CheckSquare class="w-5 h-5 text-themed" />{:else}<Square class="w-5 h-5 text-gray-600 group-hover:text-gray-400" />{/if}
             <span class="font-bold text-sm text-gray-300 group-hover:text-white">Toutes les lignes</span>
           </label>
           
@@ -276,7 +268,7 @@
                   on:change={() => handleLineChange(line)}
                   class="hidden"
                 >
-                {#if selectedLines.includes(line)}<CheckSquare class="w-4 h-4 text-blue-500" />{:else}<Square class="w-4 h-4 text-gray-600 group-hover:text-gray-400" />{/if}
+                {#if selectedLines.includes(line)}<CheckSquare class="w-4 h-4 text-themed" />{:else}<Square class="w-4 h-4 text-gray-600 group-hover:text-gray-400" />{/if}
                 <span class="text-sm text-gray-400 group-hover:text-gray-200">{line}</span>
               </label>
             {/each}
@@ -311,7 +303,7 @@
                     {pn.adresse}
                 </p>
               </div>
-              <span class="font-mono text-xs font-bold text-blue-400 bg-blue-500/10 px-2 py-1 rounded-lg border border-blue-500/20 whitespace-nowrap ml-2">
+              <span class="bk-badge">
                 {pn.bk}
               </span>
             </div>
@@ -325,13 +317,29 @@
 </div>
 
 <style>
-  /* --- CUSTOM POPUP STYLES (GLASSMORPHISM) --- */
+  .text-themed { color: rgb(var(--primary-rgb)); }
+  .themed-spinner { color: rgba(var(--primary-rgb), 0.5); }
+
+  .bk-badge {
+    font-family: monospace;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: rgb(var(--primary-rgb));
+    background-color: rgba(var(--primary-rgb), 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(var(--primary-rgb), 0.2);
+    white-space: nowrap;
+    margin-left: 0.5rem;
+  }
+
+  /* --- CUSTOM POPUP STYLES (THEME BASED) --- */
   
   :global(.glass-popup-wrapper .leaflet-popup-content-wrapper) {
-    background: rgba(15, 15, 20, 0.85); /* Très sombre et transparent */
+    background: rgba(15, 15, 20, 0.85);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(var(--primary-rgb), 0.2);
     border-radius: 16px;
     padding: 0;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
@@ -340,29 +348,10 @@
 
   :global(.glass-popup-wrapper .leaflet-popup-tip) {
     background: rgba(15, 15, 20, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(var(--primary-rgb), 0.2);
   }
 
-  :global(.glass-popup-wrapper .leaflet-popup-content) {
-    margin: 0;
-    width: 280px !important;
-  }
-
-  :global(.glass-popup-wrapper .leaflet-popup-close-button) {
-    color: rgba(255, 255, 255, 0.5) !important;
-    top: 8px !important;
-    right: 8px !important;
-    font-size: 18px !important;
-  }
-  
-  :global(.glass-popup-wrapper .leaflet-popup-close-button:hover) {
-    color: white !important;
-  }
-
-  /* Contenu interne de la popup */
-  :global(.glass-popup-content) {
-    padding: 16px;
-  }
+  :global(.glass-popup-content) { padding: 16px; }
 
   :global(.glass-popup-content .header) {
     display: flex;
@@ -376,56 +365,31 @@
   :global(.glass-popup-content .badge) {
     font-size: 10px;
     font-weight: 700;
-    text-transform: uppercase;
-    background: rgba(59, 130, 246, 0.2);
-    color: #60a5fa;
+    background: rgba(var(--primary-rgb), 0.2);
+    color: rgb(var(--primary-rgb));
     padding: 2px 6px;
     border-radius: 4px;
-    border: 1px solid rgba(59, 130, 246, 0.3);
-  }
-
-  :global(.glass-popup-content .pn-id) {
-    font-size: 16px;
-    font-weight: 800;
-    color: white;
-  }
-
-  :global(.glass-popup-content .body) {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 12px;
-  }
-
-  :global(.glass-popup-content .row) {
-    display: flex;
-    justify-content: space-between;
-    font-size: 12px;
-  }
-
-  :global(.glass-popup-content .label) {
-    color: #9ca3af;
-  }
-
-  :global(.glass-popup-content .value) {
-    color: #e5e7eb;
-    text-align: right;
-    max-width: 180px;
+    border: 1px solid rgba(var(--primary-rgb), 0.3);
   }
 
   :global(.glass-popup-content .action-btn) {
     display: block;
     text-align: center;
-    background: #2563eb;
+    background: rgb(var(--primary-rgb));
     color: white;
     text-decoration: none;
     padding: 8px;
     border-radius: 8px;
     font-size: 12px;
     font-weight: 600;
-    transition: background 0.2s;
+    transition: filter 0.2s;
+    margin-top: 8px;
   }
   :global(.glass-popup-content .action-btn:hover) {
-    background: #1d4ed8;
+    filter: brightness(1.2);
   }
+
+  .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 </style>

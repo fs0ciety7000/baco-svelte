@@ -81,9 +81,12 @@
 
 <div class="container mx-auto p-4 md:p-8 space-y-8 min-h-screen">
   
-  <header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-white/5 pb-6" in:fly={{ y: -20, duration: 600 }}>
+  <header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-white/5 pb-6" 
+          in:fly={{ y: -20, duration: 600 }}
+          style="--primary-rgb: var(--color-primary);">
     <div class="flex items-center gap-3">
-        <div class="p-3 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.15)]">
+        <div class="p-3 rounded-xl border transition-all duration-500"
+             style="background-color: rgba(var(--primary-rgb), 0.1); color: rgb(var(--primary-rgb)); border-color: rgba(var(--primary-rgb), 0.2); box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.15);">
           <Database size={32} />
         </div>
         <div>
@@ -93,11 +96,11 @@
     </div>
   </header>
 
-  <main class="space-y-8">
+  <main class="space-y-8" style="--primary-rgb: var(--color-primary);">
     
     <div class="max-w-xl mx-auto" in:fly={{ y: 20, duration: 600, delay: 100 }}>
       <div class="relative group">
-        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 group-focus-within:text-blue-400 transition-colors">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 group-focus-within:text-themed transition-colors">
           <Search size={18} />
         </div>
         <input 
@@ -105,7 +108,8 @@
           placeholder="Rechercher (ex: 90, Acren, FXA...)" 
           bind:value={searchQuery}
           on:input={handleSearchInput}
-          class="block w-full pl-10 pr-3 py-3 bg-black/40 border border-white/10 rounded-2xl text-sm text-gray-200 placeholder-gray-600 focus:ring-2 focus:ring-blue-500/30 focus:border-transparent transition-all outline-none"
+          class="block w-full pl-10 pr-3 py-3 bg-black/40 border border-white/10 rounded-2xl text-sm text-gray-200 placeholder-gray-600 focus:ring-2 focus:border-transparent transition-all outline-none"
+          style="--tw-ring-color: rgba(var(--primary-rgb), 0.3); border-color: rgba(var(--primary-rgb), 0.1);"
         />
       </div>
     </div>
@@ -113,7 +117,7 @@
     <div id="result-table" class="min-h-[400px]">
       {#if isLoading}
         <div class="flex flex-col items-center justify-center py-20 text-gray-500">
-          <Loader2 class="w-10 h-10 animate-spin text-blue-500/50 mb-3" />
+          <Loader2 class="w-10 h-10 animate-spin themed-spinner mb-3" />
           <p>Chargement des données...</p>
         </div>
       
@@ -150,7 +154,7 @@
 
                     <td class="px-6 py-4 whitespace-nowrap">
                       {#if row.Abbr}
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono shadow-[0_0_10px_rgba(59,130,246,0.1)] group-hover:bg-blue-500/20 transition-all">
+                        <span class="abbr-badge">
                           {row.Abbr}
                         </span>
                       {:else}
@@ -180,14 +184,14 @@
             <button 
               on:click={() => changePage(currentPage - 1)} 
               disabled={currentPage === 1}
-              class="flex items-center gap-1 px-4 py-2 text-sm font-medium text-gray-400 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              class="page-btn"
             >
               <ChevronLeft size={16} /> Précédent
             </button>
             <button 
               on:click={() => changePage(currentPage + 1)} 
               disabled={currentPage >= Math.ceil(totalRows / ROWS_PER_PAGE)}
-              class="flex items-center gap-1 px-4 py-2 text-sm font-medium text-gray-400 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              class="page-btn"
             >
               Suivant <ChevronRight size={16} />
             </button>
@@ -199,3 +203,53 @@
 
   </main>
 </div>
+
+<style>
+  .text-themed { color: rgb(var(--primary-rgb)); }
+  .themed-spinner { color: rgba(var(--primary-rgb), 0.5); }
+
+  .abbr-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.625rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: bold;
+    font-family: monospace;
+    background-color: rgba(var(--primary-rgb), 0.1);
+    color: rgb(var(--primary-rgb));
+    border: 1px solid rgba(var(--primary-rgb), 0.2);
+    box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.1);
+    transition: all 0.2s;
+  }
+
+  .group:hover .abbr-badge {
+    background-color: rgba(var(--primary-rgb), 0.2);
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.2);
+  }
+
+  .page-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #9ca3af;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.75rem;
+    transition: all 0.2s;
+  }
+
+  .page-btn:hover:not(:disabled) {
+    background-color: rgba(var(--primary-rgb), 0.1);
+    border-color: rgba(var(--primary-rgb), 0.3);
+    color: rgb(var(--primary-rgb));
+  }
+
+  .page-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+</style>

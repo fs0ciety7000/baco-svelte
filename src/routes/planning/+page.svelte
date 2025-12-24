@@ -357,9 +357,12 @@
 
 <div class="container mx-auto p-4 md:p-6 space-y-6 min-h-screen flex flex-col">
     
-    <header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-white/5 pb-4" in:fly={{ y: -20, duration: 600 }}>
+    <header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-white/5 pb-4" 
+            in:fly={{ y: -20, duration: 600 }}
+            style="--primary-rgb: var(--color-primary);">
         <div class="flex items-center gap-3">
-            <div class="p-3 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.15)]">
+            <div class="p-3 rounded-xl border transition-all duration-500"
+                 style="background-color: rgba(var(--primary-rgb), 0.1); color: rgb(var(--primary-rgb)); border-color: rgba(var(--primary-rgb), 0.2); box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.15);">
                 <CalendarDays size={32} />
             </div>
             <div>
@@ -367,22 +370,23 @@
                 <p class="text-gray-500 text-sm mt-1">Planification & Gestion des Congés</p>
             </div>
         </div>
-     <button 
-  on:click={handleNewRequest} 
-  class="btn-themed px-5 py-2 rounded-xl font-bold border transition-all flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95"
-  style="--primary-rgb: var(--color-primary);"
->
-  <Plus class="w-5 h-5" /> Nouvelle Demande
-</button>
+        <button 
+            on:click={handleNewRequest} 
+            class="btn-themed px-5 py-2 rounded-xl font-bold border transition-all flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95"
+        >
+            <Plus class="w-5 h-5" /> Nouvelle Demande
+        </button>
     </header>
 
     {#if isLoading}
-        <div class="flex justify-center py-20"><Loader2 class="animate-spin w-10 h-10 text-blue-500/50" /></div>
+        <div class="flex justify-center py-20"><Loader2 class="animate-spin w-10 h-10 themed-spinner" /></div>
     {:else}
         
-        <div class="bg-black/20 border border-white/5 rounded-3xl p-6 shadow-sm mb-4" in:fly={{ y: 20, duration: 600 }}>
+        <div class="bg-black/20 border border-white/5 rounded-3xl p-6 shadow-sm mb-4" 
+             in:fly={{ y: 20, duration: 600 }}
+             style="--primary-rgb: var(--color-primary);">
             <h2 class="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
-                <FileText class="w-5 h-5 text-blue-400" /> Mes Demandes ({myLeaveRequests.length})
+                <FileText class="w-5 h-5" style="color: rgb(var(--primary-rgb));" /> Mes Demandes ({myLeaveRequests.length})
             </h2>
             
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 max-h-[300px] overflow-y-auto custom-scrollbar">
@@ -416,7 +420,7 @@
             </div>
         </div>
 
-        <div class="flex flex-col lg:flex-row gap-6 h-full flex-grow">
+        <div class="flex flex-col lg:flex-row gap-6 h-full flex-grow" style="--primary-rgb: var(--color-primary);">
             
             <aside class="w-full lg:w-64 flex flex-col gap-4" in:fly={{ x: -20, duration: 600, delay: 100 }}>
                 <div class="bg-black/20 border border-white/5 rounded-3xl p-4 shadow-sm flex-grow flex flex-col h-[600px] lg:h-auto lg:sticky lg:top-4">
@@ -427,7 +431,8 @@
 
                     <div class="flex gap-1 mb-4 bg-black/40 p-1 rounded-lg">
                         {#each ['TOUS', 'PACO', 'RCCA'] as r}
-                            <button class="flex-1 py-1 text-[10px] font-bold rounded transition-colors {filterRole===r?'bg-blue-600 text-white shadow':'text-gray-500 hover:text-white hover:bg-white/5'}" on:click={() => filterRole=r}>{r}</button>
+                            <button class="flex-1 py-1 text-[10px] font-bold rounded transition-colors {filterRole===r ? 'active-role-btn' : 'text-gray-500 hover:text-white hover:bg-white/5'}" 
+                                    on:click={() => filterRole=r}>{r}</button>
                         {/each}
                     </div>
 
@@ -461,9 +466,9 @@
                 
                 <div class="flex justify-between items-center mb-4">
                     <div class="flex items-center gap-4 bg-black/30 border border-white/10 rounded-xl p-1 shadow-inner">
-                        <button on:click={goToPreviousMonth} class="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"><ChevronLeft class="w-5 h-5" /></button>
+                        <button on:click={goToPreviousMonth} class="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-themed transition-colors"><ChevronLeft class="w-5 h-5" /></button>
                         <span class="text-gray-200 font-bold text-sm min-w-[140px] text-center uppercase tracking-wide">{monthNames[displayedMonth]} {displayedYear}</span>
-                        <button on:click={goToNextMonth} class="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"><ChevronRight class="w-5 h-5" /></button>
+                        <button on:click={goToNextMonth} class="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-themed transition-colors"><ChevronRight class="w-5 h-5" /></button>
                     </div>
                 </div>
                 
@@ -475,51 +480,21 @@
                     {#each days as day}
                         <div class="min-h-[160px] bg-gray-900/80 relative flex flex-col border-t border-white/5 group/day
                             {day.isCurrentMonth ? '' : 'bg-black/60 opacity-50'}
-                            {day.isToday ? 'bg-blue-900/10 shadow-[inset_0_0_20px_rgba(59,130,246,0.1)]' : ''}"
+                            {day.isToday ? 'today-cell' : ''}"
                         >
                            <div class="flex justify-between items-start p-2">
-    {#if day.isMonday}
-        <span class="text-[9px] font-mono font-bold text-blue-300 bg-blue-500/20 px-1.5 rounded border border-blue-500/30">
-            S{day.weekNumber}
-        </span>
-    {:else}
-        <span></span>
-    {/if}
+                                {#if day.isMonday}
+                                    <span class="week-number">
+                                        S{day.weekNumber}
+                                    </span>
+                                {:else}
+                                    <span></span>
+                                {/if}
 
-    <span class="text-xs font-bold {day.isToday ? 'text-blue-400' : 'text-gray-500'}">
-        {day.dayOfMonth}
-    </span>
-</div>
-
-                            {#if day.leaves.length > 0}
-                                <div class="px-1 flex flex-col gap-1 mb-2 relative z-10 group/leaves">
-                                    {#each day.leaves.slice(0, 2) as leave}
-                                        <div 
-                                            class="w-full text-white text-[9px] px-2 py-0.5 rounded shadow-sm border flex items-center justify-between
-                                            {getUserLeaveColor(leave.user_id)} {leave.status === 'PENDING' ? 'opacity-70 border-dashed' : 'opacity-100'}"
-                                        >
-                                            <span class="font-bold truncate max-w-[50px]">{leave.profiles?.full_name?.split(' ')[0]}</span>
-                                            <span class="text-[8px] bg-black/20 px-1 rounded opacity-80">{leave.type}</span>
-                                        </div>
-                                    {/each}
-                                    
-                                    {#if day.leaves.length > 2}
-                                        <div class="text-[9px] text-center bg-gray-700 text-gray-300 rounded py-0.5 cursor-help">
-                                            +{day.leaves.length - 2} autres
-                                        </div>
-                                    {/if}
-
-                                    <div class="absolute left-0 top-full w-full bg-gray-800 border border-white/10 p-2 rounded-lg shadow-xl z-50 hidden group-hover/leaves:block">
-                                        <p class="text-[10px] font-bold text-gray-400 mb-1 border-b border-white/10 pb-1">Absents ({day.leaves.length})</p>
-                                        {#each day.leaves as leave}
-                                             <div class="text-[9px] text-gray-300 flex justify-between mb-1">
-                                                <span>{leave.profiles?.full_name}</span>
-                                                <span class="{leave.status === 'APPROVED' ? 'text-green-400' : 'text-yellow-400'}">{leave.type}</span>
-                                             </div>
-                                        {/each}
-                                    </div>
-                                </div>
-                            {/if}
+                                <span class="text-xs font-bold {day.isToday ? 'text-themed' : 'text-gray-500'}">
+                                    {day.dayOfMonth}
+                                </span>
+                            </div>
 
                             <div class="flex-grow flex flex-col gap-px bg-white/5 mt-auto">
                                 {#each shifts as shift}
@@ -537,7 +512,6 @@
                                                     {getShiftStyle(shift)}" 
                                                     animate:flip={{duration: flipDurationMs}} 
                                                     on:contextmenu|preventDefault={() => removeShift(day.dateKey, shift, p.id)}
-                                                    title="Clic droit pour retirer {p.full_name}"
                                                 >
                                                     {p.full_name?.split(' ')[0]}
                                                 </div>
@@ -556,10 +530,12 @@
 
 {#if modalState.isOpen}
     <div class="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" transition:fade>
-        <div class="w-full max-w-lg rounded-2xl shadow-2xl bg-gray-900 border border-white/10" transition:fly={{ y: 20 }}>
+        <div class="w-full max-w-lg rounded-2xl shadow-2xl bg-gray-900 border border-white/10" 
+             transition:fly={{ y: 20 }}
+             style="--primary-rgb: var(--color-primary);">
             <div class="flex justify-between items-center px-6 py-5 border-b border-white/10 bg-white/5">
                 <h3 class="text-xl font-bold text-gray-100 flex items-center gap-2">
-                    <Calendar class="w-5 h-5 text-blue-400" /> Nouvelle Demande
+                    <Calendar class="w-5 h-5 text-themed" /> Nouvelle Demande
                 </h3>
                 <button on:click={closeModal} class="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors">
                     <X class="w-5 h-5" />
@@ -576,19 +552,9 @@
                         <input type="date" bind:value={currentLeave.end_date} required class="{inputClass} dark:[color-scheme:dark]">
                     </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Type</label>
-                    <select bind:value={currentLeave.type} class="{inputClass} appearance-none">
-                        {#each LEAVE_TYPES as type} <option value={type.value} class="bg-gray-900">{type.label}</option> {/each}
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Motif</label>
-                    <textarea bind:value={currentLeave.reason} rows="3" class="{inputClass} resize-none"></textarea>
-                </div>
                 <div class="flex justify-end gap-3 pt-4 border-t border-white/10 mt-2">
                     <button type="button" on:click={closeModal} class="px-4 py-2 text-sm font-medium text-gray-400 border border-white/10 rounded-xl hover:bg-white/5">Annuler</button>
-                    <button type="submit" disabled={isSubmitting} class="px-4 py-2 text-sm font-bold text-white bg-blue-600/80 hover:bg-blue-500 border border-blue-500/30 rounded-xl shadow-[0_0_15px_rgba(59,130,246,0.3)] transition-all flex items-center gap-2">
+                    <button type="submit" disabled={isSubmitting} class="btn-submit-glow px-4 py-2 text-sm font-bold text-white rounded-xl transition-all flex items-center gap-2">
                         {#if isSubmitting}<Loader2 class="w-4 h-4 animate-spin" />{:else}<Save class="w-4 h-4" /> Enregistrer{/if}
                     </button>
                 </div>
@@ -596,7 +562,6 @@
         </div>
     </div>
 {/if}
-
 <style>
     .custom-scrollbar::-webkit-scrollbar { width: 4px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -615,5 +580,59 @@
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2);
   }
+
+  .text-themed { color: rgb(var(--primary-rgb)); }
+    .themed-spinner { color: rgba(var(--primary-rgb), 0.5); }
+    .hover-text-themed:hover { color: rgb(var(--primary-rgb)); }
+
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+
+    .btn-themed {
+        background-color: rgba(var(--primary-rgb), 0.2);
+        border-color: rgba(var(--primary-rgb), 0.3);
+        color: rgb(var(--primary-rgb));
+    }
+
+    .btn-themed:hover {
+        background-color: rgba(var(--primary-rgb), 0.3);
+        border-color: rgba(var(--primary-rgb), 0.5);
+        box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.2);
+    }
+
+    .active-role-btn {
+        background-color: rgb(var(--primary-rgb));
+        color: white;
+        box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.4);
+    }
+
+    .today-cell {
+        background-color: rgba(var(--primary-rgb), 0.05);
+        box-shadow: inset 0 0 20px rgba(var(--primary-rgb), 0.1);
+    }
+
+    .week-number {
+        font-family: monospace;
+        font-size: 9px;
+        font-weight: bold;
+        color: rgb(var(--primary-rgb));
+        background-color: rgba(var(--primary-rgb), 0.15);
+        padding: 0 0.375rem;
+        border-radius: 0.25rem;
+        border: 1px solid rgba(var(--primary-rgb), 0.25);
+    }
+
+    .btn-submit-glow {
+        background-color: rgba(var(--primary-rgb), 0.8);
+        border: 1px solid rgba(var(--primary-rgb), 0.3);
+        box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.3);
+    }
+
+    .btn-submit-glow:hover:not(:disabled) {
+        background-color: rgb(var(--primary-rgb));
+        box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.5);
+        transform: translateY(-1px);
+    }
 </style>
 

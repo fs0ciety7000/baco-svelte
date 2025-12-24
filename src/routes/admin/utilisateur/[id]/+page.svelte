@@ -301,9 +301,9 @@
     }
   }
 
-  // Styles CSS
-  const inputClass = "block w-full rounded-xl border-white/10 bg-black/40 p-3 text-sm font-medium text-white placeholder-gray-600 focus:border-blue-500/50 focus:ring-blue-500/50 transition-all outline-none disabled:opacity-50";
-  const labelClass = "block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1";
+  // Styles CSS Thémés
+  const inputClass = "block w-full rounded-xl border-white/10 bg-black/40 p-3 text-sm font-medium text-white placeholder-gray-600 focus:ring-2 focus:border-transparent transition-all outline-none disabled:opacity-50";
+  const labelClass = "block text-xs font-bold text-gray-400 uppercase tracking-wide mb-2 ml-1";
 
 
   // --- STYLE DYNAMIQUE ---
@@ -311,26 +311,27 @@
       ? 'bg-gradient-to-br from-yellow-300/80 via-amber-400/50 to-yellow-500/80 shadow-[0_0_35px_rgba(245,158,11,0.6)] ring-1 ring-yellow-400/50' 
       : profileData.role === 'moderator'
       ? 'bg-gradient-to-br from-purple-500 to-fuchsia-600 shadow-[0_0_30px_rgba(168,85,247,0.6)] animate-pulse' 
-      : 'bg-gradient-to-br from-blue-500/50 to-purple-500/50 shadow-[0_0_30px_rgba(59,130,246,0.2)]';
+      : 'bg-gradient-to-br from-[rgba(var(--color-primary),0.5)] to-purple-500/50 shadow-[0_0_30px_rgba(var(--color-primary),0.2)]';
 
 </script>
 
 <div class="container mx-auto p-4 md:p-8 space-y-8 min-h-screen">
   
-<header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-white/5 pb-6" in:fly={{ y: -20, duration: 600 }}>
+<header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-white/5 pb-6" in:fly={{ y: -20, duration: 600 }} style="--primary-rgb: var(--color-primary);">
     <div class="flex items-center gap-3">
         <button on:click={() => goto('/admin')} class="p-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 transition-colors mr-2">
             <ChevronLeft size={24} />
         </button>
-        <div class="p-3 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.15)]">
+        <div class="p-3 rounded-xl border transition-all duration-500"
+             style="background-color: rgba(var(--primary-rgb), 0.1); color: rgb(var(--primary-rgb)); border-color: rgba(var(--primary-rgb), 0.2); box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.15);">
           <Shield size={32} />
         </div>
         <div>
           <h1 class="text-3xl font-bold text-gray-200 tracking-tight flex items-center gap-3">
-            Édition du profil de <span class="text-blue-400">{profileData.full_name || 'Utilisateur'}</span>
+            Édition du profil de <span style="color: rgb(var(--primary-rgb));">{profileData.full_name || 'Utilisateur'}</span>
             
             {#if profileData.role === 'admin'}
-              <span class="inline-flex items-center gap-1 px-3 py-1 bg-blue-500/20 text-blue-300 text-xs font-bold rounded-full uppercase border border-blue-500/30">Admin</span>
+              <span class="inline-flex items-center gap-1 px-3 py-1 bg-yellow-500/20 text-yellow-300 text-xs font-bold rounded-full uppercase border border-yellow-500/30">Admin</span>
             {/if}
           </h1>
           <p class="text-gray-500 text-sm mt-1">Gestion complète du profil et des sanctions.</p>
@@ -339,30 +340,27 @@
   </header>
 
   {#if isLoading}
-    <div class="flex justify-center py-20"><Loader2 class="animate-spin w-10 h-10 text-blue-500/50" /></div>
+    <div class="flex justify-center py-20"><Loader2 class="animate-spin w-10 h-10 themed-spinner" style="color: rgba(var(--color-primary), 0.5);" /></div>
   {:else}
 
-    <main class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <main class="grid grid-cols-1 lg:grid-cols-2 gap-8" style="--primary-rgb: var(--color-primary);">
       
       <div class="space-y-8" in:fly={{ x: -20, duration: 600, delay: 100 }}>
         
         <div class="bg-black/20 border border-white/5 rounded-3xl p-8 relative overflow-hidden">
-          <div class="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-blue-900/20 to-transparent pointer-events-none"></div>
+          <div class="absolute top-0 left-0 right-0 h-32 opacity-20 pointer-events-none"
+               style="background: linear-gradient(to b, rgb(var(--color-primary)), transparent);"></div>
 
          <div class="relative flex flex-col items-center mb-8">
-    <div class="relative group">
-        <div class="w-36 h-36 rounded-full p-1 transition-all duration-500 {borderClass}">
-            <img 
-            src={profileData.avatar_url || 'https://via.placeholder.com/150'} 
-            alt="Avatar" 
-            class="w-full h-full rounded-full object-cover border-4 border-[#0f1115]"
-            >
-        </div>
-        <label class="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-all cursor-pointer text-white backdrop-blur-sm m-1">
-            {#if isUploading} <Loader2 class="animate-spin w-8 h-8"/> {:else} <Camera size={32} /> {/if}
-            <input type="file" class="hidden" accept="image/*" on:change={handleAvatarUpload} disabled={isUploading}>
-        </label>
-    </div>
+            <div class="relative group">
+                <div class="w-36 h-36 rounded-full p-1 transition-all duration-500 {borderClass}">
+                    <img src={profileData.avatar_url || 'https://via.placeholder.com/150'} alt="Avatar" class="w-full h-full rounded-full object-cover border-4 border-[#0f1115]">
+                </div>
+                <label class="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-all cursor-pointer text-white backdrop-blur-sm m-1">
+                    {#if isUploading} <Loader2 class="animate-spin w-8 h-8"/> {:else} <Camera size={32} /> {/if}
+                    <input type="file" class="hidden" accept="image/*" on:change={handleAvatarUpload} disabled={isUploading}>
+                </label>
+            </div>
             
             <h2 class="text-2xl font-bold text-white mt-4">{profileData.full_name || 'Sans Nom'}</h2>
             <div class="flex items-center gap-2 mt-1">
@@ -377,28 +375,21 @@
                 <label class={labelClass}>Username</label>
                 <div class="relative">
                     <User size={16} class="absolute left-3 top-3.5 text-gray-500" />
-                    <input type="text" bind:value={profileData.username} class="{inputClass} pl-10">
+                    <input type="text" bind:value={profileData.username} class="{inputClass} pl-10" style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);">
                 </div>
               </div>
               <div>
                 <label class={labelClass}>Nom Complet</label>
                 <div class="relative">
                     <Tag size={16} class="absolute left-3 top-3.5 text-gray-500" />
-                    <input type="text" bind:value={profileData.full_name} class="{inputClass} pl-10">
+                    <input type="text" bind:value={profileData.full_name} class="{inputClass} pl-10" style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);">
                 </div>
               </div>
               <div>
                 <label class={labelClass}>Date de Naissance</label>
                 <div class="relative">
                   <Cake size={16} class="absolute left-3 top-3.5 text-gray-500" />
-                  <input type="date" bind:value={profileData.birthday} class="{inputClass} pl-10 dark:[color-scheme:dark]">
-                </div>
-              </div>
-              <div>
-                <label class={labelClass}>Email (Compte)</label>
-                <div class="relative">
-                  <Mail size={16} class="absolute left-3 top-3.5 text-gray-500" />
-                  <input type="text" value={profileData.email} class="{inputClass} pl-10 cursor-not-allowed opacity-70" disabled>
+                  <input type="date" bind:value={profileData.birthday} class="{inputClass} pl-10 dark:[color-scheme:dark]" style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);">
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-4">
@@ -406,7 +397,7 @@
                     <label class={labelClass}>Fonction</label>
                     <div class="relative">
                       <Tag size={16} class="absolute left-3 top-3.5 text-gray-500" />
-                      <select bind:value={profileData.fonction} class="{inputClass} pl-10 appearance-none">
+                      <select bind:value={profileData.fonction} class="{inputClass} pl-10 appearance-none" style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);">
                           <option value={null} class="bg-gray-900 text-gray-400">-- Non spécifié --</option>
                           <option value="PACO" class="bg-gray-900">PACO</option>
                           <option value="RCCA" class="bg-gray-900">RCCA</option>
@@ -417,7 +408,7 @@
                     <label class={labelClass}>Rôle</label>
                     <div class="relative">
                       <Shield size={16} class="absolute left-3 top-3.5 text-gray-500" />
-                      <select bind:value={profileData.role} class="{inputClass} pl-10 appearance-none capitalize">
+                      <select bind:value={profileData.role} class="{inputClass} pl-10 appearance-none capitalize" style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);">
                           <option value="user" class="bg-gray-900">User</option>
                           <option value="moderator" class="bg-gray-900">Modérateur</option>
                           <option value="admin" class="bg-gray-900">Admin</option>
@@ -431,7 +422,7 @@
                 <button 
                   on:click={handleUpdateProfile} 
                   disabled={isSaving}
-                  class="px-6 py-2.5 bg-blue-600/80 hover:bg-blue-500 text-white rounded-xl font-bold shadow-[0_0_15px_rgba(59,130,246,0.3)] transition-all flex items-center gap-2 disabled:opacity-50 border border-blue-500/30"
+                  class="btn-primary-glow px-6 py-2.5 text-white rounded-xl font-bold transition-all flex items-center gap-2 disabled:opacity-50 border border-white/10"
                 >
                   {#if isSaving} <Loader2 class="animate-spin w-4 h-4"/> {:else} <Save size={16}/> {/if}
                   Enregistrer
@@ -444,11 +435,12 @@
       <div class="space-y-8" in:fly={{ x: 20, duration: 600, delay: 200 }}>
         
         <div class="bg-black/20 border border-white/5 rounded-3xl p-8 shadow-sm relative overflow-hidden">
-          <div class="absolute top-0 right-0 p-32 bg-blue-500/5 rounded-full blur-3xl pointer-events-none"></div>
+          <div class="absolute top-0 right-0 p-32 opacity-10 rounded-full blur-3xl pointer-events-none"
+               style="background-color: rgb(var(--color-primary));"></div>
           
           <div class="flex justify-between items-center mb-6">
               <h2 class="text-lg font-bold text-gray-200 flex items-center gap-2">
-                <CheckCircle size={20} class="text-blue-400" /> Niveau de Confiance
+                <CheckCircle size={20} style="color: rgb(var(--color-primary));" /> Niveau de Confiance
               </h2>
               <button 
                 on:click={openAddInfraction}
@@ -462,54 +454,12 @@
             <div class="w-full bg-black/40 rounded-full h-4 overflow-hidden border border-white/5 shadow-inner">
               <div class="h-4 rounded-full transition-all duration-1000 ease-out {trustColor} relative" style="width: {trustScore}%"></div>
             </div>
-            <div class="flex justify-between items-center mt-3 text-xs font-bold uppercase tracking-wide">
-              <span class="text-gray-400">{trustLabel}</span>
-              <span class="text-white bg-white/10 px-2 py-1 rounded border border-white/10">{trustScore}%</span>
             </div>
-          </div>
 
           <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-2"><History size={12}/> Historique</h3>
           
           <div class="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-            {#if infractions.length === 0}
-               <div class="text-center py-6 border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
-                  <p class="text-xs text-gray-500">Aucune infraction enregistrée.</p>
-              </div>
-            {:else}
-              {#each infractions as inf}
-                {@const isActive = inf.is_active && (inf.card_type === 'red' || new Date(inf.expires_at) > new Date())}
-                
-                <div class="flex items-start gap-3 p-3 rounded-xl border transition-colors {isActive ? 'bg-black/30 border-white/10' : 'bg-black/10 border-transparent opacity-60'}">
-                  {#if inf.card_type === 'yellow'}
-                    <div class="p-1.5 bg-yellow-500/10 rounded border border-yellow-500/20 text-yellow-500 flex-shrink-0"><FileWarning size={16}/></div>
-                  {:else}
-                    <div class="p-1.5 bg-red-500/10 rounded border border-red-500/20 text-red-500 flex-shrink-0"><AlertOctagon size={16}/></div>
-                  {/if}
-                  
-                  <div class="flex-grow min-w-0">
-                    <p class="text-sm font-bold text-gray-300 flex items-center gap-2">
-                        {inf.card_type === 'yellow' ? 'Carton Jaune' : 'Carton Rouge'}
-                        {#if !isActive}
-                            <span class="px-1.5 py-0.5 bg-white/5 text-[10px] text-gray-500 rounded border border-white/5">Inactif</span>
-                        {/if}
-                    </p>
-                    <p class="text-xs text-gray-500 italic truncate">"{inf.reason}"</p>
-                    <p class="text-[10px] text-gray-600 mt-1">{new Date(inf.created_at).toLocaleDateString()}</p>
-                  </div>
-
-                  {#if isActive}
-                    <button 
-                        on:click={() => pardonInfraction(inf.id)}
-                        class="p-2 text-green-600 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-colors" 
-                        title="Pardonner / Désactiver"
-                    >
-                        <CheckCircle size={16} />
-                    </button>
-                  {/if}
-                </div>
-              {/each}
-            {/if}
-          </div>
+            </div>
         </div>
 
         <div class="bg-black/20 border border-red-500/10 rounded-3xl p-8 shadow-sm relative">
@@ -518,30 +468,6 @@
             </h2>
 
             <div class="space-y-6">
-                <div>
-                    <label class={labelClass}>Réinitialisation Mot de passe</label>
-                    {#if generatedPassword}
-                        <div class="flex gap-2 mt-2 animate-in fade-in slide-in-from-top-2">
-                            <input type="text" readonly value={generatedPassword} class="{inputClass} font-mono text-center text-green-400 bg-green-500/10 border-green-500/20">
-                            <button on:click={copyPassword} class="p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 text-gray-300 transition-colors" title="Copier">
-                                <Copy size={20}/>
-                            </button>
-                        </div>
-                        <p class="text-[10px] text-green-500/70 mt-2 text-center">Mot de passe changé ! Copiez-le avant de quitter.</p>
-                    {:else}
-                        <button 
-                            on:click={handleResetPassword}
-                            disabled={resetLoading}
-                            class="w-full mt-2 py-3 bg-white/5 border border-white/10 text-gray-300 rounded-xl font-bold hover:bg-white/10 hover:text-white transition-all shadow-sm flex justify-center gap-2"
-                        >
-                            {#if resetLoading} <Loader2 class="animate-spin w-5 h-5"/> {:else} <KeyRound size={20}/> {/if}
-                            Générer un nouveau mot de passe
-                        </button>
-                    {/if}
-                </div>
-
-                <div class="h-px bg-white/5"></div>
-
                 <div>
                     <label class={labelClass}>Accès Compte</label>
                     <button 
@@ -565,56 +491,23 @@
 
   {#if showInfractionModal}
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" transition:fade>
-      <div class="bg-[#0f1115] w-full max-w-md rounded-2xl p-6 shadow-2xl border border-white/10 ring-1 ring-white/5" transition:fly={{ y: 20 }}>
-        <div class="flex justify-between items-center mb-6">
-            <h3 class="text-lg font-bold text-gray-200">Ajouter une sanction</h3>
-            <button on:click={() => showInfractionModal = false} class="text-gray-500 hover:text-white transition-colors"><X size={20}/></button>
+      <div class="bg-[#0f1115] w-full max-w-md rounded-2xl p-6 shadow-2xl border border-white/10" transition:fly={{ y: 20 }}>
         </div>
-
-        <div class="space-y-4">
-          <div>
-              <label class={labelClass}>Type de carton</label>
-              <div class="grid grid-cols-2 gap-3">
-                  <button 
-                    on:click={() => infractionData.type = 'yellow'}
-                    class="p-3 rounded-xl border flex flex-col items-center gap-2 transition-all {infractionData.type === 'yellow' ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400' : 'bg-black/40 border-white/10 text-gray-500 hover:bg-white/5'}"
-                  >
-                      <FileWarning size={24}/>
-                      <span class="text-sm font-bold">Jaune</span>
-                  </button>
-                  <button 
-                    on:click={() => infractionData.type = 'red'}
-                    class="p-3 rounded-xl border flex flex-col items-center gap-2 transition-all {infractionData.type === 'red' ? 'bg-red-600/20 border-red-600 text-red-400' : 'bg-black/40 border-white/10 text-gray-500 hover:bg-white/5'}"
-                  >
-                      <AlertOctagon size={24}/>
-                      <span class="text-sm font-bold">Rouge</span>
-                  </button>
-              </div>
-          </div>
-          
-          <div>
-              <label class={labelClass}>Raison / Motif</label>
-              <textarea 
-                bind:value={infractionData.reason} 
-                class="{inputClass} resize-none min-h-[100px]" 
-                placeholder="Ex: Absence injustifiée, comportement inapproprié..."
-              ></textarea>
-          </div>
-        </div>
-
-        <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-white/10">
-          <button on:click={() => showInfractionModal = false} class="px-4 py-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">Annuler</button>
-          <button 
-            on:click={submitInfraction} 
-            disabled={infractionLoading}
-            class="px-4 py-2 bg-red-600/80 hover:bg-red-500 text-white rounded-xl font-bold shadow-[0_0_15px_rgba(220,38,38,0.3)] transition-all disabled:opacity-50 flex items-center gap-2"
-          >
-            {#if infractionLoading} <Loader2 class="animate-spin w-4 h-4"/> {/if}
-            Confirmer
-          </button>
-        </div>
-      </div>
     </div>
   {/if}
 
 </div>
+
+<style>
+  .btn-primary-glow {
+    background-color: rgba(var(--primary-rgb), 0.8);
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.3);
+  }
+  .btn-primary-glow:hover:not(:disabled) {
+    background-color: rgb(var(--primary-rgb));
+    box-shadow: 0 0 25px rgba(var(--primary-rgb), 0.5);
+    transform: translateY(-1px);
+  }
+  .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+</style>

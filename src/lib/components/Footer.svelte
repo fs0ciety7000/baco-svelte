@@ -77,16 +77,27 @@
     </div>
   </div>
 
-  <button
-    on:click={scrollToTop}
+<button
+    onclick={scrollToTop}
     class="fixed bottom-6 right-6 z-50 p-3 rounded-xl transition-all duration-500 transform
-    bg-blue-600/80 hover:bg-blue-500 text-white backdrop-blur-md border border-blue-500/30
-    shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_25px_rgba(59,130,246,0.5)]
-    hover:-translate-y-1 active:scale-95
+    text-white backdrop-blur-md border hover:-translate-y-1 active:scale-95
     {showGoTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}"
+    style="
+        background-color: rgba(var(--color-primary), 0.8);
+        border-color: rgba(var(--color-primary), 0.3);
+        box-shadow: 0 0 15px rgba(var(--color-primary), 0.3);
+    "
+    onmouseenter={(e) => {
+        e.currentTarget.style.backgroundColor = 'rgb(var(--color-primary))';
+        e.currentTarget.style.boxShadow = '0 0 25px rgba(var(--color-primary), 0.5)';
+    }}
+    onmouseleave={(e) => {
+        e.currentTarget.style.backgroundColor = 'rgba(var(--color-primary), 0.8)';
+        e.currentTarget.style.boxShadow = '0 0 15px rgba(var(--color-primary), 0.3)';
+    }}
     title="Retour en haut"
-  >
+>
     <ArrowUp class="w-5 h-5" />
-  </button>
+</button>
 
 </footer>
