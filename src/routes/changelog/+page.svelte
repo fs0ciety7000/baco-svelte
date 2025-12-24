@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabase';
   import { marked } from 'marked';
+  import MarkdownToolbar from '$lib/components/MarkdownToolbar.svelte';
   import { fly, fade } from 'svelte/transition';
   import { 
     Sparkles, Plus, Trash2, Calendar, User, 
@@ -19,7 +20,8 @@
   let entries = [];
   let isLoading = true;
   let isSaving = false;
-  
+  let editingId = null;
+  let textareaRef;
   // User & Rôles
   let currentUser = null;
   let canManage = false;
@@ -86,28 +88,62 @@
 
   // --- ACTIONS ---
 
+// ... imports existants
+  import MarkdownToolbar from '$lib/components/MarkdownToolbar.svelte';
+
+  // --- ÉTAT ---
+  // ...
+  let editingId = null; // ID de l'entrée en cours de modification
+  let textareaRef;      // Référence pour la barre d'outils
+
+  // ...
+
+  // Modifier openModal pour accepter un mode "édition"
+  function openModal(entry = null) {
+    if (entry) {
+      editingId = entry.id;
+      newEntry = { 
+        title: entry.title, 
+        type: entry.type, 
+        content: entry.content 
+      };
+    } else {
+      editingId = null;
+      newEntry = { title: "", type: "Amélioré", content: "" };
+    }
+    isModalOpen = true;
+  }
+
   async function saveEntry() {
-    if (!newEntry.title || !newEntry.content) return toast.warning("Veuillez remplir le titre et le contenu.");
+    if (!newEntry.title || !newEntry.content) return toast.warning("Veuillez remplir tous les champs.");
     isSaving = true;
 
     try {
       const payload = {
         title: newEntry.title,
         type: newEntry.type,
-        content: newEntry.content, 
+        content: newEntry.content,
         user_id: currentUser.id
       };
 
-      const { error } = await supabase.from('changelog').insert([payload]);
+      let error;
+      if (editingId) {
+        // Mode Mise à jour
+        const res = await supabase.from('changelog').update(payload).eq('id', editingId);
+        error = res.error;
+      } else {
+        // Mode Insertion
+        const res = await supabase.from('changelog').insert([payload]);
+        error = res.error;
+      }
+
       if (error) throw error;
 
       closeModal();
-      currentPage = 1; 
       loadChangelog();
-      toast.success("Entrée publiée avec succès !");
-
+      toast.success(editingId ? "Entrée mise à jour !" : "Entrée publiée !");
     } catch (e) {
-      toast.error("Erreur lors de la publication : " + e.message);
+      toast.error("Erreur : " + e.message);
     } finally {
       isSaving = false;
     }
@@ -128,10 +164,22 @@
 
   // --- UI HELPERS ---
 
-  function openModal() {
-    newEntry = { title: "", type: "Amélioré", content: "" };
+ function openModal(entry = null) {
+    if (entry) {
+      editingId = entry.id;
+      newEntry = { 
+        title: entry.title, 
+        type: entry.type, 
+        content: entry.content 
+      };
+    } else {
+      editingId = null;
+      newEntry = { title: "", type: "Amélioré", content: "" };
+    }
     isModalOpen = true;
   }
+
+
   function closeModal() { isModalOpen = false; }
 
   function changePage(newPage) {
@@ -227,6 +275,15 @@
                   </div>
                   
                   {#if canManage}
+
+                  <button 
+      on:click={() => openModal(entry)} 
+      class="p-2 text-gray-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-xl transition-colors border border-transparent hover:border-blue-500/20"
+      title="Modifier"
+    >
+      <Save size={16} /> 
+    </button>
+
                     <button on:click={() => deleteEntry(entry.id)} class="p-2 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors border border-transparent hover:border-red-500/20" title="Supprimer">
                       <Trash2 size={16} />
                     </button>
@@ -304,17 +361,25 @@
             </div>
           </div>
           
-          <div>
-            <label class={labelClass}>Contenu (Markdown)</label>
-            <textarea 
-              rows="6" 
-              bind:value={newEntry.content} 
-              class="{inputClass} font-mono text-xs leading-relaxed" 
-              placeholder="- Liste des changements..."
-            ></textarea>
-            <p class="text-[10px] text-gray-500 mt-2 text-right italic">Supporte **gras**, *italique*, - listes</p>
-          </div>
-        </div>
+        <div>
+  <label class={labelClass}>Contenu (Markdown)</label>
+  
+  <div class="rounded-xl border border-white/10 overflow-hidden bg-black/40 focus-within:border-blue-500/50 transition-all">
+    <MarkdownToolbar bind:textarea={textareaRef} bind:value={newEntry.content} />
+    
+    <textarea 
+      bind:this={textareaRef}
+      rows="8" 
+      bind:value={newEntry.content} 
+      class="block w-full bg-transparent p-3 text-sm font-mono text-white placeholder-gray-600 outline-none resize-none" 
+      placeholder="- Liste des changements..."
+    ></textarea>
+  </div>
+  
+  <p class="text-[10px] text-gray-500 mt-2 text-right italic">
+    Le format **barré** est supporté via ~~texte~~.
+  </p>
+</div>
 
         <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-white/10">
           <button on:click={closeModal} class="px-4 py-2 text-gray-400 hover:text-white hover:bg-white/5 border border-white/10 rounded-xl transition-all text-sm font-medium">Annuler</button>
