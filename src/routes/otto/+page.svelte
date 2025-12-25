@@ -457,13 +457,13 @@ async function generatePDF() {
     // On affiche le motif (avec une valeur par défaut vide si null)
     doc.text(form.motif || '', 45, y);
     // --- FIN AJOUT ---
-
-    y += 10; // On descend encore pour la suite (Ligne de séparation)
     
+    y += 10;
     doc.setDrawColor(200); doc.line(20, y-4, 190, y-4); doc.setDrawColor(0);
+
     doc.setFont("helvetica", "bold"); doc.text("Lieu Origine :", labelX, y);
-
-
+    doc.setFont("helvetica", "normal"); doc.text(form.origine || '?', valueX, y);
+    y += 6;
 
     // Arrêts triés (uniquement si Omnibus)
     if (!form.is_direct && form.arrets?.length > 0) {
