@@ -55,16 +55,19 @@
     nombre_voyageurs: null,
     nombre_pmr: null,
     capacite_bus: 50,
+    // AJOUT : Champs pour l'audit
     sent_at: null,      // Date d'envoi/clôture
-    sent_by_name: null,
+    sent_by_name: null, // Nom de la personne qui a clôturé
     bus_data: [
         { plaque: '', heure_prevue: '', heure_confirmee: '', heure_demob: '' }
     ]
   };
-  
-  $: isLocked = form.status === 'envoye';
 
   let form = JSON.parse(JSON.stringify(initialForm));
+
+  // AJOUT : Variable réactive pour le verrouillage
+  // Le bon est verrouillé si le statut est 'envoye'
+  $: isLocked = form.status === 'envoye';
 
   onMount(async () => {
     await Promise.all([loadCommandes(), loadLinesRef(), loadSocietes(), loadAllStops(), loadCurrentUser()]);
@@ -215,7 +218,7 @@ PACO Sud-Ouest`;
   $: if (form.lignes.length > 0) loadStopsForLines(form.lignes);
   else availableStops = [];
 
-let stopsMetadata = []; 
+  let stopsMetadata = []; 
 
 async function loadStopsForLines(lines) {
     const { data } = await supabase
@@ -335,7 +338,7 @@ function getSortedArrets(arretsSelectionnes, lignesSelectionnees) {
       };
 
       if (!form.id) payload.user_id = currentUserId;
-     if (targetStatus === 'envoye') {
+      if (targetStatus === 'envoye') {
           payload.validated_by = currentUserId;
           // AJOUT : On enregistre la date et l'auteur si on clôture
           // On ne l'écrase pas si ça existe déjà (cas de ré-enregistrement) sauf si on veut mettre à jour
@@ -750,14 +753,14 @@ async function generatePDF() {
                         </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 relative">
-                        <div><label class={labelClass}>Origine</label><input type="text" list="stations" bind:value={form.origine} class={inputClass} placeholder="Gare"></div>
-                        <div><label class={labelClass}>Destination</label><input type="text" list="stations" bind:value={form.destination} class={inputClass} placeholder="Gare"></div>
+                        <div><label class={labelClass}>Origine</label><input type="text" list="stations" bind:value={form.origine} disabled={isLocked} class={inputClass} placeholder="Gare"></div>
+                        <div><label class={labelClass}>Destination</label><input type="text" list="stations" bind:value={form.destination} disabled={isLocked} class={inputClass} placeholder="Gare"></div>
                         <datalist id="stations">{#each uniqueStationNames as st} <option value={st} /> {/each}</datalist>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-white/5">
-                        <div><label class={labelClass}>Nbr Voyageurs</label><input type="number" bind:value={form.nombre_voyageurs} class={inputClass} placeholder="Approx."></div>
-                        <div><label class={labelClass}>Dont PMR</label><input type="number" bind:value={form.nombre_pmr} class={inputClass} placeholder="0"></div>
-                        <div><label class={labelClass}>Capacité Bus</label><input type="number" bind:value={form.capacite_bus} class={inputClass} placeholder="50"></div>
+                        <div><label class={labelClass}>Nbr Voyageurs</label><input type="number" bind:value={form.nombre_voyageurs} disabled={isLocked} class={inputClass} placeholder="Approx."></div>
+                        <div><label class={labelClass}>Dont PMR</label><input type="number" bind:value={form.nombre_pmr} disabled={isLocked} class={inputClass} placeholder="0"></div>
+                        <div><label class={labelClass}>Capacité Bus</label><input type="number" bind:value={form.capacite_bus} disabled={isLocked} class={inputClass} placeholder="50"></div>
                     </div>
                 </div>
                 <div class="bg-black/20 border border-white/5 rounded-2xl p-6">
@@ -776,9 +779,9 @@ async function generatePDF() {
                                 </div>
                                 <div class="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
                                     <div><label class="text-[10px] text-gray-500 uppercase font-bold mb-1.5 block">Plaque</label><input type="text" bind:value={bus.plaque} disabled={isLocked} class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white uppercase outline-none focus:border-green-500/50" placeholder="1-ABC-123"></div>
-                                    <div><label class="text-[10px] text-gray-500 uppercase font-bold mb-1.5 block">H. Prévue</label><input type="time" bind:value={bus.heure_prevue} class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 dark:[color-scheme:dark]"></div>
-                                    <div><label class="text-[10px] text-green-500/70 uppercase font-bold mb-1.5 block">H. Confirmée</label><input type="time" bind:value={bus.heure_confirmee} class="w-full bg-black/30 border border-green-900/30 rounded-lg px-3 py-2 text-sm text-green-300 outline-none focus:border-green-500/50 dark:[color-scheme:dark]"></div>
-                                    <div><label class="text-[10px] text-gray-500 uppercase font-bold mb-1.5 block">Démob.</label><input type="time" bind:value={bus.heure_demob} class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 dark:[color-scheme:dark]"></div>
+                                    <div><label class="text-[10px] text-gray-500 uppercase font-bold mb-1.5 block">H. Prévue</label><input type="time" bind:value={bus.heure_prevue} disabled={isLocked} class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 dark:[color-scheme:dark]"></div>
+                                    <div><label class="text-[10px] text-green-500/70 uppercase font-bold mb-1.5 block">H. Confirmée</label><input type="time" bind:value={bus.heure_confirmee} disabled={isLocked} class="w-full bg-black/30 border border-green-900/30 rounded-lg px-3 py-2 text-sm text-green-300 outline-none focus:border-green-500/50 dark:[color-scheme:dark]"></div>
+                                    <div><label class="text-[10px] text-gray-500 uppercase font-bold mb-1.5 block">Démob.</label><input type="time" bind:value={bus.heure_demob} disabled={isLocked} class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 dark:[color-scheme:dark]"></div>
                                 </div>
                             </div>
                         {/each}
@@ -788,13 +791,13 @@ async function generatePDF() {
             <div class="space-y-6">
                 <div class="bg-black/20 border border-white/5 rounded-2xl p-6 max-h-[400px] overflow-y-auto custom-scrollbar">
                     <h3 class="text-sm font-bold text-purple-400 uppercase tracking-wide mb-4 sticky top-0 bg-[#16181d] py-2 z-10 flex items-center gap-2"><Hash size={16}/> Lignes</h3>
-                    <div class="flex flex-wrap gap-2">{#each availableLines as line}<button on:click={() => toggleLine(line)} class="px-3 py-1.5 rounded-lg text-xs font-bold border transition-all {form.lignes.includes(line) ? 'bg-purple-600 text-white border-purple-500 shadow-md' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}">{line}</button>{/each}</div>
+                    <div class="flex flex-wrap gap-2">{#each availableLines as line}<button on:click={() => !isLocked && toggleLine(line)} class="px-3 py-1.5 rounded-lg text-xs font-bold border transition-all {form.lignes.includes(line) ? 'bg-purple-600 text-white border-purple-500 shadow-md' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}">{line}</button>{/each}</div>
                 </div>
                 
                 {#if !form.is_direct && form.lignes.length > 0}
                     <div class="bg-black/20 border border-white/5 rounded-2xl p-6 max-h-[400px] overflow-y-auto custom-scrollbar" transition:slide>
                         <h3 class="text-sm font-bold text-yellow-400 uppercase tracking-wide mb-4 sticky top-0 bg-[#16181d] py-2 z-10 flex items-center gap-2"><MapPin size={16}/> Arrêts Intermédiaires</h3>
-                        {#if availableStops.length === 0}<p class="text-xs text-gray-500">Chargement...</p>{:else}<div class="space-y-1">{#each availableStops as stop}<button on:click={() => toggleStop(stop)} class="w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-3 transition-colors {form.arrets.includes(stop) ? 'bg-yellow-500/10 text-yellow-300 border border-yellow-500/20' : 'hover:bg-white/5 text-gray-400 border border-transparent'}">{#if form.arrets.includes(stop)}<CheckSquare class="w-4 h-4 flex-shrink-0"/>{:else}<Square class="w-4 h-4 flex-shrink-0"/>{/if}{stop}</button>{/each}</div>{/if}
+                        {#if availableStops.length === 0}<p class="text-xs text-gray-500">Chargement...</p>{:else}<div class="space-y-1">{#each availableStops as stop}<button on:click={() => !isLocked && toggleStop(stop)} class="w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-3 transition-colors {form.arrets.includes(stop) ? 'bg-yellow-500/10 text-yellow-300 border border-yellow-500/20' : 'hover:bg-white/5 text-gray-400 border border-transparent'}">{#if form.arrets.includes(stop)}<CheckSquare class="w-4 h-4 flex-shrink-0"/>{:else}<Square class="w-4 h-4 flex-shrink-0"/>{/if}{stop}</button>{/each}</div>{/if}
                     </div>
                 {/if}
             </div>
@@ -823,22 +826,32 @@ async function generatePDF() {
         </label>
     {/if}
     
-    <button on:click={() => showEmailExport = true} class="..."> ... </button>
-    <button on:click={() => generatePDF()} class="..."> ... </button>
+    <button on:click={() => showEmailExport = true} class="px-5 py-2.5 rounded-full text-sm font-bold text-blue-400 bg-blue-500/5 border border-blue-500/10 hover:bg-blue-500/10 hover:border-blue-500/30 transition-all flex items-center gap-2">
+        <Mail class="w-4 h-4" /> <span class="hidden sm:inline">E-mail</span>
+    </button>
+
+    <button on:click={() => generatePDF()} class="px-5 py-2.5 rounded-full text-sm font-bold text-emerald-400/90 bg-emerald-500/5 border border-emerald-500/10 hover:bg-emerald-500/10 hover:border-emerald-500/30 hover:text-emerald-300 hover:shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-2 backdrop-blur-md">
+        <Printer class="w-4 h-4" /> <span class="hidden sm:inline">Télécharger PDF</span>
+    </button>
 
     {#if isLocked}
         <button on:click={unlockCommande} class="px-6 py-2.5 rounded-full text-sm font-bold text-orange-400 bg-orange-500/10 border border-orange-500/20 hover:bg-orange-500/20 hover:text-orange-300 transition-all flex items-center gap-2">
             <LockOpen class="w-4 h-4" /> <span>Déverrouiller</span>
         </button>
     {:else}
-        <button on:click={() => saveCommande('brouillon')} disabled={isSaving} class="...">
+        <button on:click={() => saveCommande('brouillon')} disabled={isSaving} class="px-6 py-2.5 rounded-full text-sm font-medium text-gray-400 bg-white/5 border border-white/5 hover:bg-white/10 hover:text-white hover:border-white/10 transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
             <Save class="w-4 h-4" /> <span>Brouillon</span>
         </button>
 
-        <button on:click={() => saveCommande('envoye')} disabled={isSaving} class="...">
+        <button on:click={() => saveCommande('envoye')} disabled={isSaving} class="px-6 py-2.5 rounded-full text-sm font-bold text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/40 shadow-[0_0_20px_rgba(239,68,68,0.3)] transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
             {#if isSaving}<Loader2 class="w-4 h-4 animate-spin"/>{:else}<CheckCircle class="w-4 h-4" />{/if} <span>Clôturer</span>
         </button>
     {/if}
+</div>
+        <div class="h-24"></div>
+    {/if}
+
+  {/if}
 </div>
 
 {#if showEmailExport}
