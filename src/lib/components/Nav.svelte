@@ -248,7 +248,7 @@ import { presenceState } from '$lib/stores/presence.svelte.js';
            
             <div class="relative">
     <button on:click={(e) => toggleDropdown('users', e)} class="{iconBtnClass} relative group" title="Utilisateurs connectés">
-        <Users class="w-5 h-5 transition-colors group-hover:text-blue-400" />
+        <Users class="w-5 h-5 transition-colors group-hover:[rgb(var(--color-primary))]" />
         
         {#if presenceState.count > 0}
             <span class="absolute top-2 right-2 flex h-2 w-2">
@@ -262,12 +262,13 @@ import { presenceState } from '$lib/stores/presence.svelte.js';
         <div transition:fly={{ y: 10, duration: 200 }} class="{dropdownBaseClass} right-0 w-64 p-0">
             <div class="flex items-center justify-between p-3 border-b border-white/5 bg-white/5">
                 <span class="font-bold text-xs text-white flex items-center gap-2">
-                    <Users class="w-3 h-3 text-blue-400"/> En ligne
+                    <Users class="w-3 h-3 text-[rgb(var(--color-primary))]"/> En ligne
                 </span>
-                <span class="bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full text-[10px] font-bold border border-blue-500/30">
+                <span class="bg-blue-500/20 text-[rgb(var(--color-primary))] px-2 py-0.5 rounded-full text-[10px] font-bold border border-blue-500/30">
                     {presenceState.count}
                 </span>
             </div>
+          
 
             <div class="max-h-60 overflow-y-auto p-2 space-y-1 custom-scrollbar">
                 {#each presenceState.users as profile (profile.user_id || profile.full_name)}
