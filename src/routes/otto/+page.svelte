@@ -3,6 +3,7 @@
   import { supabase } from '$lib/supabase';
   import { fly, fade, slide } from 'svelte/transition';
   import jsPDF from 'jspdf';
+  import { openConfirmModal } from '$lib/stores/modal.js';
   import autoTable from 'jspdf-autotable';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
@@ -373,18 +374,19 @@ function getSortedArrets(arretsSelectionnes, lignesSelectionnees) {
           goBackToList();
       }
   }
-
-  // AJOUT : Fonction pour déverrouiller
-  async function unlockCommande() {
-      if(!confirm("Voulez-vous déverrouiller ce bon pour modification ?")) return;
-      await saveCommande('brouillon');
+function unlockCommande() {
+      openConfirmModal("Voulez-vous vraiment déverrouiller ce bon pour le modifier ?", async () => {
+          await saveCommande('brouillon');
+      });
   }
 
-  async function deleteCommande(id) {
-      if (!confirm("Supprimer cette commande ?")) return;
-      await supabase.from('otto_commandes').delete().eq('id', id);
-      loadCommandes();
-      toast.success("Supprimé");
+function deleteCommande(id) {
+      // On passe le message et la fonction à exécuter en cas de confirmation
+      openConfirmModal("Êtes-vous sûr de vouloir supprimer cette commande ?", async () => {
+          await supabase.from('otto_commandes').delete().eq('id', id);
+          loadCommandes();
+          toast.success("Commande supprimée");
+      });
   }
 
   // --- GENERATION PDF ---
