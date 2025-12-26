@@ -675,12 +675,14 @@ async function generatePDF() {
                                 <span class="text-gray-300">{cmd.destination || '?'}</span>
                             </div>
                             <div class="flex items-center gap-4 text-xs pt-3 border-t border-white/5">
-                                {#if cmd.creator}
-                                    <div class="flex items-center gap-1.5 text-gray-500" title="Créé par">
-                                        <User size={12} /> <span class="text-gray-400">{cmd.creator.full_name}</span>
-                                    </div>
-                                {/if}
-                                {#if cmd.validator}
+                                {#if cmd.status === 'envoye' && cmd.sent_at}
+        <div class="flex items-center gap-1.5 text-emerald-500/80" title="Envoyé le">
+            <Mail size={12} /> 
+            <span class="text-emerald-400">
+                Le {new Date(cmd.sent_at).toLocaleDateString('fr-BE')} par {cmd.sent_by_name || 'Inconnu'}
+            </span>
+        </div>
+    {:else if cmd.validator}
                                     <div class="flex items-center gap-1.5 text-red-500/70" title="Clôturé par">
                                         <UserCheck size={12} /> <span class="text-red-400">{cmd.validator.full_name}</span>
                                     </div>
