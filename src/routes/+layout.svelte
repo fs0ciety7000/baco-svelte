@@ -4,7 +4,7 @@
   import { page } from '$app/stores';
   import { supabase } from '$lib/supabase';
   import { goto } from '$app/navigation';
-  
+  import { presenceState } from '$lib/stores/presence.svelte.js';
   import Nav from '$lib/components/Nav.svelte';
   import Footer from '$lib/components/Footer.svelte';
   import GlobalSearch from '$lib/components/GlobalSearch.svelte';
@@ -80,6 +80,13 @@
       window.removeEventListener('keydown', handlePrintScreen);
       subscription.unsubscribe();
     };
+  });
+
+  // Ajoutez cet effet pour initialiser la présence dès qu'on a le user
+  $effect(() => {
+    if (user) {
+        presenceState.init(user);
+    }
   });
 </script>
 

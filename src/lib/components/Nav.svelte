@@ -7,7 +7,7 @@
   import { slide, fly } from 'svelte/transition';
   import { isCommandOpen } from '$lib/stores/command';
   import { zenMode } from '$lib/stores/zen';
-
+import { presenceState } from '$lib/stores/presence.svelte.js';
   // Icônes
   import { 
     Shield, Accessibility, ChevronDown, Combine, Users, BookUser, 
@@ -245,6 +245,20 @@
           </div>
 
           <div class="flex items-center gap-2">
+            <div class="relative flex h-3 w-3">
+      {#if presenceState.count > 0}
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 duration-1000"></span>
+      {/if}
+      <span class="relative inline-flex rounded-full h-3 w-3 {presenceState.count > 0 ? 'bg-green-500' : 'bg-gray-500'}"></span>
+    </div>
+
+    <div class="flex flex-col">
+        <span class="text-xs font-bold text-gray-200">
+            {presenceState.count} collègue{presenceState.count > 1 ? 's' : ''}
+        </span>
+        <span class="text-[10px] text-gray-500 uppercase tracking-wider">En ligne</span>
+    </div>
+    
               <button on:click={() => zenMode.set(true)} class={iconBtnClass} title="Zen"><Maximize class="w-5 h-5" /></button>
               <button on:click={handleGlobalSearch} class={iconBtnClass} title="Rechercher"><Search class="w-5 h-5" /></button>
               <button on:click={toggleChristmasTheme} class="{iconBtnClass} {isChristmasTheme ? 'text-red-400' : ''}"><Cake class="w-5 h-5" /></button>
