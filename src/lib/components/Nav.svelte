@@ -245,20 +245,60 @@ import { presenceState } from '$lib/stores/presence.svelte.js';
           </div>
 
           <div class="flex items-center gap-2">
-            <div class="relative flex h-3 w-3">
-      {#if presenceState.count > 0}
-        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 duration-1000"></span>
-      {/if}
-      <span class="relative inline-flex rounded-full h-3 w-3 {presenceState.count > 0 ? 'bg-green-500' : 'bg-gray-500'}"></span>
-    </div>
+           
+            <div class="relative">
+    <button on:click={(e) => toggleDropdown('users', e)} class="{iconBtnClass} relative group" title="Utilisateurs connectés">
+        <Users class="w-5 h-5 transition-colors group-hover:text-blue-400" />
+        
+        {#if presenceState.count > 0}
+            <span class="absolute top-2 right-2 flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
+        {/if}
+    </button>
 
-    <div class="flex flex-col">
-        <span class="text-xs font-bold text-gray-200">
-            {presenceState.count} collègue{presenceState.count > 1 ? 's' : ''}
-        </span>
-        <span class="text-[10px] text-gray-500 uppercase tracking-wider">En ligne</span>
-    </div>
-    
+    {#if activeDropdown === 'users'}
+        <div transition:fly={{ y: 10, duration: 200 }} class="{dropdownBaseClass} right-0 w-64 p-0">
+            <div class="flex items-center justify-between p-3 border-b border-white/5 bg-white/5">
+                <span class="font-bold text-xs text-white flex items-center gap-2">
+                    <Users class="w-3 h-3 text-blue-400"/> En ligne
+                </span>
+                <span class="bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full text-[10px] font-bold border border-blue-500/30">
+                    {presenceState.count}
+                </span>
+            </div>
+
+            <div class="max-h-60 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                {#each presenceState.users as profile (profile.user_id || profile.full_name)}
+                    <div class="flex items-center gap-3 p-2 hover:bg-white/5 rounded-xl transition-colors border border-transparent hover:border-white/5">
+                        <div class="relative">
+                            {#if profile.avatar_url}
+                                <img src={profile.avatar_url} alt="Avatar" class="w-8 h-8 rounded-full object-cover border border-white/10" />
+                            {:else}
+                                <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400 border border-white/10">
+                                    {profile.full_name?.charAt(0) || '?'}
+                                </div>
+                            {/if}
+                            <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-[#0f1115] rounded-full"></span>
+                        </div>
+                        
+                        <div class="flex flex-col">
+                            <span class="text-sm font-medium text-gray-200">{profile.full_name}</span>
+                            <span class="text-[10px] text-gray-500">Actif maintenant</span>
+                        </div>
+                    </div>
+                {:else}
+                    <div class="p-6 text-center flex flex-col items-center gap-2 text-gray-500">
+                        <Users class="w-8 h-8 opacity-20" />
+                        <span class="text-xs italic">Aucun autre utilisateur</span>
+                    </div>
+                {/each}
+            </div>
+        </div>
+    {/if}
+</div>
+
               <button on:click={() => zenMode.set(true)} class={iconBtnClass} title="Zen"><Maximize class="w-5 h-5" /></button>
               <button on:click={handleGlobalSearch} class={iconBtnClass} title="Rechercher"><Search class="w-5 h-5" /></button>
               <button on:click={toggleChristmasTheme} class="{iconBtnClass} {isChristmasTheme ? 'text-red-400' : ''}"><Cake class="w-5 h-5" /></button>
