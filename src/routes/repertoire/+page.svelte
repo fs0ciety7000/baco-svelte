@@ -298,10 +298,10 @@
                                         <div class="font-bold text-gray-300 truncate text-sm">{contact.nom}</div>
                                         <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs">
                                             {#if contact.tel}
-                                                <a href="etrali:{contact.tel}" class="flex items-center gap-1.5 px-2 py-0.5 rounded border transition-all" 
-                                                   style="color: rgb(var(--color-primary)); background-color: rgba(var(--color-primary), 0.1); border-color: rgba(var(--color-primary), 0.2);">
-                                                    <Phone class="w-3 h-3" /> {formatPhone(contact.tel)}
-                                                </a>
+                                               <a href="etrali:{cleanPhone(contact.tel)}" class="flex items-center gap-1.5 px-2 py-0.5 rounded border transition-all" 
+   style="color: rgb(var(--color-primary)); background-color: rgba(var(--color-primary), 0.1); border-color: rgba(var(--color-primary), 0.2);">
+    <Phone class="w-3 h-3" /> {formatPhone(contact.tel)}
+</a>
                                             {/if}
                                             {#if contact.email}
                                                 <span class="flex items-center gap-1.5 text-gray-500 truncate"><Mail class="w-3 h-3" /> {contact.email}</span>
