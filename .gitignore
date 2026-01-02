@@ -21,3 +21,5 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+vite.config.js
+src/lib/supabase.js
