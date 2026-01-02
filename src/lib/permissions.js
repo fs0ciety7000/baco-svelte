@@ -85,19 +85,19 @@ export const ROLE_DEFAULTS = {
     // USER : Lecture seule sur la plupart des outils pro, écriture sur le "social/quotidien"
     user: [
         // Lecture globale
-        'planning:write',
+        'planning:read', 'planning:write',
         'journal:read', 'journal:write', // Souvent les users écrivent dans le journal
-        'documents:write',
+        'documents:read', 'documents:write',
         'repertoire:read',
-        'bus:write',
-        'taxi:write',
-        'otto:write',
+        'bus:read', 'bus:write',
+        'taxi:read', 'taxi:write',
+        'otto:read', 'otto:write',
         'ptcar:read',
         'b201:read',
         'ebp:read',
-        'ops:write',
+        'ops:read', 'ops:write',
         'carte_pn:read',
-        'pmr:write',
+        'pmr:read', 'pmr:write',
         'darts:read', 'darts:write' // Loisir autorisé
     ]
 };
