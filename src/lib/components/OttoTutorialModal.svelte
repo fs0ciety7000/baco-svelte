@@ -126,22 +126,22 @@
 
                    <div class="absolute inset-0">
                        {#if currentStep === 1}
-                         <button class="hotspot" style="top: 25%; left: 15%;" on:click={(e) => handleHotspotClick(e, 'Motif & Date', 'Indiquez le motif et la date.')}>1</button>
-                         <button class="hotspot" style="top: 45%; left: 15%;" on:click={(e) => handleHotspotClick(e, 'Réf. TC', 'Obligatoire pour SAP (ex: TC_123).')}>2</button>
+                         <button class="hotspot" style="top: 40%; left: 15%;" on:click={(e) => handleHotspotClick(e, 'Motif & Date', 'Indiquez le motif et la date.')}>1</button>
+                         <button class="hotspot" style="top: 65%; left: 15%;" on:click={(e) => handleHotspotClick(e, 'Réf. TC', 'Obligatoire pour SAP (ex: TC_123).')}>2</button>
                          <button class="hotspot" style="top: 30%; right: 15%;" on:click={(e) => handleHotspotClick(e, 'Lignes', 'Filtre les gares disponibles.')}>3</button>
                        
                        {:else if currentStep === 2}
-                         <button class="hotspot" style="top: 47%; right: 45%;" on:click={(e) => handleHotspotClick(e, 'Switch Direct', 'Active ou désactive les arrêts.')}>1</button>
-                         <button class="hotspot" style="top: 55%; left: 20%;" on:click={(e) => handleHotspotClick(e, 'Trajet', 'Origine et Destination.')}>2</button>
+                         <button class="hotspot" style="top: 37%; right: 45%;" on:click={(e) => handleHotspotClick(e, 'Switch Direct', 'Active ou désactive les arrêts.')}>1</button>
+                         <button class="hotspot" style="top: 37%; left: 20%;" on:click={(e) => handleHotspotClick(e, 'Trajet', 'Origine et Destination.')}>2</button>
                          <button class="hotspot" style="top: 50%; right: 5%;" on:click={(e) => handleHotspotClick(e, 'Arrêts', 'Cochez les gares intermédiaires.')}>3</button>
 
                        {:else if currentStep === 3}
-                          <button class="hotspot" style="top: 15%; right: 10%;" on:click={(e) => handleHotspotClick(e, 'Ajout Bus', 'Ajoutez un autre véhicule.')}>1</button>
-                          <button class="hotspot" style="top: 40%; left: 45%;" on:click={(e) => handleHotspotClick(e, 'Horaires', 'Prévue vs Confirmée (Vert).')}>2</button>
+                          <button class="hotspot" style="top: 35%; right: 10%;" on:click={(e) => handleHotspotClick(e, 'Ajout Bus', 'Ajoutez un autre véhicule.')}>1</button>
+                          <button class="hotspot" style="top: 50%; left: 45%;" on:click={(e) => handleHotspotClick(e, 'Horaires', 'Prévue vs Confirmée (Vert).')}>2</button>
 
                        {:else if currentStep === 4}
-                          <button class="hotspot" style="bottom: 30%; right: 280px;" on:click={(e) => handleHotspotClick(e, 'PDF', 'Télécharger le bon.')}>1</button>
-                          <button class="hotspot" style="bottom: 30%; right: 50px;" on:click={(e) => handleHotspotClick(e, 'Clôturer', 'Verrouille la commande.')}>2</button>
+                          <button class="hotspot" style="bottom: 50%; right: 280px;" on:click={(e) => handleHotspotClick(e, 'PDF', 'Télécharger le bon.')}>1</button>
+                          <button class="hotspot" style="bottom: 50%; right: 50px;" on:click={(e) => handleHotspotClick(e, 'Clôturer', 'Verrouille la commande.')}>2</button>
                        {/if}
                    </div>
                    
