@@ -13,7 +13,7 @@
     Bus, Calendar, Clock, MapPin, CheckSquare, Square, 
     FileText, Save, Trash2, Plus, Loader2, ArrowLeft,
     Printer, Download, Building2, Hash, Users, ArrowRightLeft, MinusCircle,
-    Search, Filter, X, CheckCircle, User, UserCheck, ChevronDown, Mail, ClipboardCopy, Check, LockOpen
+    Search, Filter, X, CheckCircle, User, UserCheck, ChevronDown, Mail, ClipboardCopy, Check, LockOpen, School
   } from 'lucide-svelte';
   import { toast } from '$lib/stores/toast.js';
 
