@@ -64,6 +64,11 @@ export const ACTIONS = {
     DARTS_READ: 'darts:read',
     DARTS_WRITE: 'darts:write',
     DARTS_DELETE: 'darts:delete', // Nouveau
+
+    // --- NOUVEAU : GENERATE TAXI ---
+    GENERATE_TAXI_READ: 'generate_taxi:read',
+    GENERATE_TAXI_WRITE: 'generate_taxi:write',
+    GENERATE_TAXI_DELETE: 'generate_taxi:delete',
 };
 
 export const ROLE_DEFAULTS = {
@@ -87,7 +92,8 @@ export const ROLE_DEFAULTS = {
         'ops:read', 'ops:write',
         'carte_pn:read', 'carte_pn:write',
         'pmr:read', 'pmr:write',
-        'darts:read', 'darts:write'
+        'darts:read', 'darts:write',
+        'generate_taxi:read', 'generate_taxi:write'
     ],
 
     // USER : Lecture seule sur la plupart des outils pro, écriture sur le "social/quotidien"
@@ -104,6 +110,7 @@ export const ROLE_DEFAULTS = {
         'b201:read',
         'ebp:read',
         'ops:read', 'ops:write',
+        'generate_taxi:read', 'generate_taxi:write',
         'carte_pn:read',
         'pmr:read', 'pmr:write',
         'darts:read', 'darts:write' // Loisir autorisé

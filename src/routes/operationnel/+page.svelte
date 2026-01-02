@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabase';
+  import { goto } from '$app/navigation'; // Nécessaire pour la redirection
   import EasyEditor from '$lib/components/EasyEditor.svelte';
   import { marked } from 'marked';
   import { fly, fade, slide } from 'svelte/transition';
@@ -8,8 +9,9 @@
   // Import des icônes
   import { Search, Plus, Pencil, Trash2, X, Book, FolderOpen, FileText, Loader2, History, RotateCcw } from 'lucide-svelte';
 
-  // IMPORT TOAST
+  // IMPORT TOAST & PERMISSIONS
   import { toast } from '$lib/stores/toast.js';
+  import { hasPermission, ACTIONS } from '$lib/permissions';
 
   // --- VARIABLES DE VERSIONING ---
   let showHistoryModal = false;
@@ -17,6 +19,9 @@
   let isLoadingVersions = false;
 
   // --- ÉTAT ---
+  let currentUser = null; // Profil complet
+  let isAuthorized = false; // Bloque l'affichage par défaut
+
   let procedures = [];
   let categories = [];
   let isLoading = true;
@@ -43,6 +48,29 @@
   };
 
   onMount(async () => {
+    // 1. Auth Check
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+        return goto('/');
+    }
+
+    // 2. Profil & Permissions
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+    
+    currentUser = { ...session.user, ...profile };
+
+    // 3. Vérification Permission LECTURE
+    if (!hasPermission(currentUser, ACTIONS.OPERATIONNEL_READ)) {
+        toast.error("Accès refusé.");
+        return goto('/accueil');
+    }
+
+    // 4. Autorisation OK -> Chargement
+    isAuthorized = true;
     await Promise.all([loadCategories(), loadProcedures()]);
   });
 
@@ -76,6 +104,11 @@
 
   // 2. Restaurer une version
   function restoreVersion(version) {
+      // Vérification permission écriture pour restaurer
+      if (!hasPermission(currentUser, ACTIONS.OPERATIONNEL_WRITE)) {
+          return toast.error("Vous n'avez pas les droits pour modifier cette procédure.");
+      }
+
       if (!confirm(`Remplacer le contenu actuel par la version du ${new Date(version.archived_at).toLocaleDateString()} ?`)) return;
       
       // On met à jour l'objet d'édition avec les anciennes données
@@ -116,19 +149,14 @@ async function loadProcedures() {
       
       // On cherche toutes les liaisons pour les procédures chargées
       const { data: links, error: linkError } = await supabase
-         .from('liaisons_contenu')
-         .select('source_content_id, target_content_id')
-         .eq('source_content_type', 'procedure')
-         .eq('target_content_type', 'document')
-         .in('source_content_id', procIds);
-
-         // AFFICHEZ CECI DANS LA CONSOLE DU NAVIGATEUR (F12)
-      console.log("Procédures IDs:", procIds);
-      console.log("Liens trouvés:", links);
-      console.log("Erreur éventuelle:", linkError);
+          .from('liaisons_contenu')
+          .select('source_content_id, target_content_id')
+          .eq('source_content_type', 'procedure')
+          .eq('target_content_type', 'document')
+          .in('source_content_id', procIds);
 
       // On "colle" les documents dans chaque objet procédure
-     procedures = procs.map(proc => {
+      procedures = procs.map(proc => {
           const docs = links 
             // CORRECTION ICI : On convertit tout en String pour comparer "10" avec "10"
             ? links.filter(l => String(l.source_content_id) === String(proc.id)).map(l => l.target_content_id)
@@ -141,6 +169,11 @@ async function loadProcedures() {
   }
 
 async function saveProcedure() {
+    // SÉCURITÉ WRITE
+    if (!hasPermission(currentUser, ACTIONS.OPERATIONNEL_WRITE)) {
+        return toast.error("Action non autorisée.");
+    }
+
     isSaving = true;
     const { data: { user } } = await supabase.auth.getUser();
     
@@ -273,6 +306,11 @@ async function saveProcedure() {
   }
 
   async function deleteProcedure(id, titre) {
+    // SÉCURITÉ DELETE
+    if (!hasPermission(currentUser, ACTIONS.OPERATIONNEL_DELETE)) {
+        return toast.error("Suppression non autorisée.");
+    }
+
     if (!confirm(`Supprimer la procédure "${titre}" ?`)) return;
     
     const { error } = await supabase.from('procedures').delete().eq('id', id);
@@ -286,6 +324,11 @@ async function saveProcedure() {
 
   // --- MODAL ---
 function openModal(proc = null) {
+    // SÉCURITÉ WRITE (Ouvrir le modal = intention de créer/modifier)
+    if (!hasPermission(currentUser, ACTIONS.OPERATIONNEL_WRITE)) {
+        return; // Le bouton est déjà caché, mais double sécurité
+    }
+
     if (proc) {
         editingProcedure = { ...proc };
         // CHARGEMENT DES LIENS
@@ -302,371 +345,387 @@ function openModal(proc = null) {
   }
 </script>
 
-<div class="container mx-auto p-4 md:p-8 space-y-8">
-  
-  <header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-white/10 pb-6" in:fly={{ y: -20, duration: 600 }}>
-    <div class="space-y-2">
-      <div class="flex items-center gap-3">
-        <div 
-  class="icon-container p-3 rounded-xl border transition-all"
-  style="--primary-rgb: var(--color-primary);"
->
-  <Book class="w-8 h-8" />
-</div>
-        <h1 class="text-3xl font-bold text-white tracking-tight">Base de Connaissances</h1>
-      </div>
-      <p class="text-gray-400 pl-1">Procédures, fiches réflexes et documentation opérationnelle.</p>
+{#if !isAuthorized}
+    <div class="h-screen w-full flex flex-col items-center justify-center space-y-4">
+        <Loader2 class="w-10 h-10 animate-spin text-blue-500" />
+        <p class="text-gray-500 text-sm font-mono animate-pulse">Vérification des accès...</p>
     </div>
-    
-    <button 
-  on:click={() => openModal()} 
-  class="btn-themed px-5 py-3 rounded-xl flex items-center gap-2 transition-all hover:scale-105 group border"
-  style="--primary-rgb: var(--color-primary);"
->
-  <Plus class="w-5 h-5 group-hover:rotate-90 transition-transform" />
-  <span class="font-semibold">Nouvelle Procédure</span>
-</button>
-  </header>
-
-  <div class="flex flex-col lg:flex-row gap-8">
-    
-    <aside class="w-full lg:w-1/4 space-y-6" in:fly={{ x: -20, duration: 600, delay: 200 }}>
+{:else}
+    <div class="container mx-auto p-4 md:p-8 space-y-8">
       
-     <div class="relative w-full" style="--primary-rgb: var(--color-primary);">
-  <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 search-icon" />
-  <input 
-    type="search" 
-    bind:value={searchQuery} 
-    on:input={loadProcedures} 
-    placeholder="Rechercher..." 
-    class="input-themed w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder-gray-500 focus:outline-none focus:bg-white/10 transition-all shadow-inner"
-  />
-      </div>
-      
-   <div class="glass-panel rounded-2xl p-4 space-y-2" style="--primary-rgb: var(--color-primary);">
-  <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-    <FolderOpen class="w-4 h-4" /> Catégories
-  </h3>
-  
-  <button 
-    on:click={() => { selectedCategory = 'all'; loadProcedures(); }}
-    class="category-btn w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 flex items-center justify-between
-    {selectedCategory === 'all' ? 'active' : 'inactive'}"
-  >
-    <span>Tout voir</span>
-    {#if selectedCategory === 'all'}
-      <div class="dot"></div>
-    {/if}
-  </button>
-
-  {#each categories as cat}
-    <button 
-      on:click={() => { selectedCategory = cat; loadProcedures(); }}
-      class="category-btn w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 flex items-center justify-between
-      {selectedCategory === cat ? 'active' : 'inactive'}"
+      <header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-white/10 pb-6" in:fly={{ y: -20, duration: 600 }}>
+        <div class="space-y-2">
+          <div class="flex items-center gap-3">
+            <div 
+      class="icon-container p-3 rounded-xl border transition-all"
+      style="--primary-rgb: var(--color-primary);"
     >
-      <span class="truncate">{cat}</span>
-      {#if selectedCategory === cat}
-        <div class="dot"></div>
-      {/if}
-    </button>
-  {/each}
-</div>
-    </aside>
-
-    <main class="flex-1 space-y-6">
-      {#if isLoading}
-        <div class="flex flex-col items-center justify-center py-20 text-gray-400 animate-pulse">
-          <Loader2 class="w-10 h-10 animate-spin mb-4 text-blue-500" />
-          <p>Chargement des connaissances...</p>
+      <Book class="w-8 h-8" />
+    </div>
+            <h1 class="text-3xl font-bold text-white tracking-tight">Base de Connaissances</h1>
+          </div>
+          <p class="text-gray-400 pl-1">Procédures, fiches réflexes et documentation opérationnelle.</p>
         </div>
-      {:else if procedures.length === 0}
-        <div class="glass-panel rounded-2xl p-10 text-center border-dashed border-white/20" in:fade>
-          <FileText class="w-12 h-12 text-gray-600 mx-auto mb-4" />
-          <p class="text-gray-400 text-lg">Aucune procédure ne correspond à votre recherche.</p>
-          <button on:click={() => {searchQuery=''; selectedCategory='all'; loadProcedures();}} class="mt-4 text-blue-400 hover:text-blue-300 underline">Réinitialiser les filtres</button>
-        </div>
-      {:else}
-        <div class="grid grid-cols-1 gap-6">
-          {#each procedures as proc (proc.id)}
-            <div class="glass-panel rounded-2xl overflow-hidden group hover:border-blue-500/30 transition-all duration-300" in:fly={{ y: 20, duration: 400 }}>
-              
-              <div class="px-6 py-4 border-b border-white/5 bg-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                 <h2 
-  class="title-themed text-xl font-bold text-white transition-all flex items-center gap-2"
-  style="--primary-rgb: var(--color-primary);"
->
-                    {proc.titre}
-                  </h2>
-                  <span class="inline-flex items-center rounded-lg bg-blue-500/10 px-2.5 py-0.5 text-xs font-medium text-blue-300 border border-blue-500/20 mt-2">
-                    {proc.categorie}
-                  </span>
-                </div>
-
-                <div class="flex items-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                  <button 
-                    on:click={() => openModal(proc)}
-                    class="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-                    title="Modifier"
-                  >
-                    <Pencil class="w-4 h-4" />
-                  </button>
-                  <button 
-                    on:click={() => deleteProcedure(proc.id, proc.titre)}
-                    class="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                    title="Supprimer"
-                  >
-                    <Trash2 class="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              
-              <div class="p-6">
-                <div class="prose prose-invert max-w-none prose-p:text-gray-300 prose-headings:text-white prose-a:text-blue-400 prose-strong:text-white">
-                  {@html marked(proc.contenu || '')}
-                </div>
-              </div>
-
-{#if proc.attached_docs && proc.attached_docs.length > 0}
-  <div class="px-6 pb-4 flex flex-wrap gap-2" style="--primary-rgb: var(--color-primary);">
-    {#each proc.attached_docs as doc}
-      <a 
-        href={supabase.storage.from('documents').getPublicUrl(doc).data.publicUrl} 
-        target="_blank"
-        class="doc-badge inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all z-10 relative"
-        on:click|stopPropagation
-      >
-        <FileText class="w-3.5 h-3.5" />
-        <span class="truncate max-w-[150px]">{doc}</span>
-      </a>
-    {/each}
-  </div>
-{/if}
-
-              <div class="px-6 py-3 bg-black/20 text-right text-xs text-gray-500 border-t border-white/5 font-mono">
-                Dernière màj : {new Date(proc.updated_at || Date.now()).toLocaleDateString('fr-FR')}
-              </div>
-            </div>
-          {/each}
-        </div>
-      {/if}
-    </main>
-    
-  </div>
-</div>
-
-{#if isModalOpen}
-  <div class="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" transition:fade>
-    <div 
-        class="bg-gray-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh] ring-1 ring-white/10"
-        on:click|stopPropagation
-        transition:fly={{ y: 20, duration: 300 }}
-    >
-      
-      <div class="flex justify-between items-center p-5 border-b border-white/10 bg-white/5">
-        <h3 class="text-xl font-bold text-white flex items-center gap-2">
-            {#if editingProcedure.id}<Pencil class="w-5 h-5 text-blue-400"/>{:else}<Plus class="w-5 h-5 text-green-400"/>{/if}
-            {editingProcedure.id ? 'Modifier' : 'Nouvelle'} Procédure
-        </h3>
-        {#if editingProcedure.id}
-                <button 
-                    on:click={() => loadHistory(editingProcedure.id)}
-                    class="text-xs bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 px-3 py-1.5 rounded-lg flex items-center gap-2 transition-colors"
-                >
-                    <History class="w-3.5 h-3.5" /> Historique
-                </button>
-            {/if}
-        <button on:click={closeModal} class="text-gray-400 hover:text-white transition-colors">
-          <X class="w-6 h-6" />
-        </button>
-      </div>
-      
-      <div class="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-grow">
         
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label for="modal-titre" class="block text-sm font-medium text-gray-400 mb-1">Titre</label>
-            <input 
-              type="text" 
-              id="modal-titre" 
-              bind:value={editingProcedure.titre} 
-              required 
-              class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-blue-500/50 focus:border-transparent outline-none transition-all"
-              placeholder="Ex: Procédure d'urgence..." 
-            />
+        {#if hasPermission(currentUser, ACTIONS.OPERATIONNEL_WRITE)}
+            <button 
+            on:click={() => openModal()} 
+            class="btn-themed px-5 py-3 rounded-xl flex items-center gap-2 transition-all hover:scale-105 group border"
+            style="--primary-rgb: var(--color-primary);"
+            >
+            <Plus class="w-5 h-5 group-hover:rotate-90 transition-transform" />
+            <span class="font-semibold">Nouvelle Procédure</span>
+            </button>
+        {/if}
+      </header>
+
+      <div class="flex flex-col lg:flex-row gap-8">
+        
+        <aside class="w-full lg:w-1/4 space-y-6" in:fly={{ x: -20, duration: 600, delay: 200 }}>
+          
+          <div class="relative w-full" style="--primary-rgb: var(--color-primary);">
+      <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 search-icon" />
+      <input 
+        type="search" 
+        bind:value={searchQuery} 
+        on:input={loadProcedures} 
+        placeholder="Rechercher..." 
+        class="input-themed w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder-gray-500 focus:outline-none focus:bg-white/10 transition-all shadow-inner"
+      />
           </div>
           
-          <div>
-            <label for="modal-categorie" class="block text-sm font-medium text-gray-400 mb-1">Catégorie</label>
-            <input 
-              type="text" 
-              id="modal-categorie" 
-              list="cats"
-              bind:value={editingProcedure.categorie} 
-              required 
-              class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-blue-500/50 focus:border-transparent outline-none transition-all"
-              placeholder="Ex: Sécurité..." 
-            />
-            <datalist id="cats">
-              {#each categories as c} <option value={c} /> {/each}
-            </datalist>
-          </div>
-        </div>
-        
-        <div>
-          <label class="block text-sm font-medium text-gray-400 mb-1">Contenu (Markdown)</label>
-          <div class="border border-white/10 rounded-xl overflow-hidden bg-black/20 min-h-[300px]">
-             <EasyEditor bind:value={editingProcedure.contenu} />
-          </div>
-        </div>
-
-        <div class="pt-4 border-t border-white/5">
-            <label class="block text-sm font-medium text-gray-400 mb-3">Documents liés</label>
-            
-            <div class="flex flex-wrap gap-2 mb-3">
-                {#each currentProcedureDocs as docName}
-                    <span class="bg-blue-500/10 text-blue-300 border border-blue-500/20 px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 group hover:border-red-500/30 hover:bg-red-500/10 transition-colors">
-                        <FileText class="w-3.5 h-3.5 text-blue-400 group-hover:text-red-400 transition-colors"/> 
-                        <span class="truncate max-w-[200px]">{docName}</span>
-                        <button 
-                            type="button" 
-                            on:click={() => toggleFileSelection(docName)} 
-                            class="ml-1 text-blue-400 group-hover:text-red-400 focus:outline-none"
-                            title="Retirer"
-                        >
-                            <X class="w-3.5 h-3.5" />
-                        </button>
-                    </span>
-                {/each}
-            </div>
-
-            <button 
-                type="button"
-                on:click={loadBucketFiles} 
-                class="text-sm bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 text-gray-300 hover:text-white group"
-            >
-                <FolderOpen class="w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform" /> 
-                Sélectionner depuis le stock
-            </button>
-        </div>
-
-      </div>
+        <div class="glass-panel rounded-2xl p-4 space-y-2" style="--primary-rgb: var(--color-primary);">
+      <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+        <FolderOpen class="w-4 h-4" /> Catégories
+      </h3>
       
-      <div class="flex justify-end items-center p-5 border-t border-white/10 bg-white/5 gap-3">
-        <button on:click={closeModal} class="px-4 py-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
-          Annuler
+      <button 
+        on:click={() => { selectedCategory = 'all'; loadProcedures(); }}
+        class="category-btn w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 flex items-center justify-between
+        {selectedCategory === 'all' ? 'active' : 'inactive'}"
+      >
+        <span>Tout voir</span>
+        {#if selectedCategory === 'all'}
+          <div class="dot"></div>
+        {/if}
+      </button>
+
+      {#each categories as cat}
+        <button 
+          on:click={() => { selectedCategory = cat; loadProcedures(); }}
+          class="category-btn w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 flex items-center justify-between
+          {selectedCategory === cat ? 'active' : 'inactive'}"
+        >
+          <span class="truncate">{cat}</span>
+          {#if selectedCategory === cat}
+            <div class="dot"></div>
+          {/if}
         </button>
-       <button 
-  on:click={saveProcedure}
-  disabled={isSaving}
-  class="btn-save px-5 py-2 text-white rounded-xl font-medium transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-  style="--primary-rgb: var(--color-primary);"
->
-  {#if isSaving}
-    <Loader2 class="w-4 h-4 animate-spin"/>
-  {/if}
-  {isSaving ? 'Enregistrement...' : 'Enregistrer'}
-</button>
-      </div>
-
+      {/each}
     </div>
-  </div>
-{/if}
+        </aside>
 
-{#if showDocPicker}
-    <div class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md" transition:fade>
-        <div class="bg-[#1a1d24] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[80vh]">
-            
-            <div class="p-4 border-b border-white/10 flex justify-between items-center bg-white/5">
-                <h3 class="font-bold text-white">Documents disponibles</h3>
-                <button on:click={() => showDocPicker = false} class="text-gray-400 hover:text-white">
-                    <X class="w-5 h-5"/>
-                </button>
+        <main class="flex-1 space-y-6">
+          {#if isLoading}
+            <div class="flex flex-col items-center justify-center py-20 text-gray-400 animate-pulse">
+              <Loader2 class="w-10 h-10 animate-spin mb-4 text-blue-500" />
+              <p>Chargement des connaissances...</p>
             </div>
-
-            <div class="overflow-y-auto p-2 space-y-1 flex-1 custom-scrollbar">
-                {#if bucketFiles.length === 0}
-                    <div class="text-center py-8 text-gray-500">
-                        <p>Aucun fichier trouvé dans le dossier "documents".</p>
+          {:else if procedures.length === 0}
+            <div class="glass-panel rounded-2xl p-10 text-center border-dashed border-white/20" in:fade>
+              <FileText class="w-12 h-12 text-gray-600 mx-auto mb-4" />
+              <p class="text-gray-400 text-lg">Aucune procédure ne correspond à votre recherche.</p>
+              <button on:click={() => {searchQuery=''; selectedCategory='all'; loadProcedures();}} class="mt-4 text-blue-400 hover:text-blue-300 underline">Réinitialiser les filtres</button>
+            </div>
+          {:else}
+            <div class="grid grid-cols-1 gap-6">
+              {#each procedures as proc (proc.id)}
+                <div class="glass-panel rounded-2xl overflow-hidden group hover:border-blue-500/30 transition-all duration-300" in:fly={{ y: 20, duration: 400 }}>
+                  
+                  <div class="px-6 py-4 border-b border-white/5 bg-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                      <h2 
+      class="title-themed text-xl font-bold text-white transition-all flex items-center gap-2"
+      style="--primary-rgb: var(--color-primary);"
+    >
+                        {proc.titre}
+                      </h2>
+                      <span class="inline-flex items-center rounded-lg bg-blue-500/10 px-2.5 py-0.5 text-xs font-medium text-blue-300 border border-blue-500/20 mt-2">
+                        {proc.categorie}
+                      </span>
                     </div>
-                {:else}
-                    {#each bucketFiles as file}
-                        <button 
-                            class="w-full text-left px-4 py-3 rounded-xl flex items-center justify-between transition-colors
-                            {currentProcedureDocs.includes(file.name) ? 'bg-blue-600/20 border border-blue-500/50' : 'hover:bg-white/5 border border-transparent'}"
-                            on:click={() => toggleFileSelection(file.name)}
-                        >
-                            <div class="flex items-center gap-3 overflow-hidden">
-                                <FileText class="w-5 h-5 text-gray-400"/>
-                                <span class="truncate text-gray-200 text-sm">{file.name}</span>
-                            </div>
-                            {#if currentProcedureDocs.includes(file.name)}
-                                <div class="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_5px_currentColor]"></div>
-                            {/if}
-                        </button>
-                    {/each}
+
+                    <div class="flex items-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                      
+                      {#if hasPermission(currentUser, ACTIONS.OPERATIONNEL_WRITE)}
+                          <button 
+                            on:click={() => openModal(proc)}
+                            class="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                            title="Modifier"
+                          >
+                            <Pencil class="w-4 h-4" />
+                          </button>
+                      {/if}
+
+                      {#if hasPermission(currentUser, ACTIONS.OPERATIONNEL_DELETE)}
+                          <button 
+                            on:click={() => deleteProcedure(proc.id, proc.titre)}
+                            class="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                            title="Supprimer"
+                          >
+                            <Trash2 class="w-4 h-4" />
+                          </button>
+                      {/if}
+
+                    </div>
+                  </div>
+                  
+                  <div class="p-6">
+                    <div class="prose prose-invert max-w-none prose-p:text-gray-300 prose-headings:text-white prose-a:text-blue-400 prose-strong:text-white">
+                      {@html marked(proc.contenu || '')}
+                    </div>
+                  </div>
+
+    {#if proc.attached_docs && proc.attached_docs.length > 0}
+      <div class="px-6 pb-4 flex flex-wrap gap-2" style="--primary-rgb: var(--color-primary);">
+        {#each proc.attached_docs as doc}
+          <a 
+            href={supabase.storage.from('documents').getPublicUrl(doc).data.publicUrl} 
+            target="_blank"
+            class="doc-badge inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all z-10 relative"
+            on:click|stopPropagation
+          >
+            <FileText class="w-3.5 h-3.5" />
+            <span class="truncate max-w-[150px]">{doc}</span>
+          </a>
+        {/each}
+      </div>
+    {/if}
+
+                  <div class="px-6 py-3 bg-black/20 text-right text-xs text-gray-500 border-t border-white/5 font-mono">
+                    Dernière màj : {new Date(proc.updated_at || Date.now()).toLocaleDateString('fr-FR')}
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </main>
+        
+      </div>
+    </div>
+
+    {#if isModalOpen}
+      <div class="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" transition:fade>
+        <div 
+            class="bg-gray-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh] ring-1 ring-white/10"
+            on:click|stopPropagation
+            transition:fly={{ y: 20, duration: 300 }}
+        >
+          
+          <div class="flex justify-between items-center p-5 border-b border-white/10 bg-white/5">
+            <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                {#if editingProcedure.id}<Pencil class="w-5 h-5 text-blue-400"/>{:else}<Plus class="w-5 h-5 text-green-400"/>{/if}
+                {editingProcedure.id ? 'Modifier' : 'Nouvelle'} Procédure
+            </h3>
+            {#if editingProcedure.id}
+                    <button 
+                        on:click={() => loadHistory(editingProcedure.id)}
+                        class="text-xs bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 px-3 py-1.5 rounded-lg flex items-center gap-2 transition-colors"
+                    >
+                        <History class="w-3.5 h-3.5" /> Historique
+                    </button>
                 {/if}
+            <button on:click={closeModal} class="text-gray-400 hover:text-white transition-colors">
+              <X class="w-6 h-6" />
+            </button>
+          </div>
+          
+          <div class="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-grow">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label for="modal-titre" class="block text-sm font-medium text-gray-400 mb-1">Titre</label>
+                <input 
+                  type="text" 
+                  id="modal-titre" 
+                  bind:value={editingProcedure.titre} 
+                  required 
+                  class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-blue-500/50 focus:border-transparent outline-none transition-all"
+                  placeholder="Ex: Procédure d'urgence..." 
+                />
+              </div>
+              
+              <div>
+                <label for="modal-categorie" class="block text-sm font-medium text-gray-400 mb-1">Catégorie</label>
+                <input 
+                  type="text" 
+                  id="modal-categorie" 
+                  list="cats"
+                  bind:value={editingProcedure.categorie} 
+                  required 
+                  class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-blue-500/50 focus:border-transparent outline-none transition-all"
+                  placeholder="Ex: Sécurité..." 
+                />
+                <datalist id="cats">
+                  {#each categories as c} <option value={c} /> {/each}
+                </datalist>
+              </div>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-400 mb-1">Contenu (Markdown)</label>
+              <div class="border border-white/10 rounded-xl overflow-hidden bg-black/20 min-h-[300px]">
+                 <EasyEditor bind:value={editingProcedure.contenu} />
+              </div>
             </div>
 
-            <div class="p-4 border-t border-white/10 bg-white/5 text-right">
-                <button on:click={() => showDocPicker = false} class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium">
-                    Terminer
+            <div class="pt-4 border-t border-white/5">
+                <label class="block text-sm font-medium text-gray-400 mb-3">Documents liés</label>
+                
+                <div class="flex flex-wrap gap-2 mb-3">
+                    {#each currentProcedureDocs as docName}
+                        <span class="bg-blue-500/10 text-blue-300 border border-blue-500/20 px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 group hover:border-red-500/30 hover:bg-red-500/10 transition-colors">
+                            <FileText class="w-3.5 h-3.5 text-blue-400 group-hover:text-red-400 transition-colors"/> 
+                            <span class="truncate max-w-[200px]">{docName}</span>
+                            <button 
+                                type="button" 
+                                on:click={() => toggleFileSelection(docName)} 
+                                class="ml-1 text-blue-400 group-hover:text-red-400 focus:outline-none"
+                                title="Retirer"
+                            >
+                                <X class="w-3.5 h-3.5" />
+                            </button>
+                        </span>
+                    {/each}
+                </div>
+
+                <button 
+                    type="button"
+                    on:click={loadBucketFiles} 
+                    class="text-sm bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 text-gray-300 hover:text-white group"
+                >
+                    <FolderOpen class="w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform" /> 
+                    Sélectionner depuis le stock
                 </button>
             </div>
+
+          </div>
+          
+          <div class="flex justify-end items-center p-5 border-t border-white/10 bg-white/5 gap-3">
+            <button on:click={closeModal} class="px-4 py-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
+              Annuler
+            </button>
+           <button 
+      on:click={saveProcedure}
+      disabled={isSaving}
+      class="btn-save px-5 py-2 text-white rounded-xl font-medium transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+      style="--primary-rgb: var(--color-primary);"
+    >
+      {#if isSaving}
+        <Loader2 class="w-4 h-4 animate-spin"/>
+      {/if}
+      {isSaving ? 'Enregistrement...' : 'Enregistrer'}
+    </button>
+          </div>
+
         </div>
-    </div>
-{/if}
+      </div>
+    {/if}
 
-{#if showHistoryModal}
-    <div class="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md" transition:fade>
-        <div class="bg-[#1a1d24] border border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[80vh]">
-            
-            <div class="p-4 border-b border-white/10 flex justify-between items-center bg-white/5">
-                <h3 class="font-bold text-white flex items-center gap-2">
-                    <History class="w-5 h-5 text-purple-400"/> Historique des versions
-                </h3>
-                <button on:click={() => showHistoryModal = false} class="text-gray-400 hover:text-white"><X class="w-5 h-5"/></button>
-            </div>
+    {#if showDocPicker}
+        <div class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md" transition:fade>
+            <div class="bg-[#1a1d24] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[80vh]">
+                
+                <div class="p-4 border-b border-white/10 flex justify-between items-center bg-white/5">
+                    <h3 class="font-bold text-white">Documents disponibles</h3>
+                    <button on:click={() => showDocPicker = false} class="text-gray-400 hover:text-white">
+                        <X class="w-5 h-5"/>
+                    </button>
+                </div>
 
-            <div class="overflow-y-auto p-4 space-y-3 flex-1 custom-scrollbar">
-                {#if isLoadingVersions}
-                    <div class="text-center py-8 text-gray-500"><Loader2 class="w-6 h-6 animate-spin mx-auto"/> Chargement...</div>
-                {:else if procedureVersions.length === 0}
-                    <div class="text-center py-8 text-gray-500">Aucune ancienne version disponible.</div>
-                {:else}
-                    {#each procedureVersions as version}
-                        <div class="bg-white/5 border border-white/5 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:border-white/10 transition-colors">
-                            <div>
-                                <div class="text-white font-medium">
-                                    {new Date(version.archived_at).toLocaleString('fr-FR')}
-                                </div>
-                                <div class="text-xs text-gray-400 mt-1">
-                                    Par: <span class="text-gray-300">{version.profiles?.full_name || 'Utilisateur inconnu'}</span>
-                                </div>
-                                <div class="text-xs text-gray-500 mt-0.5">
-                                    Titre: {version.titre}
-                                </div>
-                            </div>
-                            
-                            <button 
-                                on:click={() => restoreVersion(version)}
-                                class="flex items-center gap-2 px-3 py-2 bg-purple-600/20 text-purple-300 hover:bg-purple-600 hover:text-white border border-purple-500/30 rounded-lg text-xs font-bold transition-all"
-                            >
-                                <RotateCcw class="w-3.5 h-3.5" /> Restaurer
-                            </button>
+                <div class="overflow-y-auto p-2 space-y-1 flex-1 custom-scrollbar">
+                    {#if bucketFiles.length === 0}
+                        <div class="text-center py-8 text-gray-500">
+                            <p>Aucun fichier trouvé dans le dossier "documents".</p>
                         </div>
-                    {/each}
-                {/if}
-            </div>
+                    {:else}
+                        {#each bucketFiles as file}
+                            <button 
+                                class="w-full text-left px-4 py-3 rounded-xl flex items-center justify-between transition-colors
+                                {currentProcedureDocs.includes(file.name) ? 'bg-blue-600/20 border border-blue-500/50' : 'hover:bg-white/5 border border-transparent'}"
+                                on:click={() => toggleFileSelection(file.name)}
+                            >
+                                <div class="flex items-center gap-3 overflow-hidden">
+                                    <FileText class="w-5 h-5 text-gray-400"/>
+                                    <span class="truncate text-gray-200 text-sm">{file.name}</span>
+                                </div>
+                                {#if currentProcedureDocs.includes(file.name)}
+                                    <div class="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_5px_currentColor]"></div>
+                                {/if}
+                            </button>
+                        {/each}
+                    {/if}
+                </div>
 
-            <div class="p-4 border-t border-white/10 bg-white/5 text-right text-xs text-gray-500">
-                La restauration remplace le contenu de l'éditeur (sans sauvegarder immédiatement).
+                <div class="p-4 border-t border-white/10 bg-white/5 text-right">
+                    <button on:click={() => showDocPicker = false} class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium">
+                        Terminer
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
-{/if}
-<style>
+    {/if}
+
+    {#if showHistoryModal}
+        <div class="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md" transition:fade>
+            <div class="bg-[#1a1d24] border border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[80vh]">
+                
+                <div class="p-4 border-b border-white/10 flex justify-between items-center bg-white/5">
+                    <h3 class="font-bold text-white flex items-center gap-2">
+                        <History class="w-5 h-5 text-purple-400"/> Historique des versions
+                    </h3>
+                    <button on:click={() => showHistoryModal = false} class="text-gray-400 hover:text-white"><X class="w-5 h-5"/></button>
+                </div>
+
+                <div class="overflow-y-auto p-4 space-y-3 flex-1 custom-scrollbar">
+                    {#if isLoadingVersions}
+                        <div class="text-center py-8 text-gray-500"><Loader2 class="w-6 h-6 animate-spin mx-auto"/> Chargement...</div>
+                    {:else if procedureVersions.length === 0}
+                        <div class="text-center py-8 text-gray-500">Aucune ancienne version disponible.</div>
+                    {:else}
+                        {#each procedureVersions as version}
+                            <div class="bg-white/5 border border-white/5 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:border-white/10 transition-colors">
+                                <div>
+                                    <div class="text-white font-medium">
+                                        {new Date(version.archived_at).toLocaleString('fr-FR')}
+                                    </div>
+                                    <div class="text-xs text-gray-400 mt-1">
+                                        Par: <span class="text-gray-300">{version.profiles?.full_name || 'Utilisateur inconnu'}</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-0.5">
+                                        Titre: {version.titre}
+                                    </div>
+                                </div>
+                                
+                                <button 
+                                    on:click={() => restoreVersion(version)}
+                                    class="flex items-center gap-2 px-3 py-2 bg-purple-600/20 text-purple-300 hover:bg-purple-600 hover:text-white border border-purple-500/30 rounded-lg text-xs font-bold transition-all"
+                                >
+                                    <RotateCcw class="w-3.5 h-3.5" /> Restaurer
+                                </button>
+                            </div>
+                        {/each}
+                    {/if}
+                </div>
+
+                <div class="p-4 border-t border-white/10 bg-white/5 text-right text-xs text-gray-500">
+                    La restauration remplace le contenu de l'éditeur (sans sauvegarder immédiatement).
+                </div>
+            </div>
+        </div>
+    {/if}
+
+{/if} <style>
   /* 1. La zone de texte principale (CodeMirror) */
   :global(.EasyMDEContainer .CodeMirror) {
     background-color: rgba(0, 0, 0, 0.3) !important; /* Fond sombre translucide */
