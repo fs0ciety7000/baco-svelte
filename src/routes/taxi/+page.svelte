@@ -41,22 +41,34 @@
     remarques: ''  
   };
 
-  onMount(async () => {
-    // 1. Auth & Permissions
-    const { data: { user } } = await supabase.auth.getSession();
-    if (!user) return goto('/');
+onMount(async () => {
+    // 1. Récupérer la session (plus fiable que getUser directement parfois)
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // Si vraiment pas de session, alors on login
+    if (!session) {
+        console.warn("Pas de session active -> Redirection Login");
+        return goto('/');
+    }
 
-    // Récupérer le profil complet
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-    currentUser = { ...user, ...profile };
+    // 2. Récupérer le profil
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+    
+    // Fusion
+    currentUser = { ...session.user, ...profile };
 
-    // 2. SÉCURITÉ : Vérifier le droit de LECTURE
+    // 3. VERIFICATION PERMISSION (Avec log pour débugger)
     if (!hasPermission(currentUser, ACTIONS.TAXI_READ)) {
+        console.warn("Permission TAXI_READ manquante -> Redirection Accueil");
         toast.error("Accès refusé.");
         return goto('/accueil');
     }
 
-    // 3. Charger les données
+    // 4. Charger les données
     await loadFilters();
   });
 
