@@ -598,8 +598,8 @@ async function generatePDF() {
 
     <button 
   on:click={() => showTutorial = true}
-  class="p-2.5 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-all mr-2"
-  title="Tutoriel / Aide"
+  class="btn-themed px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all border"
+  style="--primary-rgb: var(--color-primary);"
 >
   <School class="w-5 h-5" />
 </button>
