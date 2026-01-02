@@ -6,6 +6,9 @@
   import autoTable from 'jspdf-autotable';
   import { openConfirmModal } from '$lib/stores/modal.js';
   import { toast } from '$lib/stores/toast.js';
+  import { page } from '$app/stores'; // Ajouté pour gérer les URL params si besoin
+  import { goto } from '$app/navigation';
+  
   // Import du store de thème
   import { currentThemeId } from '$lib/stores/theme';
   import { 
@@ -13,6 +16,9 @@
     Printer, Search, X, User, Users, ArrowRightLeft, 
     Mail, ClipboardCopy, Check, Phone, ArrowRight, MoreHorizontal, FilePenLine, MessageSquare, Repeat, CornerDownRight
   } from 'lucide-svelte';
+
+  // IMPORT PERMISSIONS
+  import { hasPermission, ACTIONS } from '$lib/permissions';
 
   // --- CONSTANTES ---
   const PMR_CAUSES = [
@@ -53,6 +59,10 @@
   let selectedCommand = null; 
   let emailPreviewContent = ""; 
   let uniqueStationNames = [];
+
+  // User & Permissions
+  let currentUserProfile = null;
+  let isAuthorized = false;
 
   // --- FONCTIONS UTILITAIRES ---
 
@@ -131,19 +141,39 @@
 
   let form = JSON.parse(JSON.stringify(initialForm));
 
+  // Variable réactive pour le verrouillage (Si pas de droits WRITE ou si envoyé)
+  $: isLocked = form.status === 'envoye' || !hasPermission(currentUserProfile, ACTIONS.GENERATE_TAXI_WRITE);
+
   // --- CHARGEMENT ---
   onMount(async () => {
-    await Promise.all([loadHistory(), loadTaxis(), loadPmrClients(), loadStations(), loadCurrentUser()]);
+    // 1. Auth Check
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return goto('/');
+
+    // 2. Profil & Permissions
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+    
+    currentUserProfile = { ...session.user, ...profile };
+
+    // 3. Vérification Permission LECTURE
+    if (!hasPermission(currentUserProfile, ACTIONS.GENERATE_TAXI_READ)) {
+        toast.error("Accès refusé.");
+        return goto('/accueil');
+    }
+
+    // 4. Autorisation OK -> Chargement
+    isAuthorized = true;
+    await Promise.all([loadHistory(), loadTaxis(), loadPmrClients(), loadStations()]);
+    
+    // Initialiser le rédacteur si nouvelle commande
+    if (!form.id) form.redacteur = currentUserProfile.full_name || currentUserProfile.email;
+    
     isLoading = false;
   });
-
-  async function loadCurrentUser() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-          const { data } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
-          if (!form.id) form.redacteur = data?.full_name || user.email;
-      }
-  }
 
   async function loadHistory() {
     const { data, error } = await supabase.from('taxi_commands').select('*').order('created_at', { ascending: false }).limit(50);
@@ -256,9 +286,12 @@ ${data.redacteur || 'SNCB'}`;
   // --- ACTIONS ---
 
   function openNew() {
+      // SÉCURITÉ WRITE CHECK
+      if (!hasPermission(currentUserProfile, ACTIONS.GENERATE_TAXI_WRITE)) return;
+
       form = JSON.parse(JSON.stringify(initialForm));
       form.date_trajet = toLocalInput(); 
-      loadCurrentUser();
+      form.redacteur = currentUserProfile.full_name || currentUserProfile.email;
       view = 'form';
   }
 
@@ -296,6 +329,11 @@ ${data.redacteur || 'SNCB'}`;
   }
 
   async function saveCommande() {
+      // SÉCURITÉ WRITE CHECK
+      if (!hasPermission(currentUserProfile, ACTIONS.GENERATE_TAXI_WRITE)) {
+          return toast.error("Action non autorisée.");
+      }
+
       if (!form.taxi_nom) return toast.error("Indiquez une société de taxi");
       if (!form.gare_arrivee) return toast.error("Destination requise");
 
@@ -348,6 +386,11 @@ ${data.redacteur || 'SNCB'}`;
   }
 
   function deleteCommande(id) {
+    // SÉCURITÉ DELETE CHECK
+    if (!hasPermission(currentUserProfile, ACTIONS.GENERATE_TAXI_DELETE)) {
+        return toast.error("Suppression non autorisée.");
+    }
+
     if(selectedCommand) selectedCommand = null; 
     openConfirmModal("Supprimer cette commande taxi ?", async () => {
         await supabase.from('taxi_commands').delete().eq('id', id);
@@ -529,155 +572,185 @@ ${data.redacteur || 'SNCB'}`;
       if (selectedCommand) selectedCommand = null;
   }
 
-  // --- VARIABLES CSS THEME (primary-color) ---
+  function sendEmail() {
+    const society = availableSocietes.find(s => s.id === form.societe_id);
+    const emailTo = society?.email || "";
+    // Sélectionner le bon sujet selon le type
+    const prefix = form.is_pmr ? `Commande Taxi PMR` : `Commande Taxi`;
+    const subject = encodeURIComponent(`${prefix} - ${new Date(form.date_trajet).toLocaleDateString('fr-BE')} - ${form.gare_origine} > ${form.gare_arrivee}`);
+    
+    window.location.href = `mailto:${emailTo}?subject=${subject}&body=${encodeURIComponent(emailBody)}`;
+    toast.info("N'oubliez pas de joindre le PDF à l'e-mail Outlook !");
+  }
+
+  // Styles
   const inputClass = "w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-[rgb(var(--color-primary))] outline-none transition-all placeholder-gray-600";
   const labelClass = "block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1 flex items-center gap-1";
 </script>
 
-<div class="container mx-auto p-4 md:p-8 space-y-8 min-h-screen">
-  <header class="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-white/5 pb-6">
-    <div class="flex items-center gap-3">
-        <div class="p-3 rounded-xl bg-[rgba(var(--color-primary),0.1)] text-[rgb(var(--color-primary))] border border-[rgba(var(--color-primary),0.2)] shadow-[0_0_15px_rgba(var(--color-primary),0.15)]"><Car class="w-8 h-8" /></div>
-        <div><h1 class="text-3xl font-bold text-gray-200 tracking-tight">Taxi</h1><p class="text-gray-500 text-sm mt-1">Commandes de Taxis & PMR.</p></div>
+<svelte:head>
+  <title>C3 | Commande Taxi</title>
+</svelte:head>
+
+{#if !isAuthorized}
+    <div class="h-screen w-full flex flex-col items-center justify-center space-y-4">
+        <Loader2 class="w-10 h-10 animate-spin text-[rgb(var(--color-primary))]" />
+        <p class="text-gray-500 text-sm font-mono animate-pulse">Vérification des accès...</p>
     </div>
-    {#if view === 'list'}
-        <button on:click={openNew} class="bg-[rgba(var(--color-primary),0.2)] hover:bg-[rgba(var(--color-primary),0.3)] text-[rgb(var(--color-primary))] border border-[rgba(var(--color-primary),0.3)] px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all"><Plus class="w-5 h-5" /> Nouvelle Commande</button>
-    {:else}
-        <button on:click={goBackToList} class="bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-all"><ArrowLeft class="w-5 h-5" /> Retour liste</button>
-    {/if}
-  </header>
-
-  {#if isLoading}
-    <div class="flex justify-center py-20"><Loader2 class="w-10 h-10 animate-spin text-[rgb(var(--color-primary))]" /></div>
-  {:else}
-    {#if view === 'list'}
-        <div class="grid grid-cols-1 gap-4" in:fly={{ y: 20 }}>
-            {#if commandes.length === 0}
-                <div class="text-center py-12 border border-dashed border-white/10 rounded-2xl bg-black/20"><p class="text-gray-500">Aucune commande taxi récente.</p></div>
-            {:else}
-                {#each commandes as cmd}
-                    <button on:click={() => openHistoryOptions(cmd)} class="w-full text-left bg-black/20 border border-white/5 rounded-2xl p-4 md:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-[rgba(var(--color-primary),0.3)] hover:bg-white/[0.02] transition-all group relative overflow-hidden">
-                        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                        <div class="flex-grow space-y-3 relative z-10 w-full">
-                             <div class="flex items-center gap-3 flex-wrap">
-                                {#if cmd.is_pmr}<span class="px-2 py-1 rounded text-[10px] font-bold uppercase bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1"><Users size={10}/> PMR</span>
-                                {:else}<span class="px-2 py-1 rounded text-[10px] font-bold uppercase bg-[rgba(var(--color-primary),0.1)] text-[rgb(var(--color-primary))] border border-[rgba(var(--color-primary),0.2)] flex items-center gap-1"><User size={10}/> Clientèle Standard</span>{/if}
-                                
-                                <span class="px-2 py-1 rounded text-[10px] font-bold uppercase border {cmd.type_trajet === 'aller-retour' ? 'bg-blue-500/10 text-blue-300 border-blue-500/20' : 'bg-gray-500/10 text-gray-400 border-gray-500/20'} flex items-center gap-1">
-                                    {#if cmd.type_trajet === 'aller-retour'}<Repeat size={10}/> Aller-Retour{:else}<ArrowRight size={10}/> Aller Simple{/if}
-                                </span>
-
-                                <span class="text-lg font-bold text-white tracking-tight">{cmd.taxi_nom}</span>
-                                {#if cmd.is_pmr && cmd.pmr_dossier}<span class="ml-auto md:ml-0 text-xs font-mono text-purple-200 bg-purple-900/20 px-2 py-0.5 rounded border border-purple-500/20">Dos: {cmd.pmr_dossier}</span>
-                                {:else if cmd.relation_number}<span class="ml-auto md:ml-0 text-xs font-mono text-[rgb(var(--color-primary))] bg-[rgba(var(--color-primary),0.1)] px-2 py-0.5 rounded border border-[rgba(var(--color-primary),0.2)]">Réf: {cmd.relation_number}</span>{/if}
-                             </div>
-                             <div class="flex flex-wrap items-center gap-4 text-sm text-gray-400">
-                                <div class="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-lg border border-white/5"><Calendar size={14} class="text-gray-500"/> <span class="font-medium text-gray-200">{new Date(cmd.date_trajet).toLocaleDateString('fr-BE', {timeZone:'UTC'})}</span><span class="w-px h-3 bg-white/10 mx-1"></span><span class="font-bold text-[rgb(var(--color-primary))]">{formatTimeLocal(cmd.date_trajet)}</span></div>
-                                <div class="flex items-center gap-2"><span class="text-white font-medium">{cmd.gare_origine}</span> <ArrowRight size={14} class="text-gray-600"/> {#if cmd.gare_via}<span class="text-xs text-yellow-500 bg-yellow-500/10 px-1.5 py-0.5 rounded border border-yellow-500/20">{cmd.gare_via}</span><ArrowRight size={14} class="text-gray-600"/>{/if}<span class="text-white font-medium">{cmd.gare_arrivee}</span></div>
-                             </div>
-                             
-                             {#if cmd.type_trajet === 'aller-retour'}
-                                <div class="w-full h-px bg-white/5 my-1"></div>
-                                <div class="flex items-center gap-4 text-sm text-gray-400">
-                                    <div class="flex items-center gap-2 bg-blue-900/20 px-3 py-1.5 rounded-lg border border-blue-500/10">
-                                        <Calendar size={14} class="text-blue-400"/>
-                                        <span class="font-medium text-gray-200">{new Date(cmd.date_retour).toLocaleDateString('fr-BE', {timeZone:'UTC'})}</span>
-                                        <span class="w-px h-3 bg-white/10 mx-1"></span>
-                                        <span class="font-bold text-blue-300">{formatTimeLocal(cmd.date_retour)}</span>
-                                    </div>
-                                    <div class="flex items-center gap-2 text-blue-200/70">
-                                        <span class="font-medium">{cmd.gare_retour_origine}</span>
-                                        <ArrowRight size={14} />
-                                        <span class="font-medium">{cmd.gare_retour_arrivee}</span>
-                                    </div>
-                                </div>
-                             {/if}
-                        </div>
-                        <div class="opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 bg-white/5 p-2 rounded-full border border-white/10"><MoreHorizontal size={20} /></div>
-                    </button>
-                {/each}
+{:else}
+    <div class="container mx-auto p-4 md:p-8 space-y-8 min-h-screen">
+      <header class="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-white/5 pb-6">
+        <div class="flex items-center gap-3">
+            <div class="p-3 rounded-xl bg-[rgba(var(--color-primary),0.1)] text-[rgb(var(--color-primary))] border border-[rgba(var(--color-primary),0.2)] shadow-[0_0_15px_rgba(var(--color-primary),0.15)]"><Car class="w-8 h-8" /></div>
+            <div><h1 class="text-3xl font-bold text-gray-200 tracking-tight">Taxi</h1><p class="text-gray-500 text-sm mt-1">Commandes de Taxis & PMR.</p></div>
+        </div>
+        
+        {#if view === 'list'}
+            {#if hasPermission(currentUserProfile, ACTIONS.GENERATE_TAXI_WRITE)}
+                <button on:click={openNew} class="bg-[rgba(var(--color-primary),0.2)] hover:bg-[rgba(var(--color-primary),0.3)] text-[rgb(var(--color-primary))] border border-[rgba(var(--color-primary),0.3)] px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all"><Plus class="w-5 h-5" /> Nouvelle Commande</button>
             {/if}
-        </div>
-    {:else}
-        <div class="grid grid-cols-1 xl:grid-cols-3 gap-8" in:fade>
-             <div class="xl:col-span-2 space-y-6">
-                <div class="bg-black/20 border border-white/5 rounded-2xl p-6 space-y-4">
-                    <h3 class="text-sm font-bold text-[rgb(var(--color-primary))] uppercase tracking-wide mb-4 flex items-center gap-2"><FileText size={16}/> Mission</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="md:col-span-2">
-                            {#if form.is_pmr}
-                                <label class={labelClass}>Cause (PMR)</label>
-                                <select bind:value={form.pmr_motif} class={inputClass + " mb-3"}>
-                                    <option value="" disabled selected>-- Sélectionner une cause --</option>
-                                    {#each PMR_CAUSES as cause}
-                                        <option value={cause}>{cause}</option>
-                                    {/each}
-                                </select>
-                                <label class={labelClass}><MessageSquare size={12}/> Remarques</label>
-                                <input type="text" bind:value={form.motif} class={inputClass} placeholder="Détails supplémentaires...">
-                            {:else}
-                                <label class={labelClass}>Motif</label>
-                                <input type="text" bind:value={form.motif} class={inputClass} placeholder="Ex: Dérangement L.96...">
-                            {/if}
+        {:else}
+            <button on:click={goBackToList} class="bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-all"><ArrowLeft class="w-5 h-5" /> Retour liste</button>
+        {/if}
+      </header>
+
+      {#if isLoading}
+        <div class="flex justify-center py-20"><Loader2 class="w-10 h-10 animate-spin text-[rgb(var(--color-primary))]" /></div>
+      {:else}
+        {#if view === 'list'}
+            <div class="grid grid-cols-1 gap-4" in:fly={{ y: 20 }}>
+                {#if commandes.length === 0}
+                    <div class="text-center py-12 border border-dashed border-white/10 rounded-2xl bg-black/20"><p class="text-gray-500">Aucune commande taxi récente.</p></div>
+                {:else}
+                    {#each commandes as cmd}
+                        <button on:click={() => openHistoryOptions(cmd)} class="w-full text-left bg-black/20 border border-white/5 rounded-2xl p-4 md:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-[rgba(var(--color-primary),0.3)] hover:bg-white/[0.02] transition-all group relative overflow-hidden">
+                            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                            <div class="flex-grow space-y-3 relative z-10 w-full">
+                                 <div class="flex items-center gap-3 flex-wrap">
+                                    {#if cmd.is_pmr}<span class="px-2 py-1 rounded text-[10px] font-bold uppercase bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1"><Users size={10}/> PMR</span>
+                                    {:else}<span class="px-2 py-1 rounded text-[10px] font-bold uppercase bg-[rgba(var(--color-primary),0.1)] text-[rgb(var(--color-primary))] border border-[rgba(var(--color-primary),0.2)] flex items-center gap-1"><User size={10}/> Clientèle Standard</span>{/if}
+                                    
+                                    <span class="px-2 py-1 rounded text-[10px] font-bold uppercase border {cmd.type_trajet === 'aller-retour' ? 'bg-blue-500/10 text-blue-300 border-blue-500/20' : 'bg-gray-500/10 text-gray-400 border-gray-500/20'} flex items-center gap-1">
+                                        {#if cmd.type_trajet === 'aller-retour'}<Repeat size={10}/> Aller-Retour{:else}<ArrowRight size={10}/> Aller Simple{/if}
+                                    </span>
+
+                                    <span class="text-lg font-bold text-white tracking-tight">{cmd.taxi_nom}</span>
+                                    {#if cmd.is_pmr && cmd.pmr_dossier}<span class="ml-auto md:ml-0 text-xs font-mono text-purple-200 bg-purple-900/20 px-2 py-0.5 rounded border border-purple-500/20">Dos: {cmd.pmr_dossier}</span>
+                                    {:else if cmd.relation_number}<span class="ml-auto md:ml-0 text-xs font-mono text-[rgb(var(--color-primary))] bg-[rgba(var(--color-primary),0.1)] px-2 py-0.5 rounded border border-[rgba(var(--color-primary),0.2)]">Réf: {cmd.relation_number}</span>{/if}
+                                 </div>
+                                 <div class="flex flex-wrap items-center gap-4 text-sm text-gray-400">
+                                    <div class="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-lg border border-white/5"><Calendar size={14} class="text-gray-500"/> <span class="font-medium text-gray-200">{new Date(cmd.date_trajet).toLocaleDateString('fr-BE', {timeZone:'UTC'})}</span><span class="w-px h-3 bg-white/10 mx-1"></span><span class="font-bold text-[rgb(var(--color-primary))]">{formatTimeLocal(cmd.date_trajet)}</span></div>
+                                    <div class="flex items-center gap-2"><span class="text-white font-medium">{cmd.gare_origine}</span> <ArrowRight size={14} class="text-gray-600"/> {#if cmd.gare_via}<span class="text-xs text-yellow-500 bg-yellow-500/10 px-1.5 py-0.5 rounded border border-yellow-500/20">{cmd.gare_via}</span><ArrowRight size={14} class="text-gray-600"/>{/if}<span class="text-white font-medium">{cmd.gare_arrivee}</span></div>
+                                 </div>
+                                 
+                                 {#if cmd.type_trajet === 'aller-retour'}
+                                    <div class="w-full h-px bg-white/5 my-1"></div>
+                                    <div class="flex items-center gap-4 text-sm text-gray-400">
+                                        <div class="flex items-center gap-2 bg-blue-900/20 px-3 py-1.5 rounded-lg border border-blue-500/10">
+                                            <Calendar size={14} class="text-blue-400"/>
+                                            <span class="font-medium text-gray-200">{new Date(cmd.date_retour).toLocaleDateString('fr-BE', {timeZone:'UTC'})}</span>
+                                            <span class="w-px h-3 bg-white/10 mx-1"></span>
+                                            <span class="font-bold text-blue-300">{formatTimeLocal(cmd.date_retour)}</span>
+                                        </div>
+                                        <div class="flex items-center gap-2 text-blue-200/70">
+                                            <span class="font-medium">{cmd.gare_retour_origine}</span>
+                                            <ArrowRight size={14} />
+                                            <span class="font-medium">{cmd.gare_retour_arrivee}</span>
+                                        </div>
+                                    </div>
+                                 {/if}
+                            </div>
+                            <div class="opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 bg-white/5 p-2 rounded-full border border-white/10"><MoreHorizontal size={20} /></div>
+                        </button>
+                    {/each}
+                {/if}
+            </div>
+        {:else}
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-8" in:fade>
+                 <div class="xl:col-span-2 space-y-6">
+                    <div class="bg-black/20 border border-white/5 rounded-2xl p-6 space-y-4">
+                        <h3 class="text-sm font-bold text-[rgb(var(--color-primary))] uppercase tracking-wide mb-4 flex items-center gap-2"><FileText size={16}/> Mission</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="md:col-span-2">
+                                {#if form.is_pmr}
+                                    <label class={labelClass}>Cause (PMR)</label>
+                                    <select bind:value={form.pmr_motif} class={inputClass + " mb-3"} disabled={isLocked}>
+                                        <option value="" disabled selected>-- Sélectionner une cause --</option>
+                                        {#each PMR_CAUSES as cause}
+                                            <option value={cause}>{cause}</option>
+                                        {/each}
+                                    </select>
+                                    <label class={labelClass}><MessageSquare size={12}/> Remarques</label>
+                                    <input type="text" bind:value={form.motif} disabled={isLocked} class={inputClass} placeholder="Détails supplémentaires...">
+                                {:else}
+                                    <label class={labelClass}>Motif</label>
+                                    <input type="text" bind:value={form.motif} disabled={isLocked} class={inputClass} placeholder="Ex: Dérangement L.96...">
+                                {/if}
+                            </div>
+                            <div><label class={labelClass}>Rédacteur</label><input type="text" bind:value={form.redacteur} class={inputClass} readonly></div>
+                            <div><label class={labelClass}>Facturation</label><select bind:value={form.facturation} disabled={isLocked} class={inputClass}>{#each FACTURATION_OPTIONS as opt}<option value={opt}>{opt}</option>{/each}</select></div>
                         </div>
-                        <div><label class={labelClass}>Rédacteur</label><input type="text" bind:value={form.redacteur} class={inputClass} readonly></div>
-                        <div><label class={labelClass}>Facturation</label><select bind:value={form.facturation} class={inputClass}>{#each FACTURATION_OPTIONS as opt}<option value={opt}>{opt}</option>{/each}</select></div>
+                    </div>
+                    <div class="bg-black/20 border border-white/5 rounded-2xl p-6 space-y-4">
+                         <div class="flex justify-between items-center mb-4"><h3 class="text-sm font-bold text-blue-400 uppercase tracking-wide flex items-center gap-2"><MapPin size={16}/> Trajet</h3>
+                            <div class="flex items-center bg-white/5 p-1 rounded-lg border border-white/10"><button disabled={isLocked} class="px-3 py-1 text-xs font-bold rounded-md transition-all {form.type_trajet === 'aller' ? 'bg-blue-500 text-white shadow' : 'text-gray-500 hover:text-gray-300'}" on:click={() => !isLocked && (form.type_trajet = 'aller')}>Aller Simple</button><button disabled={isLocked} class="px-3 py-1 text-xs font-bold rounded-md transition-all {form.type_trajet === 'aller-retour' ? 'bg-blue-500 text-white shadow' : 'text-gray-500 hover:text-gray-300'}" on:click={() => !isLocked && (form.type_trajet = 'aller-retour')}>Aller-Retour</button></div></div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label class={labelClass}>Date & Heure</label><input type="datetime-local" bind:value={form.date_trajet} disabled={isLocked} class="{inputClass} dark:[color-scheme:dark]"></div><div><label class={labelClass}>Via (Optionnel)</label><input type="text" list="stations" bind:value={form.gare_via} disabled={isLocked} class={inputClass}></div><div><label class={labelClass}>Départ</label><input type="text" list="stations" bind:value={form.gare_origine} disabled={isLocked} class={inputClass}></div><div><label class={labelClass}>Arrivée</label><input type="text" list="stations" bind:value={form.gare_arrivee} disabled={isLocked} class={inputClass}></div></div>
+                        {#if form.type_trajet === 'aller-retour'}<div class="mt-4 pt-4 border-t border-white/5 grid grid-cols-1 md:grid-cols-2 gap-4" transition:slide><div class="md:col-span-2"><label class="{labelClass} text-blue-400">Date Retour</label><input type="datetime-local" bind:value={form.date_retour} disabled={isLocked} class="{inputClass} dark:[color-scheme:dark] border-blue-500/30"></div><div><label class={labelClass}>Départ Retour</label><input type="text" list="stations" bind:value={form.gare_retour_origine} disabled={isLocked} class={inputClass}></div><div><label class={labelClass}>Arrivée Retour</label><input type="text" list="stations" bind:value={form.gare_retour_arrivee} disabled={isLocked} class={inputClass}></div></div>{/if}<datalist id="stations">{#each uniqueStationNames as st} <option value={st} /> {/each}</datalist>
                     </div>
                 </div>
-                <div class="bg-black/20 border border-white/5 rounded-2xl p-6 space-y-4">
-                     <div class="flex justify-between items-center mb-4"><h3 class="text-sm font-bold text-blue-400 uppercase tracking-wide flex items-center gap-2"><MapPin size={16}/> Trajet</h3>
-                        <div class="flex items-center bg-white/5 p-1 rounded-lg border border-white/10"><button class="px-3 py-1 text-xs font-bold rounded-md transition-all {form.type_trajet === 'aller' ? 'bg-blue-500 text-white shadow' : 'text-gray-500 hover:text-gray-300'}" on:click={() => form.type_trajet = 'aller'}>Aller Simple</button><button class="px-3 py-1 text-xs font-bold rounded-md transition-all {form.type_trajet === 'aller-retour' ? 'bg-blue-500 text-white shadow' : 'text-gray-500 hover:text-gray-300'}" on:click={() => form.type_trajet = 'aller-retour'}>Aller-Retour</button></div></div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label class={labelClass}>Date & Heure</label><input type="datetime-local" bind:value={form.date_trajet} class="{inputClass} dark:[color-scheme:dark]"></div><div><label class={labelClass}>Via (Optionnel)</label><input type="text" list="stations" bind:value={form.gare_via} class={inputClass}></div><div><label class={labelClass}>Départ</label><input type="text" list="stations" bind:value={form.gare_origine} class={inputClass}></div><div><label class={labelClass}>Arrivée</label><input type="text" list="stations" bind:value={form.gare_arrivee} class={inputClass}></div></div>
-                    {#if form.type_trajet === 'aller-retour'}<div class="mt-4 pt-4 border-t border-white/5 grid grid-cols-1 md:grid-cols-2 gap-4" transition:slide><div class="md:col-span-2"><label class="{labelClass} text-blue-400">Date Retour</label><input type="datetime-local" bind:value={form.date_retour} class="{inputClass} dark:[color-scheme:dark] border-blue-500/30"></div><div><label class={labelClass}>Départ Retour</label><input type="text" list="stations" bind:value={form.gare_retour_origine} class={inputClass}></div><div><label class={labelClass}>Arrivée Retour</label><input type="text" list="stations" bind:value={form.gare_retour_arrivee} class={inputClass}></div></div>{/if}<datalist id="stations">{#each uniqueStationNames as st} <option value={st} /> {/each}</datalist>
-                </div>
-            </div>
-            <div class="space-y-6">
-                <div class="bg-black/20 border border-white/5 rounded-2xl p-6 relative">
-                    <h3 class="text-sm font-bold text-yellow-400 uppercase tracking-wide mb-4 flex items-center gap-2"><Car size={16}/> Société</h3>
-                    <div><input list="taxis-list" type="text" bind:value={form.taxi_nom} on:input={handleTaxiChange} class={inputClass} placeholder="Rechercher..."><datalist id="taxis-list">{#each taxis as t}<option value={t.nom} />{/each}</datalist></div>
-                    {#if form.taxi_email || form.taxi_adresse || form.taxi_tel}<div class="mt-4 p-3 bg-white/5 rounded-xl border border-white/5 text-xs text-gray-400 space-y-2" transition:slide>{#if form.taxi_adresse}<div class="flex items-start gap-2"><MapPin size={12} class="mt-0.5 text-gray-500 shrink-0"/> <span>{cleanData(form.taxi_adresse)}</span></div>{/if}{#if form.taxi_email}<div class="flex items-center gap-2 text-blue-200"><Mail size={12} class="text-blue-400 shrink-0"/> <a href="mailto:{cleanData(form.taxi_email)}" class="hover:underline">{cleanData(form.taxi_email)}</a></div>{/if}{#if form.taxi_tel}<div class="flex items-center gap-2 text-green-200"><Phone size={12} class="text-green-400 shrink-0"/> <span>{cleanData(form.taxi_tel)}</span></div>{/if}</div>{/if}
-                </div>
-                <div class="bg-black/20 border border-white/5 rounded-2xl p-6 relative overflow-hidden transition-colors duration-300 {form.is_pmr ? 'border-purple-500/30' : ''}"><div class="absolute top-0 left-0 right-0 h-1 transition-colors duration-300 {form.is_pmr ? 'bg-purple-500' : 'bg-[rgb(var(--color-primary))]'}"></div><div class="flex justify-between items-center mb-4 pt-2"><h3 class="text-sm font-bold uppercase tracking-wide flex items-center gap-2 {form.is_pmr ? 'text-purple-400' : 'text-[rgb(var(--color-primary))]'}">{#if form.is_pmr}<Users size={16}/> PMR{:else}<User size={16}/> Passager{/if}</h3></div>
-                    <div class="bg-black/40 p-1 rounded-xl flex mb-6 border border-white/10"><button class="flex-1 py-2 rounded-lg text-xs font-bold transition-all { !form.is_pmr ? 'bg-[rgba(var(--color-primary),0.2)] text-[rgb(var(--color-primary))]' : 'text-gray-400 hover:text-white' }" on:click={() => form.is_pmr = false}>STANDARD</button><button class="flex-1 py-2 rounded-lg text-xs font-bold transition-all { form.is_pmr ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white' }" on:click={() => form.is_pmr = true}>PMR</button></div>
-                    <div class="space-y-4">
-                        <div class="grid grid-cols-3 gap-4">
-                            {#if form.is_pmr}
-                                <div><label class={labelClass}>PMR</label><input type="number" min="1" bind:value={form.nombre_pmr} on:input={updatePmrCount} class={inputClass}></div>
-                                <div><label class={labelClass}>Accomp.</label><input type="number" min="0" value={form.nombre_passagers - form.nombre_pmr} on:input={updateAccompagnants} class={inputClass}></div>
-                                <div><label class={labelClass}>N. Véhicules</label><input type="number" min="1" bind:value={form.nombre_vehicules} class={inputClass}></div>
-                            {:else}
-                                <div class="col-span-3"><label class={labelClass}>Total Passagers</label><input type="number" min="1" bind:value={form.nombre_passagers} class={inputClass}></div>
-                            {/if}
+                <div class="space-y-6">
+                    <div class="bg-black/20 border border-white/5 rounded-2xl p-6 relative">
+                        <h3 class="text-sm font-bold text-yellow-400 uppercase tracking-wide mb-4 flex items-center gap-2"><Car size={16}/> Société</h3>
+                        <div><input list="taxis-list" type="text" bind:value={form.taxi_nom} on:input={handleTaxiChange} disabled={isLocked} class={inputClass} placeholder="Rechercher..."><datalist id="taxis-list">{#each taxis as t}<option value={t.nom} />{/each}</datalist></div>
+                        {#if form.taxi_email || form.taxi_adresse || form.taxi_tel}<div class="mt-4 p-3 bg-white/5 rounded-xl border border-white/5 text-xs text-gray-400 space-y-2" transition:slide>{#if form.taxi_adresse}<div class="flex items-start gap-2"><MapPin size={12} class="mt-0.5 text-gray-500 shrink-0"/> <span>{cleanData(form.taxi_adresse)}</span></div>{/if}{#if form.taxi_email}<div class="flex items-center gap-2 text-blue-200"><Mail size={12} class="text-blue-400 shrink-0"/> <a href="mailto:{cleanData(form.taxi_email)}" class="hover:underline">{cleanData(form.taxi_email)}</a></div>{/if}{#if form.taxi_tel}<div class="flex items-center gap-2 text-green-200"><Phone size={12} class="text-green-400 shrink-0"/> <span>{cleanData(form.taxi_tel)}</span></div>{/if}</div>{/if}
+                    </div>
+                    <div class="bg-black/20 border border-white/5 rounded-2xl p-6 relative overflow-hidden transition-colors duration-300 {form.is_pmr ? 'border-purple-500/30' : ''}"><div class="absolute top-0 left-0 right-0 h-1 transition-colors duration-300 {form.is_pmr ? 'bg-purple-500' : 'bg-[rgb(var(--color-primary))]'}"></div><div class="flex justify-between items-center mb-4 pt-2"><h3 class="text-sm font-bold uppercase tracking-wide flex items-center gap-2 {form.is_pmr ? 'text-purple-400' : 'text-[rgb(var(--color-primary))]'}">{#if form.is_pmr}<Users size={16}/> PMR{:else}<User size={16}/> Passager{/if}</h3></div>
+                        <div class="bg-black/40 p-1 rounded-xl flex mb-6 border border-white/10"><button disabled={isLocked} class="flex-1 py-2 rounded-lg text-xs font-bold transition-all { !form.is_pmr ? 'bg-[rgba(var(--color-primary),0.2)] text-[rgb(var(--color-primary))]' : 'text-gray-400 hover:text-white' }" on:click={() => !isLocked && (form.is_pmr = false)}>STANDARD</button><button disabled={isLocked} class="flex-1 py-2 rounded-lg text-xs font-bold transition-all { form.is_pmr ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white' }" on:click={() => !isLocked && (form.is_pmr = true)}>PMR</button></div>
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-3 gap-4">
+                                {#if form.is_pmr}
+                                    <div><label class={labelClass}>PMR</label><input type="number" min="1" bind:value={form.nombre_pmr} on:input={updatePmrCount} disabled={isLocked} class={inputClass}></div>
+                                    <div><label class={labelClass}>Accomp.</label><input type="number" min="0" value={form.nombre_passagers - form.nombre_pmr} on:input={updateAccompagnants} disabled={isLocked} class={inputClass}></div>
+                                    <div><label class={labelClass}>N. Véhicules</label><input type="number" min="1" bind:value={form.nombre_vehicules} disabled={isLocked} class={inputClass}></div>
+                                {:else}
+                                    <div class="col-span-3"><label class={labelClass}>Total Passagers</label><input type="number" min="1" bind:value={form.nombre_passagers} disabled={isLocked} class={inputClass}></div>
+                                {/if}
+                            </div>
+                            {#if form.is_pmr}<div transition:slide class="space-y-4 pt-2 border-t border-white/5"><div><label class={labelClass}>Client PMR</label><input list="pmr-clients-list" type="text" bind:value={form.pmr_search} on:input={handlePmrSelect} disabled={isLocked} class={inputClass}><datalist id="pmr-clients-list">{#each pmrClients as c}<option value={`${c.nom} ${c.prenom}`}>{c.type || '?'}</option>{/each}</datalist></div><div><label class={labelClass}>Type</label><select bind:value={form.pmr_type} disabled={isLocked} class={inputClass}><option value="NV">Non-Voyant</option><option value="CRF">Chaise Roulante Fixe</option><option value="CRE">Chaise Roulante Electrique</option><option value="CRP">Chaise Roulante Pliable</option><option value="MR">Marche Difficile</option><option value="Diff">Autre difficulté</option></select></div><div class="grid grid-cols-2 gap-2"><input type="text" placeholder="Nom" bind:value={form.pmr_nom} disabled={isLocked} class={inputClass}><input type="text" placeholder="Prénom" bind:value={form.pmr_prenom} disabled={isLocked} class={inputClass}></div><div><label class={labelClass}>Téléphone</label><input type="text" bind:value={form.pmr_tel} disabled={isLocked} class={inputClass}></div><div><label class={labelClass}>N° Dossier</label><input type="text" bind:value={form.pmr_dossier} disabled={isLocked} class="{inputClass} border-purple-500/30"></div></div>{:else}<div transition:slide class="space-y-4 pt-2 border-t border-white/5"><div><label class={labelClass}>Nom Passager</label><input type="text" bind:value={form.passager_nom} disabled={isLocked} class={inputClass}></div><div><label class={labelClass}>Réf / Ordre</label><input type="text" bind:value={form.relation_number} disabled={isLocked} class={inputClass}></div></div>{/if}
                         </div>
-                        {#if form.is_pmr}<div transition:slide class="space-y-4 pt-2 border-t border-white/5"><div><label class={labelClass}>Client PMR</label><input list="pmr-clients-list" type="text" bind:value={form.pmr_search} on:input={handlePmrSelect} class={inputClass}><datalist id="pmr-clients-list">{#each pmrClients as c}<option value={`${c.nom} ${c.prenom}`}>{c.type || '?'}</option>{/each}</datalist></div><div><label class={labelClass}>Type</label><select bind:value={form.pmr_type} class={inputClass}><option value="NV">Non-Voyant</option><option value="CRF">Chaise Roulante Fixe</option><option value="CRE">Chaise Roulante Electrique</option><option value="CRP">Chaise Roulante Pliable</option><option value="MR">Marche Difficile</option><option value="Diff">Autre difficulté</option></select></div><div class="grid grid-cols-2 gap-2"><input type="text" placeholder="Nom" bind:value={form.pmr_nom} class={inputClass}><input type="text" placeholder="Prénom" bind:value={form.pmr_prenom} class={inputClass}></div><div><label class={labelClass}>Téléphone</label><input type="text" bind:value={form.pmr_tel} class={inputClass}></div><div><label class={labelClass}>N° Dossier</label><input type="text" bind:value={form.pmr_dossier} class="{inputClass} border-purple-500/30"></div></div>{:else}<div transition:slide class="space-y-4 pt-2 border-t border-white/5"><div><label class={labelClass}>Nom Passager</label><input type="text" bind:value={form.passager_nom} class={inputClass}></div><div><label class={labelClass}>Réf / Ordre</label><input type="text" bind:value={form.relation_number} class={inputClass}></div></div>{/if}
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="fixed bottom-4 left-4 right-4 z-50 flex flex-wrap justify-end items-center gap-4 p-4 border border-white/10 bg-[#0f1115]/80 backdrop-blur-2xl shadow-2xl rounded-2xl" in:fly={{ y: 20 }}>
-            <button on:click={() => openEmailModal(form)} class="mr-auto px-5 py-2.5 rounded-full text-sm font-bold text-blue-400 bg-blue-500/5 border border-blue-500/10 hover:bg-blue-500/10 transition-all flex items-center gap-2"><Mail class="w-4 h-4" /> <span class="hidden sm:inline">E-mail</span></button>
-            <button on:click={() => saveCommande()} disabled={isSaving} class="px-6 py-2.5 rounded-full text-sm font-bold text-[rgb(var(--color-primary))] bg-[rgba(var(--color-primary),0.1)] border border-[rgba(var(--color-primary),0.2)] hover:bg-[rgba(var(--color-primary),0.2)] hover:text-white shadow-[0_0_20px_rgba(var(--color-primary),0.3)] transition-all flex items-center gap-2 disabled:opacity-50">{#if isSaving}<Loader2 class="w-4 h-4 animate-spin"/>{:else}<Save class="w-4 h-4" />{/if} <span>{form.id ? 'Modifier' : 'Enregistrer'} & PDF</span></button>
-        </div>
-        <div class="h-24"></div>
-    {/if}
-  {/if}
-</div>
-
-{#if selectedCommand}
+            <div class="fixed bottom-4 left-4 right-4 z-50 flex flex-wrap justify-end items-center gap-4 p-4 border border-white/10 bg-[#0f1115]/80 backdrop-blur-2xl shadow-2xl rounded-2xl" in:fly={{ y: 20 }}>
+                <button on:click={() => openEmailModal(form)} class="mr-auto px-5 py-2.5 rounded-full text-sm font-bold text-blue-400 bg-blue-500/5 border border-blue-500/10 hover:bg-blue-500/10 transition-all flex items-center gap-2"><Mail class="w-4 h-4" /> <span class="hidden sm:inline">E-mail</span></button>
+                
+                {#if !isLocked}
+                    <button on:click={() => saveCommande()} disabled={isSaving} class="px-6 py-2.5 rounded-full text-sm font-bold text-[rgb(var(--color-primary))] bg-[rgba(var(--color-primary),0.1)] border border-[rgba(var(--color-primary),0.2)] hover:bg-[rgba(var(--color-primary),0.2)] hover:text-white shadow-[0_0_20px_rgba(var(--color-primary),0.3)] transition-all flex items-center gap-2 disabled:opacity-50">{#if isSaving}<Loader2 class="w-4 h-4 animate-spin"/>{:else}<Save class="w-4 h-4" />{/if} <span>{form.id ? 'Modifier' : 'Enregistrer'} & PDF</span></button>
+                {/if}
+            </div>
+            <div class="h-24"></div>
+        {/if}
+      {/if}
+    </div>
+{/if} {#if selectedCommand}
     <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" transition:fade>
         <div class="bg-[#1a1d24] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl relative" in:scale={{start: 0.95}}>
             <button on:click={() => selectedCommand = null} class="absolute top-4 right-4 text-gray-500 hover:text-white"><X size={20}/></button>
             <h3 class="text-lg font-bold text-white mb-1">Commande #{selectedCommand.id}</h3>
             <p class="text-sm text-gray-400 mb-6">{new Date(selectedCommand.date_trajet).toLocaleDateString()} - {selectedCommand.taxi_nom}</p>
             <div class="space-y-3">
-                <button on:click={() => openEdit(selectedCommand)} class="w-full py-3 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 font-bold hover:bg-purple-500/20 flex items-center justify-center gap-2"><FilePenLine size={18}/> Modifier</button>
+                {#if hasPermission(currentUserProfile, ACTIONS.GENERATE_TAXI_WRITE)}
+                    <button on:click={() => openEdit(selectedCommand)} class="w-full py-3 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 font-bold hover:bg-purple-500/20 flex items-center justify-center gap-2"><FilePenLine size={18}/> Modifier</button>
+                {/if}
                 <div class="grid grid-cols-2 gap-3">
                     <button on:click={() => generatePDF(selectedCommand)} class="w-full py-3 rounded-xl bg-[rgba(var(--color-primary),0.1)] text-[rgb(var(--color-primary))] border border-[rgba(var(--color-primary),0.2)] font-bold hover:bg-[rgba(var(--color-primary),0.2)] flex items-center justify-center gap-2"><Printer size={18}/> PDF</button>
                     <button on:click={() => openEmailModal(selectedCommand)} class="w-full py-3 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold hover:bg-blue-500/20 flex items-center justify-center gap-2"><Mail size={18}/> Email</button>
                 </div>
                 <div class="h-px bg-white/10 my-2"></div>
-                <button on:click={() => deleteCommande(selectedCommand.id)} class="w-full py-3 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 font-bold hover:bg-red-500/20 flex items-center justify-center gap-2"><Trash2 size={18}/> Supprimer</button>
+                {#if hasPermission(currentUserProfile, ACTIONS.GENERATE_TAXI_DELETE)}
+                    <button on:click={() => deleteCommande(selectedCommand.id)} class="w-full py-3 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 font-bold hover:bg-red-500/20 flex items-center justify-center gap-2"><Trash2 size={18}/> Supprimer</button>
+                {/if}
             </div>
         </div>
     </div>

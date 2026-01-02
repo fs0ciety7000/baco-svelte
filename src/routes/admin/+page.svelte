@@ -14,7 +14,7 @@
     AlertOctagon, CheckCircle, ShieldAlert, ChevronLeft, Save, Edit2, UserCog 
   } from 'lucide-svelte';
   
-let currentUserProfile = null; // C'est cette variable qui doit contenir le rôle
+  let currentUserProfile = null; // C'est cette variable qui doit contenir le rôle
   let usersList = []; // Votre liste d'utilisateurs à afficher
 
   // --- ÉTAT ---
@@ -58,7 +58,7 @@ let currentUserProfile = null; // C'est cette variable qui doit contenir le rôl
 
   // --- SÉCURITÉ ---
 
-async function checkAdminAccess() {
+  async function checkAdminAccess() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return goto('/');
     
