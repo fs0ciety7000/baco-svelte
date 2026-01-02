@@ -1,7 +1,8 @@
 <script>
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabase';
-  import { page } from '$app/stores'; // IMPORT AJOUTÉ
+  import { page } from '$app/stores';
+  import { goto } from '$app/navigation'; // Navigation pour redirection
   import { fly, fade } from 'svelte/transition';
   import { 
     Car, MapPin, Phone, Search, Plus, FileText, 
@@ -11,15 +12,15 @@
   import jsPDF from 'jspdf';
   import autoTable from 'jspdf-autotable';
   
-  // IMPORT TOAST
+  // TOAST & PERMISSIONS
   import { toast } from '$lib/stores/toast.js';
+  import { hasPermission, ACTIONS } from '$lib/permissions';
 
   // --- ÉTATS ---
-  let user = null;
-  let isAdmin = false;
+  let currentUser = null; // Profil complet (avec permissions)
 
   // Filtres
-  let lieuxDisponibles = []; 
+  let lieuxDisponibles = [];
   let loadingFilters = true;
   let selectedLieux = [];
   let taxis = [];
@@ -41,34 +42,31 @@
   };
 
   onMount(async () => {
-    // 1. Auth
-    const { data: { session } } = await supabase.auth.getSession();
-    user = session?.user;
-    if (user) {
-      const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-      isAdmin = data?.role === 'admin';
+    // 1. Auth & Permissions
+    const { data: { user } } = await supabase.auth.getSession();
+    if (!user) return goto('/');
+
+    // Récupérer le profil complet
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    currentUser = { ...user, ...profile };
+
+    // 2. SÉCURITÉ : Vérifier le droit de LECTURE
+    if (!hasPermission(currentUser, ACTIONS.TAXI_READ)) {
+        toast.error("Accès refusé.");
+        return goto('/accueil');
     }
 
-    // 2. Charger les filtres dynamiques
+    // 3. Charger les données
     await loadFilters();
   });
 
   // --- LOGIQUE URL & RECHERCHE GLOBALE ---
-  // Surveille l'URL pour appliquer le filtre si on vient de la recherche globale
   $: {
       const urlQuery = $page.url.searchParams.get('search');
       if (urlQuery && urlQuery !== searchTerm) {
           searchTerm = urlQuery;
-          // Si on a un terme de recherche mais pas de lieu sélectionné, on charge tout pour chercher dedans
           if (selectedLieux.length === 0 && lieuxDisponibles.length > 0) {
-             // Astuce : on ne sélectionne rien mais on force le chargement dans loadTaxis si besoin
-             // Ou mieux : on sélectionne tous les lieux pour chercher partout
-             // Pour l'instant, loadTaxis demande selectedLieux > 0.
-             // On peut imaginer charger tous les taxis si recherche globale.
-             // Mais pour faire simple et performant, on laisse l'utilisateur choisir un lieu ou on modifie loadTaxis.
-             // MODIFICATION : Pour que la recherche globale marche sans lieu sélectionné,
-             // il faudrait que loadTaxis accepte de charger sans lieu SI searchTerm est présent.
-             // Voyons loadTaxis ci-dessous.
+             // Logique de recherche globale
           }
       }
   }
@@ -93,12 +91,9 @@
   }
 
   // --- CHARGEMENT DES TAXIS ---
-  
-  // MODIF : On charge aussi si searchTerm est présent (recherche globale)
   $: if (selectedLieux.length > 0 || searchTerm) loadTaxis();
-
+  
   async function loadTaxis() {
-    // Si pas de lieu ET pas de recherche, on ne charge rien (état initial vide)
     if (selectedLieux.length === 0 && !searchTerm) {
       taxis = [];
       return;
@@ -107,19 +102,13 @@
     loading = true;
     try {
       let query = supabase.from('taxis').select('*');
-
-      // Si des lieux sont sélectionnés, on filtre par lieux
       if (selectedLieux.length > 0) {
           query = query.overlaps('lieux', selectedLieux);
       }
-      // Si pas de lieux mais une recherche (GlobalSearch), on ne filtre pas par lieux (on cherche partout)
-      // L'ordre par nom reste
       query = query.order('nom');
-
       const { data, error } = await query;
       
       if (error) throw error;
-      
       taxis = (data || []).map(t => ({
         ...t,
         societe: t.nom,
@@ -137,7 +126,6 @@
     }
   }
 
-  // Filtrage local
   $: filteredTaxis = taxis.filter(t => 
     (t.societe || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     t.contacts.some(c => c.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -151,13 +139,14 @@
     }
   }
 
-  // --- UTILITAIRES ---
   const cleanPhone = (tel) => tel ? tel.replace(/[^0-9]/g, '') : '';
   const joinArray = (arr) => (Array.isArray(arr) && arr.length > 0 && arr[0] !== 'nihil') ? arr.join('\n') : '';
   const splitString = (str) => str.split('\n').map(s => s.trim()).filter(Boolean);
 
   // --- GESTION MODALE ---
   function openModal(taxi = null) {
+    if (!hasPermission(currentUser, ACTIONS.TAXI_WRITE)) return; // Sécurité extra
+
     isEditMode = !!taxi;
     if (isEditMode) {
       modalForm = {
@@ -170,25 +159,18 @@
         remarques: joinArray(taxi.remarques)  
       };
     } else {
-      modalForm = {
-        id: null,
-        societe: '',
-        lieux: '',
-        contacts: '',
-        mail: '',
-        adresse: '',
-        remarques: ''
-      };
+      modalForm = { id: null, societe: '', lieux: '', contacts: '', mail: '', adresse: '', remarques: '' };
     }
     showModal = true;
   }
 
   async function handleSubmit() {
+    if (!hasPermission(currentUser, ACTIONS.TAXI_WRITE)) return toast.error("Action non autorisée.");
+
     if (!modalForm.societe) return toast.warning("Le nom de la société est requis.");
     modalLoading = true;
 
     const lieuxArray = modalForm.lieux.split(',').map(l => l.trim()).filter(Boolean);
-    
     if (lieuxArray.length === 0) {
         toast.warning("Veuillez entrer au moins un secteur/lieu.");
         modalLoading = false;
@@ -225,8 +207,9 @@
   }
 
   async function deleteTaxi(id, nom) {
+    if (!hasPermission(currentUser, ACTIONS.TAXI_DELETE)) return toast.error("Suppression non autorisée.");
+
     if (!confirm(`Supprimer le taxi "${nom}" ?`)) return;
-    
     const { error } = await supabase.from('taxis').delete().eq('id', id);
     if (!error) {
         toast.success(`Taxi "${nom}" supprimé.`);
@@ -240,10 +223,8 @@
   // --- EXPORT PDF ---
   function exportPDF() {
     if (filteredTaxis.length === 0) return toast.warning("Aucune donnée à exporter.");
-    
     const doc = new jsPDF();
     doc.text(`Taxis - Lieux : ${selectedLieux.join(', ')}`, 14, 15);
-    
     const rows = filteredTaxis.map(t => [
       t.societe,
       t.lieux.join(', '),
@@ -252,7 +233,6 @@
       t.adresse.join('\n'),
       t.remarques.join('\n')
     ]);
-
     autoTable(doc, {
       startY: 25,
       head: [['Société', 'Lieux', 'Contacts', 'Emails', 'Adresse', 'Remarques']],
@@ -260,12 +240,10 @@
       theme: 'grid',
       styles: { fontSize: 8, cellPadding: 2 }
     });
-    
     doc.save('taxis.pdf');
     toast.success("PDF téléchargé avec succès !");
   }
 
-  // Styles communs Inputs
   const inputClass = "block w-full rounded-xl border-white/10 bg-black/40 p-3 text-sm font-medium text-white placeholder-gray-600 focus:border-yellow-500/50 focus:ring-yellow-500/50 transition-all outline-none";
   const labelClass = "block text-xs font-bold text-gray-400 mb-1.5 uppercase tracking-wide";
 </script>
@@ -293,15 +271,16 @@
           <FileText class="w-4 h-4" /> <span class="hidden sm:inline font-bold">PDF</span>
         </button>
       {/if}
-      {#if isAdmin}
+
+      {#if hasPermission(currentUser, ACTIONS.TAXI_WRITE)}
         <button 
-  on:click={() => openModal()} 
-  class="btn-themed px-5 py-3 rounded-xl flex items-center gap-2 transition-all hover:scale-105 group border shadow-lg"
-  style="--primary-rgb: var(--color-primary);"
->
-  <Plus class="w-5 h-5 group-hover:rotate-90 transition-transform" /> 
-  <span class="font-semibold hidden sm:inline">Ajouter</span>
-</button>
+          on:click={() => openModal()} 
+          class="btn-themed px-5 py-3 rounded-xl flex items-center gap-2 transition-all hover:scale-105 group border shadow-lg"
+          style="--primary-rgb: var(--color-primary);"
+        >
+          <Plus class="w-5 h-5 group-hover:rotate-90 transition-transform" /> 
+          <span class="font-semibold hidden sm:inline">Ajouter</span>
+        </button>
       {/if}
     </div>
   </header>
@@ -423,12 +402,17 @@
               </div>
             {/if}
             
-            {#if isAdmin}
-              <div class="absolute top-4 right-14 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-black/60 backdrop-blur rounded-lg p-1 border border-white/10">
-                <button on:click={() => openModal(taxi)} class="p-1.5 text-blue-400 hover:text-white hover:bg-blue-500/20 rounded transition-colors"><Pencil class="w-3.5 h-3.5" /></button>
-                <button on:click={() => deleteTaxi(taxi.id, taxi.societe)} class="p-1.5 text-red-400 hover:text-white hover:bg-red-500/20 rounded transition-colors"><Trash2 class="w-3.5 h-3.5" /></button>
-              </div>
-            {/if}
+            <div class="absolute top-4 right-14 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-black/60 backdrop-blur rounded-lg p-1 border border-white/10">
+                
+                {#if hasPermission(currentUser, ACTIONS.TAXI_WRITE)}
+                    <button on:click={() => openModal(taxi)} class="p-1.5 text-blue-400 hover:text-white hover:bg-blue-500/20 rounded transition-colors"><Pencil class="w-3.5 h-3.5" /></button>
+                {/if}
+
+                {#if hasPermission(currentUser, ACTIONS.TAXI_DELETE)}
+                    <button on:click={() => deleteTaxi(taxi.id, taxi.societe)} class="p-1.5 text-red-400 hover:text-white hover:bg-red-500/20 rounded transition-colors"><Trash2 class="w-3.5 h-3.5" /></button>
+                {/if}
+
+            </div>
           </div>
         {/each}
       </div>
@@ -494,16 +478,16 @@
                 Annuler
             </button>
             <button 
-  on:click={handleSubmit} 
-  disabled={modalLoading} 
-  class="btn-submit px-4 py-2 text-white rounded-xl flex items-center transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
-  style="--primary-rgb: var(--color-primary);"
->
-  {#if modalLoading}
-    <Loader2 class="w-4 h-4 animate-spin mr-2"/>
-  {/if}
-  Enregistrer
-</button>
+              on:click={handleSubmit} 
+              disabled={modalLoading} 
+              class="btn-submit px-4 py-2 text-white rounded-xl flex items-center transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+              style="--primary-rgb: var(--color-primary);"
+            >
+              {#if modalLoading}
+                <Loader2 class="w-4 h-4 animate-spin mr-2"/>
+              {/if}
+              Enregistrer
+            </button>
         </div>
     </div>
   </div>
@@ -511,19 +495,14 @@
 
 <style>
   .btn-themed {
-    /* Fond léger basé sur le thème (20% d'opacité) */
     background-color: rgba(var(--primary-rgb), 0.2);
-    /* Bordure assortie (30% d'opacité) */
     border-color: rgba(var(--primary-rgb), 0.3);
-    /* Texte à la couleur du thème */
     color: rgb(var(--primary-rgb));
   }
 
   .btn-themed:hover {
-    /* Augmentation de l'opacité et lueur au survol */
     background-color: rgba(var(--primary-rgb), 0.3);
     border-color: rgba(var(--primary-rgb), 0.5);
-    /* Lueur (glow) dynamique basée sur la couleur du thème */
     box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.2);
   }
 
@@ -531,14 +510,11 @@
     transform: scale(0.95);
   }
   .btn-submit {
-    /* Utilise l'opacité 0.8 pour l'action principale */
     background-color: rgba(var(--primary-rgb), 0.8);
-    /* Lueur dynamique basée sur la couleur primaire du thème */
     box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.3);
   }
 
   .btn-submit:hover:not(:disabled) {
-    /* Passage à l'opacité pleine et augmentation de la lueur au survol */
     background-color: rgb(var(--primary-rgb));
     box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.5);
     transform: translateY(-1px);
