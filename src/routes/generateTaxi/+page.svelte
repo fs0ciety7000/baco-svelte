@@ -9,8 +9,34 @@
   import { 
     Car, Calendar, Clock, MapPin, FileText, Save, Trash2, Plus, Loader2, ArrowLeft,
     Printer, Search, X, User, Users, ArrowRightLeft, 
-    Mail, ClipboardCopy, Check, Phone, ArrowRight, MoreHorizontal, FilePenLine
+    Mail, ClipboardCopy, Check, Phone, ArrowRight, MoreHorizontal, FilePenLine, MessageSquare, Repeat
   } from 'lucide-svelte';
+
+  // --- CONSTANTES ---
+  const PMR_CAUSES = [
+      "Pas de personnel pour la prise en charge",
+      "Gare taxi (17 gares)",
+      "Travaux Infrabel planifiés (transport alternatif bus pour les autres voyageurs planifié par B-PT4)",
+      "Travaux B-ST planifiés",
+      "Défaut infrastructure gare B-ST (Ex : Ascenseur)",
+      "Défaut Infrabel (ex : Traversée de service HS)",
+      "Défaut rampes mobiles B-PT2",
+      "Problème lors du voyage de la PMR dû à l'assistance/retard d'un train/suppression d'un train",
+      "Acte commercial suite erreur SNCB (remarque dans le dossier)",
+      "Acte commercial suite erreur client",
+      "Autre (à justifier)"
+  ];
+
+  const FACTURATION_OPTIONS = [
+      "Infrabel",
+      "SNCB",
+      "Tiers",
+      "B-CS 1 Accompagnement",
+      "B-TO 1 Conduite",
+      "B-TC Matériel",
+      "B-PT 5 EMMA",
+      "B-CS 4 Planification"
+  ];
 
   // --- ÉTATS ---
   let view = 'list';
@@ -27,22 +53,16 @@
   let uniqueStationNames = [];
 
   // --- FONCTIONS UTILITAIRES ---
-const HIDDEN_TAXIS = ["Melsbroek", "Géraldine", "Laeticia", "Bureau"];
-  // 1. Nettoyage générique (Adresse, Tel, Email) - Enlève [" et "]
+
   const cleanData = (input) => {
       if (!input) return '';
-      // Si c'est déjà un tableau JS
       if (Array.isArray(input)) return input.join(', ');
-      
-      // Si c'est une string JSON ou brute
       if (typeof input === 'string') {
-          // Si ça ressemble à un tableau JSON ["..."]
           if (input.trim().startsWith('[') || input.includes('"')) {
               try {
                   const parsed = JSON.parse(input);
                   return Array.isArray(parsed) ? parsed.join(', ') : parsed;
               } catch (e) {
-                  // Fallback : nettoyage manuel si le JSON est malformé
                   return input.replace(/[\[\]"]/g, '').replace(/,/g, ', ');
               }
           }
@@ -50,7 +70,6 @@ const HIDDEN_TAXIS = ["Melsbroek", "Géraldine", "Laeticia", "Bureau"];
       return input;
   };
 
-  // 2. Gestion Date Locale
   function toLocalInput(dateStr) {
       const date = dateStr ? new Date(dateStr) : new Date();
       const pad = (num) => String(num).padStart(2, '0');
@@ -62,7 +81,6 @@ const HIDDEN_TAXIS = ["Melsbroek", "Géraldine", "Laeticia", "Bureau"];
       return `${YYYY}-${MM}-${DD}T${HH}:${mm}`;
   }
 
-  // 3. Logo Base64
   const getBase64ImageFromURL = (url) => {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -79,7 +97,6 @@ const HIDDEN_TAXIS = ["Melsbroek", "Géraldine", "Laeticia", "Bureau"];
     });
   };
 
-  // 4. Formatage
   const formatDate = (d) => new Date(d).toLocaleDateString('fr-BE', { timeZone: 'UTC' });
   const formatTime = (d) => new Date(d).toLocaleTimeString('fr-BE', { hour: '2-digit', minute:'2-digit', timeZone: 'UTC' });
   const formatTimeLocal = (dateStr) => {
@@ -92,7 +109,7 @@ const HIDDEN_TAXIS = ["Melsbroek", "Géraldine", "Laeticia", "Bureau"];
     id: null,
     redacteur: '', 
     status: 'brouillon',
-    motif: 'Motif...',
+    motif: '', 
     date_trajet: toLocalInput(), 
     date_retour: '',
     taxi_nom: '', taxi_email: '', taxi_adresse: '', taxi_tel: '', 
@@ -101,9 +118,11 @@ const HIDDEN_TAXIS = ["Melsbroek", "Géraldine", "Laeticia", "Bureau"];
     gare_retour_origine: '', gare_retour_arrivee: '',
     nombre_passagers: 1, nombre_pmr: 0,
     is_pmr: false,
-    pmr_type: 'NV', pmr_nom: '', pmr_prenom: '', pmr_tel: '', pmr_dossier: '', pmr_motif: 'Pas de personnel',
+    pmr_type: 'NV', pmr_nom: '', pmr_prenom: '', pmr_tel: '', pmr_dossier: '', 
+    pmr_motif: '',
     pmr_search: '', 
-    passager_nom: '', relation_number: '', facturation: 'SNCB'
+    passager_nom: '', relation_number: '', 
+    facturation: 'SNCB'
   };
 
   let form = JSON.parse(JSON.stringify(initialForm));
@@ -127,14 +146,13 @@ const HIDDEN_TAXIS = ["Melsbroek", "Géraldine", "Laeticia", "Bureau"];
     if (!error) commandes = data || [];
   }
 
+  const HIDDEN_TAXIS = ["Melsbroek", "Géraldine", "Laeticia", "Bureau"];
+
   async function loadTaxis() {
     const { data } = await supabase.from('taxis').select('*').order('nom');
     if (data) {
-        // On nettoie les données brutes dès le chargement pour la liste
         taxis = data
-            // 1. FILTRAGE : On retire ceux qui sont dans la liste noire
             .filter(t => !HIDDEN_TAXIS.includes(t.nom))
-            // 2. MAPPING : On nettoie les données restantes
             .map(t => ({
                 ...t,
                 adresse: cleanData(t.adresse),
@@ -160,7 +178,6 @@ const HIDDEN_TAXIS = ["Melsbroek", "Géraldine", "Laeticia", "Bureau"];
       const found = taxis.find(t => t.nom.toLowerCase() === form.taxi_nom.toLowerCase());
       if (found) {
           form.taxi_adresse = cleanData(found.adresse);
-          // Le loadTaxis a déjà unifié les colonnes mail/email et contacts/telephone
           form.taxi_email = cleanData(found.email); 
           form.taxi_tel = cleanData(found.telephone);
       }
@@ -187,7 +204,42 @@ const HIDDEN_TAXIS = ["Melsbroek", "Géraldine", "Laeticia", "Bureau"];
       }
   }
 
+  // LOGIQUE PAR DEFAUT PMR
+  $: if (form.is_pmr) {
+      // Si on passe en PMR et qu'il n'y a pas de PMR défini, on met 1 par défaut
+      if (form.nombre_pmr === 0) {
+          form.nombre_pmr = 1;
+          // Si le total est inférieur au nombre de PMR, on ajuste le total
+          if (form.nombre_passagers < form.nombre_pmr) form.nombre_passagers = form.nombre_pmr;
+      }
+  }
+
+  // Fonction pour mettre à jour le total quand on change les accompagnants
+  function updateAccompagnants(e) {
+      const accomp = parseInt(e.target.value) || 0;
+      form.nombre_passagers = form.nombre_pmr + accomp;
+  }
+  
+  // Fonction pour mettre à jour le total quand on change le nombre de PMR
+  function updatePmrCount(e) {
+      // Recalcule le total en gardant le nombre d'accompagnants actuel
+      // Accompagnants actuels = Total actuel - Ancien PMR
+      // Mais ici c'est plus simple de recalculer proprement :
+      // On va supposer que l'utilisateur ajuste le total manuellement ou via les inputs
+      // Pour l'UX simple : si on augmente PMR, on augmente Total.
+      // La variable liée est form.nombre_pmr.
+      // Si nombre_pmr > nombre_passagers, on monte passagers.
+      if (form.nombre_pmr > form.nombre_passagers) {
+          form.nombre_passagers = form.nombre_pmr;
+      }
+  }
+
   function getEmailBodyFromData(data) {
+      let causeSection = "";
+      if (data.is_pmr) {
+          causeSection = `\nCause : ${data.pmr_motif || 'Non spécifiée'}\nRemarques : ${data.motif || '-'}`;
+      }
+
       return `Bonjour,
 
 Veuillez trouver ci-joint une commande de taxi pour le trajet suivant :
@@ -199,6 +251,7 @@ ${data.type_trajet === 'aller-retour' ? `RETOUR PRÉVU le : ${formatDate(data.da
 
 Nombre de passagers : ${data.nombre_passagers} ${data.is_pmr ? `(dont ${data.nombre_pmr} PMR)` : ''}
 ${data.is_pmr ? `Client PMR : ${data.pmr_nom || ''} ${data.pmr_prenom || ''} (${data.pmr_type})\nDossier : ${data.pmr_dossier || 'Non spécifié'}` : `Ref : ${data.relation_number || 'Non spécifié'}`}
+${causeSection}
 
 Merci de confirmer la bonne réception.
 
@@ -218,11 +271,9 @@ ${data.redacteur || 'SNCB'}`;
   function openEdit(cmd) {
       form = JSON.parse(JSON.stringify(cmd));
       
-      // Conversion UTC -> Local pour inputs
       if(form.date_trajet) form.date_trajet = toLocalInput(form.date_trajet);
       if(form.date_retour) form.date_retour = toLocalInput(form.date_retour);
       
-      // Nettoyage des données sales éventuelles
       if(form.taxi_adresse) form.taxi_adresse = cleanData(form.taxi_adresse);
       if(form.taxi_tel) form.taxi_tel = cleanData(form.taxi_tel);
       if(form.taxi_email) form.taxi_email = cleanData(form.taxi_email);
@@ -255,7 +306,6 @@ ${data.redacteur || 'SNCB'}`;
       const payload = { ...form };
       delete payload.pmr_search;
 
-      // Nettoyage AVANT sauvegarde pour éviter de remettre des ["..."] en base
       payload.taxi_adresse = cleanData(payload.taxi_adresse);
       payload.taxi_tel = cleanData(payload.taxi_tel);
       payload.taxi_email = cleanData(payload.taxi_email);
@@ -269,7 +319,8 @@ ${data.redacteur || 'SNCB'}`;
       }
 
       if (form.is_pmr) {
-          payload.passager_nom = null; payload.relation_number = null; payload.facturation = null;
+          payload.passager_nom = null; 
+          payload.relation_number = null; 
       } else {
           payload.pmr_nom = null; payload.pmr_type = null; payload.pmr_dossier = null;
           payload.nombre_pmr = 0; payload.pmr_prenom = null; payload.pmr_tel = null; payload.pmr_motif = null;
@@ -325,7 +376,7 @@ ${data.redacteur || 'SNCB'}`;
       doc.text("BON DE COMMANDE TAXI", 115, 20, { align: "center" });
       
       doc.setFontSize(10); doc.setFont("helvetica", "normal");
-    //   doc.text(`ID Commande : #${data.id || 'NOUVEAU'}`, 195, 20, { align: "right" });
+      doc.text(`ID Commande : #${data.id || 'NOUVEAU'}`, 195, 20, { align: "right" });
 
       // BLOC 1
       const yRow1 = 35; const hRow1 = 45;
@@ -348,28 +399,24 @@ ${data.redacteur || 'SNCB'}`;
       doc.text("1060 Bruxelles", rM, cY); cY += 6; doc.setFont("helvetica", "bold");
       doc.text("N° TVA : BE 0203 430 576", rM, cY);
 
-      // BLOC 3 (SOCIETE) - NETTOYAGE DES DONNEES ICI
+      // BLOC 3
       const yRow2 = yRow1 + hRow1 + 5; const hRow2 = 40;
       drawBox(10, yRow2, 90, hRow2, "3. Société de Taxi :");
       doc.setFontSize(11); doc.setFont("helvetica", "bold");
       doc.text(data.taxi_nom || "Taxi Indépendant", lM, yRow2 + 15);
       doc.setFontSize(10); doc.setFont("helvetica", "normal");
       
-      // Tel cleaned
       if(data.taxi_tel) {
           doc.setFontSize(9);
-          // cleanData supprime les crochets et guillemets
-          const tels = cleanData(String(data.taxi_tel)); 
+          const tels = cleanData(String(data.taxi_tel));
           if(tels.length > 30) doc.setFontSize(8);
           doc.text(`Tel: ${tels}`, lM, yRow2 + 22);
       }
-      // Email cleaned
       if(data.taxi_email) { 
           doc.setFontSize(8); 
           const mails = cleanData(String(data.taxi_email));
           doc.text(mails, lM, yRow2 + 28); 
       }
-      // Adresse cleaned
       if(data.taxi_adresse) {
            doc.setFontSize(8);
            const cleanAddr = cleanData(data.taxi_adresse);
@@ -420,9 +467,23 @@ ${data.redacteur || 'SNCB'}`;
       if (data.is_pmr) { doc.text("N° Dossier :", pX, pY); doc.setFont("helvetica", "normal"); doc.text(data.pmr_dossier || 'N/A', pX + 30, pY); } 
       else { doc.text("Réf. Relation :", pX, pY); doc.setFont("helvetica", "normal"); doc.text(data.relation_number || 'N/A', pX + 30, pY); }
       pY += 8;
-      doc.setFont("helvetica", "bold"); doc.text("Motif :", pX, pY); doc.setFont("helvetica", "normal");
-      let motifFinal = data.is_pmr ? (data.pmr_motif || '') : (data.motif || '');
-      const splitMotif = doc.splitTextToSize(motifFinal, 140); doc.text(splitMotif, pX + 30, pY);
+      
+      doc.setFont("helvetica", "bold"); 
+      
+      if (data.is_pmr) {
+          doc.text("Cause / Remarques :", pX, pY);
+          doc.setFont("helvetica", "normal");
+          const cause = data.pmr_motif || 'Non spécifiée';
+          const remark = data.motif ? ` (Rem: ${data.motif})` : '';
+          const fullReason = `${cause}${remark}`;
+          const splitMotif = doc.splitTextToSize(fullReason, 140); 
+          doc.text(splitMotif, pX + 40, pY);
+      } else {
+          doc.text("Motif :", pX, pY);
+          doc.setFont("helvetica", "normal");
+          const splitMotif = doc.splitTextToSize(data.motif || '', 140); 
+          doc.text(splitMotif, pX + 30, pY);
+      }
 
       // BLOC 6
       const yRow4 = yRow3 + hRow3 + 5; const hRow4 = 35;
@@ -476,9 +537,13 @@ ${data.redacteur || 'SNCB'}`;
                         <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
                         <div class="flex-grow space-y-3 relative z-10 w-full">
                              <div class="flex items-center gap-3 flex-wrap">
-                                <!-- <span class="text-[10px] font-mono font-bold text-gray-500 bg-white/5 px-2 py-1 rounded border border-white/10">#{cmd.id}</span> -->
                                 {#if cmd.is_pmr}<span class="px-2 py-1 rounded text-[10px] font-bold uppercase bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1"><Users size={10}/> PMR</span>
                                 {:else}<span class="px-2 py-1 rounded text-[10px] font-bold uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center gap-1"><User size={10}/> Clientèle Standard</span>{/if}
+                                
+                                <span class="px-2 py-1 rounded text-[10px] font-bold uppercase border {cmd.type_trajet === 'aller-retour' ? 'bg-blue-500/10 text-blue-300 border-blue-500/20' : 'bg-gray-500/10 text-gray-400 border-gray-500/20'} flex items-center gap-1">
+                                    {#if cmd.type_trajet === 'aller-retour'}<Repeat size={10}/> Aller-Retour{:else}<ArrowRight size={10}/> Aller Simple{/if}
+                                </span>
+
                                 <span class="text-lg font-bold text-white tracking-tight">{cmd.taxi_nom}</span>
                                 {#if cmd.is_pmr && cmd.pmr_dossier}<span class="ml-auto md:ml-0 text-xs font-mono text-purple-200 bg-purple-900/20 px-2 py-0.5 rounded border border-purple-500/20">Dos: {cmd.pmr_dossier}</span>
                                 {:else if cmd.relation_number}<span class="ml-auto md:ml-0 text-xs font-mono text-cyan-200 bg-cyan-900/20 px-2 py-0.5 rounded border border-cyan-500/20">Réf: {cmd.relation_number}</span>{/if}
@@ -499,9 +564,24 @@ ${data.redacteur || 'SNCB'}`;
                 <div class="bg-black/20 border border-white/5 rounded-2xl p-6 space-y-4">
                     <h3 class="text-sm font-bold text-cyan-400 uppercase tracking-wide mb-4 flex items-center gap-2"><FileText size={16}/> Mission</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="md:col-span-2"><label class={labelClass}>Motif</label><input type="text" bind:value={form.motif} class={inputClass}></div>
+                        <div class="md:col-span-2">
+                            {#if form.is_pmr}
+                                <label class={labelClass}>Cause (PMR)</label>
+                                <select bind:value={form.pmr_motif} class={inputClass + " mb-3"}>
+                                    <option value="" disabled selected>-- Sélectionner une cause --</option>
+                                    {#each PMR_CAUSES as cause}
+                                        <option value={cause}>{cause}</option>
+                                    {/each}
+                                </select>
+                                <label class={labelClass}><MessageSquare size={12}/> Remarques</label>
+                                <input type="text" bind:value={form.motif} class={inputClass} placeholder="Détails supplémentaires...">
+                            {:else}
+                                <label class={labelClass}>Motif</label>
+                                <input type="text" bind:value={form.motif} class={inputClass} placeholder="Ex: Dérangement L.96...">
+                            {/if}
+                        </div>
                         <div><label class={labelClass}>Rédacteur</label><input type="text" bind:value={form.redacteur} class={inputClass} readonly></div>
-                        <div><label class={labelClass}>Facturation</label><select bind:value={form.facturation} class={inputClass} disabled={form.is_pmr}><option>SNCB</option><option>Infrabel</option><option>Tiers</option></select></div>
+                        <div><label class={labelClass}>Facturation</label><select bind:value={form.facturation} class={inputClass}>{#each FACTURATION_OPTIONS as opt}<option value={opt}>{opt}</option>{/each}</select></div>
                     </div>
                 </div>
                 <div class="bg-black/20 border border-white/5 rounded-2xl p-6 space-y-4">
@@ -513,42 +593,35 @@ ${data.redacteur || 'SNCB'}`;
             </div>
             <div class="space-y-6">
                 <div class="bg-black/20 border border-white/5 rounded-2xl p-6 relative">
-                    <h3 class="text-sm font-bold text-yellow-400 uppercase tracking-wide mb-4 flex items-center gap-2">
-                        <Car size={16}/> Société
-                    </h3>
-                    <div>
-                        <input list="taxis-list" type="text" bind:value={form.taxi_nom} on:input={handleTaxiChange} class={inputClass} placeholder="Rechercher...">
-                        <datalist id="taxis-list">
-                            {#each taxis as t}
-                                <option value={t.nom} />
-                            {/each}
-                        </datalist>
-                    </div>
-                    
-                    {#if form.taxi_email || form.taxi_adresse || form.taxi_tel}
-                        <div class="mt-4 p-3 bg-white/5 rounded-xl border border-white/5 text-xs text-gray-400 space-y-2" transition:slide>
-                            {#if form.taxi_adresse}
-                                <div class="flex items-start gap-2">
-                                    <MapPin size={12} class="mt-0.5 text-gray-500 shrink-0"/> 
-                                    <span>{cleanData(form.taxi_adresse)}</span>
+                    <h3 class="text-sm font-bold text-yellow-400 uppercase tracking-wide mb-4 flex items-center gap-2"><Car size={16}/> Société</h3>
+                    <div><input list="taxis-list" type="text" bind:value={form.taxi_nom} on:input={handleTaxiChange} class={inputClass} placeholder="Rechercher..."><datalist id="taxis-list">{#each taxis as t}<option value={t.nom} />{/each}</datalist></div>
+                    {#if form.taxi_email || form.taxi_adresse || form.taxi_tel}<div class="mt-4 p-3 bg-white/5 rounded-xl border border-white/5 text-xs text-gray-400 space-y-2" transition:slide>{#if form.taxi_adresse}<div class="flex items-start gap-2"><MapPin size={12} class="mt-0.5 text-gray-500 shrink-0"/> <span>{cleanData(form.taxi_adresse)}</span></div>{/if}{#if form.taxi_email}<div class="flex items-center gap-2 text-blue-200"><Mail size={12} class="text-blue-400 shrink-0"/> <a href="mailto:{cleanData(form.taxi_email)}" class="hover:underline">{cleanData(form.taxi_email)}</a></div>{/if}{#if form.taxi_tel}<div class="flex items-center gap-2 text-green-200"><Phone size={12} class="text-green-400 shrink-0"/> <span>{cleanData(form.taxi_tel)}</span></div>{/if}</div>{/if}
+                </div>
+                <div class="bg-black/20 border border-white/5 rounded-2xl p-6 relative overflow-hidden transition-colors duration-300 {form.is_pmr ? 'border-purple-500/30' : ''}"><div class="absolute top-0 left-0 right-0 h-1 transition-colors duration-300 {form.is_pmr ? 'bg-purple-500' : 'bg-cyan-500'}"></div><div class="flex justify-between items-center mb-4 pt-2"><h3 class="text-sm font-bold uppercase tracking-wide flex items-center gap-2 {form.is_pmr ? 'text-purple-400' : 'text-cyan-400'}">{#if form.is_pmr}<Users size={16}/> PMR{:else}<User size={16}/> Passager{/if}</h3></div>
+                    <div class="bg-black/40 p-1 rounded-xl flex mb-6 border border-white/10"><button class="flex-1 py-2 rounded-lg text-xs font-bold transition-all { !form.is_pmr ? 'bg-cyan-600 text-white shadow' : 'text-gray-400 hover:text-white' }" on:click={() => form.is_pmr = false}>STANDARD</button><button class="flex-1 py-2 rounded-lg text-xs font-bold transition-all { form.is_pmr ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white' }" on:click={() => form.is_pmr = true}>PMR</button></div>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            {#if form.is_pmr}
+                                <div>
+                                    <label class={labelClass}>PMR</label>
+                                    <input type="number" min="1" bind:value={form.nombre_pmr} on:input={updatePmrCount} class={inputClass}>
                                 </div>
-                            {/if}
-                            {#if form.taxi_email}
-                                <div class="flex items-center gap-2 text-blue-200">
-                                    <Mail size={12} class="text-blue-400 shrink-0"/> 
-                                    <a href="mailto:{cleanData(form.taxi_email)}" class="hover:underline">{cleanData(form.taxi_email)}</a>
+                                <div>
+                                    <label class={labelClass}>Accompagnant</label>
+                                    <input type="number" min="0" value={form.nombre_passagers - form.nombre_pmr} on:input={updateAccompagnants} class={inputClass}>
                                 </div>
-                            {/if}
-                            {#if form.taxi_tel}
-                                <div class="flex items-center gap-2 text-green-200">
-                                    <Phone size={12} class="text-green-400 shrink-0"/> 
-                                    <span>{cleanData(form.taxi_tel)}</span>
+                            {:else}
+                                <div class="col-span-2">
+                                    <label class={labelClass}>Total Pax</label>
+                                    <input type="number" min="1" bind:value={form.nombre_passagers} class={inputClass}>
                                 </div>
                             {/if}
                         </div>
-                    {/if}
+                        {#if form.is_pmr}<div transition:slide class="space-y-4 pt-2 border-t border-white/5"><div><label class={labelClass}>Client PMR</label><input list="pmr-clients-list" type="text" bind:value={form.pmr_search} on:input={handlePmrSelect} class={inputClass}><datalist id="pmr-clients-list">{#each pmrClients as c}<option value={`${c.nom} ${c.prenom}`}>{c.type || '?'}</option>{/each}</datalist></div><div><label class={labelClass}>Type</label><select bind:value={form.pmr_type} class={inputClass}><option value="NV">Non-Voyant</option><option value="CRF">Chaise Roulante Fixe</option><option value="CRE">Chaise Roulante Electrique</option><option value="CRP">Chaise Roulante Pliable</option><option value="MR">Marche Difficile</option><option value="Diff">Autre difficulté</option></select></div><div class="grid grid-cols-2 gap-2"><input type="text" placeholder="Nom" bind:value={form.pmr_nom} class={inputClass}><input type="text" placeholder="Prénom" bind:value={form.pmr_prenom} class={inputClass}></div><div><label class={labelClass}>Téléphone</label><input type="text" bind:value={form.pmr_tel} class={inputClass}></div><div><label class={labelClass}>N° Dossier</label><input type="text" bind:value={form.pmr_dossier} class="{inputClass} border-purple-500/30"></div></div>
+                        {:else}<div transition:slide class="space-y-4 pt-2 border-t border-white/5"><div><label class={labelClass}>Nom Passager</label><input type="text" bind:value={form.passager_nom} class={inputClass}></div><div><label class={labelClass}>Réf / Ordre</label><input type="text" bind:value={form.relation_number} class={inputClass}></div></div>{/if}
+                    </div>
                 </div>
-                <div class="bg-black/20 border border-white/5 rounded-2xl p-6 relative overflow-hidden transition-colors duration-300 {form.is_pmr ? 'border-purple-500/30' : ''}"><div class="absolute top-0 left-0 right-0 h-1 transition-colors duration-300 {form.is_pmr ? 'bg-purple-500' : 'bg-cyan-500'}"></div><div class="flex justify-between items-center mb-4 pt-2"><h3 class="text-sm font-bold uppercase tracking-wide flex items-center gap-2 {form.is_pmr ? 'text-purple-400' : 'text-cyan-400'}">{#if form.is_pmr}<Users size={16}/> PMR{:else}<User size={16}/> Passager{/if}</h3></div><div class="bg-black/40 p-1 rounded-xl flex mb-6 border border-white/10"><button class="flex-1 py-2 rounded-lg text-xs font-bold transition-all { !form.is_pmr ? 'bg-cyan-600 text-white shadow' : 'text-gray-400 hover:text-white' }" on:click={() => form.is_pmr = false}>STANDARD</button><button class="flex-1 py-2 rounded-lg text-xs font-bold transition-all { form.is_pmr ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white' }" on:click={() => form.is_pmr = true}>PMR</button></div><div class="space-y-4"><div class="grid grid-cols-2 gap-4"><div class="{form.is_pmr ? '' : 'col-span-2'}"><label class={labelClass}>Total Pass.</label><input type="number" min="1" bind:value={form.nombre_passagers} class={inputClass}></div>{#if form.is_pmr}<div><label class={labelClass}>Dont PMR</label><input type="number" min="0" bind:value={form.nombre_pmr} class={inputClass}></div>{/if}</div>{#if form.is_pmr}<div transition:slide class="space-y-4 pt-2 border-t border-white/5"><div><label class={labelClass}>Client PMR</label><input list="pmr-clients-list" type="text" bind:value={form.pmr_search} on:input={handlePmrSelect} class={inputClass}><datalist id="pmr-clients-list">{#each pmrClients as c}<option value={`${c.nom} ${c.prenom}`}>{c.type || '?'}</option>{/each}</datalist></div><div><label class={labelClass}>Type</label><select bind:value={form.pmr_type} class={inputClass}><option value="NV">Non-Voyant</option><option value="CRE">Chaise Roulante Electrique</option><option value="CRF">Chaise Roulante Fixe</option><option value="CRP">Chaise Roulante Pliable</option><option value="MR">MR</option><option value="Diff">Autre difficulté</option></select></div><div class="grid grid-cols-2 gap-2"><input type="text" placeholder="Nom" bind:value={form.pmr_nom} class={inputClass}><input type="text" placeholder="Prénom" bind:value={form.pmr_prenom} class={inputClass}></div><div><label class={labelClass}>Téléphone</label><input type="text" bind:value={form.pmr_tel} class={inputClass}></div><div><label class={labelClass}>N° Dossier</label><input type="text" bind:value={form.pmr_dossier} class="{inputClass} border-purple-500/30"></div></div>{:else}<div transition:slide class="space-y-4 pt-2 border-t border-white/5"><div><label class={labelClass}>Nom Passager</label><input type="text" bind:value={form.passager_nom} class={inputClass}></div><div><label class={labelClass}>TC_ / Ordre</label><input type="text" bind:value={form.relation_number} class={inputClass}></div></div>{/if}</div></div></div>
+            </div>
         </div>
 
         <div class="fixed bottom-4 left-4 right-4 z-50 flex flex-wrap justify-end items-center gap-4 p-4 border border-white/10 bg-[#0f1115]/80 backdrop-blur-2xl shadow-2xl rounded-2xl" in:fly={{ y: 20 }}>
