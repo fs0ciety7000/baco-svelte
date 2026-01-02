@@ -6,7 +6,7 @@
   import autoTable from 'jspdf-autotable';
   import { openConfirmModal } from '$lib/stores/modal.js';
   import { toast } from '$lib/stores/toast.js';
-  // Import du store de thème (même si la variable CSS fait le gros du travail)
+  // Import du store de thème
   import { currentThemeId } from '$lib/stores/theme';
   import { 
     Car, Calendar, Clock, MapPin, FileText, Save, Trash2, Plus, Loader2, ArrowLeft,
@@ -118,7 +118,9 @@
     type_trajet: 'aller',
     gare_origine: 'Mons', gare_arrivee: '', gare_via: '',
     gare_retour_origine: '', gare_retour_arrivee: '',
-    nombre_passagers: 1, nombre_pmr: 0,
+    nombre_passagers: 1, 
+    nombre_pmr: 0,
+    nombre_vehicules: 1, // NOUVEAU CHAMP
     is_pmr: false,
     pmr_type: 'NV', pmr_nom: '', pmr_prenom: '', pmr_tel: '', pmr_dossier: '', 
     pmr_motif: '',
@@ -211,6 +213,8 @@
           form.nombre_pmr = 1;
           if (form.nombre_passagers < form.nombre_pmr) form.nombre_passagers = form.nombre_pmr;
       }
+      // Initialisation par défaut si vide
+      if (!form.nombre_vehicules) form.nombre_vehicules = 1;
   }
 
   function updateAccompagnants(e) {
@@ -227,7 +231,7 @@
   function getEmailBodyFromData(data) {
       let causeSection = "";
       if (data.is_pmr) {
-          causeSection = `\nCause : ${data.pmr_motif || 'Non spécifiée'}\nRemarques : ${data.motif || '-'}`;
+          causeSection = `\nCause : ${data.pmr_motif || 'Non spécifiée'}\nRemarques : ${data.motif || '-'}\nNombre de véhicules : ${data.nombre_vehicules || 1}`;
       }
 
       return `Bonjour,
@@ -269,6 +273,9 @@ ${data.redacteur || 'SNCB'}`;
       if(form.taxi_email) form.taxi_email = cleanData(form.taxi_email);
 
       form.pmr_search = ""; 
+      // Sécurité si champ vide
+      if(!form.nombre_vehicules) form.nombre_vehicules = 1;
+
       selectedCommand = null; 
       view = 'form'; 
   }
@@ -311,9 +318,12 @@ ${data.redacteur || 'SNCB'}`;
       if (form.is_pmr) {
           payload.passager_nom = null; 
           payload.relation_number = null; 
+          // En mode PMR, on s'assure d'avoir un nombre de véhicule
+          if(!payload.nombre_vehicules) payload.nombre_vehicules = 1;
       } else {
           payload.pmr_nom = null; payload.pmr_type = null; payload.pmr_dossier = null;
           payload.nombre_pmr = 0; payload.pmr_prenom = null; payload.pmr_tel = null; payload.pmr_motif = null;
+          payload.nombre_vehicules = 1; // Standard = 1 véhicule par défaut
       }
       
       let error;
@@ -450,9 +460,16 @@ ${data.redacteur || 'SNCB'}`;
       let paxInfo = data.is_pmr ? `${data.pmr_nom} ${data.pmr_prenom} (PMR: ${data.pmr_type})` : (data.passager_nom || "Non nominatif");
       if(data.is_pmr && data.pmr_tel) paxInfo += ` - Tel: ${data.pmr_tel}`;
       doc.text(paxInfo, pX + 30, pY);
-      const nbPax = `${data.nombre_passagers} pers. ${data.is_pmr ? `(dont ${data.nombre_pmr} PMR)` : ''}`;
+      
+      let nbPax = `${data.nombre_passagers} pers.`;
+      if (data.is_pmr) {
+          const nbAccompagnants = data.nombre_passagers - data.nombre_pmr;
+          const s = nbAccompagnants > 1 ? 's' : '';
+          nbPax += ` (dont ${nbAccompagnants} accompagnant${s})`;
+      }
       doc.text(nbPax, 150, pY, { align: "right" });
       pY += 8;
+      
       doc.setFont("helvetica", "bold");
       if (data.is_pmr) { doc.text("N° Dossier :", pX, pY); doc.setFont("helvetica", "normal"); doc.text(data.pmr_dossier || 'N/A', pX + 30, pY); } 
       else { doc.text("Réf. Relation :", pX, pY); doc.setFont("helvetica", "normal"); doc.text(data.relation_number || 'N/A', pX + 30, pY); }
@@ -468,7 +485,15 @@ ${data.redacteur || 'SNCB'}`;
           const fullReason = `${cause}${remark}`;
           const splitMotif = doc.splitTextToSize(fullReason, 140); 
           doc.text(splitMotif, pX + 40, pY);
+          
+          // AFFICHAGE NOMBRE DE VÉHICULES EN GRAS
+          const motifHeight = splitMotif.length * 5;
+          const vehiculeY = pY + motifHeight + 1;
+          doc.setFont("helvetica", "bold");
+          doc.text(`Nombre de véhicules : ${data.nombre_vehicules || 1}`, pX, vehiculeY);
+          
       } else {
+          // MODE STANDARD
           doc.text("Motif :", pX, pY);
           doc.setFont("helvetica", "normal");
           const splitMotif = doc.splitTextToSize(data.motif || '', 140); 
@@ -615,12 +640,13 @@ ${data.redacteur || 'SNCB'}`;
                 <div class="bg-black/20 border border-white/5 rounded-2xl p-6 relative overflow-hidden transition-colors duration-300 {form.is_pmr ? 'border-purple-500/30' : ''}"><div class="absolute top-0 left-0 right-0 h-1 transition-colors duration-300 {form.is_pmr ? 'bg-purple-500' : 'bg-[rgb(var(--color-primary))]'}"></div><div class="flex justify-between items-center mb-4 pt-2"><h3 class="text-sm font-bold uppercase tracking-wide flex items-center gap-2 {form.is_pmr ? 'text-purple-400' : 'text-[rgb(var(--color-primary))]'}">{#if form.is_pmr}<Users size={16}/> PMR{:else}<User size={16}/> Passager{/if}</h3></div>
                     <div class="bg-black/40 p-1 rounded-xl flex mb-6 border border-white/10"><button class="flex-1 py-2 rounded-lg text-xs font-bold transition-all { !form.is_pmr ? 'bg-[rgba(var(--color-primary),0.2)] text-[rgb(var(--color-primary))]' : 'text-gray-400 hover:text-white' }" on:click={() => form.is_pmr = false}>STANDARD</button><button class="flex-1 py-2 rounded-lg text-xs font-bold transition-all { form.is_pmr ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white' }" on:click={() => form.is_pmr = true}>PMR</button></div>
                     <div class="space-y-4">
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-3 gap-4">
                             {#if form.is_pmr}
                                 <div><label class={labelClass}>PMR</label><input type="number" min="1" bind:value={form.nombre_pmr} on:input={updatePmrCount} class={inputClass}></div>
-                                <div><label class={labelClass}>Accompagnant</label><input type="number" min="0" value={form.nombre_passagers - form.nombre_pmr} on:input={updateAccompagnants} class={inputClass}></div>
+                                <div><label class={labelClass}>Accomp.</label><input type="number" min="0" value={form.nombre_passagers - form.nombre_pmr} on:input={updateAccompagnants} class={inputClass}></div>
+                                <div><label class={labelClass}>N. Véhicules</label><input type="number" min="1" bind:value={form.nombre_vehicules} class={inputClass}></div>
                             {:else}
-                                <div class="col-span-2"><label class={labelClass}>Total Pax</label><input type="number" min="1" bind:value={form.nombre_passagers} class={inputClass}></div>
+                                <div class="col-span-3"><label class={labelClass}>Total Passagers</label><input type="number" min="1" bind:value={form.nombre_passagers} class={inputClass}></div>
                             {/if}
                         </div>
                         {#if form.is_pmr}<div transition:slide class="space-y-4 pt-2 border-t border-white/5"><div><label class={labelClass}>Client PMR</label><input list="pmr-clients-list" type="text" bind:value={form.pmr_search} on:input={handlePmrSelect} class={inputClass}><datalist id="pmr-clients-list">{#each pmrClients as c}<option value={`${c.nom} ${c.prenom}`}>{c.type || '?'}</option>{/each}</datalist></div><div><label class={labelClass}>Type</label><select bind:value={form.pmr_type} class={inputClass}><option value="NV">Non-Voyant</option><option value="CRF">Chaise Roulante Fixe</option><option value="CRE">Chaise Roulante Electrique</option><option value="CRP">Chaise Roulante Pliable</option><option value="MR">Marche Difficile</option><option value="Diff">Autre difficulté</option></select></div><div class="grid grid-cols-2 gap-2"><input type="text" placeholder="Nom" bind:value={form.pmr_nom} class={inputClass}><input type="text" placeholder="Prénom" bind:value={form.pmr_prenom} class={inputClass}></div><div><label class={labelClass}>Téléphone</label><input type="text" bind:value={form.pmr_tel} class={inputClass}></div><div><label class={labelClass}>N° Dossier</label><input type="text" bind:value={form.pmr_dossier} class="{inputClass} border-purple-500/30"></div></div>{:else}<div transition:slide class="space-y-4 pt-2 border-t border-white/5"><div><label class={labelClass}>Nom Passager</label><input type="text" bind:value={form.passager_nom} class={inputClass}></div><div><label class={labelClass}>Réf / Ordre</label><input type="text" bind:value={form.relation_number} class={inputClass}></div></div>{/if}

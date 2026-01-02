@@ -7,7 +7,7 @@
   import { slide, fly } from 'svelte/transition';
   import { isCommandOpen } from '$lib/stores/command';
   import { zenMode } from '$lib/stores/zen';
-import { presenceState } from '$lib/stores/presence.svelte.js';
+  import { presenceState } from '$lib/stores/presence.svelte.js';
   // Icônes
   import { 
     Shield, Accessibility, ChevronDown, Combine, Users, BookUser, 
@@ -19,7 +19,7 @@ import { presenceState } from '$lib/stores/presence.svelte.js';
 
   export let user;
   
-  // --- ÉTATS (Svelte 5 / Legacy reactive) ---
+  // --- ÉTATS ---
   let isMobileMenuOpen = false;
   let activeDropdown = null;
   let userProfile = null;
@@ -52,6 +52,7 @@ import { presenceState } from '$lib/stores/presence.svelte.js';
   const inactiveTile = "text-gray-400 hover:text-white";
 
   $: getLinkClass = (path) => {
+    // Vérifie si l'URL actuelle contient le chemin (pour garder le bouton actif)
     const isActive = $page.url.pathname.includes(path);
     return `${glassTileBase} px-4 py-2 gap-2 text-sm font-semibold ${isActive ? activeTile : `${inactiveTile} ${neonHover}`}`;
   };
@@ -241,7 +242,8 @@ import { presenceState } from '$lib/stores/presence.svelte.js';
               <a href="/documents" class={getLinkClass('documents')}><Folder class="w-4 h-4" /><span>Docs</span></a>
               <a href="/journal" class={getLinkClass('journal')}><BookCopy class="w-4 h-4" /><span>Journal</span></a>
               <a href="/planning" class={getLinkClass('planning')}><CalendarDays class="w-4 h-4" /><span>Planning</span></a>
-              <a href="/otto" class={getLinkClass('otto')}><Bus class="w-4 h-4" /><span>C3</span></a>
+              <a href="/otto" class={getLinkClass('otto')}><Bus class="w-4 h-4" /><span>C3</span></a>           
+              <a href="/generateTaxi" class={getLinkClass('generateTaxi')}><Car class="w-4 h-4" /><span>Cmd Taxi</span></a>
           </div>
 
           <div class="flex items-center gap-2">
@@ -380,6 +382,7 @@ import { presenceState } from '$lib/stores/presence.svelte.js';
                <a href="/operationnel" class="flex items-center gap-3 p-3 text-gray-400"><Shield class="w-4 h-4"/> Opérationnel</a>
                <a href="/pmr" class="flex items-center gap-3 p-3 text-gray-400"><Accessibility class="w-4 h-4"/> PMR</a>
                <a href="/journal" class="flex items-center gap-3 p-3 text-gray-400"><BookCopy class="w-4 h-4"/> Journal</a>
+               <a href="/generateTaxi" class="flex items-center gap-3 p-3 text-gray-400"><Car class="w-4 h-4"/> Cmd Taxi</a>
                <button on:click={handleLogout} class="flex items-center gap-3 p-3 text-red-400"><LogOut class="w-4 h-4"/> Déconnexion</button>
           </div>
       {/if}
