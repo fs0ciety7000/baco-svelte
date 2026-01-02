@@ -9,7 +9,7 @@
   import { 
     Car, Calendar, Clock, MapPin, FileText, Save, Trash2, Plus, Loader2, ArrowLeft,
     Printer, Search, X, User, Users, ArrowRightLeft, 
-    Mail, ClipboardCopy, Check, Phone, ArrowRight, MoreHorizontal, FilePenLine, MessageSquare, Repeat
+    Mail, ClipboardCopy, Check, Phone, ArrowRight, MoreHorizontal, FilePenLine, MessageSquare, Repeat, CornerDownRight
   } from 'lucide-svelte';
 
   // --- CONSTANTES ---
@@ -204,31 +204,19 @@
       }
   }
 
-  // LOGIQUE PAR DEFAUT PMR
   $: if (form.is_pmr) {
-      // Si on passe en PMR et qu'il n'y a pas de PMR défini, on met 1 par défaut
       if (form.nombre_pmr === 0) {
           form.nombre_pmr = 1;
-          // Si le total est inférieur au nombre de PMR, on ajuste le total
           if (form.nombre_passagers < form.nombre_pmr) form.nombre_passagers = form.nombre_pmr;
       }
   }
 
-  // Fonction pour mettre à jour le total quand on change les accompagnants
   function updateAccompagnants(e) {
       const accomp = parseInt(e.target.value) || 0;
       form.nombre_passagers = form.nombre_pmr + accomp;
   }
   
-  // Fonction pour mettre à jour le total quand on change le nombre de PMR
   function updatePmrCount(e) {
-      // Recalcule le total en gardant le nombre d'accompagnants actuel
-      // Accompagnants actuels = Total actuel - Ancien PMR
-      // Mais ici c'est plus simple de recalculer proprement :
-      // On va supposer que l'utilisateur ajuste le total manuellement ou via les inputs
-      // Pour l'UX simple : si on augmente PMR, on augmente Total.
-      // La variable liée est form.nombre_pmr.
-      // Si nombre_pmr > nombre_passagers, on monte passagers.
       if (form.nombre_pmr > form.nombre_passagers) {
           form.nombre_passagers = form.nombre_pmr;
       }
@@ -376,7 +364,7 @@ ${data.redacteur || 'SNCB'}`;
       doc.text("BON DE COMMANDE TAXI", 115, 20, { align: "center" });
       
       doc.setFontSize(10); doc.setFont("helvetica", "normal");
-      doc.text(`ID Commande : #${data.id || 'NOUVEAU'}`, 195, 20, { align: "right" });
+    //   doc.text(`ID Commande : #${data.id || 'NOUVEAU'}`, 195, 20, { align: "right" });
 
       // BLOC 1
       const yRow1 = 35; const hRow1 = 45;
@@ -552,6 +540,23 @@ ${data.redacteur || 'SNCB'}`;
                                 <div class="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-lg border border-white/5"><Calendar size={14} class="text-gray-500"/> <span class="font-medium text-gray-200">{new Date(cmd.date_trajet).toLocaleDateString('fr-BE', {timeZone:'UTC'})}</span><span class="w-px h-3 bg-white/10 mx-1"></span><span class="font-bold text-cyan-400">{formatTimeLocal(cmd.date_trajet)}</span></div>
                                 <div class="flex items-center gap-2"><span class="text-white font-medium">{cmd.gare_origine}</span> <ArrowRight size={14} class="text-gray-600"/> {#if cmd.gare_via}<span class="text-xs text-yellow-500 bg-yellow-500/10 px-1.5 py-0.5 rounded border border-yellow-500/20">{cmd.gare_via}</span><ArrowRight size={14} class="text-gray-600"/>{/if}<span class="text-white font-medium">{cmd.gare_arrivee}</span></div>
                              </div>
+                             
+                             {#if cmd.type_trajet === 'aller-retour'}
+                                <div class="w-full h-px bg-white/5 my-1"></div>
+                                <div class="flex items-center gap-4 text-sm text-gray-400">
+                                    <div class="flex items-center gap-2 bg-blue-900/20 px-3 py-1.5 rounded-lg border border-blue-500/10">
+                                        <Calendar size={14} class="text-blue-400"/>
+                                        <span class="font-medium text-gray-200">{new Date(cmd.date_retour).toLocaleDateString('fr-BE', {timeZone:'UTC'})}</span>
+                                        <span class="w-px h-3 bg-white/10 mx-1"></span>
+                                        <span class="font-bold text-blue-300">{formatTimeLocal(cmd.date_retour)}</span>
+                                    </div>
+                                    <div class="flex items-center gap-2 text-blue-200/70">
+                                        <span class="font-medium">{cmd.gare_retour_origine}</span>
+                                        <ArrowRight size={14} />
+                                        <span class="font-medium">{cmd.gare_retour_arrivee}</span>
+                                    </div>
+                                </div>
+                             {/if}
                         </div>
                         <div class="opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 bg-white/5 p-2 rounded-full border border-white/10"><MoreHorizontal size={20} /></div>
                     </button>
@@ -602,23 +607,13 @@ ${data.redacteur || 'SNCB'}`;
                     <div class="space-y-4">
                         <div class="grid grid-cols-2 gap-4">
                             {#if form.is_pmr}
-                                <div>
-                                    <label class={labelClass}>PMR</label>
-                                    <input type="number" min="1" bind:value={form.nombre_pmr} on:input={updatePmrCount} class={inputClass}>
-                                </div>
-                                <div>
-                                    <label class={labelClass}>Accompagnant</label>
-                                    <input type="number" min="0" value={form.nombre_passagers - form.nombre_pmr} on:input={updateAccompagnants} class={inputClass}>
-                                </div>
+                                <div><label class={labelClass}>PMR</label><input type="number" min="1" bind:value={form.nombre_pmr} on:input={updatePmrCount} class={inputClass}></div>
+                                <div><label class={labelClass}>Accompagnant</label><input type="number" min="0" value={form.nombre_passagers - form.nombre_pmr} on:input={updateAccompagnants} class={inputClass}></div>
                             {:else}
-                                <div class="col-span-2">
-                                    <label class={labelClass}>Total Pax</label>
-                                    <input type="number" min="1" bind:value={form.nombre_passagers} class={inputClass}>
-                                </div>
+                                <div class="col-span-2"><label class={labelClass}>Total Pax</label><input type="number" min="1" bind:value={form.nombre_passagers} class={inputClass}></div>
                             {/if}
                         </div>
-                        {#if form.is_pmr}<div transition:slide class="space-y-4 pt-2 border-t border-white/5"><div><label class={labelClass}>Client PMR</label><input list="pmr-clients-list" type="text" bind:value={form.pmr_search} on:input={handlePmrSelect} class={inputClass}><datalist id="pmr-clients-list">{#each pmrClients as c}<option value={`${c.nom} ${c.prenom}`}>{c.type || '?'}</option>{/each}</datalist></div><div><label class={labelClass}>Type</label><select bind:value={form.pmr_type} class={inputClass}><option value="NV">Non-Voyant</option><option value="CRF">Chaise Roulante Fixe</option><option value="CRE">Chaise Roulante Electrique</option><option value="CRP">Chaise Roulante Pliable</option><option value="MR">Marche Difficile</option><option value="Diff">Autre difficulté</option></select></div><div class="grid grid-cols-2 gap-2"><input type="text" placeholder="Nom" bind:value={form.pmr_nom} class={inputClass}><input type="text" placeholder="Prénom" bind:value={form.pmr_prenom} class={inputClass}></div><div><label class={labelClass}>Téléphone</label><input type="text" bind:value={form.pmr_tel} class={inputClass}></div><div><label class={labelClass}>N° Dossier</label><input type="text" bind:value={form.pmr_dossier} class="{inputClass} border-purple-500/30"></div></div>
-                        {:else}<div transition:slide class="space-y-4 pt-2 border-t border-white/5"><div><label class={labelClass}>Nom Passager</label><input type="text" bind:value={form.passager_nom} class={inputClass}></div><div><label class={labelClass}>Réf / Ordre</label><input type="text" bind:value={form.relation_number} class={inputClass}></div></div>{/if}
+                        {#if form.is_pmr}<div transition:slide class="space-y-4 pt-2 border-t border-white/5"><div><label class={labelClass}>Client PMR</label><input list="pmr-clients-list" type="text" bind:value={form.pmr_search} on:input={handlePmrSelect} class={inputClass}><datalist id="pmr-clients-list">{#each pmrClients as c}<option value={`${c.nom} ${c.prenom}`}>{c.type || '?'}</option>{/each}</datalist></div><div><label class={labelClass}>Type</label><select bind:value={form.pmr_type} class={inputClass}><option value="NV">Non-Voyant</option><option value="CRF">Chaise Roulante Fixe</option><option value="CRE">Chaise Roulante Electrique</option><option value="CRP">Chaise Roulante Pliable</option><option value="MR">Marche Difficile</option><option value="Diff">Autre difficulté</option></select></div><div class="grid grid-cols-2 gap-2"><input type="text" placeholder="Nom" bind:value={form.pmr_nom} class={inputClass}><input type="text" placeholder="Prénom" bind:value={form.pmr_prenom} class={inputClass}></div><div><label class={labelClass}>Téléphone</label><input type="text" bind:value={form.pmr_tel} class={inputClass}></div><div><label class={labelClass}>N° Dossier</label><input type="text" bind:value={form.pmr_dossier} class="{inputClass} border-purple-500/30"></div></div>{:else}<div transition:slide class="space-y-4 pt-2 border-t border-white/5"><div><label class={labelClass}>Nom Passager</label><input type="text" bind:value={form.passager_nom} class={inputClass}></div><div><label class={labelClass}>Réf / Ordre</label><input type="text" bind:value={form.relation_number} class={inputClass}></div></div>{/if}
                     </div>
                 </div>
             </div>
