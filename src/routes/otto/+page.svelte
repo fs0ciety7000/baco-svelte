@@ -491,12 +491,12 @@ function deleteCommande(id) {
     toast.info("N'oubliez pas de joindre le PDF à l'e-mail Outlook !");
   }
 
-
 async function generatePDF() {
     const doc = new jsPDF();
     const society = availableSocietes.find(s => s.id === form.societe_id);
     let creatorName = form.creator?.full_name || currentUserProfile?.full_name || "Inconnu";
 
+    // --- 1. EN-TÊTE & LOGO ---
     try {
         const logoData = await getBase64ImageFromURL('/SNCB_logo.png');
         doc.addImage(logoData, 'PNG', 15, 10, 25, 16.33);
@@ -523,9 +523,11 @@ async function generatePDF() {
     doc.text(`Tel: ${society?.telephone || '-'}`, rightX, yr, { align: 'right' });
     doc.text(society?.email || '-', rightX, yr + 4, { align: 'right' });
 
+    // --- 2. TITRE DU DOCUMENT ---
     let y = 75;
     doc.setLineWidth(0.5);
-    doc.rect(15, y, 180, 20);
+    doc.setDrawColor(0);
+    doc.rect(15, y, 180, 20); // Cadre Titre
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
     doc.text("Demande service bus de remplacement", 105, y + 7, { align: 'center' });
@@ -538,41 +540,32 @@ async function generatePDF() {
     doc.text("Partie A – Service opérationnels SNCB", 105, y + 17, { align: 'center' });
 
     y += 25;
-    doc.rect(15, y, 180, 130);
+
+    // --- 3. BLOC INFORMATIONS GÉNÉRALES (Cadre dynamique) ---
+    // On sauvegarde la position Y de départ pour dessiner le cadre autour des infos APRES les avoir écrites
+    const infoStartY = y; 
+    
     y += 8;
     const labelX = 20; const valueX = 70;
 
     doc.setFont("helvetica", "bold"); doc.text("Date de circulation :", labelX, y);
     doc.setFont("helvetica", "normal"); doc.text(new Date(form.date_commande).toLocaleDateString('fr-BE'), valueX, y);
     
-    // AJOUT TYPE DE SERVICE PDF
     doc.setFont("helvetica", "bold"); doc.text("Type :", 110, y);
     doc.setFont("helvetica", "normal"); doc.text(form.is_direct ? "DIRECT (Sans arrêt)" : "OMNIBUS (Avec arrêts)", 130, y);
 
-    // --- DEBUT AJOUT : CADRE MOTIF ---
-    y += 12; // On descend d'un cran
-    
-    // Dessiner le cadre (Rectangle : x, y, largeur, hauteur)
-    doc.setDrawColor(0); // Couleur noire
-    doc.rect(20, y - 6, 170, 10); 
-
-    // Texte à l'intérieur
-    doc.setFont("helvetica", "bold");
-    doc.text("Motif :", 25, y);
-    
-    doc.setFont("helvetica", "normal");
-    // On affiche le motif (avec une valeur par défaut vide si null)
-    doc.text(form.motif || '', 45, y);
-    // --- FIN AJOUT ---
-    
     y += 10;
-    doc.setDrawColor(200); doc.line(20, y-4, 190, y-4); doc.setDrawColor(0);
+    // Motif
+    doc.setFont("helvetica", "bold"); doc.text("Motif :", labelX, y);
+    doc.setFont("helvetica", "normal"); doc.text(form.motif || '', valueX, y); // Pas de cadre interne, plus propre
+    
+    y += 8;
+    doc.setDrawColor(200); doc.line(20, y-4, 190, y-4); doc.setDrawColor(0); // Ligne de séparation légère
 
     doc.setFont("helvetica", "bold"); doc.text("Lieu Origine :", labelX, y);
     doc.setFont("helvetica", "normal"); doc.text(form.origine || '?', valueX, y);
     y += 6;
 
-    // Arrêts triés (uniquement si Omnibus)
     if (!form.is_direct && form.arrets?.length > 0) {
         doc.setFont("helvetica", "bold");
         doc.text("Arrêts intermédiaires :", labelX, y);
@@ -593,22 +586,28 @@ async function generatePDF() {
 
     doc.setFont("helvetica", "bold"); doc.text("Lignes concernées :", labelX, y);
     doc.setFont("helvetica", "normal"); doc.text(form.lignes.join(', ') || '-', valueX, y);
+    
     doc.setFont("helvetica", "bold"); doc.text("Heure d'appel :", 110, y);
     doc.setFont("helvetica", "normal"); doc.text(form.heure_appel || '--:--', 140, y);
-    y += 10;
+    
+    y += 5; // Marge bas du bloc info
 
+    // DESSIN DU CADRE AUTOUR DES INFOS (Maintenant qu'on connait la hauteur exacte)
+    doc.rect(15, infoStartY, 180, y - infoStartY);
+
+    y += 10; // Espace avant le tableau
+
+    // --- 4. TABLEAU DES BUS ---
     const busRows = form.bus_data.map((b, i) => {
-        // Récupération infos chauffeur
         const chauf = availableChauffeurs.find(c => c.id == b.chauffeur_id);
-        const chauffeurStr = chauf ? `\nChauffeur: ${chauf.nom}\nTel: ${chauf.tel}` : '';
+        const chauffeurStr = chauf ? `\nChauffeur: ${chauf.nom}\nTel: ${chauf.tel}` : ''; // Utilisation de .tel
         
-        // Récupération infos trajet spécifique
         const routeStr = b.is_specific_route && (b.origine_specifique || b.destination_specifique)
             ? `\n[TRAJET]: ${b.origine_specifique || '?'} -> ${b.destination_specifique || '?'}`
             : '';
 
         return [
-            `Bus ${i+1}${chauffeurStr}${routeStr}`, // On ajoute tout dans la première colonne
+            `Bus ${i+1}${chauffeurStr}${routeStr}`,
             b.plaque || '?', 
             b.heure_prevue || '-', 
             b.heure_confirmee || '-', 
@@ -622,49 +621,55 @@ async function generatePDF() {
         body: busRows,
         theme: 'grid',
         headStyles: { fillColor: [230, 230, 230], textColor: 0, fontStyle: 'bold' },
-        styles: { fontSize: 9, cellPadding: 3, valign: 'middle' }, 
-        margin: { left: 20 },
-        tableWidth: 170,
+        styles: { fontSize: 9, cellPadding: 3, valign: 'middle', lineColor: [0, 0, 0], lineWidth: 0.1 }, // Bordures noires fines
+        margin: { left: 15, right: 15 }, // Alignement avec le reste (15mm)
+        tableWidth: 180,                 // Largeur totale (210 - 15 - 15)
         columnStyles: {
-            0: { cellWidth: 70 } // On élargit la première colonne pour contenir les infos
+            0: { cellWidth: 80 }
         }
     });
 
-// Récupération de la position Y après le tableau
+    // --- 5. RÉSUMÉ & PIED DE PAGE DYNAMIQUE ---
+    
+    // Position après le tableau
     y = doc.lastAutoTable.finalY + 10;
 
-    // Vérification de sécurité : si on est déjà très bas sur la page, on saute une page pour le résumé
-    if (y > 275) {
+    // S'il reste peu de place sur la page pour le résumé, on saute
+    if (y > 270) {
         doc.addPage();
         y = 20;
     }
 
-    // Affichage des infos voyageurs
-    doc.setFont("helvetica", "bold"); doc.text("Nombre de voyageurs :", labelX, y);
-    doc.setFont("helvetica", "normal"); doc.text(String(form.nombre_voyageurs || 'Non communiqué'), valueX + 10, y);
-    doc.setFont("helvetica", "bold"); doc.text("Dont PMR :", 130, y);
-    doc.setFont("helvetica", "normal"); doc.text(String(form.nombre_pmr || '0'), 155, y);
+    // Résumé Voyageurs
+    doc.setFont("helvetica", "bold"); doc.text("Nombre de voyageurs :", 20, y);
+    doc.setFont("helvetica", "normal"); doc.text(String(form.nombre_voyageurs || 'Non communiqué'), 60, y);
+    doc.setFont("helvetica", "bold"); doc.text("Dont PMR :", 110, y);
+    doc.setFont("helvetica", "normal"); doc.text(String(form.nombre_pmr || '0'), 135, y);
 
-    // --- GESTION DYNAMIQUE DU PIED DE PAGE ---
-    
+    // Calcul position Footer
     const footerHeight = 45;
-    const pageHeight = doc.internal.pageSize.height; // 297mm pour A4
+    const pageHeight = doc.internal.pageSize.height;
     
-    // Par défaut, on veut le footer en bas (ex: 230), 
-    // MAIS on prend le max entre 230 et la position actuelle (y) + une marge (15mm)
-    let footerY = Math.max(230, y + 15);
+    // On veut le footer en bas (230) MAIS si le contenu descend plus bas, on le pousse.
+    // +20 de marge après le résumé
+    let footerY = Math.max(230, y + 20);
 
-    // Si le footer dépasse la hauteur de la page, on ajoute une nouvelle page
+    // Si ça dépasse la page, on crée une nouvelle page et on met le footer en haut
     if (footerY + footerHeight > pageHeight - 10) {
         doc.addPage();
-        footerY = 20; // On place le footer en haut de la nouvelle page
+        footerY = 20;
     }
 
-    // Dessin du cadre de facturation (Footer)
-    doc.setDrawColor(0); doc.rect(15, footerY, 180, footerHeight);
+    // Cadre Footer
+    doc.setDrawColor(0); 
+    doc.rect(15, footerY, 180, footerHeight);
     
-    doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.text("Adresse de facturation :", 20, footerY + 6);
-    doc.setFont("helvetica", "normal"); doc.text(["SNCB", "Purchase Accounting B-F.224", "Rue de France 56", "1060 BRUXELLES"], 20, footerY + 12);
+    // Contenu Footer
+    doc.setFontSize(10); 
+    doc.setFont("helvetica", "bold"); 
+    doc.text("Adresse de facturation :", 20, footerY + 6);
+    doc.setFont("helvetica", "normal"); 
+    doc.text(["SNCB", "Purchase Accounting B-F.224", "Rue de France 56", "1060 BRUXELLES"], 20, footerY + 12);
     
     const legX = 100;
     doc.setFont("helvetica", "bold"); doc.text("Mentions obligatoires sur la facture :", legX, footerY + 6);
@@ -672,16 +677,14 @@ async function generatePDF() {
     doc.text(`N° SAP de la commande : 4522 944 778`, legX, footerY + 17);
     doc.setFont("helvetica", "bold"); doc.text(`Numéro de relation : ${form.relation}`, legX, footerY + 25);
 
-    // Nom de fichier
+    // --- 6. SAUVEGARDE ---
     const societyName = society?.nom || 'Société Inconnue';
     const typeService = form.is_direct ? 'Direct' : 'Omnibus';
     const safe = (str) => (str || '').replace(/[\\/:*?"<>|]/g, '-');
     const fileName = `${form.date_commande} - C3 - ${safe(societyName)} - ${safe(form.origine)} - ${safe(form.destination)} - ${typeService} - ${safe(form.relation)}.pdf`;
 
     doc.save(fileName);
-
-
-  }
+}
 
   // Styles
   const inputClass = "w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-orange-500/50 outline-none transition-all placeholder-gray-600";
