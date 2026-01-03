@@ -601,7 +601,7 @@ async function generatePDF() {
     doc.setFont("helvetica", "bold"); doc.text("Mentions obligatoires sur la facture :", legX, footerY + 6);
     doc.setFont("helvetica", "normal"); doc.text(`Numéro de TVA : BE 0203 430 576`, legX, footerY + 12);
     doc.text(`N° SAP de la commande : 4522 944 778`, legX, footerY + 17);
-    doc.setFont("helvetica", "bold"); doc.text(`Numéro de relation TC : ${form.relation}`, legX, footerY + 25);
+    doc.setFont("helvetica", "bold"); doc.text(`Numéro de relation : ${form.relation}`, legX, footerY + 25);
 
 // Construction du nom de fichier selon le format :
     // Date - C3 - Société - Origine - Destination - Type - Relation
