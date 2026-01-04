@@ -10,7 +10,6 @@
 
   // --- ÉTATS ---
   let isLoading = true;
-  let period = 'all'; // 'all', 'month', 'year' (Pour future évolution)
   
   // Données brutes
   let ottos = [];
@@ -261,6 +260,8 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {#each stats.topRoutes as route}
+                    {@const parts = route.name.split(' → ')}
+                    
                     <div class="p-4 bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 hover:border-white/10 rounded-xl transition-all flex flex-col justify-between h-32 relative overflow-hidden">
                         
                         <div class="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl {route.type === 'bus' ? 'from-orange-500/10' : 'from-cyan-500/10'} to-transparent rounded-bl-3xl -mr-4 -mt-4"></div>
@@ -275,7 +276,6 @@
                         </div>
 
                         <div class="z-10 mt-2">
-                            {@const parts = route.name.split(' → ')}
                             <div class="flex flex-col gap-1">
                                 <span class="text-sm font-bold text-white truncate" title={parts[0]}>{parts[0]}</span>
                                 <div class="flex items-center gap-2 text-gray-600">
