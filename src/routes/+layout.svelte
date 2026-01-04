@@ -17,7 +17,7 @@
   import { Minimize } from 'lucide-svelte';
   import { fly, fade } from 'svelte/transition';
   import { cubicIn, cubicOut } from 'svelte/easing';
-  
+  import SeasonalDecorator from '$lib/components/SeasonalDecorator.svelte';
   // Import du store de présence
   import { presenceState } from '$lib/stores/presence.svelte.js';
 
@@ -96,7 +96,7 @@
   <DashboardSkeleton />
 {:else}
   <div class="min-h-screen flex flex-col bg-deep-space text-gray-900 dark:text-gray-100 transition-all duration-300 relative {isScreenshotFlashing ? 'blur-3xl scale-95 pointer-events-none select-none' : ''}">
-    
+    <SeasonalDecorator />
     {#if !isLoginPage && !$zenMode}
       <div transition:fade={{ duration: 200 }}>
           <Nav {user} />

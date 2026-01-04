@@ -105,6 +105,28 @@ export const themesConfig = {
         }
     },
 
+// --- SAISONNIER ---
+    christmas: { 
+        name: 'Noël', 
+        type: 'saison', 
+        preview: 'linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d)' 
+    },
+    halloween: { 
+        name: 'Halloween', 
+        type: 'saison', 
+        preview: 'linear-gradient(135deg, #3E2723, #ff6b6b, #4a148c)' 
+    },
+    easter: { 
+        name: 'Pâques', 
+        type: 'saison', 
+        preview: 'linear-gradient(135deg, #a8edea, #fed6e3)' 
+    },
+    summer: {
+        name: 'Été',
+        type: 'saison',
+        preview: 'linear-gradient(135deg, #2980b9, #6dd5fa, #ffffff)'
+    },
+
     // --- NOUVEAUX THÈMES STYLÉS ---
 
     retrowave: {
