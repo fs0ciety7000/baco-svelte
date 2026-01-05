@@ -527,27 +527,58 @@ async function pardonInfraction(infractionId) {
         </div>
 
     {:else}
-        <div class="bg-black/20 border border-white/5 rounded-3xl p-6 shadow-sm" in:fly={{ y: 20, duration: 400 }}>
-            <h2 class="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
-              <UserPlus size={20} style="color: rgb(var(--primary-rgb));"/> Nouvel Utilisateur
-            </h2>
-            
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-              <div><label class={labelClass}>Email</label><input type="email" bind:value={newUser.email} class={inputClass} placeholder="user@baco.be" style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);"></div>
-              <div><label class={labelClass}>Mot de passe</label><input type="text" bind:value={newUser.password} class={inputClass} placeholder="Secret..." style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);"></div>
-              <div>
-                  <label class={labelClass}>Rôle</label>
-                  <select bind:value={newUser.role} class="{inputClass} appearance-none" style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);">
-                    <option value="user" class="bg-gray-900 text-white">Utilisateur</option>
-                    <option value="moderator" class="bg-gray-900 text-white">Modérateur</option>
-                    <option value="admin" class="bg-gray-900 text-white">Admin</option>
-                </select>
-              </div>
-              <button on:click={handleCreateUser} disabled={isCreating} class="btn-primary-glow flex items-center justify-center gap-2 w-full px-4 py-3 text-white rounded-xl font-bold transition-all disabled:opacity-50 h-[46px]">
-                  {#if isCreating} <Loader2 class="animate-spin" size={18}/> {:else} <UserPlus size={18}/> Créer {/if}
-              </button>
-            </div>
-        </div>
+    <div class="bg-black/20 border border-white/5 rounded-3xl p-6 shadow-sm mb-8" in:fly={{ y: 20, duration: 400 }}>
+            <h2 class="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
+              <UserPlus size={20} class="text-themed"/> Nouvel Utilisateur
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1">Email</label>
+                    <input 
+                        type="email" 
+                        bind:value={newUser.email} 
+                        class="block w-full rounded-xl border-white/10 bg-black/40 p-3 text-sm font-medium text-white placeholder-gray-600 focus:ring-2 focus:border-primary/50 transition-all outline-none"
+                        placeholder="user@baco.be" 
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1">Mot de passe</label>
+                    <input 
+                        type="text" 
+                        bind:value={newUser.password} 
+                        class="block w-full rounded-xl border-white/10 bg-black/40 p-3 text-sm font-medium text-white placeholder-gray-600 focus:ring-2 focus:border-primary/50 transition-all outline-none"
+                        placeholder="Secret..." 
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1">Rôle</label>
+                    <select 
+                        bind:value={newUser.role} 
+                        class="block w-full rounded-xl border-white/10 bg-black/40 p-3 text-sm font-medium text-white focus:ring-2 focus:border-primary/50 transition-all outline-none appearance-none"
+                    >
+                        <option value="user" class="bg-gray-900">Utilisateur</option>
+                        <option value="moderator" class="bg-gray-900">Modérateur</option>
+                        <option value="admin" class="bg-gray-900">Admin</option>
+                    </select>
+                </div>
+
+                <button 
+                    onclick={handleCreateUser} 
+                    disabled={isCreating} 
+                    class="btn-primary-glow flex items-center justify-center gap-2 w-full px-4 py-3 text-white rounded-xl font-bold transition-all disabled:opacity-50 h-[46px]"
+                >
+                    {#if isCreating} 
+                        <Loader2 class="animate-spin" size={18}/> 
+                    {:else} 
+                        <UserPlus size={18}/> Créer 
+                    {/if}
+                </button>
+            </div>
+        </div>
 
 <div class="bg-black/20 border border-white/5 rounded-3xl shadow-sm overflow-hidden" in:fly={{ y: 20, duration: 400, delay: 100 }}>
             <div class="overflow-x-auto">
@@ -751,3 +782,63 @@ async function pardonInfraction(infractionId) {
   {/if}
 
 </div>
+
+<style>
+  /* Définition des couleurs dynamiques basées sur la variable CSS --primary-rgb */
+  .text-themed { color: rgb(var(--primary-rgb)); }
+  .themed-spinner { color: rgb(var(--primary-rgb)); }
+  .hover-text-themed:hover { color: rgb(var(--primary-rgb)); }
+
+  /* Style du bouton "Glow" */
+  .btn-primary-glow {
+    background-color: rgba(var(--primary-rgb), 0.8);
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.3);
+    border: 1px solid rgba(var(--primary-rgb), 0.3);
+  }
+
+  .btn-primary-glow:hover:not(:disabled) {
+    background-color: rgb(var(--primary-rgb));
+    box-shadow: 0 0 25px rgba(var(--primary-rgb), 0.5);
+    transform: translateY(-1px);
+  }
+
+  /* Petits boutons d'action */
+  .action-icon-btn {
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+  }
+  .action-icon-btn:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    transform: scale(1.1);
+  }
+
+  /* Badges de rôle */
+  .role-badge {
+    padding: 0.25rem 0.625rem;
+    display: inline-flex;
+    font-size: 0.75rem;
+    font-weight: 800;
+    border-radius: 0.5rem;
+    border-width: 1px;
+  }
+  .role-admin {
+    background-color: rgba(var(--primary-rgb), 0.1);
+    color: rgb(var(--primary-rgb));
+    border-color: rgba(var(--primary-rgb), 0.3);
+  }
+  .role-modo {
+    background-color: rgba(168, 85, 247, 0.1);
+    color: rgb(168, 85, 247);
+    border-color: rgba(168, 85, 247, 0.3);
+  }
+  .role-user {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #9ca3af;
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  /* Scrollbar personnalisée */
+  .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+</style>
