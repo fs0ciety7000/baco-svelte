@@ -4,13 +4,13 @@
 	import 'maplibre-gl/dist/maplibre-gl.css';
 
 	let mapContainer;
-	// On change ici : map est une prop "bindable", ce qui permet au parent de la contrôler
+	// map est bindable pour permettre au parent de le contrôler
 	let { route = null, markers = [], zones = [], className = '', map = $bindable() } = $props();
 	
 	let markerInstances = [];
+	let activePopup = null; // Variable unique pour empêcher les doublons de popups
 
 	onMount(() => {
-		// On initialise une variable locale temporaire pour l'instance
 		const m = new maplibregl.Map({
 			container: mapContainer,
 			style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
@@ -23,7 +23,6 @@
 		m.addControl(new maplibregl.FullscreenControl(), 'top-right');
 
 		m.on('load', () => {
-			// Une fois chargée, on assigne à la prop liée
 			map = m;
 			updateMapElements();
 		});
@@ -35,17 +34,17 @@
 
 	// Réactivité : Met à jour les éléments quand les props changent
 	$effect(() => {
-		// On vérifie que la map existe et est chargée
 		if (map && map.loaded()) {
 			updateMapElements();
 		}
 	});
 
 	function updateMapElements() {
-		// L'ordre est important : Zones en fond, Route par dessus, Markers au premier plan
+		// On dessine dans l'ordre : Zones (fond) -> Route -> Marqueurs (dessus)
 		if (zones) drawZones(zones);
 		if (route) drawRoute(route);
-		if (markers) drawMarkers(markers);
+		// On appelle drawMarkers même si le tableau est vide pour nettoyer la carte
+		drawMarkers(markers || []);
 	}
 
 	function drawRoute(routeData) {
@@ -61,24 +60,19 @@
 		} else {
 			map.getSource('route').setData(routeData);
 		}
-		
-		// Auto-zoom seulement si c'est une nouvelle route, pas au rechargement général
-		// (Vous pouvez décommenter si vous voulez zoomer sur la route à chaque changement)
-		/*
-		const coordinates = routeData.geometry.coordinates;
-		if (coordinates && coordinates.length > 0) {
-			const bounds = coordinates.reduce((bounds, coord) => bounds.extend(coord), new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
-			map.fitBounds(bounds, { padding: 50 });
-		}
-		*/
 	}
 
 	function drawMarkers(markersData) {
-		// 1. Nettoyage des anciens marqueurs
-		markerInstances.forEach(m => m.remove());
-		markerInstances = [];
+		// 1. Nettoyage TOTAL des anciens marqueurs
+		if (markerInstances.length > 0) {
+			markerInstances.forEach(m => m.remove());
+			markerInstances = [];
+		}
 
-		// 2. Création des nouveaux
+		// 2. Si pas de données (filtres tout décochés), on s'arrête là
+		if (!markersData || markersData.length === 0) return;
+
+		// 3. Création des nouveaux
 		markersData.forEach(m => {
 			const el = document.createElement('div');
 			
@@ -91,16 +85,33 @@
 
 			el.className = `${baseClass} ${colorClass}`;
 
-			const popup = new maplibregl.Popup({ offset: 15, closeButton: false, maxWidth: '300px' })
-				.setHTML(m.popupContent || m.label || '');
-
 			const marker = new maplibregl.Marker({ element: el })
 				.setLngLat(m.lngLat)
-				.setPopup(popup)
 				.addTo(map);
 			
-			el.addEventListener('mouseenter', () => marker.togglePopup());
-			// el.addEventListener('mouseleave', () => marker.togglePopup()); // Optionnel
+			// Gestion des popups "single instance" pour éviter la duplication
+			el.addEventListener('mouseenter', () => {
+				if (activePopup) activePopup.remove(); // Ferme l'ancien s'il existe
+				
+				activePopup = new maplibregl.Popup({ 
+					offset: 15, 
+					closeButton: false, 
+					maxWidth: '300px',
+					className: 'custom-popup-fade'
+				})
+				.setLngLat(m.lngLat)
+				.setHTML(m.popupContent || m.label || '')
+				.addTo(map);
+			});
+
+			// On ne ferme pas automatiquement sur mouseleave pour permettre de cliquer sur les liens dans le popup
+			// Si vous préférez fermer au survol, décommentez ceci :
+			/*
+			el.addEventListener('mouseleave', () => {
+				if (activePopup) activePopup.remove();
+				activePopup = null;
+			});
+			*/
 
 			markerInstances.push(marker);
 		});
@@ -112,6 +123,7 @@
 			const fillId = `zone-fill-${index}`;
 			const lineId = `zone-line-${index}`;
 
+			// Si la source n'existe pas encore, on la crée
 			if (!map.getSource(sourceId)) {
 				map.addSource(sourceId, { 'type': 'geojson', 'data': zone.geojson });
 
@@ -125,14 +137,25 @@
 					'paint': { 'line-color': zone.color || '#3b82f6', 'line-width': 2, 'line-opacity': 0.8 }
 				});
 
+				// Interaction Zone
 				map.on('mouseenter', fillId, (e) => {
 					map.getCanvas().style.cursor = 'pointer';
-					new maplibregl.Popup({ closeButton: false, className: 'zone-popup' })
+					
+					if (activePopup) activePopup.remove(); // Évite duplication
+					
+					activePopup = new maplibregl.Popup({ closeButton: false, className: 'zone-popup' })
 						.setLngLat(e.lngLat)
 						.setHTML(`<div class="text-black font-bold px-2">${zone.name}</div>`)
 						.addTo(map);
 				});
-				map.on('mouseleave', fillId, () => map.getCanvas().style.cursor = '');
+
+				map.on('mouseleave', fillId, () => {
+					map.getCanvas().style.cursor = '';
+					if (activePopup) {
+						activePopup.remove();
+						activePopup = null;
+					}
+				});
 			}
 		});
 	}
@@ -146,6 +169,7 @@
 <style>
 	:global(.maplibregl-ctrl-group) { background-color: #0f1115 !important; border: 1px solid rgba(255,255,255,0.1) !important; }
 	:global(.maplibregl-ctrl-icon) { filter: invert(1); }
+	
 	:global(.maplibregl-popup-content) {
 		background-color: #1a1d24; color: white;
 		border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
@@ -153,6 +177,8 @@
 		box-shadow: 0 4px 15px rgba(0,0,0,0.5);
 	}
 	:global(.maplibregl-popup-tip) { border-top-color: #1a1d24; }
-	:global(.zone-popup .maplibregl-popup-content) { background: white; color: black; border: none; }
+	
+	/* Style spécifique pour les zones (blanc) */
+	:global(.zone-popup .maplibregl-popup-content) { background: white; color: black; border: none; padding: 4px 8px; }
 	:global(.zone-popup .maplibregl-popup-tip) { border-top-color: white; }
 </style>

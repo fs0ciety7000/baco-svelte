@@ -25,18 +25,32 @@
 
   const coordsCache = {}; 
 
-  // Configuration des zones (Constante, pas besoin de réactivité)
+  // --- CONFIGURATION ZONES ---
+  // Note: MapLibre utilise [Longitude, Latitude]. Leaflet utilisait [Latitude, Longitude].
+  // J'ai inversé ici pour correspondre à MapLibre.
   const rawZones = {
     'FTY': { coords: [[3.2240, 50.7610], [3.2403, 50.7166], [3.7785, 50.4569], [4.1717, 50.7211], [4.1780, 50.7135]], color: '#3b82f6', name: "Zone FTY" },
     'FMS': { coords: [[3.6856, 50.4102], [3.7785, 50.4569], [3.7998, 50.6145], [4.1379, 50.6055], [4.2124, 50.7069], [4.2342, 50.5064], [4.2441, 50.4603], [4.1749, 50.4049], [3.9391, 50.4512], [3.9574, 50.4720], [3.9083, 50.3291]], color: '#eab308', name: "Zone FMS" },
     'FCR': { coords: [[4.3785, 50.7302], [4.3876, 50.5048], [4.5478, 50.4863], [4.6463, 50.4457], [4.4920, 50.0566], [4.1110, 50.3033], [4.2441, 50.4603], [4.2399, 50.5035]], color: '#ef4444', name: "Zone FCR" }
   };
 
-  // Transformation simple (pas besoin de $derived car rawZones est constant)
-  const mapZones = Object.values(rawZones).map(z => ({
-      name: z.name, color: z.color,
-      geojson: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [z.coords] } }
-  }));
+  // Transformation et Correction (Fermeture des polygones)
+  const mapZones = Object.values(rawZones).map(z => {
+      // Pour qu'un polygone soit valide, le dernier point doit être égal au premier
+      const closedCoords = [...z.coords];
+      const first = closedCoords[0];
+      const last = closedCoords[closedCoords.length - 1];
+      
+      if (first[0] !== last[0] || first[1] !== last[1]) {
+          closedCoords.push(first); // On ferme la boucle
+      }
+
+      return {
+          name: z.name, 
+          color: z.color,
+          geojson: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [closedCoords] } }
+      };
+  });
 
   onMount(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -81,9 +95,6 @@
               const coords = await fetchCoordinates(pn);
               if (coords) {
                   pn.geo = `${coords[1]},${coords[0]}`; 
-                  // Force reactivity : réassigner le tableau ou l'objet modifié dans Svelte 5
-                  // Mais ici pn est une référence à un objet dans allPnData qui est un proxy ($state)
-                  // Donc la modification directe pn.geo fonctionne si pn vient de allPnData.
               }
           }));
           await new Promise(r => setTimeout(r, 500));
@@ -117,8 +128,7 @@
       return null;
   }
 
-  // --- FILTRAGE ($derived) ---
-  // Remplace le bloc $:
+  // --- FILTRAGE ($derived pour la réactivité automatique) ---
   let filteredPn = $derived(allPnData.filter(pn => {
     const lineMatch = selectedLines.includes(pn.ligne_nom);
     const searchMatch = !searchQuery.trim() || 
@@ -129,8 +139,7 @@
     return lineMatch && searchMatch;
   }));
 
-  // --- MARKERS ($derived) ---
-  // Remplace le bloc $: qui calculait mapMarkers
+  // --- MAP MARKERS ($derived) ---
   let mapMarkers = $derived(filteredPn
     .filter(pn => pn.geo) 
     .map(pn => {
