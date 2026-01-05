@@ -9,34 +9,31 @@
   import { toast } from '$lib/stores/toast.js';
   import { hasPermission, ACTIONS } from '$lib/permissions';
 
-  // --- ÉTAT ---
-  let currentUser = null;
-  let isAuthorized = false;
+  // --- ÉTAT (Svelte 5 Runes) ---
+  let currentUser = $state(null);
+  let isAuthorized = $state(false);
 
-  let allPnData = [];
-  let availableLines = [];
-  let selectedLines = []; 
-  let showAllLines = true;
-  let searchQuery = "";
-  let isLoading = true;
+  let allPnData = $state([]);
+  let availableLines = $state([]);
+  let selectedLines = $state([]); 
+  let showAllLines = $state(true);
+  let searchQuery = $state("");
+  let isLoading = $state(true);
 
-  // Référence à l'instance de carte (bindée depuis le composant enfant)
+  // Référence à l'instance de carte
   let mapInstance = $state(null);
-
-  // Données pour la carte
-  let mapMarkers = [];
-  let mapZones = [];
 
   const coordsCache = {}; 
 
-  // Configuration des zones (GeoJSON Format [Lon, Lat])
+  // Configuration des zones (Constante, pas besoin de réactivité)
   const rawZones = {
     'FTY': { coords: [[3.2240, 50.7610], [3.2403, 50.7166], [3.7785, 50.4569], [4.1717, 50.7211], [4.1780, 50.7135]], color: '#3b82f6', name: "Zone FTY" },
     'FMS': { coords: [[3.6856, 50.4102], [3.7785, 50.4569], [3.7998, 50.6145], [4.1379, 50.6055], [4.2124, 50.7069], [4.2342, 50.5064], [4.2441, 50.4603], [4.1749, 50.4049], [3.9391, 50.4512], [3.9574, 50.4720], [3.9083, 50.3291]], color: '#eab308', name: "Zone FMS" },
     'FCR': { coords: [[4.3785, 50.7302], [4.3876, 50.5048], [4.5478, 50.4863], [4.6463, 50.4457], [4.4920, 50.0566], [4.1110, 50.3033], [4.2441, 50.4603], [4.2399, 50.5035]], color: '#ef4444', name: "Zone FCR" }
   };
 
-  $: mapZones = Object.values(rawZones).map(z => ({
+  // Transformation simple (pas besoin de $derived car rawZones est constant)
+  const mapZones = Object.values(rawZones).map(z => ({
       name: z.name, color: z.color,
       geojson: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [z.coords] } }
   }));
@@ -84,7 +81,9 @@
               const coords = await fetchCoordinates(pn);
               if (coords) {
                   pn.geo = `${coords[1]},${coords[0]}`; 
-                  allPnData = [...allPnData]; // Trigger reactivity
+                  // Force reactivity : réassigner le tableau ou l'objet modifié dans Svelte 5
+                  // Mais ici pn est une référence à un objet dans allPnData qui est un proxy ($state)
+                  // Donc la modification directe pn.geo fonctionne si pn vient de allPnData.
               }
           }));
           await new Promise(r => setTimeout(r, 500));
@@ -118,8 +117,9 @@
       return null;
   }
 
-  // --- FILTRAGE & REGEN MARKERS ---
-  $: filteredPn = allPnData.filter(pn => {
+  // --- FILTRAGE ($derived) ---
+  // Remplace le bloc $:
+  let filteredPn = $derived(allPnData.filter(pn => {
     const lineMatch = selectedLines.includes(pn.ligne_nom);
     const searchMatch = !searchQuery.trim() || 
       (pn.pn && String(pn.pn).toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -127,41 +127,40 @@
       (pn.adresse && pn.adresse.toLowerCase().includes(searchQuery.toLowerCase()));
     
     return lineMatch && searchMatch;
-  });
+  }));
 
-  // Reconstruit la liste des marqueurs pour la carte
-  $: {
-      mapMarkers = filteredPn
-        .filter(pn => pn.geo) 
-        .map(pn => {
-            const [lat, lon] = pn.geo.split(',').map(parseFloat);
-            if (isNaN(lat) || isNaN(lon)) return null;
+  // --- MARKERS ($derived) ---
+  // Remplace le bloc $: qui calculait mapMarkers
+  let mapMarkers = $derived(filteredPn
+    .filter(pn => pn.geo) 
+    .map(pn => {
+        const [lat, lon] = pn.geo.split(',').map(parseFloat);
+        if (isNaN(lat) || isNaN(lon)) return null;
 
-            const popupHTML = `
-                <div class="p-3 min-w-[200px]">
-                    <div class="flex justify-between items-center border-b border-white/10 pb-2 mb-2">
-                        <span class="bg-orange-500/20 text-orange-400 text-[10px] font-bold px-2 py-0.5 rounded border border-orange-500/30">Ligne ${pn.ligne_nom}</span>
-                        <span class="font-bold text-white">PN ${pn.pn}</span>
-                    </div>
-                    <div class="space-y-1 text-xs text-gray-300">
-                        <div class="flex justify-between"><span class="text-gray-500">BK:</span> <span class="font-mono text-white">${pn.bk || '?'}</span></div>
-                        <div class="flex justify-between items-start gap-2"><span class="text-gray-500">Adr:</span> <span class="text-right leading-tight">${pn.adresse || '-'}</span></div>
-                    </div>
-                    <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}" target="_blank" class="block mt-3 bg-blue-600 hover:bg-blue-500 text-white text-center text-xs font-bold py-1.5 rounded transition-colors flex items-center justify-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg> 
-                        Itinéraire
-                    </a>
+        const popupHTML = `
+            <div class="p-3 min-w-[200px]">
+                <div class="flex justify-between items-center border-b border-white/10 pb-2 mb-2">
+                    <span class="bg-orange-500/20 text-orange-400 text-[10px] font-bold px-2 py-0.5 rounded border border-orange-500/30">Ligne ${pn.ligne_nom}</span>
+                    <span class="font-bold text-white">PN ${pn.pn}</span>
                 </div>
-            `;
+                <div class="space-y-1 text-xs text-gray-300">
+                    <div class="flex justify-between"><span class="text-gray-500">BK:</span> <span class="font-mono text-white">${pn.bk || '?'}</span></div>
+                    <div class="flex justify-between items-start gap-2"><span class="text-gray-500">Adr:</span> <span class="text-right leading-tight">${pn.adresse || '-'}</span></div>
+                </div>
+                <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}" target="_blank" class="block mt-3 bg-blue-600 hover:bg-blue-500 text-white text-center text-xs font-bold py-1.5 rounded transition-colors flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg> 
+                    Itinéraire
+                </a>
+            </div>
+        `;
 
-            return {
-                lngLat: [lon, lat], 
-                type: 'pn',
-                popupContent: popupHTML
-            };
-        })
-        .filter(Boolean);
-  }
+        return {
+            lngLat: [lon, lat], 
+            type: 'pn',
+            popupContent: popupHTML
+        };
+    })
+    .filter(Boolean));
 
   // --- ACTIONS ---
   function toggleAllLines(e) {
@@ -179,13 +178,12 @@
     }
   }
 
-  // Fonction pour centrer la carte sur un PN au clic
   function handlePnClick(pn) {
       if (!pn.geo) {
           toast.error("Ce PN n'est pas géolocalisé.");
           return;
       }
-      if (!mapInstance) return; // Si la carte n'est pas encore chargée
+      if (!mapInstance) return;
 
       const [lat, lon] = pn.geo.split(',').map(parseFloat);
       
