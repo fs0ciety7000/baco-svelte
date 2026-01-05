@@ -11,17 +11,21 @@
   import { 
     Shield, UserPlus, Search, User, UserX, UserCheck, 
     KeyRound, FileWarning, History, Loader2, X, Copy, 
-    AlertOctagon, CheckCircle, ShieldAlert, ChevronLeft, Save, Edit2, UserCog 
+    AlertOctagon, CheckCircle, ShieldAlert, ChevronLeft, Save, Edit2, UserCog, ArrowUpDown 
   } from 'lucide-svelte';
   
-  let currentUserProfile = null; // C'est cette variable qui doit contenir le rôle
-  let usersList = []; // Votre liste d'utilisateurs à afficher
+  let currentUserProfile = null; 
+  let usersList = []; // Liste brute chargée
 
   // --- ÉTAT ---
-  let users = [];
+  let users = []; // Liste affichée (filtrée/triée)
   let isLoading = true;
   let isCreating = false;
   let currentAdminId = null;
+
+  // Gestion du Tri
+  let sortCol = 'last_active'; // Colonne par défaut
+  let sortAsc = false;         // Descendant par défaut (plus récent en haut)
 
   // Formulaire Création
   let newUser = { email: "", password: "", role: "user" };
@@ -51,20 +55,51 @@
       form.role = targetUser.role;
   }
   
+  // --- TRI AUTOMATIQUE ---
+  // On recalcule 'users' à chaque fois que usersList ou les options de tri changent
+  $: if (usersList) {
+      users = [...usersList].sort((a, b) => {
+          let valA = a[sortCol];
+          let valB = b[sortCol];
+
+          // Gestion dates
+          if (sortCol === 'last_active') {
+              valA = new Date(valA || 0).getTime();
+              valB = new Date(valB || 0).getTime();
+          } 
+          // Gestion texte insensible à la casse
+          else if (typeof valA === 'string') {
+              valA = valA.toLowerCase();
+              valB = valB.toLowerCase();
+          }
+
+          if (valA < valB) return sortAsc ? -1 : 1;
+          if (valA > valB) return sortAsc ? 1 : -1;
+          return 0;
+      });
+  }
+
+  function toggleSort(col) {
+      if (sortCol === col) {
+          sortAsc = !sortAsc;
+      } else {
+          sortCol = col;
+          sortAsc = true;
+      }
+  }
+
   onMount(async () => {
     await checkAdminAccess();
     await loadUsers(); 
   });
 
   // --- SÉCURITÉ ---
-
   async function checkAdminAccess() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return goto('/');
     
     currentAdminId = user.id;
 
-    // 1. On sélectionne 'role' ET 'permissions' (nécessaire pour hasPermission)
     const { data: profile } = await supabase
       .from('profiles')
       .select('role, permissions') 
@@ -75,24 +110,47 @@
       toast.error("Accès refusé.");
       goto('/');
     }
-
-    // 2. IMPORTANT : On remplit la variable globale pour que le HTML la voie
     currentUserProfile = profile; 
   }
 
-  // --- CHARGEMENT ---
-
+  // --- CHARGEMENT AVEC PRESENCE (ACTIVITÉ RÉELLE) ---
   async function loadUsers() {
     isLoading = true;
     try {
-      const { data, error } = await supabase.rpc('get_all_users'); 
+      // 1. Récupérer les utilisateurs (Auth + Profils) via RPC
+      const { data: usersData, error } = await supabase.rpc('get_all_users'); 
       if (error) throw error;
-      users = data || [];
+
+      // 2. Récupérer les dernières activités (user_presence)
+      // C'est ce qui corrige votre problème de date figée
+      const { data: presenceData } = await supabase
+        .from('user_presence')
+        .select('user_id, last_seen_at');
+
+      // 3. Fusionner les deux sources
+      const presenceMap = new Map(presenceData?.map(p => [p.user_id, p.last_seen_at]));
+
+      usersList = (usersData || []).map(u => {
+          const lastSeen = presenceMap.get(u.user_id);
+          const lastSignIn = u.last_sign_in_at;
+          
+          // On garde la date la plus récente
+          let realLastActive = lastSignIn;
+          if (lastSeen && (!lastSignIn || new Date(lastSeen) > new Date(lastSignIn))) {
+              realLastActive = lastSeen;
+          }
+
+          return {
+              ...u,
+              last_active: realLastActive // Nouvelle propriété unifiée
+          };
+      });
       
+      // Gestion de la vue détail si URL param
       if (targetEmail) {
-          const foundUser = users.find(u => u.email === targetEmail);
+          const foundUser = usersList.find(u => u.email === targetEmail);
           if (foundUser) {
-              await loadTargetProfile(foundUser.user_id, foundUser.email, foundUser.last_sign_in_at);
+              await loadTargetProfile(foundUser.user_id, foundUser.email, foundUser.last_active);
           } else {
               goto('/admin');
           }
@@ -401,12 +459,12 @@ async function pardonInfraction(infractionId) {
     return new Date(dateStr).toLocaleString('fr-BE', { dateStyle: 'short', timeStyle: 'short' });
   }
 
-
 </script>
 
 <div class="container mx-auto p-4 md:p-8 space-y-8 min-h-screen">
   
-  <header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-white/5 pb-6" in:fly={{ y: -20, duration: 600 }} style="--primary-rgb: var(--color-primary);">
+  <header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-white/5 pb-6" 
+          in:fly={{ y: -20, duration: 600 }} style="--primary-rgb: var(--color-primary);">
     <div class="flex items-center gap-3">
         <div class="p-3 rounded-xl border transition-all duration-500"
              style="background-color: rgba(var(--primary-rgb), 0.1); color: rgb(var(--primary-rgb)); border-color: rgba(var(--primary-rgb), 0.2); box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.15);">
@@ -417,7 +475,7 @@ async function pardonInfraction(infractionId) {
           <p class="text-gray-500 text-sm mt-1">Gestion des utilisateurs et sanctions.</p>
         </div>
     </div>
-  </header>
+ </header>
 
   <main class="space-y-8" style="--primary-rgb: var(--color-primary);">
     
@@ -470,117 +528,230 @@ async function pardonInfraction(infractionId) {
 
     {:else}
         <div class="bg-black/20 border border-white/5 rounded-3xl p-6 shadow-sm" in:fly={{ y: 20, duration: 400 }}>
-          <h2 class="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
-            <UserPlus size={20} style="color: rgb(var(--primary-rgb));"/> Nouvel Utilisateur
-          </h2>
-          
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            <div><label class={labelClass}>Email</label><input type="email" bind:value={newUser.email} class={inputClass} placeholder="user@baco.be" style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);"></div>
-            <div><label class={labelClass}>Mot de passe</label><input type="text" bind:value={newUser.password} class={inputClass} placeholder="Secret..." style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);"></div>
-            <div>
-              <label class={labelClass}>Rôle</label>
-              <select bind:value={newUser.role} class="{inputClass} appearance-none" style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);">
-                <option value="user" class="bg-gray-900 text-white">Utilisateur</option>
-                <option value="moderator" class="bg-gray-900 text-white">Modérateur</option>
-                <option value="admin" class="bg-gray-900 text-white">Admin</option>
-            </select>
+            <h2 class="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
+              <UserPlus size={20} style="color: rgb(var(--primary-rgb));"/> Nouvel Utilisateur
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+              <div><label class={labelClass}>Email</label><input type="email" bind:value={newUser.email} class={inputClass} placeholder="user@baco.be" style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);"></div>
+              <div><label class={labelClass}>Mot de passe</label><input type="text" bind:value={newUser.password} class={inputClass} placeholder="Secret..." style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);"></div>
+              <div>
+                  <label class={labelClass}>Rôle</label>
+                  <select bind:value={newUser.role} class="{inputClass} appearance-none" style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);">
+                    <option value="user" class="bg-gray-900 text-white">Utilisateur</option>
+                    <option value="moderator" class="bg-gray-900 text-white">Modérateur</option>
+                    <option value="admin" class="bg-gray-900 text-white">Admin</option>
+                </select>
+              </div>
+              <button on:click={handleCreateUser} disabled={isCreating} class="btn-primary-glow flex items-center justify-center gap-2 w-full px-4 py-3 text-white rounded-xl font-bold transition-all disabled:opacity-50 h-[46px]">
+                  {#if isCreating} <Loader2 class="animate-spin" size={18}/> {:else} <UserPlus size={18}/> Créer {/if}
+              </button>
             </div>
-            <button on:click={handleCreateUser} disabled={isCreating} class="btn-primary-glow flex items-center justify-center gap-2 w-full px-4 py-3 text-white rounded-xl font-bold transition-all disabled:opacity-50 h-[46px]">
-              {#if isCreating} <Loader2 class="animate-spin" size={18}/> {:else} <UserPlus size={18}/> Créer {/if}
-            </button>
-          </div>
         </div>
 
         <div class="bg-black/20 border border-white/5 rounded-3xl shadow-sm overflow-hidden" in:fly={{ y: 20, duration: 400, delay: 100 }}>
-          <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-white/5">
-            <thead class="bg-white/[0.02]">
-              <tr>
-                <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Utilisateur</th>
-                <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Rôle</th>
-                <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Statut</th>
-                <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Sanctions</th>
-                <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Dernière Connexion</th>
-                <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-white/5">
-              {#each users as user}
-                {@const isBanned = user.banned_until && new Date(user.banned_until) > new Date()}
-                {@const nextRoleData = getNextRole(user.role || 'user')}
-                
-                <tr class="group hover:bg-white/[0.02] transition-colors">
-                 <td class="px-6 py-4 whitespace-nowrap">
-                    <a href="/admin/utilisateur/{user.user_id}" class="flex items-center gap-4 w-full text-left group-hover:opacity-80 transition-opacity">
-                      <img class="h-10 w-10 rounded-full object-cover border border-white/10" src={user.avatar_url || '/default-avatar.png'}>
-                      <div>
-                        <div class="text-sm font-bold text-gray-200" style="color: {user.email === targetEmail ? 'rgb(var(--primary-rgb))' : ''}">{user.full_name || user.email}</div>
-                        <div class="text-xs text-gray-500">{user.email}</div>
-                      </div>
-                    </a>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    {#if user.role === 'admin'}
-                      <span class="role-badge role-admin">Admin</span>
-                    {:else if user.role === 'moderator'}
-                      <span class="role-badge role-modo">Modérateur</span>
-                    {:else}
-                      <span class="role-badge role-user">Utilisateur</span>
-                    {/if}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    {#if isBanned}
-                      <span class="px-2.5 py-1 text-xs font-bold rounded-lg border bg-red-500/10 text-red-400 border-red-500/20 animate-pulse">Banni</span>
-                    {:else}
-                      <span class="px-2.5 py-1 text-xs font-bold rounded-lg border bg-green-500/10 text-green-400 border-green-500/20">Actif</span>
-                    {/if}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex gap-2">
-                        {#if user.active_yellow_cards > 0} <span class="text-yellow-500 text-xs font-bold bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">⚠ {user.active_yellow_cards}</span> {/if}
-                        {#if user.active_red_cards > 0} <span class="text-red-500 text-xs font-bold bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">🚷 {user.active_red_cards}</span> {/if}
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-400 font-mono">
-                    {formatDate(user.last_sign_in_at)}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-center">
-                    {#if user.user_id !== currentAdminId}
-                      <div class="flex justify-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                        <button on:click={() => openResetModal(user)} class="action-icon-btn hover:text-white" title="Password"><KeyRound size={16}/></button>
-                        <button on:click={() => openInfractionModal(user)} class="action-icon-btn text-yellow-600 hover:text-yellow-400" title="Sanction"><FileWarning size={16}/></button>
-                        <button on:click={() => openHistoryModal(user)} class="action-icon-btn hover:text-themed" style="color: rgba(var(--primary-rgb), 0.6);" title="History"><History size={16}/></button>
-                        <button on:click={() => handleChangeRole(user, nextRoleData.role)} class="action-icon-btn {nextRoleData.color} hover:bg-white/5" title={nextRoleData.label}><svelte:component this={nextRoleData.icon} size={16} /></button>
-              
-              {#if hasPermission(currentUserProfile, ACTIONS.USERS_BAN)}
-                        {#if isBanned}
-                          <button on:click={() => handleBanUser(user, false)} class="action-icon-btn text-green-600 hover:text-green-400" title="Débannir"><UserCheck size={16}/></button>
-                        {:else}
-
-                          <button on:click={() => handleBanUser(user, true)} class="action-icon-btn text-red-600 hover:text-red-400" title="Bannir"><UserX size={16}/></button>
-                        {/if}
-                    {/if}  
-                      </div>
-                    {:else}
-                      <span class="text-xs text-gray-500 italic">Vous</span>
-                    {/if}
-
-                    
-                  </td>
+            <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-white/5">
+              <thead class="bg-white/[0.02]">
+                <tr>
+                  <th 
+                    class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-white select-none group" 
+                    on:click={() => toggleSort('full_name')}
+                  >
+                      <div class="flex items-center gap-2">Utilisateur <ArrowUpDown size={12} class="opacity-0 group-hover:opacity-50 {sortCol === 'full_name' ? 'opacity-100 text-blue-400' : ''}"/></div>
+                  </th>
+                  <th 
+                    class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-white select-none group" 
+                    on:click={() => toggleSort('role')}
+                  >
+                      <div class="flex items-center gap-2">Rôle <ArrowUpDown size={12} class="opacity-0 group-hover:opacity-50 {sortCol === 'role' ? 'opacity-100 text-blue-400' : ''}"/></div>
+                  </th>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Statut</th>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Sanctions</th>
+                  <th 
+                    class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-white select-none group" 
+                    on:click={() => toggleSort('last_active')}
+                  >
+                      <div class="flex items-center gap-2">Dernière Connexion <ArrowUpDown size={12} class="opacity-0 group-hover:opacity-50 {sortCol === 'last_active' ? 'opacity-100 text-blue-400' : ''}"/></div>
+                  </th>
+                  <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
-              {/each}
-            </tbody>
-          </table>
+              </thead>
+              <tbody class="divide-y divide-white/5">
+                {#each users as user (user.user_id)}
+                    {@const isBanned = user.banned_until && new Date(user.banned_until) > new Date()}
+                    {@const nextRoleData = getNextRole(user.role || 'user')}
+                    
+                    <tr class="group hover:bg-white/[0.02] transition-colors">
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center gap-4">
+                            <img class="h-10 w-10 rounded-full object-cover border border-white/10" src={user.avatar_url || '/default-avatar.png'} alt="">
+                            <div>
+                                <div class="text-sm font-bold text-gray-200">{user.full_name || user.email}</div>
+                                <div class="text-xs text-gray-500">{user.email}</div>
+                            </div>
+                        </div>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        {#if user.role === 'admin'} <span class="role-badge role-admin">Admin</span>
+                        {:else if user.role === 'moderator'} <span class="role-badge role-modo">Modérateur</span>
+                        {:else} <span class="role-badge role-user">Utilisateur</span> {/if}
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        {#if isBanned}
+                            <span class="px-2.5 py-1 text-xs font-bold rounded-lg border bg-red-500/10 text-red-400 border-red-500/20 animate-pulse">Banni</span>
+                        {:else}
+                            <span class="px-2.5 py-1 text-xs font-bold rounded-lg border bg-green-500/10 text-green-400 border-green-500/20">Actif</span>
+                        {/if}
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex gap-2">
+                            {#if user.active_yellow_cards > 0} <span class="text-yellow-500 text-xs font-bold bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">⚠ {user.active_yellow_cards}</span> {/if}
+                            {#if user.active_red_cards > 0} <span class="text-red-500 text-xs font-bold bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">🚷 {user.active_red_cards}</span> {/if}
+                        </div>
+                      </td>
+                      
+                      <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-400 font-mono">
+                          {formatDate(user.last_active)}
+                          {#if user.last_active && new Date(user.last_active) > new Date(Date.now() - 300000)}
+                               <span class="inline-block w-2 h-2 rounded-full bg-green-500 ml-2 animate-pulse" title="En ligne récemment"></span>
+                          {/if}
+                      </td>
+
+                      <td class="px-6 py-4 whitespace-nowrap text-center">
+                        <div class="flex justify-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                            <button on:click={() => handleViewEdit(user.email)} class="action-icon-btn hover:text-white" title="Éditer"><Edit2 size={16}/></button>
+                            <button on:click={() => openResetModal(user)} class="action-icon-btn hover:text-white" title="Password"><KeyRound size={16}/></button>
+                            <button on:click={() => openInfractionModal(user)} class="action-icon-btn text-yellow-600 hover:text-yellow-400" title="Sanction"><FileWarning size={16}/></button>
+                            <button on:click={() => openHistoryModal(user)} class="action-icon-btn hover:text-themed" style="color: rgba(var(--primary-rgb), 0.6);" title="Historique"><History size={16}/></button>
+                            
+                            {#if user.user_id !== currentAdminId}
+                                <button on:click={() => handleChangeRole(user, nextRoleData.role)} class="action-icon-btn {nextRoleData.color} hover:bg-white/5" title={nextRoleData.label}><svelte:component this={nextRoleData.icon} size={16} /></button>
+                                {#if !isBanned}
+                                    <button on:click={() => handleBanUser(user, true)} class="action-icon-btn text-red-600 hover:text-red-400" title="Bannir"><UserX size={16}/></button>
+                                {:else}
+                                    <button on:click={() => handleBanUser(user, false)} class="action-icon-btn text-green-600 hover:text-green-400" title="Débannir"><UserCheck size={16}/></button>
+                                {/if}
+                            {/if}
+                        </div>
+                      </td>
+                    </tr>
+                {/each}
+              </tbody>
+            </table>
+            </div>
         </div>
-      </div>
     {/if}
-    </main>
+  </main>
+
+  {#if showResetModal}
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" transition:fade>
+      <div class="bg-[#0f1115] w-full max-w-md rounded-2xl p-6 shadow-2xl border border-white/10" transition:fly={{ y: 20 }}>
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="text-xl font-bold text-white flex items-center gap-2"><KeyRound class="text-blue-400"/> Reset Password</h3>
+          <button on:click={() => showResetModal = false} class="text-gray-500 hover:text-white"><X size={20}/></button>
+        </div>
+        <p class="text-gray-400 mb-4 text-sm">Générer un nouveau mot de passe pour <span class="text-white font-bold">{selectedUser.email}</span> ?</p>
+        
+        <div class="bg-black/40 p-3 rounded-xl border border-white/10 flex justify-between items-center mb-6">
+            <span class="font-mono text-lg text-white tracking-widest">{resetData.password}</span>
+            <button on:click={copyPassword} class="text-gray-400 hover:text-white"><Copy size={18}/></button>
+        </div>
+
+        <div class="flex gap-3">
+             <button on:click={confirmResetPassword} disabled={resetData.loading} class="flex-1 btn-primary-glow py-2.5 rounded-xl text-white font-bold flex justify-center items-center gap-2">
+                 {#if resetData.loading} <Loader2 class="animate-spin w-4 h-4"/> {:else} Confirmer {/if}
+             </button>
+        </div>
+        {#if resetData.status}
+            <p class="mt-3 text-center text-sm {resetData.status.includes('Erreur') ? 'text-red-400' : 'text-green-400'}">{resetData.status}</p>
+        {/if}
+      </div>
+    </div>
+  {/if}
+
+  {#if showInfractionModal}
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" transition:fade>
+      <div class="bg-[#0f1115] w-full max-w-md rounded-2xl p-6 shadow-2xl border border-white/10" transition:fly={{ y: 20 }}>
+          <div class="flex justify-between items-center mb-6">
+              <h3 class="text-xl font-bold text-white flex items-center gap-2"><AlertTriangle class="text-yellow-500"/> Ajouter Sanction</h3>
+              <button on:click={() => showInfractionModal = false} class="text-gray-500 hover:text-white"><X size={20}/></button>
+          </div>
+          
+          <div class="space-y-4">
+              <div class="grid grid-cols-2 gap-3">
+                  <button 
+                      class="p-3 rounded-xl border-2 font-bold transition-all {infractionData.type === 'yellow' ? 'border-yellow-500 bg-yellow-500/10 text-yellow-400' : 'border-white/10 bg-black/40 text-gray-500'}"
+                      on:click={() => infractionData.type = 'yellow'}
+                  >
+                      Avertissement
+                  </button>
+                  <button 
+                      class="p-3 rounded-xl border-2 font-bold transition-all {infractionData.type === 'red' ? 'border-red-500 bg-red-500/10 text-red-400' : 'border-white/10 bg-black/40 text-gray-500'}"
+                      on:click={() => infractionData.type = 'red'}
+                  >
+                      Sanction Grave
+                  </button>
+              </div>
+              
+              <div>
+                  <label class={labelClass}>Motif</label>
+                  <textarea bind:value={infractionData.reason} class="{inputClass} h-24 resize-none" placeholder="Ex: Comportement inapproprié..."></textarea>
+              </div>
+              
+              <button on:click={submitInfraction} class="w-full py-3 rounded-xl font-bold text-black bg-white hover:bg-gray-200 transition-colors">
+                  Confirmer
+              </button>
+          </div>
+      </div>
+    </div>
+  {/if}
+
+  {#if showHistoryModal}
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" transition:fade>
+      <div class="bg-[#0f1115] w-full max-w-lg rounded-2xl p-6 shadow-2xl border border-white/10 max-h-[80vh] flex flex-col" transition:fly={{ y: 20 }}>
+          <div class="flex justify-between items-center mb-6">
+              <h3 class="text-xl font-bold text-white flex items-center gap-2"><History class="text-blue-400"/> Historique</h3>
+              <button on:click={() => showHistoryModal = false} class="text-gray-500 hover:text-white"><X size={20}/></button>
+          </div>
+          
+          <div class="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2">
+            {#if historyData.loading}
+                <div class="flex justify-center py-10"><Loader2 class="animate-spin text-white"/></div>
+            {:else if historyData.list.length === 0}
+                <p class="text-gray-500 text-center italic py-10">Aucun historique.</p>
+            {:else}
+                {#each historyData.list as h}
+                    <div class="bg-black/40 border border-white/5 rounded-xl p-3 flex justify-between items-start {h.is_active ? '' : 'opacity-50'}">
+                        <div class="flex gap-3">
+                            <div class="mt-1">
+                                {#if h.card_type === 'red'} <AlertOctagon size={18} class="text-red-500" />
+                                {:else} <FileWarning size={18} class="text-yellow-500" /> {/if}
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-gray-200">{h.reason}</p>
+                                <p class="text-xs text-gray-500">
+                                    {new Date(h.created_at).toLocaleDateString()} • Par {h.admin?.full_name || 'Admin'}
+                                    {#if !h.is_active} <span class="text-green-500 ml-2">(Pardonné)</span> {/if}
+                                </p>
+                            </div>
+                        </div>
+                        {#if h.is_active}
+                             <button on:click={() => pardonInfraction(h.id)} class="text-xs text-blue-400 hover:underline">Pardonner</button>
+                        {/if}
+                    </div>
+                {/each}
+            {/if}
+          </div>
+      </div>
+    </div>
+  {/if}
+
 </div>
 
 <style>
-  .themed-spinner { color: rgb(var(--primary-rgb)); }
   .text-themed { color: rgb(var(--primary-rgb)); }
-  .hover-text-themed:hover { color: rgb(var(--primary-rgb)); }
+  .themed-spinner { color: rgba(var(--primary-rgb), 0.5); }
 
   .btn-primary-glow {
     background-color: rgba(var(--primary-rgb), 0.8);
@@ -629,5 +800,6 @@ async function pardonInfraction(infractionId) {
   }
 
   .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
   .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 </style>
