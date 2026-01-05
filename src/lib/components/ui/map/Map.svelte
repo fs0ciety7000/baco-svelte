@@ -5,24 +5,25 @@
 
 	let mapContainer;
 	let map = $state(null);
-    
-    // Props pour le trajet (départ/arrivée)
-	let { route = null, className = '' } = $props();
+    let markerInstances = [];
+
+    // Ajout de la prop 'markers'
+	let { route = null, markers = [], className = '' } = $props();
 
 	onMount(() => {
 		map = new maplibregl.Map({
 			container: mapContainer,
-			style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json', // Style sombre compatible avec votre thème "Deep Space"
-			center: [4.3517, 50.8503], // Bruxelles par défaut
-			zoom: 11,
+			style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+			center: [4.3517, 50.8503],
+			zoom: 8,
 			attributionControl: false
 		});
 
 		map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
 
-        // Au chargement, si on a une route, on la dessine
 		map.on('load', () => {
 			if (route) drawRoute(route);
+            if (markers) drawMarkers(markers);
 		});
 	});
 
@@ -30,63 +31,70 @@
 		map?.remove();
 	});
 
-    // Effet réactif pour mettre à jour la route si elle change
+    // Réactivité : on redessine si les données changent
     $effect(() => {
-        if (map && map.loaded() && route) {
-            drawRoute(route);
+        if (map && map.loaded()) {
+            if (route) drawRoute(route);
+            if (markers) drawMarkers(markers);
         }
     });
 
 	function drawRoute(routeData) {
         if (!map.getSource('route')) {
-             map.addSource('route', {
-                'type': 'geojson',
-                'data': routeData
-            });
-            
-            map.addLayer({
+             map.addSource('route', { 'type': 'geojson', 'data': routeData });
+             map.addLayer({
                 'id': 'route',
                 'type': 'line',
                 'source': 'route',
-                'layout': {
-                    'line-join': 'round',
-                    'line-cap': 'round'
-                },
-                'paint': {
-                    'line-color': '#3b82f6', // Blue-500 (votre couleur primaire)
-                    'line-width': 4,
-                    'line-opacity': 0.8
-                }
+                'layout': { 'line-join': 'round', 'line-cap': 'round' },
+                'paint': { 'line-color': '#3b82f6', 'line-width': 4, 'line-opacity': 0.8 }
             });
         } else {
              map.getSource('route').setData(routeData);
         }
 
-        // Ajuster la vue pour voir tout le trajet
+        // Zoom automatique pour tout voir
         const coordinates = routeData.geometry.coordinates;
-        const bounds = coordinates.reduce((bounds, coord) => {
-            return bounds.extend(coord);
-        }, new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
-
-        map.fitBounds(bounds, { padding: 50 });
+        if (coordinates && coordinates.length > 0) {
+            const bounds = coordinates.reduce((bounds, coord) => {
+                return bounds.extend(coord);
+            }, new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
+            map.fitBounds(bounds, { padding: 50 });
+        }
 	}
+
+    function drawMarkers(markersData) {
+        // Nettoyage des anciens marqueurs
+        markerInstances.forEach(m => m.remove());
+        markerInstances = [];
+
+        markersData.forEach(m => {
+            // Création de l'élément HTML du marqueur
+            const el = document.createElement('div');
+            // Styles par défaut (Arrêt intermédiaire)
+            el.className = 'w-3 h-3 bg-orange-500 rounded-full border-2 border-white shadow-lg cursor-pointer hover:scale-125 transition-transform';
+            
+            // Styles spécifiques
+            if (m.type === 'start') el.className = 'w-4 h-4 bg-green-500 rounded-full border-2 border-white shadow-lg z-10';
+            if (m.type === 'end') el.className = 'w-4 h-4 bg-red-500 rounded-full border-2 border-white shadow-lg z-10';
+
+            // Popup au survol
+            const popup = new maplibregl.Popup({ offset: 15, closeButton: false, closeOnClick: false }).setText(m.label);
+
+            const marker = new maplibregl.Marker({ element: el })
+                .setLngLat(m.lngLat)
+                .setPopup(popup)
+                .addTo(map);
+            
+            el.addEventListener('mouseenter', () => marker.togglePopup());
+            el.addEventListener('mouseleave', () => marker.togglePopup());
+
+            markerInstances.push(marker);
+        });
+    }
 </script>
 
 <div class="relative w-full h-full rounded-xl overflow-hidden border border-white/10 shadow-2xl {className}">
 	<div bind:this={mapContainer} class="w-full h-full" />
-    
-    <div class="absolute top-4 left-4 z-10">
-        <slot />
-    </div>
+    <slot />
 </div>
-
-<style>
-    /* Customisation pour s'intégrer à shadcn/tailwind */
-    :global(.maplibregl-ctrl-group) {
-        background-color: #0f1115 !important;
-        border: 1px solid rgba(255,255,255,0.1) !important;
-    }
-    :global(.maplibregl-ctrl-icon) {
-        filter: invert(1); /* Icônes blanches pour le thème sombre */
-    }
-</style>
