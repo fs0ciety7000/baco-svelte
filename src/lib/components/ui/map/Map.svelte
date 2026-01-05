@@ -4,11 +4,11 @@
 	import 'maplibre-gl/dist/maplibre-gl.css';
 
 	let mapContainer;
-	// map est bindable pour permettre au parent de le contrôler
+	// On lie 'map' pour le contrôler depuis le parent (zoom, centrage)
 	let { route = null, markers = [], zones = [], className = '', map = $bindable() } = $props();
 	
 	let markerInstances = [];
-	let activePopup = null; // Variable unique pour empêcher les doublons de popups
+	let activePopup = null; // Variable unique pour éviter les doublons de popups
 
 	onMount(() => {
 		const m = new maplibregl.Map({
@@ -23,7 +23,7 @@
 		m.addControl(new maplibregl.FullscreenControl(), 'top-right');
 
 		m.on('load', () => {
-			map = m;
+			map = m; // On remonte l'instance au parent
 			updateMapElements();
 		});
 	});
@@ -32,7 +32,7 @@
 		map?.remove();
 	});
 
-	// Réactivité : Met à jour les éléments quand les props changent
+	// Réactivité Svelte 5 : Met à jour la carte dès qu'une prop change
 	$effect(() => {
 		if (map && map.loaded()) {
 			updateMapElements();
@@ -40,10 +40,10 @@
 	});
 
 	function updateMapElements() {
-		// On dessine dans l'ordre : Zones (fond) -> Route -> Marqueurs (dessus)
+		// Ordre de dessin : Zones (fond) -> Route -> Marqueurs (premier plan)
 		if (zones) drawZones(zones);
 		if (route) drawRoute(route);
-		// On appelle drawMarkers même si le tableau est vide pour nettoyer la carte
+		// On passe markers (ou tableau vide) pour forcer le nettoyage si nécessaire
 		drawMarkers(markers || []);
 	}
 
@@ -63,19 +63,20 @@
 	}
 
 	function drawMarkers(markersData) {
-		// 1. Nettoyage TOTAL des anciens marqueurs
+		// 1. NETTOYAGE : On supprime d'abord tous les marqueurs existants
 		if (markerInstances.length > 0) {
 			markerInstances.forEach(m => m.remove());
 			markerInstances = [];
 		}
 
-		// 2. Si pas de données (filtres tout décochés), on s'arrête là
+		// 2. Si la liste est vide (filtres décochés), on s'arrête là -> La carte est propre
 		if (!markersData || markersData.length === 0) return;
 
-		// 3. Création des nouveaux
+		// 3. Dessin des nouveaux marqueurs
 		markersData.forEach(m => {
 			const el = document.createElement('div');
 			
+			// Styles CSS
 			let baseClass = 'w-3 h-3 rounded-full border-2 border-white shadow-lg cursor-pointer hover:scale-125 transition-transform';
 			let colorClass = 'bg-orange-500'; 
 
@@ -89,29 +90,10 @@
 				.setLngLat(m.lngLat)
 				.addTo(map);
 			
-			// Gestion des popups "single instance" pour éviter la duplication
+			// Événements pour le Popup (Gestion Singleton)
 			el.addEventListener('mouseenter', () => {
-				if (activePopup) activePopup.remove(); // Ferme l'ancien s'il existe
-				
-				activePopup = new maplibregl.Popup({ 
-					offset: 15, 
-					closeButton: false, 
-					maxWidth: '300px',
-					className: 'custom-popup-fade'
-				})
-				.setLngLat(m.lngLat)
-				.setHTML(m.popupContent || m.label || '')
-				.addTo(map);
+				showPopup(m.lngLat, m.popupContent || m.label, 'custom-popup');
 			});
-
-			// On ne ferme pas automatiquement sur mouseleave pour permettre de cliquer sur les liens dans le popup
-			// Si vous préférez fermer au survol, décommentez ceci :
-			/*
-			el.addEventListener('mouseleave', () => {
-				if (activePopup) activePopup.remove();
-				activePopup = null;
-			});
-			*/
 
 			markerInstances.push(marker);
 		});
@@ -123,15 +105,17 @@
 			const fillId = `zone-fill-${index}`;
 			const lineId = `zone-line-${index}`;
 
-			// Si la source n'existe pas encore, on la crée
+			// On n'ajoute la source que si elle n'existe pas déjà
 			if (!map.getSource(sourceId)) {
 				map.addSource(sourceId, { 'type': 'geojson', 'data': zone.geojson });
 
+				// Remplissage
 				map.addLayer({
 					'id': fillId, 'type': 'fill', 'source': sourceId, 'layout': {},
 					'paint': { 'fill-color': zone.color || '#3b82f6', 'fill-opacity': 0.15 }
 				});
 
+				// Contour
 				map.addLayer({
 					'id': lineId, 'type': 'line', 'source': sourceId, 'layout': {},
 					'paint': { 'line-color': zone.color || '#3b82f6', 'line-width': 2, 'line-opacity': 0.8 }
@@ -140,25 +124,32 @@
 				// Interaction Zone
 				map.on('mouseenter', fillId, (e) => {
 					map.getCanvas().style.cursor = 'pointer';
-					
-					if (activePopup) activePopup.remove(); // Évite duplication
-					
-					activePopup = new maplibregl.Popup({ closeButton: false, className: 'zone-popup' })
-						.setLngLat(e.lngLat)
-						.setHTML(`<div class="text-black font-bold px-2">${zone.name}</div>`)
-						.addTo(map);
+					showPopup(e.lngLat, `<div class="text-black font-bold px-2">${zone.name}</div>`, 'zone-popup');
 				});
 
 				map.on('mouseleave', fillId, () => {
 					map.getCanvas().style.cursor = '';
-					if (activePopup) {
-						activePopup.remove();
-						activePopup = null;
-					}
+                    // Optionnel : fermer le popup en sortant de la zone
+                    // if (activePopup) { activePopup.remove(); activePopup = null; }
 				});
 			}
 		});
 	}
+
+    // Helper centralisé pour afficher les popups sans doublons
+    function showPopup(lngLat, htmlContent, className = '') {
+        if (activePopup) activePopup.remove(); // Ferme l'ancien
+
+        activePopup = new maplibregl.Popup({ 
+            offset: 15, 
+            closeButton: false, 
+            maxWidth: '300px',
+            className: className
+        })
+        .setLngLat(lngLat)
+        .setHTML(htmlContent || '')
+        .addTo(map);
+    }
 </script>
 
 <div class="relative w-full h-full rounded-xl overflow-hidden border border-white/10 shadow-2xl {className}">
@@ -178,7 +169,7 @@
 	}
 	:global(.maplibregl-popup-tip) { border-top-color: #1a1d24; }
 	
-	/* Style spécifique pour les zones (blanc) */
-	:global(.zone-popup .maplibregl-popup-content) { background: white; color: black; border: none; padding: 4px 8px; }
+	/* Style blanc pour les labels de zones */
+	:global(.zone-popup .maplibregl-popup-content) { background: white; color: black; border: none; padding: 4px 8px; border-radius: 4px; }
 	:global(.zone-popup .maplibregl-popup-tip) { border-top-color: white; }
 </style>

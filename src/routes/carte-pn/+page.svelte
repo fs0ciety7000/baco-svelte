@@ -9,7 +9,7 @@
   import { toast } from '$lib/stores/toast.js';
   import { hasPermission, ACTIONS } from '$lib/permissions';
 
-  // --- ÉTAT (Svelte 5 Runes) ---
+  // --- ÉTAT ---
   let currentUser = $state(null);
   let isAuthorized = $state(false);
 
@@ -20,34 +20,31 @@
   let searchQuery = $state("");
   let isLoading = $state(true);
 
-  // Référence à l'instance de carte
+  // Instance de carte (pour le flyTo)
   let mapInstance = $state(null);
 
   const coordsCache = {}; 
 
-  // --- CONFIGURATION ZONES ---
-  // Note: MapLibre utilise [Longitude, Latitude]. Leaflet utilisait [Latitude, Longitude].
-  // J'ai inversé ici pour correspondre à MapLibre.
+  // --- ZONES ---
   const rawZones = {
     'FTY': { coords: [[3.2240, 50.7610], [3.2403, 50.7166], [3.7785, 50.4569], [4.1717, 50.7211], [4.1780, 50.7135]], color: '#3b82f6', name: "Zone FTY" },
     'FMS': { coords: [[3.6856, 50.4102], [3.7785, 50.4569], [3.7998, 50.6145], [4.1379, 50.6055], [4.2124, 50.7069], [4.2342, 50.5064], [4.2441, 50.4603], [4.1749, 50.4049], [3.9391, 50.4512], [3.9574, 50.4720], [3.9083, 50.3291]], color: '#eab308', name: "Zone FMS" },
     'FCR': { coords: [[4.3785, 50.7302], [4.3876, 50.5048], [4.5478, 50.4863], [4.6463, 50.4457], [4.4920, 50.0566], [4.1110, 50.3033], [4.2441, 50.4603], [4.2399, 50.5035]], color: '#ef4444', name: "Zone FCR" }
   };
 
-  // Transformation et Correction (Fermeture des polygones)
+  // Correction automatique : Fermeture des polygones
   const mapZones = Object.values(rawZones).map(z => {
-      // Pour qu'un polygone soit valide, le dernier point doit être égal au premier
       const closedCoords = [...z.coords];
       const first = closedCoords[0];
       const last = closedCoords[closedCoords.length - 1];
       
+      // Si le dernier point n'est pas égal au premier, on l'ajoute
       if (first[0] !== last[0] || first[1] !== last[1]) {
-          closedCoords.push(first); // On ferme la boucle
+          closedCoords.push(first);
       }
 
       return {
-          name: z.name, 
-          color: z.color,
+          name: z.name, color: z.color,
           geojson: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [closedCoords] } }
       };
   });
@@ -95,6 +92,8 @@
               const coords = await fetchCoordinates(pn);
               if (coords) {
                   pn.geo = `${coords[1]},${coords[0]}`; 
+                  // Force reactivity : on réassigne pour que les markers se mettent à jour
+                  // Note: En Svelte 5, si pn est un proxy (dans le state), ça marche direct.
               }
           }));
           await new Promise(r => setTimeout(r, 500));
@@ -128,7 +127,7 @@
       return null;
   }
 
-  // --- FILTRAGE ($derived pour la réactivité automatique) ---
+  // --- FILTRAGE RÉACTIF ---
   let filteredPn = $derived(allPnData.filter(pn => {
     const lineMatch = selectedLines.includes(pn.ligne_nom);
     const searchMatch = !searchQuery.trim() || 
@@ -139,7 +138,7 @@
     return lineMatch && searchMatch;
   }));
 
-  // --- MAP MARKERS ($derived) ---
+  // --- CONSTRUCTION DES MARKERS ---
   let mapMarkers = $derived(filteredPn
     .filter(pn => pn.geo) 
     .map(pn => {
@@ -164,7 +163,7 @@
         `;
 
         return {
-            lngLat: [lon, lat], 
+            lngLat: [lon, lat], // MapLibre [Lon, Lat]
             type: 'pn',
             popupContent: popupHTML
         };
@@ -257,7 +256,7 @@
               <div class="flex items-center gap-2 text-sm text-gray-500 py-4"><Loader2 size={16} class="animate-spin themed-spinner"/> Chargement...</div>
             {:else}
               <label class="flex items-center space-x-3 p-2.5 rounded-xl hover:bg-white/5 cursor-pointer transition-colors group mb-2 border border-transparent hover:border-white/5">
-                <input type="checkbox" checked={showAllLines} on:change={toggleAllLines} class="hidden">
+                <input type="checkbox" checked={showAllLines} onchange={toggleAllLines} class="hidden">
                 {#if showAllLines}<CheckSquare class="w-5 h-5 text-themed" />{:else}<Square class="w-5 h-5 text-gray-600 group-hover:text-gray-400" />{/if}
                 <span class="font-bold text-sm text-gray-300 group-hover:text-white">Toutes les lignes</span>
               </label>
@@ -270,7 +269,7 @@
                     <input 
                       type="checkbox" 
                       checked={selectedLines.includes(line)} 
-                      on:change={() => handleLineChange(line)}
+                      onchange={() => handleLineChange(line)}
                       class="hidden"
                     >
                     {#if selectedLines.includes(line)}<CheckSquare class="w-4 h-4 text-themed" />{:else}<Square class="w-4 h-4 text-gray-600 group-hover:text-gray-400" />{/if}
@@ -305,7 +304,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
               {#each filteredPn.slice(0, 50) as pn} 
                 <div 
-                    on:click={() => handlePnClick(pn)}
+                    onclick={() => handlePnClick(pn)}
                     class="bg-black/20 border border-white/5 p-3 rounded-xl flex justify-between items-center hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer group active:scale-[0.98]"
                 >
                   <div class="min-w-0">
