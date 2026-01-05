@@ -181,7 +181,7 @@ async function fetchCoordinates(pn) {
             <div class="p-3 min-w-[200px]">
                 <div class="flex justify-between items-center border-b border-white/10 pb-2 mb-2">
                     <span class="bg-orange-500/20 text-orange-400 text-[10px] font-bold px-2 py-0.5 rounded border border-orange-500/30">Ligne ${pn.ligne_nom}</span>
-                    <span class="font-bold text-white">PN ${pn.pn}</span>
+                    <span class="font-bold text-white"> ${pn.pn}</span>
                 </div>
                 <div class="space-y-1 text-xs text-gray-300">
                     <div class="flex justify-between"><span class="text-gray-500">BK:</span> <span class="font-mono text-white">${pn.bk || '?'}</span></div>
