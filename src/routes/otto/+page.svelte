@@ -17,7 +17,6 @@
     Search, Filter, X, CheckCircle, User, UserCheck, ChevronDown, Mail, ClipboardCopy, Check, LockOpen, School
   } from 'lucide-svelte';
   
-  // IMPORT TOAST & PERMISSIONS
   import { toast } from '$lib/stores/toast.js';
   import { hasPermission, ACTIONS } from '$lib/permissions';
 
@@ -28,10 +27,8 @@
   let commandes = [];
   let showEmailExport = false;
   let hasCopied = false;
-
   let showTutorial = false;
 
-  // User info pour le PDF (Créateur courant si nouvelle commande)
   let currentUserProfile = null; 
   let isAuthorized = false; 
 
@@ -44,12 +41,8 @@
   let availableStops = [];
   let uniqueStationNames = [];
   let availableSocietes = [];
-  let availableChauffeurs = []; // Liste des chauffeurs pour la société sélectionnée
-
-  // Variable pour l'input texte de la société
+  let availableChauffeurs = [];
   let societeInputValue = ""; 
-
-// ... (Vos imports et variables d'état existants) ...
 
   // --- VARIABLES CARTE & GEOCODING ---
   let currentRoute = null;
@@ -57,13 +50,18 @@
   let isComputingRoute = false;
   const coordsCache = {}; 
 
-  // Gardez votre fonction getGareCoordinates existante ici
+  // 1. GEOCODING (Nominatim)
   async function getGareCoordinates(gareName) {
-      // ... (code existant inchangé pour Nominatim) ...
       if (!gareName) return null;
       const cleanName = gareName.replace(/\(.*\)/, '').trim();
       if (coordsCache[cleanName]) return coordsCache[cleanName];
-      const queries = [`Gare de ${cleanName}, Belgique`, `${cleanName} Station, Belgium`, `${cleanName}, Belgique`];
+
+      const queries = [
+          `Gare de ${cleanName}, Belgique`,
+          `${cleanName} Station, Belgium`,
+          `${cleanName}, Belgique`
+      ];
+
       for (const query of queries) {
           try {
               const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
@@ -82,115 +80,29 @@
       return null;
   }
 
-  // --- NOUVELLE FONCTION : ROUTING OSRM ---
+  // 2. ROUTING (OSRM)
   async function fetchRouteOSRM(coordinates) {
       if (!coordinates || coordinates.length < 2) return null;
-
-      // OSRM attend le format : lon1,lat1;lon2,lat2;lon3,lat3
+      // OSRM format: lon1,lat1;lon2,lat2
       const coordString = coordinates.map(c => c.join(',')).join(';');
       
       try {
-          // Appel à l'API publique OSRM (Driving)
           const url = `https://router.project-osrm.org/route/v1/driving/${coordString}?overview=full&geometries=geojson`;
           const res = await fetch(url);
           const data = await res.json();
 
           if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-              return data.routes[0].geometry; // Retourne la géométrie précise de la route
+              return data.routes[0].geometry;
           }
       } catch (e) {
           console.warn("Erreur OSRM, fallback ligne droite:", e);
       }
       
-      // Fallback : Si OSRM échoue, on retourne une ligne droite simple
+      // Fallback Ligne Droite
       return {
           type: 'LineString',
           coordinates: coordinates
       };
-  }
-
-  // --- BLOC RÉACTIF MIS À JOUR ---
-  let searchTimeout;
-
-  $: if (form.origine && form.destination) {
-      clearTimeout(searchTimeout);
-      
-      searchTimeout = setTimeout(async () => {
-          // Optimisation : on ne recalcul pas si rien n'a changé
-          if (currentRoute && 
-              currentRoute.properties?.startName === form.origine && 
-              currentRoute.properties?.endName === form.destination &&
-              currentMarkers.length === (form.arrets.length + 2)) {
-              return;
-          }
-
-          isComputingRoute = true;
-          
-          // 1. Récupération des arrêts intermédiaires triés
-          let stopsToProcess = [];
-          if (!form.is_direct && form.arrets.length > 0) {
-             stopsToProcess = getSortedArrets(form.arrets, form.lignes);
-          }
-
-          // 2. Géocodage des points (Nominatim)
-          const startPromise = getGareCoordinates(form.origine);
-          const endPromise = getGareCoordinates(form.destination);
-          const stopsPromises = stopsToProcess.map(stopName => getGareCoordinates(stopName));
-
-          const [startCoords, endCoords, ...stopsCoordsResults] = await Promise.all([
-              startPromise, 
-              endPromise, 
-              ...stopsPromises
-          ]);
-
-          // 3. Construction des marqueurs et de la liste de points pour la route
-          let newMarkers = [];
-          let routeWaypoints = []; // Liste ordonnée des coordonnées [Départ, Arrêt1, Arrêt2, ..., Arrivée]
-
-          // Départ
-          if (startCoords) {
-              newMarkers.push({ lngLat: startCoords, label: `Départ: ${form.origine}`, type: 'start' });
-              routeWaypoints.push(startCoords);
-          }
-
-          // Intermédiaires
-          stopsCoordsResults.forEach((coords, index) => {
-              if (coords) {
-                  newMarkers.push({ lngLat: coords, label: stopsToProcess[index], type: 'stop' });
-                  routeWaypoints.push(coords);
-              }
-          });
-
-          // Arrivée
-          if (endCoords) {
-              newMarkers.push({ lngLat: endCoords, label: `Arrivée: ${form.destination}`, type: 'end' });
-              routeWaypoints.push(endCoords);
-          }
-
-          // 4. Appel OSRM pour avoir le tracé précis
-          if (startCoords && endCoords) {
-              currentMarkers = newMarkers;
-              
-              // On demande le tracé routier à OSRM
-              const preciseGeometry = await fetchRouteOSRM(routeWaypoints);
-
-              currentRoute = {
-                  "type": "Feature",
-                  "properties": {
-                      startName: form.origine,
-                      endName: form.destination
-                  },
-                  "geometry": preciseGeometry
-              };
-          } else {
-              currentRoute = null;
-              currentMarkers = [];
-          }
-          isComputingRoute = false;
-      }, 1000);
-  } else {
-      currentRoute = null;
-      currentMarkers = [];
   }
 
   // --- FORMULAIRE ---
@@ -221,30 +133,27 @@
 
   let form = JSON.parse(JSON.stringify(initialForm));
 
-  // --- BLOC RÉACTIF : Calcul du trajet et des marqueurs ---
-  let searchTimeout;
+  // --- LOGIQUE CARTE RÉACTIVE ---
+  let searchTimeout; // Déclaré une seule fois ici
 
   $: if (form.origine && form.destination) {
       clearTimeout(searchTimeout);
-      // Délai de 1 seconde pour laisser le temps de finir de taper
       searchTimeout = setTimeout(async () => {
-          // Petit check pour ne pas recalculer si c'est déjà la bonne route
+          // Évite le recalcul si rien n'a changé
           if (currentRoute && 
               currentRoute.properties?.startName === form.origine && 
               currentRoute.properties?.endName === form.destination &&
-              currentMarkers.length === (form.arrets.length + 2)) { // Check sommaire si les arrêts ont changé
+              currentMarkers.length === (form.arrets.length + 2)) {
               return;
           }
 
           isComputingRoute = true;
           
-          // 1. Récupération des arrêts intermédiaires triés
           let stopsToProcess = [];
           if (!form.is_direct && form.arrets.length > 0) {
              stopsToProcess = getSortedArrets(form.arrets, form.lignes);
           }
 
-          // 2. Lancement des recherches GPS en parallèle
           const startPromise = getGareCoordinates(form.origine);
           const endPromise = getGareCoordinates(form.destination);
           const stopsPromises = stopsToProcess.map(stopName => getGareCoordinates(stopName));
@@ -255,39 +164,39 @@
               ...stopsPromises
           ]);
 
-          // 3. Construction des marqueurs et de la ligne
           let newMarkers = [];
-          let routeCoordinates = [];
+          let routeWaypoints = [];
 
           if (startCoords) {
               newMarkers.push({ lngLat: startCoords, label: `Départ: ${form.origine}`, type: 'start' });
-              routeCoordinates.push(startCoords);
+              routeWaypoints.push(startCoords);
           }
 
           stopsCoordsResults.forEach((coords, index) => {
               if (coords) {
                   newMarkers.push({ lngLat: coords, label: stopsToProcess[index], type: 'stop' });
-                  routeCoordinates.push(coords);
+                  routeWaypoints.push(coords);
               }
           });
 
           if (endCoords) {
               newMarkers.push({ lngLat: endCoords, label: `Arrivée: ${form.destination}`, type: 'end' });
-              routeCoordinates.push(endCoords);
+              routeWaypoints.push(endCoords);
           }
 
           if (startCoords && endCoords) {
               currentMarkers = newMarkers;
+              
+              // Appel OSRM pour le tracé routier
+              const preciseGeometry = await fetchRouteOSRM(routeWaypoints);
+
               currentRoute = {
                   "type": "Feature",
                   "properties": {
                       startName: form.origine,
                       endName: form.destination
                   },
-                  "geometry": {
-                      "type": "LineString",
-                      "coordinates": routeCoordinates
-                  }
+                  "geometry": preciseGeometry
               };
           } else {
               currentRoute = null;
@@ -328,18 +237,14 @@
       form.relation = 'TC_';
   }
 
-  // --- Synchronisation ID Société -> Input Texte ---
   $: if (form.societe_id && availableSocietes.length > 0) {
       const selected = availableSocietes.find(s => s.id === form.societe_id);
-      
       if (selected && selected.nom.toLowerCase() !== societeInputValue.toLowerCase()) {
           societeInputValue = selected.nom;
       }
-
       if (selected && availableChauffeurs.length === 0) loadChauffeurs(form.societe_id);
   }
 
-  // --- FILTRES ---
   $: filteredCommandes = commandes.filter(cmd => {
       const term = searchTerm.toLowerCase();
       const matchesSearch = (
@@ -444,16 +349,8 @@
   }
 
   async function loadChauffeurs(societeId) {
-      if (!societeId) {
-          availableChauffeurs = [];
-          return;
-      }
-      const { data } = await supabase
-          .from('chauffeurs_bus')
-          .select('*')
-          .eq('societe_id', societeId)
-          .order('nom');
-      
+      if (!societeId) { availableChauffeurs = []; return; }
+      const { data } = await supabase.from('chauffeurs_bus').select('*').eq('societe_id', societeId).order('nom');
       if (data) availableChauffeurs = data;
   }
 
@@ -466,7 +363,6 @@ Cordialement,
 ${form.validator?.full_name || currentUserProfile?.full_name || 'Équipe PACO'}
 PACO Sud-Ouest`;
 
-  // Fonction pour l'email
   function sendEmail() {
     const society = availableSocietes.find(s => s.id === form.societe_id);
     const emailTo = society?.email || "";
@@ -481,9 +377,7 @@ PACO Sud-Ouest`;
       hasCopied = true;
       toast.success("Message copié !");
       setTimeout(() => hasCopied = false, 2000);
-    } catch (err) {
-      toast.error("Erreur lors de la copie");
-    }
+    } catch (err) { toast.error("Erreur lors de la copie"); }
   }
 
   // --- LOGIQUE METIER ---
@@ -493,11 +387,7 @@ PACO Sud-Ouest`;
   let stopsMetadata = []; 
 
   async function loadStopsForLines(lines) {
-    const { data } = await supabase
-        .from('ligne_data')
-        .select('gare, ligne_nom, ordre')
-        .in('ligne_nom', lines); 
-
+    const { data } = await supabase.from('ligne_data').select('gare, ligne_nom, ordre').in('ligne_nom', lines); 
     if (data) {
         stopsMetadata = data;
         availableStops = [...new Set(data.map(d => `${d.gare} (${d.ligne_nom})`))];
@@ -506,7 +396,6 @@ PACO Sud-Ouest`;
 
   function getSortedArrets(arretsSelectionnes, lignesSelectionnees) {
     if (arretsSelectionnes.length <= 1) return arretsSelectionnes;
-
     const mapped = arretsSelectionnes.map(stopFull => {
         const [gare, rest] = stopFull.split(' (');
         const ligneNom = rest.replace(')', '');
@@ -514,26 +403,17 @@ PACO Sud-Ouest`;
     }).filter(Boolean);
 
     let finalSorted = [];
-    
     const originNode = stopsMetadata.find(s => s.gare === form.origine);
     const destNode = stopsMetadata.find(s => s.gare === form.destination);
-
     let isDescending = false;
-    if (originNode && destNode) {
-        isDescending = originNode.ordre > destNode.ordre;
-    }
+    if (originNode && destNode) isDescending = originNode.ordre > destNode.ordre;
 
     lignesSelectionnees.forEach(nomLigne => {
         let arretsDeCetteLigne = mapped.filter(m => m.ligne_nom === nomLigne);
         if (arretsDeCetteLigne.length === 0) return;
-
-        arretsDeCetteLigne.sort((a, b) => {
-            return isDescending ? b.ordre - a.ordre : a.ordre - b.ordre;
-        });
-
+        arretsDeCetteLigne.sort((a, b) => isDescending ? b.ordre - a.ordre : a.ordre - b.ordre);
         finalSorted.push(...arretsDeCetteLigne);
     });
-
     return finalSorted.map(m => `${m.gare} (${m.ligne_nom})`);
   }
 
@@ -556,22 +436,13 @@ PACO Sud-Ouest`;
       if (form.bus_data.length > 1) form.bus_data = form.bus_data.filter((_, i) => i !== index);
   }
 
-  // --- GESTION SOCIÉTÉ (Input + Datalist) ---
   function handleSocieteChange(event) {
       const val = event.target.value;
       societeInputValue = val;
-      
-      if (!val) {
-          clearSocieteSelection();
-          return;
-      }
-
+      if (!val) { clearSocieteSelection(); return; }
       const match = availableSocietes.find(s => s.nom.toLowerCase() === val.toLowerCase());
-      
       if (match) {
-          if (form.societe_id !== match.id) {
-              selectSociete(match.id);
-          }
+          if (form.societe_id !== match.id) selectSociete(match.id);
       } else {
           if (form.societe_id !== null) {
               form.societe_id = null;
@@ -594,16 +465,13 @@ PACO Sud-Ouest`;
       form.bus_data = form.bus_data.map(b => ({ ...b, chauffeur_id: null }));
   }
 
-  // --- ACTIONS ---
   function goBackToList() {
       view = 'list';
       goto('/otto', { replaceState: true, noScroll: true });
   }
 
   function openNew() {
-      if (!hasPermission(currentUserProfile, ACTIONS.OTTO_WRITE)) {
-          return; 
-      }
+      if (!hasPermission(currentUserProfile, ACTIONS.OTTO_WRITE)) return;
       form = JSON.parse(JSON.stringify(initialForm));
       form.relation = 'TC_';
       societeInputValue = ""; 
@@ -613,7 +481,6 @@ PACO Sud-Ouest`;
   }
 
   function openEdit(cmd, updateUrl = true) {
-      // Normalisation des bus pour les anciennes commandes
       const safeBusData = (cmd.bus_data && cmd.bus_data.length > 0) 
           ? cmd.bus_data.map(b => ({
               ...b,
@@ -624,33 +491,18 @@ PACO Sud-Ouest`;
           }))
           : [{ plaque: cmd.plaque || '', heure_prevue: cmd.heure_prevue || '', heure_confirmee: cmd.heure_confirmee || '', heure_demob: cmd.heure_demob || '', chauffeur_id: null, is_specific_route: false }];
 
-      form = { 
-          ...cmd,
-          bus_data: safeBusData
-      };
-      
-      if (form.societe_id) {
-          loadChauffeurs(form.societe_id);
-      } else {
-          societeInputValue = "";
-          availableChauffeurs = [];
-      }
-
+      form = { ...cmd, bus_data: safeBusData };
+      if (form.societe_id) loadChauffeurs(form.societe_id);
+      else { societeInputValue = ""; availableChauffeurs = []; }
       view = 'form';
       if (updateUrl) goto(`?id=${cmd.id}`, { replaceState: false, noScroll: true, keepFocus: true });
   }
 
   async function saveCommande(targetStatus = 'brouillon') {
-      if (!hasPermission(currentUserProfile, ACTIONS.OTTO_WRITE)) {
-          return toast.error("Action non autorisée.");
-      }
-
+      if (!hasPermission(currentUserProfile, ACTIONS.OTTO_WRITE)) return toast.error("Action non autorisée.");
       if (!form.motif) return toast.error("Le motif est requis");
-      if (!form.societe_id) return toast.error("Veuillez sélectionner une société valide dans la liste");
-      
-      if (!form.relation || form.relation.trim() === 'TC_' || form.relation.length < 4) {
-          return toast.error("Le numéro de relation doit être complété (ex: TC_123)");
-      }
+      if (!form.societe_id) return toast.error("Veuillez sélectionner une société valide");
+      if (!form.relation || form.relation.trim() === 'TC_' || form.relation.length < 4) return toast.error("Réf. relation requise");
 
       isSaving = true;
       const currentUserId = currentUserProfile.id;
@@ -697,10 +549,8 @@ PACO Sud-Ouest`;
       }
 
       isSaving = false;
-
-      if (error) {
-          toast.error("Erreur: " + error.message);
-      } else {
+      if (error) toast.error("Erreur: " + error.message);
+      else {
           toast.success(targetStatus === 'envoye' ? "Commande clôturée !" : "Brouillon sauvegardé");
           await loadCommandes();
           goBackToList();
@@ -709,7 +559,6 @@ PACO Sud-Ouest`;
 
   async function duplicateCommande(cmd) {
     const newForm = JSON.parse(JSON.stringify(cmd));
-    
     newForm.id = null;
     newForm.status = 'brouillon';
     newForm.date_commande = new Date().toISOString().split('T')[0];
@@ -718,37 +567,21 @@ PACO Sud-Ouest`;
     newForm.sent_by_name = null;
     newForm.validated_by = null;
     newForm.is_mail_sent = false;
-    
-    newForm.bus_data = newForm.bus_data.map(b => ({
-        ...b,
-        plaque: '',
-        heure_confirmee: '',
-        heure_demob: '',
-        chauffeur_id: null 
-    }));
-
+    newForm.bus_data = newForm.bus_data.map(b => ({ ...b, plaque: '', heure_confirmee: '', heure_demob: '', chauffeur_id: null }));
     form = newForm;
-    if (form.societe_id) {
-        await loadChauffeurs(form.societe_id);
-    }
+    if (form.societe_id) await loadChauffeurs(form.societe_id);
     view = 'form';
-    toast.success("Commande dupliquée ! Vérifiez la date.");
+    toast.success("Commande dupliquée !");
   }
 
   function unlockCommande() {
-      if (!hasPermission(currentUserProfile, ACTIONS.OTTO_WRITE)) {
-          return toast.error("Vous n'avez pas les droits pour modifier cette commande.");
-      }
-      openConfirmModal("Voulez-vous vraiment déverrouiller ce bon pour le modifier ?", async () => {
-          await saveCommande('brouillon');
-      });
+      if (!hasPermission(currentUserProfile, ACTIONS.OTTO_WRITE)) return toast.error("Non autorisé.");
+      openConfirmModal("Déverrouiller ce bon ?", async () => await saveCommande('brouillon'));
   }
 
   function deleteCommande(id) {
-      if (!hasPermission(currentUserProfile, ACTIONS.OTTO_DELETE)) {
-          return toast.error("Suppression non autorisée.");
-      }
-      openConfirmModal("Êtes-vous sûr de vouloir supprimer cette commande ?", async () => {
+      if (!hasPermission(currentUserProfile, ACTIONS.OTTO_DELETE)) return toast.error("Non autorisé.");
+      openConfirmModal("Supprimer cette commande ?", async () => {
           await supabase.from('otto_commandes').delete().eq('id', id);
           loadCommandes();
           toast.success("Commande supprimée");
@@ -819,22 +652,18 @@ PACO Sud-Ouest`;
     doc.text("Partie A – Service opérationnels SNCB", 105, y + 17, { align: 'center' });
 
     y += 25;
-
     const infoStartY = y; 
-    
     y += 8;
     const labelX = 20; const valueX = 70;
 
     doc.setFont("helvetica", "bold"); doc.text("Date de circulation :", labelX, y);
     doc.setFont("helvetica", "normal"); doc.text(new Date(form.date_commande).toLocaleDateString('fr-BE'), valueX, y);
-    
     doc.setFont("helvetica", "bold"); doc.text("Type :", 110, y);
     doc.setFont("helvetica", "normal"); doc.text(form.is_direct ? "DIRECT (Sans arrêt)" : "OMNIBUS (Avec arrêts)", 130, y);
 
     y += 10;
     doc.setFont("helvetica", "bold"); doc.text("Motif :", labelX, y);
     doc.setFont("helvetica", "normal"); doc.text(form.motif || '', valueX, y);
-    
     y += 8;
     doc.setDrawColor(200); doc.line(20, y-4, 190, y-4); doc.setDrawColor(0);
 
@@ -843,8 +672,7 @@ PACO Sud-Ouest`;
     y += 6;
 
     if (!form.is_direct && form.arrets?.length > 0) {
-        doc.setFont("helvetica", "bold");
-        doc.text("Arrêts intermédiaires :", labelX, y);
+        doc.setFont("helvetica", "bold"); doc.text("Arrêts intermédiaires :", labelX, y);
         doc.setFont("helvetica", "normal"); 
         const sorted = getSortedArrets(form.arrets, form.lignes);
         const arretsSplit = doc.splitTextToSize(sorted.join(', '), 120);
@@ -862,31 +690,19 @@ PACO Sud-Ouest`;
 
     doc.setFont("helvetica", "bold"); doc.text("Lignes concernées :", labelX, y);
     doc.setFont("helvetica", "normal"); doc.text(form.lignes.join(', ') || '-', valueX, y);
-    
     doc.setFont("helvetica", "bold"); doc.text("Heure d'appel :", 110, y);
     doc.setFont("helvetica", "normal"); doc.text(form.heure_appel || '--:--', 140, y);
-    
     y += 5; 
 
     doc.rect(15, infoStartY, 180, y - infoStartY);
-
     y += 10; 
 
     const busRows = form.bus_data.map((b, i) => {
         const chauf = availableChauffeurs.find(c => c.id == b.chauffeur_id);
         const chauffeurStr = chauf ? `\nChauffeur: ${chauf.nom}\nTel: ${chauf.tel}` : ''; 
-        
         const routeStr = b.is_specific_route && (b.origine_specifique || b.destination_specifique)
-            ? `\n[TRAJET]: ${b.origine_specifique || '?'} -> ${b.destination_specifique || '?'}`
-            : '';
-
-        return [
-            `Bus ${i+1}${chauffeurStr}${routeStr}`,
-            b.plaque || '?', 
-            b.heure_prevue || '-', 
-            b.heure_confirmee || '-', 
-            b.heure_demob || '-'
-        ];
+            ? `\n[TRAJET]: ${b.origine_specifique || '?'} -> ${b.destination_specifique || '?'}` : '';
+        return [`Bus ${i+1}${chauffeurStr}${routeStr}`, b.plaque || '?', b.heure_prevue || '-', b.heure_confirmee || '-', b.heure_demob || '-'];
     });
 
     autoTable(doc, {
@@ -898,41 +714,24 @@ PACO Sud-Ouest`;
         styles: { fontSize: 9, cellPadding: 3, valign: 'middle', lineColor: [0, 0, 0], lineWidth: 0.1 }, 
         margin: { left: 15, right: 15 }, 
         tableWidth: 180,                 
-        columnStyles: {
-            0: { cellWidth: 80 }
-        }
+        columnStyles: { 0: { cellWidth: 80 } }
     });
 
     y = doc.lastAutoTable.finalY + 10;
-
-    if (y > 270) {
-        doc.addPage();
-        y = 20;
-    }
+    if (y > 270) { doc.addPage(); y = 20; }
 
     doc.setFont("helvetica", "bold"); doc.text("Nombre de voyageurs :", 20, y);
     doc.setFont("helvetica", "normal"); doc.text(String(form.nombre_voyageurs || 'Non communiqué'), 60, y);
     doc.setFont("helvetica", "bold"); doc.text("Dont PMR :", 110, y);
     doc.setFont("helvetica", "normal"); doc.text(String(form.nombre_pmr || '0'), 135, y);
 
-    const footerHeight = 45;
-    const pageHeight = doc.internal.pageSize.height;
-    
     let footerY = Math.max(230, y + 20);
+    if (footerY + 45 > doc.internal.pageSize.height - 10) { doc.addPage(); footerY = 20; }
 
-    if (footerY + footerHeight > pageHeight - 10) {
-        doc.addPage();
-        footerY = 20;
-    }
-
-    doc.setDrawColor(0); 
-    doc.rect(15, footerY, 180, footerHeight);
-    
+    doc.setDrawColor(0); doc.rect(15, footerY, 180, 45);
     doc.setFontSize(10); 
-    doc.setFont("helvetica", "bold"); 
-    doc.text("Adresse de facturation :", 20, footerY + 6);
-    doc.setFont("helvetica", "normal"); 
-    doc.text(["SNCB", "Purchase Accounting B-F.224", "Rue de France 56", "1060 BRUXELLES"], 20, footerY + 12);
+    doc.setFont("helvetica", "bold"); doc.text("Adresse de facturation :", 20, footerY + 6);
+    doc.setFont("helvetica", "normal"); doc.text(["SNCB", "Purchase Accounting B-F.224", "Rue de France 56", "1060 BRUXELLES"], 20, footerY + 12);
     
     const legX = 100;
     doc.setFont("helvetica", "bold"); doc.text("Mentions obligatoires sur la facture :", legX, footerY + 6);
@@ -940,15 +739,11 @@ PACO Sud-Ouest`;
     doc.text(`N° SAP de la commande : 4522 944 778`, legX, footerY + 17);
     doc.setFont("helvetica", "bold"); doc.text(`Numéro de relation : ${form.relation}`, legX, footerY + 25);
 
-    const societyName = society?.nom || 'Société Inconnue';
-    const typeService = form.is_direct ? 'Direct' : 'Omnibus';
     const safe = (str) => (str || '').replace(/[\\/:*?"<>|]/g, '-');
-    const fileName = `${form.date_commande} - C3 - ${safe(societyName)} - ${safe(form.origine)} - ${safe(form.destination)} - ${typeService} - ${safe(form.relation)}.pdf`;
-
+    const fileName = `${form.date_commande} - C3 - ${safe(society?.nom || 'Inconnue')} - ${safe(form.origine)} - ${safe(form.destination)}.pdf`;
     doc.save(fileName);
   }
 
-  // Styles
   const inputClass = "w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-orange-500/50 outline-none transition-all placeholder-gray-600";
   const labelClass = "block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1 flex items-center gap-1";
 </script>
@@ -977,21 +772,12 @@ PACO Sud-Ouest`;
         </div>
         
         {#if view === 'list'}
-
-        <button 
-      on:click={() => showTutorial = true}
-      class="btn-themed px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all border"
-      style="--primary-rgb: var(--color-primary);"
-    >
-      <School class="w-5 h-5" />
-    </button>
+            <button on:click={() => showTutorial = true} class="btn-themed px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all border" style="--primary-rgb: var(--color-primary);">
+              <School class="w-5 h-5" />
+            </button>
 
             {#if hasPermission(currentUserProfile, ACTIONS.OTTO_WRITE)}
-                <button 
-                  on:click={openNew} 
-                  class="btn-themed px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all border"
-                  style="--primary-rgb: var(--color-primary);"
-                >
+                <button on:click={openNew} class="btn-themed px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all border" style="--primary-rgb: var(--color-primary);">
                   <Plus class="w-5 h-5" /> Nouvelle Commande
                 </button>
             {/if}
@@ -1025,12 +811,11 @@ PACO Sud-Ouest`;
                     </div>
 
                     <button on:click={exportToExcel} class="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all flex items-center gap-2">
-                <Download size={14} /> Excel
-            </button>
-            
-            <button on:click={exportListPDF} class="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all flex items-center gap-2">
-                <Printer size={14} /> PDF
-            </button>
+                        <Download size={14} /> Excel
+                    </button>
+                    <button on:click={exportListPDF} class="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all flex items-center gap-2">
+                        <Printer size={14} /> PDF
+                    </button>
 
                     <div class="w-px h-8 bg-white/10 hidden sm:block"></div>
 
@@ -1051,16 +836,12 @@ PACO Sud-Ouest`;
                     {#each filteredCommandes as cmd}
                         <div class="bg-black/20 border border-white/5 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-4 transition-all group 
                             {cmd.status === 'envoye' ? 'opacity-60 grayscale-[30%] hover:opacity-100 hover:grayscale-0' : 'hover:border-orange-500/30'}">
-                    
-                    
                             <div class="flex-grow min-w-0 w-full">
                                 <div class="flex items-center gap-3 mb-3 flex-wrap">
                                     <span class="text-xl font-extrabold text-white tracking-tight">{cmd.relation}</span>
-                                    
                                     <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase border {cmd.is_direct ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'}">
                                         {cmd.is_direct ? 'Direct' : 'Omnibus'}
                                     </span>
-
                                     <span class="flex items-center gap-1.5 px-3 py-1 bg-blue-600/20 text-blue-300 border border-blue-500/30 rounded-lg text-xs font-bold uppercase shadow-[0_0_10px_rgba(37,99,235,0.1)]">
                                         <Building2 size={12} /> {cmd.societes_bus?.nom || 'Inconnu'}
                                     </span>
@@ -1088,10 +869,7 @@ PACO Sud-Ouest`;
                                 <div class="flex items-center gap-4 text-xs pt-3 border-t border-white/5">
                                     {#if cmd.status === 'envoye' && cmd.sent_at}
                                         <div class="flex items-center gap-1.5 text-emerald-500/80" title="Envoyé le">
-                                            <Mail size={12} /> 
-                                            <span class="text-emerald-400">
-                                                Le {new Date(cmd.sent_at).toLocaleDateString('fr-BE')} par {cmd.sent_by_name || 'Inconnu'}
-                                            </span>
+                                            <Mail size={12} /> <span class="text-emerald-400">Le {new Date(cmd.sent_at).toLocaleDateString('fr-BE')} par {cmd.sent_by_name || 'Inconnu'}</span>
                                         </div>
                                     {:else if cmd.validator}
                                         <div class="flex items-center gap-1.5 text-red-500/70" title="Clôturé par">
@@ -1100,20 +878,11 @@ PACO Sud-Ouest`;
                                     {/if}
                                 </div>
                             </div>
-                            
                             <div class="flex items-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity self-start mt-2 md:mt-0">
-                                <button on:click={() => openEdit(cmd)} class="p-2 hover:bg-white/10 rounded-lg text-blue-400" title="Détails/Éditer">
-                                    <FileText class="w-5 h-5" />
-                                </button>
-                                
-                                <button on:click={() => duplicateCommande(cmd)} class="p-2 hover:bg-green-500/10 rounded-lg text-green-400" title="Dupliquer">
-    <ClipboardCopy class="w-5 h-5" />
-</button>
-
+                                <button on:click={() => openEdit(cmd)} class="p-2 hover:bg-white/10 rounded-lg text-blue-400" title="Détails/Éditer"><FileText class="w-5 h-5" /></button>
+                                <button on:click={() => duplicateCommande(cmd)} class="p-2 hover:bg-green-500/10 rounded-lg text-green-400" title="Dupliquer"><ClipboardCopy class="w-5 h-5" /></button>
                                 {#if hasPermission(currentUserProfile, ACTIONS.OTTO_DELETE)}
-                                    <button on:click={() => deleteCommande(cmd.id)} class="p-2 hover:bg-red-500/10 rounded-lg text-red-400" title="Supprimer">
-                                        <Trash2 class="w-5 h-5" />
-                                    </button>
+                                    <button on:click={() => deleteCommande(cmd.id)} class="p-2 hover:bg-red-500/10 rounded-lg text-red-400" title="Supprimer"><Trash2 class="w-5 h-5" /></button>
                                 {/if}
                             </div>
                         </div>
@@ -1130,43 +899,16 @@ PACO Sud-Ouest`;
                             <div class="md:col-span-2"><label class={labelClass}>Motif</label><input type="text" bind:value={form.motif} disabled={isLocked} class={inputClass} placeholder="Ex: Dérangement L.96..."></div>
                             <div><label class={labelClass}>Date</label><input type="date" bind:value={form.date_commande} disabled={isLocked} class="{inputClass} dark:[color-scheme:dark]"></div>
                             <div><label class={labelClass}>Heure d'appel</label><input type="time" bind:value={form.heure_appel}  disabled={isLocked} class="{inputClass} dark:[color-scheme:dark]"></div>
-                            <div><label class={labelClass}>Réf. Relation (TC)</label><input 
-                        type="text" 
-                        bind:value={form.relation} 
-                        disabled={isLocked} class={inputClass} 
-                        placeholder="TC_123456" 
-                    ></div>
+                            <div><label class={labelClass}>Réf. Relation (TC)</label><input type="text" bind:value={form.relation} disabled={isLocked} class={inputClass} placeholder="TC_123456"></div>
                             <div>
                                 <label class={labelClass}>Société</label>
                                 <div class="relative group">
-                                   <input 
-                                        type="text" 
-                                        list="list_societes" 
-                                        bind:value={societeInputValue}
-                                        on:input={handleSocieteChange}
-                                        disabled={isLocked}
-                                        class="{inputClass} pr-8" 
-                                        placeholder="Rechercher une société..."
-                                   >
-                                   <datalist id="list_societes">
-                                        {#each availableSocietes as soc}
-                                            <option value={soc.nom}>{soc.nom}</option>
-                                        {/each}
-                                   </datalist>
-                                   
+                                   <input type="text" list="list_societes" bind:value={societeInputValue} on:input={handleSocieteChange} disabled={isLocked} class="{inputClass} pr-8" placeholder="Rechercher une société...">
+                                   <datalist id="list_societes">{#each availableSocietes as soc}<option value={soc.nom}>{soc.nom}</option>{/each}</datalist>
                                    {#if societeInputValue && !isLocked}
-                                        <button 
-                                            type="button"
-                                            on:click={clearSocieteSelection}
-                                            class="absolute right-2 top-2.5 text-gray-500 hover:text-white transition-colors"
-                                            title="Effacer"
-                                        >
-                                            <X size={16} />
-                                        </button>
+                                        <button type="button" on:click={clearSocieteSelection} class="absolute right-2 top-2.5 text-gray-500 hover:text-white transition-colors" title="Effacer"><X size={16} /></button>
                                    {:else if form.societe_id}
-                                        <div class="absolute right-3 top-2.5 text-orange-400 pointer-events-none">
-                                            <CheckCircle size={16} />
-                                        </div>
+                                        <div class="absolute right-3 top-2.5 text-orange-400 pointer-events-none"><CheckCircle size={16} /></div>
                                    {/if}
                                 </div>
                             </div>
@@ -1175,17 +917,13 @@ PACO Sud-Ouest`;
                     <div class="bg-black/20 border border-white/5 rounded-2xl p-6 space-y-4">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-sm font-bold text-blue-400 uppercase tracking-wide flex items-center gap-2"><MapPin size={16}/> Parcours</h3>
-                            
                             <div class="flex items-center gap-4">
                                 <label class="flex items-center gap-2 cursor-pointer bg-white/5 px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors border border-white/10">
                                     <input type="checkbox" bind:checked={form.is_direct} disabled={isLocked} class="hidden">
                                     <span class="text-[10px] font-bold {form.is_direct ? 'text-orange-400' : 'text-gray-500'}">DIRECT</span>
-                                    <div class="relative w-8 h-4 bg-gray-700 rounded-full transition-colors">
-                                        <div class="absolute top-1 left-1 w-2 h-2 bg-white rounded-full transition-transform {form.is_direct ? '' : 'translate-x-4'}"></div>
-                                    </div>
+                                    <div class="relative w-8 h-4 bg-gray-700 rounded-full transition-colors"><div class="absolute top-1 left-1 w-2 h-2 bg-white rounded-full transition-transform {form.is_direct ? '' : 'translate-x-4'}"></div></div>
                                     <span class="text-[10px] font-bold {!form.is_direct ? 'text-yellow-400' : 'text-gray-500'}">OMNIBUS</span>
                                 </label>
-
                                 <label class="flex items-center gap-2 cursor-pointer bg-white/5 px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors border border-white/10">
                                     <input type="checkbox" bind:checked={form.is_aller_retour} disabled={isLocked} class="hidden">
                                     <span class="text-xs font-bold {form.is_aller_retour ? 'text-blue-400' : 'text-gray-500'}">A/R</span>
@@ -1248,87 +986,35 @@ PACO Sud-Ouest`;
                                     <div class="flex justify-between items-center px-4 py-2 bg-black/20 border-b border-white/5">
                                         <div class="flex items-center gap-2">
                                             <span class="text-xs font-mono font-bold text-orange-400 bg-orange-500/10 px-2 py-1 rounded border border-orange-500/20">BUS #{i+1}</span>
-                                            
                                             {#if bus.chauffeur_id}
                                                 {@const chauf = availableChauffeurs.find(c => c.id == bus.chauffeur_id)}
-                                                {#if chauf}
-                                                    <span class="text-[10px] text-gray-400 flex items-center gap-1 border-l border-white/10 pl-2 ml-2">
-                                                        <User size={12}/> {chauf.nom} ({chauf.tel})
-                                                    </span>
-                                                {/if}
+                                                {#if chauf}<span class="text-[10px] text-gray-400 flex items-center gap-1 border-l border-white/10 pl-2 ml-2"><User size={12}/> {chauf.nom} ({chauf.tel})</span>{/if}
                                             {/if}
                                         </div>
                                         <button on:click={() => removeBus(i)} disabled={isLocked} class="text-gray-500 hover:text-red-400 transition-colors p-1"><MinusCircle size={16}/></button>
                                     </div>
-
                                     <div class="p-4 space-y-4">
                                         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                            <div>
-                                                <label class="text-[10px] text-gray-500 uppercase font-bold mb-1.5 block">Plaque</label>
-                                                <input 
-                                                    type="text" 
-                                                    bind:value={bus.plaque} 
-                                                    disabled={isLocked} 
-                                                    class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white uppercase outline-none focus:border-green-500/50" 
-                                                    placeholder="1-ABC-123"
-                                                >
-                                            </div>
-                                            <div>
-                                                <label class="text-[10px] text-gray-500 uppercase font-bold mb-1.5 block">H. Prévue</label>
-                                                <input 
-                                                    type="time" 
-                                                    bind:value={bus.heure_prevue} 
-                                                    disabled={isLocked} 
-                                                    class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 dark:[color-scheme:dark]"
-                                                >
-                                            </div>
-                                            <div>
-                                                <label class="text-[10px] text-green-500/70 uppercase font-bold mb-1.5 block">H. Confirmée</label>
-                                                <input 
-                                                    type="time" 
-                                                    bind:value={bus.heure_confirmee} 
-                                                    disabled={isLocked} 
-                                                    class="w-full bg-black/30 border border-green-900/30 rounded-lg px-3 py-2 text-sm text-green-300 outline-none focus:border-green-500/50 dark:[color-scheme:dark]"
-                                                >
-                                            </div>
-                                            <div>
-                                                <label class="text-[10px] text-gray-500 uppercase font-bold mb-1.5 block">Démob.</label>
-                                                <input 
-                                                    type="time" 
-                                                    bind:value={bus.heure_demob} 
-                                                    disabled={isLocked} 
-                                                    class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 dark:[color-scheme:dark]"
-                                                >
-                                            </div>
+                                            <div><label class="text-[10px] text-gray-500 uppercase font-bold mb-1.5 block">Plaque</label><input type="text" bind:value={bus.plaque} disabled={isLocked} class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white uppercase outline-none focus:border-green-500/50" placeholder="1-ABC-123"></div>
+                                            <div><label class="text-[10px] text-gray-500 uppercase font-bold mb-1.5 block">H. Prévue</label><input type="time" bind:value={bus.heure_prevue} disabled={isLocked} class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 dark:[color-scheme:dark]"></div>
+                                            <div><label class="text-[10px] text-green-500/70 uppercase font-bold mb-1.5 block">H. Confirmée</label><input type="time" bind:value={bus.heure_confirmee} disabled={isLocked} class="w-full bg-black/30 border border-green-900/30 rounded-lg px-3 py-2 text-sm text-green-300 outline-none focus:border-green-500/50 dark:[color-scheme:dark]"></div>
+                                            <div><label class="text-[10px] text-gray-500 uppercase font-bold mb-1.5 block">Démob.</label><input type="time" bind:value={bus.heure_demob} disabled={isLocked} class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 dark:[color-scheme:dark]"></div>
                                         </div>
-
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-white/5">
                                             <div>
                                                 <label class="text-[10px] text-blue-400 uppercase font-bold mb-1.5 flex items-center gap-1"><User size={12}/> Chauffeur (Optionnel)</label>
-                                                <select 
-                                                    bind:value={bus.chauffeur_id} 
-                                                    disabled={isLocked || availableChauffeurs.length === 0} 
-                                                    class={inputClass}
-                                                >
+                                                <select bind:value={bus.chauffeur_id} disabled={isLocked || availableChauffeurs.length === 0} class={inputClass}>
                                                     <option value={null}>-- Sélectionner --</option>
-                                                    {#each availableChauffeurs as chauf}
-                                                        <option value={chauf.id} class="bg-[#1a1d24] text-white">
-                                                            {chauf.nom}
-                                                        </option>
-                                                    {/each}
+                                                    {#each availableChauffeurs as chauf}<option value={chauf.id} class="bg-[#1a1d24] text-white">{chauf.nom}</option>{/each}
                                                 </select>
-                                                {#if availableChauffeurs.length === 0 && form.societe_id}
-                                                    <p class="text-[9px] text-red-400 mt-1 italic">Aucun chauffeur trouvé pour cette société.</p>
-                                                {/if}
+                                                {#if availableChauffeurs.length === 0 && form.societe_id}<p class="text-[9px] text-red-400 mt-1 italic">Aucun chauffeur trouvé pour cette société.</p>{/if}
                                             </div>
-
                                             <div class="bg-black/20 rounded-lg p-2 border border-white/5">
                                                 <label class="flex items-center gap-2 cursor-pointer mb-2">
                                                     <input type="checkbox" bind:checked={bus.is_specific_route} disabled={isLocked} class="hidden peer">
                                                     <div class="w-3 h-3 rounded-full border border-white/30 peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-colors"></div>
                                                     <span class="text-[10px] font-bold text-gray-400 uppercase">Ce bus effectue un trajet différent</span>
                                                 </label>
-                                                
                                                 {#if bus.is_specific_route}
                                                     <div class="grid grid-cols-2 gap-2" transition:slide>
                                                         <input type="text" bind:value={bus.origine_specifique} disabled={isLocked} class="bg-black/30 border border-white/10 rounded px-2 py-1.5 text-xs text-white placeholder-gray-600" placeholder="Origine spécifique">
@@ -1348,7 +1034,6 @@ PACO Sud-Ouest`;
                         <h3 class="text-sm font-bold text-purple-400 uppercase tracking-wide mb-4 sticky top-0 bg-[#16181d] py-2 z-10 flex items-center gap-2"><Hash size={16}/> Lignes</h3>
                         <div class="flex flex-wrap gap-2">{#each availableLines as line}<button on:click={() => !isLocked && toggleLine(line)} class="px-3 py-1.5 rounded-lg text-xs font-bold border transition-all {form.lignes.includes(line) ? 'bg-purple-600 text-white border-purple-500 shadow-md' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}">{line}</button>{/each}</div>
                     </div>
-                    
                     {#if !form.is_direct && form.lignes.length > 0}
                         <div class="bg-black/20 border border-white/5 rounded-2xl p-6 max-h-[400px] overflow-y-auto custom-scrollbar" transition:slide>
                             <h3 class="text-sm font-bold text-yellow-400 uppercase tracking-wide mb-4 sticky top-0 bg-[#16181d] py-2 z-10 flex items-center gap-2"><MapPin size={16}/> Arrêts Intermédiaires</h3>
@@ -1359,13 +1044,10 @@ PACO Sud-Ouest`;
             </div>
 
             <div class="fixed bottom-4 left-4 right-4 z-50 flex flex-wrap justify-end items-center gap-4 p-4 border border-white/10 bg-[#0f1115]/80 backdrop-blur-2xl shadow-2xl rounded-2xl" in:fly={{ y: 20 }}>
-                
                 {#if isLocked && form.sent_at}
                     <div class="mr-auto flex flex-col">
                         <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Envoyé le</span>
-                        <span class="text-xs text-emerald-400 font-bold">
-                            {new Date(form.sent_at).toLocaleString('fr-BE')}
-                        </span>
+                        <span class="text-xs text-emerald-400 font-bold">{new Date(form.sent_at).toLocaleString('fr-BE')}</span>
                         <span class="text-[10px] text-gray-400">par {form.sent_by_name || '...'}</span>
                     </div>
                 {:else}
@@ -1375,20 +1057,15 @@ PACO Sud-Ouest`;
                             <div class="w-10 h-5 bg-gray-600 rounded-full peer peer-checked:bg-emerald-500 transition-colors"></div>
                             <div class="absolute left-1 top-1 w-3 h-3 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
                         </div>
-                        <span class="text-xs font-bold {form.is_mail_sent ? 'text-emerald-400' : 'text-gray-400'} uppercase tracking-wider">
-                            {form.is_mail_sent ? 'Mail envoyé' : 'Mail non envoyé'}
-                        </span>
+                        <span class="text-xs font-bold {form.is_mail_sent ? 'text-emerald-400' : 'text-gray-400'} uppercase tracking-wider">{form.is_mail_sent ? 'Mail envoyé' : 'Mail non envoyé'}</span>
                     </label>
                 {/if}
-                
                 <button on:click={() => showEmailExport = true} class="px-5 py-2.5 rounded-full text-sm font-bold text-blue-400 bg-blue-500/5 border border-blue-500/10 hover:bg-blue-500/10 hover:border-blue-500/30 transition-all flex items-center gap-2">
                     <Mail class="w-4 h-4" /> <span class="hidden sm:inline">E-mail</span>
                 </button>
-
                 <button on:click={() => generatePDF()} class="px-5 py-2.5 rounded-full text-sm font-bold text-emerald-400/90 bg-emerald-500/5 border border-emerald-500/10 hover:bg-emerald-500/10 hover:border-emerald-500/30 hover:text-emerald-300 hover:shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-2 backdrop-blur-md">
                     <Printer class="w-4 h-4" /> <span class="hidden sm:inline">Télécharger PDF</span>
                 </button>
-
                 {#if isLocked}
                     {#if hasPermission(currentUserProfile, ACTIONS.OTTO_WRITE)}
                         <button on:click={unlockCommande} class="px-6 py-2.5 rounded-full text-sm font-bold text-orange-400 bg-orange-500/10 border border-orange-500/20 hover:bg-orange-500/20 hover:text-orange-300 transition-all flex items-center gap-2">
@@ -1399,7 +1076,6 @@ PACO Sud-Ouest`;
                     <button on:click={() => saveCommande('brouillon')} disabled={isSaving} class="px-6 py-2.5 rounded-full text-sm font-medium text-gray-400 bg-white/5 border border-white/5 hover:bg-white/10 hover:text-white hover:border-white/10 transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                         <Save class="w-4 h-4" /> <span>Brouillon</span>
                     </button>
-
                     <button on:click={() => saveCommande('envoye')} disabled={isSaving} class="px-6 py-2.5 rounded-full text-sm font-bold text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/40 shadow-[0_0_20px_rgba(239,68,68,0.3)] transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                         {#if isSaving}<Loader2 class="w-4 h-4 animate-spin"/>{:else}<CheckCircle class="w-4 h-4" />{/if} <span>Clôturer</span>
                     </button>
@@ -1407,76 +1083,32 @@ PACO Sud-Ouest`;
             </div>
             <div class="h-24"></div>
         {/if}
-
       {/if}
     </div>
 {/if} {#if showEmailExport}
   <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" transition:fade>
     <div class="bg-[#1a1d24] border border-white/10 rounded-2xl p-6 w-full max-w-lg shadow-2xl" in:fly={{ y: 20 }}>
       <div class="flex justify-between items-center mb-4">
-        <h3 class="text-lg font-bold text-white flex items-center gap-2">
-          <Mail class="text-blue-400" size={20} /> Export E-mail
-        </h3>
-        <button on:click={() => showEmailExport = false} class="text-gray-500 hover:text-white">
-          <X size={20} />
-        </button>
+        <h3 class="text-lg font-bold text-white flex items-center gap-2"><Mail class="text-blue-400" size={20} /> Export E-mail</h3>
+        <button on:click={() => showEmailExport = false} class="text-gray-500 hover:text-white"><X size={20} /></button>
       </div>
-
       <div class="relative group">
-        <textarea 
-          readonly
-          class="w-full h-64 bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-gray-300 focus:ring-2 focus:ring-blue-500/50 outline-none resize-none font-mono"
-          bind:value={emailBody}
-        ></textarea>
-        
-        <button 
-          on:click={copyToClipboard}
-          class="absolute top-3 right-3 p-2 rounded-lg bg-blue-600 text-white hover:bg-blue-500 shadow-lg transition-all flex items-center gap-2 text-xs font-bold"
-        >
-          {#if hasCopied}
-            <Check size={14} /> Copié
-          {:else}
-            <ClipboardCopy size={14} /> Copier
-          {/if}
+        <textarea readonly class="w-full h-64 bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-gray-300 focus:ring-2 focus:ring-blue-500/50 outline-none resize-none font-mono" bind:value={emailBody}></textarea>
+        <button on:click={copyToClipboard} class="absolute top-3 right-3 p-2 rounded-lg bg-blue-600 text-white hover:bg-blue-500 shadow-lg transition-all flex items-center gap-2 text-xs font-bold">
+          {#if hasCopied}<Check size={14} /> Copié{:else}<ClipboardCopy size={14} /> Copier{/if}
         </button>
       </div>
-
-   <div class="mt-6 flex justify-between gap-3">
-  <button 
-    on:click={() => showEmailExport = false}
-    class="px-4 py-2 rounded-xl bg-white/5 text-gray-400 font-bold hover:bg-white/10 transition-colors"
-  >
-    Fermer
-  </button>
-
-  <button 
-    on:click={sendEmail}
-    class="flex-1 px-4 py-2 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
-  >
-    <Mail size={18} />
-    Ouvrir dans Outlook
-  </button>
-</div>
+      <div class="mt-6 flex justify-between gap-3">
+        <button on:click={() => showEmailExport = false} class="px-4 py-2 rounded-xl bg-white/5 text-gray-400 font-bold hover:bg-white/10 transition-colors">Fermer</button>
+        <button on:click={sendEmail} class="flex-1 px-4 py-2 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"><Mail size={18} /> Ouvrir dans Outlook</button>
+      </div>
     </div>
   </div>
 {/if}
 
-{#if showTutorial}
-  <OttoTutorialModal on:close={() => showTutorial = false} />
-{/if}
+{#if showTutorial}<OttoTutorialModal on:close={() => showTutorial = false} />{/if}
 
 <style>
-  .btn-themed {
-    /* Utilisation de la variable passée dans l'attribut style */
-    background-color: rgba(var(--primary-rgb), 0.2);
-    border-color: rgba(var(--primary-rgb), 0.3);
-    color: rgb(var(--primary-rgb));
-  }
-
-  .btn-themed:hover {
-    /* Modification de l'opacité au survol */
-    background-color: rgba(var(--primary-rgb), 0.3);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2);
-  }
+  .btn-themed { background-color: rgba(var(--primary-rgb), 0.2); border-color: rgba(var(--primary-rgb), 0.3); color: rgb(var(--primary-rgb)); }
+  .btn-themed:hover { background-color: rgba(var(--primary-rgb), 0.3); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2); }
 </style>
