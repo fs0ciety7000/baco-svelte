@@ -49,34 +49,25 @@
   // Variable pour l'input texte de la société
   let societeInputValue = ""; 
 
+// ... (Vos imports et variables d'état existants) ...
+
   // --- VARIABLES CARTE & GEOCODING ---
   let currentRoute = null;
-  let currentMarkers = []; // Pour stocker les marqueurs (Départ, Arrivée, Arrêts)
+  let currentMarkers = [];
   let isComputingRoute = false;
-  const coordsCache = {}; // Mémoire tampon pour éviter de rappeler l'API inutilement
+  const coordsCache = {}; 
 
-  // Fonction améliorée avec tentatives multiples (Retry logic) pour trouver les gares
+  // Gardez votre fonction getGareCoordinates existante ici
   async function getGareCoordinates(gareName) {
+      // ... (code existant inchangé pour Nominatim) ...
       if (!gareName) return null;
-      
-      // Nettoyage du nom (ex: "Mons (SNCB)" -> "Mons")
       const cleanName = gareName.replace(/\(.*\)/, '').trim();
-      
-      // Vérifie le cache
       if (coordsCache[cleanName]) return coordsCache[cleanName];
-
-      // Stratégies de recherche (de la plus précise à la plus large)
-      const queries = [
-          `Gare de ${cleanName}, Belgique`,
-          `${cleanName} Station, Belgium`,
-          `${cleanName}, Belgique`
-      ];
-
+      const queries = [`Gare de ${cleanName}, Belgique`, `${cleanName} Station, Belgium`, `${cleanName}, Belgique`];
       for (const query of queries) {
           try {
               const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
               const res = await fetch(url, { headers: { 'User-Agent': 'BacoApp/1.0' } });
-              
               if (res.ok) {
                   const data = await res.json();
                   if (data && data.length > 0) {
@@ -85,13 +76,121 @@
                       return coords;
                   }
               }
-          } catch (e) {
-              console.warn(`Erreur recherche "${query}":`, e);
-          }
-          // Petite pause de 100ms pour être poli avec l'API
+          } catch (e) { console.warn(`Erreur recherche "${query}":`, e); }
           await new Promise(r => setTimeout(r, 100));
       }
       return null;
+  }
+
+  // --- NOUVELLE FONCTION : ROUTING OSRM ---
+  async function fetchRouteOSRM(coordinates) {
+      if (!coordinates || coordinates.length < 2) return null;
+
+      // OSRM attend le format : lon1,lat1;lon2,lat2;lon3,lat3
+      const coordString = coordinates.map(c => c.join(',')).join(';');
+      
+      try {
+          // Appel à l'API publique OSRM (Driving)
+          const url = `https://router.project-osrm.org/route/v1/driving/${coordString}?overview=full&geometries=geojson`;
+          const res = await fetch(url);
+          const data = await res.json();
+
+          if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+              return data.routes[0].geometry; // Retourne la géométrie précise de la route
+          }
+      } catch (e) {
+          console.warn("Erreur OSRM, fallback ligne droite:", e);
+      }
+      
+      // Fallback : Si OSRM échoue, on retourne une ligne droite simple
+      return {
+          type: 'LineString',
+          coordinates: coordinates
+      };
+  }
+
+  // --- BLOC RÉACTIF MIS À JOUR ---
+  let searchTimeout;
+
+  $: if (form.origine && form.destination) {
+      clearTimeout(searchTimeout);
+      
+      searchTimeout = setTimeout(async () => {
+          // Optimisation : on ne recalcul pas si rien n'a changé
+          if (currentRoute && 
+              currentRoute.properties?.startName === form.origine && 
+              currentRoute.properties?.endName === form.destination &&
+              currentMarkers.length === (form.arrets.length + 2)) {
+              return;
+          }
+
+          isComputingRoute = true;
+          
+          // 1. Récupération des arrêts intermédiaires triés
+          let stopsToProcess = [];
+          if (!form.is_direct && form.arrets.length > 0) {
+             stopsToProcess = getSortedArrets(form.arrets, form.lignes);
+          }
+
+          // 2. Géocodage des points (Nominatim)
+          const startPromise = getGareCoordinates(form.origine);
+          const endPromise = getGareCoordinates(form.destination);
+          const stopsPromises = stopsToProcess.map(stopName => getGareCoordinates(stopName));
+
+          const [startCoords, endCoords, ...stopsCoordsResults] = await Promise.all([
+              startPromise, 
+              endPromise, 
+              ...stopsPromises
+          ]);
+
+          // 3. Construction des marqueurs et de la liste de points pour la route
+          let newMarkers = [];
+          let routeWaypoints = []; // Liste ordonnée des coordonnées [Départ, Arrêt1, Arrêt2, ..., Arrivée]
+
+          // Départ
+          if (startCoords) {
+              newMarkers.push({ lngLat: startCoords, label: `Départ: ${form.origine}`, type: 'start' });
+              routeWaypoints.push(startCoords);
+          }
+
+          // Intermédiaires
+          stopsCoordsResults.forEach((coords, index) => {
+              if (coords) {
+                  newMarkers.push({ lngLat: coords, label: stopsToProcess[index], type: 'stop' });
+                  routeWaypoints.push(coords);
+              }
+          });
+
+          // Arrivée
+          if (endCoords) {
+              newMarkers.push({ lngLat: endCoords, label: `Arrivée: ${form.destination}`, type: 'end' });
+              routeWaypoints.push(endCoords);
+          }
+
+          // 4. Appel OSRM pour avoir le tracé précis
+          if (startCoords && endCoords) {
+              currentMarkers = newMarkers;
+              
+              // On demande le tracé routier à OSRM
+              const preciseGeometry = await fetchRouteOSRM(routeWaypoints);
+
+              currentRoute = {
+                  "type": "Feature",
+                  "properties": {
+                      startName: form.origine,
+                      endName: form.destination
+                  },
+                  "geometry": preciseGeometry
+              };
+          } else {
+              currentRoute = null;
+              currentMarkers = [];
+          }
+          isComputingRoute = false;
+      }, 1000);
+  } else {
+      currentRoute = null;
+      currentMarkers = [];
   }
 
   // --- FORMULAIRE ---
