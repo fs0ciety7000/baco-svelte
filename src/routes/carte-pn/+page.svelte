@@ -1,18 +1,22 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { supabase } from '$lib/supabase';
   import { goto } from '$app/navigation';
-  import { Search, Map as MapIcon, Loader2, CheckSquare, Square, Layers, Navigation } from 'lucide-svelte';
+  import { Search, Map as MapIcon, Loader2, CheckSquare, Square, Navigation, Layers } from 'lucide-svelte';
   import { fly, fade } from 'svelte/transition';
   
-  // COMPONENTS
-  import Map from '$lib/components/ui/map/Map.svelte';
+  // IMPORT TOAST & PERMISSIONS
   import { toast } from '$lib/stores/toast.js';
   import { hasPermission, ACTIONS } from '$lib/permissions';
 
   // --- ÉTAT ---
+  let mapElement;
+  let map;
+  let markersLayer;
+  let zoneBoundariesLayer;
+  
   let currentUser = null;
-  let isAuthorized = false;
+  let isAuthorized = false; // Bloque l'affichage par défaut
 
   let allPnData = [];
   let availableLines = [];
@@ -21,58 +25,70 @@
   let searchQuery = "";
   let isLoading = true;
 
-  // Données pour la carte
-  let mapMarkers = [];
-  let mapZones = [];
-
-  // Cache pour le geocoding
-  const coordsCache = {}; 
-
-  // Configuration des zones (GeoJSON Format pour MapLibre: [Lon, Lat])
-  // NOTE: J'ai inversé les coordonnées de votre code original car MapLibre attend [Lon, Lat] et Leaflet [Lat, Lon]
-  const rawZones = {
+  // Configuration des zones
+  const zonePolygons = {
     'FTY': {
-      coords: [[3.2240, 50.7610], [3.2403, 50.7166], [3.7785, 50.4569], [4.1717, 50.7211], [4.1780, 50.7135]],
+      coordinates: [[50.7610, 3.2240], [50.7166, 3.2403], [50.4569, 3.7785], [50.7211, 4.1717], [50.71352307887864, 4.178040380091445]],
       color: '#3b82f6', name: "Zone FTY"
     },
     'FMS': {
-      coords: [[3.6856, 50.4102], [3.7785, 50.4569], [3.7998, 50.6145], [4.1379, 50.6055], [4.2124, 50.7069], [4.2342, 50.5064], [4.2441, 50.4603], [4.1749, 50.4049], [3.9391, 50.4512], [3.9574, 50.4720], [3.9083, 50.3291]],
+      coordinates: [[50.4102, 3.6856], [50.4569, 3.7785], [50.6145, 3.7998], [50.6055, 4.1379], [50.7069, 4.2124], [50.5064, 4.2342], [50.4603, 4.2441], [50.404955, 4.174978], [50.4512, 3.9391], [50.4720, 3.9574], [50.3291, 3.9083]],
       color: '#eab308', name: "Zone FMS"
     },
     'FCR': {
-      coords: [[4.3785, 50.7302], [4.3876, 50.5048], [4.5478, 50.4863], [4.6463, 50.4457], [4.4920, 50.0566], [4.1110, 50.3033], [4.2441, 50.4603], [4.2399, 50.5035]],
+      coordinates: [[50.7302, 4.3785], [50.5048, 4.3876], [50.4863, 4.5478], [50.4457, 4.6463], [50.0566, 4.4920], [50.3033, 4.1110], [50.4603, 4.2441], [50.5035, 4.2399]],
       color: '#ef4444', name: "Zone FCR"
     }
   };
 
-  // Transformation des zones en format GeoJSON pour le composant Map
-  $: mapZones = Object.values(rawZones).map(z => ({
-      name: z.name,
-      color: z.color,
-      geojson: {
-          type: 'Feature',
-          geometry: {
-              type: 'Polygon',
-              coordinates: [z.coords] // GeoJSON attend un tableau de tableau de coords pour un polygone simple (outer ring)
-          }
-      }
-  }));
-
   onMount(async () => {
+    // 1. Auth Check
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return goto('/');
 
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+    // 2. Profil & Permissions
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+    
     currentUser = { ...session.user, ...profile };
 
+    // 3. Vérification Permission LECTURE
     if (!hasPermission(currentUser, ACTIONS.CARTE_PN_READ)) {
         toast.error("Accès refusé.");
         return goto('/accueil');
     }
 
+    // 4. Autorisation OK -> Chargement
     isAuthorized = true;
+
     await Promise.all([loadLines(), loadAllPnData()]);
+    
+    if (typeof window !== 'undefined') {
+      const leaflet = await import('leaflet');
+      window.L = leaflet.default || leaflet;
+      // Chargement dynamique du plugin fullscreen
+      await loadScript('https://unpkg.com/leaflet.fullscreen@2.4.0/Control.Fullscreen.js');
+      initMap();
+    }
   });
+
+  onDestroy(() => {
+    if (map) map.remove();
+  });
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      if (document.querySelector(`script[src="${src}"]`)) return resolve();
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }
 
   async function loadLines() {
     const { data } = await supabase.from('pn_data').select('ligne_nom');
@@ -86,119 +102,121 @@
   async function loadAllPnData() {
     const { data, error } = await supabase
       .from('pn_data')
-      .select('ligne_nom, pn, bk, adresse, geo');
-      // On charge TOUS les PN, même sans 'geo', pour essayer de les trouver dynamiquement
-    
-    if (!error) {
-        allPnData = data;
-        // On lance le géocodage asynchrone pour ceux qui n'ont pas de coordonnées
-        geocodeMissingPns(data);
-    }
+      .select('ligne_nom, pn, bk, adresse, geo')
+      .not('geo', 'is', null);
+    if (!error) allPnData = data;
     isLoading = false;
   }
 
-  // --- GEOCODING (Nominatim) ---
-  // Cherche les coordonnées pour les PN qui n'en ont pas en DB
-  async function geocodeMissingPns(pns) {
-      const pnsMissingGeo = pns.filter(p => !p.geo);
-      
-      // On traite par lot pour ne pas spammer l'API
-      const CHUNK_SIZE = 2; 
-      
-      for (let i = 0; i < pnsMissingGeo.length; i += CHUNK_SIZE) {
-          const chunk = pnsMissingGeo.slice(i, i + CHUNK_SIZE);
-          await Promise.all(chunk.map(async (pn) => {
-              const coords = await fetchCoordinates(pn);
-              if (coords) {
-                  // Mise à jour locale pour affichage immédiat
-                  pn.geo = `${coords[1]},${coords[0]}`; // Stockage format "Lat,Lon" pour compatibilité code existant
-                  // Force update Svelte
-                  allPnData = [...allPnData];
-              }
-          }));
-          // Pause polie
-          await new Promise(r => setTimeout(r, 500));
-      }
+  function initMap() {
+    if (!mapElement) return;
+
+    map = L.map(mapElement, {
+      center: [50.63, 4.47],
+      zoom: 9,
+      fullscreenControl: true,
+      zoomControl: false 
+    });
+
+    L.control.zoom({ position: 'topright' }).addTo(map);
+
+    const layers = {
+      'Satellite': L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+        maxZoom: 22, subdomains:['mt0','mt1','mt2','mt3'], attribution: 'Google'
+      }),
+      'Plan': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 22, attribution: 'OSM'
+      }),
+      'Hybride': L.tileLayer('https://{s}.google.com/vt/lyrs=h&x={x}&y={y}&z={z}', {
+        maxZoom: 22, subdomains:['mt0','mt1','mt2','mt3'], attribution: 'Google'
+      })
+    };
+
+    layers['Satellite'].addTo(map);
+
+    markersLayer = L.layerGroup().addTo(map);
+    zoneBoundariesLayer = L.layerGroup().addTo(map);
+
+    L.control.layers(layers, {
+      "Zones SPI": zoneBoundariesLayer,
+      "Passages à Niveau": markersLayer
+    }, { position: 'bottomright' }).addTo(map);
+
+    drawZones();
+    updateMapMarkers();
   }
 
-  async function fetchCoordinates(pn) {
-      // Construction de la requête de recherche
-      // Priorité : Adresse > Ligne + BK (difficile) > Ville
-      let queries = [];
-      
-      if (pn.adresse) {
-          queries.push(pn.adresse + ", Belgique");
-      }
-      // Essai générique si on a des infos de ville dans l'adresse
-      if (pn.adresse && pn.adresse.includes(',')) {
-           const city = pn.adresse.split(',').pop();
-           queries.push(`Gare de ${city}, Belgique`);
-      }
-
-      for (const q of queries) {
-          if (coordsCache[q]) return coordsCache[q];
-          
-          try {
-              const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`;
-              const res = await fetch(url, { headers: { 'User-Agent': 'BacoApp/1.0' } });
-              if (res.ok) {
-                  const data = await res.json();
-                  if (data && data.length > 0) {
-                      const coords = [parseFloat(data[0].lon), parseFloat(data[0].lat)];
-                      coordsCache[q] = coords;
-                      return coords;
-                  }
-              }
-          } catch (e) { console.warn("Erreur geocoding", q, e); }
-          await new Promise(r => setTimeout(r, 200));
-      }
-      return null;
+  function drawZones() {
+    Object.values(zonePolygons).forEach(zone => {
+      L.polygon(zone.coordinates, { 
+        color: zone.color, weight: 2, opacity: 0.8, fillOpacity: 0.15 
+      })
+      .bindPopup(`<h4 class="font-bold text-gray-800">${zone.name}</h4>`)
+      .addTo(zoneBoundariesLayer);
+    });
   }
 
-  // --- FILTRAGE & MARKERS ---
   $: filteredPn = allPnData.filter(pn => {
     const lineMatch = selectedLines.includes(pn.ligne_nom);
     const searchMatch = !searchQuery.trim() || 
-      (pn.pn && String(pn.pn).toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (pn.bk && String(pn.bk).toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (pn.adresse && pn.adresse.toLowerCase().includes(searchQuery.toLowerCase()));
+      (pn.pn && pn.pn.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (pn.bk && pn.bk.toLowerCase().includes(searchQuery.toLowerCase()));
     
     return lineMatch && searchMatch;
   });
 
-  // Construction des marqueurs pour le composant Map
-  $: {
-      mapMarkers = filteredPn
-        .filter(pn => pn.geo) // On ne garde que ceux qui ont des coordonnées (DB ou trouvées)
-        .map(pn => {
-            const [lat, lon] = pn.geo.split(',').map(parseFloat);
-            if (isNaN(lat) || isNaN(lon)) return null;
+  $: if (map && markersLayer && filteredPn) {
+    updateMapMarkers();
+  }
 
-            // Contenu HTML du popup
-            const popupHTML = `
-                <div class="p-3 min-w-[200px]">
-                    <div class="flex justify-between items-center border-b border-white/10 pb-2 mb-2">
-                        <span class="bg-orange-500/20 text-orange-400 text-[10px] font-bold px-2 py-0.5 rounded border border-orange-500/30">Ligne ${pn.ligne_nom}</span>
-                        <span class="font-bold text-white">PN ${pn.pn}</span>
-                    </div>
-                    <div class="space-y-1 text-xs text-gray-300">
-                        <div class="flex justify-between"><span class="text-gray-500">BK:</span> <span class="font-mono text-white">${pn.bk || '?'}</span></div>
-                        <div class="flex justify-between items-start gap-2"><span class="text-gray-500">Adr:</span> <span class="text-right leading-tight">${pn.adresse || '-'}</span></div>
-                    </div>
-                    <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}" target="_blank" class="block mt-3 bg-blue-600 hover:bg-blue-500 text-white text-center text-xs font-bold py-1.5 rounded transition-colors flex items-center justify-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg> 
-                        Itinéraire
-                    </a>
-                </div>
-            `;
+  function updateMapMarkers() {
+    if (!markersLayer) return;
+    markersLayer.clearLayers();
+    
+    const newMarkers = [];
 
-            return {
-                lngLat: [lon, lat], // MapLibre = [Lon, Lat]
-                type: 'pn',
-                popupContent: popupHTML
-            };
-        })
-        .filter(Boolean);
+    filteredPn.forEach(pn => {
+      if (!pn.geo) return;
+      const [lat, lon] = pn.geo.split(',').map(parseFloat);
+      
+      if (!isNaN(lat) && !isNaN(lon)) {
+        const popupContent = `
+          <div class="glass-popup-content">
+            <div class="header">
+              <span class="badge">Ligne ${pn.ligne_nom || '?'}</span>
+              <span class="pn-id">PN ${pn.pn || '?'}</span>
+            </div>
+            <div class="body">
+              <div class="row">
+                <span class="label">BK</span>
+                <span class="value font-mono">${pn.bk || 'N/A'}</span>
+              </div>
+              <div class="row">
+                <span class="label">Adresse</span>
+                <span class="value">${pn.adresse || 'N/A'}</span>
+              </div>
+            </div>
+            <a href="https://www.google.com/maps/search/?api=1&query=${lat},${lon}" target="_blank" class="action-btn">
+              Itinéraire
+            </a>
+          </div>
+        `;
+        
+        const marker = L.marker([lat, lon]).bindPopup(popupContent, {
+          className: 'glass-popup-wrapper',
+          maxWidth: 300
+        });
+
+        newMarkers.push(marker);
+        markersLayer.addLayer(marker);
+      }
+    });
+
+    // Auto-zoom si on filtre
+    if (newMarkers.length > 0 && newMarkers.length < allPnData.length) {
+      const group = L.featureGroup(newMarkers);
+      map.fitBounds(group.getBounds().pad(0.1));
+    }
   }
 
   function toggleAllLines(e) {
@@ -215,9 +233,12 @@
       if (selectedLines.length === availableLines.length) showAllLines = true;
     }
   }
+
 </script>
 
 <svelte:head>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen@2.4.0/Control.Fullscreen.css" />
   <title>Carte PN | BACO</title>
 </svelte:head>
 
@@ -252,7 +273,7 @@
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 group-focus-within:text-themed transition-colors"><Search size={18} /></div>
             <input 
               type="text" 
-              placeholder="PN 121, Rue de la Gare..." 
+              placeholder="PN 121 ou 124.500..." 
               bind:value={searchQuery}
               class="block w-full pl-10 pr-3 py-3 bg-black/20 border border-white/10 rounded-2xl text-sm text-gray-200 focus:ring-2 focus:border-transparent transition-all outline-none placeholder-gray-600"
               style="--tw-ring-color: rgba(var(--primary-rgb), 0.3); border-color: rgba(var(--primary-rgb), 0.1);"
@@ -296,9 +317,9 @@
         <main class="w-full lg:w-3/4 space-y-6">
           
           <div class="relative w-full h-[600px] rounded-3xl shadow-2xl border border-white/10 overflow-hidden bg-[#0f1115]" in:fade={{ duration: 800 }}>
-            <Map markers={mapMarkers} zones={mapZones} className="w-full h-full" />
+            <div bind:this={mapElement} id="map" class="w-full h-full z-0"></div>
             
-            <div class="absolute top-4 left-4 z-10 bg-black/60 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl text-xs font-medium text-white shadow-lg pointer-events-none">
+            <div class="absolute top-4 left-4 z-[400] bg-black/60 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl text-xs font-medium text-white shadow-lg pointer-events-none">
                 {filteredPn.length} PN affichés
             </div>
           </div>
@@ -314,10 +335,9 @@
                   <div class="min-w-0">
                     <h3 class="font-bold text-gray-300 text-sm flex items-center gap-2">
                         PN {pn.pn} <span class="text-[10px] text-gray-500 font-normal px-1.5 py-0.5 rounded border border-white/5 bg-black/30">{pn.ligne_nom}</span>
-                        {#if !pn.geo}<span class="text-red-500 text-[10px] animate-pulse" title="Géolocalisation en cours">📍</span>{/if}
                     </h3>
                     <p class="text-[10px] text-gray-500 mt-0.5 truncate group-hover:text-gray-400 transition-colors">
-                        {pn.adresse || 'Adresse inconnue'}
+                        {pn.adresse}
                     </p>
                   </div>
                   <span class="bk-badge">
@@ -332,9 +352,7 @@
 
       </div>
     </div>
-{/if} 
-
-<style>
+{/if} <style>
   .text-themed { color: rgb(var(--primary-rgb)); }
   .themed-spinner { color: rgba(var(--primary-rgb), 0.5); }
 
@@ -349,6 +367,62 @@
     border: 1px solid rgba(var(--primary-rgb), 0.2);
     white-space: nowrap;
     margin-left: 0.5rem;
+  }
+
+  /* --- CUSTOM POPUP STYLES (THEME BASED) --- */
+  
+  :global(.glass-popup-wrapper .leaflet-popup-content-wrapper) {
+    background: rgba(15, 15, 20, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(var(--primary-rgb), 0.2);
+    border-radius: 16px;
+    padding: 0;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    color: white;
+  }
+
+  :global(.glass-popup-wrapper .leaflet-popup-tip) {
+    background: rgba(15, 15, 20, 0.85);
+    border: 1px solid rgba(var(--primary-rgb), 0.2);
+  }
+
+  :global(.glass-popup-content) { padding: 16px; }
+
+  :global(.glass-popup-content .header) {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  :global(.glass-popup-content .badge) {
+    font-size: 10px;
+    font-weight: 700;
+    background: rgba(var(--primary-rgb), 0.2);
+    color: rgb(var(--primary-rgb));
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(var(--primary-rgb), 0.3);
+  }
+
+  :global(.glass-popup-content .action-btn) {
+    display: block;
+    text-align: center;
+    background: rgb(var(--primary-rgb));
+    color: white;
+    text-decoration: none;
+    padding: 8px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    transition: filter 0.2s;
+    margin-top: 8px;
+  }
+  :global(.glass-popup-content .action-btn:hover) {
+    filter: brightness(1.2);
   }
 
   .custom-scrollbar::-webkit-scrollbar { width: 4px; }
