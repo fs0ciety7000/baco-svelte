@@ -6,6 +6,7 @@
   import { openConfirmModal } from '$lib/stores/modal.js';
   import OttoTutorialModal from '$lib/components/OttoTutorialModal.svelte';
   import autoTable from 'jspdf-autotable';
+  import Map from '$lib/components/ui/map/Map.svelte';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import * as XLSX from 'xlsx';
@@ -48,6 +49,41 @@
   // Variable pour l'input texte de la société
   let societeInputValue = ""; 
 
+  // --- VARIABLES CARTE & GEOCODING ---
+  let currentRoute = null;
+  let isComputingRoute = false;
+  const coordsCache = {}; // Mémoire tampon pour éviter de rappeler l'API inutilement
+
+  // Fonction pour récupérer les coords via Nominatim (OpenStreetMap)
+  async function getGareCoordinates(gareName) {
+      if (!gareName) return null;
+      
+      // Nettoyage du nom (ex: "Mons" -> "Gare de Mons, Belgium" pour être précis)
+      // On retire les parenthèses éventuelles qui pourraient troubler la recherche
+      const cleanName = gareName.replace(/\(.*\)/, '').trim();
+      const query = `Gare de ${cleanName}, Belgium`;
+      
+      // Si on l'a déjà cherché, on retourne la version en mémoire
+      if (coordsCache[query]) return coordsCache[query];
+
+      try {
+          // Appel API OpenStreetMap (Gratuit, pas de clé nécessaire)
+          const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+          const res = await fetch(url, { headers: { 'User-Agent': 'BacoApp/1.0' } });
+          const data = await res.json();
+
+          if (data && data.length > 0) {
+              // Nominatim renvoie [lat, lon], MapLibre veut [lon, lat]
+              const coords = [parseFloat(data[0].lon), parseFloat(data[0].lat)];
+              coordsCache[query] = coords; // On sauvegarde
+              return coords;
+          }
+      } catch (e) {
+          console.warn("Erreur Geocoding:", e);
+      }
+      return null;
+  }
+
   // --- FORMULAIRE ---
   const initialForm = {
     id: null,
@@ -75,6 +111,38 @@
   };
 
   let form = JSON.parse(JSON.stringify(initialForm));
+
+  // --- BLOC RÉACTIF : Calcul du trajet quand Origine/Dest changent ---
+  let searchTimeout;
+
+  $: if (form.origine && form.destination) {
+      clearTimeout(searchTimeout);
+      // On attend 800ms que l'utilisateur ait fini de taper ou sélectionner
+      searchTimeout = setTimeout(async () => {
+          isComputingRoute = true;
+          
+          const [start, end] = await Promise.all([
+              getGareCoordinates(form.origine),
+              getGareCoordinates(form.destination)
+          ]);
+
+          if (start && end) {
+              currentRoute = {
+                  "type": "Feature",
+                  "properties": {},
+                  "geometry": {
+                      "type": "LineString",
+                      "coordinates": [start, end]
+                  }
+              };
+          } else {
+              currentRoute = null;
+          }
+          isComputingRoute = false;
+      }, 800);
+  } else {
+      currentRoute = null;
+  }
 
   $: isLocked = form.status === 'envoye' || !hasPermission(currentUserProfile, ACTIONS.OTTO_WRITE);
 
@@ -986,6 +1054,33 @@ async function duplicateCommande(cmd) {
                             <div><label class={labelClass}>Origine</label><input type="text" list="stations" bind:value={form.origine} disabled={isLocked} class={inputClass} placeholder="Gare"></div>
                             <div><label class={labelClass}>Destination</label><input type="text" list="stations" bind:value={form.destination} disabled={isLocked} class={inputClass} placeholder="Gare"></div>
                             <datalist id="stations">{#each uniqueStationNames as st} <option value={st} /> {/each}</datalist>
+                        </div>
+
+                        <div class="w-full h-64 rounded-xl overflow-hidden border border-white/10 relative z-0 mt-4 shadow-inner bg-[#16181d]">
+                            {#if isComputingRoute}
+                                <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm z-10 text-orange-400">
+                                    <Loader2 size={32} class="animate-spin mb-2" />
+                                    <span class="text-xs font-bold uppercase tracking-widest">Recherche itinéraire...</span>
+                                </div>
+                            {/if}
+
+                            {#if currentRoute}
+                                <Map route={currentRoute} className="w-full h-full" />
+                                <div class="absolute top-3 left-3 bg-black/80 backdrop-blur text-xs text-white px-3 py-1.5 rounded-lg border border-white/10 shadow-lg flex items-center gap-2 pointer-events-none">
+                                    <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                                    {form.origine} <span class="text-gray-500">→</span> {form.destination}
+                                </div>
+                            {:else}
+                                <div class="w-full h-full flex flex-col items-center justify-center text-gray-600">
+                                    {#if !form.origine || !form.destination}
+                                        <MapPin size={32} class="opacity-20 mb-2" />
+                                        <span class="text-xs uppercase tracking-widest opacity-40">Sélectionnez le parcours</span>
+                                    {:else if !isComputingRoute}
+                                        <MapPin size={32} class="opacity-20 mb-2 text-red-500" />
+                                        <span class="text-xs uppercase tracking-widest opacity-40">Coordonnées introuvables</span>
+                                    {/if}
+                                </div>
+                            {/if}
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-white/5">
                             <div><label class={labelClass}>Nbr Voyageurs</label><input type="number" bind:value={form.nombre_voyageurs} disabled={isLocked} class={inputClass} placeholder="Approx."></div>
