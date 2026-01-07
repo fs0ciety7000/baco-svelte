@@ -138,7 +138,7 @@ onMount(() => {
         }
     });
 
-	
+
     // 2. Réactivité : Mise à jour de la carte quand les filtres changent
     $effect(() => {
         // Grâce à $state(false) sur mapLoaded, ceci se relance quand la carte est prête
@@ -212,7 +212,7 @@ onMount(() => {
         m.on('click', 'unclustered-point', (e) => {
             const props = e.features[0].properties;
             const coordinates = e.features[0].geometry.coordinates.slice();
-const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${coordinates[1]},${coordinates[0]}`;
+const googleMapsUrl = `https://www.google.com/maps?q=${coordinates[1]},${coordinates[0]}`;
             const html = `
                 <div class="p-3 min-w-[200px] text-gray-100">
                     <div class="flex justify-between items-center border-b border-white/10 pb-2 mb-2">
