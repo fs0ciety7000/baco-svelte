@@ -131,11 +131,14 @@
                         }
                   }
 
-                  // 2. SAUVEGARDE DB
+                  // 2. SAUVEGARDE DB (Avec ZONE)
                   try {
                        await supabase
                           .from('pn_data')
-                          .update({ geo: geoString })
+                          .update({ 
+                              geo: geoString,
+                              zone: pn.zone // <--- AJOUT ICI
+                          })
                           .eq('pn', pn.pn)
                           .eq('ligne_nom', pn.ligne_nom);
                   } catch (err) {
@@ -164,6 +167,7 @@
   }
 
   // --- FILTRAGE RÉACTIF ---
+  // Ce bloc gère automatiquement les markers sur la carte car filteredPn est passé au composant Map
   let filteredPn = $derived(allPnData.filter(pn => {
     const lineMatch = selectedLines.includes(pn.ligne_nom);
     const zoneMatch = selectedZones.includes(pn.zone) || (pn.zone === 'Autre' && selectedZones.includes('FCR')); // Fallback zone

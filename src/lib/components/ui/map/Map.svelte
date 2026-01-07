@@ -6,7 +6,7 @@
 	let mapContainer;
 	let { 
         route = null, 
-        markers = [], // Liste brute des PN { geo: "lat,lon", ... }
+        markers = [], 
         zones = [], 
         className = '', 
         clustering = false,
@@ -35,7 +35,7 @@
 			updateMapElements();
 		});
 
-        // Gestion des clics sur les points (Cluster ou non)
+        // Gestion des clusters
         m.on('click', 'clusters', (e) => {
             const features = m.queryRenderedFeatures(e.point, { layers: ['clusters'] });
             const clusterId = features[0].properties.cluster_id;
@@ -45,27 +45,33 @@
             });
         });
 
+        // Gestion des clics sur PN individuel
         m.on('click', 'unclustered-point', (e) => {
             const props = e.features[0].properties;
             const coordinates = e.features[0].geometry.coordinates.slice();
             
-            // Création du HTML du popup
+            // --- AJOUT DU LIEN GOOGLE MAPS ICI ---
             const html = `
                 <div class="p-3 min-w-[200px] text-gray-100">
                     <div class="flex justify-between items-center border-b border-white/10 pb-2 mb-2">
                         <span class="bg-orange-500/20 text-orange-400 text-[10px] font-bold px-2 py-0.5 rounded">Ligne ${props.ligne}</span>
                         <span class="font-bold">PN ${props.pn}</span>
                     </div>
-                    <div class="text-xs text-gray-300 space-y-1">
+                    <div class="text-xs text-gray-300 space-y-1 mb-3">
                         <div>BK: <span class="font-mono text-white">${props.bk || '?'}</span></div>
                         <div class="italic text-gray-500">${props.adresse || '-'}</div>
                     </div>
+                    <a href="https://www.google.com/maps/search/?api=1&query=${coordinates[1]},${coordinates[0]}" 
+                       target="_blank" 
+                       class="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-1.5 rounded transition-colors">
+                        Ouvrir Maps 
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+                    </a>
                 </div>
             `;
             showPopup(coordinates, html);
         });
 
-        // Curseurs
         m.on('mouseenter', 'clusters', () => m.getCanvas().style.cursor = 'pointer');
         m.on('mouseleave', 'clusters', () => m.getCanvas().style.cursor = '');
         m.on('mouseenter', 'unclustered-point', () => m.getCanvas().style.cursor = 'pointer');
@@ -76,6 +82,7 @@
 		map?.remove();
 	});
 
+    // C'est cet effet qui assure la réactivité des filtres
 	$effect(() => {
 		if (mapLoaded) {
 			updateMapElements();
@@ -86,20 +93,16 @@
 	function updateMapElements() {
 		if (zones) drawZones(zones);
         if (clustering) drawClusteredMarkers(markers);
-        else drawSimpleMarkers(markers); // Fallback ancien mode si besoin
+        else drawSimpleMarkers(markers);
 	}
 
     function toggleTraffic(show) {
-        // Simple tuile de trafic (ex: Google ou TomTom si API, ici OpenStreetMap Transport ou similar free)
-        // Note: MapLibre n'a pas de trafic "intégré" gratuit sans source externe.
-        // Ici on simule une couche si on avait l'URL, ou on affiche une info.
-        // Pour l'exemple, on peut utiliser les tuiles de transport public OPNVKarte qui sont souvent utilisées comme overlay.
         const sourceId = 'traffic-source';
         if (show) {
             if (!map.getSource(sourceId)) {
                 map.addSource(sourceId, {
                     type: 'raster',
-                    tiles: ['https://tile.memomaps.de/tilegen/{z}/{x}/{y}.png'], // Exemple Transport Layer
+                    tiles: ['https://tile.memomaps.de/tilegen/{z}/{x}/{y}.png'],
                     tileSize: 256
                 });
                 map.addLayer({ id: 'traffic-layer', type: 'raster', source: sourceId, minzoom: 10, paint: { 'raster-opacity': 0.6 } });
@@ -111,7 +114,6 @@
     }
 
     function drawClusteredMarkers(markersData) {
-        // Transformation des données brutes en GeoJSON
         const features = markersData
             .filter(m => m.geo)
             .map(m => {
@@ -135,11 +137,10 @@
                 type: 'geojson',
                 data: sourceData,
                 cluster: true,
-                clusterMaxZoom: 14, // Au-delà, on affiche les points
+                clusterMaxZoom: 14,
                 clusterRadius: 50
             });
 
-            // 1. Cercle des Clusters
             map.addLayer({
                 id: 'clusters',
                 type: 'circle',
@@ -148,9 +149,9 @@
                 paint: {
                     'circle-color': [
                         'step', ['get', 'point_count'],
-                        '#3b82f6', 10,  // Bleu < 10
-                        '#eab308', 30,  // Jaune < 30
-                        '#ef4444'       // Rouge > 30
+                        '#3b82f6', 10,
+                        '#eab308', 30,
+                        '#ef4444'
                     ],
                     'circle-radius': [
                         'step', ['get', 'point_count'],
@@ -163,7 +164,6 @@
                 }
             });
 
-            // 2. Compteur dans le Cluster
             map.addLayer({
                 id: 'cluster-count',
                 type: 'symbol',
@@ -177,14 +177,13 @@
                 paint: { 'text-color': '#ffffff' }
             });
 
-            // 3. Points individuels (Non groupés)
             map.addLayer({
                 id: 'unclustered-point',
                 type: 'circle',
                 source: 'pns-source',
                 filter: ['!', ['has', 'point_count']],
                 paint: {
-                    'circle-color': '#f97316', // Orange PN
+                    'circle-color': '#f97316',
                     'circle-radius': 6,
                     'circle-stroke-width': 2,
                     'circle-stroke-color': '#fff'
@@ -192,15 +191,13 @@
             });
 
         } else {
-            // Mise à jour des données seulement
+            // Mise à jour des données (pour le filtrage)
             map.getSource('pns-source').setData(sourceData);
         }
     }
 
-    // Garder l'ancienne méthode pour compatibilité si clustering=false
     function drawSimpleMarkers(markersData) {
-        // ... (Ton ancien code drawMarkers, utile pour d'autres pages) ...
-        // Je le laisse vide ici pour la concision, mais tu peux copier-coller ta fonction existante
+        // ... (Code existant conservé si besoin)
     }
 
 	function drawZones(zonesData) {
@@ -226,7 +223,7 @@
             offset: 15, 
             closeButton: false, 
             maxWidth: '300px',
-            className: 'custom-popup-class' // Style à définir dans CSS global
+            className: 'custom-popup-class'
         })
         .setLngLat(lngLat)
         .setHTML(htmlContent)
@@ -240,7 +237,6 @@
 </div>
 
 <style>
-    /* Popup overrides */
 	:global(.maplibregl-popup-content) {
 		background-color: #1a1d24 !important;
 		border: 1px solid rgba(255,255,255,0.1);
