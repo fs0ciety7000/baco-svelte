@@ -26,7 +26,6 @@
 
   // Instance de carte
   let mapInstance = $state(null);
-  const coordsCache = {};
 
   // --- ZONES (Format [Lon, Lat]) ---
   const rawZones = {
@@ -149,12 +148,9 @@
   }
 
   async function fetchCoordinates(pn) {
-      // ... (Code fetchCoordinates inchangé, voir fichier original) ...
-      // Pour la concision ici, je reprends la logique existante :
       let cleanAddress = (pn.adresse || "").replace(/^PN\s*\d+\s*[-]?\s*/i, "").trim();
       let q = `${cleanAddress}, Belgique`;
-      // Check cache... fetch Nominatim...
-      // Je simplifie ici pour l'exemple, garde ta fonction fetchCoordinates complète
+      
       if (!cleanAddress) return null;
       try {
         const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`;
@@ -315,7 +311,7 @@
                     </div>
                     {#if pn.geo}
                     <div class="flex gap-2">
-                        <button onclick|stopPropagation={() => openStreetView(pn)} class="text-gray-500 hover:text-white" title="Street View"><Eye size={14}/></button>
+                        <button onclick={(e) => { e.stopPropagation(); openStreetView(pn); }} class="text-gray-500 hover:text-white" title="Street View"><Eye size={14}/></button>
                     </div>
                     {/if}
                 </button>
@@ -337,6 +333,7 @@
             
             <div class="relative bg-black h-[500px]">
                 <iframe 
+                    title="Street View"
                     width="100%" 
                     height="100%" 
                     style="border:0" 
@@ -359,6 +356,7 @@
 {/if}
 
 <style>
+  .text-themed { color: rgb(var(--primary-rgb)); }
   .custom-scrollbar::-webkit-scrollbar { width: 4px; }
   .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 </style>
