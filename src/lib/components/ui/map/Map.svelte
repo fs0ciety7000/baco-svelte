@@ -5,7 +5,6 @@
 
 	let mapContainer;
 	let { 
-        route = null, 
         markers = [], 
         zones = [], 
         className = '', 
@@ -16,108 +15,13 @@
 
 	let activePopup = null;
     let mapLoaded = false;
+    let trafficLayerVisible = false;
 
-	onMount(() => {
-		const m = new maplibregl.Map({
-			container: mapContainer,
-			style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-			center: [4.47, 50.63], // Centre Belgique
-			zoom: 8,
-			attributionControl: false
-		});
-
-		m.addControl(new maplibregl.NavigationControl(), 'bottom-right');
-		m.addControl(new maplibregl.FullscreenControl(), 'top-right');
-
-		m.on('load', () => {
-			map = m; 
-            mapLoaded = true;
-			updateMapElements();
-		});
-
-        // Click sur Cluster
-        m.on('click', 'clusters', (e) => {
-            const features = m.queryRenderedFeatures(e.point, { layers: ['clusters'] });
-            const clusterId = features[0].properties.cluster_id;
-            m.getSource('pns-source').getClusterExpansionZoom(clusterId, (err, zoom) => {
-                if (err) return;
-                m.easeTo({ center: features[0].geometry.coordinates, zoom: zoom });
-            });
-        });
-
-        // Click sur Point Unique
-        m.on('click', 'unclustered-point', (e) => {
-            const props = e.features[0].properties;
-            const coordinates = e.features[0].geometry.coordinates.slice();
-            
-            const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${coordinates[1]},${coordinates[0]}`;
-
-            const html = `
-                <div class="p-3 min-w-[200px] text-gray-100">
-                    <div class="flex justify-between items-center border-b border-white/10 pb-2 mb-2">
-                        <span class="bg-orange-500/20 text-orange-400 text-[10px] font-bold px-2 py-0.5 rounded">Ligne ${props.ligne}</span>
-                        <span class="font-bold">PN ${props.pn}</span>
-                    </div>
-                    <div class="text-xs text-gray-300 space-y-1 mb-3">
-                        <div>BK: <span class="font-mono text-white">${props.bk || '?'}</span></div>
-                        <div class="italic text-gray-500">${props.adresse || '-'}</div>
-                    </div>
-                    <a href="${googleMapsUrl}" 
-                       target="_blank" 
-                       class="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-1.5 rounded transition-colors">
-                        Y aller (GPS)
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
-                    </a>
-                </div>
-            `;
-            showPopup(coordinates, html);
-        });
-
-        m.on('mouseenter', 'clusters', () => m.getCanvas().style.cursor = 'pointer');
-        m.on('mouseleave', 'clusters', () => m.getCanvas().style.cursor = '');
-        m.on('mouseenter', 'unclustered-point', () => m.getCanvas().style.cursor = 'pointer');
-        m.on('mouseleave', 'unclustered-point', () => m.getCanvas().style.cursor = '');
-	});
-
-	onDestroy(() => {
-		map?.remove();
-	});
-
-    // Réactivité Svelte 5 : quand 'markers' change, ceci s'exécute
-	$effect(() => {
-		if (mapLoaded) {
-            // On s'assure que markers est utilisé comme dépendance explicite
-            const currentMarkers = markers; 
-			updateMapElements();
-            toggleTraffic(showTraffic);
-		}
-	});
-
-	function updateMapElements() {
-		if (zones) drawZones(zones);
-        if (clustering) drawClusteredMarkers(markers);
-        else drawSimpleMarkers(markers);
-	}
-
-    function toggleTraffic(show) {
-        const sourceId = 'traffic-source';
-        if (show) {
-            if (!map.getSource(sourceId)) {
-                map.addSource(sourceId, {
-                    type: 'raster',
-                    tiles: ['https://tile.memomaps.de/tilegen/{z}/{x}/{y}.png'],
-                    tileSize: 256
-                });
-                map.addLayer({ id: 'traffic-layer', type: 'raster', source: sourceId, minzoom: 10, paint: { 'raster-opacity': 0.6 } });
-            }
-        } else {
-             if (map.getLayer('traffic-layer')) map.removeLayer('traffic-layer');
-             if (map.getSource(sourceId)) map.removeSource(sourceId);
-        }
-    }
-
-    function drawClusteredMarkers(markersData) {
-        const features = markersData
+    // 1. Préparation Réactive des Données (GeoJSON)
+    // Se met à jour automatiquement quand 'markers' change
+    let pnsSourceData = $derived({
+        type: 'FeatureCollection',
+        features: markers
             .filter(m => m.geo)
             .map(m => {
                 const [lat, lon] = m.geo.split(',').map(parseFloat);
@@ -131,80 +35,117 @@
                         adresse: m.adresse 
                     }
                 };
-            });
+            })
+    });
 
-        const sourceData = { type: 'FeatureCollection', features };
-        const sourceId = 'pns-source';
+	onMount(() => {
+		const m = new maplibregl.Map({
+			container: mapContainer,
+			style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+			center: [4.47, 50.63],
+			zoom: 8,
+			attributionControl: false
+		});
 
-        if (!map.getSource(sourceId)) {
-            map.addSource(sourceId, {
-                type: 'geojson',
-                data: sourceData,
-                cluster: true,
-                clusterMaxZoom: 14,
-                clusterRadius: 50
-            });
+		m.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+		m.addControl(new maplibregl.FullscreenControl(), 'top-right');
 
-            // 1. Cercle des Clusters
-            map.addLayer({
-                id: 'clusters',
-                type: 'circle',
-                source: sourceId,
-                filter: ['has', 'point_count'],
-                paint: {
-                    'circle-color': [
-                        'step', ['get', 'point_count'],
-                        '#3b82f6', 10,
-                        '#eab308', 30,
-                        '#ef4444'
-                    ],
-                    'circle-radius': [
-                        'step', ['get', 'point_count'],
-                        15, 10,
-                        20, 30,
-                        25
-                    ],
-                    'circle-stroke-width': 2,
-                    'circle-stroke-color': '#fff'
-                }
-            });
+		m.on('load', () => {
+			map = m; 
+            
+            // Initialisation des sources et couches
+            initLayers();
+            if (zones) drawZones(zones);
+            
+            mapLoaded = true;
+		});
 
-            // 2. Compteur
-            map.addLayer({
-                id: 'cluster-count',
-                type: 'symbol',
-                source: sourceId,
-                filter: ['has', 'point_count'],
-                layout: {
-                    'text-field': '{point_count_abbreviated}',
-                    'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'], 
-                    'text-size': 12
-                },
-                paint: { 'text-color': '#ffffff' }
-            });
+        // Events Popup & Cluster
+        setupMapEvents(m);
+	});
 
-            // 3. Points individuels
-            map.addLayer({
-                id: 'unclustered-point',
-                type: 'circle',
-                source: sourceId,
-                filter: ['!', ['has', 'point_count']],
-                paint: {
-                    'circle-color': '#f97316',
-                    'circle-radius': 6,
-                    'circle-stroke-width': 2,
-                    'circle-stroke-color': '#fff'
-                }
-            });
+    function initLayers() {
+        // Source vide au départ, sera remplie par l'effect
+        map.addSource('pns-source', {
+            type: 'geojson',
+            data: { type: 'FeatureCollection', features: [] },
+            cluster: clustering,
+            clusterMaxZoom: 14,
+            clusterRadius: 50
+        });
 
-        } else {
-            // C'est cette ligne qui met à jour la carte quand on filtre !
-            map.getSource(sourceId).setData(sourceData);
-        }
+        // 1. Cercles Clusters
+        map.addLayer({
+            id: 'clusters', type: 'circle', source: 'pns-source',
+            filter: ['has', 'point_count'],
+            paint: {
+                'circle-color': ['step', ['get', 'point_count'], '#3b82f6', 10, '#eab308', 30, '#ef4444'],
+                'circle-radius': ['step', ['get', 'point_count'], 15, 10, 20, 30, 25],
+                'circle-stroke-width': 2, 'circle-stroke-color': '#fff'
+            }
+        });
+
+        // 2. Compteur Cluster
+        map.addLayer({
+            id: 'cluster-count', type: 'symbol', source: 'pns-source',
+            filter: ['has', 'point_count'],
+            layout: {
+                'text-field': '{point_count_abbreviated}',
+                'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'], // Font standard
+                'text-size': 12
+            },
+            paint: { 'text-color': '#ffffff' }
+        });
+
+        // 3. Points Uniques (PN)
+        map.addLayer({
+            id: 'unclustered-point', type: 'circle', source: 'pns-source',
+            filter: ['!', ['has', 'point_count']],
+            paint: {
+                'circle-color': '#f97316',
+                'circle-radius': 6,
+                'circle-stroke-width': 2,
+                'circle-stroke-color': '#fff'
+            }
+        });
     }
 
-    // (La fonction drawSimpleMarkers n'est pas utilisée avec clustering=true, je l'omets pour la clarté)
-    function drawSimpleMarkers(markersData) {}
+    // 2. Réactivité : Mise à jour de la carte
+    // Dès que pnsSourceData change (filtre), on met à jour la source MapLibre
+    $effect(() => {
+        if (mapLoaded && map.getSource('pns-source')) {
+            map.getSource('pns-source').setData(pnsSourceData);
+        }
+    });
+
+    // Réactivité : Trafic
+    $effect(() => {
+        if (mapLoaded) toggleTraffic(showTraffic);
+    });
+
+	onDestroy(() => {
+		map?.remove();
+	});
+
+    function toggleTraffic(show) {
+        if (!mapLoaded) return;
+        const sourceId = 'traffic-source';
+        
+        if (show && !map.getSource(sourceId)) {
+            map.addSource(sourceId, {
+                type: 'raster',
+                tiles: ['https://tile.memomaps.de/tilegen/{z}/{x}/{y}.png'],
+                tileSize: 256
+            });
+            map.addLayer({ 
+                id: 'traffic-layer', type: 'raster', source: sourceId, 
+                minzoom: 10, paint: { 'raster-opacity': 0.6 } 
+            }, 'clusters'); // Insérer sous les clusters
+        } else if (!show && map.getLayer('traffic-layer')) {
+            map.removeLayer('traffic-layer');
+            map.removeSource(sourceId);
+        }
+    }
 
 	function drawZones(zonesData) {
 		zonesData.forEach((zone, index) => {
@@ -214,26 +155,63 @@
 				map.addLayer({
 					'id': `zone-fill-${index}`, 'type': 'fill', 'source': sourceId,
 					'paint': { 'fill-color': zone.color || '#3b82f6', 'fill-opacity': 0.1 }
-				});
+				}, 'clusters'); // Sous les clusters
 				map.addLayer({
 					'id': `zone-line-${index}`, 'type': 'line', 'source': sourceId,
 					'paint': { 'line-color': zone.color || '#3b82f6', 'line-width': 2, 'line-dasharray': [2, 2] }
-				});
+				}, 'clusters');
 			}
 		});
 	}
 
+    function setupMapEvents(m) {
+        // Clic Cluster
+        m.on('click', 'clusters', (e) => {
+            const features = m.queryRenderedFeatures(e.point, { layers: ['clusters'] });
+            const clusterId = features[0].properties.cluster_id;
+            m.getSource('pns-source').getClusterExpansionZoom(clusterId, (err, zoom) => {
+                if (err) return;
+                m.easeTo({ center: features[0].geometry.coordinates, zoom: zoom });
+            });
+        });
+
+        // Clic Point
+        m.on('click', 'unclustered-point', (e) => {
+            const props = e.features[0].properties;
+            const coordinates = e.features[0].geometry.coordinates.slice();
+            const googleMapsUrl = `http://googleusercontent.com/maps.google.com/maps?daddr=${coordinates[1]},${coordinates[0]}`;
+
+            const html = `
+                <div class="p-3 min-w-[200px] text-gray-100">
+                    <div class="flex justify-between items-center border-b border-white/10 pb-2 mb-2">
+                        <span class="bg-orange-500/20 text-orange-400 text-[10px] font-bold px-2 py-0.5 rounded">Ligne ${props.ligne}</span>
+                        <span class="font-bold">PN ${props.pn}</span>
+                    </div>
+                    <div class="text-xs text-gray-300 space-y-1 mb-3">
+                        <div>BK: <span class="font-mono text-white">${props.bk || '?'}</span></div>
+                        <div class="italic text-gray-500">${props.adresse || '-'}</div>
+                    </div>
+                    <a href="${googleMapsUrl}" target="_blank" 
+                       class="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-1.5 rounded transition-colors">
+                        Y aller (GPS)
+                    </a>
+                </div>
+            `;
+            showPopup(coordinates, html);
+        });
+
+        // Curseurs
+        const layers = ['clusters', 'unclustered-point'];
+        layers.forEach(layer => {
+            m.on('mouseenter', layer, () => m.getCanvas().style.cursor = 'pointer');
+            m.on('mouseleave', layer, () => m.getCanvas().style.cursor = '');
+        });
+    }
+
     function showPopup(lngLat, htmlContent) {
         if (activePopup) activePopup.remove();
-        activePopup = new maplibregl.Popup({ 
-            offset: 15, 
-            closeButton: false, 
-            maxWidth: '300px',
-            className: 'custom-popup-class'
-        })
-        .setLngLat(lngLat)
-        .setHTML(htmlContent)
-        .addTo(map);
+        activePopup = new maplibregl.Popup({ offset: 15, closeButton: false, maxWidth: '300px' })
+            .setLngLat(lngLat).setHTML(htmlContent).addTo(map);
     }
 </script>
 

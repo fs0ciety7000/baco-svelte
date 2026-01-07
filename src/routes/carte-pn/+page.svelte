@@ -264,8 +264,7 @@
     // Si la zone est 'Autre', elle ne s'affiche que si vous créez un bouton "Autre" dans l'UI (optionnel).
     // Si vous voulez voir les 'Autre' quand FCR est coché, c'est ce qui causait le bug.
     // Ici : Strict match. Si le PN est dans FTY, il faut que FTY soit coché.
-    const zoneMatch = selectedZones.includes(pn.zone);
-
+ const zoneMatch = selectedZones.includes(pn.zone); 
     const searchMatch = !searchQuery.trim() || 
       (pn.pn && String(pn.pn).toLowerCase().includes(searchQuery.toLowerCase())) ||
       (pn.adresse && pn.adresse.toLowerCase().includes(searchQuery.toLowerCase()));
