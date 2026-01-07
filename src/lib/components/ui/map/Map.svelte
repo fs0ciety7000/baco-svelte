@@ -50,6 +50,10 @@
             const props = e.features[0].properties;
             const coordinates = e.features[0].geometry.coordinates.slice();
             
+          // CORRECTION DE L'URL ICI
+            // Google Maps attend "Lat,Lon", donc coordinates[1],coordinates[0]
+            const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${coordinates[1]},${coordinates[0]}`;
+
             const html = `
                 <div class="p-3 min-w-[200px] text-gray-100">
                     <div class="flex justify-between items-center border-b border-white/10 pb-2 mb-2">
@@ -60,10 +64,10 @@
                         <div>BK: <span class="font-mono text-white">${props.bk || '?'}</span></div>
                         <div class="italic text-gray-500">${props.adresse || '-'}</div>
                     </div>
-                    <a href="http://googleusercontent.com/maps.google.com/maps?daddr=${coordinates[1]},${coordinates[0]}" 
+                    <a href="${googleMapsUrl}" 
                        target="_blank" 
                        class="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-1.5 rounded transition-colors">
-                        Ouvrir Maps 
+                        Y aller (GPS)
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
                     </a>
                 </div>

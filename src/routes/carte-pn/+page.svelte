@@ -72,22 +72,27 @@
   }
 
   async function loadAllPnData() {
-    const { data, error } = await supabase.from('pn_data').select('ligne_nom, pn, bk, adresse, geo');
+    // AJOUT DE 'zone' DANS LE SELECT
+    const { data, error } = await supabase.from('pn_data').select('ligne_nom, pn, bk, adresse, geo, zone');
     if (!error) {
-        // On enrichit les données avec la détection de zone locale
         allPnData = data.map(pn => {
-            let zone = 'Autre';
+            let computedZone = 'Autre';
             if (pn.geo) {
                 const [lat, lon] = pn.geo.split(',').map(parseFloat);
-                // Simple point in polygon
                 for (const [key, z] of Object.entries(rawZones)) {
                     if (isPointInPolygon([lon, lat], z.coords)) {
-                        zone = key;
+                        computedZone = key;
                         break;
                     }
                 }
             }
-            return { ...pn, zone };
+            return { 
+                ...pn, 
+                // Pour l'affichage, on privilégie le calcul live (plus fiable)
+                zone: computedZone, 
+                // On garde la valeur réelle de la DB pour savoir s'il faut update
+                db_zone: pn.zone 
+            };
         });
         
         geocodeMissingPns(allPnData);
@@ -98,17 +103,17 @@
 
   // Fonction utilitaire pour forcer la mise à jour des zones en DB
 async function forceUpdateZones() {
-    toast.loading("Mise à jour des zones en cours...");
+    toast.info("Analyse des zones en cours...");
     let count = 0;
     
-    // On prend tous les PN qui ont une géo mais pas de zone (ou on force tout le monde)
+    // On ne traite que les PN qui ont une géolocalisation
     const pnsToUpdate = allPnData.filter(p => p.geo); 
 
     for (const pn of pnsToUpdate) {
         const [lat, lon] = pn.geo.split(',').map(parseFloat);
         let detectedZone = null;
 
-        // On cherche la zone
+        // Calcul de la zone
         for (const [key, z] of Object.entries(rawZones)) {
             if (isPointInPolygon([lon, lat], z.coords)) {
                 detectedZone = key;
@@ -116,21 +121,26 @@ async function forceUpdateZones() {
             }
         }
 
-        // Si on a trouvé une zone et qu'elle est différente de ce qu'il y a en base
-        if (detectedZone && pn.zone !== detectedZone) {
+        // LA CORRECTION EST ICI : on compare avec pn.db_zone
+        if (detectedZone && pn.db_zone !== detectedZone) {
             await supabase
                 .from('pn_data')
                 .update({ zone: detectedZone })
                 .eq('pn', pn.pn)
                 .eq('ligne_nom', pn.ligne_nom);
+            
+            // Mise à jour locale pour éviter de le refaire si on reclique
+            pn.db_zone = detectedZone;
             count++;
         }
     }
-    toast.success(`${count} zones mises à jour !`);
-    // Recharger les données pour voir l'effet
-    loadAllPnData();
-}
-
+    
+    if (count > 0) {
+        toast.success(`${count} zones mises à jour en base de données !`);
+    } else {
+        toast.info("Tout est déjà à jour.");
+    }
+  }
 
   // --- ALGORITHME POINT IN POLYGON (Ray Casting) ---
   function isPointInPolygon(point, vs) {
@@ -367,7 +377,7 @@ async function forceUpdateZones() {
       </div>
     </div>
 
-    {#if viewingPn}
+{#if viewingPn}
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" transition:fade>
         <div class="bg-[#1a1d24] w-full max-w-4xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col" in:scale>
             <div class="flex justify-between items-center p-4 border-b border-white/5 bg-black/20">
@@ -379,17 +389,17 @@ async function forceUpdateZones() {
             
             <div class="relative bg-black h-[500px]">
                 <iframe 
-                    title="Street View"
+                    title="Google Maps"
                     width="100%" 
                     height="100%" 
                     style="border:0" 
                     loading="lazy" 
                     allowfullscreen 
-                    src={`https://www.google.com/maps?q=${viewingPn.geo.split(',')[0]},${viewingPn.geo.split(',')[1]}&layer=c&z=17&output=embed`}>
+                    src={`https://maps.google.com/maps?q=${viewingPn.geo}&z=18&output=embed`}>
                 </iframe>
                 
                 <div class="absolute bottom-4 right-4 flex gap-3 pointer-events-auto">
-                    <a href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${viewingPn.geo.split(',')[0]},${viewingPn.geo.split(',')[1]}`} 
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${viewingPn.geo}`} 
                        target="_blank" 
                        class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2">
                        Ouvrir dans Google Maps <Navigation size={14}/>
