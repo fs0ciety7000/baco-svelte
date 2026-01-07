@@ -21,7 +21,6 @@
   
   // Nouveaux États UI
   let showTraffic = $state(false);
-  let selectedZones = $state(['FTY', 'FMS', 'FCR']);
   let viewingPn = $state(null); 
 let mapStyle = $state('dark'); // 'dark' ou 'light' (Nouveau)
   let selectedZones = $state(['FTY', 'FMS', 'FCR', 'Autre']);
