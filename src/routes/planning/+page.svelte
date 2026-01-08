@@ -38,7 +38,7 @@
 
     // --- MODALE ---
     let modalState = { isOpen: false, isEditing: false, leaveId: null };
-    let currentLeave = { start_date: '', end_date: '', type: 'CN', reason: '' };
+    let currentLeave = { start_date: '', end_date: '', type: 'CN', reason: '', status: 'PENDING' };
     let confirmDeleteId = null; 
 
     const LEAVE_TYPES = [
@@ -48,10 +48,11 @@
         { value: 'BT', label: 'Blessé au travail / chemin du travail (BT)' },
     ];
     
+    // MODIFICATION ICI : Labels mis à jour
     const STATUS_OPTIONS = [
         { value: 'PENDING', label: 'En attente', color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20' },
-        { value: 'APPROVED', label: 'Approuvée', color: 'text-green-400 bg-green-400/10 border-green-400/20' },
-        { value: 'REJECTED', label: 'Refusée', color: 'text-red-400 bg-red-400/10 border-red-400/20' }
+        { value: 'APPROVED', label: 'Accepté par TS', color: 'text-green-400 bg-green-400/10 border-green-400/20' },
+        { value: 'REJECTED', label: 'Refusé', color: 'text-red-400 bg-red-400/10 border-red-400/20' }
     ];
 
     // --- COULEURS ---
@@ -336,7 +337,8 @@
         // SECURITY WRITE CHECK
         if (!hasPermission(currentUser, ACTIONS.PLANNING_WRITE)) return;
 
-        currentLeave = { start_date: '', end_date: '', type: 'CN', reason: '' };
+        // MODIFICATION ICI : Initialisation avec statut PENDING
+        currentLeave = { start_date: '', end_date: '', type: 'CN', reason: '', status: 'PENDING' };
         modalState = { isOpen: true, isEditing: false, leaveId: null };
     }
 
@@ -345,11 +347,13 @@
         // SECURITY WRITE CHECK
         if (!hasPermission(currentUser, ACTIONS.PLANNING_WRITE)) return;
 
+        // MODIFICATION ICI : Récupération du statut existant
         currentLeave = {
             start_date: request.start_date,
             end_date: request.end_date,
             type: request.type || 'CN',
-            reason: request.reason || ''
+            reason: request.reason || '',
+            status: request.status || 'PENDING'
         };
         modalState = { isOpen: true, isEditing: true, leaveId: request.id };
     }
@@ -367,12 +371,13 @@
         }
         isSubmitting = true;
         try {
+            // MODIFICATION ICI : Utilisation du statut choisi
             const payload = {
                 start_date: currentLeave.start_date,
                 end_date: currentLeave.end_date,
                 type: currentLeave.type,
                 reason: currentLeave.reason,
-                status: 'PENDING' // Retour en attente après modification
+                status: currentLeave.status
             };
 
             let error;
@@ -638,13 +643,23 @@
                 </div>
                 <form on:submit|preventDefault={saveLeave} class="p-6 space-y-5">
                     
-                    <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Type d'absence</label>
-                        <select bind:value={currentLeave.type} class="{inputClass} dark:[color-scheme:dark]">
-                            {#each LEAVE_TYPES as t}
-                                <option value={t.value}>{t.label}</option>
-                            {/each}
-                        </select>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Type</label>
+                            <select bind:value={currentLeave.type} class="{inputClass} dark:[color-scheme:dark]">
+                                {#each LEAVE_TYPES as t}
+                                    <option value={t.value}>{t.label}</option>
+                                {/each}
+                            </select>
+                        </div>
+                         <div>
+                            <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Statut</label>
+                            <select bind:value={currentLeave.status} class="{inputClass} dark:[color-scheme:dark]">
+                                {#each STATUS_OPTIONS as s}
+                                    <option value={s.value}>{s.label}</option>
+                                {/each}
+                            </select>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
