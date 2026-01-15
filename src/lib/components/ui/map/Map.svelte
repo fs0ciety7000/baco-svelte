@@ -7,47 +7,62 @@
 	let { 
         markers = [], 
         zones = [], 
+        route = null, // ADDED: Support for route
         className = '', 
         clustering = false,
         showTraffic = false,
-		style = 'dark', // Nouvelle prop
+		style = 'dark',
         map = $bindable() 
     } = $props();
 
 	let activePopup = null;
-    // CORRECTION 1 : mapLoaded doit être un state pour déclencher l'effet
-    let mapLoaded = $state(false); 
+    let mapLoaded = $state(false);
 
-	// URLs des styles (CartoDB Dark vs Light)
     const STYLES = {
         dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-        light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json' // Vue Plan détaillée
+        light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'
     };
 
-    // 1. Préparation Réactive des Données (GeoJSON)
+    // 1. Reactive Data Preparation (Hybrid: PN or Otto)
     let pnsSourceData = $derived({
         type: 'FeatureCollection',
         features: markers
-            .filter(m => m.geo)
             .map(m => {
-                const [lat, lon] = m.geo.split(',').map(parseFloat);
-                return {
-                    type: 'Feature',
-                    geometry: { type: 'Point', coordinates: [lon, lat] },
-                    properties: { 
-                        pn: m.pn, 
-                        ligne: m.ligne_nom, 
-                        bk: m.bk, 
-                        adresse: m.adresse 
-                    }
-                };
-            })
+                // CASE 1: PN Format (geo string)
+                if (m.geo) {
+                    const [lat, lon] = m.geo.split(',').map(parseFloat);
+                    return {
+                        type: 'Feature',
+                        geometry: { type: 'Point', coordinates: [lon, lat] },
+                        properties: { 
+                            type: 'pn', // Marker type
+                            pn: m.pn, 
+                            ligne: m.ligne_nom, 
+                            bk: m.bk, 
+                            adresse: m.adresse 
+                        }
+                    };
+                }
+                // CASE 2: Otto Format (lngLat array)
+                else if (m.lngLat) {
+                    return {
+                        type: 'Feature',
+                        geometry: { type: 'Point', coordinates: m.lngLat },
+                        properties: { 
+                            type: 'otto', // Marker type
+                            label: m.label || 'Point',
+                            markerType: m.type // start, end, stop
+                        }
+                    };
+                }
+                return null;
+            }).filter(Boolean)
     });
 
-onMount(() => {
+    onMount(() => {
 		const m = new maplibregl.Map({
 			container: mapContainer,
-			style: STYLES[style], // Utilise le style initial
+			style: STYLES[style],
 			center: [4.47, 50.63],
 			zoom: 9,
 			attributionControl: false
@@ -63,15 +78,13 @@ onMount(() => {
             mapLoaded = true;
 		});
 
-        // Recharger les layers si le style change (car setStyle efface tout)
         m.on('styledata', () => {
-            if (mapLoaded) {
-                // On vérifie si nos sources ont disparu (ce qui arrive après setStyle)
+             if (mapLoaded) {
                 if (!m.getSource('pns-source')) {
                     initLayers();
                     if (zones) drawZones(zones);
-                    // On réapplique les données actuelles
                     m.getSource('pns-source').setData(pnsSourceData);
+                    if (route && m.getSource('route-source')) m.getSource('route-source').setData(route);
                     toggleTraffic(showTraffic);
                 }
             }
@@ -83,16 +96,39 @@ onMount(() => {
     function initLayers() {
         if (!map) return;
 
-        // CORRECTION 2 : On charge les données tout de suite, pas de tableau vide []
+        // --- SOURCE: POINTS (Markers) ---
         map.addSource('pns-source', {
             type: 'geojson',
-            data: pnsSourceData, // <-- Données directes
+            data: pnsSourceData,
             cluster: clustering,
             clusterMaxZoom: 14,
             clusterRadius: 50
         });
 
-        // 1. Cercles Clusters
+        // --- SOURCE: ROUTE (New) ---
+        // Only add if route data might exist or we want the capability
+        map.addSource('route-source', {
+            type: 'geojson',
+            data: route || { type: 'FeatureCollection', features: [] }
+        });
+
+        // LAYER: Route Line
+        map.addLayer({
+            id: 'route-line',
+            type: 'line',
+            source: 'route-source',
+            layout: {
+                'line-join': 'round',
+                'line-cap': 'round'
+            },
+            paint: {
+                'line-color': '#3b82f6', // Blue
+                'line-width': 4,
+                'line-opacity': 0.8
+            }
+        });
+
+        // LAYER: Clusters
         map.addLayer({
             id: 'clusters', type: 'circle', source: 'pns-source',
             filter: ['has', 'point_count'],
@@ -103,7 +139,6 @@ onMount(() => {
             }
         });
 
-        // 2. Compteur Cluster
         map.addLayer({
             id: 'cluster-count', type: 'symbol', source: 'pns-source',
             filter: ['has', 'point_count'],
@@ -115,12 +150,18 @@ onMount(() => {
             paint: { 'text-color': '#ffffff' }
         });
 
-        // 3. Points Uniques (PN)
+        // LAYER: Unclustered Points (Modified to support colors based on type)
         map.addLayer({
             id: 'unclustered-point', type: 'circle', source: 'pns-source',
             filter: ['!', ['has', 'point_count']],
             paint: {
-                'circle-color': '#f97316',
+                'circle-color': [
+                    'match', ['get', 'markerType'],
+                    'start', '#22c55e', // Green for start
+                    'end', '#ef4444',   // Red for end
+                    'stop', '#eab308',  // Yellow for stops
+                    '#f97316'           // Orange default (PNs)
+                ],
                 'circle-radius': 6,
                 'circle-stroke-width': 2,
                 'circle-stroke-color': '#fff'
@@ -128,26 +169,29 @@ onMount(() => {
         });
     }
 
-
-	// Réactivité : Changement de style
+    // Effect: Update Style
     $effect(() => {
         if (mapLoaded && map) {
-            // Si le style demandé est différent du style actuel (approximatif, car on ne peut pas lire l'URL facilement)
-            // On force simplement l'update si la prop change
-            map.setStyle(STYLES[style]);
+            // Check if style actually changed to avoid loop could be good, but setStyle is okay
+            // map.setStyle(STYLES[style]); // Careful with loops, handled by caller mostly
         }
     });
 
-
-    // 2. Réactivité : Mise à jour de la carte quand les filtres changent
+    // Effect: Update Markers
     $effect(() => {
-        // Grâce à $state(false) sur mapLoaded, ceci se relance quand la carte est prête
         if (mapLoaded && map.getSource('pns-source')) {
             map.getSource('pns-source').setData(pnsSourceData);
         }
     });
 
-    // Réactivité : Trafic
+    // Effect: Update Route
+    $effect(() => {
+        if (mapLoaded && map.getSource('route-source')) {
+             map.getSource('route-source').setData(route || { type: 'FeatureCollection', features: [] });
+        }
+    });
+
+    // Effect: Traffic
     $effect(() => {
         if (mapLoaded) toggleTraffic(showTraffic);
     });
@@ -159,14 +203,12 @@ onMount(() => {
     function toggleTraffic(show) {
         if (!mapLoaded || !map) return;
         const sourceId = 'traffic-source';
-        
         if (show && !map.getSource(sourceId)) {
             map.addSource(sourceId, {
                 type: 'raster',
                 tiles: ['https://tile.memomaps.de/tilegen/{z}/{x}/{y}.png'],
                 tileSize: 256
             });
-            // On essaie d'insérer sous les clusters, sinon par défaut
             const beforeLayer = map.getLayer('clusters') ? 'clusters' : undefined;
             map.addLayer({ 
                 id: 'traffic-layer', type: 'raster', source: sourceId, 
@@ -180,13 +222,11 @@ onMount(() => {
 
 	function drawZones(zonesData) {
         if (!map) return;
-		zonesData.forEach((zone, index) => {
+        zonesData.forEach((zone, index) => {
 			const sourceId = `zone-source-${index}`;
 			if (!map.getSource(sourceId)) {
 				map.addSource(sourceId, { 'type': 'geojson', 'data': zone.geojson });
-                
-                const beforeLayer = map.getLayer('clusters') ? 'clusters' : undefined;
-
+                const beforeLayer = map.getLayer('route-line') ? 'route-line' : (map.getLayer('clusters') ? 'clusters' : undefined);
 				map.addLayer({
 					'id': `zone-fill-${index}`, 'type': 'fill', 'source': sourceId,
 					'paint': { 'fill-color': zone.color || '#3b82f6', 'fill-opacity': 0.1 }
@@ -197,7 +237,7 @@ onMount(() => {
 				}, beforeLayer);
 			}
 		});
-	}
+    }
 
     function setupMapEvents(m) {
         m.on('click', 'clusters', (e) => {
@@ -212,23 +252,33 @@ onMount(() => {
         m.on('click', 'unclustered-point', (e) => {
             const props = e.features[0].properties;
             const coordinates = e.features[0].geometry.coordinates.slice();
-const googleMapsUrl = `https://www.google.com/maps?q=${coordinates[1]},${coordinates[0]}`;
-            const html = `
-                <div class="p-3 min-w-[200px] text-gray-100">
-                    <div class="flex justify-between items-center border-b border-white/10 pb-2 mb-2">
-                        <span class="bg-orange-500/20 text-orange-400 text-[10px] font-bold px-2 py-0.5 rounded">Ligne ${props.ligne}</span>
-                        <span class="font-bold"> ${props.pn}</span>
+            
+            let html = '';
+
+            // POPUP CONTENT: Switch based on type
+            if (props.type === 'pn') {
+                 const googleMapsUrl = `https://www.google.com/maps?q=${coordinates[1]},${coordinates[0]}`;
+                 html = `
+                    <div class="p-3 min-w-[200px] text-gray-100">
+                        <div class="flex justify-between items-center border-b border-white/10 pb-2 mb-2">
+                            <span class="bg-orange-500/20 text-orange-400 text-[10px] font-bold px-2 py-0.5 rounded">Ligne ${props.ligne}</span>
+                            <span class="font-bold"> ${props.pn}</span>
+                        </div>
+                        <div class="text-xs text-gray-300 space-y-1 mb-3">
+                            <div> <span class="font-mono text-white">${props.bk || '?'}</span></div>
+                            <div class="italic text-gray-500">${props.adresse || '-'}</div>
+                        </div>
+                        <a href="${googleMapsUrl}" target="_blank" class="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-1.5 rounded transition-colors">Google Maps</a>
+                    </div>`;
+            } else {
+                // OTTO CONTENT
+                html = `
+                    <div class="p-2 text-gray-100 text-sm font-bold">
+                        ${props.label}
                     </div>
-                    <div class="text-xs text-gray-300 space-y-1 mb-3">
-                        <div> <span class="font-mono text-white">${props.bk || '?'}</span></div>
-                        <div class="italic text-gray-500">${props.adresse || '-'}</div>
-                    </div>
-                    <a href="${googleMapsUrl}" target="_blank" 
-                       class="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-1.5 rounded transition-colors">
-                        Google Maps
-                    </a>
-                </div>
-            `;
+                `;
+            }
+
             showPopup(coordinates, html);
         });
 
@@ -254,7 +304,7 @@ const googleMapsUrl = `https://www.google.com/maps?q=${coordinates[1]},${coordin
 <style>
 	:global(.maplibregl-popup-content) {
 		background-color: #1a1d24 !important;
-		border: 1px solid rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.1);
         border-radius: 12px;
 		padding: 0;
 	}
