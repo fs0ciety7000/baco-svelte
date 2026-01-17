@@ -589,21 +589,36 @@ PACO Sud-Ouest`;
   }
 
   // --- GENERATION PDF ---
-  const getBase64ImageFromURL = (url) => {
+// Remplace ta fonction actuelle par celle-ci
+function getBase64ImageFromURL(url) {
     return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.setAttribute("crossOrigin", "anonymous");
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.width; canvas.height = img.height;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0);
-        resolve(canvas.toDataURL("image/png"));
-      };
-      img.onerror = error => reject(error);
-      img.src = url;
+        const img = new Image();
+        img.setAttribute("crossOrigin", "anonymous");
+        img.src = url;
+        img.onload = () => {
+            const canvas = document.createElement("canvas");
+            // On limite la largeur à 300px (suffisant pour un logo de 2.5cm sur PDF)
+            const targetWidth = 300; 
+            const scaleFactor = targetWidth / img.width;
+            
+            canvas.width = targetWidth;
+            canvas.height = img.height * scaleFactor;
+            
+            const ctx = canvas.getContext("2d");
+            // Optionnel : Fond blanc si on passe en JPEG pour éviter le fond noir
+            ctx.fillStyle = "#FFFFFF"; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            
+            // CONVERSION EN JPEG (Qualité 0.7 = 70%)
+            // Le format JPEG est beaucoup plus léger que le PNG pour jsPDF
+            const dataURL = canvas.toDataURL("image/jpeg", 0.7);
+            resolve(dataURL);
+        };
+        img.onerror = error => reject(error);
     });
-  };
+}
 
   async function generatePDF() {
     const doc = new jsPDF();
@@ -612,7 +627,7 @@ PACO Sud-Ouest`;
 
     try {
         const logoData = await getBase64ImageFromURL('/SNCB_logo.png');
-        doc.addImage(logoData, 'PNG', 15, 10, 25, 16.33);
+        doc.addImage(logoData, 'JPEG', 15, 10, 25, 16.33, 'LogoSNCB', 'FAST');
     } catch (e) { console.warn("Logo non chargé", e); }
 
     doc.setFontSize(9);
