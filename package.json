@@ -52,6 +52,7 @@
 		"notyf": "^3.10.0",
 		"pdf-lib": "^1.17.1",
 		"svelte-dnd-action": "^0.9.68",
-		"xlsx": "^0.18.5"
+		"xlsx": "^0.18.5",
+		"svelte-sonner": "^1.0.7"
 	}
 }
