@@ -154,9 +154,6 @@
 <svelte:window on:click={closeDropdowns} />
 
 <div class="sticky top-4 mx-4 z-50">
-  
-
-
   <nav class="relative rounded-2xl transition-all duration-300 glass-panel z-20" style="border: 1px solid rgba(255,255,255,0.1)">
      <div class="px-6 py-2">
       <div class="flex justify-between items-center">
@@ -217,17 +214,14 @@
               <a href="/planning" class={getLinkClass('planning')}><CalendarDays class="w-4 h-4" /><span>Planning</span></a>
               
               <div class="relative">
-                  <button on:click={(e) => toggleDropdown('commandes', e)} class="{glassTileBase} px-4 py-2 gap-2 text-sm font-semibold {activeDropdown === 'commandes' || ['/otto', '/generateTaxi', '/stats'].some(p => $page.url.pathname.includes(p)) ? activeTile : `${inactiveTile} ${neonHover}`}">
+                  <button on:click={(e) => toggleDropdown('commandes', e)} class="{glassTileBase} px-4 py-2 gap-2 text-sm font-semibold {activeDropdown === 'commandes' || ['/otto', '/generateTaxi', '/stats', '/deplacements'].some(p => $page.url.pathname.includes(p)) ? activeTile : `${inactiveTile} ${neonHover}`}">
                       <ClipboardList class="w-4 h-4" /><span>Commandes</span><ChevronDown class="w-3 h-3 transition-transform {activeDropdown === 'commandes' ? 'rotate-180' : ''}" />
                   </button>
                   {#if activeDropdown === 'commandes'}
                       <div transition:fly={{ y: 10, duration: 200 }} class={dropdownBaseClass}>
                           <a href="/otto" class={dropdownLinkClass}><Bus /> C3 (Otto)</a>
-                          <!-- <a href="/generateTaxi" class={dropdownLinkClass}><Car /> Cmd Taxis</a> -->
                           <a href="/stats" class={dropdownLinkClass}><BarChart3 /> Statistiques</a>
-                          <a href="/deplacements" class="flex items-center gap-2 p-2 hover:bg-muted rounded-md">
-    <span>🚗</span> <span class="hidden md:block">Déplacements PMR</span>
-</a>
+                          <a href="/deplacements" class={dropdownLinkClass}><Car /> Déplacements PMR</a>
                       </div>
                   {/if}
               </div>
@@ -369,6 +363,7 @@
                <a href="/pmr" class="flex items-center gap-3 p-3 text-gray-400"><Accessibility class="w-4 h-4"/> PMR</a>
                <a href="/journal" class="flex items-center gap-3 p-3 text-gray-400"><BookCopy class="w-4 h-4"/> Journal</a>
                <a href="/generateTaxi" class="flex items-center gap-3 p-3 text-gray-400"><Car class="w-4 h-4"/> Cmd Taxi</a>
+               <a href="/deplacements" class="flex items-center gap-3 p-3 text-gray-400"><Car class="w-4 h-4"/> Déplacements PMR</a>
                <button on:click={handleLogout} class="flex items-center gap-3 p-3 text-red-400"><LogOut class="w-4 h-4"/> Déconnexion</button>
           </div>
       {/if}
