@@ -225,6 +225,9 @@
                           <a href="/otto" class={dropdownLinkClass}><Bus /> C3 (Otto)</a>
                           <!-- <a href="/generateTaxi" class={dropdownLinkClass}><Car /> Cmd Taxis</a> -->
                           <a href="/stats" class={dropdownLinkClass}><BarChart3 /> Statistiques</a>
+                          <a href="/deplacements" class="flex items-center gap-2 p-2 hover:bg-muted rounded-md">
+    <span>🚗</span> <span class="hidden md:block">Déplacements PMR</span>
+</a>
                       </div>
                   {/if}
               </div>
