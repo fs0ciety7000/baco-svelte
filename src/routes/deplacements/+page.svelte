@@ -38,9 +38,9 @@
         tournaiHex: '#a86fa8',
         zeroRed: '#be4366',
         zeroRedRGB: [190, 67, 102],
-        morningBg: '#d1b4d4', // Fond matin
+        morningBg: '#d1b4d4',
         morningBgRGB: [209, 180, 212],
-        afternoonBg: '#ADBC16', // Fond après-midi (Vert/Jaune comme PDF)
+        afternoonBg: '#ADBC16',
         afternoonBgRGB: [173, 188, 22],
         presenceBadgeBg: '#e5e7eb',
         presenceBadgeBgRGB: [229, 231, 235]
@@ -49,7 +49,7 @@
     const EMAIL_TO = "cedric.thiels@belgiantrain.be;luc.deconinck@belgiantrain.be;b4u.mons@belgiantrain.be;paco.mons@belgiantrain.be;785um.OUMonsPermanence@belgiantrain.be;gare.mons.quai@belgiantrain.be;785ut.OUTournaiPermanence@belgiantrain.be;gare.tournai.quai@belgiantrain.be;gare.braine.le.comte.quai@belgiantrain.be";
     const EMAIL_CC = "mathieu.debaisieux@belgiantrain.be";
 
-    // --- ÉTAT ---
+    // --- ÉTAT (Svelte 5 Runes) ---
     let date = $state(new Date().toISOString().split('T')[0]);
     let loading = $state(false);
 
@@ -104,6 +104,7 @@
         return Array.from(stationsWithData).sort();
     }
 
+    // Regex pour mettre en gras les rôles (HTML uniquement)
     function highlightRoles(text) {
         if (!text) return "";
         const roles = ["ACP", "CPI", "OPI", "SPI", "PA", "Team Leader", "MPI", "10-18"];
@@ -183,113 +184,90 @@
         const dateSubject = `${day}-${month}-${year}`;
         const formattedDate = d.toLocaleDateString('fr-BE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-        // Helper pour les stats : Look PDF (Fond gris, Label Noir, Valeur Rouge si 0)
-        // Espacement généreux comme sur le PDF
+        // FIXED: Espacement entre badges avec line-height
         const formatStatsHtml = (data) => {
-            const badges = Object.entries(data).map(([k, v]) => {
+            const entries = Object.entries(data);
+            const badges = entries.map(([k, v]) => {
                 const valColor = v === 0 ? COLORS.zeroRed : '#000000';
                 const label = k.replace('shift_', '').toUpperCase();
-                // Utilisation de blocs inline-block avec padding pour ressembler au PDF
-                return `
-                    <span style="display: inline-block; margin: 0 15px; font-family: Helvetica, Arial, sans-serif; font-size: 14pt;">
-                        <span style="color: #000; font-weight: bold;">${label}:</span>
-                        <span style="color: ${valColor}; font-weight: bold; margin-left: 5px;">${v}</span>
-                    </span>
-                `;
-            }).join('');
-            // Centré avec beaucoup d'espace vertical
-            return `<div style="text-align: center; margin: 25px 0 35px 0;">${badges}</div>`;
+                return `<span style="margin: 0 18px; font-weight: bold; padding: 14px 22px; background-color: ${COLORS.presenceBadgeBg}; border-radius: 12px; display: inline-block; white-space: nowrap; font-size: 11pt;">${label}: <span style="color: ${valColor}; font-size: 14pt; font-weight: 900;">${v}</span></span>`;
+            }).join(' ');
+            return `<div style="text-align: center; margin: 35px 0; line-height: 3.5;">${badges}</div>`;
         };
 
-        const containerStyle = `font-family: Helvetica, Arial, sans-serif; font-size: 11pt; color: #000; background-color: #fff; padding: 40px;`;
+        const containerStyle = `font-family: 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #000; background-color: #fff; padding: 25px;`;
+        const headerStyle = `color: ${COLORS.sncbHex}; font-size: 24pt; font-weight: bold; text-align: center; margin-bottom: 8px;`;
+        const dateStyle = `color: #000; font-size: 13pt; font-weight: bold; text-align: center; margin-bottom: 35px; border-bottom: 3px solid ${COLORS.sncbHex}; padding-bottom: 12px;`;
         
-        // Titres sans dégradés, couleurs solides (Flat Design comme le PDF)
-        const headerStyle = `color: ${COLORS.sncbHex}; font-size: 24pt; font-weight: bold; text-align: center; margin-bottom: 10px; text-transform: uppercase;`;
-        const dateStyle = `color: #000; font-size: 14pt; font-weight: bold; text-align: center; margin-bottom: 50px; border-bottom: 2px solid ${COLORS.sncbHex}; padding-bottom: 20px;`;
+        // FIXED: Titres avec plus de visibilité
+        const sectionTitleMorningStyle = `background: linear-gradient(135deg, ${COLORS.morningBg} 0%, #c09fd4 100%); color: #000; padding: 28px 20px; font-weight: bold; font-size: 24pt; margin-top: 45px; margin-bottom: 35px; text-transform: uppercase; text-align: center; border-radius: 15px; box-shadow: 0 6px 12px rgba(0,0,0,0.15);`;
         
-        const sectionTitleStyle = (bgColor, textColor) => `
-            background-color: ${bgColor}; 
-            color: ${textColor}; 
-            padding: 15px 20px; 
-            font-weight: bold; 
-            font-size: 16pt; 
-            margin-top: 50px; 
-            margin-bottom: 30px; 
-            text-transform: uppercase; 
-            border-radius: 4px;
-        `;
-
-        const subTitleStyle = (color) => `
-            color: ${color}; 
-            font-weight: bold; 
-            font-size: 13pt; 
-            margin-top: 40px; 
-            margin-bottom: 15px; 
-            padding-left: 0;
-        `;
-
-        const tableStyle = `width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 40px;`;
-        const thStyle = (color) => `background-color: ${color}; color: #fff; font-weight: bold; padding: 12px; text-align: left; border: 1px solid ${color};`;
-        const tdStyle = `padding: 12px; border: 1px solid #ccc; vertical-align: top;`;
-        const noInterventionStyle = `text-align: center; font-style: italic; color: #777; background-color: #f9f9f9; padding: 20px;`;
+        const sectionTitleAfternoonStyle = `background: linear-gradient(135deg, ${COLORS.afternoonBg} 0%, #8a9612 100%); color: #fff; padding: 28px 20px; font-weight: bold; font-size: 24pt; margin-top: 45px; margin-bottom: 35px; text-transform: uppercase; text-align: center; border-radius: 15px; box-shadow: 0 6px 12px rgba(0,0,0,0.15);`;
+        
+        const subTitleStyle = (color) => `color: ${color}; font-weight: bold; font-size: 14pt; margin-top: 35px; margin-bottom: 20px; padding-left: 15px; border-left: 6px solid ${color};`;
+        const tableStyle = `width: 100%; border-collapse: collapse; font-size: 11pt; margin-top: 20px; margin-bottom: 45px;`; // FIXED: margin-bottom augmenté
+        const thStyle = (color) => `background-color: ${color}; color: #fff; font-weight: bold; padding: 16px; text-align: left; border: 1px solid ${color}; font-size: 12pt;`;
+        const tdStyle = `padding: 14px; border: 1px solid #ddd; vertical-align: top;`;
+        const noInterventionStyle = `text-align: center; font-style: italic; color: #999; padding: 25px; font-size: 12pt;`;
 
         const html = `
             <div style="${containerStyle}">
+                <img src="cid:logo" alt="SNCB Logo" style="max-width: 220px; margin-bottom: 25px; display: block; margin-left: auto; margin-right: auto;" />
                 <div style="${headerStyle}">DEPLACEMENTS PMR</div>
                 <div style="${dateStyle}">${formattedDate}</div>
 
-                <div style="${sectionTitleStyle(COLORS.morningBg, '#000')}">PRESTATION MATIN</div>
+                <div style="${sectionTitleMorningStyle}">☀️ PRESTATION MATIN</div>
                 
-                <div style="${subTitleStyle(COLORS.monsHex)}">• Prévu dans Quinyx gare de Mons</div>
+                <div style="${subTitleStyle(COLORS.monsHex)}">📍 Prévu dans Quinyx gare de Mons</div>
                 ${formatStatsHtml(presenceMons)}
                 <table style="${tableStyle}">
                     <thead><tr><th style="${thStyle(COLORS.monsHex)} width: 140px;">GARE</th><th style="${thStyle(COLORS.monsHex)}">INTERVENTIONS (FMS)</th></tr></thead>
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FMS', 'morning');
                         if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
-                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#f4f8fb':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.monsHex}">${st}</td><td style="${tdStyle}">${getStationText(st, 'FMS', 'morning', true)}</td></tr>`).join('');
+                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#f0f9ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.monsHex}; font-size:12pt;">${st}</td><td style="${tdStyle}">${getStationText(st, 'FMS', 'morning', true)}</td></tr>`).join('');
                     })()}</tbody>
                 </table>
 
-                <div style="${subTitleStyle(COLORS.tournaiHex)}">• Prévu dans Quinyx gare de Tournai</div>
+                <div style="${subTitleStyle(COLORS.tournaiHex)}">📍 Prévu dans Quinyx gare de Tournai</div>
                 ${formatStatsHtml(presenceTournai)}
                 <table style="${tableStyle}">
                     <thead><tr><th style="${thStyle(COLORS.tournaiHex)} width: 140px;">GARE</th><th style="${thStyle(COLORS.tournaiHex)}">INTERVENTIONS (FTY)</th></tr></thead>
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FTY', 'morning');
                         if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
-                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#faf5ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.tournaiHex}">${st}</td><td style="${tdStyle}">${getStationText(st, 'FTY', 'morning', true)}</td></tr>`).join('');
+                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#faf5ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.tournaiHex}; font-size:12pt;">${st}</td><td style="${tdStyle}">${getStationText(st, 'FTY', 'morning', true)}</td></tr>`).join('');
                     })()}</tbody>
                 </table>
 
-                <div style="${sectionTitleStyle(COLORS.afternoonBg, '#fff')}">PRESTATION APRÈS-MIDI</div>
+                <div style="${sectionTitleAfternoonStyle}">🌙 PRESTATION APRÈS-MIDI</div>
 
-                <div style="${subTitleStyle(COLORS.monsHex)}">• Prévu dans Quinyx gare de Mons</div>
+                <div style="${subTitleStyle(COLORS.monsHex)}">📍 Prévu dans Quinyx gare de Mons</div>
                 ${formatStatsHtml(presenceMonsAM)}
                 <table style="${tableStyle}">
                     <thead><tr><th style="${thStyle(COLORS.monsHex)} width: 140px;">GARE</th><th style="${thStyle(COLORS.monsHex)}">INTERVENTIONS (FMS)</th></tr></thead>
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FMS', 'afternoon');
                         if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
-                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#f4f8fb':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.monsHex}">${st}</td><td style="${tdStyle}">${getStationText(st, 'FMS', 'afternoon', true)}</td></tr>`).join('');
+                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#f0f9ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.monsHex}; font-size:12pt;">${st}</td><td style="${tdStyle}">${getStationText(st, 'FMS', 'afternoon', true)}</td></tr>`).join('');
                     })()}</tbody>
                 </table>
 
-                <div style="${subTitleStyle(COLORS.tournaiHex)}">• Prévu dans Quinyx gare de Tournai</div>
+                <div style="${subTitleStyle(COLORS.tournaiHex)}">📍 Prévu dans Quinyx gare de Tournai</div>
                 ${formatStatsHtml(presenceTournaiAM)}
                 <table style="${tableStyle}">
                     <thead><tr><th style="${thStyle(COLORS.tournaiHex)} width: 140px;">GARE</th><th style="${thStyle(COLORS.tournaiHex)}">INTERVENTIONS (FTY)</th></tr></thead>
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FTY', 'afternoon');
                         if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
-                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#faf5ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.tournaiHex}">${st}</td><td style="${tdStyle}">${getStationText(st, 'FTY', 'afternoon', true)}</td></tr>`).join('');
+                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#faf5ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.tournaiHex}; font-size:12pt;">${st}</td><td style="${tdStyle}">${getStationText(st, 'FTY', 'afternoon', true)}</td></tr>`).join('');
                     })()}</tbody>
                 </table>
 
-                <div style="margin-top: 60px; border-top: 2px solid ${COLORS.sncbHex}; padding-top: 25px; font-size: 10pt; color: #333;">
-                    <p style="margin: 8px 0;">• Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.</p>
-                    <p style="margin: 8px 0;">• Interventions PMR pour B-CS : Voir DICOS.</p>
-                    <p style="margin: 20px 0 0 0; font-weight: bold; color: ${COLORS.sncbHex}; font-size: 12pt;">IMPORTANT: L'App DICOS PMR reste la base à consulter</p>
+                <div style="margin-top: 50px; border-top: 3px solid ${COLORS.sncbHex}; padding-top: 25px; font-size: 11pt; color: #333;">
+                    <p style="margin: 10px 0; line-height: 1.6;">• Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.</p>
+                    <p style="margin: 10px 0; line-height: 1.6;">• Interventions PMR pour B-CS : Voir DICOS.</p>
+                    <p style="margin: 25px 0 0 0; font-weight: bold; color: ${COLORS.sncbHex}; font-size: 13pt;">📱 L'App DICOS PMR reste la base à consulter</p>
                 </div>
             </div>
         `;
@@ -297,9 +275,15 @@
         try {
             const blobHtml = new Blob([html], { type: 'text/html' });
             await navigator.clipboard.write([new ClipboardItem({ 'text/html': blobHtml })]);
-            toast.success("Copié ! Collez dans Outlook (CTRL+V)");
-            window.location.href = `mailto:${EMAIL_TO}?cc=${EMAIL_CC}&subject=${encodeURIComponent(`Déplacement PMR - ${dateSubject}`)}`;
-        } catch (err) { toast.error("Erreur : " + err.message); }
+            
+            toast.success("Email copié ! Collez-le dans Outlook avec CTRL+V");
+            
+            // FIXED: Sujet corrigé
+            const subject = encodeURIComponent(`Déplacements ${dateSubject}`);
+            window.location.href = `mailto:${EMAIL_TO}?cc=${EMAIL_CC}&subject=${subject}`;
+        } catch (err) { 
+            toast.error("Erreur : " + err.message); 
+        }
     }
 
     // --- PDF ---
@@ -321,7 +305,7 @@
             const logoUrl = window.location.origin + '/Logo_100Y_FR_horiz_blue.png';
             const logoData = await getBase64ImageFromURL(logoUrl);
             doc.addImage(logoData, 'PNG', 10, 10, 50, 0);
-        } catch (e) { console.error('Logo error', e); }
+        } catch (e) { console.error('Logo loading error:', e); }
 
         let currentY = 35;
         doc.setTextColor(...COLORS.sncb); doc.setFontSize(22); doc.setFont("helvetica", "bold");
@@ -334,7 +318,7 @@
         const drawSection = (title, color) => {
             const rgb = color === COLORS.morningBg ? COLORS.morningBgRGB : COLORS.afternoonBgRGB;
             doc.setFillColor(...rgb); doc.rect(10, currentY, 190, 12, 'F');
-            doc.setTextColor(color === COLORS.afternoonBg ? 255 : 0, color === COLORS.afternoonBg ? 255 : 0, color === COLORS.afternoonBg ? 255 : 0);
+            doc.setTextColor(color === COLORS.afternoonBg ? 255 : 0, color === COLORS.afternoonBg ? 255 : 0, color === COLORS.afternoonBg ? 255 : 0); 
             doc.setFontSize(14); doc.setFont("helvetica", "bold");
             doc.text(title, 105, currentY + 8, { align: 'center' });
             currentY += 22;
@@ -371,9 +355,12 @@
 
         const drawTable = (stations, zone, period, colorHead) => {
             if (stations.length === 0) {
-                doc.setFontSize(11); doc.setTextColor(150, 150, 150); doc.setFont("helvetica", "italic");
+                doc.setFontSize(11);
+                doc.setTextColor(150, 150, 150);
+                doc.setFont("helvetica", "italic");
                 doc.text("Aucune intervention", 105, currentY, { align: 'center' });
-                currentY += 15; return;
+                currentY += 15;
+                return;
             }
             
             const rows = stations.map(st => [st, getStationText(st, zone, period, false)]);
@@ -393,33 +380,36 @@
 
         drawSub("• Prévu dans Quinyx gare de Mons", COLORS.mons);
         drawStats(presenceMons);
-        drawTable(getStationsWithInterventions('FMS', 'morning'), 'FMS', 'morning', COLORS.mons);
+        const stFMS = getStationsWithInterventions('FMS', 'morning');
+        drawTable(stFMS, 'FMS', 'morning', COLORS.mons);
 
         if (currentY > 240) { doc.addPage(); currentY = 20; }
         drawSub("• Prévu dans Quinyx gare de Tournai", COLORS.tournai);
         drawStats(presenceTournai);
-        drawTable(getStationsWithInterventions('FTY', 'morning'), 'FTY', 'morning', COLORS.tournai);
+        const stFTY = getStationsWithInterventions('FTY', 'morning');
+        drawTable(stFTY, 'FTY', 'morning', COLORS.tournai);
 
         doc.addPage(); currentY = 20;
         drawSection("PRESTATION APRES-MIDI", COLORS.afternoonBg);
-        
+
         drawSub("• Prévu dans Quinyx gare de Mons", COLORS.mons);
         drawStats(presenceMonsAM);
-        drawTable(getStationsWithInterventions('FMS', 'afternoon'), 'FMS', 'afternoon', COLORS.mons);
+        const stFMS_AM = getStationsWithInterventions('FMS', 'afternoon');
+        drawTable(stFMS_AM, 'FMS', 'afternoon', COLORS.mons);
 
         if (currentY > 240) { doc.addPage(); currentY = 20; }
         drawSub("• Prévu dans Quinyx gare de Tournai", COLORS.tournai);
         drawStats(presenceTournaiAM);
-        drawTable(getStationsWithInterventions('FTY', 'afternoon'), 'FTY', 'afternoon', COLORS.tournai);
+        const stFTY_AM = getStationsWithInterventions('FTY', 'afternoon');
+        drawTable(stFTY_AM, 'FTY', 'afternoon', COLORS.tournai);
 
         const pageCount = doc.internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
-            doc.setPage(i);
-            doc.setFontSize(10); doc.setTextColor(0,0,0); doc.setFont("helvetica", "normal");
+            doc.setPage(i); doc.setFontSize(10); doc.setTextColor(0,0,0); doc.setFont("helvetica", "normal");
             doc.text("• Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.", 15, 272);
             doc.text("• Interventions PMR pour B-CS : Voir DICOS.", 15, 277);
             doc.setFontSize(11); doc.setTextColor(...COLORS.sncb); doc.setFont("helvetica", "bold");
-            doc.text("IMPORTANT: L'App DICOS PMR reste la base à consulter", 15, 285);
+            doc.text("IMPORTANT: L'App DICOS PMR reste la base a consulter", 15, 285);
             doc.setFontSize(9); doc.setTextColor(150); doc.setFont("helvetica", "normal");
             doc.text(`Page ${i} / ${pageCount}`, 195, 288, { align: 'right' });
         }
@@ -446,61 +436,75 @@
             </div>
         </div>
 
+        <!-- FIXED: Boutons avec couleurs du design system -->
         <div class="relative flex flex-wrap gap-3 p-6">
-            <a href="/deplacements/historique" class="group relative flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-slate-700 to-slate-600 hover:from-slate-600 hover:to-slate-500 text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:scale-105">
+            <a href="/deplacements/historique" class="btn-primary">
                 <Train class="w-5 h-5" /> Historique
             </a>
-            <button onclick={saveData} disabled={loading} class="group relative flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:scale-105 disabled:opacity-50">
+            <button onclick={saveData} disabled={loading} class="btn-primary">
                 {#if loading}<span class="animate-spin">⏳</span>{:else}<Save class="w-5 h-5" />{/if} Sauvegarder
             </button>
-            <button onclick={copyForOutlook} class="group relative flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:scale-105">
+            <button onclick={copyForOutlook} class="btn-success">
                 <Mail class="w-5 h-5" /> Copier pour Outlook
             </button>
-            <button onclick={generatePDF} class="group relative flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-red-600 to-rose-500 hover:from-red-500 hover:to-rose-400 text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:scale-105">
+            <button onclick={generatePDF} class="btn-danger">
                 <FileDown class="w-5 h-5" /> Télécharger PDF
             </button>
         </div>
     </header>
 
+    <!-- FIXED: DatePicker avec icône visible -->
     <div class="relative group">
-        <div class="relative bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-2xl p-6 shadow-2xl">
-            <label class="text-xs uppercase font-bold text-transparent bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text mb-3 flex items-center gap-2 tracking-widest">
-                <Calendar class="w-5 h-5 text-blue-400 animate-pulse-soft" /> Date du rapport
+        <div class="relative glass-panel rounded-2xl p-6 shadow-2xl">
+            <label class="text-xs uppercase font-bold text-theme-primary mb-3 flex items-center gap-2 tracking-widest">
+                <Calendar class="w-5 h-5 animate-pulse-soft" /> Date du rapport
             </label>
             <input 
                 type="date" 
                 bind:value={date} 
                 onchange={loadDailyReport}
-                class="datepicker-input w-full max-w-md bg-slate-950 border-2 border-slate-800 text-white rounded-xl px-5 py-3.5 text-lg font-semibold focus:ring-2 focus:ring-blue-500 outline-none transition-all cursor-pointer hover:border-blue-600" 
+                class="datepicker-input w-full max-w-md glass-panel rounded-xl px-5 py-3.5 text-lg font-semibold focus:ring-2 focus:ring-[rgb(var(--color-primary))] outline-none transition-all cursor-pointer border-theme-primary" 
             />
         </div>
     </div>
 
     <div class="relative group">
-        <div class="relative bg-slate-900/90 backdrop-blur-md border border-blue-500/30 rounded-2xl p-8 shadow-2xl">
-            <h2 class="text-3xl font-black mb-8 flex items-center gap-3 pb-5 border-b-2 border-gradient-to-r from-blue-500 to-cyan-500">
-                <span class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">Prestation matin</span>
+        <div class="relative glass-panel border-theme-primary rounded-2xl p-8 shadow-2xl">
+            <h2 class="text-3xl font-black mb-8 flex items-center gap-3 pb-5 border-b-2 border-theme-primary">
+                <span class="text-theme-primary">Prestation matin</span>
             </h2>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-slate-950/80 border-2 border-blue-500/30 rounded-2xl p-6">
-                    <h3 class="font-black text-slate-100 mb-5 flex items-center gap-2"><MapPin class="w-5 h-5 text-blue-400" /> Quinyx gare de Mons</h3>
+                <div class="glass-panel border-theme-primary rounded-2xl p-6">
+                    <h3 class="font-black text-slate-100 mb-5 flex items-center gap-2"><MapPin class="w-5 h-5 text-theme-primary" /> Quinyx gare de Mons</h3>
                     <div class="grid grid-cols-5 gap-3">
                         {#each Object.keys(presenceMons) as key}
-                            <div class="bg-slate-900 rounded-xl p-3 border border-blue-500/20 flex flex-col items-center">
-                                <span class="text-[10px] uppercase text-blue-300 font-bold mb-2">{key.replace('shift_', '')}</span>
-                                <input type="range" min="0" max="20" bind:value={presenceMons[key]} class="w-full h-2 bg-blue-900 rounded-lg appearance-none cursor-pointer slider-thumb" />
-                                <span class="text-lg font-bold text-blue-100 mt-2">{presenceMons[key]}</span>
+                            <div class="bg-slate-900 rounded-xl p-3 border border-theme-primary flex flex-col items-center">
+                                <span class="text-[10px] uppercase text-theme-primary font-bold mb-2">{key.replace('shift_', '')}</span>
+                                <input 
+                                    type="range" 
+                                    min="0" 
+                                    max="20" 
+                                    bind:value={presenceMons[key]} 
+                                    class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer slider-thumb"
+                                />
+                                <span class="text-lg font-bold text-slate-100 mt-2">{presenceMons[key]}</span>
                             </div>
                         {/each}
                     </div>
                 </div>
-                <div class="bg-slate-950/80 border-2 border-purple-500/30 rounded-2xl p-6">
+                <div class="glass-panel border-purple-500/30 rounded-2xl p-6">
                     <h3 class="font-black text-slate-100 mb-5 flex items-center gap-2"><MapPin class="w-5 h-5 text-purple-400" /> Quinyx gare de Tournai</h3>
                     <div class="grid grid-cols-5 gap-3">
                         {#each Object.keys(presenceTournai) as key}
                             <div class="bg-slate-900 rounded-xl p-3 border border-purple-500/20 flex flex-col items-center">
                                 <span class="text-[10px] uppercase text-purple-300 font-bold mb-2">{key.replace('shift_', '')}</span>
-                                <input type="range" min="0" max="20" bind:value={presenceTournai[key]} class="w-full h-2 bg-purple-900 rounded-lg appearance-none cursor-pointer slider-thumb" />
+                                <input 
+                                    type="range" 
+                                    min="0" 
+                                    max="20" 
+                                    bind:value={presenceTournai[key]} 
+                                    class="w-full h-2 bg-purple-900 rounded-lg appearance-none cursor-pointer slider-thumb"
+                                />
                                 <span class="text-lg font-bold text-purple-100 mt-2">{presenceTournai[key]}</span>
                             </div>
                         {/each}
@@ -510,26 +514,28 @@
         </div>
     </div>
 
-    <div class="bg-slate-900/90 backdrop-blur-xl border-2 border-blue-500/30 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-        <div class="p-5 border-b-2 border-blue-500/30 flex justify-between items-center bg-slate-950/80">
-            <h3 class="font-black text-lg flex items-center gap-3 text-blue-300">Interventions MATIN <span class="bg-blue-600 text-white text-sm px-3 py-1 rounded-full">{interventions.length}</span></h3>
-            <button onclick={addRow} class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2"><Plus class="w-4 h-4" /> Ajouter</button>
+    <div class="glass-panel border-theme-primary rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div class="p-5 border-b-2 border-theme-primary flex justify-between items-center bg-slate-950/80">
+            <h3 class="font-black text-lg flex items-center gap-3 text-theme-primary">Interventions MATIN <span class="bg-[rgb(var(--color-primary))] text-white text-sm px-3 py-1 rounded-full">{interventions.length}</span></h3>
+            <button onclick={addRow} class="btn-primary-sm"><Plus class="w-4 h-4" /> Ajouter</button>
         </div>
         <div class="overflow-x-auto p-4">
             <table class="w-full text-sm text-left border-collapse">
-                <thead class="text-blue-300 uppercase text-xs font-black bg-slate-950 border-b border-blue-500/30">
+                <thead class="text-theme-primary uppercase text-xs font-black bg-slate-950 border-b border-theme-primary">
                     <tr><th class="px-4 py-3">Zone</th><th class="px-4 py-3">Gare</th><th class="px-4 py-3 w-96">PMR / Mission</th><th class="px-4 py-3 w-48">Prise en charge</th><th class="px-2 py-3"></th></tr>
                 </thead>
-                <tbody class="divide-y divide-blue-500/10">
+                <tbody class="divide-y divide-white/10">
                     {#each interventions as row, i}
-                        <tr class="hover:bg-blue-500/5">
-                            <td class="p-2"><input bind:value={row.zone} class="w-16 bg-slate-950/50 text-center font-mono border border-blue-500/20 rounded-lg py-1 text-blue-200 outline-none" placeholder="-" /></td>
-                            <td class="p-2"><input list="stations" value={row.station} oninput={(e) => handleStationChange(i, e.target.value)} class="w-full bg-slate-950/50 border border-blue-500/20 rounded-lg px-2 py-1 font-bold uppercase text-white outline-none" placeholder="GARE" /></td>
-                            <td class="p-2"><input bind:value={row.pmr_details} class="w-full bg-slate-950/50 border border-blue-500/20 rounded-lg px-2 py-1 text-slate-200 outline-none" placeholder="Détails..." /></td>
+                        <tr class="hover:bg-white/5">
+                            <td class="p-2"><input bind:value={row.zone} class="w-16 glass-panel text-center font-mono border border-theme-primary rounded-lg py-1 outline-none" placeholder="-" /></td>
+                            <td class="p-2"><input list="stations" value={row.station} oninput={(e) => handleStationChange(i, e.target.value)} class="w-full glass-panel border border-theme-primary rounded-lg px-2 py-1 font-bold uppercase outline-none" placeholder="GARE" /></td>
+                            <td class="p-2"><input bind:value={row.pmr_details} class="w-full glass-panel border border-theme-primary rounded-lg px-2 py-1 outline-none" placeholder="Détails..." /></td>
                             <td class="p-2">
-                                <select bind:value={row.assigned_to} class="w-full bg-slate-950/50 border-2 border-blue-500/30 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-blue-500 hover:border-blue-400 transition-colors font-medium">
+                                <select bind:value={row.assigned_to} class="w-full glass-panel border-2 border-theme-primary rounded-lg px-3 py-2 outline-none focus:border-[rgb(var(--color-primary))] hover:border-[rgba(var(--color-primary),0.7)] transition-colors font-medium">
                                     <option value="">-- Sélectionner --</option>
-                                    {#each ASSIGNEES as p}<option value={p} class="bg-slate-800 text-white py-2">{p}</option>{/each}
+                                    {#each ASSIGNEES as p}
+                                        <option value={p} class="bg-slate-800 text-white py-2">{p}</option>
+                                    {/each}
                                 </select>
                             </td>
                             <td class="p-2 text-center"><button onclick={() => removeRow(i)} class="text-slate-500 hover:text-red-400 transition-colors"><Trash2 class="w-4 h-4" /></button></td>
@@ -541,30 +547,42 @@
     </div>
 
     <div class="relative group">
-        <div class="relative bg-slate-900/90 backdrop-blur-md border border-[#ADBC16]/50 rounded-2xl p-8 shadow-2xl">
-            <h2 class="text-3xl font-black mb-8 flex items-center gap-3 pb-5 border-b-2" style="border-image: linear-gradient(to right, #ADBC16, #8a9612) 1;">
+        <div class="relative glass-panel border border-[#ADBC16]/50 rounded-2xl p-8 shadow-2xl">
+            <h2 class="text-3xl font-black mb-8 flex items-center gap-3 pb-5 border-b-2" style="border-color: #ADBC16;">
                 <span class="text-[#ADBC16]">Prestation après-midi</span>
             </h2>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                 <div class="bg-slate-950/80 border-2 border-blue-500/30 rounded-2xl p-6">
-                    <h3 class="font-black text-slate-100 mb-5 flex items-center gap-2"><MapPin class="w-5 h-5 text-blue-400" /> Quinyx gare de Mons</h3>
+                 <div class="glass-panel border-theme-primary rounded-2xl p-6">
+                    <h3 class="font-black text-slate-100 mb-5 flex items-center gap-2"><MapPin class="w-5 h-5 text-theme-primary" /> Quinyx gare de Mons</h3>
                     <div class="grid grid-cols-5 gap-3">
                         {#each Object.keys(presenceMonsAM) as key}
-                            <div class="bg-slate-900 rounded-xl p-3 border border-blue-500/20 flex flex-col items-center">
-                                <span class="text-[10px] uppercase text-blue-300 font-bold mb-2">{key.replace('shift_', '')}</span>
-                                <input type="range" min="0" max="20" bind:value={presenceMonsAM[key]} class="w-full h-2 bg-blue-900 rounded-lg appearance-none cursor-pointer slider-thumb" />
-                                <span class="text-lg font-bold text-blue-100 mt-2">{presenceMonsAM[key]}</span>
+                            <div class="bg-slate-900 rounded-xl p-3 border border-theme-primary flex flex-col items-center">
+                                <span class="text-[10px] uppercase text-theme-primary font-bold mb-2">{key.replace('shift_', '')}</span>
+                                <input 
+                                    type="range" 
+                                    min="0" 
+                                    max="20" 
+                                    bind:value={presenceMonsAM[key]} 
+                                    class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer slider-thumb"
+                                />
+                                <span class="text-lg font-bold text-slate-100 mt-2">{presenceMonsAM[key]}</span>
                             </div>
                         {/each}
                     </div>
                 </div>
-                <div class="bg-slate-950/80 border-2 border-purple-500/30 rounded-2xl p-6">
+                <div class="glass-panel border-purple-500/30 rounded-2xl p-6">
                     <h3 class="font-black text-slate-100 mb-5 flex items-center gap-2"><MapPin class="w-5 h-5 text-purple-400" /> Quinyx gare de Tournai</h3>
                     <div class="grid grid-cols-5 gap-3">
                         {#each Object.keys(presenceTournaiAM) as key}
                             <div class="bg-slate-900 rounded-xl p-3 border border-purple-500/20 flex flex-col items-center">
                                 <span class="text-[10px] uppercase text-purple-300 font-bold mb-2">{key.replace('shift_', '')}</span>
-                                <input type="range" min="0" max="20" bind:value={presenceTournaiAM[key]} class="w-full h-2 bg-purple-900 rounded-lg appearance-none cursor-pointer slider-thumb" />
+                                <input 
+                                    type="range" 
+                                    min="0" 
+                                    max="20" 
+                                    bind:value={presenceTournaiAM[key]} 
+                                    class="w-full h-2 bg-purple-900 rounded-lg appearance-none cursor-pointer slider-thumb"
+                                />
                                 <span class="text-lg font-bold text-purple-100 mt-2">{presenceTournaiAM[key]}</span>
                             </div>
                         {/each}
@@ -574,10 +592,10 @@
         </div>
     </div>
 
-    <div class="bg-slate-900/90 backdrop-blur-xl border-2 border-[#ADBC16]/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+    <div class="glass-panel border-2 border-[#ADBC16]/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
         <div class="p-5 border-b-2 border-[#ADBC16]/50 flex justify-between items-center bg-slate-950/80">
             <h3 class="font-black text-lg flex items-center gap-3 text-[#ADBC16]">Interventions APRÈS-MIDI <span class="bg-[#ADBC16] text-white text-sm px-3 py-1 rounded-full">{interventionsAM.length}</span></h3>
-            <button onclick={addRowAM} class="bg-[#ADBC16] hover:bg-[#8a9612] text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2"><Plus class="w-4 h-4" /> Ajouter</button>
+            <button onclick={addRowAM} class="bg-[#ADBC16] hover:bg-[#8a9612] text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-all"><Plus class="w-4 h-4" /> Ajouter</button>
         </div>
         <div class="overflow-x-auto p-4">
             <table class="w-full text-sm text-left border-collapse">
@@ -587,13 +605,15 @@
                 <tbody class="divide-y divide-[#ADBC16]/10">
                     {#each interventionsAM as row, i}
                         <tr class="hover:bg-[#ADBC16]/5">
-                            <td class="p-2"><input bind:value={row.zone} class="w-16 bg-slate-950/50 text-center font-mono border border-[#ADBC16]/20 rounded-lg py-1 text-[#ADBC16] outline-none" placeholder="-" /></td>
-                            <td class="p-2"><input list="stations" value={row.station} oninput={(e) => handleStationChangeAM(i, e.target.value)} class="w-full bg-slate-950/50 border border-[#ADBC16]/20 rounded-lg px-2 py-1 font-bold uppercase text-white outline-none" placeholder="GARE" /></td>
-                            <td class="p-2"><input bind:value={row.pmr_details} class="w-full bg-slate-950/50 border border-[#ADBC16]/20 rounded-lg px-2 py-1 text-slate-200 outline-none" placeholder="Détails..." /></td>
+                            <td class="p-2"><input bind:value={row.zone} class="w-16 glass-panel text-center font-mono border border-[#ADBC16]/20 rounded-lg py-1 text-[#ADBC16] outline-none" placeholder="-" /></td>
+                            <td class="p-2"><input list="stations" value={row.station} oninput={(e) => handleStationChangeAM(i, e.target.value)} class="w-full glass-panel border border-[#ADBC16]/20 rounded-lg px-2 py-1 font-bold uppercase outline-none" placeholder="GARE" /></td>
+                            <td class="p-2"><input bind:value={row.pmr_details} class="w-full glass-panel border border-[#ADBC16]/20 rounded-lg px-2 py-1 outline-none" placeholder="Détails..." /></td>
                             <td class="p-2">
-                                <select bind:value={row.assigned_to} class="w-full bg-slate-950/50 border-2 border-[#ADBC16]/30 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-[#ADBC16] hover:border-[#ADBC16]/70 transition-colors font-medium">
+                                <select bind:value={row.assigned_to} class="w-full glass-panel border-2 border-[#ADBC16]/30 rounded-lg px-3 py-2 outline-none focus:border-[#ADBC16] hover:border-[#ADBC16]/70 transition-colors font-medium">
                                     <option value="">-- Sélectionner --</option>
-                                    {#each ASSIGNEES as p}<option value={p} class="bg-slate-800 text-white py-2">{p}</option>{/each}
+                                    {#each ASSIGNEES as p}
+                                        <option value={p} class="bg-slate-800 text-white py-2">{p}</option>
+                                    {/each}
                                 </select>
                             </td>
                             <td class="p-2 text-center"><button onclick={() => removeRowAM(i)} class="text-slate-500 hover:text-red-400 transition-colors"><Trash2 class="w-4 h-4" /></button></td>
@@ -605,7 +625,7 @@
     </div>
 
     <div class="relative group mt-8">
-        <div class="bg-slate-900/90 border-2 border-yellow-500/30 rounded-2xl p-6 shadow-2xl flex items-start gap-4">
+        <div class="glass-panel border-2 border-yellow-500/30 rounded-2xl p-6 shadow-2xl flex items-start gap-4">
             <div class="p-3 bg-yellow-500 rounded-xl shadow-lg"><Briefcase class="w-6 h-6 text-white" /></div>
             <div class="text-sm space-y-2">
                 <p class="text-slate-300">Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.</p>
@@ -622,41 +642,101 @@
     .animate-fade-in { animation: fadeIn 0.6s ease-out; }
     .animate-pulse-soft { animation: pulseSoft 3s ease-in-out infinite; }
     .animate-gradient-shift { background-size: 200% 200%; animation: gradientShift 15s ease infinite; }
+    
     @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes pulseSoft { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.85; transform: scale(1.03); } }
     @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
     
-    /* DatePicker Visibility Fix */
+    /* FIXED: DatePicker icon visibility - force white/bright icon */
     .datepicker-input {
         color-scheme: dark;
     }
     
-    /* Force l'icône calendrier à être blanche et visible */
     .datepicker-input::-webkit-calendar-picker-indicator {
-        filter: invert(1);
+        filter: brightness(0) invert(1); /* Force white icon */
         cursor: pointer;
         opacity: 1;
-        width: 24px;
-        height: 24px;
-        background-color: transparent;
     }
     
+    .datepicker-input::-webkit-calendar-picker-indicator:hover {
+        opacity: 0.8;
+        transform: scale(1.1);
+    }
+    
+    /* FIXED: Button styles using design system colors */
+    .btn-primary {
+        @apply flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:scale-105 disabled:opacity-50;
+        background-color: rgb(var(--color-primary));
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background-color: rgba(var(--color-primary), 0.8);
+    }
+    
+    .btn-primary-sm {
+        @apply px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-all;
+        background-color: rgb(var(--color-primary));
+        color: white;
+    }
+    
+    .btn-primary-sm:hover {
+        background-color: rgba(var(--color-primary), 0.8);
+    }
+    
+    .btn-success {
+        @apply flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:scale-105;
+        background: linear-gradient(to right, #10b981, #14b8a6);
+        color: white;
+    }
+    
+    .btn-success:hover {
+        background: linear-gradient(to right, #059669, #0d9488);
+    }
+    
+    .btn-danger {
+        @apply flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:scale-105;
+        background: linear-gradient(to right, #dc2626, #f43f5e);
+        color: white;
+    }
+    
+    .btn-danger:hover {
+        background: linear-gradient(to right, #b91c1c, #e11d48);
+    }
+    
+    /* Custom slider styling */
     .slider-thumb::-webkit-slider-thumb {
         appearance: none;
-        width: 16px; height: 16px; border-radius: 50%;
-        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-        cursor: pointer; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.5);
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: rgb(var(--color-primary));
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(var(--color-primary), 0.5);
     }
     
     .slider-thumb::-moz-range-thumb {
-        width: 16px; height: 16px; border-radius: 50%;
-        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-        cursor: pointer; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.5); border: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: rgb(var(--color-primary));
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(var(--color-primary), 0.5);
+        border: none;
     }
     
-    input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type="number"]::-webkit-inner-spin-button, 
+    input[type="number"]::-webkit-outer-spin-button { 
+        -webkit-appearance: none; 
+        margin: 0; 
+    }
     input[type="number"] { -moz-appearance: textfield; }
     
-    select option { padding: 10px; }
-    select:focus { outline: none; }
+    select option {
+        padding: 10px;
+    }
+    
+    select:focus {
+        outline: none;
+    }
 </style>
