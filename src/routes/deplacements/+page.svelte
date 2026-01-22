@@ -34,15 +34,15 @@
         sncbHex: '#0069B4',
         mons: [0, 32, 80],   // #002050
         monsHex: '#002050',
-        tournai: [153, 138, 190], // #998abe
-        tournaiHex: '#998abe', 
+        tournai: [191, 180, 215], // #bfb4d7 - UPDATED
+        tournaiHex: '#bfb4d7', // UPDATED
         zeroRed: '#be4366',
         zeroRedRGB: [190, 67, 102],
         morningBg: '#d1b4d4',
-        afternoonBg: '#ADBC16',  // RGB(173, 188, 22) - UPDATED
-        afternoonBgRGB: [173, 188, 22],  // NEW
-        presenceBadgeBg: '#e5e7eb',  // NEW - neutral background for badges
-        presenceBadgeBgRGB: [229, 231, 235]  // NEW
+        afternoonBg: '#ADBC16',  // RGB(173, 188, 22)
+        afternoonBgRGB: [173, 188, 22],
+        presenceBadgeBg: '#e5e7eb',
+        presenceBadgeBgRGB: [229, 231, 235]
     };
 
     const EMAIL_TO = "cedric.thiels@belgiantrain.be;luc.deconinck@belgiantrain.be;b4u.mons@belgiantrain.be;paco.mons@belgiantrain.be;785um.OUMonsPermanence@belgiantrain.be;gare.mons.quai@belgiantrain.be;785ut.OUTournaiPermanence@belgiantrain.be;gare.tournai.quai@belgiantrain.be;gare.braine.le.comte.quai@belgiantrain.be";
@@ -183,19 +183,24 @@
         const dateSubject = `${day}-${month}-${year}`;
         const formattedDate = d.toLocaleDateString('fr-BE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
+        // UPDATED: formatStatsHtml avec espacement et centrage
         const formatStatsHtml = (data) => {
-            return Object.entries(data).map(([k, v]) => {
+            const badges = Object.entries(data).map(([k, v]) => {
                 const valColor = v === 0 ? COLORS.zeroRed : '#000000';
-                return `<span style="margin: 0 10px; font-weight: bold; padding: 8px 15px; background-color: ${COLORS.presenceBadgeBg}; border-radius: 8px; display: inline-block;">${k.replace('shift_', '').toUpperCase()}: <span style="color: ${valColor};">${v}</span></span>`;
+                const label = k.replace('shift_', '').toUpperCase();
+                return `<span style="margin: 0 12px; font-weight: bold; padding: 10px 18px; background-color: ${COLORS.presenceBadgeBg}; border-radius: 8px; display: inline-block;">${label}: <span style="color: ${valColor};">${v}</span></span>`;
             }).join('');
+            return `<div style="text-align: center; margin: 25px 0;">${badges}</div>`;
         };
 
         const containerStyle = `font-family: 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #000; background-color: #fff; padding: 20px;`;
         const headerStyle = `color: ${COLORS.sncbHex}; font-size: 22pt; font-weight: bold; text-align: center; margin-bottom: 5px;`;
         const dateStyle = `color: #000; font-size: 12pt; font-weight: bold; text-align: center; margin-bottom: 30px; border-bottom: 2px solid ${COLORS.sncbHex}; padding-bottom: 10px;`;
-        const sectionTitleStyle = (color) => `background-color: ${color}; color: ${color === COLORS.afternoonBg ? '#fff' : '#000'}; padding: 12px 15px; font-weight: bold; font-size: 14pt; margin-top: 30px; margin-bottom: 20px; text-transform: uppercase;`;
+        
+        // UPDATED: Titres de section centrés et plus grands
+        const sectionTitleStyle = (color) => `background-color: ${color}; color: ${color === COLORS.afternoonBg ? '#fff' : '#000'}; padding: 20px 15px; font-weight: bold; font-size: 20pt; margin-top: 30px; margin-bottom: 20px; text-transform: uppercase; text-align: center;`;
+        
         const subTitleStyle = (color) => `color: ${color}; font-weight: bold; font-size: 12pt; margin-top: 20px; margin-bottom: 10px; padding-left: 10px; border-left: 4px solid ${color};`;
-        const statStyle = `font-size: 14pt; text-align: center; margin: 20px 0; padding: 15px;`;
         const tableStyle = `width: 100%; border-collapse: collapse; font-size: 10pt; margin-top: 15px; margin-bottom: 25px;`;
         const thStyle = (color) => `background-color: ${color}; color: #fff; font-weight: bold; padding: 12px; text-align: left; border: 1px solid ${color};`;
         const tdStyle = `padding: 12px; border: 1px solid #ccc; vertical-align: top;`;
@@ -210,7 +215,7 @@
                 <div style="${sectionTitleStyle(COLORS.morningBg)}">☀️ PRESTATION MATIN</div>
                 
                 <div style="${subTitleStyle(COLORS.monsHex)}">📍 Prévu dans Quinyx gare de Mons</div>
-                <div style="${statStyle}">${formatStatsHtml(presenceMons)}</div>
+                ${formatStatsHtml(presenceMons)}
                 <table style="${tableStyle}">
                     <thead><tr><th style="${thStyle(COLORS.monsHex)} width: 120px;">GARE</th><th style="${thStyle(COLORS.monsHex)}">INTERVENTIONS (FMS)</th></tr></thead>
                     <tbody>${(() => {
@@ -221,7 +226,7 @@
                 </table>
 
                 <div style="${subTitleStyle(COLORS.tournaiHex)}">📍 Prévu dans Quinyx gare de Tournai</div>
-                <div style="${statStyle}">${formatStatsHtml(presenceTournai)}</div>
+                ${formatStatsHtml(presenceTournai)}
                 <table style="${tableStyle}">
                     <thead><tr><th style="${thStyle(COLORS.tournaiHex)} width: 120px;">GARE</th><th style="${thStyle(COLORS.tournaiHex)}">INTERVENTIONS (FTY)</th></tr></thead>
                     <tbody>${(() => {
@@ -234,7 +239,7 @@
                 <div style="${sectionTitleStyle(COLORS.afternoonBg)}">🌙 PRESTATION APRÈS-MIDI</div>
 
                 <div style="${subTitleStyle(COLORS.monsHex)}">📍 Prévu dans Quinyx gare de Mons</div>
-                <div style="${statStyle}">${formatStatsHtml(presenceMonsAM)}</div>
+                ${formatStatsHtml(presenceMonsAM)}
                 <table style="${tableStyle}">
                     <thead><tr><th style="${thStyle(COLORS.monsHex)} width: 120px;">GARE</th><th style="${thStyle(COLORS.monsHex)}">INTERVENTIONS (FMS)</th></tr></thead>
                     <tbody>${(() => {
@@ -245,7 +250,7 @@
                 </table>
 
                 <div style="${subTitleStyle(COLORS.tournaiHex)}">📍 Prévu dans Quinyx gare de Tournai</div>
-                <div style="${statStyle}">${formatStatsHtml(presenceTournaiAM)}</div>
+                ${formatStatsHtml(presenceTournaiAM)}
                 <table style="${tableStyle}">
                     <thead><tr><th style="${thStyle(COLORS.tournaiHex)} width: 120px;">GARE</th><th style="${thStyle(COLORS.tournaiHex)}">INTERVENTIONS (FTY)</th></tr></thead>
                     <tbody>${(() => {
@@ -264,16 +269,19 @@
         `;
 
         try {
+            // Copie automatique dans le presse-papier
             const blobHtml = new Blob([html], { type: 'text/html' });
-            const blobText = new Blob(['Rapport Déplacement PMR - ' + formattedDate], { type: 'text/plain' });
-            await navigator.clipboard.write([new ClipboardItem({ 'text/html': blobHtml, 'text/plain': blobText })]);
-            toast.success("Copié ! FAITES CTRL+V DANS OUTLOOK.");
+            await navigator.clipboard.write([new ClipboardItem({ 'text/html': blobHtml })]);
             
-            // Open Outlook with pre-filled email
+            toast.success("Email copié ! Collez-le dans Outlook avec CTRL+V");
+            
+            // UPDATED: Ouverture Outlook sans texte de courtoisie
             const subject = encodeURIComponent(`Déplacement PMR - ${dateSubject}`);
-            const body = encodeURIComponent('Bonjour,\n\nVeuillez trouver ci-dessous le rapport des déplacements PMR.\n\nCordialement');
-            window.location.href = `mailto:${EMAIL_TO}?cc=${EMAIL_CC}&subject=${subject}&body=${body}`;
-        } catch (err) { toast.error("Erreur : " + err.message); }
+            // Corps vide - le contenu sera collé automatiquement
+            window.location.href = `mailto:${EMAIL_TO}?cc=${EMAIL_CC}&subject=${subject}`;
+        } catch (err) { 
+            toast.error("Erreur : " + err.message); 
+        }
     }
 
     // --- PDF ---
@@ -310,7 +318,7 @@
             doc.setFillColor(...rgb); doc.rect(10, currentY, 190, 12, 'F');
             doc.setTextColor(color === COLORS.afternoonBg ? 255 : 0, color === COLORS.afternoonBg ? 255 : 0, color === COLORS.afternoonBg ? 255 : 0); 
             doc.setFontSize(14); doc.setFont("helvetica", "bold");
-            doc.text(title, 15, currentY + 8); 
+            doc.text(title, 105, currentY + 8, { align: 'center' }); // Centré
             currentY += 22;
         };
 
@@ -346,7 +354,6 @@
 
         const drawTable = (stations, zone, period, colorHead) => {
             if (stations.length === 0) {
-                // Display "Aucune intervention" message
                 doc.setFontSize(11);
                 doc.setTextColor(150, 150, 150);
                 doc.setFont("helvetica", "italic");
@@ -368,7 +375,7 @@
         };
 
         if (currentY > 250) { doc.addPage(); currentY = 20; }
-        drawSection("PRESTATION MATIN", COLORS.morningBg);
+        drawSection("☀️ PRESTATION MATIN", COLORS.morningBg);
 
         drawSub("• Prévu dans Quinyx gare de Mons", COLORS.mons);
         drawStats(presenceMons);
@@ -382,7 +389,7 @@
         drawTable(stFTY, 'FTY', 'morning', COLORS.tournai);
 
         doc.addPage(); currentY = 20;
-        drawSection("PRESTATION APRÈS-MIDI", COLORS.afternoonBg);
+        drawSection("🌙 PRESTATION APRÈS-MIDI", COLORS.afternoonBg);
 
         drawSub("• Prévu dans Quinyx gare de Mons", COLORS.mons);
         drawStats(presenceMonsAM);
@@ -444,10 +451,18 @@
         </div>
     </header>
 
+    <!-- UPDATED: Date picker avec meilleure gestion -->
     <div class="relative group">
         <div class="relative bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-2xl p-6 shadow-2xl">
-            <label class="text-xs uppercase font-bold text-transparent bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text mb-3 flex items-center gap-2 tracking-widest"><Calendar class="w-5 h-5 text-blue-400 animate-pulse-soft" /> Date du rapport</label>
-            <input type="date" bind:value={date} onchange={loadDailyReport} class="w-full max-w-md bg-slate-950 border-2 border-slate-800 text-white rounded-xl px-5 py-3.5 text-lg font-semibold focus:ring-2 focus:ring-blue-500 outline-none transition-all cursor-pointer hover:border-blue-600" />
+            <label class="text-xs uppercase font-bold text-transparent bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text mb-3 flex items-center gap-2 tracking-widest">
+                <Calendar class="w-5 h-5 text-blue-400 animate-pulse-soft" /> Date du rapport
+            </label>
+            <input 
+                type="date" 
+                bind:value={date} 
+                on:change={loadDailyReport}
+                class="w-full max-w-md bg-slate-950 border-2 border-slate-800 text-white rounded-xl px-5 py-3.5 text-lg font-semibold focus:ring-2 focus:ring-blue-500 outline-none transition-all cursor-pointer hover:border-blue-600" 
+            />
         </div>
     </div>
 
