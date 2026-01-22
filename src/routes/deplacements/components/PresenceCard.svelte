@@ -26,8 +26,8 @@
     const colors = colorClasses[themeColor] || colorClasses.blue;
 </script>
 
-<div class="glass-panel rounded-lg border {colors.border} p-5 shadow-sm">
-    <h3 class="text-sm font-semibold {colors.text} mb-4 flex items-center gap-2">
+<div class="bg-white/15 backdrop-blur-md rounded-lg border border-white/30 p-5 shadow-xl">
+    <h3 class="text-sm font-semibold text-white mb-4 flex items-center gap-2">
         {#if IconComponent}
             <IconComponent class="w-4 h-4 {colors.icon}" />
         {:else}
@@ -38,8 +38,8 @@
 
     <div class="grid grid-cols-5 gap-3">
         {#each Object.keys(presence) as key}
-            <div class="bg-white/5 rounded-lg p-3 flex flex-col items-center border border-white/10">
-                <span class="text-xs uppercase font-semibold mb-2 text-gray-300">
+            <div class="bg-white/10 rounded-lg p-3 flex flex-col items-center border border-white/20 hover:bg-white/15 transition-colors">
+                <span class="text-xs uppercase font-semibold mb-2 text-gray-200">
                     {key.replace('shift_', '')}
                 </span>
                 <input
@@ -47,9 +47,9 @@
                     min="0"
                     max="20"
                     bind:value={presence[key]}
-                    class="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer {colors.slider}"
+                    class="w-full h-2 bg-white/30 rounded-lg appearance-none cursor-pointer {colors.slider}"
                 />
-                <span class="text-lg font-bold mt-2 text-white">
+                <span class="text-2xl font-bold mt-2 text-white">
                     {presence[key]}
                 </span>
             </div>
