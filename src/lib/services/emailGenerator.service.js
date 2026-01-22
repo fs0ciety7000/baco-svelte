@@ -133,7 +133,7 @@ export function generateEmailHtml({
     <title>Déplacements PMR - ${formattedDate.subject}</title>
 </head>
 <body style="${containerStyle}">
-    <div style="max-width: 550px; margin: 0 auto; background: white;">
+    <div style="max-width: 480px; margin: 0 auto; background: white;">
 
         <!-- Header avec dégradé SNCB -->
         <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, ${COLORS.sncbHex} 0%, #004a8f 100%); padding: 30px 20px;">
