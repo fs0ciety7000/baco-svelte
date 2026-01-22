@@ -32,9 +32,9 @@
     const colors = periodColors[period] || periodColors.morning;
 </script>
 
-<div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+<div class="glass-panel rounded-lg border border-white/20 shadow-xl overflow-hidden">
     <!-- Header -->
-    <div class="{colors.bg} px-6 py-4 border-b {colors.border} flex justify-between items-center">
+    <div class="{colors.bg} px-6 py-4 border-b border-white/20 flex justify-between items-center">
         <h3 class="text-lg font-bold {colors.text} flex items-center gap-3">
             {title}
             <span class="{colors.badge} text-white text-xs px-2.5 py-1 rounded-full font-semibold">
@@ -52,22 +52,22 @@
     <!-- Table -->
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
-            <thead class="bg-gray-50 border-b border-gray-200">
+            <thead class="bg-white/5 border-b border-white/10">
                 <tr class="text-left">
-                    <th class="px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wide">Zone</th>
-                    <th class="px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wide">Gare</th>
-                    <th class="px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wide">PMR / Mission</th>
-                    <th class="px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wide">Prise en charge</th>
+                    <th class="px-4 py-3 text-xs font-semibold text-gray-300 uppercase tracking-wide">Zone</th>
+                    <th class="px-4 py-3 text-xs font-semibold text-gray-300 uppercase tracking-wide">Gare</th>
+                    <th class="px-4 py-3 text-xs font-semibold text-gray-300 uppercase tracking-wide">PMR / Mission</th>
+                    <th class="px-4 py-3 text-xs font-semibold text-gray-300 uppercase tracking-wide">Prise en charge</th>
                     <th class="px-2 py-3"></th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200">
+            <tbody class="divide-y divide-white/10">
                 {#each interventions as row, i}
-                    <tr class="hover:bg-gray-50 transition-colors">
+                    <tr class="hover:bg-white/5 transition-colors">
                         <td class="p-3">
                             <input
                                 bind:value={row.zone}
-                                class="w-20 px-2 py-1.5 text-center font-mono bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                class="w-20 px-2 py-1.5 text-center font-mono bg-white/10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none backdrop-blur-sm"
                                 placeholder="-"
                             />
                         </td>
@@ -76,21 +76,21 @@
                                 list="stations"
                                 value={row.station}
                                 oninput={(e) => onStationChange(i, e.target.value)}
-                                class="w-full px-3 py-1.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-semibold uppercase focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                class="w-full px-3 py-1.5 bg-white/10 border border-white/20 rounded-lg text-white font-semibold uppercase focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none backdrop-blur-sm"
                                 placeholder="GARE"
                             />
                         </td>
                         <td class="p-3">
                             <input
                                 bind:value={row.pmr_details}
-                                class="w-full px-3 py-1.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                class="w-full px-3 py-1.5 bg-white/10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none backdrop-blur-sm"
                                 placeholder="Détails..."
                             />
                         </td>
                         <td class="p-3">
                             <select
                                 bind:value={row.assigned_to}
-                                class="w-full px-3 py-1.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-medium"
+                                class="w-full px-3 py-1.5 bg-white/10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-medium backdrop-blur-sm"
                             >
                                 <option value="">-- Sélectionner --</option>
                                 {#each ASSIGNEES as assignee}
@@ -101,7 +101,7 @@
                         <td class="p-3 text-center">
                             <button
                                 onclick={() => onRemove(i)}
-                                class="text-gray-400 hover:text-red-600 transition-colors p-1"
+                                class="text-gray-400 hover:text-red-400 transition-colors p-1"
                                 title="Supprimer"
                             >
                                 <Trash2 class="w-4 h-4" />

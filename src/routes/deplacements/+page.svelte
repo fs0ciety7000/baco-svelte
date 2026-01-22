@@ -152,7 +152,7 @@
     }
 </script>
 
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-deep-space">
     <!-- Header avec actions -->
     <DeplacementHeader
         bind:loading
