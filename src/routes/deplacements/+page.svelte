@@ -469,7 +469,7 @@
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(24);
         doc.setFont("helvetica", "bold");
-        doc.text("🚂 DÉPLACEMENTS PMR", 105, 18, { align: 'center' });
+        doc.text("DEPLACEMENTS PMR", 105, 18, { align: 'center' });
         doc.setFontSize(11);
         doc.setFont("helvetica", "normal");
         doc.text(formattedDate, 105, 28, { align: 'center' });
@@ -501,7 +501,7 @@
             doc.setTextColor(0, 0, 0);
             doc.setFontSize(10);
             doc.setFont("helvetica", "bold");
-            doc.text("📍 Prévu dans Quinyx gare de Mons", 15, currentY);
+            doc.text("Prevu dans Quinyx gare de Mons", 15, currentY);
             currentY += 2;
 
             autoTable(doc, {
@@ -538,7 +538,7 @@
             doc.setTextColor(0, 0, 0);
             doc.setFontSize(10);
             doc.setFont("helvetica", "bold");
-            doc.text("📍 Prévu dans Quinyx gare de Tournai", 110, presenceStartY);
+            doc.text("Prevu dans Quinyx gare de Tournai", 110, presenceStartY);
 
             autoTable(doc, {
                 startY: presenceStartY + 2,
@@ -675,7 +675,7 @@
 
         // Créer les sections
         createSection(
-            "☀️ PRESTATION MATIN",
+            "PRESTATION MATIN",
             presenceMons,
             presenceTournai,
             'both',
@@ -689,7 +689,7 @@
         currentY = 20;
 
         createSection(
-            "🌙 PRESTATION APRÈS-MIDI",
+            "PRESTATION APRES-MIDI",
             presenceMonsAM,
             presenceTournaiAM,
             'both',
@@ -716,11 +716,11 @@
             doc.setTextColor(120, 53, 15);
             doc.setFontSize(7.5);
             doc.setFont("helvetica", "normal");
-            doc.text("• Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.", 13, 274);
+            doc.text("• Des TAXIS PMR sont prevus sans intervention B-Pt voir Planificateur PMR.", 13, 274);
             doc.text("• Interventions PMR pour B-CS : Voir DICOS.", 13, 279);
             doc.setFont("helvetica", "bold");
             doc.setFontSize(8);
-            doc.text("⚠️ L'App DICOS PMR reste la base à consulter", 13, 286);
+            doc.text("IMPORTANT: L'App DICOS PMR reste la base a consulter", 13, 286);
 
             // Numéro de page
             doc.setFontSize(8);
