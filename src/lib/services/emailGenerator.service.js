@@ -19,16 +19,16 @@ import {
 function formatStatsHtml(presenceData) {
     const entries = Object.entries(presenceData);
     const badgeRows = entries.map(([key, value]) => {
-        const valColor = value === 0 ? COLORS.zeroRed : '#1a1a1a';
+        const valColor = value === 0 ? COLORS.zeroRed : '#000000';
         const label = key.replace('shift_', '').toUpperCase();
 
         return `
-            <td align="center" style="padding: 0 18px;">
-                <table cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 14px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.12);">
+            <td align="center" style="padding: 0 6px;">
+                <table cellpadding="0" cellspacing="0" border="0" style="background: #e9ecef; border-radius: 4px;">
                     <tr>
-                        <td style="padding: 20px 28px; text-align: center;">
-                            <div style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 11px; font-weight: 700; color: #6c757d; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px;">${label}</div>
-                            <div style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 32px; font-weight: 900; color: ${valColor}; line-height: 1;">${value}</div>
+                        <td style="padding: 8px 16px; text-align: center;">
+                            <div style="font-family: Arial, sans-serif; font-size: 10px; font-weight: 600; color: #666; margin-bottom: 4px;">${label}</div>
+                            <div style="font-family: Arial, sans-serif; font-size: 18px; font-weight: 700; color: ${valColor};">${value}</div>
                         </td>
                     </tr>
                 </table>
@@ -37,7 +37,7 @@ function formatStatsHtml(presenceData) {
     }).join('');
 
     return `
-        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 20px 0;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 10px 0;">
             <tr>${badgeRows}</tr>
         </table>
     `;
@@ -55,18 +55,17 @@ function generateInterventionsTable(interventions, zone, period, color) {
     const stations = getStationsWithInterventions(interventions, zone, period);
 
     if (stations.length === 0) {
-        const bgColor = zone === 'FMS' ? '#f7fafc' : '#faf5ff';
         return `
-            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; margin: 35px 0; border-radius: 14px; overflow: hidden; box-shadow: 0 3px 12px rgba(0,0,0,0.08);">
+            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; margin: 15px 0; border: 1px solid #ddd;">
                 <thead>
                     <tr style="background: ${color};">
-                        <th style="padding: 18px; text-align: left; color: white; font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; width: 140px;">Gare</th>
-                        <th style="padding: 18px; text-align: left; color: white; font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;">Interventions (${zone})</th>
+                        <th style="padding: 10px; text-align: left; color: white; font-family: Arial, sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; width: 120px;">Gare</th>
+                        <th style="padding: 10px; text-align: left; color: white; font-family: Arial, sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase;">Interventions (${zone})</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td colspan="2" style="padding: 40px; text-align: center; font-style: italic; color: #a0aec0; font-size: 15px; background: ${bgColor}; font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;">
+                        <td colspan="2" style="padding: 20px; text-align: center; font-style: italic; color: #999; font-size: 13px; background: white; font-family: Arial, sans-serif;">
                             Aucune intervention prévue
                         </td>
                     </tr>
@@ -76,15 +75,15 @@ function generateInterventionsTable(interventions, zone, period, color) {
     }
 
     const rows = stations.map((station, index) => {
-        const bgColor = index % 2 === 0 ? (zone === 'FMS' ? '#f0f9ff' : '#faf5ff') : 'white';
+        const bgColor = index % 2 === 0 ? 'white' : '#f8f8f8';
         const stationText = getStationText(interventions, station, zone, true);
 
         return `
-            <tr style="background-color: ${bgColor}; border-bottom: 1px solid #e2e8f0; transition: background-color 0.2s;">
-                <td style="padding: 20px; font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-weight: 700; color: ${color}; font-size: 16px;">
+            <tr style="background-color: ${bgColor};">
+                <td style="padding: 8px 10px; font-family: Arial, sans-serif; font-weight: 700; color: ${color}; font-size: 13px; border-bottom: 1px solid #ddd;">
                     ${station}
                 </td>
-                <td style="padding: 20px; font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; color: #4a5568; font-size: 14px; line-height: 1.8;">
+                <td style="padding: 8px 10px; font-family: Arial, sans-serif; color: #333; font-size: 12px; border-bottom: 1px solid #ddd;">
                     ${stationText}
                 </td>
             </tr>
@@ -92,11 +91,11 @@ function generateInterventionsTable(interventions, zone, period, color) {
     }).join('');
 
     return `
-        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; margin: 35px 0; border-radius: 14px; overflow: hidden; box-shadow: 0 3px 12px rgba(0,0,0,0.08);">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; margin: 15px 0; border: 1px solid #ddd;">
             <thead>
                 <tr style="background: ${color};">
-                    <th style="padding: 18px; text-align: left; color: white; font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; width: 140px;">Gare</th>
-                    <th style="padding: 18px; text-align: left; color: white; font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;">Interventions (${zone})</th>
+                    <th style="padding: 10px; text-align: left; color: white; font-family: Arial, sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; width: 120px;">Gare</th>
+                    <th style="padding: 10px; text-align: left; color: white; font-family: Arial, sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase;">Interventions (${zone})</th>
                 </tr>
             </thead>
             <tbody>
@@ -136,14 +135,14 @@ export function generateEmailHtml({
     <div style="max-width: 480px; margin: 0 auto; background: white;">
 
         <!-- Header avec dégradé SNCB -->
-        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, ${COLORS.sncbHex} 0%, #004a8f 100%); padding: 30px 20px;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: ${COLORS.sncbHex}; padding: 20px 15px; border-bottom: 3px solid #003d7a;">
             <tr>
                 <td align="center">
-                    <img src="cid:logo" alt="SNCB Logo" style="max-width: 150px; margin-bottom: 15px;" />
-                    <h1 style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 28px; font-weight: 900; color: white; margin: 0; text-transform: uppercase; letter-spacing: 2px;">
+                    <img src="cid:logo" alt="SNCB Logo" style="max-width: 120px; margin-bottom: 10px;" />
+                    <h1 style="font-family: Arial, sans-serif; font-size: 20px; font-weight: 700; color: white; margin: 0; text-transform: uppercase;">
                         DÉPLACEMENTS PMR
                     </h1>
-                    <p style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: rgba(255,255,255,0.95); margin: 10px 0 0 0; font-weight: 500;">
+                    <p style="font-family: Arial, sans-serif; font-size: 13px; color: white; margin: 8px 0 0 0;">
                         ${formattedDate.display}
                     </p>
                 </td>
@@ -153,13 +152,13 @@ export function generateEmailHtml({
         <!-- Container principal avec padding -->
         <table cellpadding="0" cellspacing="0" border="0" width="100%">
             <tr>
-                <td style="padding: 30px 20px;">
+                <td style="padding: 20px 15px;">
 
                     <!-- ========== SECTION MATIN ========== -->
-                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%); border-radius: 12px; padding: 20px; margin-bottom: 30px; box-shadow: 0 3px 10px rgba(0,0,0,0.08);">
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: #c39bd3; border-radius: 4px; padding: 12px 15px; margin-bottom: 15px;">
                         <tr>
                             <td align="center">
-                                <h2 style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 22px; font-weight: 900; color: #6b21a8; margin: 0; text-transform: uppercase; letter-spacing: 1.5px;">
+                                <h2 style="font-family: Arial, sans-serif; font-size: 16px; font-weight: 700; color: #6b21a8; margin: 0; text-transform: uppercase;">
                                     PRESTATION MATIN
                                 </h2>
                             </td>
@@ -167,24 +166,24 @@ export function generateEmailHtml({
                     </table>
 
                     <!-- Mons Matin -->
-                    <h3 style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: 800; color: ${COLORS.monsHex}; margin: 25px 0 15px 0; padding-left: 15px; border-left: 4px solid ${COLORS.monsHex};">
+                    <h3 style="font-family: Arial, sans-serif; font-size: 14px; font-weight: 700; color: #000; margin: 15px 0 8px 0;">
                         Prévu dans Quinyx gare de Mons
                     </h3>
                     ${formatStatsHtml(presenceMons)}
                     ${generateInterventionsTable(interventions, 'FMS', 'morning', COLORS.monsHex)}
 
                     <!-- Tournai Matin -->
-                    <h3 style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: 800; color: ${COLORS.tournaiHex}; margin: 35px 0 15px 0; padding-left: 15px; border-left: 4px solid ${COLORS.tournaiHex};">
+                    <h3 style="font-family: Arial, sans-serif; font-size: 14px; font-weight: 700; color: ${COLORS.tournaiHex}; margin: 20px 0 8px 0;">
                         Prévu dans Quinyx gare de Tournai
                     </h3>
                     ${formatStatsHtml(presenceTournai)}
                     ${generateInterventionsTable(interventions, 'FTY', 'morning', COLORS.tournaiHex)}
 
                     <!-- ========== SECTION APRÈS-MIDI ========== -->
-                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; padding: 20px; margin: 40px 0 30px 0; box-shadow: 0 3px 10px rgba(0,0,0,0.08);">
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: #f9e79f; border-radius: 4px; padding: 12px 15px; margin: 25px 0 15px 0;">
                         <tr>
                             <td align="center">
-                                <h2 style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 22px; font-weight: 900; color: #78350f; margin: 0; text-transform: uppercase; letter-spacing: 1.5px;">
+                                <h2 style="font-family: Arial, sans-serif; font-size: 16px; font-weight: 700; color: #78350f; margin: 0; text-transform: uppercase;">
                                     PRESTATION APRÈS-MIDI
                                 </h2>
                             </td>
@@ -192,30 +191,30 @@ export function generateEmailHtml({
                     </table>
 
                     <!-- Mons Après-midi -->
-                    <h3 style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: 800; color: ${COLORS.monsHex}; margin: 25px 0 15px 0; padding-left: 15px; border-left: 4px solid ${COLORS.monsHex};">
+                    <h3 style="font-family: Arial, sans-serif; font-size: 14px; font-weight: 700; color: #000; margin: 15px 0 8px 0;">
                         Prévu dans Quinyx gare de Mons
                     </h3>
                     ${formatStatsHtml(presenceMonsAM)}
                     ${generateInterventionsTable(interventionsAM, 'FMS', 'afternoon', COLORS.monsHex)}
 
                     <!-- Tournai Après-midi -->
-                    <h3 style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: 800; color: ${COLORS.tournaiHex}; margin: 35px 0 15px 0; padding-left: 15px; border-left: 4px solid ${COLORS.tournaiHex};">
+                    <h3 style="font-family: Arial, sans-serif; font-size: 14px; font-weight: 700; color: ${COLORS.tournaiHex}; margin: 20px 0 8px 0;">
                         Prévu dans Quinyx gare de Tournai
                     </h3>
                     ${formatStatsHtml(presenceTournaiAM)}
                     ${generateInterventionsTable(interventionsAM, 'FTY', 'afternoon', COLORS.tournaiHex)}
 
                     <!-- ========== FOOTER NOTES ========== -->
-                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 12px; padding: 20px; margin-top: 40px; border-left: 4px solid ${COLORS.sncbHex}; box-shadow: 0 3px 10px rgba(0,0,0,0.08);">
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: #e3f2fd; border: 1px solid #90caf9; border-radius: 4px; padding: 12px 15px; margin-top: 25px;">
                         <tr>
                             <td>
-                                <p style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #475569; margin: 8px 0; line-height: 1.6;">
+                                <p style="font-family: Arial, sans-serif; font-size: 11px; color: #333; margin: 4px 0; line-height: 1.5;">
                                     • Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.
                                 </p>
-                                <p style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #475569; margin: 8px 0; line-height: 1.6;">
+                                <p style="font-family: Arial, sans-serif; font-size: 11px; color: #333; margin: 4px 0; line-height: 1.5;">
                                     • Interventions PMR pour B-CS : Voir DICOS.
                                 </p>
-                                <p style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 800; color: ${COLORS.sncbHex}; margin: 15px 0 0 0; line-height: 1.5;">
+                                <p style="font-family: Arial, sans-serif; font-size: 12px; font-weight: 700; color: ${COLORS.sncbHex}; margin: 8px 0 0 0;">
                                     IMPORTANT: L'App DICOS PMR reste la base à consulter
                                 </p>
                             </td>
@@ -227,10 +226,10 @@ export function generateEmailHtml({
         </table>
 
         <!-- Footer général -->
-        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 25px 40px;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: #f5f5f5; border-top: 1px solid #ddd; padding: 12px 15px;">
             <tr>
                 <td align="center">
-                    <p style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #94a3b8; margin: 0;">
+                    <p style="font-family: Arial, sans-serif; font-size: 11px; color: #999; margin: 0;">
                         Document généré automatiquement par BACO • SNCB
                     </p>
                 </td>
