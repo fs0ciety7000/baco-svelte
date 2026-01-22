@@ -39,7 +39,10 @@
         zeroRed: '#be4366',
         zeroRedRGB: [190, 67, 102],
         morningBg: '#d1b4d4',
-        afternoonBg: '#93ebf8'
+        afternoonBg: '#ADBC16',  // RGB(173, 188, 22) - UPDATED
+        afternoonBgRGB: [173, 188, 22],  // NEW
+        presenceBadgeBg: '#e5e7eb',  // NEW - neutral background for badges
+        presenceBadgeBgRGB: [229, 231, 235]  // NEW
     };
 
     const EMAIL_TO = "cedric.thiels@belgiantrain.be;luc.deconinck@belgiantrain.be;b4u.mons@belgiantrain.be;paco.mons@belgiantrain.be;785um.OUMonsPermanence@belgiantrain.be;gare.mons.quai@belgiantrain.be;785ut.OUTournaiPermanence@belgiantrain.be;gare.tournai.quai@belgiantrain.be;gare.braine.le.comte.quai@belgiantrain.be";
@@ -183,22 +186,24 @@
         const formatStatsHtml = (data) => {
             return Object.entries(data).map(([k, v]) => {
                 const valColor = v === 0 ? COLORS.zeroRed : '#000000';
-                return `<span style="margin: 0 10px; font-weight: bold;">${k.replace('shift_', '').toUpperCase()}: <span style="color: ${valColor};">${v}</span></span>`;
-            }).join('<span style="color: #ccc;"> | </span>');
+                return `<span style="margin: 0 10px; font-weight: bold; padding: 8px 15px; background-color: ${COLORS.presenceBadgeBg}; border-radius: 8px; display: inline-block;">${k.replace('shift_', '').toUpperCase()}: <span style="color: ${valColor};">${v}</span></span>`;
+            }).join('');
         };
 
         const containerStyle = `font-family: 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #000; background-color: #fff; padding: 20px;`;
         const headerStyle = `color: ${COLORS.sncbHex}; font-size: 22pt; font-weight: bold; text-align: center; margin-bottom: 5px;`;
         const dateStyle = `color: #000; font-size: 12pt; font-weight: bold; text-align: center; margin-bottom: 30px; border-bottom: 2px solid ${COLORS.sncbHex}; padding-bottom: 10px;`;
-        const sectionTitleStyle = (color) => `background-color: ${color}; color: #000; padding: 8px 15px; font-weight: bold; font-size: 14pt; margin-top: 30px; margin-bottom: 20px; text-transform: uppercase;`;
+        const sectionTitleStyle = (color) => `background-color: ${color}; color: ${color === COLORS.afternoonBg ? '#fff' : '#000'}; padding: 12px 15px; font-weight: bold; font-size: 14pt; margin-top: 30px; margin-bottom: 20px; text-transform: uppercase;`;
         const subTitleStyle = (color) => `color: ${color}; font-weight: bold; font-size: 12pt; margin-top: 20px; margin-bottom: 10px; padding-left: 10px; border-left: 4px solid ${color};`;
-        const statStyle = `font-size: 14pt; text-align: center; margin: 15px 0; padding: 10px;`;
-        const tableStyle = `width: 100%; border-collapse: collapse; font-size: 10pt; margin-top: 10px; margin-bottom: 20px;`;
-        const thStyle = (color) => `background-color: ${color}; color: #fff; font-weight: bold; padding: 8px; text-align: left; border: 1px solid ${color};`;
-        const tdStyle = `padding: 8px; border: 1px solid #ccc; vertical-align: top;`;
+        const statStyle = `font-size: 14pt; text-align: center; margin: 20px 0; padding: 15px;`;
+        const tableStyle = `width: 100%; border-collapse: collapse; font-size: 10pt; margin-top: 15px; margin-bottom: 25px;`;
+        const thStyle = (color) => `background-color: ${color}; color: #fff; font-weight: bold; padding: 12px; text-align: left; border: 1px solid ${color};`;
+        const tdStyle = `padding: 12px; border: 1px solid #ccc; vertical-align: top;`;
+        const noInterventionStyle = `text-align: center; font-style: italic; color: #999; padding: 15px;`;
 
         const html = `
             <div style="${containerStyle}">
+                <img src="cid:logo" alt="SNCB Logo" style="max-width: 200px; margin-bottom: 20px; display: block; margin-left: auto; margin-right: auto;" />
                 <div style="${headerStyle}">DEPLACEMENTS PMR</div>
                 <div style="${dateStyle}">${formattedDate}</div>
 
@@ -210,7 +215,7 @@
                     <thead><tr><th style="${thStyle(COLORS.monsHex)} width: 120px;">GARE</th><th style="${thStyle(COLORS.monsHex)}">INTERVENTIONS (FMS)</th></tr></thead>
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FMS', 'morning');
-                        if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} text-align:center; font-style:italic;">Aucune intervention</td></tr>`;
+                        if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
                         return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#f0f9ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.monsHex}">${st}</td><td style="${tdStyle}">${getStationText(st, 'FMS', 'morning', true)}</td></tr>`).join('');
                     })()}</tbody>
                 </table>
@@ -221,7 +226,7 @@
                     <thead><tr><th style="${thStyle(COLORS.tournaiHex)} width: 120px;">GARE</th><th style="${thStyle(COLORS.tournaiHex)}">INTERVENTIONS (FTY)</th></tr></thead>
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FTY', 'morning');
-                        if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} text-align:center; font-style:italic;">Aucune intervention</td></tr>`;
+                        if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
                         return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#faf5ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.tournaiHex}">${st}</td><td style="${tdStyle}">${getStationText(st, 'FTY', 'morning', true)}</td></tr>`).join('');
                     })()}</tbody>
                 </table>
@@ -234,7 +239,7 @@
                     <thead><tr><th style="${thStyle(COLORS.monsHex)} width: 120px;">GARE</th><th style="${thStyle(COLORS.monsHex)}">INTERVENTIONS (FMS)</th></tr></thead>
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FMS', 'afternoon');
-                        if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} text-align:center; font-style:italic;">Aucune intervention</td></tr>`;
+                        if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
                         return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#f0f9ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.monsHex}">${st}</td><td style="${tdStyle}">${getStationText(st, 'FMS', 'afternoon', true)}</td></tr>`).join('');
                     })()}</tbody>
                 </table>
@@ -245,7 +250,7 @@
                     <thead><tr><th style="${thStyle(COLORS.tournaiHex)} width: 120px;">GARE</th><th style="${thStyle(COLORS.tournaiHex)}">INTERVENTIONS (FTY)</th></tr></thead>
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FTY', 'afternoon');
-                        if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} text-align:center; font-style:italic;">Aucune intervention</td></tr>`;
+                        if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
                         return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#faf5ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.tournaiHex}">${st}</td><td style="${tdStyle}">${getStationText(st, 'FTY', 'afternoon', true)}</td></tr>`).join('');
                     })()}</tbody>
                 </table>
@@ -263,7 +268,11 @@
             const blobText = new Blob(['Rapport Déplacement PMR - ' + formattedDate], { type: 'text/plain' });
             await navigator.clipboard.write([new ClipboardItem({ 'text/html': blobHtml, 'text/plain': blobText })]);
             toast.success("Copié ! FAITES CTRL+V DANS OUTLOOK.");
-            window.location.href = `mailto:${EMAIL_TO}?cc=${EMAIL_CC}&subject=${encodeURIComponent(`Déplacement PMR - ${dateSubject}`)}`;
+            
+            // Open Outlook with pre-filled email
+            const subject = encodeURIComponent(`Déplacement PMR - ${dateSubject}`);
+            const body = encodeURIComponent('Bonjour,\n\nVeuillez trouver ci-dessous le rapport des déplacements PMR.\n\nCordialement');
+            window.location.href = `mailto:${EMAIL_TO}?cc=${EMAIL_CC}&subject=${subject}&body=${body}`;
         } catch (err) { toast.error("Erreur : " + err.message); }
     }
 
@@ -283,12 +292,12 @@
         const doc = new jsPDF();
         const formattedDate = new Date(date).toLocaleDateString('fr-BE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         try {
-            const logoUrl = window.location.origin + '/SNCB_logo.png';
+            const logoUrl = window.location.origin + '/Logo_100Y_FR_horiz_blue.png';
             const logoData = await getBase64ImageFromURL(logoUrl);
-            doc.addImage(logoData, 'PNG', 10, 10, 30, 0);
-        } catch (e) { }
+            doc.addImage(logoData, 'PNG', 10, 10, 50, 0);
+        } catch (e) { console.error('Logo loading error:', e); }
 
-        let currentY = 30;
+        let currentY = 35;
         doc.setTextColor(...COLORS.sncb); doc.setFontSize(22); doc.setFont("helvetica", "bold");
         doc.text("DEPLACEMENTS PMR", 105, 20, { align: 'center' });
         doc.setFontSize(14); doc.setTextColor(0, 0, 0);
@@ -297,10 +306,12 @@
         currentY = 50;
 
         const drawSection = (title, color) => {
-            const rgb = color === COLORS.morningBg ? [209, 180, 212] : [147, 235, 248];
+            const rgb = color === COLORS.morningBg ? [209, 180, 212] : COLORS.afternoonBgRGB;
             doc.setFillColor(...rgb); doc.rect(10, currentY, 190, 12, 'F');
-            doc.setTextColor(0, 0, 0); doc.setFontSize(14); doc.setFont("helvetica", "bold");
-            doc.text(title, 15, currentY + 8); currentY += 22;
+            doc.setTextColor(color === COLORS.afternoonBg ? 255 : 0, color === COLORS.afternoonBg ? 255 : 0, color === COLORS.afternoonBg ? 255 : 0); 
+            doc.setFontSize(14); doc.setFont("helvetica", "bold");
+            doc.text(title, 15, currentY + 8); 
+            currentY += 22;
         };
 
         const drawSub = (title, color) => {
@@ -310,20 +321,40 @@
 
         const drawStats = (dataMap) => {
             const keys = Object.keys(dataMap);
-            let x = 30;
+            let x = 20;
             doc.setFontSize(11); doc.setFont("helvetica", "bold");
+            
             keys.forEach((k) => {
                 const val = dataMap[k];
-                doc.setTextColor(0,0,0); doc.text(`${k.replace('shift_', '').toUpperCase()}: `, x, currentY);
-                const w = doc.getTextWidth(`${k.replace('shift_', '').toUpperCase()}: `);
-                if (val === 0) doc.setTextColor(...COLORS.zeroRedRGB); else doc.setTextColor(0,0,0);
-                doc.text(val.toString(), x + w, currentY);
-                x += 35;
+                const label = k.replace('shift_', '').toUpperCase();
+                
+                // Draw badge background
+                doc.setFillColor(...COLORS.presenceBadgeBgRGB);
+                doc.roundedRect(x, currentY - 5, 32, 8, 2, 2, 'F');
+                
+                doc.setTextColor(0,0,0); 
+                doc.text(`${label}: `, x + 2, currentY);
+                const w = doc.getTextWidth(`${label}: `);
+                
+                if (val === 0) doc.setTextColor(...COLORS.zeroRedRGB); 
+                else doc.setTextColor(0,0,0);
+                doc.text(val.toString(), x + w + 2, currentY);
+                x += 37;
             });
-            currentY += 15;
+            currentY += 20;
         };
 
         const drawTable = (stations, zone, period, colorHead) => {
+            if (stations.length === 0) {
+                // Display "Aucune intervention" message
+                doc.setFontSize(11);
+                doc.setTextColor(150, 150, 150);
+                doc.setFont("helvetica", "italic");
+                doc.text("Aucune intervention", 105, currentY, { align: 'center' });
+                currentY += 15;
+                return;
+            }
+            
             const rows = stations.map(st => [st, getStationText(st, zone, period, false)]);
             autoTable(doc, {
                 startY: currentY, head: [['GARE', `INTERVENTIONS (${zone})`]], body: rows,
@@ -333,7 +364,7 @@
                 columnStyles: { 0: { cellWidth: 35, fontStyle: 'bold', textColor: colorHead } },
                 margin: { left: 10, right: 10 }
             });
-            currentY = doc.lastAutoTable.finalY + 20;
+            currentY = doc.lastAutoTable.finalY + 25;
         };
 
         if (currentY > 250) { doc.addPage(); currentY = 20; }
@@ -342,13 +373,13 @@
         drawSub("• Prévu dans Quinyx gare de Mons", COLORS.mons);
         drawStats(presenceMons);
         const stFMS = getStationsWithInterventions('FMS', 'morning');
-        if (stFMS.length > 0) drawTable(stFMS, 'FMS', 'morning', COLORS.mons); else currentY += 10;
+        drawTable(stFMS, 'FMS', 'morning', COLORS.mons);
 
         if (currentY > 240) { doc.addPage(); currentY = 20; }
         drawSub("• Prévu dans Quinyx gare de Tournai", COLORS.tournai);
         drawStats(presenceTournai);
         const stFTY = getStationsWithInterventions('FTY', 'morning');
-        if (stFTY.length > 0) drawTable(stFTY, 'FTY', 'morning', COLORS.tournai); else currentY += 10;
+        drawTable(stFTY, 'FTY', 'morning', COLORS.tournai);
 
         doc.addPage(); currentY = 20;
         drawSection("PRESTATION APRÈS-MIDI", COLORS.afternoonBg);
@@ -356,13 +387,13 @@
         drawSub("• Prévu dans Quinyx gare de Mons", COLORS.mons);
         drawStats(presenceMonsAM);
         const stFMS_AM = getStationsWithInterventions('FMS', 'afternoon');
-        if (stFMS_AM.length > 0) drawTable(stFMS_AM, 'FMS', 'afternoon', COLORS.mons); else currentY += 10;
+        drawTable(stFMS_AM, 'FMS', 'afternoon', COLORS.mons);
 
         if (currentY > 240) { doc.addPage(); currentY = 20; }
         drawSub("• Prévu dans Quinyx gare de Tournai", COLORS.tournai);
         drawStats(presenceTournaiAM);
         const stFTY_AM = getStationsWithInterventions('FTY', 'afternoon');
-        if (stFTY_AM.length > 0) drawTable(stFTY_AM, 'FTY', 'afternoon', COLORS.tournai);
+        drawTable(stFTY_AM, 'FTY', 'afternoon', COLORS.tournai);
 
         const pageCount = doc.internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
@@ -432,7 +463,14 @@
                         {#each Object.keys(presenceMons) as key}
                             <div class="bg-slate-900 rounded-xl p-3 border border-blue-500/20 flex flex-col items-center">
                                 <span class="text-[10px] uppercase text-blue-300 font-bold mb-2">{key.replace('shift_', '')}</span>
-                                <input type="number" min="0" bind:value={presenceMons[key]} class="w-full bg-transparent text-center text-lg font-bold text-blue-100 outline-none" />
+                                <input 
+                                    type="range" 
+                                    min="0" 
+                                    max="20" 
+                                    bind:value={presenceMons[key]} 
+                                    class="w-full h-2 bg-blue-900 rounded-lg appearance-none cursor-pointer slider-thumb"
+                                />
+                                <span class="text-lg font-bold text-blue-100 mt-2">{presenceMons[key]}</span>
                             </div>
                         {/each}
                     </div>
@@ -443,7 +481,14 @@
                         {#each Object.keys(presenceTournai) as key}
                             <div class="bg-slate-900 rounded-xl p-3 border border-purple-500/20 flex flex-col items-center">
                                 <span class="text-[10px] uppercase text-purple-300 font-bold mb-2">{key.replace('shift_', '')}</span>
-                                <input type="number" min="0" bind:value={presenceTournai[key]} class="w-full bg-transparent text-center text-lg font-bold text-purple-100 outline-none" />
+                                <input 
+                                    type="range" 
+                                    min="0" 
+                                    max="20" 
+                                    bind:value={presenceTournai[key]} 
+                                    class="w-full h-2 bg-purple-900 rounded-lg appearance-none cursor-pointer slider-thumb"
+                                />
+                                <span class="text-lg font-bold text-purple-100 mt-2">{presenceTournai[key]}</span>
                             </div>
                         {/each}
                     </div>
@@ -468,8 +513,15 @@
                             <td class="p-2"><input bind:value={row.zone} class="w-16 bg-slate-950/50 text-center font-mono border border-blue-500/20 rounded-lg py-1 text-blue-200 outline-none" placeholder="-" /></td>
                             <td class="p-2"><input list="stations" value={row.station} oninput={(e) => handleStationChange(i, e.target.value)} class="w-full bg-slate-950/50 border border-blue-500/20 rounded-lg px-2 py-1 font-bold uppercase text-white outline-none" placeholder="GARE" /></td>
                             <td class="p-2"><input bind:value={row.pmr_details} class="w-full bg-slate-950/50 border border-blue-500/20 rounded-lg px-2 py-1 text-slate-200 outline-none" placeholder="Détails..." /></td>
-                            <td class="p-2"><select bind:value={row.assigned_to} class="w-full bg-slate-950/50 border border-blue-500/20 rounded-lg px-2 py-1 text-slate-200 outline-none"><option value="">-</option>{#each ASSIGNEES as p}<option value={p}>{p}</option>{/each}</select></td>
-                            <td class="p-2 text-center"><button onclick={() => removeRow(i)} class="text-slate-500 hover:text-red-400"><Trash2 class="w-4 h-4" /></button></td>
+                            <td class="p-2">
+                                <select bind:value={row.assigned_to} class="w-full bg-slate-950/50 border-2 border-blue-500/30 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-blue-500 hover:border-blue-400 transition-colors font-medium">
+                                    <option value="">-- Sélectionner --</option>
+                                    {#each ASSIGNEES as p}
+                                        <option value={p} class="bg-slate-800 text-white py-2">{p}</option>
+                                    {/each}
+                                </select>
+                            </td>
+                            <td class="p-2 text-center"><button onclick={() => removeRow(i)} class="text-slate-500 hover:text-red-400 transition-colors"><Trash2 class="w-4 h-4" /></button></td>
                         </tr>
                     {/each}
                 </tbody>
@@ -478,9 +530,9 @@
     </div>
 
     <div class="relative group">
-        <div class="relative bg-slate-900/90 backdrop-blur-md border border-purple-500/30 rounded-2xl p-8 shadow-2xl">
-            <h2 class="text-3xl font-black mb-8 flex items-center gap-3 pb-5 border-b-2 border-gradient-to-r from-purple-500 to-pink-500">
-                <span class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Prestation après-midi</span>
+        <div class="relative bg-slate-900/90 backdrop-blur-md border border-[#ADBC16]/50 rounded-2xl p-8 shadow-2xl">
+            <h2 class="text-3xl font-black mb-8 flex items-center gap-3 pb-5 border-b-2" style="border-image: linear-gradient(to right, #ADBC16, #8a9612) 1;">
+                <span class="text-[#ADBC16]">Prestation après-midi</span>
             </h2>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                  <div class="bg-slate-950/80 border-2 border-blue-500/30 rounded-2xl p-6">
@@ -489,7 +541,14 @@
                         {#each Object.keys(presenceMonsAM) as key}
                             <div class="bg-slate-900 rounded-xl p-3 border border-blue-500/20 flex flex-col items-center">
                                 <span class="text-[10px] uppercase text-blue-300 font-bold mb-2">{key.replace('shift_', '')}</span>
-                                <input type="number" min="0" bind:value={presenceMonsAM[key]} class="w-full bg-transparent text-center text-lg font-bold text-blue-100 outline-none" />
+                                <input 
+                                    type="range" 
+                                    min="0" 
+                                    max="20" 
+                                    bind:value={presenceMonsAM[key]} 
+                                    class="w-full h-2 bg-blue-900 rounded-lg appearance-none cursor-pointer slider-thumb"
+                                />
+                                <span class="text-lg font-bold text-blue-100 mt-2">{presenceMonsAM[key]}</span>
                             </div>
                         {/each}
                     </div>
@@ -500,7 +559,14 @@
                         {#each Object.keys(presenceTournaiAM) as key}
                             <div class="bg-slate-900 rounded-xl p-3 border border-purple-500/20 flex flex-col items-center">
                                 <span class="text-[10px] uppercase text-purple-300 font-bold mb-2">{key.replace('shift_', '')}</span>
-                                <input type="number" min="0" bind:value={presenceTournaiAM[key]} class="w-full bg-transparent text-center text-lg font-bold text-purple-100 outline-none" />
+                                <input 
+                                    type="range" 
+                                    min="0" 
+                                    max="20" 
+                                    bind:value={presenceTournaiAM[key]} 
+                                    class="w-full h-2 bg-purple-900 rounded-lg appearance-none cursor-pointer slider-thumb"
+                                />
+                                <span class="text-lg font-bold text-purple-100 mt-2">{presenceTournaiAM[key]}</span>
                             </div>
                         {/each}
                     </div>
@@ -509,24 +575,31 @@
         </div>
     </div>
 
-    <div class="bg-slate-900/90 backdrop-blur-xl border-2 border-purple-500/30 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-        <div class="p-5 border-b-2 border-purple-500/30 flex justify-between items-center bg-slate-950/80">
-            <h3 class="font-black text-lg flex items-center gap-3 text-purple-300">Interventions APRÈS-MIDI <span class="bg-purple-600 text-white text-sm px-3 py-1 rounded-full">{interventionsAM.length}</span></h3>
-            <button onclick={addRowAM} class="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2"><Plus class="w-4 h-4" /> Ajouter</button>
+    <div class="bg-slate-900/90 backdrop-blur-xl border-2 border-[#ADBC16]/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div class="p-5 border-b-2 border-[#ADBC16]/50 flex justify-between items-center bg-slate-950/80">
+            <h3 class="font-black text-lg flex items-center gap-3 text-[#ADBC16]">Interventions APRÈS-MIDI <span class="bg-[#ADBC16] text-white text-sm px-3 py-1 rounded-full">{interventionsAM.length}</span></h3>
+            <button onclick={addRowAM} class="bg-[#ADBC16] hover:bg-[#8a9612] text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2"><Plus class="w-4 h-4" /> Ajouter</button>
         </div>
         <div class="overflow-x-auto p-4">
             <table class="w-full text-sm text-left border-collapse">
-                <thead class="text-purple-300 uppercase text-xs font-black bg-slate-950 border-b border-purple-500/30">
+                <thead class="text-[#ADBC16] uppercase text-xs font-black bg-slate-950 border-b border-[#ADBC16]/50">
                     <tr><th class="px-4 py-3">Zone</th><th class="px-4 py-3">Gare</th><th class="px-4 py-3 w-96">PMR / Mission</th><th class="px-4 py-3 w-48">Prise en charge</th><th class="px-2 py-3"></th></tr>
                 </thead>
-                <tbody class="divide-y divide-purple-500/10">
+                <tbody class="divide-y divide-[#ADBC16]/10">
                     {#each interventionsAM as row, i}
-                        <tr class="hover:bg-purple-500/5">
-                            <td class="p-2"><input bind:value={row.zone} class="w-16 bg-slate-950/50 text-center font-mono border border-purple-500/20 rounded-lg py-1 text-purple-200 outline-none" placeholder="-" /></td>
-                            <td class="p-2"><input list="stations" value={row.station} oninput={(e) => handleStationChangeAM(i, e.target.value)} class="w-full bg-slate-950/50 border border-purple-500/20 rounded-lg px-2 py-1 font-bold uppercase text-white outline-none" placeholder="GARE" /></td>
-                            <td class="p-2"><input bind:value={row.pmr_details} class="w-full bg-slate-950/50 border border-purple-500/20 rounded-lg px-2 py-1 text-slate-200 outline-none" placeholder="Détails..." /></td>
-                            <td class="p-2"><select bind:value={row.assigned_to} class="w-full bg-slate-950/50 border border-purple-500/20 rounded-lg px-2 py-1 text-slate-200 outline-none"><option value="">-</option>{#each ASSIGNEES as p}<option value={p}>{p}</option>{/each}</select></td>
-                            <td class="p-2 text-center"><button onclick={() => removeRowAM(i)} class="text-slate-500 hover:text-red-400"><Trash2 class="w-4 h-4" /></button></td>
+                        <tr class="hover:bg-[#ADBC16]/5">
+                            <td class="p-2"><input bind:value={row.zone} class="w-16 bg-slate-950/50 text-center font-mono border border-[#ADBC16]/20 rounded-lg py-1 text-[#ADBC16] outline-none" placeholder="-" /></td>
+                            <td class="p-2"><input list="stations" value={row.station} oninput={(e) => handleStationChangeAM(i, e.target.value)} class="w-full bg-slate-950/50 border border-[#ADBC16]/20 rounded-lg px-2 py-1 font-bold uppercase text-white outline-none" placeholder="GARE" /></td>
+                            <td class="p-2"><input bind:value={row.pmr_details} class="w-full bg-slate-950/50 border border-[#ADBC16]/20 rounded-lg px-2 py-1 text-slate-200 outline-none" placeholder="Détails..." /></td>
+                            <td class="p-2">
+                                <select bind:value={row.assigned_to} class="w-full bg-slate-950/50 border-2 border-[#ADBC16]/30 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-[#ADBC16] hover:border-[#ADBC16]/70 transition-colors font-medium">
+                                    <option value="">-- Sélectionner --</option>
+                                    {#each ASSIGNEES as p}
+                                        <option value={p} class="bg-slate-800 text-white py-2">{p}</option>
+                                    {/each}
+                                </select>
+                            </td>
+                            <td class="p-2 text-center"><button onclick={() => removeRowAM(i)} class="text-slate-500 hover:text-red-400 transition-colors"><Trash2 class="w-4 h-4" /></button></td>
                         </tr>
                     {/each}
                 </tbody>
@@ -552,9 +625,45 @@
     .animate-fade-in { animation: fadeIn 0.6s ease-out; }
     .animate-pulse-soft { animation: pulseSoft 3s ease-in-out infinite; }
     .animate-gradient-shift { background-size: 200% 200%; animation: gradientShift 15s ease infinite; }
+    
     @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes pulseSoft { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.85; transform: scale(1.03); } }
     @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-    input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    
+    /* Custom slider styling */
+    .slider-thumb::-webkit-slider-thumb {
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.5);
+    }
+    
+    .slider-thumb::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.5);
+        border: none;
+    }
+    
+    input[type="number"]::-webkit-inner-spin-button, 
+    input[type="number"]::-webkit-outer-spin-button { 
+        -webkit-appearance: none; 
+        margin: 0; 
+    }
     input[type="number"] { -moz-appearance: textfield; }
+    
+    /* Enhanced select styling */
+    select option {
+        padding: 10px;
+    }
+    
+    select:focus {
+        outline: none;
+    }
 </style>
