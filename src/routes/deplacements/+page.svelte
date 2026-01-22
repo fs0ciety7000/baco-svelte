@@ -34,22 +34,22 @@
         sncbHex: '#0069B4',
         mons: [0, 32, 80],   // #002050
         monsHex: '#002050',
-        tournai: [168, 111, 168], // #a86fa8 - UPDATED
-        tournaiHex: '#a86fa8', // UPDATED
+        tournai: [168, 111, 168], // #a86fa8
+        tournaiHex: '#a86fa8',
         zeroRed: '#be4366',
         zeroRedRGB: [190, 67, 102],
         morningBg: '#d1b4d4',
         morningBgRGB: [209, 180, 212],
         afternoonBg: '#ADBC16',
         afternoonBgRGB: [173, 188, 22],
-        presenceBadgeBg: '#e5e7eb',
+        presenceBadgeBg: '#e5e7eb', // Gris clair pour fond stats
         presenceBadgeBgRGB: [229, 231, 235]
     };
 
     const EMAIL_TO = "cedric.thiels@belgiantrain.be;luc.deconinck@belgiantrain.be;b4u.mons@belgiantrain.be;paco.mons@belgiantrain.be;785um.OUMonsPermanence@belgiantrain.be;gare.mons.quai@belgiantrain.be;785ut.OUTournaiPermanence@belgiantrain.be;gare.tournai.quai@belgiantrain.be;gare.braine.le.comte.quai@belgiantrain.be";
     const EMAIL_CC = "mathieu.debaisieux@belgiantrain.be";
 
-    // --- ÉTAT (Svelte 5 Runes) ---
+    // --- ÉTAT ---
     let date = $state(new Date().toISOString().split('T')[0]);
     let loading = $state(false);
 
@@ -104,7 +104,6 @@
         return Array.from(stationsWithData).sort();
     }
 
-    // Regex pour mettre en gras les rôles (HTML uniquement)
     function highlightRoles(text) {
         if (!text) return "";
         const roles = ["ACP", "CPI", "OPI", "SPI", "PA", "Team Leader", "MPI", "10-18"];
@@ -184,107 +183,119 @@
         const dateSubject = `${day}-${month}-${year}`;
         const formattedDate = d.toLocaleDateString('fr-BE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-        // FIXED: Espacement correct entre les badges
+        // Helper pour les stats : Look PDF (Fond gris, Label Noir, Valeur Rouge si 0)
         const formatStatsHtml = (data) => {
-            const entries = Object.entries(data);
-            const badges = entries.map(([k, v]) => {
+            const badges = Object.entries(data).map(([k, v]) => {
                 const valColor = v === 0 ? COLORS.zeroRed : '#000000';
                 const label = k.replace('shift_', '').toUpperCase();
-                return `<span style="margin: 0 15px; font-weight: bold; padding: 12px 20px; background-color: ${COLORS.presenceBadgeBg}; border-radius: 10px; display: inline-block; white-space: nowrap;">${label}: <span style="color: ${valColor}; font-size: 13pt;">${v}</span></span>`;
-            }).join(' ');
-            return `<div style="text-align: center; margin: 30px 0; line-height: 2.5;">${badges}</div>`;
+                return `
+                    <span style="display: inline-block; margin: 0 8px; padding: 6px 12px; background-color: ${COLORS.presenceBadgeBg}; border-radius: 6px;">
+                        <span style="color: #000; font-weight: bold;">${label}:</span>
+                        <span style="color: ${valColor}; font-weight: bold; margin-left: 4px;">${v}</span>
+                    </span>
+                `;
+            }).join('');
+            return `<div style="text-align: center; margin: 15px 0 25px 0;">${badges}</div>`;
         };
 
-        const containerStyle = `font-family: 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #000; background-color: #fff; padding: 20px;`;
-        const headerStyle = `color: ${COLORS.sncbHex}; font-size: 22pt; font-weight: bold; text-align: center; margin-bottom: 5px;`;
-        const dateStyle = `color: #000; font-size: 12pt; font-weight: bold; text-align: center; margin-bottom: 30px; border-bottom: 2px solid ${COLORS.sncbHex}; padding-bottom: 10px;`;
+        const containerStyle = `font-family: 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #000; background-color: #fff; padding: 30px;`;
+        const headerStyle = `color: ${COLORS.sncbHex}; font-size: 24pt; font-weight: 900; text-align: center; margin-bottom: 5px;`;
+        const dateStyle = `color: #000; font-size: 13pt; font-weight: bold; text-align: center; margin-bottom: 40px; border-bottom: 3px solid ${COLORS.sncbHex}; padding-bottom: 15px;`;
         
-        // FIXED: Titres de section colorés selon Mons/Tournai avec emojis
-        const sectionTitleMorningStyle = `background: linear-gradient(135deg, ${COLORS.morningBg} 0%, #c09fd4 100%); color: #000; padding: 25px 20px; font-weight: bold; font-size: 22pt; margin-top: 35px; margin-bottom: 25px; text-transform: uppercase; text-align: center; border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);`;
-        
-        const sectionTitleAfternoonStyle = `background: linear-gradient(135deg, ${COLORS.afternoonBg} 0%, #8a9612 100%); color: #fff; padding: 25px 20px; font-weight: bold; font-size: 22pt; margin-top: 35px; margin-bottom: 25px; text-transform: uppercase; text-align: center; border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);`;
-        
-        const subTitleStyle = (color) => `color: ${color}; font-weight: bold; font-size: 13pt; margin-top: 25px; margin-bottom: 15px; padding-left: 12px; border-left: 5px solid ${color};`;
-        const tableStyle = `width: 100%; border-collapse: collapse; font-size: 10pt; margin-top: 15px; margin-bottom: 30px;`;
-        const thStyle = (color) => `background-color: ${color}; color: #fff; font-weight: bold; padding: 14px; text-align: left; border: 1px solid ${color};`;
-        const tdStyle = `padding: 12px; border: 1px solid #ccc; vertical-align: top;`;
-        const noInterventionStyle = `text-align: center; font-style: italic; color: #999; padding: 20px; font-size: 11pt;`;
+        // Styles de section "Solide" comme le PDF
+        const sectionTitleStyle = (bgColor, textColor) => `
+            background-color: ${bgColor}; 
+            color: ${textColor}; 
+            padding: 12px 20px; 
+            font-weight: 900; 
+            font-size: 16pt; 
+            margin-top: 40px; 
+            margin-bottom: 20px; 
+            text-transform: uppercase; 
+            border-radius: 4px;
+        `;
+
+        const subTitleStyle = (color) => `
+            color: ${color}; 
+            font-weight: bold; 
+            font-size: 12pt; 
+            margin-top: 30px; 
+            margin-bottom: 10px; 
+            padding-left: 0;
+        `;
+
+        const tableStyle = `width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 30px;`;
+        const thStyle = (color) => `background-color: ${color}; color: #fff; font-weight: bold; padding: 10px; text-align: left; border: 1px solid ${color};`;
+        const tdStyle = `padding: 10px; border: 1px solid #ccc; vertical-align: top;`;
+        const noInterventionStyle = `text-align: center; font-style: italic; color: #777; background-color: #f9f9f9; padding: 20px;`;
 
         const html = `
             <div style="${containerStyle}">
-                <img src="cid:logo" alt="SNCB Logo" style="max-width: 200px; margin-bottom: 20px; display: block; margin-left: auto; margin-right: auto;" />
                 <div style="${headerStyle}">DEPLACEMENTS PMR</div>
                 <div style="${dateStyle}">${formattedDate}</div>
 
-                <div style="${sectionTitleMorningStyle}">☀️ PRESTATION MATIN</div>
+                <div style="${sectionTitleStyle(COLORS.morningBg, '#000')}">PRESTATION MATIN</div>
                 
-                <div style="${subTitleStyle(COLORS.monsHex)}">📍 Prévu dans Quinyx gare de Mons</div>
+                <div style="${subTitleStyle(COLORS.monsHex)}">• Prévu dans Quinyx gare de Mons</div>
                 ${formatStatsHtml(presenceMons)}
                 <table style="${tableStyle}">
-                    <thead><tr><th style="${thStyle(COLORS.monsHex)} width: 120px;">GARE</th><th style="${thStyle(COLORS.monsHex)}">INTERVENTIONS (FMS)</th></tr></thead>
+                    <thead><tr><th style="${thStyle(COLORS.monsHex)} width: 130px;">GARE</th><th style="${thStyle(COLORS.monsHex)}">INTERVENTIONS (FMS)</th></tr></thead>
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FMS', 'morning');
                         if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
-                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#f0f9ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.monsHex}; font-size:11pt;">${st}</td><td style="${tdStyle}">${getStationText(st, 'FMS', 'morning', true)}</td></tr>`).join('');
+                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#f4f8fb':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.monsHex}">${st}</td><td style="${tdStyle}">${getStationText(st, 'FMS', 'morning', true)}</td></tr>`).join('');
                     })()}</tbody>
                 </table>
 
-                <div style="${subTitleStyle(COLORS.tournaiHex)}">📍 Prévu dans Quinyx gare de Tournai</div>
+                <div style="${subTitleStyle(COLORS.tournaiHex)}">• Prévu dans Quinyx gare de Tournai</div>
                 ${formatStatsHtml(presenceTournai)}
                 <table style="${tableStyle}">
-                    <thead><tr><th style="${thStyle(COLORS.tournaiHex)} width: 120px;">GARE</th><th style="${thStyle(COLORS.tournaiHex)}">INTERVENTIONS (FTY)</th></tr></thead>
+                    <thead><tr><th style="${thStyle(COLORS.tournaiHex)} width: 130px;">GARE</th><th style="${thStyle(COLORS.tournaiHex)}">INTERVENTIONS (FTY)</th></tr></thead>
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FTY', 'morning');
                         if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
-                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#faf5ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.tournaiHex}; font-size:11pt;">${st}</td><td style="${tdStyle}">${getStationText(st, 'FTY', 'morning', true)}</td></tr>`).join('');
+                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#faf5ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.tournaiHex}">${st}</td><td style="${tdStyle}">${getStationText(st, 'FTY', 'morning', true)}</td></tr>`).join('');
                     })()}</tbody>
                 </table>
 
-                <div style="${sectionTitleAfternoonStyle}">🌙 PRESTATION APRÈS-MIDI</div>
+                <div style="${sectionTitleStyle(COLORS.afternoonBg, '#000')}">PRESTATION APRÈS-MIDI</div>
 
-                <div style="${subTitleStyle(COLORS.monsHex)}">📍 Prévu dans Quinyx gare de Mons</div>
+                <div style="${subTitleStyle(COLORS.monsHex)}">• Prévu dans Quinyx gare de Mons</div>
                 ${formatStatsHtml(presenceMonsAM)}
                 <table style="${tableStyle}">
-                    <thead><tr><th style="${thStyle(COLORS.monsHex)} width: 120px;">GARE</th><th style="${thStyle(COLORS.monsHex)}">INTERVENTIONS (FMS)</th></tr></thead>
+                    <thead><tr><th style="${thStyle(COLORS.monsHex)} width: 130px;">GARE</th><th style="${thStyle(COLORS.monsHex)}">INTERVENTIONS (FMS)</th></tr></thead>
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FMS', 'afternoon');
                         if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
-                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#f0f9ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.monsHex}; font-size:11pt;">${st}</td><td style="${tdStyle}">${getStationText(st, 'FMS', 'afternoon', true)}</td></tr>`).join('');
+                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#f4f8fb':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.monsHex}">${st}</td><td style="${tdStyle}">${getStationText(st, 'FMS', 'afternoon', true)}</td></tr>`).join('');
                     })()}</tbody>
                 </table>
 
-                <div style="${subTitleStyle(COLORS.tournaiHex)}">📍 Prévu dans Quinyx gare de Tournai</div>
+                <div style="${subTitleStyle(COLORS.tournaiHex)}">• Prévu dans Quinyx gare de Tournai</div>
                 ${formatStatsHtml(presenceTournaiAM)}
                 <table style="${tableStyle}">
-                    <thead><tr><th style="${thStyle(COLORS.tournaiHex)} width: 120px;">GARE</th><th style="${thStyle(COLORS.tournaiHex)}">INTERVENTIONS (FTY)</th></tr></thead>
+                    <thead><tr><th style="${thStyle(COLORS.tournaiHex)} width: 130px;">GARE</th><th style="${thStyle(COLORS.tournaiHex)}">INTERVENTIONS (FTY)</th></tr></thead>
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FTY', 'afternoon');
                         if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
-                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#faf5ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.tournaiHex}; font-size:11pt;">${st}</td><td style="${tdStyle}">${getStationText(st, 'FTY', 'afternoon', true)}</td></tr>`).join('');
+                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#faf5ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.tournaiHex}">${st}</td><td style="${tdStyle}">${getStationText(st, 'FTY', 'afternoon', true)}</td></tr>`).join('');
                     })()}</tbody>
                 </table>
 
-                <div style="margin-top: 45px; border-top: 2px solid ${COLORS.sncbHex}; padding-top: 20px; font-size: 10pt; color: #333;">
-                    <p style="margin: 8px 0;">• Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.</p>
-                    <p style="margin: 8px 0;">• Interventions PMR pour B-CS : Voir DICOS.</p>
-                    <p style="margin: 20px 0 0 0; font-weight: bold; color: ${COLORS.sncbHex}; font-size: 12pt;">📱 L'App DICOS PMR reste la base à consulter</p>
+                <div style="margin-top: 50px; border-top: 2px solid ${COLORS.sncbHex}; padding-top: 20px; font-size: 10pt; color: #333;">
+                    <p style="margin: 5px 0;">• Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.</p>
+                    <p style="margin: 5px 0;">• Interventions PMR pour B-CS : Voir DICOS.</p>
+                    <p style="margin: 15px 0 0 0; font-weight: bold; color: ${COLORS.sncbHex}; font-size: 11pt;">IMPORTANT: L'App DICOS PMR reste la base à consulter</p>
                 </div>
             </div>
         `;
 
         try {
-            // Copie automatique dans le presse-papier
             const blobHtml = new Blob([html], { type: 'text/html' });
             await navigator.clipboard.write([new ClipboardItem({ 'text/html': blobHtml })]);
-            
-            toast.success("Email copié ! Collez-le dans Outlook avec CTRL+V");
-            
-            // Ouverture Outlook sans texte de courtoisie
-            const subject = encodeURIComponent(`Déplacement PMR - ${dateSubject}`);
-            window.location.href = `mailto:${EMAIL_TO}?cc=${EMAIL_CC}&subject=${subject}`;
-        } catch (err) { 
-            toast.error("Erreur : " + err.message); 
-        }
+            toast.success("Copié ! Collez dans Outlook (CTRL+V)");
+            window.location.href = `mailto:${EMAIL_TO}?cc=${EMAIL_CC}&subject=${encodeURIComponent(`Déplacement PMR - ${dateSubject}`)}`;
+        } catch (err) { toast.error("Erreur : " + err.message); }
     }
 
     // --- PDF ---
@@ -306,7 +317,7 @@
             const logoUrl = window.location.origin + '/Logo_100Y_FR_horiz_blue.png';
             const logoData = await getBase64ImageFromURL(logoUrl);
             doc.addImage(logoData, 'PNG', 10, 10, 50, 0);
-        } catch (e) { console.error('Logo loading error:', e); }
+        } catch (e) { console.error('Logo error', e); }
 
         let currentY = 35;
         doc.setTextColor(...COLORS.sncb); doc.setFontSize(22); doc.setFont("helvetica", "bold");
@@ -316,13 +327,12 @@
         doc.setDrawColor(...COLORS.sncb); doc.setLineWidth(0.5); doc.line(10, 35, 200, 35);
         currentY = 50;
 
-        // FIXED: Remplacement emojis par texte simple
         const drawSection = (title, color) => {
             const rgb = color === COLORS.morningBg ? COLORS.morningBgRGB : COLORS.afternoonBgRGB;
             doc.setFillColor(...rgb); doc.rect(10, currentY, 190, 12, 'F');
-            doc.setTextColor(color === COLORS.afternoonBg ? 255 : 0, color === COLORS.afternoonBg ? 255 : 0, color === COLORS.afternoonBg ? 255 : 0); 
+            doc.setTextColor(0,0,0);
             doc.setFontSize(14); doc.setFont("helvetica", "bold");
-            doc.text(title, 105, currentY + 8, { align: 'center' });
+            doc.text(title, 15, currentY + 8);
             currentY += 22;
         };
 
@@ -357,12 +367,9 @@
 
         const drawTable = (stations, zone, period, colorHead) => {
             if (stations.length === 0) {
-                doc.setFontSize(11);
-                doc.setTextColor(150, 150, 150);
-                doc.setFont("helvetica", "italic");
+                doc.setFontSize(11); doc.setTextColor(150, 150, 150); doc.setFont("helvetica", "italic");
                 doc.text("Aucune intervention", 105, currentY, { align: 'center' });
-                currentY += 15;
-                return;
+                currentY += 15; return;
             }
             
             const rows = stations.map(st => [st, getStationText(st, zone, period, false)]);
@@ -382,36 +389,33 @@
 
         drawSub("• Prévu dans Quinyx gare de Mons", COLORS.mons);
         drawStats(presenceMons);
-        const stFMS = getStationsWithInterventions('FMS', 'morning');
-        drawTable(stFMS, 'FMS', 'morning', COLORS.mons);
+        drawTable(getStationsWithInterventions('FMS', 'morning'), 'FMS', 'morning', COLORS.mons);
 
         if (currentY > 240) { doc.addPage(); currentY = 20; }
         drawSub("• Prévu dans Quinyx gare de Tournai", COLORS.tournai);
         drawStats(presenceTournai);
-        const stFTY = getStationsWithInterventions('FTY', 'morning');
-        drawTable(stFTY, 'FTY', 'morning', COLORS.tournai);
+        drawTable(getStationsWithInterventions('FTY', 'morning'), 'FTY', 'morning', COLORS.tournai);
 
         doc.addPage(); currentY = 20;
         drawSection("PRESTATION APRES-MIDI", COLORS.afternoonBg);
-
+        
         drawSub("• Prévu dans Quinyx gare de Mons", COLORS.mons);
         drawStats(presenceMonsAM);
-        const stFMS_AM = getStationsWithInterventions('FMS', 'afternoon');
-        drawTable(stFMS_AM, 'FMS', 'afternoon', COLORS.mons);
+        drawTable(getStationsWithInterventions('FMS', 'afternoon'), 'FMS', 'afternoon', COLORS.mons);
 
         if (currentY > 240) { doc.addPage(); currentY = 20; }
         drawSub("• Prévu dans Quinyx gare de Tournai", COLORS.tournai);
         drawStats(presenceTournaiAM);
-        const stFTY_AM = getStationsWithInterventions('FTY', 'afternoon');
-        drawTable(stFTY_AM, 'FTY', 'afternoon', COLORS.tournai);
+        drawTable(getStationsWithInterventions('FTY', 'afternoon'), 'FTY', 'afternoon', COLORS.tournai);
 
         const pageCount = doc.internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
-            doc.setPage(i); doc.setFontSize(10); doc.setTextColor(0,0,0); doc.setFont("helvetica", "normal");
+            doc.setPage(i);
+            doc.setFontSize(10); doc.setTextColor(0,0,0); doc.setFont("helvetica", "normal");
             doc.text("• Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.", 15, 272);
             doc.text("• Interventions PMR pour B-CS : Voir DICOS.", 15, 277);
             doc.setFontSize(11); doc.setTextColor(...COLORS.sncb); doc.setFont("helvetica", "bold");
-            doc.text("IMPORTANT: L'App DICOS PMR reste la base a consulter", 15, 285);
+            doc.text("IMPORTANT: L'App DICOS PMR reste la base à consulter", 15, 285);
             doc.setFontSize(9); doc.setTextColor(150); doc.setFont("helvetica", "normal");
             doc.text(`Page ${i} / ${pageCount}`, 195, 288, { align: 'right' });
         }
@@ -454,7 +458,6 @@
         </div>
     </header>
 
-    <!-- FIXED: DatePicker avec meilleure visibilité -->
     <div class="relative group">
         <div class="relative bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-2xl p-6 shadow-2xl">
             <label class="text-xs uppercase font-bold text-transparent bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text mb-3 flex items-center gap-2 tracking-widest">
@@ -481,13 +484,7 @@
                         {#each Object.keys(presenceMons) as key}
                             <div class="bg-slate-900 rounded-xl p-3 border border-blue-500/20 flex flex-col items-center">
                                 <span class="text-[10px] uppercase text-blue-300 font-bold mb-2">{key.replace('shift_', '')}</span>
-                                <input 
-                                    type="range" 
-                                    min="0" 
-                                    max="20" 
-                                    bind:value={presenceMons[key]} 
-                                    class="w-full h-2 bg-blue-900 rounded-lg appearance-none cursor-pointer slider-thumb"
-                                />
+                                <input type="range" min="0" max="20" bind:value={presenceMons[key]} class="w-full h-2 bg-blue-900 rounded-lg appearance-none cursor-pointer slider-thumb" />
                                 <span class="text-lg font-bold text-blue-100 mt-2">{presenceMons[key]}</span>
                             </div>
                         {/each}
@@ -499,13 +496,7 @@
                         {#each Object.keys(presenceTournai) as key}
                             <div class="bg-slate-900 rounded-xl p-3 border border-purple-500/20 flex flex-col items-center">
                                 <span class="text-[10px] uppercase text-purple-300 font-bold mb-2">{key.replace('shift_', '')}</span>
-                                <input 
-                                    type="range" 
-                                    min="0" 
-                                    max="20" 
-                                    bind:value={presenceTournai[key]} 
-                                    class="w-full h-2 bg-purple-900 rounded-lg appearance-none cursor-pointer slider-thumb"
-                                />
+                                <input type="range" min="0" max="20" bind:value={presenceTournai[key]} class="w-full h-2 bg-purple-900 rounded-lg appearance-none cursor-pointer slider-thumb" />
                                 <span class="text-lg font-bold text-purple-100 mt-2">{presenceTournai[key]}</span>
                             </div>
                         {/each}
@@ -534,9 +525,7 @@
                             <td class="p-2">
                                 <select bind:value={row.assigned_to} class="w-full bg-slate-950/50 border-2 border-blue-500/30 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-blue-500 hover:border-blue-400 transition-colors font-medium">
                                     <option value="">-- Sélectionner --</option>
-                                    {#each ASSIGNEES as p}
-                                        <option value={p} class="bg-slate-800 text-white py-2">{p}</option>
-                                    {/each}
+                                    {#each ASSIGNEES as p}<option value={p} class="bg-slate-800 text-white py-2">{p}</option>{/each}
                                 </select>
                             </td>
                             <td class="p-2 text-center"><button onclick={() => removeRow(i)} class="text-slate-500 hover:text-red-400 transition-colors"><Trash2 class="w-4 h-4" /></button></td>
@@ -559,13 +548,7 @@
                         {#each Object.keys(presenceMonsAM) as key}
                             <div class="bg-slate-900 rounded-xl p-3 border border-blue-500/20 flex flex-col items-center">
                                 <span class="text-[10px] uppercase text-blue-300 font-bold mb-2">{key.replace('shift_', '')}</span>
-                                <input 
-                                    type="range" 
-                                    min="0" 
-                                    max="20" 
-                                    bind:value={presenceMonsAM[key]} 
-                                    class="w-full h-2 bg-blue-900 rounded-lg appearance-none cursor-pointer slider-thumb"
-                                />
+                                <input type="range" min="0" max="20" bind:value={presenceMonsAM[key]} class="w-full h-2 bg-blue-900 rounded-lg appearance-none cursor-pointer slider-thumb" />
                                 <span class="text-lg font-bold text-blue-100 mt-2">{presenceMonsAM[key]}</span>
                             </div>
                         {/each}
@@ -577,13 +560,7 @@
                         {#each Object.keys(presenceTournaiAM) as key}
                             <div class="bg-slate-900 rounded-xl p-3 border border-purple-500/20 flex flex-col items-center">
                                 <span class="text-[10px] uppercase text-purple-300 font-bold mb-2">{key.replace('shift_', '')}</span>
-                                <input 
-                                    type="range" 
-                                    min="0" 
-                                    max="20" 
-                                    bind:value={presenceTournaiAM[key]} 
-                                    class="w-full h-2 bg-purple-900 rounded-lg appearance-none cursor-pointer slider-thumb"
-                                />
+                                <input type="range" min="0" max="20" bind:value={presenceTournaiAM[key]} class="w-full h-2 bg-purple-900 rounded-lg appearance-none cursor-pointer slider-thumb" />
                                 <span class="text-lg font-bold text-purple-100 mt-2">{presenceTournaiAM[key]}</span>
                             </div>
                         {/each}
@@ -612,9 +589,7 @@
                             <td class="p-2">
                                 <select bind:value={row.assigned_to} class="w-full bg-slate-950/50 border-2 border-[#ADBC16]/30 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-[#ADBC16] hover:border-[#ADBC16]/70 transition-colors font-medium">
                                     <option value="">-- Sélectionner --</option>
-                                    {#each ASSIGNEES as p}
-                                        <option value={p} class="bg-slate-800 text-white py-2">{p}</option>
-                                    {/each}
+                                    {#each ASSIGNEES as p}<option value={p} class="bg-slate-800 text-white py-2">{p}</option>{/each}
                                 </select>
                             </td>
                             <td class="p-2 text-center"><button onclick={() => removeRowAM(i)} class="text-slate-500 hover:text-red-400 transition-colors"><Trash2 class="w-4 h-4" /></button></td>
@@ -643,12 +618,11 @@
     .animate-fade-in { animation: fadeIn 0.6s ease-out; }
     .animate-pulse-soft { animation: pulseSoft 3s ease-in-out infinite; }
     .animate-gradient-shift { background-size: 200% 200%; animation: gradientShift 15s ease infinite; }
-    
     @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes pulseSoft { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.85; transform: scale(1.03); } }
     @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
     
-    /* FIXED: DatePicker visibility */
+    /* DatePicker Visibility Fix */
     .datepicker-input {
         color-scheme: dark;
     }
@@ -656,47 +630,27 @@
     .datepicker-input::-webkit-calendar-picker-indicator {
         filter: invert(1);
         cursor: pointer;
-        opacity: 0.8;
-    }
-    
-    .datepicker-input::-webkit-calendar-picker-indicator:hover {
         opacity: 1;
+        width: 20px;
+        height: 20px;
     }
     
-    /* Custom slider styling */
     .slider-thumb::-webkit-slider-thumb {
         appearance: none;
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
+        width: 16px; height: 16px; border-radius: 50%;
         background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-        cursor: pointer;
-        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.5);
+        cursor: pointer; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.5);
     }
     
     .slider-thumb::-moz-range-thumb {
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
+        width: 16px; height: 16px; border-radius: 50%;
         background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-        cursor: pointer;
-        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.5);
-        border: none;
+        cursor: pointer; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.5); border: none;
     }
     
-    input[type="number"]::-webkit-inner-spin-button, 
-    input[type="number"]::-webkit-outer-spin-button { 
-        -webkit-appearance: none; 
-        margin: 0; 
-    }
+    input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     input[type="number"] { -moz-appearance: textfield; }
     
-    /* Enhanced select styling */
-    select option {
-        padding: 10px;
-    }
-    
-    select:focus {
-        outline: none;
-    }
+    select option { padding: 10px; }
+    select:focus { outline: none; }
 </style>
