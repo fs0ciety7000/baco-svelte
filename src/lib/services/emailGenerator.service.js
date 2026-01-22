@@ -37,7 +37,7 @@ function formatStatsHtml(presenceData) {
     }).join('');
 
     return `
-        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 35px 0 40px 0;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 20px 0;">
             <tr>${badgeRows}</tr>
         </table>
     `;
@@ -133,17 +133,17 @@ export function generateEmailHtml({
     <title>Déplacements PMR - ${formattedDate.subject}</title>
 </head>
 <body style="${containerStyle}">
-    <div style="max-width: 1000px; margin: 0 auto; background: white;">
+    <div style="max-width: 700px; margin: 0 auto; background: white;">
 
         <!-- Header avec dégradé SNCB -->
-        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, ${COLORS.sncbHex} 0%, #004a8f 100%); padding: 50px 30px;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, ${COLORS.sncbHex} 0%, #004a8f 100%); padding: 30px 20px;">
             <tr>
                 <td align="center">
-                    <img src="cid:logo" alt="SNCB Logo" style="max-width: 200px; margin-bottom: 25px;" />
-                    <h1 style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 42px; font-weight: 900; color: white; margin: 0; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                        Déplacements PMR
+                    <img src="cid:logo" alt="SNCB Logo" style="max-width: 150px; margin-bottom: 15px;" />
+                    <h1 style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 28px; font-weight: 900; color: white; margin: 0; text-transform: uppercase; letter-spacing: 2px;">
+                        DÉPLACEMENTS PMR
                     </h1>
-                    <p style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 18px; color: rgba(255,255,255,0.95); margin: 15px 0 0 0; font-weight: 500;">
+                    <p style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: rgba(255,255,255,0.95); margin: 10px 0 0 0; font-weight: 500;">
                         ${formattedDate.display}
                     </p>
                 </td>
@@ -153,70 +153,70 @@ export function generateEmailHtml({
         <!-- Container principal avec padding -->
         <table cellpadding="0" cellspacing="0" border="0" width="100%">
             <tr>
-                <td style="padding: 50px 40px;">
+                <td style="padding: 30px 20px;">
 
                     <!-- ========== SECTION MATIN ========== -->
-                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%); border-radius: 18px; padding: 35px; margin-bottom: 50px; box-shadow: 0 6px 20px rgba(0,0,0,0.1);">
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%); border-radius: 12px; padding: 20px; margin-bottom: 30px; box-shadow: 0 3px 10px rgba(0,0,0,0.08);">
                         <tr>
                             <td align="center">
-                                <h2 style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 32px; font-weight: 900; color: #6b21a8; margin: 0; text-transform: uppercase; letter-spacing: 2px;">
-                                    ☀️ Prestation Matin
+                                <h2 style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 22px; font-weight: 900; color: #6b21a8; margin: 0; text-transform: uppercase; letter-spacing: 1.5px;">
+                                    PRESTATION MATIN
                                 </h2>
                             </td>
                         </tr>
                     </table>
 
                     <!-- Mons Matin -->
-                    <h3 style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 22px; font-weight: 800; color: ${COLORS.monsHex}; margin: 40px 0 25px 0; padding-left: 20px; border-left: 6px solid ${COLORS.monsHex};">
-                        📍 Prévu dans Quinyx gare de Mons
+                    <h3 style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: 800; color: ${COLORS.monsHex}; margin: 25px 0 15px 0; padding-left: 15px; border-left: 4px solid ${COLORS.monsHex};">
+                        Prévu dans Quinyx gare de Mons
                     </h3>
                     ${formatStatsHtml(presenceMons)}
                     ${generateInterventionsTable(interventions, 'FMS', 'morning', COLORS.monsHex)}
 
                     <!-- Tournai Matin -->
-                    <h3 style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 22px; font-weight: 800; color: ${COLORS.tournaiHex}; margin: 60px 0 25px 0; padding-left: 20px; border-left: 6px solid ${COLORS.tournaiHex};">
-                        📍 Prévu dans Quinyx gare de Tournai
+                    <h3 style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: 800; color: ${COLORS.tournaiHex}; margin: 35px 0 15px 0; padding-left: 15px; border-left: 4px solid ${COLORS.tournaiHex};">
+                        Prévu dans Quinyx gare de Tournai
                     </h3>
                     ${formatStatsHtml(presenceTournai)}
                     ${generateInterventionsTable(interventions, 'FTY', 'morning', COLORS.tournaiHex)}
 
                     <!-- ========== SECTION APRÈS-MIDI ========== -->
-                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 18px; padding: 35px; margin: 70px 0 50px 0; box-shadow: 0 6px 20px rgba(0,0,0,0.1);">
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; padding: 20px; margin: 40px 0 30px 0; box-shadow: 0 3px 10px rgba(0,0,0,0.08);">
                         <tr>
                             <td align="center">
-                                <h2 style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 32px; font-weight: 900; color: #78350f; margin: 0; text-transform: uppercase; letter-spacing: 2px;">
-                                    🌙 Prestation Après-Midi
+                                <h2 style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 22px; font-weight: 900; color: #78350f; margin: 0; text-transform: uppercase; letter-spacing: 1.5px;">
+                                    PRESTATION APRÈS-MIDI
                                 </h2>
                             </td>
                         </tr>
                     </table>
 
                     <!-- Mons Après-midi -->
-                    <h3 style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 22px; font-weight: 800; color: ${COLORS.monsHex}; margin: 40px 0 25px 0; padding-left: 20px; border-left: 6px solid ${COLORS.monsHex};">
-                        📍 Prévu dans Quinyx gare de Mons
+                    <h3 style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: 800; color: ${COLORS.monsHex}; margin: 25px 0 15px 0; padding-left: 15px; border-left: 4px solid ${COLORS.monsHex};">
+                        Prévu dans Quinyx gare de Mons
                     </h3>
                     ${formatStatsHtml(presenceMonsAM)}
                     ${generateInterventionsTable(interventionsAM, 'FMS', 'afternoon', COLORS.monsHex)}
 
                     <!-- Tournai Après-midi -->
-                    <h3 style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 22px; font-weight: 800; color: ${COLORS.tournaiHex}; margin: 60px 0 25px 0; padding-left: 20px; border-left: 6px solid ${COLORS.tournaiHex};">
-                        📍 Prévu dans Quinyx gare de Tournai
+                    <h3 style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: 800; color: ${COLORS.tournaiHex}; margin: 35px 0 15px 0; padding-left: 15px; border-left: 4px solid ${COLORS.tournaiHex};">
+                        Prévu dans Quinyx gare de Tournai
                     </h3>
                     ${formatStatsHtml(presenceTournaiAM)}
                     ${generateInterventionsTable(interventionsAM, 'FTY', 'afternoon', COLORS.tournaiHex)}
 
                     <!-- ========== FOOTER NOTES ========== -->
-                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 14px; padding: 30px; margin-top: 60px; border-left: 6px solid ${COLORS.sncbHex}; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 12px; padding: 20px; margin-top: 40px; border-left: 4px solid ${COLORS.sncbHex}; box-shadow: 0 3px 10px rgba(0,0,0,0.08);">
                         <tr>
                             <td>
-                                <p style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 15px; color: #475569; margin: 10px 0; line-height: 1.8;">
+                                <p style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #475569; margin: 8px 0; line-height: 1.6;">
                                     • Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.
                                 </p>
-                                <p style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 15px; color: #475569; margin: 10px 0; line-height: 1.8;">
+                                <p style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #475569; margin: 8px 0; line-height: 1.6;">
                                     • Interventions PMR pour B-CS : Voir DICOS.
                                 </p>
-                                <p style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 18px; font-weight: 800; color: ${COLORS.sncbHex}; margin: 25px 0 0 0; line-height: 1.5;">
-                                    📱 L'App DICOS PMR reste la base à consulter
+                                <p style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 800; color: ${COLORS.sncbHex}; margin: 15px 0 0 0; line-height: 1.5;">
+                                    IMPORTANT: L'App DICOS PMR reste la base à consulter
                                 </p>
                             </td>
                         </tr>

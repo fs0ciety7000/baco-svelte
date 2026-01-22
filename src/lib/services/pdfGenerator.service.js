@@ -34,26 +34,26 @@ export async function generatePDF({
     try {
         const logoUrl = window.location.origin + '/Logo_100Y_FR_horiz_blue.png';
         const logoData = await getBase64ImageFromURL(logoUrl);
-        doc.addImage(logoData, 'PNG', 10, 10, 50, 0);
+        doc.addImage(logoData, 'PNG', 10, 10, 40, 0);
     } catch (error) {
         console.error('Erreur lors du chargement du logo:', error);
     }
 
     // Titre principal
     doc.setTextColor(...COLORS.sncb);
-    doc.setFontSize(24);
+    doc.setFontSize(20);
     doc.setFont("helvetica", "bold");
-    doc.text("DÉPLACEMENTS PMR", 105, 20, { align: 'center' });
+    doc.text("DÉPLACEMENTS PMR", 105, 25, { align: 'center' });
 
     // Date
-    doc.setFontSize(14);
-    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(11);
+    doc.setTextColor(80, 80, 80);
     doc.setFont("helvetica", "normal");
-    doc.text(formattedDate.display, 105, 30, { align: 'center' });
+    doc.text(formattedDate.display, 105, 32, { align: 'center' });
 
     // Ligne de séparation
     doc.setDrawColor(...COLORS.sncb);
-    doc.setLineWidth(0.8);
+    doc.setLineWidth(0.5);
     doc.line(10, 38, 200, 38);
 
     /**
@@ -195,17 +195,17 @@ export async function generatePDF({
 
     // ========== PRESTATION MATIN ==========
     checkPageBreak(60);
-    drawSection("☀️ PRESTATION MATIN", COLORS.morningBg);
+    drawSection("PRESTATION MATIN", COLORS.morningBg);
 
     // Mons Matin
-    drawSubTitle("📍 Prévu dans Quinyx gare de Mons", COLORS.mons);
+    drawSubTitle("Prévu dans Quinyx gare de Mons", COLORS.mons);
     drawStats(presenceMons);
     const stationsFMSMorning = getStationsWithInterventions(interventions, 'FMS', 'morning');
     drawTable(stationsFMSMorning, 'FMS', 'morning', COLORS.mons);
 
     // Tournai Matin
     checkPageBreak(60);
-    drawSubTitle("📍 Prévu dans Quinyx gare de Tournai", COLORS.tournai);
+    drawSubTitle("Prévu dans Quinyx gare de Tournai", COLORS.tournai);
     drawStats(presenceTournai);
     const stationsFTYMorning = getStationsWithInterventions(interventions, 'FTY', 'morning');
     drawTable(stationsFTYMorning, 'FTY', 'morning', COLORS.tournai);
@@ -213,17 +213,17 @@ export async function generatePDF({
     // ========== PRESTATION APRÈS-MIDI ==========
     doc.addPage();
     currentY = 20;
-    drawSection("🌙 PRESTATION APRÈS-MIDI", COLORS.afternoonBg);
+    drawSection("PRESTATION APRÈS-MIDI", COLORS.afternoonBg);
 
     // Mons Après-midi
-    drawSubTitle("📍 Prévu dans Quinyx gare de Mons", COLORS.mons);
+    drawSubTitle("Prévu dans Quinyx gare de Mons", COLORS.mons);
     drawStats(presenceMonsAM);
     const stationsFMSAfternoon = getStationsWithInterventions(interventionsAM, 'FMS', 'afternoon');
     drawTable(stationsFMSAfternoon, 'FMS', 'afternoon', COLORS.mons);
 
     // Tournai Après-midi
     checkPageBreak(60);
-    drawSubTitle("📍 Prévu dans Quinyx gare de Tournai", COLORS.tournai);
+    drawSubTitle("Prévu dans Quinyx gare de Tournai", COLORS.tournai);
     drawStats(presenceTournaiAM);
     const stationsFTYAfternoon = getStationsWithInterventions(interventionsAM, 'FTY', 'afternoon');
     drawTable(stationsFTYAfternoon, 'FTY', 'afternoon', COLORS.tournai);
