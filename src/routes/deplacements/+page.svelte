@@ -34,12 +34,13 @@
         sncbHex: '#0069B4',
         mons: [0, 32, 80],   // #002050
         monsHex: '#002050',
-        tournai: [191, 180, 215], // #bfb4d7 - UPDATED
-        tournaiHex: '#bfb4d7', // UPDATED
+        tournai: [168, 111, 168], // #a86fa8 - UPDATED
+        tournaiHex: '#a86fa8', // UPDATED
         zeroRed: '#be4366',
         zeroRedRGB: [190, 67, 102],
         morningBg: '#d1b4d4',
-        afternoonBg: '#ADBC16',  // RGB(173, 188, 22)
+        morningBgRGB: [209, 180, 212],
+        afternoonBg: '#ADBC16',
         afternoonBgRGB: [173, 188, 22],
         presenceBadgeBg: '#e5e7eb',
         presenceBadgeBgRGB: [229, 231, 235]
@@ -183,28 +184,31 @@
         const dateSubject = `${day}-${month}-${year}`;
         const formattedDate = d.toLocaleDateString('fr-BE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-        // UPDATED: formatStatsHtml avec espacement et centrage
+        // FIXED: Espacement correct entre les badges
         const formatStatsHtml = (data) => {
-            const badges = Object.entries(data).map(([k, v]) => {
+            const entries = Object.entries(data);
+            const badges = entries.map(([k, v]) => {
                 const valColor = v === 0 ? COLORS.zeroRed : '#000000';
                 const label = k.replace('shift_', '').toUpperCase();
-                return `<span style="margin: 0 12px; font-weight: bold; padding: 10px 18px; background-color: ${COLORS.presenceBadgeBg}; border-radius: 8px; display: inline-block;">${label}: <span style="color: ${valColor};">${v}</span></span>`;
-            }).join('');
-            return `<div style="text-align: center; margin: 25px 0;">${badges}</div>`;
+                return `<span style="margin: 0 15px; font-weight: bold; padding: 12px 20px; background-color: ${COLORS.presenceBadgeBg}; border-radius: 10px; display: inline-block; white-space: nowrap;">${label}: <span style="color: ${valColor}; font-size: 13pt;">${v}</span></span>`;
+            }).join(' ');
+            return `<div style="text-align: center; margin: 30px 0; line-height: 2.5;">${badges}</div>`;
         };
 
         const containerStyle = `font-family: 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #000; background-color: #fff; padding: 20px;`;
         const headerStyle = `color: ${COLORS.sncbHex}; font-size: 22pt; font-weight: bold; text-align: center; margin-bottom: 5px;`;
         const dateStyle = `color: #000; font-size: 12pt; font-weight: bold; text-align: center; margin-bottom: 30px; border-bottom: 2px solid ${COLORS.sncbHex}; padding-bottom: 10px;`;
         
-        // UPDATED: Titres de section centrés et plus grands
-        const sectionTitleStyle = (color) => `background-color: ${color}; color: ${color === COLORS.afternoonBg ? '#fff' : '#000'}; padding: 20px 15px; font-weight: bold; font-size: 20pt; margin-top: 30px; margin-bottom: 20px; text-transform: uppercase; text-align: center;`;
+        // FIXED: Titres de section colorés selon Mons/Tournai avec emojis
+        const sectionTitleMorningStyle = `background: linear-gradient(135deg, ${COLORS.morningBg} 0%, #c09fd4 100%); color: #000; padding: 25px 20px; font-weight: bold; font-size: 22pt; margin-top: 35px; margin-bottom: 25px; text-transform: uppercase; text-align: center; border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);`;
         
-        const subTitleStyle = (color) => `color: ${color}; font-weight: bold; font-size: 12pt; margin-top: 20px; margin-bottom: 10px; padding-left: 10px; border-left: 4px solid ${color};`;
-        const tableStyle = `width: 100%; border-collapse: collapse; font-size: 10pt; margin-top: 15px; margin-bottom: 25px;`;
-        const thStyle = (color) => `background-color: ${color}; color: #fff; font-weight: bold; padding: 12px; text-align: left; border: 1px solid ${color};`;
+        const sectionTitleAfternoonStyle = `background: linear-gradient(135deg, ${COLORS.afternoonBg} 0%, #8a9612 100%); color: #fff; padding: 25px 20px; font-weight: bold; font-size: 22pt; margin-top: 35px; margin-bottom: 25px; text-transform: uppercase; text-align: center; border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);`;
+        
+        const subTitleStyle = (color) => `color: ${color}; font-weight: bold; font-size: 13pt; margin-top: 25px; margin-bottom: 15px; padding-left: 12px; border-left: 5px solid ${color};`;
+        const tableStyle = `width: 100%; border-collapse: collapse; font-size: 10pt; margin-top: 15px; margin-bottom: 30px;`;
+        const thStyle = (color) => `background-color: ${color}; color: #fff; font-weight: bold; padding: 14px; text-align: left; border: 1px solid ${color};`;
         const tdStyle = `padding: 12px; border: 1px solid #ccc; vertical-align: top;`;
-        const noInterventionStyle = `text-align: center; font-style: italic; color: #999; padding: 15px;`;
+        const noInterventionStyle = `text-align: center; font-style: italic; color: #999; padding: 20px; font-size: 11pt;`;
 
         const html = `
             <div style="${containerStyle}">
@@ -212,7 +216,7 @@
                 <div style="${headerStyle}">DEPLACEMENTS PMR</div>
                 <div style="${dateStyle}">${formattedDate}</div>
 
-                <div style="${sectionTitleStyle(COLORS.morningBg)}">☀️ PRESTATION MATIN</div>
+                <div style="${sectionTitleMorningStyle}">☀️ PRESTATION MATIN</div>
                 
                 <div style="${subTitleStyle(COLORS.monsHex)}">📍 Prévu dans Quinyx gare de Mons</div>
                 ${formatStatsHtml(presenceMons)}
@@ -221,7 +225,7 @@
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FMS', 'morning');
                         if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
-                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#f0f9ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.monsHex}">${st}</td><td style="${tdStyle}">${getStationText(st, 'FMS', 'morning', true)}</td></tr>`).join('');
+                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#f0f9ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.monsHex}; font-size:11pt;">${st}</td><td style="${tdStyle}">${getStationText(st, 'FMS', 'morning', true)}</td></tr>`).join('');
                     })()}</tbody>
                 </table>
 
@@ -232,11 +236,11 @@
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FTY', 'morning');
                         if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
-                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#faf5ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.tournaiHex}">${st}</td><td style="${tdStyle}">${getStationText(st, 'FTY', 'morning', true)}</td></tr>`).join('');
+                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#faf5ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.tournaiHex}; font-size:11pt;">${st}</td><td style="${tdStyle}">${getStationText(st, 'FTY', 'morning', true)}</td></tr>`).join('');
                     })()}</tbody>
                 </table>
 
-                <div style="${sectionTitleStyle(COLORS.afternoonBg)}">🌙 PRESTATION APRÈS-MIDI</div>
+                <div style="${sectionTitleAfternoonStyle}">🌙 PRESTATION APRÈS-MIDI</div>
 
                 <div style="${subTitleStyle(COLORS.monsHex)}">📍 Prévu dans Quinyx gare de Mons</div>
                 ${formatStatsHtml(presenceMonsAM)}
@@ -245,7 +249,7 @@
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FMS', 'afternoon');
                         if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
-                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#f0f9ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.monsHex}">${st}</td><td style="${tdStyle}">${getStationText(st, 'FMS', 'afternoon', true)}</td></tr>`).join('');
+                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#f0f9ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.monsHex}; font-size:11pt;">${st}</td><td style="${tdStyle}">${getStationText(st, 'FMS', 'afternoon', true)}</td></tr>`).join('');
                     })()}</tbody>
                 </table>
 
@@ -256,14 +260,14 @@
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FTY', 'afternoon');
                         if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
-                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#faf5ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.tournaiHex}">${st}</td><td style="${tdStyle}">${getStationText(st, 'FTY', 'afternoon', true)}</td></tr>`).join('');
+                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#faf5ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.tournaiHex}; font-size:11pt;">${st}</td><td style="${tdStyle}">${getStationText(st, 'FTY', 'afternoon', true)}</td></tr>`).join('');
                     })()}</tbody>
                 </table>
 
-                <div style="margin-top: 40px; border-top: 1px solid ${COLORS.sncbHex}; padding-top: 15px; font-size: 10pt; color: #333;">
-                    <p style="margin: 5px 0;">• Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.</p>
-                    <p style="margin: 5px 0;">• Interventions PMR pour B-CS : Voir DICOS.</p>
-                    <p style="margin: 15px 0 0 0; font-weight: bold; color: ${COLORS.sncbHex}; font-size: 11pt;">📱 L'App DICOS PMR reste la base à consulter</p>
+                <div style="margin-top: 45px; border-top: 2px solid ${COLORS.sncbHex}; padding-top: 20px; font-size: 10pt; color: #333;">
+                    <p style="margin: 8px 0;">• Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.</p>
+                    <p style="margin: 8px 0;">• Interventions PMR pour B-CS : Voir DICOS.</p>
+                    <p style="margin: 20px 0 0 0; font-weight: bold; color: ${COLORS.sncbHex}; font-size: 12pt;">📱 L'App DICOS PMR reste la base à consulter</p>
                 </div>
             </div>
         `;
@@ -275,9 +279,8 @@
             
             toast.success("Email copié ! Collez-le dans Outlook avec CTRL+V");
             
-            // UPDATED: Ouverture Outlook sans texte de courtoisie
+            // Ouverture Outlook sans texte de courtoisie
             const subject = encodeURIComponent(`Déplacement PMR - ${dateSubject}`);
-            // Corps vide - le contenu sera collé automatiquement
             window.location.href = `mailto:${EMAIL_TO}?cc=${EMAIL_CC}&subject=${subject}`;
         } catch (err) { 
             toast.error("Erreur : " + err.message); 
@@ -313,12 +316,13 @@
         doc.setDrawColor(...COLORS.sncb); doc.setLineWidth(0.5); doc.line(10, 35, 200, 35);
         currentY = 50;
 
+        // FIXED: Remplacement emojis par texte simple
         const drawSection = (title, color) => {
-            const rgb = color === COLORS.morningBg ? [209, 180, 212] : COLORS.afternoonBgRGB;
+            const rgb = color === COLORS.morningBg ? COLORS.morningBgRGB : COLORS.afternoonBgRGB;
             doc.setFillColor(...rgb); doc.rect(10, currentY, 190, 12, 'F');
             doc.setTextColor(color === COLORS.afternoonBg ? 255 : 0, color === COLORS.afternoonBg ? 255 : 0, color === COLORS.afternoonBg ? 255 : 0); 
             doc.setFontSize(14); doc.setFont("helvetica", "bold");
-            doc.text(title, 105, currentY + 8, { align: 'center' }); // Centré
+            doc.text(title, 105, currentY + 8, { align: 'center' });
             currentY += 22;
         };
 
@@ -336,7 +340,6 @@
                 const val = dataMap[k];
                 const label = k.replace('shift_', '').toUpperCase();
                 
-                // Draw badge background
                 doc.setFillColor(...COLORS.presenceBadgeBgRGB);
                 doc.roundedRect(x, currentY - 5, 32, 8, 2, 2, 'F');
                 
@@ -375,7 +378,7 @@
         };
 
         if (currentY > 250) { doc.addPage(); currentY = 20; }
-        drawSection("☀️ PRESTATION MATIN", COLORS.morningBg);
+        drawSection("PRESTATION MATIN", COLORS.morningBg);
 
         drawSub("• Prévu dans Quinyx gare de Mons", COLORS.mons);
         drawStats(presenceMons);
@@ -389,7 +392,7 @@
         drawTable(stFTY, 'FTY', 'morning', COLORS.tournai);
 
         doc.addPage(); currentY = 20;
-        drawSection("🌙 PRESTATION APRÈS-MIDI", COLORS.afternoonBg);
+        drawSection("PRESTATION APRES-MIDI", COLORS.afternoonBg);
 
         drawSub("• Prévu dans Quinyx gare de Mons", COLORS.mons);
         drawStats(presenceMonsAM);
@@ -408,7 +411,7 @@
             doc.text("• Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.", 15, 272);
             doc.text("• Interventions PMR pour B-CS : Voir DICOS.", 15, 277);
             doc.setFontSize(11); doc.setTextColor(...COLORS.sncb); doc.setFont("helvetica", "bold");
-            doc.text("IMPORTANT: L'App DICOS PMR reste la base à consulter", 15, 285);
+            doc.text("IMPORTANT: L'App DICOS PMR reste la base a consulter", 15, 285);
             doc.setFontSize(9); doc.setTextColor(150); doc.setFont("helvetica", "normal");
             doc.text(`Page ${i} / ${pageCount}`, 195, 288, { align: 'right' });
         }
@@ -451,7 +454,7 @@
         </div>
     </header>
 
-    <!-- FIXED: Date picker avec syntaxe Svelte 5 correcte -->
+    <!-- FIXED: DatePicker avec meilleure visibilité -->
     <div class="relative group">
         <div class="relative bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-2xl p-6 shadow-2xl">
             <label class="text-xs uppercase font-bold text-transparent bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text mb-3 flex items-center gap-2 tracking-widest">
@@ -461,7 +464,7 @@
                 type="date" 
                 bind:value={date} 
                 onchange={loadDailyReport}
-                class="w-full max-w-md bg-slate-950 border-2 border-slate-800 text-white rounded-xl px-5 py-3.5 text-lg font-semibold focus:ring-2 focus:ring-blue-500 outline-none transition-all cursor-pointer hover:border-blue-600" 
+                class="datepicker-input w-full max-w-md bg-slate-950 border-2 border-slate-800 text-white rounded-xl px-5 py-3.5 text-lg font-semibold focus:ring-2 focus:ring-blue-500 outline-none transition-all cursor-pointer hover:border-blue-600" 
             />
         </div>
     </div>
@@ -644,6 +647,21 @@
     @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes pulseSoft { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.85; transform: scale(1.03); } }
     @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+    
+    /* FIXED: DatePicker visibility */
+    .datepicker-input {
+        color-scheme: dark;
+    }
+    
+    .datepicker-input::-webkit-calendar-picker-indicator {
+        filter: invert(1);
+        cursor: pointer;
+        opacity: 0.8;
+    }
+    
+    .datepicker-input::-webkit-calendar-picker-indicator:hover {
+        opacity: 1;
+    }
     
     /* Custom slider styling */
     .slider-thumb::-webkit-slider-thumb {
