@@ -26,8 +26,8 @@
     const colors = colorClasses[themeColor] || colorClasses.blue;
 </script>
 
-<div class="glass-panel rounded-lg border border-white/20 p-5 shadow-xl">
-    <h3 class="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+<div class="glass-panel rounded-lg border {colors.border} p-5 shadow-sm">
+    <h3 class="text-sm font-semibold {colors.text} mb-4 flex items-center gap-2">
         {#if IconComponent}
             <IconComponent class="w-4 h-4 {colors.icon}" />
         {:else}
