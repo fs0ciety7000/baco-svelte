@@ -23,3 +23,10 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 vite.config.js
 src/lib/supabase.js
+.idea/baco-svelte.iml
+.idea/modules.xml
+.idea/prettier.xml
+.idea/vcs.xml
+.idea/codeStyles/codeStyleConfig.xml
+.idea/codeStyles/Project.xml
+.idea/workspace.xml
