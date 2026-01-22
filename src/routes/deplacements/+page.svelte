@@ -639,6 +639,8 @@
 <datalist id="stations">{#each stationList as s}<option value={s.abbreviation} />{/each}</datalist>
 
 <style>
+    @reference "tailwindcss";
+    
     .animate-fade-in { animation: fadeIn 0.6s ease-out; }
     .animate-pulse-soft { animation: pulseSoft 3s ease-in-out infinite; }
     .animate-gradient-shift { background-size: 200% 200%; animation: gradientShift 15s ease infinite; }
