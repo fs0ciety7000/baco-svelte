@@ -115,6 +115,18 @@
         }).join('<br/>      ');
     }
 
+    // Helper pour récupérer les gares qui ont réellement des interventions
+    function getStationsWithInterventions(zone, period) {
+        const sourceInterventions = period === 'afternoon' ? interventionsAM : interventions;
+        const stationsWithData = new Set();
+
+        sourceInterventions
+            .filter(i => i.zone === zone && i.station.trim() !== '')
+            .forEach(i => stationsWithData.add(i.station));
+
+        return Array.from(stationsWithData).sort();
+    }
+
     // --- SUPABASE ---
     async function loadDailyReport() {
         loading = true;
@@ -238,14 +250,22 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                ${PRESET_STATIONS_FMS.map((st, index) => {
-                                    const txt = getStationText(st, 'FMS', 'morning');
-                                    const bgColor = index % 2 === 0 ? '#f0f9ff' : '#ffffff';
-                                    return `<tr style="background-color: ${bgColor}; border-bottom: 1px solid #dbeafe;">
-                                        <td style="padding: 12px; font-weight: 900; color: #1e40af; border-right: 2px solid #dbeafe;">${st}</td>
-                                        <td style="padding: 12px; color: #334155; line-height: 1.6;">${txt}</td>
-                                    </tr>`;
-                                }).join('')}
+                                ${(() => {
+                                    const stations = getStationsWithInterventions('FMS', 'morning');
+                                    if (stations.length === 0) {
+                                        return `<tr style="background-color: #f0f9ff;">
+                                            <td colspan="2" style="padding: 12px; text-align: center; color: #64748b; font-style: italic;">Aucune intervention prévue</td>
+                                        </tr>`;
+                                    }
+                                    return stations.map((st, index) => {
+                                        const txt = getStationText(st, 'FMS', 'morning');
+                                        const bgColor = index % 2 === 0 ? '#f0f9ff' : '#ffffff';
+                                        return `<tr style="background-color: ${bgColor}; border-bottom: 1px solid #dbeafe;">
+                                            <td style="padding: 12px; font-weight: 900; color: #1e40af; border-right: 2px solid #dbeafe;">${st}</td>
+                                            <td style="padding: 12px; color: #334155; line-height: 1.6;">${txt}</td>
+                                        </tr>`;
+                                    }).join('');
+                                })()}
                             </tbody>
                         </table>
                     </div>
@@ -274,14 +294,22 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                ${PRESET_STATIONS_FTY.map((st, index) => {
-                                    const txt = getStationText(st, 'FTY', 'morning');
-                                    const bgColor = index % 2 === 0 ? '#faf5ff' : '#ffffff';
-                                    return `<tr style="background-color: ${bgColor}; border-bottom: 1px solid #ede9fe;">
-                                        <td style="padding: 12px; font-weight: 900; color: #6d28d9; border-right: 2px solid #ede9fe;">${st}</td>
-                                        <td style="padding: 12px; color: #334155; line-height: 1.6;">${txt}</td>
-                                    </tr>`;
-                                }).join('')}
+                                ${(() => {
+                                    const stations = getStationsWithInterventions('FTY', 'morning');
+                                    if (stations.length === 0) {
+                                        return `<tr style="background-color: #faf5ff;">
+                                            <td colspan="2" style="padding: 12px; text-align: center; color: #64748b; font-style: italic;">Aucune intervention prévue</td>
+                                        </tr>`;
+                                    }
+                                    return stations.map((st, index) => {
+                                        const txt = getStationText(st, 'FTY', 'morning');
+                                        const bgColor = index % 2 === 0 ? '#faf5ff' : '#ffffff';
+                                        return `<tr style="background-color: ${bgColor}; border-bottom: 1px solid #ede9fe;">
+                                            <td style="padding: 12px; font-weight: 900; color: #6d28d9; border-right: 2px solid #ede9fe;">${st}</td>
+                                            <td style="padding: 12px; color: #334155; line-height: 1.6;">${txt}</td>
+                                        </tr>`;
+                                    }).join('');
+                                })()}
                             </tbody>
                         </table>
                     </div>
@@ -311,14 +339,22 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                ${PRESET_STATIONS_FMS.map((st, index) => {
-                                    const txt = getStationText(st, 'FMS', 'afternoon');
-                                    const bgColor = index % 2 === 0 ? '#f0f9ff' : '#ffffff';
-                                    return `<tr style="background-color: ${bgColor}; border-bottom: 1px solid #dbeafe;">
-                                        <td style="padding: 12px; font-weight: 900; color: #1e40af; border-right: 2px solid #dbeafe;">${st}</td>
-                                        <td style="padding: 12px; color: #334155; line-height: 1.6;">${txt}</td>
-                                    </tr>`;
-                                }).join('')}
+                                ${(() => {
+                                    const stations = getStationsWithInterventions('FMS', 'afternoon');
+                                    if (stations.length === 0) {
+                                        return `<tr style="background-color: #f0f9ff;">
+                                            <td colspan="2" style="padding: 12px; text-align: center; color: #64748b; font-style: italic;">Aucune intervention prévue</td>
+                                        </tr>`;
+                                    }
+                                    return stations.map((st, index) => {
+                                        const txt = getStationText(st, 'FMS', 'afternoon');
+                                        const bgColor = index % 2 === 0 ? '#f0f9ff' : '#ffffff';
+                                        return `<tr style="background-color: ${bgColor}; border-bottom: 1px solid #dbeafe;">
+                                            <td style="padding: 12px; font-weight: 900; color: #1e40af; border-right: 2px solid #dbeafe;">${st}</td>
+                                            <td style="padding: 12px; color: #334155; line-height: 1.6;">${txt}</td>
+                                        </tr>`;
+                                    }).join('');
+                                })()}
                             </tbody>
                         </table>
                     </div>
@@ -347,14 +383,22 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                ${PRESET_STATIONS_FTY.map((st, index) => {
-                                    const txt = getStationText(st, 'FTY', 'afternoon');
-                                    const bgColor = index % 2 === 0 ? '#faf5ff' : '#ffffff';
-                                    return `<tr style="background-color: ${bgColor}; border-bottom: 1px solid #ede9fe;">
-                                        <td style="padding: 12px; font-weight: 900; color: #6d28d9; border-right: 2px solid #ede9fe;">${st}</td>
-                                        <td style="padding: 12px; color: #334155; line-height: 1.6;">${txt}</td>
-                                    </tr>`;
-                                }).join('')}
+                                ${(() => {
+                                    const stations = getStationsWithInterventions('FTY', 'afternoon');
+                                    if (stations.length === 0) {
+                                        return `<tr style="background-color: #faf5ff;">
+                                            <td colspan="2" style="padding: 12px; text-align: center; color: #64748b; font-style: italic;">Aucune intervention prévue</td>
+                                        </tr>`;
+                                    }
+                                    return stations.map((st, index) => {
+                                        const txt = getStationText(st, 'FTY', 'afternoon');
+                                        const bgColor = index % 2 === 0 ? '#faf5ff' : '#ffffff';
+                                        return `<tr style="background-color: ${bgColor}; border-bottom: 1px solid #ede9fe;">
+                                            <td style="padding: 12px; font-weight: 900; color: #6d28d9; border-right: 2px solid #ede9fe;">${st}</td>
+                                            <td style="padding: 12px; color: #334155; line-height: 1.6;">${txt}</td>
+                                        </tr>`;
+                                    }).join('');
+                                })()}
                             </tbody>
                         </table>
                     </div>
@@ -399,7 +443,7 @@
         }
     }
 
-    // --- PDF AMÉLIORÉ avec autoTable ---
+    // --- PDF AMÉLIORÉ avec autoTable et design moderne ---
     function generatePDF() {
         const doc = new jsPDF();
         const formattedDate = new Date(date).toLocaleDateString('fr-BE', {
@@ -411,41 +455,58 @@
 
         let currentY = 20;
 
-        // En-tête principal avec bordure
-        doc.setFillColor(37, 99, 235); // Bleu
-        doc.rect(0, 0, 210, 35, 'F');
+        // En-tête principal avec dégradé simulé (bleu vers violet)
+        // Utilisation de plusieurs rectangles pour simuler un dégradé
+        for (let i = 0; i < 35; i++) {
+            const ratio = i / 35;
+            const r = Math.round(59 + (139 - 59) * ratio);
+            const g = Math.round(130 + (92 - 130) * ratio);
+            const b = Math.round(246 + (246 - 246) * ratio);
+            doc.setFillColor(r, g, b);
+            doc.rect(0, i, 210, 1, 'F');
+        }
+
         doc.setTextColor(255, 255, 255);
-        doc.setFontSize(20);
+        doc.setFontSize(24);
         doc.setFont("helvetica", "bold");
-        doc.text("DÉPLACEMENTS PMR", 105, 15, { align: 'center' });
-        doc.setFontSize(12);
+        doc.text("🚂 DÉPLACEMENTS PMR", 105, 18, { align: 'center' });
+        doc.setFontSize(11);
         doc.setFont("helvetica", "normal");
-        doc.text(formattedDate, 105, 25, { align: 'center' });
+        doc.text(formattedDate, 105, 28, { align: 'center' });
 
         currentY = 45;
 
         // Fonction pour créer une section
-        const createSection = (title, presenceMons, presenceTournai, zone, period, color) => {
-            // Titre de section avec bordure colorée
+        const createSection = (title, presenceMons, presenceTournai, zone, period, color, colorLight) => {
+            // Vérifier si on a assez d'espace, sinon nouvelle page
+            if (currentY > 240) {
+                doc.addPage();
+                currentY = 20;
+            }
+
+            // Titre de section avec bordure colorée et emoji
             doc.setFillColor(...color);
-            doc.rect(10, currentY, 190, 10, 'F');
+            doc.rect(10, currentY, 190, 12, 'F');
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(14);
             doc.setFont("helvetica", "bold");
-            doc.text(title, 15, currentY + 7);
+            doc.text(title, 15, currentY + 8);
 
-            currentY += 15;
+            currentY += 17;
 
-            // Tableau de présence Mons
+            // Ligne de séparation des tableaux de présence
+            const presenceStartY = currentY;
+
+            // Tableau de présence Mons (gauche)
             doc.setTextColor(0, 0, 0);
             doc.setFontSize(10);
             doc.setFont("helvetica", "bold");
-            doc.text("📍 Gare de Mons", 15, currentY);
+            doc.text("📍 Prévu dans Quinyx gare de Mons", 15, currentY);
             currentY += 2;
 
             autoTable(doc, {
                 startY: currentY,
-                head: [['SPI', 'OPI', 'CPI', 'PA', '10h-18h']],
+                head: [['SPI', 'OPI', 'CPI', 'PA', '10-18h']],
                 body: [[
                     presenceMons.spi.toString(),
                     presenceMons.opi.toString(),
@@ -458,27 +519,30 @@
                     fillColor: color,
                     textColor: 255,
                     fontStyle: 'bold',
-                    halign: 'center'
+                    halign: 'center',
+                    fontSize: 9
                 },
                 bodyStyles: {
                     halign: 'center',
-                    fontSize: 11,
-                    fontStyle: 'bold'
+                    fontSize: 10,
+                    fontStyle: 'bold',
+                    textColor: [30, 64, 175]
                 },
-                margin: { left: 15, right: 15 },
+                margin: { left: 15 },
                 tableWidth: 90
             });
 
-            currentY = doc.lastAutoTable.finalY + 10;
+            const monsTableHeight = doc.lastAutoTable.finalY - currentY;
 
-            // Tableau de présence Tournai
+            // Tableau de présence Tournai (droite)
+            doc.setTextColor(0, 0, 0);
             doc.setFontSize(10);
             doc.setFont("helvetica", "bold");
-            doc.text("📍 Gare de Tournai", 110, currentY - 8 - doc.lastAutoTable.body.length * 10);
+            doc.text("📍 Prévu dans Quinyx gare de Tournai", 110, presenceStartY);
 
             autoTable(doc, {
-                startY: currentY - 10 - doc.lastAutoTable.body.length * 10,
-                head: [['SPI', 'CPI', 'PA', '10h-18h']],
+                startY: presenceStartY + 2,
+                head: [['SPI', 'CPI', 'PA', '10-18h']],
                 body: [[
                     presenceTournai.spi.toString(),
                     presenceTournai.cpi.toString(),
@@ -487,97 +551,126 @@
                 ]],
                 theme: 'grid',
                 headStyles: {
-                    fillColor: [147, 51, 234], // Purple
+                    fillColor: [139, 92, 246],
                     textColor: 255,
                     fontStyle: 'bold',
-                    halign: 'center'
+                    halign: 'center',
+                    fontSize: 9
                 },
                 bodyStyles: {
                     halign: 'center',
-                    fontSize: 11,
-                    fontStyle: 'bold'
+                    fontSize: 10,
+                    fontStyle: 'bold',
+                    textColor: [109, 40, 217]
                 },
                 margin: { left: 110 },
                 tableWidth: 85
             });
 
-            currentY = Math.max(currentY, doc.lastAutoTable.finalY + 8);
+            currentY = Math.max(doc.lastAutoTable.finalY, presenceStartY + 2 + monsTableHeight) + 12;
 
             // Tableaux des interventions FMS
-            doc.setFontSize(11);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(...color);
-            doc.text("Zone FMS", 15, currentY);
-            currentY += 5;
+            const stationsFMS = getStationsWithInterventions('FMS', period);
 
-            const fmsRows = PRESET_STATIONS_FMS.map(st => {
-                const txt = getStationText(st, 'FMS', period).replace(/<br\/>/g, " | ").replace(/<br \/>/g, " | ");
-                return [st, txt];
-            });
+            if (stationsFMS.length > 0) {
+                doc.setFontSize(11);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(...color);
+                doc.text("Zone FMS", 15, currentY);
+                currentY += 5;
 
-            autoTable(doc, {
-                startY: currentY,
-                head: [['Gare', 'Détails Interventions']],
-                body: fmsRows,
-                theme: 'striped',
-                headStyles: {
-                    fillColor: color,
-                    textColor: 255,
-                    fontStyle: 'bold',
-                    fontSize: 10
-                },
-                bodyStyles: {
-                    fontSize: 9
-                },
-                columnStyles: {
-                    0: { cellWidth: 25, fontStyle: 'bold', halign: 'center' },
-                    1: { cellWidth: 'auto' }
-                },
-                margin: { left: 15, right: 15 },
-                alternateRowStyles: {
-                    fillColor: [245, 247, 250]
-                }
-            });
+                const fmsRows = stationsFMS.map(st => {
+                    const txt = getStationText(st, 'FMS', period).replace(/<br\/>/g, " | ").replace(/<br \/>/g, " | ");
+                    return [st, txt];
+                });
 
-            currentY = doc.lastAutoTable.finalY + 10;
+                autoTable(doc, {
+                    startY: currentY,
+                    head: [['GARE', 'INTERVENTIONS']],
+                    body: fmsRows,
+                    theme: 'striped',
+                    headStyles: {
+                        fillColor: color,
+                        textColor: 255,
+                        fontStyle: 'bold',
+                        fontSize: 10,
+                        halign: 'left'
+                    },
+                    bodyStyles: {
+                        fontSize: 8,
+                        textColor: [51, 65, 85]
+                    },
+                    columnStyles: {
+                        0: { cellWidth: 25, fontStyle: 'bold', halign: 'center', fillColor: colorLight, textColor: color },
+                        1: { cellWidth: 'auto' }
+                    },
+                    margin: { left: 15, right: 15 },
+                    alternateRowStyles: {
+                        fillColor: [255, 255, 255]
+                    }
+                });
+
+                currentY = doc.lastAutoTable.finalY + 10;
+            }
 
             // Tableaux des interventions FTY
-            doc.setFontSize(11);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(147, 51, 234); // Purple
-            doc.text("Zone FTY", 15, currentY);
-            currentY += 5;
+            const stationsFTY = getStationsWithInterventions('FTY', period);
 
-            const ftyRows = PRESET_STATIONS_FTY.map(st => {
-                const txt = getStationText(st, 'FTY', period).replace(/<br\/>/g, " | ").replace(/<br \/>/g, " | ");
-                return [st, txt];
-            });
-
-            autoTable(doc, {
-                startY: currentY,
-                head: [['Gare', 'Détails Interventions']],
-                body: ftyRows,
-                theme: 'striped',
-                headStyles: {
-                    fillColor: [147, 51, 234],
-                    textColor: 255,
-                    fontStyle: 'bold',
-                    fontSize: 10
-                },
-                bodyStyles: {
-                    fontSize: 9
-                },
-                columnStyles: {
-                    0: { cellWidth: 25, fontStyle: 'bold', halign: 'center' },
-                    1: { cellWidth: 'auto' }
-                },
-                margin: { left: 15, right: 15 },
-                alternateRowStyles: {
-                    fillColor: [250, 245, 255]
+            if (stationsFTY.length > 0) {
+                // Vérifier si on a assez d'espace
+                if (currentY > 240) {
+                    doc.addPage();
+                    currentY = 20;
                 }
-            });
 
-            currentY = doc.lastAutoTable.finalY + 15;
+                doc.setFontSize(11);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(139, 92, 246);
+                doc.text("Zone FTY", 15, currentY);
+                currentY += 5;
+
+                const ftyRows = stationsFTY.map(st => {
+                    const txt = getStationText(st, 'FTY', period).replace(/<br\/>/g, " | ").replace(/<br \/>/g, " | ");
+                    return [st, txt];
+                });
+
+                autoTable(doc, {
+                    startY: currentY,
+                    head: [['GARE', 'INTERVENTIONS']],
+                    body: ftyRows,
+                    theme: 'striped',
+                    headStyles: {
+                        fillColor: [139, 92, 246],
+                        textColor: 255,
+                        fontStyle: 'bold',
+                        fontSize: 10,
+                        halign: 'left'
+                    },
+                    bodyStyles: {
+                        fontSize: 8,
+                        textColor: [51, 65, 85]
+                    },
+                    columnStyles: {
+                        0: { cellWidth: 25, fontStyle: 'bold', halign: 'center', fillColor: [250, 245, 255], textColor: [139, 92, 246] },
+                        1: { cellWidth: 'auto' }
+                    },
+                    margin: { left: 15, right: 15 },
+                    alternateRowStyles: {
+                        fillColor: [255, 255, 255]
+                    }
+                });
+
+                currentY = doc.lastAutoTable.finalY + 10;
+            }
+
+            // Message si aucune intervention
+            if (stationsFMS.length === 0 && stationsFTY.length === 0) {
+                doc.setFontSize(10);
+                doc.setFont("helvetica", "italic");
+                doc.setTextColor(100, 116, 139);
+                doc.text("Aucune intervention prévue pour cette période", 105, currentY, { align: 'center' });
+                currentY += 15;
+            }
         };
 
         // Créer les sections
@@ -587,7 +680,8 @@
             presenceTournai,
             'both',
             'morning',
-            [37, 99, 235] // Bleu
+            [37, 99, 235],
+            [240, 249, 255]
         );
 
         // Nouvelle page pour l'après-midi
@@ -600,30 +694,38 @@
             presenceTournaiAM,
             'both',
             'afternoon',
-            [147, 51, 234] // Purple
+            [124, 58, 237],
+            [250, 245, 255]
         );
 
-        // Footer avec bordure
+        // Footer avec bordure améliorée
         const pageCount = doc.internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             doc.setPage(i);
-            doc.setFillColor(255, 243, 205);
-            doc.rect(10, 270, 190, 20, 'FD');
-            doc.setDrawColor(251, 191, 36);
-            doc.setLineWidth(0.5);
-            doc.rect(10, 270, 190, 20);
 
+            // Fond du footer
+            doc.setFillColor(254, 243, 199);
+            doc.rect(10, 268, 190, 24, 'F');
+
+            // Bordure du footer
+            doc.setDrawColor(245, 158, 11);
+            doc.setLineWidth(1);
+            doc.rect(10, 268, 190, 24);
+
+            // Contenu du footer
             doc.setTextColor(120, 53, 15);
-            doc.setFontSize(8);
-            doc.setFont("helvetica", "italic");
-            doc.text("Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.", 15, 275);
-            doc.text("Interventions PMR pour B-CS : Voir DICOS.", 15, 280);
+            doc.setFontSize(7.5);
+            doc.setFont("helvetica", "normal");
+            doc.text("• Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.", 13, 274);
+            doc.text("• Interventions PMR pour B-CS : Voir DICOS.", 13, 279);
             doc.setFont("helvetica", "bold");
-            doc.text("⚠️ L'App DICOS PMR reste la base à consulter", 15, 286);
+            doc.setFontSize(8);
+            doc.text("⚠️ L'App DICOS PMR reste la base à consulter", 13, 286);
 
             // Numéro de page
-            doc.setFontSize(9);
+            doc.setFontSize(8);
             doc.setTextColor(100, 100, 100);
+            doc.setFont("helvetica", "normal");
             doc.text(`Page ${i} / ${pageCount}`, 195, 286, { align: 'right' });
         }
 
