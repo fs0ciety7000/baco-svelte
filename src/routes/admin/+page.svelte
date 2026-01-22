@@ -28,14 +28,14 @@
         "OPI 5-13", "OPI 13-21", "PA 10-18", "CPI 10-18", "SPI 10-18"
     ];
 
-    // Couleurs "Solid" pour PDF et Email (Pas de CSS Vars ici car export externe)
+    // Couleurs HEX pour l'export (PDF/Mail) car les vars CSS ne marchent pas hors du navigateur
     const EXPORT_COLORS = {
         sncb: '#0069B4',
         mons: '#002050',
         tournai: '#998abe',
         red: '#be4366',
         morning: '#d1b4d4',
-        afternoon: '#ADBC16', // Vert/Kaki demandé
+        afternoon: '#ADBC16', 
         badge: '#e5e7eb'
     };
 
@@ -167,7 +167,7 @@
         } catch (e) { toast.error("Erreur : " + e.message); } finally { loading = false; }
     }
 
-    // --- EMAIL OUTLOOK (FULL TABLE REWRITE) ---
+    // --- GENERATION EMAIL (Format Tableaux Outlook Friendly) ---
     async function copyForOutlook() {
         const d = new Date(date);
         const day = String(d.getDate()).padStart(2, '0');
@@ -176,52 +176,56 @@
         const dateSubject = `${day}-${month}-${year}`;
         const formattedDate = d.toLocaleDateString('fr-BE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-        // Générateur de badges stats en TABLE pour Outlook
-        const renderStatsTable = (data) => {
+        // Ligne d'espacement (Crucial pour Outlook)
+        const spacerRow = (height = 20) => `<tr><td height="${height}" style="font-size:0px; line-height:0px;">&nbsp;</td></tr>`;
+
+        // Générateur de stats en tableau imbriqué
+        const renderStats = (data) => {
             let cells = '';
             Object.entries(data).forEach(([k, v]) => {
                 const valColor = v === 0 ? EXPORT_COLORS.red : '#000000';
                 const label = k.replace('shift_', '').toUpperCase();
                 cells += `
-                    <td align="center" style="padding: 0 10px;">
-                        <table border="0" cellspacing="0" cellpadding="0" style="background-color: ${EXPORT_COLORS.badge}; border-radius: 6px;">
-                            <tr>
-                                <td style="padding: 6px 12px; font-family: Helvetica, Arial, sans-serif; font-size: 13px; font-weight: bold; color: #333333;">
-                                    ${label}: <span style="color: ${valColor}; margin-left: 4px;">${v}</span>
-                                </td>
-                            </tr>
-                        </table>
+                    <td width="10">&nbsp;</td>
+                    <td style="background-color: ${EXPORT_COLORS.badge}; border-radius: 4px; padding: 5px 10px; font-family: sans-serif; font-size: 12px; white-space: nowrap;">
+                        <strong>${label}:</strong> <span style="color: ${valColor}; font-weight: bold;">${v}</span>
                     </td>
+                    <td width="10">&nbsp;</td>
                 `;
             });
-            return `<table border="0" cellspacing="0" cellpadding="0" align="center" style="margin: 15px auto;"><tr>${cells}</tr></table>`;
+            return `
+                <table border="0" cellspacing="0" cellpadding="0" align="center">
+                    <tr>${cells}</tr>
+                </table>
+            `;
         };
 
+        // Générateur de tableau d'interventions
         const renderTable = (zone, period) => {
             const stations = getStationsWithInterventions(zone, period);
             const headerColor = zone === 'FMS' ? EXPORT_COLORS.mons : EXPORT_COLORS.tournai;
             
             let rowsHtml = '';
             if (stations.length === 0) {
-                rowsHtml = `<tr><td colspan="2" style="padding:15px; text-align:center; color:#777; background-color:#f9f9f9; border:1px solid #ddd; font-style:italic;">Aucune intervention</td></tr>`;
+                rowsHtml = `<tr><td colspan="2" style="padding:15px; border:1px solid #ddd; background-color:#f9f9f9; text-align:center; color:#777;"><em>Aucune intervention</em></td></tr>`;
             } else {
                 stations.forEach((st, i) => {
                     const bg = i % 2 === 0 ? '#f4f8fb' : '#ffffff';
                     rowsHtml += `
                         <tr>
-                            <td style="padding:10px; border:1px solid #ddd; background-color:${bg}; font-weight:bold; color:${headerColor}; width:120px; vertical-align:top;">${st}</td>
-                            <td style="padding:10px; border:1px solid #ddd; background-color:${bg}; color:#333; vertical-align:top;">${getStationText(st, zone, period, true)}</td>
+                            <td width="120" valign="top" style="padding:10px; border:1px solid #ddd; background-color:${bg}; font-weight:bold; color:${headerColor};">${st}</td>
+                            <td valign="top" style="padding:10px; border:1px solid #ddd; background-color:${bg}; color:#333;">${getStationText(st, zone, period, true)}</td>
                         </tr>
                     `;
                 });
             }
 
             return `
-                <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse; margin-bottom:30px;">
+                <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">
                     <thead>
                         <tr>
-                            <th align="left" style="padding:12px; background-color:${headerColor}; color:#fff; font-weight:bold;">GARE</th>
-                            <th align="left" style="padding:12px; background-color:${headerColor}; color:#fff; font-weight:bold;">INTERVENTIONS (${zone})</th>
+                            <th align="left" style="padding:10px; background-color:${headerColor}; color:#ffffff; border:1px solid ${headerColor};">GARE</th>
+                            <th align="left" style="padding:10px; background-color:${headerColor}; color:#ffffff; border:1px solid ${headerColor};">INTERVENTIONS (${zone})</th>
                         </tr>
                     </thead>
                     <tbody>${rowsHtml}</tbody>
@@ -230,61 +234,62 @@
         };
 
         const html = `
-            <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-            <html xmlns="http://www.w3.org/1999/xhtml">
-            <head>
-                <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-            </head>
-            <body style="margin: 0; padding: 20px; font-family: Helvetica, Arial, sans-serif; background-color: #ffffff;">
-                <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 800px; background-color: #ffffff;">
-                    <tr><td align="center" style="color:${EXPORT_COLORS.sncb}; font-size:24px; font-weight:900;">DEPLACEMENTS PMR</td></tr>
-                    <tr><td align="center" style="padding-bottom:30px; border-bottom:2px solid ${EXPORT_COLORS.sncb}; font-size:16px; font-weight:bold; color:#000;">${formattedDate}</td></tr>
-                    
-                    <tr><td height="30" style="font-size:0; line-height:0;">&nbsp;</td></tr>
-
+            <!DOCTYPE html>
+            <html>
+            <body style="margin:0; padding:0; font-family: Helvetica, Arial, sans-serif; background-color:#ffffff;">
+                <table width="100%" border="0" cellspacing="0" cellpadding="0">
                     <tr>
-                        <td>
-                            <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                        <td align="center">
+                            <table width="800" border="0" cellspacing="0" cellpadding="0" style="width:800px; background-color:#ffffff;">
+                                
+                                ${spacerRow(30)}
+                                <tr><td align="center" style="color:${EXPORT_COLORS.sncb}; font-size:24px; font-weight:900;">DÉPLACEMENTS PMR</td></tr>
+                                <tr><td align="center" style="font-size:16px; font-weight:bold; padding-bottom:10px; border-bottom:2px solid ${EXPORT_COLORS.sncb};">${formattedDate}</td></tr>
+                                ${spacerRow(30)}
+
+                                <tr><td bgcolor="${EXPORT_COLORS.morning}" style="padding:10px 15px; font-size:18px; font-weight:bold; color:#000;">PRESTATION MATIN</td></tr>
+                                ${spacerRow(20)}
+
+                                <tr><td style="color:${EXPORT_COLORS.mons}; font-size:14px; font-weight:bold;">• Prévu dans Quinyx gare de Mons</td></tr>
+                                ${spacerRow(10)}
+                                <tr><td>${renderStats(presenceMons)}</td></tr>
+                                ${spacerRow(10)}
+                                <tr><td>${renderTable('FMS', 'morning')}</td></tr>
+                                ${spacerRow(25)}
+
+                                <tr><td style="color:${EXPORT_COLORS.tournai}; font-size:14px; font-weight:bold;">• Prévu dans Quinyx gare de Tournai</td></tr>
+                                ${spacerRow(10)}
+                                <tr><td>${renderStats(presenceTournai)}</td></tr>
+                                ${spacerRow(10)}
+                                <tr><td>${renderTable('FTY', 'morning')}</td></tr>
+                                ${spacerRow(40)}
+
+                                <tr><td bgcolor="${EXPORT_COLORS.afternoon}" style="padding:10px 15px; font-size:18px; font-weight:bold; color:#ffffff;">PRESTATION APRÈS-MIDI</td></tr>
+                                ${spacerRow(20)}
+
+                                <tr><td style="color:${EXPORT_COLORS.mons}; font-size:14px; font-weight:bold;">• Prévu dans Quinyx gare de Mons</td></tr>
+                                ${spacerRow(10)}
+                                <tr><td>${renderStats(presenceMonsAM)}</td></tr>
+                                ${spacerRow(10)}
+                                <tr><td>${renderTable('FMS', 'afternoon')}</td></tr>
+                                ${spacerRow(25)}
+
+                                <tr><td style="color:${EXPORT_COLORS.tournai}; font-size:14px; font-weight:bold;">• Prévu dans Quinyx gare de Tournai</td></tr>
+                                ${spacerRow(10)}
+                                <tr><td>${renderStats(presenceTournaiAM)}</td></tr>
+                                ${spacerRow(10)}
+                                <tr><td>${renderTable('FTY', 'afternoon')}</td></tr>
+                                ${spacerRow(40)}
+
                                 <tr>
-                                    <td style="background-color:${EXPORT_COLORS.morning}; padding:10px 15px; font-size:18px; font-weight:bold; text-transform:uppercase; color:#000;">PRESTATION MATIN</td>
+                                    <td style="border-top:2px solid ${EXPORT_COLORS.sncb}; padding-top:20px; font-size:12px; color:#555;">
+                                        <p style="margin:5px 0;">• Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.</p>
+                                        <p style="margin:5px 0;">• Interventions PMR pour B-CS : Voir DICOS.</p>
+                                        <p style="margin:15px 0 0 0; font-size:14px; font-weight:bold; color:${EXPORT_COLORS.sncb};">IMPORTANT: L'App DICOS PMR reste la base à consulter</p>
+                                    </td>
                                 </tr>
+                                ${spacerRow(30)}
                             </table>
-                        </td>
-                    </tr>
-
-                    <tr><td style="padding-top:20px; color:${EXPORT_COLORS.mons}; font-size:14px; font-weight:bold;">• Prévu dans Quinyx gare de Mons</td></tr>
-                    <tr><td>${renderStatsTable(presenceMons)}</td></tr>
-                    <tr><td>${renderTable('FMS', 'morning')}</td></tr>
-
-                    <tr><td style="padding-top:10px; color:${EXPORT_COLORS.tournai}; font-size:14px; font-weight:bold;">• Prévu dans Quinyx gare de Tournai</td></tr>
-                    <tr><td>${renderStatsTable(presenceTournai)}</td></tr>
-                    <tr><td>${renderTable('FTY', 'morning')}</td></tr>
-
-                    <tr><td height="40" style="font-size:0; line-height:0;">&nbsp;</td></tr>
-
-                    <tr>
-                        <td>
-                            <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                                <tr>
-                                    <td style="background-color:${EXPORT_COLORS.afternoon}; padding:10px 15px; font-size:18px; font-weight:bold; text-transform:uppercase; color:#fff;">PRESTATION APRÈS-MIDI</td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-
-                    <tr><td style="padding-top:20px; color:${EXPORT_COLORS.mons}; font-size:14px; font-weight:bold;">• Prévu dans Quinyx gare de Mons</td></tr>
-                    <tr><td>${renderStatsTable(presenceMonsAM)}</td></tr>
-                    <tr><td>${renderTable('FMS', 'afternoon')}</td></tr>
-
-                    <tr><td style="padding-top:10px; color:${EXPORT_COLORS.tournai}; font-size:14px; font-weight:bold;">• Prévu dans Quinyx gare de Tournai</td></tr>
-                    <tr><td>${renderStatsTable(presenceTournaiAM)}</td></tr>
-                    <tr><td>${renderTable('FTY', 'afternoon')}</td></tr>
-
-                    <tr>
-                        <td style="border-top:2px solid ${EXPORT_COLORS.sncb}; padding-top:20px; font-size:12px; color:#555;">
-                            <p style="margin:5px 0;">• Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.</p>
-                            <p style="margin:5px 0;">• Interventions PMR pour B-CS : Voir DICOS.</p>
-                            <p style="margin:15px 0 0 0; font-size:14px; font-weight:bold; color:${EXPORT_COLORS.sncb};">IMPORTANT: L'App DICOS PMR reste la base à consulter</p>
                         </td>
                     </tr>
                 </table>
@@ -300,7 +305,7 @@
         } catch (err) { toast.error("Erreur : " + err.message); }
     }
 
-    // --- PDF (Reste inchangé car fonctionnel) ---
+    // --- PDF ---
     async function getBase64ImageFromURL(url) {
         return new Promise((resolve, reject) => {
             const img = new Image(); img.setAttribute("crossOrigin", "anonymous");
@@ -330,11 +335,8 @@
         currentY = 50;
 
         const drawSection = (title, color) => {
-            const isAfternoon = color === EXPORT_COLORS.afternoon;
-            // Conversion Hex -> RGB manuel pour jspdf si besoin, mais hex passe souvent
-            doc.setFillColor(color); 
-            doc.rect(10, currentY, 190, 12, 'F');
-            doc.setTextColor(isAfternoon ? 255 : 0, isAfternoon ? 255 : 0, isAfternoon ? 255 : 0);
+            doc.setFillColor(color); doc.rect(10, currentY, 190, 12, 'F');
+            doc.setTextColor(color === EXPORT_COLORS.afternoon ? 255 : 0, color === EXPORT_COLORS.afternoon ? 255 : 0, color === EXPORT_COLORS.afternoon ? 255 : 0);
             doc.setFontSize(14); doc.setFont("helvetica", "bold");
             doc.text(title, 105, currentY + 8, { align: 'center' });
             currentY += 22;
@@ -425,7 +427,7 @@
         <div class="absolute inset-0 border border-white/10 rounded-3xl shadow-2xl backdrop-blur-sm"></div>
 
         <div class="relative flex items-center gap-4 p-6">
-            <div class="p-4 rounded-2xl text-white shadow-lg animate-pulse-soft" style="background-color: var(--color-primary);">
+            <div class="p-4 rounded-2xl text-white shadow-lg animate-pulse-soft" style="background-color: var(--color-primary, #0069B4);">
                 <Car class="w-10 h-10" />
             </div>
             <div>
@@ -435,7 +437,7 @@
         </div>
 
         <div class="relative flex flex-wrap gap-3 p-6">
-            <a href="/deplacements/historique" class="btn-action bg-slate-700 hover:bg-slate-600">
+            <a href="/deplacements/historique" class="btn-action" style="background-color: var(--color-surface-600, #475569);">
                 <Train class="w-5 h-5" /> Historique
             </a>
             <button onclick={saveData} disabled={loading} class="btn-action primary">
@@ -561,7 +563,7 @@
     <div class="bg-slate-900/90 backdrop-blur-xl border-2 border-[#ADBC16]/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
         <div class="p-5 border-b-2 border-[#ADBC16]/50 flex justify-between items-center bg-slate-950/80">
             <h3 class="font-black text-lg flex items-center gap-3 text-[#ADBC16]">Interventions APRÈS-MIDI <span class="bg-[#ADBC16] text-white text-sm px-3 py-1 rounded-full">{interventionsAM.length}</span></h3>
-            <button onclick={addRowAM} class="btn-action compact text-white bg-[#ADBC16] hover:bg-[#8a9612]"><Plus class="w-4 h-4" /> Ajouter</button>
+            <button onclick={addRowAM} class="btn-action compact text-white" style="background-color: #ADBC16;"><Plus class="w-4 h-4" /> Ajouter</button>
         </div>
         <div class="overflow-x-auto p-4">
             <table class="w-full text-sm text-left border-collapse">
@@ -620,6 +622,8 @@
     }
     .btn-action:hover { transform: scale(1.05); }
     .btn-action.compact { padding: 0.5rem 1rem; font-size: 0.875rem; }
+    
+    /* Bouton Primary qui utilise la variable CSS globale */
     .btn-action.primary { background-color: var(--color-primary, #0069B4); }
     .btn-action.primary:hover { filter: brightness(1.1); }
 
@@ -635,9 +639,21 @@
     }
     .input-table:focus { border-color: var(--color-primary, #0069B4); }
 
-    /* FIX DATEPICKER ICON */
-    .datepicker-input { color-scheme: dark; }
+    /* FIX DATEPICKER: Force l'icône en blanc via filtre */
+    .datepicker-input {
+        color-scheme: dark;
+    }
+    .datepicker-input::-webkit-calendar-picker-indicator {
+        filter: invert(1) brightness(2); /* Inversion pour passer de noir à blanc */
+        cursor: pointer;
+        opacity: 1;
+        width: 20px;
+        height: 20px;
+    }
     
     input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     input[type="number"] { -moz-appearance: textfield; }
+    
+    select option { padding: 10px; }
+    select:focus { outline: none; }
 </style>
