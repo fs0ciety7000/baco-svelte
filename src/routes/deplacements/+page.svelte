@@ -451,7 +451,7 @@
         </div>
     </header>
 
-    <!-- UPDATED: Date picker avec meilleure gestion -->
+    <!-- FIXED: Date picker avec syntaxe Svelte 5 correcte -->
     <div class="relative group">
         <div class="relative bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-2xl p-6 shadow-2xl">
             <label class="text-xs uppercase font-bold text-transparent bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text mb-3 flex items-center gap-2 tracking-widest">
@@ -460,7 +460,7 @@
             <input 
                 type="date" 
                 bind:value={date} 
-                on:change={loadDailyReport}
+                onchange={loadDailyReport}
                 class="w-full max-w-md bg-slate-950 border-2 border-slate-800 text-white rounded-xl px-5 py-3.5 text-lg font-semibold focus:ring-2 focus:ring-blue-500 outline-none transition-all cursor-pointer hover:border-blue-600" 
             />
         </div>
