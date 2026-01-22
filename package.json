@@ -9,7 +9,11 @@
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"format": "prettier --write .",
-		"lint": "prettier --check ."
+		"lint": "prettier --check .",
+		"test": "vitest",
+		"test:ui": "vitest --ui",
+		"test:run": "vitest run",
+		"test:coverage": "vitest run --coverage"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.0",
@@ -18,14 +22,19 @@
 		"@tailwindcss/forms": "^0.5.10",
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.1.18",
+		"@testing-library/jest-dom": "^6.9.1",
+		"@testing-library/svelte": "^5.3.1",
+		"@vitest/ui": "^4.0.17",
 		"autoprefixer": "^10.4.22",
+		"jsdom": "^27.4.0",
 		"postcss": "^8.5.6",
 		"prettier": "^3.7.4",
 		"prettier-plugin-svelte": "^3.4.0",
 		"prettier-plugin-tailwindcss": "^0.7.2",
 		"svelte": "^5.45.6",
 		"tailwindcss": "^4.1.18",
-		"vite": "^7.2.6"
+		"vite": "^7.2.6",
+		"vitest": "^4.0.17"
 	},
 	"dependencies": {
 		"@supabase/supabase-js": "^2.87.1",
@@ -33,11 +42,9 @@
 		"@tiptap/extension-heading": "^3.13.0",
 		"@tiptap/pm": "^3.13.0",
 		"@tiptap/starter-kit": "^3.13.0",
-		"clsx": "^2.1.0",
-		"tailwind-merge": "^2.2.1",
-		"maplibre-gl": "^5.1.0",
 		"carta-md": "^4.11.1",
 		"chart.js": "^4.5.1",
+		"clsx": "^2.1.0",
 		"easymde": "^2.20.0",
 		"emoji-picker-element": "^1.28.1",
 		"flatpickr": "^4.6.13",
@@ -48,11 +55,13 @@
 		"jspdf-autotable": "^5.0.2",
 		"leaflet": "^1.9.4",
 		"lucide-svelte": "^0.561.0",
+		"maplibre-gl": "^5.1.0",
 		"marked": "^17.0.1",
 		"notyf": "^3.10.0",
 		"pdf-lib": "^1.17.1",
 		"svelte-dnd-action": "^0.9.68",
-		"xlsx": "^0.18.5",
-		"svelte-sonner": "^1.0.7"
+		"svelte-sonner": "^1.0.7",
+		"tailwind-merge": "^2.2.1",
+		"xlsx": "^0.18.5"
 	}
 }
