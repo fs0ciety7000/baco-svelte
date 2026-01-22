@@ -4,7 +4,7 @@
     let { date = $bindable(), onChange } = $props();
 </script>
 
-<div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+<div class="glass-panel rounded-lg border border-gray-200 p-4 shadow-sm">
     <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
         <Calendar class="w-4 h-4 text-gray-500" />
         Date du rapport
