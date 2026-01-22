@@ -9,100 +9,100 @@
         onAdd,
         onRemove,
         onStationChange,
-        themeColor = 'primary',
         period = 'morning'
     } = $props();
 
-    const colorConfig = {
-        primary: {
-            border: 'border-theme-primary',
-            text: 'text-theme-primary',
-            bg: 'bg-[rgb(var(--color-primary))]',
-            btnBg: 'bg-[rgb(var(--color-primary))]',
-            btnHover: 'hover:bg-[rgba(var(--color-primary),0.8)]'
+    const periodColors = {
+        morning: {
+            bg: 'bg-purple-50',
+            border: 'border-purple-200',
+            text: 'text-purple-900',
+            button: 'bg-purple-600 hover:bg-purple-700',
+            badge: 'bg-purple-600'
         },
         afternoon: {
-            border: 'border-[#ADBC16]/50',
-            text: 'text-[#ADBC16]',
-            bg: 'bg-[#ADBC16]',
-            btnBg: 'bg-[#ADBC16]',
-            btnHover: 'hover:bg-[#8a9612]'
+            bg: 'bg-yellow-50',
+            border: 'border-yellow-200',
+            text: 'text-yellow-900',
+            button: 'bg-yellow-600 hover:bg-yellow-700',
+            badge: 'bg-yellow-600'
         }
     };
 
-    const config = colorConfig[themeColor];
+    const colors = periodColors[period] || periodColors.morning;
 </script>
 
-<div class="glass-panel {config.border} rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-    <div class="p-5 border-b-2 {config.border} flex justify-between items-center bg-slate-950/80">
-        <h3 class="font-black text-lg flex items-center gap-3 {config.text}">
+<div class="glass-panel rounded-lg border border-white/20 shadow-xl overflow-hidden">
+    <!-- Header -->
+    <div class="{colors.bg} px-6 py-4 border-b border-white/20 flex justify-between items-center">
+        <h3 class="text-lg font-bold {colors.text} flex items-center gap-3">
             {title}
-            <span class="{config.bg} text-white text-sm px-3 py-1 rounded-full">
+            <span class="{colors.badge} text-white text-xs px-2.5 py-1 rounded-full font-semibold">
                 {interventions.length}
             </span>
         </h3>
         <button
             onclick={onAdd}
-            class="{config.btnBg} {config.btnHover} text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-all"
+            class="{colors.button} text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
         >
             <Plus class="w-4 h-4" /> Ajouter
         </button>
     </div>
 
-    <div class="overflow-x-auto p-4">
-        <table class="w-full text-sm text-left border-collapse">
-            <thead class="{config.text} uppercase text-xs font-black bg-slate-950 {config.border} border-b">
-                <tr>
-                    <th class="px-4 py-3">Zone</th>
-                    <th class="px-4 py-3">Gare</th>
-                    <th class="px-4 py-3 w-96">PMR / Mission</th>
-                    <th class="px-4 py-3 w-48">Prise en charge</th>
+    <!-- Table -->
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-white/5 border-b border-white/10">
+                <tr class="text-left">
+                    <th class="px-4 py-3 text-xs font-semibold text-gray-300 uppercase tracking-wide">Zone</th>
+                    <th class="px-4 py-3 text-xs font-semibold text-gray-300 uppercase tracking-wide">Gare</th>
+                    <th class="px-4 py-3 text-xs font-semibold text-gray-300 uppercase tracking-wide">PMR / Mission</th>
+                    <th class="px-4 py-3 text-xs font-semibold text-gray-300 uppercase tracking-wide">Prise en charge</th>
                     <th class="px-2 py-3"></th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-white/10">
                 {#each interventions as row, i}
                     <tr class="hover:bg-white/5 transition-colors">
-                        <td class="p-2">
+                        <td class="p-3">
                             <input
                                 bind:value={row.zone}
-                                class="w-16 glass-panel text-center font-mono border {config.border} rounded-lg py-1 outline-none"
+                                class="w-20 px-2 py-1.5 text-center font-mono bg-white/10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none backdrop-blur-sm"
                                 placeholder="-"
                             />
                         </td>
-                        <td class="p-2">
+                        <td class="p-3">
                             <input
                                 list="stations"
                                 value={row.station}
                                 oninput={(e) => onStationChange(i, e.target.value)}
-                                class="w-full glass-panel border {config.border} rounded-lg px-2 py-1 font-bold uppercase outline-none"
+                                class="w-full px-3 py-1.5 bg-white/10 border border-white/20 rounded-lg text-white font-semibold uppercase focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none backdrop-blur-sm"
                                 placeholder="GARE"
                             />
                         </td>
-                        <td class="p-2">
+                        <td class="p-3">
                             <input
                                 bind:value={row.pmr_details}
-                                class="w-full glass-panel border {config.border} rounded-lg px-2 py-1 outline-none"
+                                class="w-full px-3 py-1.5 bg-white/10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none backdrop-blur-sm"
                                 placeholder="Détails..."
                             />
                         </td>
-                        <td class="p-2">
+                        <td class="p-3">
                             <select
                                 bind:value={row.assigned_to}
-                                class="w-full glass-panel border-2 {config.border} rounded-lg px-3 py-2 outline-none focus:{config.border} transition-colors font-medium"
+                                class="w-full px-3 py-1.5 bg-white/10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-medium backdrop-blur-sm"
                             >
                                 <option value="">-- Sélectionner --</option>
                                 {#each ASSIGNEES as assignee}
-                                    <option value={assignee} class="bg-slate-800 text-white py-2">
-                                        {assignee}
-                                    </option>
+                                    <option value={assignee}>{assignee}</option>
                                 {/each}
                             </select>
                         </td>
-                        <td class="p-2 text-center">
+                        <td class="p-3 text-center">
                             <button
                                 onclick={() => onRemove(i)}
-                                class="text-slate-500 hover:text-red-400 transition-colors"
+                                class="text-gray-400 hover:text-red-400 transition-colors p-1"
+                                title="Supprimer"
                             >
                                 <Trash2 class="w-4 h-4" />
                             </button>
@@ -116,12 +116,4 @@
 
 <style>
     @reference "tailwindcss";
-
-    select:focus {
-        outline: none;
-    }
-
-    select option {
-        padding: 10px;
-    }
 </style>

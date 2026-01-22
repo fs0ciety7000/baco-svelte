@@ -13,10 +13,10 @@
                     <Car class="w-6 h-6" />
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900">
+                    <h1 class="text-2xl font-bold text-white">
                         Déplacements PMR
                     </h1>
-                    <p class="text-sm text-gray-500 mt-0.5">
+                    <p class="text-sm text-gray-300 mt-0.5">
                         Gestion des prises en charge
                     </p>
                 </div>
@@ -26,7 +26,7 @@
             <div class="flex items-center gap-2 flex-wrap">
                 <a
                     href="/deplacements/historique"
-                    class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white glass-panel border border-white/20 rounded-lg glass-hover transition-colors"
                 >
                     <Train class="w-4 h-4" />
                     <span class="hidden sm:inline">Historique</span>

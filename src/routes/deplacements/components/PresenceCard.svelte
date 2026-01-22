@@ -38,8 +38,8 @@
 
     <div class="grid grid-cols-5 gap-3">
         {#each Object.keys(presence) as key}
-            <div class="bg-gray-50 rounded-lg p-3 flex flex-col items-center border border-gray-200">
-                <span class="text-xs uppercase font-semibold mb-2 text-gray-600">
+            <div class="bg-white/5 rounded-lg p-3 flex flex-col items-center border border-white/10">
+                <span class="text-xs uppercase font-semibold mb-2 text-gray-300">
                     {key.replace('shift_', '')}
                 </span>
                 <input
@@ -47,9 +47,9 @@
                     min="0"
                     max="20"
                     bind:value={presence[key]}
-                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer {colors.slider}"
+                    class="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer {colors.slider}"
                 />
-                <span class="text-lg font-bold mt-2 text-gray-900">
+                <span class="text-lg font-bold mt-2 text-white">
                     {presence[key]}
                 </span>
             </div>
