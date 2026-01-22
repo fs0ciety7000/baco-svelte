@@ -2,17 +2,19 @@
     import { onMount } from 'svelte';
     import { supabase } from '$lib/supabase';
     import { toast } from '$lib/stores/toast';
+    import { page } from '$app/stores';
     import jsPDF from 'jspdf';
-    import { 
-        Save, 
-        Mail, 
-        FileDown, 
-        Plus, 
-        Trash2, 
-        Car, 
-        Calendar, 
-        MapPin, 
-        Users, 
+    import autoTable from 'jspdf-autotable';
+    import {
+        Save,
+        Mail,
+        FileDown,
+        Plus,
+        Trash2,
+        Car,
+        Calendar,
+        MapPin,
+        Users,
         Briefcase,
         Train
     } from 'lucide-svelte';
@@ -46,6 +48,13 @@
 
     // --- INITIALISATION ---
     onMount(async () => {
+        // Vérifier si une date est passée en paramètre d'URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlDate = urlParams.get('date');
+        if (urlDate) {
+            date = urlDate;
+        }
+
         await loadStations();
         await loadDailyReport();
     });
@@ -184,32 +193,57 @@
         }
     }
 
-    // --- EXPORT OUTLOOK (HTML Clean) ---
+    // --- EXPORT OUTLOOK (HTML Moderne et Vibrant) ---
     async function copyForOutlook() {
-        const formattedDate = new Date(date).toLocaleDateString('fr-BE');
+        const formattedDate = new Date(date).toLocaleDateString('fr-BE', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
 
         const html = `
-            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 11pt; color: #1e293b; background-color: #fff; padding: 20px;">
-                <h3 style="color: #0f172a; border-bottom: 3px solid #3b82f6; padding-bottom: 10px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px;">
-                    Bonjour, voici les déplacements PMR pour ${formattedDate}
-                </h3>
+            <div style="font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; font-size: 11pt; color: #1e293b; background: linear-gradient(135deg, #f0f9ff 0%, #faf5ff 100%); padding: 30px; border-radius: 16px;">
+                <!-- En-tête avec dégradé -->
+                <div style="background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); padding: 30px; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);">
+                    <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 900; text-align: center; text-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+                        🚂 DÉPLACEMENTS PMR
+                    </h1>
+                    <p style="color: #e0e7ff; margin: 10px 0 0 0; font-size: 16px; text-align: center; font-weight: 600;">
+                        ${formattedDate}
+                    </p>
+                </div>
 
                 <!-- PRESTATION MATIN FMS -->
-                <div style="margin-bottom: 25px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-                    <div style="background-color: #eff6ff; padding: 10px 15px; border-bottom: 1px solid #dbeafe;">
-                        <span style="color: #1d4ed8; font-weight: bold; font-size: 12pt;">Prestation matin à FMS</span>
+                <div style="margin-bottom: 30px; border: 3px solid #3b82f6; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2); background: #ffffff;">
+                    <div style="background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%); padding: 16px 20px; border-bottom: 2px solid #2563eb;">
+                        <span style="color: #ffffff; font-weight: 900; font-size: 14pt; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">☀️ PRESTATION MATIN - Zone FMS</span>
                     </div>
-                    <div style="padding: 15px;">
-                        <div style="margin-bottom: 15px; font-size: 10pt; color: #64748b;">
-                            <strong>Prévu dans Quinyx gare de Mons :</strong> SPI:${presenceMons.spi} | OPI:${presenceMons.opi} | CPI:${presenceMons.cpi} | PA:${presenceMons.pa} | 10h-18h:${presenceMons.shift_10_18}
+                    <div style="padding: 20px;">
+                        <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); padding: 16px; border-radius: 12px; margin-bottom: 20px; border-left: 5px solid #3b82f6; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);">
+                            <p style="margin: 0; font-size: 10pt; color: #1e40af; font-weight: bold;">📍 Prévu dans Quinyx gare de Mons</p>
+                            <div style="margin-top: 10px; display: flex; gap: 12px; flex-wrap: wrap;">
+                                <span style="background: #3b82f6; color: white; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 10pt;">SPI: ${presenceMons.spi}</span>
+                                <span style="background: #3b82f6; color: white; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 10pt;">OPI: ${presenceMons.opi}</span>
+                                <span style="background: #3b82f6; color: white; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 10pt;">CPI: ${presenceMons.cpi}</span>
+                                <span style="background: #3b82f6; color: white; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 10pt;">PA: ${presenceMons.pa}</span>
+                                <span style="background: #3b82f6; color: white; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 10pt;">10-18h: ${presenceMons.shift_10_18}</span>
+                            </div>
                         </div>
-                        <table style="width: 100%; border-collapse: collapse; font-size: 10pt;">
+                        <table style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 10pt; border: 2px solid #dbeafe; border-radius: 12px; overflow: hidden;">
+                            <thead>
+                                <tr style="background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);">
+                                    <th style="padding: 12px; font-weight: 900; color: white; text-align: left; width: 100px;">GARE</th>
+                                    <th style="padding: 12px; font-weight: 900; color: white; text-align: left;">INTERVENTIONS</th>
+                                </tr>
+                            </thead>
                             <tbody>
-                                ${PRESET_STATIONS_FMS.map(st => {
+                                ${PRESET_STATIONS_FMS.map((st, index) => {
                                     const txt = getStationText(st, 'FMS', 'morning');
-                                    return `<tr style="border-bottom: 1px solid #f1f5f9;">
-                                        <td style="padding: 6px 8px; font-weight: bold; width: 80px; color: #475569;">${st}</td>
-                                        <td style="padding: 6px 8px; color: #0f172a;">${txt}</td>
+                                    const bgColor = index % 2 === 0 ? '#f0f9ff' : '#ffffff';
+                                    return `<tr style="background-color: ${bgColor}; border-bottom: 1px solid #dbeafe;">
+                                        <td style="padding: 12px; font-weight: 900; color: #1e40af; border-right: 2px solid #dbeafe;">${st}</td>
+                                        <td style="padding: 12px; color: #334155; line-height: 1.6;">${txt}</td>
                                     </tr>`;
                                 }).join('')}
                             </tbody>
@@ -218,21 +252,34 @@
                 </div>
 
                 <!-- PRESTATION MATIN FTY -->
-                <div style="margin-bottom: 25px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-                    <div style="background-color: #f5f3ff; padding: 10px 15px; border-bottom: 1px solid #ede9fe;">
-                        <span style="color: #6d28d9; font-weight: bold; font-size: 12pt;">Prestation matin à FTY</span>
+                <div style="margin-bottom: 30px; border: 3px solid #8b5cf6; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 24px rgba(139, 92, 246, 0.2); background: #ffffff;">
+                    <div style="background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%); padding: 16px 20px; border-bottom: 2px solid #7c3aed;">
+                        <span style="color: #ffffff; font-weight: 900; font-size: 14pt; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">☀️ PRESTATION MATIN - Zone FTY</span>
                     </div>
-                    <div style="padding: 15px;">
-                        <div style="margin-bottom: 15px; font-size: 10pt; color: #64748b;">
-                            <strong>Prévu dans Quinyx gare de Tournai :</strong> SPI:${presenceTournai.spi} | CPI:${presenceTournai.cpi} | PA:${presenceTournai.pa} | 10h-18h:${presenceTournai.shift_10_18}
+                    <div style="padding: 20px;">
+                        <div style="background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); padding: 16px; border-radius: 12px; margin-bottom: 20px; border-left: 5px solid #8b5cf6; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.1);">
+                            <p style="margin: 0; font-size: 10pt; color: #6d28d9; font-weight: bold;">📍 Prévu dans Quinyx gare de Tournai</p>
+                            <div style="margin-top: 10px; display: flex; gap: 12px; flex-wrap: wrap;">
+                                <span style="background: #8b5cf6; color: white; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 10pt;">SPI: ${presenceTournai.spi}</span>
+                                <span style="background: #8b5cf6; color: white; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 10pt;">CPI: ${presenceTournai.cpi}</span>
+                                <span style="background: #8b5cf6; color: white; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 10pt;">PA: ${presenceTournai.pa}</span>
+                                <span style="background: #8b5cf6; color: white; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 10pt;">10-18h: ${presenceTournai.shift_10_18}</span>
+                            </div>
                         </div>
-                        <table style="width: 100%; border-collapse: collapse; font-size: 10pt;">
+                        <table style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 10pt; border: 2px solid #ede9fe; border-radius: 12px; overflow: hidden;">
+                            <thead>
+                                <tr style="background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);">
+                                    <th style="padding: 12px; font-weight: 900; color: white; text-align: left; width: 100px;">GARE</th>
+                                    <th style="padding: 12px; font-weight: 900; color: white; text-align: left;">INTERVENTIONS</th>
+                                </tr>
+                            </thead>
                             <tbody>
-                                ${PRESET_STATIONS_FTY.map(st => {
+                                ${PRESET_STATIONS_FTY.map((st, index) => {
                                     const txt = getStationText(st, 'FTY', 'morning');
-                                    return `<tr style="border-bottom: 1px solid #f1f5f9;">
-                                        <td style="padding: 6px 8px; font-weight: bold; width: 80px; color: #475569;">${st}</td>
-                                        <td style="padding: 6px 8px; color: #0f172a;">${txt}</td>
+                                    const bgColor = index % 2 === 0 ? '#faf5ff' : '#ffffff';
+                                    return `<tr style="background-color: ${bgColor}; border-bottom: 1px solid #ede9fe;">
+                                        <td style="padding: 12px; font-weight: 900; color: #6d28d9; border-right: 2px solid #ede9fe;">${st}</td>
+                                        <td style="padding: 12px; color: #334155; line-height: 1.6;">${txt}</td>
                                     </tr>`;
                                 }).join('')}
                             </tbody>
@@ -241,21 +288,35 @@
                 </div>
 
                 <!-- PRESTATION APRÈS-MIDI FMS -->
-                <div style="margin-bottom: 25px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-                    <div style="background-color: #eff6ff; padding: 10px 15px; border-bottom: 1px solid #dbeafe;">
-                        <span style="color: #1d4ed8; font-weight: bold; font-size: 12pt;">Prestation après-midi à FMS</span>
+                <div style="margin-bottom: 30px; border: 3px solid #3b82f6; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2); background: #ffffff;">
+                    <div style="background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%); padding: 16px 20px; border-bottom: 2px solid #1d4ed8;">
+                        <span style="color: #ffffff; font-weight: 900; font-size: 14pt; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">🌙 PRESTATION APRÈS-MIDI - Zone FMS</span>
                     </div>
-                    <div style="padding: 15px;">
-                        <div style="margin-bottom: 15px; font-size: 10pt; color: #64748b;">
-                            <strong>Prévu dans Quinyx gare de Mons :</strong> SPI:${presenceMonsAM.spi} | OPI:${presenceMonsAM.opi} | CPI:${presenceMonsAM.cpi} | PA:${presenceMonsAM.pa} | 10h-18h:${presenceMonsAM.shift_10_18}
+                    <div style="padding: 20px;">
+                        <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); padding: 16px; border-radius: 12px; margin-bottom: 20px; border-left: 5px solid #3b82f6; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);">
+                            <p style="margin: 0; font-size: 10pt; color: #1e40af; font-weight: bold;">📍 Prévu dans Quinyx gare de Mons</p>
+                            <div style="margin-top: 10px; display: flex; gap: 12px; flex-wrap: wrap;">
+                                <span style="background: #2563eb; color: white; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 10pt;">SPI: ${presenceMonsAM.spi}</span>
+                                <span style="background: #2563eb; color: white; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 10pt;">OPI: ${presenceMonsAM.opi}</span>
+                                <span style="background: #2563eb; color: white; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 10pt;">CPI: ${presenceMonsAM.cpi}</span>
+                                <span style="background: #2563eb; color: white; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 10pt;">PA: ${presenceMonsAM.pa}</span>
+                                <span style="background: #2563eb; color: white; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 10pt;">10-18h: ${presenceMonsAM.shift_10_18}</span>
+                            </div>
                         </div>
-                        <table style="width: 100%; border-collapse: collapse; font-size: 10pt;">
+                        <table style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 10pt; border: 2px solid #dbeafe; border-radius: 12px; overflow: hidden;">
+                            <thead>
+                                <tr style="background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);">
+                                    <th style="padding: 12px; font-weight: 900; color: white; text-align: left; width: 100px;">GARE</th>
+                                    <th style="padding: 12px; font-weight: 900; color: white; text-align: left;">INTERVENTIONS</th>
+                                </tr>
+                            </thead>
                             <tbody>
-                                ${PRESET_STATIONS_FMS.map(st => {
+                                ${PRESET_STATIONS_FMS.map((st, index) => {
                                     const txt = getStationText(st, 'FMS', 'afternoon');
-                                    return `<tr style="border-bottom: 1px solid #f1f5f9;">
-                                        <td style="padding: 6px 8px; font-weight: bold; width: 80px; color: #475569;">${st}</td>
-                                        <td style="padding: 6px 8px; color: #0f172a;">${txt}</td>
+                                    const bgColor = index % 2 === 0 ? '#f0f9ff' : '#ffffff';
+                                    return `<tr style="background-color: ${bgColor}; border-bottom: 1px solid #dbeafe;">
+                                        <td style="padding: 12px; font-weight: 900; color: #1e40af; border-right: 2px solid #dbeafe;">${st}</td>
+                                        <td style="padding: 12px; color: #334155; line-height: 1.6;">${txt}</td>
                                     </tr>`;
                                 }).join('')}
                             </tbody>
@@ -264,21 +325,34 @@
                 </div>
 
                 <!-- PRESTATION APRÈS-MIDI FTY -->
-                <div style="margin-bottom: 25px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-                    <div style="background-color: #f5f3ff; padding: 10px 15px; border-bottom: 1px solid #ede9fe;">
-                        <span style="color: #6d28d9; font-weight: bold; font-size: 12pt;">Prestation après-midi à FTY</span>
+                <div style="margin-bottom: 30px; border: 3px solid #8b5cf6; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 24px rgba(139, 92, 246, 0.2); background: #ffffff;">
+                    <div style="background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%); padding: 16px 20px; border-bottom: 2px solid #6d28d9;">
+                        <span style="color: #ffffff; font-weight: 900; font-size: 14pt; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">🌙 PRESTATION APRÈS-MIDI - Zone FTY</span>
                     </div>
-                    <div style="padding: 15px;">
-                        <div style="margin-bottom: 15px; font-size: 10pt; color: #64748b;">
-                            <strong>Prévu dans Quinyx gare de Tournai :</strong> SPI:${presenceTournaiAM.spi} | CPI:${presenceTournaiAM.cpi} | PA:${presenceTournaiAM.pa} | 10h-18h:${presenceTournaiAM.shift_10_18}
+                    <div style="padding: 20px;">
+                        <div style="background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); padding: 16px; border-radius: 12px; margin-bottom: 20px; border-left: 5px solid #8b5cf6; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.1);">
+                            <p style="margin: 0; font-size: 10pt; color: #6d28d9; font-weight: bold;">📍 Prévu dans Quinyx gare de Tournai</p>
+                            <div style="margin-top: 10px; display: flex; gap: 12px; flex-wrap: wrap;">
+                                <span style="background: #7c3aed; color: white; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 10pt;">SPI: ${presenceTournaiAM.spi}</span>
+                                <span style="background: #7c3aed; color: white; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 10pt;">CPI: ${presenceTournaiAM.cpi}</span>
+                                <span style="background: #7c3aed; color: white; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 10pt;">PA: ${presenceTournaiAM.pa}</span>
+                                <span style="background: #7c3aed; color: white; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 10pt;">10-18h: ${presenceTournaiAM.shift_10_18}</span>
+                            </div>
                         </div>
-                        <table style="width: 100%; border-collapse: collapse; font-size: 10pt;">
+                        <table style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 10pt; border: 2px solid #ede9fe; border-radius: 12px; overflow: hidden;">
+                            <thead>
+                                <tr style="background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);">
+                                    <th style="padding: 12px; font-weight: 900; color: white; text-align: left; width: 100px;">GARE</th>
+                                    <th style="padding: 12px; font-weight: 900; color: white; text-align: left;">INTERVENTIONS</th>
+                                </tr>
+                            </thead>
                             <tbody>
-                                ${PRESET_STATIONS_FTY.map(st => {
+                                ${PRESET_STATIONS_FTY.map((st, index) => {
                                     const txt = getStationText(st, 'FTY', 'afternoon');
-                                    return `<tr style="border-bottom: 1px solid #f1f5f9;">
-                                        <td style="padding: 6px 8px; font-weight: bold; width: 80px; color: #475569;">${st}</td>
-                                        <td style="padding: 6px 8px; color: #0f172a;">${txt}</td>
+                                    const bgColor = index % 2 === 0 ? '#faf5ff' : '#ffffff';
+                                    return `<tr style="background-color: ${bgColor}; border-bottom: 1px solid #ede9fe;">
+                                        <td style="padding: 12px; font-weight: 900; color: #6d28d9; border-right: 2px solid #ede9fe;">${st}</td>
+                                        <td style="padding: 12px; color: #334155; line-height: 1.6;">${txt}</td>
                                     </tr>`;
                                 }).join('')}
                             </tbody>
@@ -286,10 +360,27 @@
                     </div>
                 </div>
 
-                <div style="font-size: 9pt; color: #94a3b8; font-style: italic; margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
-                    Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.<br/>
-                    Interventions PMR pour B-CS : Voir DICOS.<br/><br/>
-                    <strong>L'App DICOS PMR reste la base à consulter</strong>
+                <!-- Footer amélioré -->
+                <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 3px solid #f59e0b; border-radius: 16px; padding: 24px; margin-top: 30px; box-shadow: 0 8px 24px rgba(245, 158, 11, 0.2);">
+                    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
+                        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px;">⚠️</div>
+                        <h3 style="margin: 0; color: #92400e; font-size: 14pt; font-weight: 900;">INFORMATIONS IMPORTANTES</h3>
+                    </div>
+                    <div style="color: #78350f; font-size: 10pt; line-height: 1.8;">
+                        <p style="margin: 8px 0; display: flex; align-items: start; gap: 8px;">
+                            <span style="color: #f59e0b; font-weight: bold; font-size: 14pt;">•</span>
+                            <span>Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.</span>
+                        </p>
+                        <p style="margin: 8px 0; display: flex; align-items: start; gap: 8px;">
+                            <span style="color: #f59e0b; font-weight: bold; font-size: 14pt;">•</span>
+                            <span>Interventions PMR pour B-CS : Voir DICOS.</span>
+                        </p>
+                        <div style="margin-top: 16px; padding: 12px; background: rgba(245, 158, 11, 0.2); border-radius: 8px; border-left: 4px solid #f59e0b;">
+                            <p style="margin: 0; font-weight: 900; color: #92400e; font-size: 11pt;">
+                                📱 L'App DICOS PMR reste la base à consulter
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
@@ -308,404 +399,640 @@
         }
     }
 
-    // --- PDF ---
+    // --- PDF AMÉLIORÉ avec autoTable ---
     function generatePDF() {
         const doc = new jsPDF();
-        let y = 15;
-
-        const writeText = (txt, size, bold = false, color = [0,0,0], x = 14) => {
-            doc.setFontSize(size);
-            doc.setFont("helvetica", bold ? "bold" : "normal");
-            doc.setTextColor(...color);
-            doc.text(txt, x, y);
-            y += size/2 + 2;
-        };
-
-        const checkPageBreak = () => {
-            if (y > 250) {
-                doc.addPage();
-                y = 15;
-            }
-        };
-
-        writeText(`Bonjour, voici les déplacements PMR pour`, 14, true);
-        writeText(date.split('-').reverse().join('-'), 16, true, [37, 99, 235]);
-        y += 5;
-
-        // === MATIN FMS ===
-        writeText("Prestation matin à FMS", 12, true, [37, 99, 235]);
-        writeText(`Prévu dans Quinyx gare de Mons : SPI:${presenceMons.spi} | OPI:${presenceMons.opi} | CPI:${presenceMons.cpi} | PA:${presenceMons.pa} | 10h-18h:${presenceMons.shift_10_18}`, 9, false, [80,80,80]);
-        y += 2;
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        PRESET_STATIONS_FMS.forEach(st => {
-            const txt = getStationText(st, 'FMS', 'morning').replace(/<br\/>/g, "\n").replace(/<br \/>/g, "\n");
-            const plainTxt = `${st}: ${txt}`;
-            const split = doc.splitTextToSize(plainTxt, 180);
-            doc.text(split, 14, y);
-            y += split.length * 4.5;
-            checkPageBreak();
+        const formattedDate = new Date(date).toLocaleDateString('fr-BE', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
         });
 
-        y += 8;
-        checkPageBreak();
+        let currentY = 20;
 
-        // === MATIN FTY ===
-        writeText("Prestation matin à FTY", 12, true, [124, 58, 237]);
-        writeText(`Prévu dans Quinyx gare de Tournai : SPI:${presenceTournai.spi} | CPI:${presenceTournai.cpi} | PA:${presenceTournai.pa} | 10h-18h:${presenceTournai.shift_10_18}`, 9, false, [80,80,80]);
-        y += 2;
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        PRESET_STATIONS_FTY.forEach(st => {
-            const txt = getStationText(st, 'FTY', 'morning').replace(/<br\/>/g, "\n").replace(/<br \/>/g, "\n");
-            const plainTxt = `${st}: ${txt}`;
-            const split = doc.splitTextToSize(plainTxt, 180);
-            doc.text(split, 14, y);
-            y += split.length * 4.5;
-            checkPageBreak();
-        });
-
-        y += 8;
-        checkPageBreak();
-
-        // === APRÈS-MIDI FMS ===
-        writeText("Prestation après-midi à FMS", 12, true, [37, 99, 235]);
-        writeText(`Prévu dans Quinyx gare de Mons : SPI:${presenceMonsAM.spi} | OPI:${presenceMonsAM.opi} | CPI:${presenceMonsAM.cpi} | PA:${presenceMonsAM.pa} | 10h-18h:${presenceMonsAM.shift_10_18}`, 9, false, [80,80,80]);
-        y += 2;
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        PRESET_STATIONS_FMS.forEach(st => {
-            const txt = getStationText(st, 'FMS', 'afternoon').replace(/<br\/>/g, "\n").replace(/<br \/>/g, "\n");
-            const plainTxt = `${st}: ${txt}`;
-            const split = doc.splitTextToSize(plainTxt, 180);
-            doc.text(split, 14, y);
-            y += split.length * 4.5;
-            checkPageBreak();
-        });
-
-        y += 8;
-        checkPageBreak();
-
-        // === APRÈS-MIDI FTY ===
-        writeText("Prestation après-midi à FTY", 12, true, [124, 58, 237]);
-        writeText(`Prévu dans Quinyx gare de Tournai : SPI:${presenceTournaiAM.spi} | CPI:${presenceTournaiAM.cpi} | PA:${presenceTournaiAM.pa} | 10h-18h:${presenceTournaiAM.shift_10_18}`, 9, false, [80,80,80]);
-        y += 2;
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        PRESET_STATIONS_FTY.forEach(st => {
-            const txt = getStationText(st, 'FTY', 'afternoon').replace(/<br\/>/g, "\n").replace(/<br \/>/g, "\n");
-            const plainTxt = `${st}: ${txt}`;
-            const split = doc.splitTextToSize(plainTxt, 180);
-            doc.text(split, 14, y);
-            y += split.length * 4.5;
-            checkPageBreak();
-        });
-
-        y += 10;
-        checkPageBreak();
-
-        // Footer
-        doc.setFontSize(8);
-        doc.setTextColor(120, 120, 120);
-        doc.setFont("helvetica", "italic");
-        doc.text("Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.", 14, y);
-        y += 4;
-        doc.text("Interventions PMR pour B-CS : Voir DICOS.", 14, y);
-        y += 4;
+        // En-tête principal avec bordure
+        doc.setFillColor(37, 99, 235); // Bleu
+        doc.rect(0, 0, 210, 35, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(20);
         doc.setFont("helvetica", "bold");
-        doc.text("L'App DICOS PMR reste la base à consulter", 14, y);
+        doc.text("DÉPLACEMENTS PMR", 105, 15, { align: 'center' });
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "normal");
+        doc.text(formattedDate, 105, 25, { align: 'center' });
+
+        currentY = 45;
+
+        // Fonction pour créer une section
+        const createSection = (title, presenceMons, presenceTournai, zone, period, color) => {
+            // Titre de section avec bordure colorée
+            doc.setFillColor(...color);
+            doc.rect(10, currentY, 190, 10, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.text(title, 15, currentY + 7);
+
+            currentY += 15;
+
+            // Tableau de présence Mons
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "bold");
+            doc.text("📍 Gare de Mons", 15, currentY);
+            currentY += 2;
+
+            autoTable(doc, {
+                startY: currentY,
+                head: [['SPI', 'OPI', 'CPI', 'PA', '10h-18h']],
+                body: [[
+                    presenceMons.spi.toString(),
+                    presenceMons.opi.toString(),
+                    presenceMons.cpi.toString(),
+                    presenceMons.pa.toString(),
+                    presenceMons.shift_10_18.toString()
+                ]],
+                theme: 'grid',
+                headStyles: {
+                    fillColor: color,
+                    textColor: 255,
+                    fontStyle: 'bold',
+                    halign: 'center'
+                },
+                bodyStyles: {
+                    halign: 'center',
+                    fontSize: 11,
+                    fontStyle: 'bold'
+                },
+                margin: { left: 15, right: 15 },
+                tableWidth: 90
+            });
+
+            currentY = doc.lastAutoTable.finalY + 10;
+
+            // Tableau de présence Tournai
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "bold");
+            doc.text("📍 Gare de Tournai", 110, currentY - 8 - doc.lastAutoTable.body.length * 10);
+
+            autoTable(doc, {
+                startY: currentY - 10 - doc.lastAutoTable.body.length * 10,
+                head: [['SPI', 'CPI', 'PA', '10h-18h']],
+                body: [[
+                    presenceTournai.spi.toString(),
+                    presenceTournai.cpi.toString(),
+                    presenceTournai.pa.toString(),
+                    presenceTournai.shift_10_18.toString()
+                ]],
+                theme: 'grid',
+                headStyles: {
+                    fillColor: [147, 51, 234], // Purple
+                    textColor: 255,
+                    fontStyle: 'bold',
+                    halign: 'center'
+                },
+                bodyStyles: {
+                    halign: 'center',
+                    fontSize: 11,
+                    fontStyle: 'bold'
+                },
+                margin: { left: 110 },
+                tableWidth: 85
+            });
+
+            currentY = Math.max(currentY, doc.lastAutoTable.finalY + 8);
+
+            // Tableaux des interventions FMS
+            doc.setFontSize(11);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(...color);
+            doc.text("Zone FMS", 15, currentY);
+            currentY += 5;
+
+            const fmsRows = PRESET_STATIONS_FMS.map(st => {
+                const txt = getStationText(st, 'FMS', period).replace(/<br\/>/g, " | ").replace(/<br \/>/g, " | ");
+                return [st, txt];
+            });
+
+            autoTable(doc, {
+                startY: currentY,
+                head: [['Gare', 'Détails Interventions']],
+                body: fmsRows,
+                theme: 'striped',
+                headStyles: {
+                    fillColor: color,
+                    textColor: 255,
+                    fontStyle: 'bold',
+                    fontSize: 10
+                },
+                bodyStyles: {
+                    fontSize: 9
+                },
+                columnStyles: {
+                    0: { cellWidth: 25, fontStyle: 'bold', halign: 'center' },
+                    1: { cellWidth: 'auto' }
+                },
+                margin: { left: 15, right: 15 },
+                alternateRowStyles: {
+                    fillColor: [245, 247, 250]
+                }
+            });
+
+            currentY = doc.lastAutoTable.finalY + 10;
+
+            // Tableaux des interventions FTY
+            doc.setFontSize(11);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(147, 51, 234); // Purple
+            doc.text("Zone FTY", 15, currentY);
+            currentY += 5;
+
+            const ftyRows = PRESET_STATIONS_FTY.map(st => {
+                const txt = getStationText(st, 'FTY', period).replace(/<br\/>/g, " | ").replace(/<br \/>/g, " | ");
+                return [st, txt];
+            });
+
+            autoTable(doc, {
+                startY: currentY,
+                head: [['Gare', 'Détails Interventions']],
+                body: ftyRows,
+                theme: 'striped',
+                headStyles: {
+                    fillColor: [147, 51, 234],
+                    textColor: 255,
+                    fontStyle: 'bold',
+                    fontSize: 10
+                },
+                bodyStyles: {
+                    fontSize: 9
+                },
+                columnStyles: {
+                    0: { cellWidth: 25, fontStyle: 'bold', halign: 'center' },
+                    1: { cellWidth: 'auto' }
+                },
+                margin: { left: 15, right: 15 },
+                alternateRowStyles: {
+                    fillColor: [250, 245, 255]
+                }
+            });
+
+            currentY = doc.lastAutoTable.finalY + 15;
+        };
+
+        // Créer les sections
+        createSection(
+            "☀️ PRESTATION MATIN",
+            presenceMons,
+            presenceTournai,
+            'both',
+            'morning',
+            [37, 99, 235] // Bleu
+        );
+
+        // Nouvelle page pour l'après-midi
+        doc.addPage();
+        currentY = 20;
+
+        createSection(
+            "🌙 PRESTATION APRÈS-MIDI",
+            presenceMonsAM,
+            presenceTournaiAM,
+            'both',
+            'afternoon',
+            [147, 51, 234] // Purple
+        );
+
+        // Footer avec bordure
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFillColor(255, 243, 205);
+            doc.rect(10, 270, 190, 20, 'FD');
+            doc.setDrawColor(251, 191, 36);
+            doc.setLineWidth(0.5);
+            doc.rect(10, 270, 190, 20);
+
+            doc.setTextColor(120, 53, 15);
+            doc.setFontSize(8);
+            doc.setFont("helvetica", "italic");
+            doc.text("Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.", 15, 275);
+            doc.text("Interventions PMR pour B-CS : Voir DICOS.", 15, 280);
+            doc.setFont("helvetica", "bold");
+            doc.text("⚠️ L'App DICOS PMR reste la base à consulter", 15, 286);
+
+            // Numéro de page
+            doc.setFontSize(9);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Page ${i} / ${pageCount}`, 195, 286, { align: 'right' });
+        }
 
         doc.save(`deplacements_pmr_${date}.pdf`);
+        toast.success("PDF généré avec succès !");
     }
 </script>
 
-<div class="space-y-6 p-4 md:p-8 max-w-[1800px] mx-auto pb-32">
+<div class="space-y-8 p-4 md:p-8 max-w-[1800px] mx-auto pb-32 animate-fade-in">
 
-    <!-- Header -->
-    <header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-white/5 pb-6">
-        <div class="flex items-center gap-3">
-            <div class="p-3 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                <Car class="w-8 h-8" />
+    <!-- Header avec dégradé -->
+    <header class="relative flex flex-col md:flex-row md:justify-between md:items-end gap-6 pb-8 overflow-hidden">
+        <!-- Fond dégradé animé -->
+        <div class="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-pink-600/10 rounded-3xl animate-gradient-shift"></div>
+        <div class="absolute inset-0 border border-white/10 rounded-3xl shadow-2xl backdrop-blur-sm"></div>
+
+        <div class="relative flex items-center gap-4 p-6">
+            <div class="p-4 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/50 animate-pulse-soft">
+                <Car class="w-10 h-10" />
             </div>
             <div>
-                <h1 class="text-3xl font-bold text-gray-200">Déplacements PMR</h1>
-                <p class="text-gray-500 text-sm mt-1">Gestion centralisée des prises en charge</p>
+                <h1 class="text-4xl font-black bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                    Déplacements PMR
+                </h1>
+                <p class="text-slate-400 text-sm mt-2 font-medium">Gestion centralisée des prises en charge</p>
             </div>
         </div>
 
-        <div class="flex flex-wrap gap-3">
-            <button onclick={saveData} disabled={loading} class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
-                {#if loading}<span class="animate-spin">⏳</span>{:else}<Save class="w-4 h-4" />{/if}
+        <div class="relative flex flex-wrap gap-3 p-6">
+            <a
+                href="/deplacements/historique"
+                class="group relative flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-slate-700 to-slate-600 hover:from-slate-600 hover:to-slate-500 text-white rounded-xl font-bold transition-all duration-300 shadow-lg shadow-slate-500/50 hover:shadow-xl hover:shadow-slate-500/70 hover:scale-105"
+            >
+                <div class="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <Train class="w-5 h-5" />
+                Historique
+            </a>
+            <button
+                onclick={saveData}
+                disabled={loading}
+                class="group relative flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-xl font-bold transition-all duration-300 shadow-lg shadow-blue-500/50 hover:shadow-xl hover:shadow-blue-500/70 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            >
+                <div class="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                {#if loading}<span class="animate-spin">⏳</span>{:else}<Save class="w-5 h-5" />{/if}
                 Sauvegarder
             </button>
-            <button onclick={copyForOutlook} class="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-all shadow-lg">
-                <Mail class="w-4 h-4" />
+            <button
+                onclick={copyForOutlook}
+                class="group relative flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white rounded-xl font-bold transition-all duration-300 shadow-lg shadow-emerald-500/50 hover:shadow-xl hover:shadow-emerald-500/70 hover:scale-105"
+            >
+                <div class="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <Mail class="w-5 h-5" />
                 Copier pour Outlook
             </button>
-            <button onclick={generatePDF} class="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg font-medium transition-all shadow-lg">
-                <FileDown class="w-4 h-4" /> Télécharger PDF
+            <button
+                onclick={generatePDF}
+                class="group relative flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-red-600 to-rose-500 hover:from-red-500 hover:to-rose-400 text-white rounded-xl font-bold transition-all duration-300 shadow-lg shadow-red-500/50 hover:shadow-xl hover:shadow-red-500/70 hover:scale-105"
+            >
+                <div class="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <FileDown class="w-5 h-5" />
+                Télécharger PDF
             </button>
         </div>
     </header>
 
-    <!-- Date Selector -->
-    <div class="bg-slate-900/50 backdrop-blur-sm border border-white/5 rounded-2xl p-6 shadow-lg">
-        <label class="text-xs uppercase font-bold text-slate-400 mb-3 flex items-center gap-2 tracking-wider">
-            <Calendar class="w-4 h-4" /> Date du rapport
-        </label>
-        <input
-            type="date"
-            bind:value={date}
-            onchange={loadDailyReport}
-            class="w-full max-w-xs bg-slate-950 border border-slate-800 text-white rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all cursor-pointer hover:border-slate-700"
-        />
+    <!-- Date Selector avec effet -->
+    <div class="relative group">
+        <div class="absolute -inset-1 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-3xl blur-lg opacity-25 group-hover:opacity-50 transition duration-500"></div>
+        <div class="relative bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-2xl p-6 shadow-2xl">
+            <label class="text-xs uppercase font-bold text-transparent bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text mb-3 flex items-center gap-2 tracking-widest">
+                <Calendar class="w-5 h-5 text-blue-400 animate-pulse-soft" /> Date du rapport
+            </label>
+            <input
+                type="date"
+                bind:value={date}
+                onchange={loadDailyReport}
+                class="w-full max-w-md bg-slate-950 border-2 border-slate-800 text-white rounded-xl px-5 py-3.5 text-lg font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-300 cursor-pointer hover:border-blue-600 hover:shadow-lg hover:shadow-blue-500/30"
+            />
+        </div>
     </div>
 
-    <!-- PRESTATION MATIN -->
-    <div class="bg-slate-900/50 backdrop-blur-sm border border-white/5 rounded-2xl p-6 shadow-lg">
-        <h2 class="text-2xl font-bold text-blue-400 mb-6 flex items-center gap-2 border-b border-white/5 pb-4">
-            <div class="p-2 bg-blue-500/10 rounded-lg">
-                <MapPin class="w-5 h-5" />
-            </div>
-            Prestation matin
-        </h2>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Présence MONS Matin -->
-            <div class="bg-slate-950/30 border border-blue-500/20 rounded-xl p-5">
-                <h3 class="font-bold text-slate-200 mb-4 flex items-center gap-2 text-sm">
-                    <MapPin class="w-4 h-4 text-blue-400" /> Prévu dans Quinyx gare de Mons
-                </h3>
-                <div class="grid grid-cols-5 gap-2">
-                    {#each Object.keys(presenceMons) as key}
-                        <div class="bg-slate-900/50 rounded-lg p-2 border border-white/5 flex flex-col items-center">
-                            <span class="text-[9px] uppercase text-slate-500 font-bold mb-1">{key.replace('shift_', '')}</span>
-                            <input type="number" min="0" bind:value={presenceMons[key]} class="w-full bg-transparent text-center text-base font-bold text-blue-100 outline-none appearance-none" />
-                        </div>
-                    {/each}
+    <!-- PRESTATION MATIN avec dégradés -->
+    <div class="relative group">
+        <div class="absolute -inset-1 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-3xl blur-xl opacity-20 group-hover:opacity-40 transition duration-500"></div>
+        <div class="relative bg-slate-900/90 backdrop-blur-md border border-blue-500/30 rounded-2xl p-8 shadow-2xl">
+            <h2 class="text-3xl font-black mb-8 flex items-center gap-3 pb-5 border-b-2 border-gradient-to-r from-blue-500 to-cyan-500">
+                <div class="p-3 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl shadow-lg shadow-blue-500/50 animate-pulse-soft">
+                    <MapPin class="w-6 h-6 text-white" />
                 </div>
-            </div>
+                <span class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">Prestation matin</span>
+            </h2>
 
-            <!-- Présence TOURNAI Matin -->
-            <div class="bg-slate-950/30 border border-purple-500/20 rounded-xl p-5">
-                <h3 class="font-bold text-slate-200 mb-4 flex items-center gap-2 text-sm">
-                    <MapPin class="w-4 h-4 text-purple-400" /> Prévu dans Quinyx gare de Tournai
-                </h3>
-                <div class="grid grid-cols-5 gap-2">
-                    {#each Object.keys(presenceTournai) as key}
-                        <div class="bg-slate-900/50 rounded-lg p-2 border border-white/5 flex flex-col items-center">
-                            <span class="text-[9px] uppercase text-slate-500 font-bold mb-1">{key.replace('shift_', '')}</span>
-                            <input type="number" min="0" bind:value={presenceTournai[key]} class="w-full bg-transparent text-center text-base font-bold text-purple-100 outline-none appearance-none" />
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Présence MONS Matin -->
+                <div class="relative group/card">
+                    <div class="absolute -inset-0.5 bg-gradient-to-r from-blue-600 to-blue-400 rounded-2xl opacity-50 group-hover/card:opacity-100 transition duration-300 blur"></div>
+                    <div class="relative bg-slate-950/80 border-2 border-blue-500/30 rounded-2xl p-6 shadow-xl">
+                        <h3 class="font-black text-slate-100 mb-5 flex items-center gap-2 text-base">
+                            <MapPin class="w-5 h-5 text-blue-400" />
+                            <span class="bg-gradient-to-r from-blue-300 to-blue-500 bg-clip-text text-transparent">
+                                Quinyx gare de Mons
+                            </span>
+                        </h3>
+                        <div class="grid grid-cols-5 gap-3">
+                            {#each Object.keys(presenceMons) as key}
+                                <div class="group/input bg-gradient-to-br from-slate-900 to-slate-800 hover:from-blue-900/30 hover:to-blue-800/30 rounded-xl p-3 border-2 border-blue-500/20 hover:border-blue-400/50 flex flex-col items-center transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-500/30">
+                                    <span class="text-[10px] uppercase text-blue-300 font-black mb-2 tracking-wide">{key.replace('shift_', '')}</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        bind:value={presenceMons[key]}
+                                        class="w-full bg-transparent text-center text-lg font-black text-blue-100 outline-none appearance-none hover:text-blue-300 transition-colors"
+                                    />
+                                </div>
+                            {/each}
                         </div>
-                    {/each}
+                    </div>
+                </div>
+
+                <!-- Présence TOURNAI Matin -->
+                <div class="relative group/card">
+                    <div class="absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-pink-500 rounded-2xl opacity-50 group-hover/card:opacity-100 transition duration-300 blur"></div>
+                    <div class="relative bg-slate-950/80 border-2 border-purple-500/30 rounded-2xl p-6 shadow-xl">
+                        <h3 class="font-black text-slate-100 mb-5 flex items-center gap-2 text-base">
+                            <MapPin class="w-5 h-5 text-purple-400" />
+                            <span class="bg-gradient-to-r from-purple-300 to-pink-400 bg-clip-text text-transparent">
+                                Quinyx gare de Tournai
+                            </span>
+                        </h3>
+                        <div class="grid grid-cols-5 gap-3">
+                            {#each Object.keys(presenceTournai) as key}
+                                <div class="group/input bg-gradient-to-br from-slate-900 to-slate-800 hover:from-purple-900/30 hover:to-pink-900/30 rounded-xl p-3 border-2 border-purple-500/20 hover:border-purple-400/50 flex flex-col items-center transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-purple-500/30">
+                                    <span class="text-[10px] uppercase text-purple-300 font-black mb-2 tracking-wide">{key.replace('shift_', '')}</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        bind:value={presenceTournai[key]}
+                                        class="w-full bg-transparent text-center text-lg font-black text-purple-100 outline-none appearance-none hover:text-purple-300 transition-colors"
+                                    />
+                                </div>
+                            {/each}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Interventions Matin -->
-    <div class="bg-slate-900/50 backdrop-blur-md border border-white/5 rounded-2xl shadow-xl flex flex-col overflow-hidden">
-        <div class="p-4 border-b border-white/5 flex justify-between items-center bg-slate-950/50">
-            <h3 class="font-semibold text-slate-200 flex items-center gap-2 text-sm">
-                <Users class="w-4 h-4 text-slate-400" />
-                Interventions MATIN
-                <span class="bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs px-2 py-0.5 rounded-full ml-2">{interventions.length}</span>
-            </h3>
-            <button onclick={addRow} class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 shadow-sm">
-                <Plus class="w-3.5 h-3.5" /> Ajouter une ligne
-            </button>
-        </div>
+    <div class="relative group">
+        <div class="absolute -inset-0.5 bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-600 rounded-3xl opacity-20 group-hover:opacity-30 transition duration-500 blur-lg"></div>
+        <div class="relative bg-slate-900/90 backdrop-blur-xl border-2 border-blue-500/30 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+            <div class="p-5 border-b-2 border-blue-500/30 flex justify-between items-center bg-gradient-to-r from-slate-950/80 to-blue-950/30">
+                <h3 class="font-black text-lg flex items-center gap-3">
+                    <div class="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg shadow-lg">
+                        <Users class="w-5 h-5 text-white" />
+                    </div>
+                    <span class="bg-gradient-to-r from-blue-300 to-cyan-300 bg-clip-text text-transparent">Interventions MATIN</span>
+                    <span class="bg-gradient-to-r from-blue-600 to-cyan-600 text-white border-2 border-blue-400/50 text-sm px-3 py-1 rounded-full font-bold shadow-lg">{interventions.length}</span>
+                </h3>
+                <button
+                    onclick={addRow}
+                    class="group/btn relative bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white px-4 py-2.5 rounded-xl transition-all duration-300 flex items-center gap-2 font-bold shadow-lg shadow-blue-500/50 hover:shadow-xl hover:scale-105"
+                >
+                    <div class="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover/btn:opacity-100 transition-opacity"></div>
+                    <Plus class="w-4 h-4 relative z-10" /> <span class="relative z-10">Ajouter</span>
+                </button>
+            </div>
 
-        <div class="overflow-x-auto flex-1 custom-scrollbar">
-            <table class="w-full text-sm text-left border-collapse">
-                <thead class="text-slate-400 uppercase text-[10px] font-bold bg-slate-950/50 sticky top-0 z-10">
-                    <tr>
-                        <th class="px-4 py-3 w-20 text-center">Zone</th>
-                        <th class="px-4 py-3 w-32">Gare</th>
-                        <th class="px-4 py-3">PMR / Mission</th>
-                        <th class="px-4 py-3 w-64">Prise en charge par</th>
-                        <th class="px-2 py-3 w-12"></th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-white/5">
-                    {#each interventions as row, i}
-                        <tr class="hover:bg-white/[0.02] group transition-colors">
-                            <td class="p-2">
-                                <input
-                                    bind:value={row.zone}
-                                    class="w-16 bg-slate-950/30 text-center font-mono text-xs uppercase border border-white/5 rounded px-1 py-1 text-slate-300 focus:border-blue-500 outline-none"
-                                    placeholder="-"
-                                />
-                            </td>
-                            <td class="p-2">
-                                <input
-                                    list="stations"
-                                    value={row.station}
-                                    oninput={(e) => handleStationChange(i, e.target.value)}
-                                    class="w-full bg-slate-950/30 border border-transparent hover:border-white/10 focus:border-blue-500 rounded px-2 py-1.5 font-bold uppercase text-white outline-none"
-                                    placeholder="GARE"
-                                />
-                            </td>
-                            <td class="p-2">
-                                <input
-                                    bind:value={row.pmr_details}
-                                    class="w-full bg-slate-950/30 border border-transparent hover:border-white/10 focus:border-blue-500 rounded px-3 py-1.5 text-slate-300 outline-none"
-                                    placeholder="Ex: 2026-01-20-0081 1 NV IN E 1708 à 08H31"
-                                />
-                            </td>
-                            <td class="p-2">
-                                <select
-                                    bind:value={row.assigned_to}
-                                    class="w-full bg-slate-950/30 border border-transparent hover:border-white/10 focus:border-blue-500 rounded px-2 py-1.5 text-xs text-slate-300 outline-none cursor-pointer"
-                                >
-                                    <option value="">- Choisir -</option>
-                                    {#each ASSIGNEES as person}
-                                        <option value={person}>{person}</option>
-                                    {/each}
-                                </select>
-                            </td>
-                            <td class="p-2 text-center">
-                                <button
-                                    onclick={() => removeRow(i)}
-                                    class="text-slate-600 hover:text-red-400 p-2 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                                >
-                                    <Trash2 class="w-4 h-4" />
-                                </button>
-                            </td>
+            <div class="overflow-x-auto flex-1 custom-scrollbar">
+                <table class="w-full text-sm text-left border-collapse">
+                    <thead class="text-blue-300 uppercase text-xs font-black bg-gradient-to-r from-slate-950 to-blue-950/50 sticky top-0 z-10 border-b-2 border-blue-500/30">
+                        <tr>
+                            <th class="px-4 py-4 w-20 text-center">Zone</th>
+                            <th class="px-4 py-4 w-32">Gare</th>
+                            <th class="px-4 py-4">PMR / Mission</th>
+                            <th class="px-4 py-4 w-64">Prise en charge par</th>
+                            <th class="px-2 py-4 w-12"></th>
                         </tr>
-                    {/each}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="divide-y divide-blue-500/10">
+                        {#each interventions as row, i}
+                            <tr class="hover:bg-blue-500/5 group/row transition-all duration-200 hover:shadow-lg">
+                                <td class="p-3">
+                                    <input
+                                        bind:value={row.zone}
+                                        class="w-16 bg-slate-950/50 text-center font-mono text-sm uppercase border-2 border-blue-500/20 hover:border-blue-400/50 rounded-lg px-2 py-2 text-blue-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 outline-none transition-all"
+                                        placeholder="-"
+                                    />
+                                </td>
+                                <td class="p-3">
+                                    <input
+                                        list="stations"
+                                        value={row.station}
+                                        oninput={(e) => handleStationChange(i, e.target.value)}
+                                        class="w-full bg-slate-950/50 border-2 border-blue-500/20 hover:border-blue-400/50 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 rounded-lg px-3 py-2 font-bold uppercase text-white outline-none transition-all"
+                                        placeholder="GARE"
+                                    />
+                                </td>
+                                <td class="p-3">
+                                    <input
+                                        bind:value={row.pmr_details}
+                                        class="w-full bg-slate-950/50 border-2 border-blue-500/20 hover:border-blue-400/50 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 rounded-lg px-3 py-2 text-slate-200 outline-none transition-all"
+                                        placeholder="Ex: 2026-01-20-0081 1 NV IN E 1708 à 08H31"
+                                    />
+                                </td>
+                                <td class="p-3">
+                                    <select
+                                        bind:value={row.assigned_to}
+                                        class="w-full bg-slate-950/50 border-2 border-blue-500/20 hover:border-blue-400/50 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none cursor-pointer transition-all font-medium"
+                                    >
+                                        <option value="">- Choisir -</option>
+                                        {#each ASSIGNEES as person}
+                                            <option value={person}>{person}</option>
+                                        {/each}
+                                    </select>
+                                </td>
+                                <td class="p-3 text-center">
+                                    <button
+                                        onclick={() => removeRow(i)}
+                                        class="text-slate-600 hover:text-red-400 hover:bg-red-500/10 p-2 rounded-lg transition-all opacity-0 group-hover/row:opacity-100 hover:scale-110 border border-transparent hover:border-red-500/30"
+                                    >
+                                        <Trash2 class="w-4 h-4" />
+                                    </button>
+                                </td>
+                            </tr>
+                        {/each}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-    <!-- PRESTATION APRÈS-MIDI -->
-    <div class="bg-slate-900/50 backdrop-blur-sm border border-white/5 rounded-2xl p-6 shadow-lg">
-        <h2 class="text-2xl font-bold text-purple-400 mb-6 flex items-center gap-2 border-b border-white/5 pb-4">
-            <div class="p-2 bg-purple-500/10 rounded-lg">
-                <MapPin class="w-5 h-5" />
-            </div>
-            Prestation après-midi
-        </h2>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Présence MONS Après-midi -->
-            <div class="bg-slate-950/30 border border-blue-500/20 rounded-xl p-5">
-                <h3 class="font-bold text-slate-200 mb-4 flex items-center gap-2 text-sm">
-                    <MapPin class="w-4 h-4 text-blue-400" /> Prévu dans Quinyx gare de Mons
-                </h3>
-                <div class="grid grid-cols-5 gap-2">
-                    {#each Object.keys(presenceMonsAM) as key}
-                        <div class="bg-slate-900/50 rounded-lg p-2 border border-white/5 flex flex-col items-center">
-                            <span class="text-[9px] uppercase text-slate-500 font-bold mb-1">{key.replace('shift_', '')}</span>
-                            <input type="number" min="0" bind:value={presenceMonsAM[key]} class="w-full bg-transparent text-center text-base font-bold text-blue-100 outline-none appearance-none" />
-                        </div>
-                    {/each}
+    <!-- PRESTATION APRÈS-MIDI avec dégradés -->
+    <div class="relative group">
+        <div class="absolute -inset-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-3xl blur-xl opacity-20 group-hover:opacity-40 transition duration-500"></div>
+        <div class="relative bg-slate-900/90 backdrop-blur-md border border-purple-500/30 rounded-2xl p-8 shadow-2xl">
+            <h2 class="text-3xl font-black mb-8 flex items-center gap-3 pb-5 border-b-2 border-gradient-to-r from-purple-500 to-pink-500">
+                <div class="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg shadow-purple-500/50 animate-pulse-soft">
+                    <MapPin class="w-6 h-6 text-white" />
                 </div>
-            </div>
+                <span class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Prestation après-midi</span>
+            </h2>
 
-            <!-- Présence TOURNAI Après-midi -->
-            <div class="bg-slate-950/30 border border-purple-500/20 rounded-xl p-5">
-                <h3 class="font-bold text-slate-200 mb-4 flex items-center gap-2 text-sm">
-                    <MapPin class="w-4 h-4 text-purple-400" /> Prévu dans Quinyx gare de Tournai
-                </h3>
-                <div class="grid grid-cols-5 gap-2">
-                    {#each Object.keys(presenceTournaiAM) as key}
-                        <div class="bg-slate-900/50 rounded-lg p-2 border border-white/5 flex flex-col items-center">
-                            <span class="text-[9px] uppercase text-slate-500 font-bold mb-1">{key.replace('shift_', '')}</span>
-                            <input type="number" min="0" bind:value={presenceTournaiAM[key]} class="w-full bg-transparent text-center text-base font-bold text-purple-100 outline-none appearance-none" />
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Présence MONS Après-midi -->
+                <div class="relative group/card">
+                    <div class="absolute -inset-0.5 bg-gradient-to-r from-blue-600 to-blue-400 rounded-2xl opacity-50 group-hover/card:opacity-100 transition duration-300 blur"></div>
+                    <div class="relative bg-slate-950/80 border-2 border-blue-500/30 rounded-2xl p-6 shadow-xl">
+                        <h3 class="font-black text-slate-100 mb-5 flex items-center gap-2 text-base">
+                            <MapPin class="w-5 h-5 text-blue-400" />
+                            <span class="bg-gradient-to-r from-blue-300 to-blue-500 bg-clip-text text-transparent">
+                                Quinyx gare de Mons
+                            </span>
+                        </h3>
+                        <div class="grid grid-cols-5 gap-3">
+                            {#each Object.keys(presenceMonsAM) as key}
+                                <div class="group/input bg-gradient-to-br from-slate-900 to-slate-800 hover:from-blue-900/30 hover:to-blue-800/30 rounded-xl p-3 border-2 border-blue-500/20 hover:border-blue-400/50 flex flex-col items-center transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-500/30">
+                                    <span class="text-[10px] uppercase text-blue-300 font-black mb-2 tracking-wide">{key.replace('shift_', '')}</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        bind:value={presenceMonsAM[key]}
+                                        class="w-full bg-transparent text-center text-lg font-black text-blue-100 outline-none appearance-none hover:text-blue-300 transition-colors"
+                                    />
+                                </div>
+                            {/each}
                         </div>
-                    {/each}
+                    </div>
+                </div>
+
+                <!-- Présence TOURNAI Après-midi -->
+                <div class="relative group/card">
+                    <div class="absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-pink-500 rounded-2xl opacity-50 group-hover/card:opacity-100 transition duration-300 blur"></div>
+                    <div class="relative bg-slate-950/80 border-2 border-purple-500/30 rounded-2xl p-6 shadow-xl">
+                        <h3 class="font-black text-slate-100 mb-5 flex items-center gap-2 text-base">
+                            <MapPin class="w-5 h-5 text-purple-400" />
+                            <span class="bg-gradient-to-r from-purple-300 to-pink-400 bg-clip-text text-transparent">
+                                Quinyx gare de Tournai
+                            </span>
+                        </h3>
+                        <div class="grid grid-cols-5 gap-3">
+                            {#each Object.keys(presenceTournaiAM) as key}
+                                <div class="group/input bg-gradient-to-br from-slate-900 to-slate-800 hover:from-purple-900/30 hover:to-pink-900/30 rounded-xl p-3 border-2 border-purple-500/20 hover:border-purple-400/50 flex flex-col items-center transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-purple-500/30">
+                                    <span class="text-[10px] uppercase text-purple-300 font-black mb-2 tracking-wide">{key.replace('shift_', '')}</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        bind:value={presenceTournaiAM[key]}
+                                        class="w-full bg-transparent text-center text-lg font-black text-purple-100 outline-none appearance-none hover:text-purple-300 transition-colors"
+                                    />
+                                </div>
+                            {/each}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Interventions Après-midi -->
-    <div class="bg-slate-900/50 backdrop-blur-md border border-white/5 rounded-2xl shadow-xl flex flex-col overflow-hidden">
-        <div class="p-4 border-b border-white/5 flex justify-between items-center bg-slate-950/50">
-            <h3 class="font-semibold text-slate-200 flex items-center gap-2 text-sm">
-                <Users class="w-4 h-4 text-slate-400" />
-                Interventions APRÈS-MIDI
-                <span class="bg-purple-500/10 text-purple-400 border border-purple-500/20 text-xs px-2 py-0.5 rounded-full ml-2">{interventionsAM.length}</span>
-            </h3>
-            <button onclick={addRowAM} class="text-xs bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 shadow-sm">
-                <Plus class="w-3.5 h-3.5" /> Ajouter une ligne
-            </button>
-        </div>
+    <div class="relative group">
+        <div class="absolute -inset-0.5 bg-gradient-to-r from-purple-600 via-pink-500 to-purple-600 rounded-3xl opacity-20 group-hover:opacity-30 transition duration-500 blur-lg"></div>
+        <div class="relative bg-slate-900/90 backdrop-blur-xl border-2 border-purple-500/30 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+            <div class="p-5 border-b-2 border-purple-500/30 flex justify-between items-center bg-gradient-to-r from-slate-950/80 to-purple-950/30">
+                <h3 class="font-black text-lg flex items-center gap-3">
+                    <div class="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg shadow-lg">
+                        <Users class="w-5 h-5 text-white" />
+                    </div>
+                    <span class="bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent">Interventions APRÈS-MIDI</span>
+                    <span class="bg-gradient-to-r from-purple-600 to-pink-600 text-white border-2 border-purple-400/50 text-sm px-3 py-1 rounded-full font-bold shadow-lg">{interventionsAM.length}</span>
+                </h3>
+                <button
+                    onclick={addRowAM}
+                    class="group/btn relative bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white px-4 py-2.5 rounded-xl transition-all duration-300 flex items-center gap-2 font-bold shadow-lg shadow-purple-500/50 hover:shadow-xl hover:scale-105"
+                >
+                    <div class="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover/btn:opacity-100 transition-opacity"></div>
+                    <Plus class="w-4 h-4 relative z-10" /> <span class="relative z-10">Ajouter</span>
+                </button>
+            </div>
 
-        <div class="overflow-x-auto flex-1 custom-scrollbar">
-            <table class="w-full text-sm text-left border-collapse">
-                <thead class="text-slate-400 uppercase text-[10px] font-bold bg-slate-950/50 sticky top-0 z-10">
-                    <tr>
-                        <th class="px-4 py-3 w-20 text-center">Zone</th>
-                        <th class="px-4 py-3 w-32">Gare</th>
-                        <th class="px-4 py-3">PMR / Mission</th>
-                        <th class="px-4 py-3 w-64">Prise en charge par</th>
-                        <th class="px-2 py-3 w-12"></th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-white/5">
-                    {#each interventionsAM as row, i}
-                        <tr class="hover:bg-white/[0.02] group transition-colors">
-                            <td class="p-2">
-                                <input
-                                    bind:value={row.zone}
-                                    class="w-16 bg-slate-950/30 text-center font-mono text-xs uppercase border border-white/5 rounded px-1 py-1 text-slate-300 focus:border-purple-500 outline-none"
-                                    placeholder="-"
-                                />
-                            </td>
-                            <td class="p-2">
-                                <input
-                                    list="stations"
-                                    value={row.station}
-                                    oninput={(e) => handleStationChangeAM(i, e.target.value)}
-                                    class="w-full bg-slate-950/30 border border-transparent hover:border-white/10 focus:border-purple-500 rounded px-2 py-1.5 font-bold uppercase text-white outline-none"
-                                    placeholder="GARE"
-                                />
-                            </td>
-                            <td class="p-2">
-                                <input
-                                    bind:value={row.pmr_details}
-                                    class="w-full bg-slate-950/30 border border-transparent hover:border-white/10 focus:border-purple-500 rounded px-3 py-1.5 text-slate-300 outline-none"
-                                    placeholder="Ex: 2026-01-21-0080 1NV IN E4868 à 18h59"
-                                />
-                            </td>
-                            <td class="p-2">
-                                <select
-                                    bind:value={row.assigned_to}
-                                    class="w-full bg-slate-950/30 border border-transparent hover:border-white/10 focus:border-purple-500 rounded px-2 py-1.5 text-xs text-slate-300 outline-none cursor-pointer"
-                                >
-                                    <option value="">- Choisir -</option>
-                                    {#each ASSIGNEES as person}
-                                        <option value={person}>{person}</option>
-                                    {/each}
-                                </select>
-                            </td>
-                            <td class="p-2 text-center">
-                                <button
-                                    onclick={() => removeRowAM(i)}
-                                    class="text-slate-600 hover:text-red-400 p-2 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                                >
-                                    <Trash2 class="w-4 h-4" />
-                                </button>
-                            </td>
+            <div class="overflow-x-auto flex-1 custom-scrollbar">
+                <table class="w-full text-sm text-left border-collapse">
+                    <thead class="text-purple-300 uppercase text-xs font-black bg-gradient-to-r from-slate-950 to-purple-950/50 sticky top-0 z-10 border-b-2 border-purple-500/30">
+                        <tr>
+                            <th class="px-4 py-4 w-20 text-center">Zone</th>
+                            <th class="px-4 py-4 w-32">Gare</th>
+                            <th class="px-4 py-4">PMR / Mission</th>
+                            <th class="px-4 py-4 w-64">Prise en charge par</th>
+                            <th class="px-2 py-4 w-12"></th>
                         </tr>
-                    {/each}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="divide-y divide-purple-500/10">
+                        {#each interventionsAM as row, i}
+                            <tr class="hover:bg-purple-500/5 group/row transition-all duration-200 hover:shadow-lg">
+                                <td class="p-3">
+                                    <input
+                                        bind:value={row.zone}
+                                        class="w-16 bg-slate-950/50 text-center font-mono text-sm uppercase border-2 border-purple-500/20 hover:border-purple-400/50 rounded-lg px-2 py-2 text-purple-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/30 outline-none transition-all"
+                                        placeholder="-"
+                                    />
+                                </td>
+                                <td class="p-3">
+                                    <input
+                                        list="stations"
+                                        value={row.station}
+                                        oninput={(e) => handleStationChangeAM(i, e.target.value)}
+                                        class="w-full bg-slate-950/50 border-2 border-purple-500/20 hover:border-purple-400/50 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/30 rounded-lg px-3 py-2 font-bold uppercase text-white outline-none transition-all"
+                                        placeholder="GARE"
+                                    />
+                                </td>
+                                <td class="p-3">
+                                    <input
+                                        bind:value={row.pmr_details}
+                                        class="w-full bg-slate-950/50 border-2 border-purple-500/20 hover:border-purple-400/50 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/30 rounded-lg px-3 py-2 text-slate-200 outline-none transition-all"
+                                        placeholder="Ex: 2026-01-21-0080 1NV IN E4868 à 18h59"
+                                    />
+                                </td>
+                                <td class="p-3">
+                                    <select
+                                        bind:value={row.assigned_to}
+                                        class="w-full bg-slate-950/50 border-2 border-purple-500/20 hover:border-purple-400/50 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/30 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none cursor-pointer transition-all font-medium"
+                                    >
+                                        <option value="">- Choisir -</option>
+                                        {#each ASSIGNEES as person}
+                                            <option value={person}>{person}</option>
+                                        {/each}
+                                    </select>
+                                </td>
+                                <td class="p-3 text-center">
+                                    <button
+                                        onclick={() => removeRowAM(i)}
+                                        class="text-slate-600 hover:text-red-400 hover:bg-red-500/10 p-2 rounded-lg transition-all opacity-0 group-hover/row:opacity-100 hover:scale-110 border border-transparent hover:border-red-500/30"
+                                    >
+                                        <Trash2 class="w-4 h-4" />
+                                    </button>
+                                </td>
+                            </tr>
+                        {/each}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-    <!-- Footer note -->
-    <div class="bg-slate-900/30 border border-yellow-500/20 rounded-xl p-4 text-sm text-slate-400 italic">
-        <p class="mb-1">* Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.</p>
-        <p class="mb-1">* Interventions PMR pour B-CS : Voir DICOS.</p>
-        <p class="font-bold text-yellow-400/90 mt-2">L'App DICOS PMR reste la base à consulter</p>
+    <!-- Footer note avec design amélioré -->
+    <div class="relative group">
+        <div class="absolute -inset-0.5 bg-gradient-to-r from-yellow-600 via-orange-500 to-yellow-600 rounded-2xl opacity-20 group-hover:opacity-30 transition duration-500 blur-lg"></div>
+        <div class="relative bg-gradient-to-br from-slate-900/90 to-yellow-900/20 border-2 border-yellow-500/30 rounded-2xl p-6 shadow-2xl">
+            <div class="flex items-start gap-4">
+                <div class="p-3 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl shadow-lg flex-shrink-0">
+                    <Briefcase class="w-6 h-6 text-white" />
+                </div>
+                <div class="text-sm space-y-2">
+                    <p class="text-slate-300 flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 bg-yellow-400 rounded-full"></span>
+                        Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.
+                    </p>
+                    <p class="text-slate-300 flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 bg-yellow-400 rounded-full"></span>
+                        Interventions PMR pour B-CS : Voir DICOS.
+                    </p>
+                    <p class="font-black text-transparent bg-gradient-to-r from-yellow-300 via-orange-300 to-yellow-400 bg-clip-text mt-4 text-base flex items-center gap-2">
+                        <span class="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span>
+                        L'App DICOS PMR reste la base à consulter
+                    </p>
+                </div>
+            </div>
+        </div>
     </div>
 
 </div>
@@ -715,19 +1042,89 @@
 </datalist>
 
 <style>
-    /* Scrollbar minimaliste pour le tableau */
+    /* Scrollbar moderne avec dégradés */
     .custom-scrollbar::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
+        width: 8px;
+        height: 8px;
     }
     .custom-scrollbar::-webkit-scrollbar-track {
         background: rgba(15, 23, 42, 0.5);
+        border-radius: 10px;
     }
     .custom-scrollbar::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 3px;
+        background: linear-gradient(180deg, rgba(59, 130, 246, 0.5), rgba(147, 51, 234, 0.5));
+        border-radius: 10px;
+        border: 2px solid rgba(15, 23, 42, 0.5);
     }
     .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-        background: rgba(255, 255, 255, 0.2);
+        background: linear-gradient(180deg, rgba(59, 130, 246, 0.8), rgba(147, 51, 234, 0.8));
+    }
+
+    /* Animation de fade-in pour toute la page */
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .animate-fade-in {
+        animation: fadeIn 0.6s ease-out;
+    }
+
+    /* Animation de pulse douce */
+    @keyframes pulseSoft {
+        0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+        50% {
+            opacity: 0.85;
+            transform: scale(1.03);
+        }
+    }
+
+    .animate-pulse-soft {
+        animation: pulseSoft 3s ease-in-out infinite;
+    }
+
+    /* Animation de dégradé qui se déplace */
+    @keyframes gradientShift {
+        0% {
+            background-position: 0% 50%;
+        }
+        50% {
+            background-position: 100% 50%;
+        }
+        100% {
+            background-position: 0% 50%;
+        }
+    }
+
+    .animate-gradient-shift {
+        background-size: 200% 200%;
+        animation: gradientShift 15s ease infinite;
+    }
+
+    /* Masquer les flèches des inputs number */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    input[type="number"] {
+        -moz-appearance: textfield;
+    }
+
+    /* Effet de brillance au survol */
+    @keyframes shine {
+        to {
+            background-position: 200% center;
+        }
     }
 </style>
