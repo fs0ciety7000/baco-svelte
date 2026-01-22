@@ -38,11 +38,11 @@
         tournaiHex: '#a86fa8',
         zeroRed: '#be4366',
         zeroRedRGB: [190, 67, 102],
-        morningBg: '#d1b4d4',
+        morningBg: '#d1b4d4', // Fond matin
         morningBgRGB: [209, 180, 212],
-        afternoonBg: '#ADBC16',
+        afternoonBg: '#ADBC16', // Fond après-midi (Vert/Jaune comme PDF)
         afternoonBgRGB: [173, 188, 22],
-        presenceBadgeBg: '#e5e7eb', // Gris clair pour fond stats
+        presenceBadgeBg: '#e5e7eb',
         presenceBadgeBgRGB: [229, 231, 235]
     };
 
@@ -184,33 +184,37 @@
         const formattedDate = d.toLocaleDateString('fr-BE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
         // Helper pour les stats : Look PDF (Fond gris, Label Noir, Valeur Rouge si 0)
+        // Espacement généreux comme sur le PDF
         const formatStatsHtml = (data) => {
             const badges = Object.entries(data).map(([k, v]) => {
                 const valColor = v === 0 ? COLORS.zeroRed : '#000000';
                 const label = k.replace('shift_', '').toUpperCase();
+                // Utilisation de blocs inline-block avec padding pour ressembler au PDF
                 return `
-                    <span style="display: inline-block; margin: 0 8px; padding: 6px 12px; background-color: ${COLORS.presenceBadgeBg}; border-radius: 6px;">
+                    <span style="display: inline-block; margin: 0 15px; font-family: Helvetica, Arial, sans-serif; font-size: 14pt;">
                         <span style="color: #000; font-weight: bold;">${label}:</span>
-                        <span style="color: ${valColor}; font-weight: bold; margin-left: 4px;">${v}</span>
+                        <span style="color: ${valColor}; font-weight: bold; margin-left: 5px;">${v}</span>
                     </span>
                 `;
             }).join('');
-            return `<div style="text-align: center; margin: 15px 0 25px 0;">${badges}</div>`;
+            // Centré avec beaucoup d'espace vertical
+            return `<div style="text-align: center; margin: 25px 0 35px 0;">${badges}</div>`;
         };
 
-        const containerStyle = `font-family: 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #000; background-color: #fff; padding: 30px;`;
-        const headerStyle = `color: ${COLORS.sncbHex}; font-size: 24pt; font-weight: 900; text-align: center; margin-bottom: 5px;`;
-        const dateStyle = `color: #000; font-size: 13pt; font-weight: bold; text-align: center; margin-bottom: 40px; border-bottom: 3px solid ${COLORS.sncbHex}; padding-bottom: 15px;`;
+        const containerStyle = `font-family: Helvetica, Arial, sans-serif; font-size: 11pt; color: #000; background-color: #fff; padding: 40px;`;
         
-        // Styles de section "Solide" comme le PDF
+        // Titres sans dégradés, couleurs solides (Flat Design comme le PDF)
+        const headerStyle = `color: ${COLORS.sncbHex}; font-size: 24pt; font-weight: bold; text-align: center; margin-bottom: 10px; text-transform: uppercase;`;
+        const dateStyle = `color: #000; font-size: 14pt; font-weight: bold; text-align: center; margin-bottom: 50px; border-bottom: 2px solid ${COLORS.sncbHex}; padding-bottom: 20px;`;
+        
         const sectionTitleStyle = (bgColor, textColor) => `
             background-color: ${bgColor}; 
             color: ${textColor}; 
-            padding: 12px 20px; 
-            font-weight: 900; 
+            padding: 15px 20px; 
+            font-weight: bold; 
             font-size: 16pt; 
-            margin-top: 40px; 
-            margin-bottom: 20px; 
+            margin-top: 50px; 
+            margin-bottom: 30px; 
             text-transform: uppercase; 
             border-radius: 4px;
         `;
@@ -218,15 +222,15 @@
         const subTitleStyle = (color) => `
             color: ${color}; 
             font-weight: bold; 
-            font-size: 12pt; 
-            margin-top: 30px; 
-            margin-bottom: 10px; 
+            font-size: 13pt; 
+            margin-top: 40px; 
+            margin-bottom: 15px; 
             padding-left: 0;
         `;
 
-        const tableStyle = `width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 30px;`;
-        const thStyle = (color) => `background-color: ${color}; color: #fff; font-weight: bold; padding: 10px; text-align: left; border: 1px solid ${color};`;
-        const tdStyle = `padding: 10px; border: 1px solid #ccc; vertical-align: top;`;
+        const tableStyle = `width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 40px;`;
+        const thStyle = (color) => `background-color: ${color}; color: #fff; font-weight: bold; padding: 12px; text-align: left; border: 1px solid ${color};`;
+        const tdStyle = `padding: 12px; border: 1px solid #ccc; vertical-align: top;`;
         const noInterventionStyle = `text-align: center; font-style: italic; color: #777; background-color: #f9f9f9; padding: 20px;`;
 
         const html = `
@@ -239,7 +243,7 @@
                 <div style="${subTitleStyle(COLORS.monsHex)}">• Prévu dans Quinyx gare de Mons</div>
                 ${formatStatsHtml(presenceMons)}
                 <table style="${tableStyle}">
-                    <thead><tr><th style="${thStyle(COLORS.monsHex)} width: 130px;">GARE</th><th style="${thStyle(COLORS.monsHex)}">INTERVENTIONS (FMS)</th></tr></thead>
+                    <thead><tr><th style="${thStyle(COLORS.monsHex)} width: 140px;">GARE</th><th style="${thStyle(COLORS.monsHex)}">INTERVENTIONS (FMS)</th></tr></thead>
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FMS', 'morning');
                         if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
@@ -250,7 +254,7 @@
                 <div style="${subTitleStyle(COLORS.tournaiHex)}">• Prévu dans Quinyx gare de Tournai</div>
                 ${formatStatsHtml(presenceTournai)}
                 <table style="${tableStyle}">
-                    <thead><tr><th style="${thStyle(COLORS.tournaiHex)} width: 130px;">GARE</th><th style="${thStyle(COLORS.tournaiHex)}">INTERVENTIONS (FTY)</th></tr></thead>
+                    <thead><tr><th style="${thStyle(COLORS.tournaiHex)} width: 140px;">GARE</th><th style="${thStyle(COLORS.tournaiHex)}">INTERVENTIONS (FTY)</th></tr></thead>
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FTY', 'morning');
                         if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
@@ -258,12 +262,12 @@
                     })()}</tbody>
                 </table>
 
-                <div style="${sectionTitleStyle(COLORS.afternoonBg, '#000')}">PRESTATION APRÈS-MIDI</div>
+                <div style="${sectionTitleStyle(COLORS.afternoonBg, '#fff')}">PRESTATION APRÈS-MIDI</div>
 
                 <div style="${subTitleStyle(COLORS.monsHex)}">• Prévu dans Quinyx gare de Mons</div>
                 ${formatStatsHtml(presenceMonsAM)}
                 <table style="${tableStyle}">
-                    <thead><tr><th style="${thStyle(COLORS.monsHex)} width: 130px;">GARE</th><th style="${thStyle(COLORS.monsHex)}">INTERVENTIONS (FMS)</th></tr></thead>
+                    <thead><tr><th style="${thStyle(COLORS.monsHex)} width: 140px;">GARE</th><th style="${thStyle(COLORS.monsHex)}">INTERVENTIONS (FMS)</th></tr></thead>
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FMS', 'afternoon');
                         if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
@@ -274,7 +278,7 @@
                 <div style="${subTitleStyle(COLORS.tournaiHex)}">• Prévu dans Quinyx gare de Tournai</div>
                 ${formatStatsHtml(presenceTournaiAM)}
                 <table style="${tableStyle}">
-                    <thead><tr><th style="${thStyle(COLORS.tournaiHex)} width: 130px;">GARE</th><th style="${thStyle(COLORS.tournaiHex)}">INTERVENTIONS (FTY)</th></tr></thead>
+                    <thead><tr><th style="${thStyle(COLORS.tournaiHex)} width: 140px;">GARE</th><th style="${thStyle(COLORS.tournaiHex)}">INTERVENTIONS (FTY)</th></tr></thead>
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FTY', 'afternoon');
                         if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
@@ -282,10 +286,10 @@
                     })()}</tbody>
                 </table>
 
-                <div style="margin-top: 50px; border-top: 2px solid ${COLORS.sncbHex}; padding-top: 20px; font-size: 10pt; color: #333;">
-                    <p style="margin: 5px 0;">• Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.</p>
-                    <p style="margin: 5px 0;">• Interventions PMR pour B-CS : Voir DICOS.</p>
-                    <p style="margin: 15px 0 0 0; font-weight: bold; color: ${COLORS.sncbHex}; font-size: 11pt;">IMPORTANT: L'App DICOS PMR reste la base à consulter</p>
+                <div style="margin-top: 60px; border-top: 2px solid ${COLORS.sncbHex}; padding-top: 25px; font-size: 10pt; color: #333;">
+                    <p style="margin: 8px 0;">• Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.</p>
+                    <p style="margin: 8px 0;">• Interventions PMR pour B-CS : Voir DICOS.</p>
+                    <p style="margin: 20px 0 0 0; font-weight: bold; color: ${COLORS.sncbHex}; font-size: 12pt;">IMPORTANT: L'App DICOS PMR reste la base à consulter</p>
                 </div>
             </div>
         `;
@@ -330,9 +334,9 @@
         const drawSection = (title, color) => {
             const rgb = color === COLORS.morningBg ? COLORS.morningBgRGB : COLORS.afternoonBgRGB;
             doc.setFillColor(...rgb); doc.rect(10, currentY, 190, 12, 'F');
-            doc.setTextColor(0,0,0);
+            doc.setTextColor(color === COLORS.afternoonBg ? 255 : 0, color === COLORS.afternoonBg ? 255 : 0, color === COLORS.afternoonBg ? 255 : 0);
             doc.setFontSize(14); doc.setFont("helvetica", "bold");
-            doc.text(title, 15, currentY + 8);
+            doc.text(title, 105, currentY + 8, { align: 'center' });
             currentY += 22;
         };
 
@@ -627,12 +631,14 @@
         color-scheme: dark;
     }
     
+    /* Force l'icône calendrier à être blanche et visible */
     .datepicker-input::-webkit-calendar-picker-indicator {
         filter: invert(1);
         cursor: pointer;
         opacity: 1;
-        width: 20px;
-        height: 20px;
+        width: 24px;
+        height: 24px;
+        background-color: transparent;
     }
     
     .slider-thumb::-webkit-slider-thumb {
