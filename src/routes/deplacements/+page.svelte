@@ -152,8 +152,7 @@
     }
 </script>
 
-<div class="space-y-8 p-4 md:p-8 max-w-[1800px] mx-auto pb-32 animate-fade-in">
-
+<div class="min-h-screen bg-gray-50">
     <!-- Header avec actions -->
     <DeplacementHeader
         bind:loading
@@ -162,57 +161,57 @@
         onGeneratePDF={handleGeneratePDF}
     />
 
-    <!-- Sélecteur de date -->
-    <DateSelector
-        bind:date
-        onChange={loadDailyReport}
-    />
+    <!-- Container principal -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-    <!-- Section Matin -->
-    <PrestationSection
-        title="Prestation matin"
-        bind:presenceMons
-        bind:presenceTournai
-        borderColor="border-theme-primary"
-        titleColor="text-theme-primary"
-    />
+        <!-- Sélecteur de date -->
+        <DateSelector
+            bind:date
+            onChange={loadDailyReport}
+        />
 
-    <!-- Tableau interventions Matin -->
-    <InterventionsTable
-        title="Interventions MATIN"
-        bind:interventions
-        {stationList}
-        onAdd={addRow}
-        onRemove={removeRow}
-        onStationChange={handleStationChange}
-        themeColor="primary"
-        period="morning"
-    />
+        <!-- Section Matin -->
+        <PrestationSection
+            title="Prestation matin"
+            bind:presenceMons
+            bind:presenceTournai
+            period="morning"
+        />
 
-    <!-- Section Après-midi -->
-    <PrestationSection
-        title="Prestation après-midi"
-        bind:presenceMons={presenceMonsAM}
-        bind:presenceTournai={presenceTournaiAM}
-        borderColor="border-[#ADBC16]/50"
-        titleColor="text-[#ADBC16]"
-    />
+        <!-- Tableau interventions Matin -->
+        <InterventionsTable
+            title="Interventions MATIN"
+            bind:interventions
+            {stationList}
+            onAdd={addRow}
+            onRemove={removeRow}
+            onStationChange={handleStationChange}
+            period="morning"
+        />
 
-    <!-- Tableau interventions Après-midi -->
-    <InterventionsTable
-        title="Interventions APRÈS-MIDI"
-        bind:interventions={interventionsAM}
-        {stationList}
-        onAdd={addRowAM}
-        onRemove={removeRowAM}
-        onStationChange={handleStationChangeAM}
-        themeColor="afternoon"
-        period="afternoon"
-    />
+        <!-- Section Après-midi -->
+        <PrestationSection
+            title="Prestation après-midi"
+            bind:presenceMons={presenceMonsAM}
+            bind:presenceTournai={presenceTournaiAM}
+            period="afternoon"
+        />
 
-    <!-- Notes footer -->
-    <NotesFooter />
+        <!-- Tableau interventions Après-midi -->
+        <InterventionsTable
+            title="Interventions APRÈS-MIDI"
+            bind:interventions={interventionsAM}
+            {stationList}
+            onAdd={addRowAM}
+            onRemove={removeRowAM}
+            onStationChange={handleStationChangeAM}
+            period="afternoon"
+        />
 
+        <!-- Notes footer -->
+        <NotesFooter />
+
+    </div>
 </div>
 
 <!-- Datalist pour autocomplete stations -->
