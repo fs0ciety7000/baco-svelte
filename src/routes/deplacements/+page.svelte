@@ -184,35 +184,39 @@
         const dateSubject = `${day}-${month}-${year}`;
         const formattedDate = d.toLocaleDateString('fr-BE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-        // FIXED: Espacement entre badges avec line-height
+        // FIXED: Espacement FORCE entre badges + display block wrapper
         const formatStatsHtml = (data) => {
             const entries = Object.entries(data);
-            const badges = entries.map(([k, v]) => {
+            const badgesHtml = entries.map(([k, v]) => {
                 const valColor = v === 0 ? COLORS.zeroRed : '#000000';
                 const label = k.replace('shift_', '').toUpperCase();
-                return `<span style="margin: 0 18px; font-weight: bold; padding: 14px 22px; background-color: ${COLORS.presenceBadgeBg}; border-radius: 12px; display: inline-block; white-space: nowrap; font-size: 11pt;">${label}: <span style="color: ${valColor}; font-size: 14pt; font-weight: 900;">${v}</span></span>`;
-            }).join(' ');
-            return `<div style="text-align: center; margin: 35px 0; line-height: 3.5;">${badges}</div>`;
+                // Chaque badge est dans son propre conteneur avec margin
+                return `<div style="display: inline-block; margin: 8px 12px;">
+                    <span style="font-family: Arial, Verdana, sans-serif; font-weight: bold; padding: 12px 20px; background-color: ${COLORS.presenceBadgeBg}; border-radius: 10px; display: inline-block; white-space: nowrap; font-size: 11pt;">
+                        ${label}: <span style="color: ${valColor}; font-size: 13pt; font-weight: 900;">${v}</span>
+                    </span>
+                </div>`;
+            }).join('');
+            return `<div style="text-align: center; margin: 30px 0; padding: 10px 0;">${badgesHtml}</div>`;
         };
 
-        const containerStyle = `font-family: 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #000; background-color: #fff; padding: 25px;`;
-        const headerStyle = `color: ${COLORS.sncbHex}; font-size: 24pt; font-weight: bold; text-align: center; margin-bottom: 8px;`;
-        const dateStyle = `color: #000; font-size: 13pt; font-weight: bold; text-align: center; margin-bottom: 35px; border-bottom: 3px solid ${COLORS.sncbHex}; padding-bottom: 12px;`;
+        const containerStyle = `font-family: Arial, Verdana, sans-serif; font-size: 11pt; color: #000; background-color: #fff; padding: 25px;`;
+        const headerStyle = `color: ${COLORS.sncbHex}; font-size: 24pt; font-weight: bold; text-align: center; margin-bottom: 8px; font-family: Arial, Verdana, sans-serif;`;
+        const dateStyle = `color: #000; font-size: 13pt; font-weight: bold; text-align: center; margin-bottom: 35px; border-bottom: 3px solid ${COLORS.sncbHex}; padding-bottom: 12px; font-family: Arial, Verdana, sans-serif;`;
         
-        // FIXED: Titres avec plus de visibilité
-        const sectionTitleMorningStyle = `background: linear-gradient(135deg, ${COLORS.morningBg} 0%, #c09fd4 100%); color: #000; padding: 28px 20px; font-weight: bold; font-size: 24pt; margin-top: 45px; margin-bottom: 35px; text-transform: uppercase; text-align: center; border-radius: 15px; box-shadow: 0 6px 12px rgba(0,0,0,0.15);`;
+        const sectionTitleMorningStyle = `background: linear-gradient(135deg, ${COLORS.morningBg} 0%, #c09fd4 100%); color: #000; padding: 25px 20px; font-weight: bold; font-size: 22pt; margin-top: 40px; margin-bottom: 30px; text-transform: uppercase; text-align: center; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.12); font-family: Arial, Verdana, sans-serif;`;
         
-        const sectionTitleAfternoonStyle = `background: linear-gradient(135deg, ${COLORS.afternoonBg} 0%, #8a9612 100%); color: #fff; padding: 28px 20px; font-weight: bold; font-size: 24pt; margin-top: 45px; margin-bottom: 35px; text-transform: uppercase; text-align: center; border-radius: 15px; box-shadow: 0 6px 12px rgba(0,0,0,0.15);`;
+        const sectionTitleAfternoonStyle = `background: linear-gradient(135deg, ${COLORS.afternoonBg} 0%, #8a9612 100%); color: #fff; padding: 25px 20px; font-weight: bold; font-size: 22pt; margin-top: 40px; margin-bottom: 30px; text-transform: uppercase; text-align: center; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.12); font-family: Arial, Verdana, sans-serif;`;
         
-        const subTitleStyle = (color) => `color: ${color}; font-weight: bold; font-size: 14pt; margin-top: 35px; margin-bottom: 20px; padding-left: 15px; border-left: 6px solid ${color};`;
-        const tableStyle = `width: 100%; border-collapse: collapse; font-size: 11pt; margin-top: 20px; margin-bottom: 45px;`; // FIXED: margin-bottom augmenté
-        const thStyle = (color) => `background-color: ${color}; color: #fff; font-weight: bold; padding: 16px; text-align: left; border: 1px solid ${color}; font-size: 12pt;`;
-        const tdStyle = `padding: 14px; border: 1px solid #ddd; vertical-align: top;`;
-        const noInterventionStyle = `text-align: center; font-style: italic; color: #999; padding: 25px; font-size: 12pt;`;
+        const subTitleStyle = (color) => `color: ${color}; font-weight: bold; font-size: 13pt; margin-top: 30px; margin-bottom: 15px; padding-left: 12px; border-left: 5px solid ${color}; font-family: Arial, Verdana, sans-serif;`;
+        const tableStyle = `width: 100%; border-collapse: collapse; font-size: 10pt; margin-top: 15px; margin-bottom: 40px; font-family: Arial, Verdana, sans-serif;`;
+        const thStyle = (color) => `background-color: ${color}; color: #fff; font-weight: bold; padding: 14px; text-align: left; border: 1px solid ${color}; font-size: 11pt;`;
+        const tdStyle = `padding: 12px; border: 1px solid #ddd; vertical-align: top;`;
+        const noInterventionStyle = `text-align: center; font-style: italic; color: #999; padding: 20px; font-size: 11pt;`;
 
         const html = `
             <div style="${containerStyle}">
-                <img src="cid:logo" alt="SNCB Logo" style="max-width: 220px; margin-bottom: 25px; display: block; margin-left: auto; margin-right: auto;" />
+                <img src="cid:logo" alt="SNCB Logo" style="max-width: 200px; margin-bottom: 20px; display: block; margin-left: auto; margin-right: auto;" />
                 <div style="${headerStyle}">DEPLACEMENTS PMR</div>
                 <div style="${dateStyle}">${formattedDate}</div>
 
@@ -221,22 +225,22 @@
                 <div style="${subTitleStyle(COLORS.monsHex)}">📍 Prévu dans Quinyx gare de Mons</div>
                 ${formatStatsHtml(presenceMons)}
                 <table style="${tableStyle}">
-                    <thead><tr><th style="${thStyle(COLORS.monsHex)} width: 140px;">GARE</th><th style="${thStyle(COLORS.monsHex)}">INTERVENTIONS (FMS)</th></tr></thead>
+                    <thead><tr><th style="${thStyle(COLORS.monsHex)} width: 130px;">GARE</th><th style="${thStyle(COLORS.monsHex)}">INTERVENTIONS (FMS)</th></tr></thead>
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FMS', 'morning');
                         if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
-                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#f0f9ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.monsHex}; font-size:12pt;">${st}</td><td style="${tdStyle}">${getStationText(st, 'FMS', 'morning', true)}</td></tr>`).join('');
+                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#f0f9ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.monsHex}; font-size:11pt;">${st}</td><td style="${tdStyle}">${getStationText(st, 'FMS', 'morning', true)}</td></tr>`).join('');
                     })()}</tbody>
                 </table>
 
                 <div style="${subTitleStyle(COLORS.tournaiHex)}">📍 Prévu dans Quinyx gare de Tournai</div>
                 ${formatStatsHtml(presenceTournai)}
                 <table style="${tableStyle}">
-                    <thead><tr><th style="${thStyle(COLORS.tournaiHex)} width: 140px;">GARE</th><th style="${thStyle(COLORS.tournaiHex)}">INTERVENTIONS (FTY)</th></tr></thead>
+                    <thead><tr><th style="${thStyle(COLORS.tournaiHex)} width: 130px;">GARE</th><th style="${thStyle(COLORS.tournaiHex)}">INTERVENTIONS (FTY)</th></tr></thead>
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FTY', 'morning');
                         if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
-                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#faf5ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.tournaiHex}; font-size:12pt;">${st}</td><td style="${tdStyle}">${getStationText(st, 'FTY', 'morning', true)}</td></tr>`).join('');
+                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#faf5ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.tournaiHex}; font-size:11pt;">${st}</td><td style="${tdStyle}">${getStationText(st, 'FTY', 'morning', true)}</td></tr>`).join('');
                     })()}</tbody>
                 </table>
 
@@ -245,29 +249,29 @@
                 <div style="${subTitleStyle(COLORS.monsHex)}">📍 Prévu dans Quinyx gare de Mons</div>
                 ${formatStatsHtml(presenceMonsAM)}
                 <table style="${tableStyle}">
-                    <thead><tr><th style="${thStyle(COLORS.monsHex)} width: 140px;">GARE</th><th style="${thStyle(COLORS.monsHex)}">INTERVENTIONS (FMS)</th></tr></thead>
+                    <thead><tr><th style="${thStyle(COLORS.monsHex)} width: 130px;">GARE</th><th style="${thStyle(COLORS.monsHex)}">INTERVENTIONS (FMS)</th></tr></thead>
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FMS', 'afternoon');
                         if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
-                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#f0f9ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.monsHex}; font-size:12pt;">${st}</td><td style="${tdStyle}">${getStationText(st, 'FMS', 'afternoon', true)}</td></tr>`).join('');
+                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#f0f9ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.monsHex}; font-size:11pt;">${st}</td><td style="${tdStyle}">${getStationText(st, 'FMS', 'afternoon', true)}</td></tr>`).join('');
                     })()}</tbody>
                 </table>
 
                 <div style="${subTitleStyle(COLORS.tournaiHex)}">📍 Prévu dans Quinyx gare de Tournai</div>
                 ${formatStatsHtml(presenceTournaiAM)}
                 <table style="${tableStyle}">
-                    <thead><tr><th style="${thStyle(COLORS.tournaiHex)} width: 140px;">GARE</th><th style="${thStyle(COLORS.tournaiHex)}">INTERVENTIONS (FTY)</th></tr></thead>
+                    <thead><tr><th style="${thStyle(COLORS.tournaiHex)} width: 130px;">GARE</th><th style="${thStyle(COLORS.tournaiHex)}">INTERVENTIONS (FTY)</th></tr></thead>
                     <tbody>${(() => {
                         const stations = getStationsWithInterventions('FTY', 'afternoon');
                         if (stations.length === 0) return `<tr><td colspan="2" style="${tdStyle} ${noInterventionStyle}">Aucune intervention</td></tr>`;
-                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#faf5ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.tournaiHex}; font-size:12pt;">${st}</td><td style="${tdStyle}">${getStationText(st, 'FTY', 'afternoon', true)}</td></tr>`).join('');
+                        return stations.map((st, i) => `<tr style="background-color:${i%2===0?'#faf5ff':'#fff'}"><td style="${tdStyle} font-weight:bold; color:${COLORS.tournaiHex}; font-size:11pt;">${st}</td><td style="${tdStyle}">${getStationText(st, 'FTY', 'afternoon', true)}</td></tr>`).join('');
                     })()}</tbody>
                 </table>
 
-                <div style="margin-top: 50px; border-top: 3px solid ${COLORS.sncbHex}; padding-top: 25px; font-size: 11pt; color: #333;">
-                    <p style="margin: 10px 0; line-height: 1.6;">• Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.</p>
-                    <p style="margin: 10px 0; line-height: 1.6;">• Interventions PMR pour B-CS : Voir DICOS.</p>
-                    <p style="margin: 25px 0 0 0; font-weight: bold; color: ${COLORS.sncbHex}; font-size: 13pt;">📱 L'App DICOS PMR reste la base à consulter</p>
+                <div style="margin-top: 45px; border-top: 2px solid ${COLORS.sncbHex}; padding-top: 20px; font-size: 10pt; color: #333; font-family: Arial, Verdana, sans-serif;">
+                    <p style="margin: 8px 0; line-height: 1.6;">• Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.</p>
+                    <p style="margin: 8px 0; line-height: 1.6;">• Interventions PMR pour B-CS : Voir DICOS.</p>
+                    <p style="margin: 20px 0 0 0; font-weight: bold; color: ${COLORS.sncbHex}; font-size: 12pt;">📱 L'App DICOS PMR reste la base à consulter</p>
                 </div>
             </div>
         `;
@@ -278,7 +282,6 @@
             
             toast.success("Email copié ! Collez-le dans Outlook avec CTRL+V");
             
-            // FIXED: Sujet corrigé
             const subject = encodeURIComponent(`Déplacements ${dateSubject}`);
             window.location.href = `mailto:${EMAIL_TO}?cc=${EMAIL_CC}&subject=${subject}`;
         } catch (err) { 
@@ -436,7 +439,6 @@
             </div>
         </div>
 
-        <!-- FIXED: Boutons avec couleurs du design system -->
         <div class="relative flex flex-wrap gap-3 p-6">
             <a href="/deplacements/historique" class="btn-primary">
                 <Train class="w-5 h-5" /> Historique
@@ -453,7 +455,6 @@
         </div>
     </header>
 
-    <!-- FIXED: DatePicker avec icône visible -->
     <div class="relative group">
         <div class="relative glass-panel rounded-2xl p-6 shadow-2xl">
             <label class="text-xs uppercase font-bold text-theme-primary mb-3 flex items-center gap-2 tracking-widest">
@@ -649,13 +650,12 @@
     @keyframes pulseSoft { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.85; transform: scale(1.03); } }
     @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
     
-    /* FIXED: DatePicker icon visibility - force white/bright icon */
     .datepicker-input {
         color-scheme: dark;
     }
     
     .datepicker-input::-webkit-calendar-picker-indicator {
-        filter: brightness(0) invert(1); /* Force white icon */
+        filter: brightness(0) invert(1);
         cursor: pointer;
         opacity: 1;
     }
@@ -665,7 +665,6 @@
         transform: scale(1.1);
     }
     
-    /* FIXED: Button styles using design system colors */
     .btn-primary {
         @apply flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:scale-105 disabled:opacity-50;
         background-color: rgb(var(--color-primary));
@@ -706,7 +705,6 @@
         background: linear-gradient(to right, #b91c1c, #e11d48);
     }
     
-    /* Custom slider styling */
     .slider-thumb::-webkit-slider-thumb {
         appearance: none;
         width: 16px;
