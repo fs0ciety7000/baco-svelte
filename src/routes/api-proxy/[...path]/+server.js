@@ -1,60 +1,69 @@
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 
 async function proxy(method, params, url, request) {
-    // 1. URL Cible
+    // DIAGNOSTIC : Si ça s'affiche dans les logs Vercel, c'est que la variable est chargée
+    if (!PUBLIC_SUPABASE_ANON_KEY) {
+        console.error("CRITICAL: PUBLIC_SUPABASE_ANON_KEY is missing/undefined on server!");
+        return new Response(JSON.stringify({ error: "Server Configuration Error: Missing API Key" }), { status: 500 });
+    }
+
+    // 1. Construction de l'URL cible
     const baseUrl = PUBLIC_SUPABASE_URL.replace(/\/$/, '');
-    const targetUrl = `${baseUrl}/${params.path}${url.search}`;
+    const path = params.path;
+    
+    // STRATÉGIE "CEINTURE ET BRETELLES" :
+    // On ajoute la clé directement dans l'URL (?apikey=...) en plus du header.
+    // Supabase accepte les deux méthodes.
+    const targetUrlObj = new URL(`${baseUrl}/${path}${url.search}`);
+    targetUrlObj.searchParams.set('apikey', PUBLIC_SUPABASE_ANON_KEY);
+    
+    const targetUrl = targetUrlObj.toString();
 
-    // 2. HEADERS MANUELS (C'est ici que ça bloquait)
-    // On crée un objet propre au lieu de copier les headers "sales" du navigateur
-    const headers = new Headers();
-
-    // A. L'API KEY (OBLIGATOIRE)
-    headers.set('apikey', PUBLIC_SUPABASE_ANON_KEY);
-
-    // B. Authorization (Bearer Token)
-    // Si l'utilisateur envoie un token (ex: logged in), on le passe.
-    // Sinon, on met la Anon Key par défaut pour que Supabase accepte la connexion.
+    // 2. Préparation des headers
+    const requestHeaders = new Headers();
+    requestHeaders.set('apikey', PUBLIC_SUPABASE_ANON_KEY);
+    
     const authHeader = request.headers.get('Authorization');
     if (authHeader) {
-        headers.set('Authorization', authHeader);
+        requestHeaders.set('Authorization', authHeader);
     } else {
-        headers.set('Authorization', `Bearer ${PUBLIC_SUPABASE_ANON_KEY}`);
+        requestHeaders.set('Authorization', `Bearer ${PUBLIC_SUPABASE_ANON_KEY}`);
     }
 
-    // C. Content-Type (Important pour le login JSON)
     const contentType = request.headers.get('Content-Type');
-    if (contentType) {
-        headers.set('Content-Type', contentType);
-    }
-
-    // 3. Gestion du Body
-    let body = undefined;
-    if (method !== 'GET' && method !== 'HEAD') {
-        body = await request.blob();
-    }
+    if (contentType) requestHeaders.set('Content-Type', contentType);
 
     try {
-        const response = await fetch(targetUrl, {
+        let body = null;
+        if (method !== 'GET' && method !== 'HEAD') {
+            const blob = await request.blob();
+            body = blob.size > 0 ? blob : null;
+        }
+
+        const upstreamResponse = await fetch(targetUrl, {
             method: method,
-            headers: headers, // On envoie nos headers propres
+            headers: requestHeaders,
             body: body,
-            duplex: 'half' // Nécessaire sur Vercel
+            duplex: 'half'
         });
 
-        // 4. Renvoi de la réponse
-        return new Response(response.body, {
-            status: response.status,
-            statusText: response.statusText,
-            headers: response.headers
+        // Copie des headers de réponse (sans les headers bloquants)
+        const responseHeaders = new Headers();
+        upstreamResponse.headers.forEach((value, key) => {
+            if (!['content-encoding', 'content-length', 'connection'].includes(key.toLowerCase())) {
+                responseHeaders.append(key, value);
+            }
+        });
+
+        return new Response(upstreamResponse.body, {
+            status: upstreamResponse.status,
+            statusText: upstreamResponse.statusText,
+            headers: responseHeaders
         });
 
     } catch (error) {
-        console.error(`[PROXY ERROR]`, error);
-        return new Response(JSON.stringify({ error: error.message }), { 
-            status: 500,
-            headers: { 'Content-Type': 'application/json' }
-        });
+        console.error(`[PROXY ERROR] ${method} ${targetUrl}`, error);
+        return new Response(JSON.stringify({ error: 'Proxy Failed', details: error.message }), { status: 500 });
     }
 }
 
