@@ -1,62 +1,60 @@
 <script>
-    import { Bold, Italic, Strikethrough, Code, List, Heading1, Heading2, Link2, Quote } from 'lucide-svelte';
+    import { Bold, Italic, List, Code, Quote, Link } from 'lucide-svelte';
 
-    // On reçoit la référence du textarea parent
-    export let textarea = null;
-    // On reçoit le contenu lié pour le mettre à jour
-    export let value = "";
+    // Props : on reçoit la référence du textarea et la valeur liée
+    let { textarea = null, value = $bindable() } = $props();
 
-    function insert(before, after = "") {
-        if (!textarea) return;
+    /**
+     * Insère des balises autour de la sélection ou au curseur
+     */
+    function insert(prefix, suffix = "") {
+        if (!textarea) return; // Sécurité si le textarea n'est pas encore monté
 
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
         const text = textarea.value;
+
+        const before = text.substring(0, start);
         const selection = text.substring(start, end);
+        const after = text.substring(end);
 
-        // Insertion du texte
-        const newText = text.substring(0, start) + before + selection + after + text.substring(end);
-        
-        // Mise à jour de la valeur (déclenche la réactivité Svelte)
-        value = newText;
+        // Mise à jour du texte
+        value = `${before}${prefix}${selection}${suffix}${after}`;
 
-        // On replace le curseur / la sélection
-        setTimeout(() => {
+        // Repositionnement du curseur après la mise à jour du DOM
+        requestAnimationFrame(() => {
             textarea.focus();
-            textarea.setSelectionRange(start + before.length, end + before.length);
-        }, 0);
+            if (selection.length > 0) {
+                // Si on a sélectionné du texte, on le re-sélectionne à l'intérieur des balises
+                textarea.setSelectionRange(start + prefix.length, end + prefix.length);
+            } else {
+                // Sinon on place le curseur au milieu des balises
+                const cursor = start + prefix.length;
+                textarea.setSelectionRange(cursor, cursor);
+            }
+        });
     }
 </script>
 
-<div class="flex items-center gap-1 p-2 bg-black/20 border-b border-white/5 overflow-x-auto custom-scrollbar">
-    <button type="button" on:click={() => insert('**', '**')} class="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Gras">
+<div class="flex items-center gap-1 pb-2 mb-2 border-b border-white/5 overflow-x-auto">
+    <button onclick={() => insert('**', '**')} class="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Gras">
         <Bold size={16} />
     </button>
-    <button type="button" on:click={() => insert('*', '*')} class="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Italique">
+    <button onclick={() => insert('*', '*')} class="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Italique">
         <Italic size={16} />
     </button>
-    <button type="button" on:click={() => insert('~~', '~~')} class="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Barré">
-        <Strikethrough size={16} />
-    </button>
-    
     <div class="w-px h-4 bg-white/10 mx-1"></div>
-
-    <button type="button" on:click={() => insert('# ')} class="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Titre 1">
-        <Heading1 size={16} />
-    </button>
-    <button type="button" on:click={() => insert('## ')} class="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Titre 2">
-        <Heading2 size={16} />
-    </button>
-
-    <div class="w-px h-4 bg-white/10 mx-1"></div>
-
-    <button type="button" on:click={() => insert('- ')} class="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Liste">
+    <button onclick={() => insert('- ')} class="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Liste à puces">
         <List size={16} />
     </button>
-    <button type="button" on:click={() => insert('> ')} class="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Citation">
+    <button onclick={() => insert('> ')} class="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Citation">
         <Quote size={16} />
     </button>
-    <button type="button" on:click={() => insert('`', '`')} class="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Code">
+    <button onclick={() => insert('`', '`')} class="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Code">
         <Code size={16} />
+    </button>
+    <div class="w-px h-4 bg-white/10 mx-1"></div>
+    <button onclick={() => insert('[', '](url)')} class="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Lien">
+        <Link size={16} />
     </button>
 </div>
