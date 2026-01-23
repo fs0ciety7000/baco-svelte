@@ -1,42 +1,48 @@
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 
-/**
- * Fonction centrale qui gère le transfert de la requête
- */
 async function proxy(method, params, url, request) {
-    // 1. Nettoyage de l'URL de base (au cas où il y a un slash à la fin)
+    // 1. URL Cible
     const baseUrl = PUBLIC_SUPABASE_URL.replace(/\/$/, '');
-    const path = params.path;
-    const targetUrl = `${baseUrl}/${path}${url.search}`;
+    const targetUrl = `${baseUrl}/${params.path}${url.search}`;
 
-    // 2. Préparation des Headers
-    const headers = new Headers(request.headers);
+    // 2. HEADERS MANUELS (C'est ici que ça bloquait)
+    // On crée un objet propre au lieu de copier les headers "sales" du navigateur
+    const headers = new Headers();
+
+    // A. L'API KEY (OBLIGATOIRE)
     headers.set('apikey', PUBLIC_SUPABASE_ANON_KEY);
-    
-    // On retire les headers qui causent des conflits CORS ou Host
-    headers.delete('host');
-    headers.delete('connection');
-    headers.delete('origin');
-    headers.delete('referer');
-    headers.delete('content-length');
+
+    // B. Authorization (Bearer Token)
+    // Si l'utilisateur envoie un token (ex: logged in), on le passe.
+    // Sinon, on met la Anon Key par défaut pour que Supabase accepte la connexion.
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader) {
+        headers.set('Authorization', authHeader);
+    } else {
+        headers.set('Authorization', `Bearer ${PUBLIC_SUPABASE_ANON_KEY}`);
+    }
+
+    // C. Content-Type (Important pour le login JSON)
+    const contentType = request.headers.get('Content-Type');
+    if (contentType) {
+        headers.set('Content-Type', contentType);
+    }
+
+    // 3. Gestion du Body
+    let body = undefined;
+    if (method !== 'GET' && method !== 'HEAD') {
+        body = await request.blob();
+    }
 
     try {
-        // 3. Gestion du Body (Corps de la requête)
-        // On ne lit le body que si ce n'est pas un GET/HEAD
-        let body = undefined;
-        if (method !== 'GET' && method !== 'HEAD') {
-            body = await request.arrayBuffer();
-        }
-
-        // 4. Envoi de la requête à Supabase (depuis le serveur Vercel)
         const response = await fetch(targetUrl, {
             method: method,
-            headers: headers,
+            headers: headers, // On envoie nos headers propres
             body: body,
-            duplex: 'half' // Important pour Node/Vercel
+            duplex: 'half' // Nécessaire sur Vercel
         });
 
-        // 5. Retour de la réponse au navigateur
+        // 4. Renvoi de la réponse
         return new Response(response.body, {
             status: response.status,
             statusText: response.statusText,
@@ -44,12 +50,13 @@ async function proxy(method, params, url, request) {
         });
 
     } catch (error) {
-        console.error(`[PROXY ERROR] ${method} ${targetUrl}:`, error);
-        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+        console.error(`[PROXY ERROR]`, error);
+        return new Response(JSON.stringify({ error: error.message }), { 
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
     }
 }
-
-// --- EXPORTS AUTORISÉS UNIQUEMENT ---
 
 export const GET = ({ params, url, request }) => proxy('GET', params, url, request);
 export const POST = ({ params, url, request }) => proxy('POST', params, url, request);
