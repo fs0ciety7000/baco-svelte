@@ -1,15 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 
-// Si on est dans le navigateur (client), on utilise le proxy
-// Si on est sur le serveur (SSR), on utilise la vraie URL (car le serveur n'est pas bloqué)
+// Détection : sommes-nous dans le navigateur ?
 const isBrowser = typeof window !== 'undefined';
-const supabaseUrl = isBrowser ? '/api-proxy' : PUBLIC_SUPABASE_URL;
+
+// Si Navigateur : on utilise l'URL du Proxy (ex: https://baco-inky.vercel.app/api-proxy)
+// Si Serveur : on utilise la vraie URL Supabase (car le serveur n'est pas bloqué)
+const supabaseUrl = isBrowser 
+    ? `${window.location.origin}/api-proxy` 
+    : PUBLIC_SUPABASE_URL;
 
 export const supabase = createClient(supabaseUrl, PUBLIC_SUPABASE_ANON_KEY, {
     auth: {
-        // Important : L'auth doit souvent persister sur le domaine principal
         persistSession: true,
         autoRefreshToken: true,
+        detectSessionInUrl: true
     }
 });
