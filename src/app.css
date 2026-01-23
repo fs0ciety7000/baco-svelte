@@ -15,6 +15,23 @@
     --bg-gradient-to: rgba(236, 72, 153, 0.15);
   }
   
+  @media print {
+    body * {
+        display: none !important;
+    }
+    body::after {
+        content: "CONFIDENTIEL - IMPRESSION INTERDITE - BACO";
+        display: flex;
+        justify_content: center;
+        align-items: center;
+        height: 100vh;
+        font-size: 24pt;
+        font-weight: bold;
+        color: black;
+    }
+}
+
+
   body {
     @apply bg-gray-50 text-gray-900;
   }

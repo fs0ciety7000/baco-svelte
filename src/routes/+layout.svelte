@@ -4,6 +4,8 @@
   import { page } from '$app/stores';
   import { supabase } from '$lib/supabase';
   import { goto } from '$app/navigation';
+   import Watermark from '$lib/components/ui/Watermark.svelte';
+  import SecurityShield from '$lib/components/ui/SecurityShield.svelte';
   import PwaReload from '$lib/components/PwaReload.svelte';
   import Nav from '$lib/components/Nav.svelte';
   import Footer from '$lib/components/Footer.svelte';
@@ -111,6 +113,8 @@
           in:fly={{ y: 20, duration: 300, delay: 300, easing: cubicOut }} 
           out:fly={{ y: -20, duration: 300, easing: cubicIn }}
         >
+
+       
           <slot />
         </div>
       {/key}
@@ -134,7 +138,15 @@
 
     <ToastContainer />
     <PwaReload />
+  
     <ConfirmModal />
+
+    {#if session}
+        <Watermark user={session.user} />
+        <SecurityShield />
+    {/if}
+
+    
   </div>
 {/if}
 
