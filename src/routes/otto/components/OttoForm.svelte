@@ -192,7 +192,6 @@
 
     function prepareEmail() {
         const society = societes.find(s => s.id === form.societe_id);
-        // Ajout du sens dans le corps du mail
         const sensText = form.is_aller_retour ? 'Aller-Retour' : 'Aller Simple';
         
         emailBody = `Bonjour, voici le réquisitoire pour le trajet de ce ${new Date(form.date_commande).toLocaleDateString('fr-BE')} entre ${form.origine || '?'} et ${form.destination || '?'} - ${form.relation} (${form.is_direct ? 'Direct' : 'Omnibus'} - ${sensText})
@@ -304,6 +303,8 @@ PACO Sud-Ouest`;
             
            <div class="space-y-4">
                 {#each form.bus_data as bus, i}
+                    {@const activeChauffeur = chauffeurs.find(c => c.id === bus.chauffeur_id)}
+                    
                     <div class="bg-white/5 rounded-xl border border-white/10 overflow-hidden" transition:slide|local>
                         <div class="flex justify-between items-center px-4 py-2 bg-black/20 border-b border-white/5">
                             <span class="text-xs font-mono font-bold text-orange-400">BUS #{i+1}</span>
@@ -326,7 +327,6 @@ PACO Sud-Ouest`;
                                         {/each}
                                     </select>
 
-                                    {@const activeChauffeur = chauffeurs.find(c => c.id === bus.chauffeur_id)}
                                     {#if activeChauffeur?.tel}
                                         <a href="etrali:{activeChauffeur.tel}" class="block mt-2 w-fit text-xs font-bold text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1.5 transition-colors bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20">
                                             <Phone size={12}/> 
