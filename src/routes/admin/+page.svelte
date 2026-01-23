@@ -1,659 +1,796 @@
 <script>
-    import { onMount } from 'svelte';
-    import { supabase } from '$lib/supabase';
-    import { toast } from '$lib/stores/toast';
-    import jsPDF from 'jspdf';
-    import autoTable from 'jspdf-autotable';
-    import {
-        Save,
-        Mail,
-        FileDown,
-        Plus,
-        Trash2,
-        Car,
-        Calendar,
-        MapPin,
-        Briefcase,
-        Train
-    } from 'lucide-svelte';
+  import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { supabase } from '$lib/supabase';
+  import { toast } from '$lib/stores/toast.js';
+  import { page } from '$app/stores'; 
+  import { hasPermission, ACTIONS } from '$lib/permissions';
+  import { openConfirmModal } from '$lib/stores/modal.js';
+  import { fly, fade } from 'svelte/transition';
 
-    // --- CONFIGURATION ---
-    const PRESET_STATIONS_FMS = ['FMS', 'FSG', 'FGH', 'FJR', 'LVRS', 'ATH', 'FBC', 'FLZ', 'FNG'];
-    const PRESET_STATIONS_FTY = ['FTY', 'ATH', 'FMC', 'FNG', 'FLZ', 'FLN'];
+  import { 
+    Shield, UserPlus, Search, User, UserX, UserCheck, 
+    KeyRound, FileWarning, History, Loader2, X, Copy, 
+    AlertOctagon, CheckCircle, ShieldAlert, ChevronLeft, Save, Edit2, UserCog, ArrowUpDown, AlertTriangle 
+  } from 'lucide-svelte';
+  
+  let currentUserProfile = null; 
+  let usersList = []; 
 
-    const ASSIGNEES = [
-        "ACP TEMP (Blaise)", "CPI BUFFER FTY", "CPI BUFFER FMS", "CPI FMS", 
-        "CPI FBC", "CPI FTY", "OPI 1", "OPI 2", "SPI FTY", "SPI FMS", 
-        "SPI Buffer FMS", "SPI Buffer FTY", "Team Leader", "MPI", "PA", 
-        "OPI 5-13", "OPI 13-21", "PA 10-18", "CPI 10-18", "SPI 10-18"
-    ];
+  // --- ÉTAT ---
+  let users = []; 
+  let isLoading = true;
+  let isCreating = false;
+  let currentAdminId = null;
 
-    // Couleurs HEX pour l'export (PDF/Mail) car les vars CSS ne marchent pas hors du navigateur
-    const EXPORT_COLORS = {
-        sncb: '#0069B4',
-        mons: '#002050',
-        tournai: '#998abe',
-        red: '#be4366',
-        morning: '#d1b4d4',
-        afternoon: '#ADBC16', 
-        badge: '#e5e7eb'
-    };
+  // Gestion du Tri
+  let sortCol = 'last_active'; 
+  let sortAsc = false;        
 
-    const EMAIL_TO = "cedric.thiels@belgiantrain.be;luc.deconinck@belgiantrain.be;b4u.mons@belgiantrain.be;paco.mons@belgiantrain.be;785um.OUMonsPermanence@belgiantrain.be;gare.mons.quai@belgiantrain.be;785ut.OUTournaiPermanence@belgiantrain.be;gare.tournai.quai@belgiantrain.be;gare.braine.le.comte.quai@belgiantrain.be";
-    const EMAIL_CC = "mathieu.debaisieux@belgiantrain.be";
+  // Formulaire Création
+  let newUser = { email: "", password: "", role: "user" };
+  // Modales
+  let showInfractionModal = false;
+  let showHistoryModal = false;
+  let showResetModal = false;
+  // Données Modales
+  let selectedUser = null;
+  let infractionData = { type: 'yellow', reason: '' };
+  let historyData = { list: [], loading: false };
+  let resetData = { password: '', loading: false, status: '' };
 
-    // --- ÉTAT ---
-    let date = $state(new Date().toISOString().split('T')[0]);
-    let loading = $state(false);
+  // --- ÉTAT POUR L'ÉDITION ---
+  $: targetEmail = $page.url.searchParams.get('email'); 
+  let targetUser = null;
+  let isSaving = false;
+  let form = {
+      full_name: '',
+      avatar_url: '',
+      role: ''
+  };
 
-    let presenceMons = $state({ spi: 0, opi: 0, cpi: 0, pa: 0, shift_10_18: 0 });
-    let presenceTournai = $state({ spi: 0, opi: 0, cpi: 0, pa: 0, shift_10_18: 0 });
-    let interventions = $state([]);
+  $: if (targetUser) {
+      form.full_name = targetUser.full_name;
+      form.avatar_url = targetUser.avatar_url;
+      form.role = targetUser.role;
+  }
+  
+  // --- TRI AUTOMATIQUE ---
+  $: if (usersList) {
+      users = [...usersList].sort((a, b) => {
+          let valA = a[sortCol];
+          let valB = b[sortCol];
 
-    let presenceMonsAM = $state({ spi: 0, opi: 0, cpi: 0, pa: 0, shift_10_18: 0 });
-    let presenceTournaiAM = $state({ spi: 0, opi: 0, cpi: 0, pa: 0, shift_10_18: 0 });
-    let interventionsAM = $state([]);
-    let stationList = $state([]);
+          if (sortCol === 'last_active') {
+              valA = new Date(valA || 0).getTime();
+              valB = new Date(valB || 0).getTime();
+          } 
+          else if (typeof valA === 'string') {
+              valA = valA.toLowerCase();
+              valB = valB.toLowerCase();
+          }
 
-    // --- INITIALISATION ---
-    onMount(async () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlDate = urlParams.get('date');
-        if (urlDate) date = urlDate;
-        await loadStations();
-        await loadDailyReport();
-    });
+          if (valA < valB) return sortAsc ? -1 : 1;
+          if (valA > valB) return sortAsc ? 1 : -1;
+          return 0;
+      });
+  }
 
-    async function loadStations() {
-        const { data } = await supabase.from('ptcar_abbreviations').select('abbreviation, zone_name');
-        if (data) stationList = data;
+  function toggleSort(col) {
+      if (sortCol === col) {
+          sortAsc = !sortAsc;
+      } else {
+          sortCol = col;
+          sortAsc = true;
+      }
+  }
+
+  onMount(async () => {
+    await checkAdminAccess();
+    await loadUsers(); 
+  });
+
+  // --- SÉCURITÉ ---
+  async function checkAdminAccess() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return goto('/');
+    
+    currentAdminId = user.id;
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role, permissions') 
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.role !== 'admin') {
+      toast.error("Accès refusé.");
+      goto('/');
     }
+    currentUserProfile = profile; 
+  }
 
-    // --- LOGIQUE ---
-    function detectZone(stationName) {
-        const s = stationName?.toUpperCase() || '';
-        if (PRESET_STATIONS_FTY.includes(s) && !PRESET_STATIONS_FMS.includes(s)) return 'FTY';
-        return 'FMS'; 
+  // --- CHARGEMENT ---
+  async function loadUsers() {
+    isLoading = true;
+    try {
+      const { data: usersData, error } = await supabase.rpc('get_all_users'); 
+      if (error) throw error;
+
+      const { data: presenceData } = await supabase
+        .from('user_presence')
+        .select('user_id, last_seen_at');
+
+      const presenceMap = new Map(presenceData?.map(p => [p.user_id, p.last_seen_at]));
+
+      usersList = (usersData || []).map(u => {
+          const lastSeen = presenceMap.get(u.user_id);
+          const lastSignIn = u.last_sign_in_at;
+          
+          let realLastActive = lastSignIn;
+          if (lastSeen && (!lastSignIn || new Date(lastSeen) > new Date(lastSignIn))) {
+              realLastActive = lastSeen;
+          }
+
+          return {
+              ...u,
+              last_active: realLastActive
+          };
+      });
+      
+      if (targetEmail) {
+          const foundUser = usersList.find(u => u.email === targetEmail);
+          if (foundUser) {
+              await loadTargetProfile(foundUser.user_id, foundUser.email, foundUser.last_active);
+          } else {
+              goto('/admin');
+          }
+      }
+
+    } catch (e) {
+      toast.error("Erreur: " + e.message);
+    } finally {
+      isLoading = false;
     }
+  }
 
-    function addRow() { interventions = [...interventions, { station: '', pmr_details: '', assigned_to: '', zone: 'FMS' }]; }
-    function removeRow(index) { interventions = interventions.filter((_, i) => i !== index); }
-    function handleStationChange(index, value) {
-        interventions[index].station = value.toUpperCase();
-        interventions[index].zone = detectZone(value);
-    }
+  async function loadTargetProfile(id, email, last_sign_in_at) {
+    if (!id) return;
+    isLoading = true;
+    try {
+        const { data: profileData, error } = await supabase
+            .from('profiles')
+            .select('id, full_name, username, avatar_url, role, updated_at') 
+            .eq('id', id)
+            .single();
 
-    function addRowAM() { interventionsAM = [...interventionsAM, { station: '', pmr_details: '', assigned_to: '', zone: 'FMS' }]; }
-    function removeRowAM(index) { interventionsAM = interventionsAM.filter((_, i) => i !== index); }
-    function handleStationChangeAM(index, value) {
-        interventionsAM[index].station = value.toUpperCase();
-        interventionsAM[index].zone = detectZone(value);
-    }
+        if (error || !profileData) throw error || new Error("Profile data missing.");
 
-    function getStationsWithInterventions(zone, period) {
-        const sourceInterventions = period === 'afternoon' ? interventionsAM : interventions;
-        const stationsWithData = new Set();
-        sourceInterventions.filter(i => i.zone === zone && i.station.trim() !== '').forEach(i => stationsWithData.add(i.station));
-        return Array.from(stationsWithData).sort();
-    }
-
-    function highlightRoles(text) {
-        if (!text) return "";
-        const roles = ["ACP", "CPI", "OPI", "SPI", "PA", "Team Leader", "MPI", "10-18"];
-        const regex = new RegExp(`\\b(${roles.join('|')})\\b`, 'gi');
-        return text.replace(regex, '<b>$1</b>');
-    }
-
-    function getStationText(stationCode, zoneFilter = null, period = 'morning', forHtml = false) {
-        const sourceInterventions = period === 'afternoon' ? interventionsAM : interventions;
-        const matches = sourceInterventions.filter(i => i.station === stationCode && (zoneFilter ? i.zone === zoneFilter : true));
-        if (matches.length === 0) return "///";
-
-        return matches.map(m => {
-            const details = m.pmr_details ? m.pmr_details : "";
-            const assignee = m.assigned_to ? `(${m.assigned_to})` : "";
-            let fullText = `${details} ${assignee}`.trim();
-            if (forHtml) fullText = highlightRoles(fullText);
-            return fullText;
-        }).join(forHtml ? '<br/>' : '\n');
-    }
-
-    // --- SUPABASE ---
-    async function loadDailyReport() {
-        loading = true;
-        try {
-            const { data: report } = await supabase.from('daily_movements').select('*').eq('date', date).single();
-            if (report) {
-                presenceMons = report.presence_mons || { spi: 0, opi: 0, cpi: 0, pa: 0, shift_10_18: 0 };
-                presenceTournai = report.presence_tournai || { spi: 0, opi: 0, cpi: 0, pa: 0, shift_10_18: 0 };
-                presenceMonsAM = report.presence_mons_am || { spi: 0, opi: 0, cpi: 0, pa: 0, shift_10_18: 0 };
-                presenceTournaiAM = report.presence_tournai_am || { spi: 0, opi: 0, cpi: 0, pa: 0, shift_10_18: 0 };
-                const { data: lines } = await supabase.from('movement_interventions').select('*').eq('movement_id', report.id).order('created_at', { ascending: true });
-                if (lines) {
-                    interventions = lines.filter(l => l.period === 'morning' || !l.period) || [];
-                    interventionsAM = lines.filter(l => l.period === 'afternoon') || [];
-                }
-            } else {
-                presenceMons = { spi: 0, opi: 0, cpi: 0, pa: 0, shift_10_18: 0 };
-                presenceTournai = { spi: 0, opi: 0, cpi: 0, pa: 0, shift_10_18: 0 };
-                presenceMonsAM = { spi: 0, opi: 0, cpi: 0, pa: 0, shift_10_18: 0 };
-                presenceTournaiAM = { spi: 0, opi: 0, cpi: 0, pa: 0, shift_10_18: 0 };
-                interventions = []; interventionsAM = [];
-            }
-            if (interventions.length === 0) addRow();
-            if (interventionsAM.length === 0) addRowAM();
-        } catch (e) { console.error(e); } finally { loading = false; }
-    }
-
-    async function saveData() {
-        loading = true;
-        try {
-            const { data: report, error: errRep } = await supabase.from('daily_movements').upsert({
-                date, presence_mons: presenceMons, presence_tournai: presenceTournai,
-                presence_mons_am: presenceMonsAM, presence_tournai_am: presenceTournaiAM
-            }, { onConflict: 'date' }).select().single();
-            if (errRep) throw errRep;
-
-            await supabase.from('movement_interventions').delete().eq('movement_id', report.id);
-            const validLinesMorning = interventions.filter(i => i.station.trim() !== '').map(i => ({ ...i, movement_id: report.id, period: 'morning' }));
-            const validLinesAfternoon = interventionsAM.filter(i => i.station.trim() !== '').map(i => ({ ...i, movement_id: report.id, period: 'afternoon' }));
-            const allValidLines = [...validLinesMorning, ...validLinesAfternoon];
-
-            if (allValidLines.length > 0) {
-                const { error: errLines } = await supabase.from('movement_interventions').insert(allValidLines);
-                if (errLines) throw errLines;
-            }
-            toast.success("Sauvegardé !");
-        } catch (e) { toast.error("Erreur : " + e.message); } finally { loading = false; }
-    }
-
-    // --- GENERATION EMAIL (Format Tableaux Outlook Friendly) ---
-    async function copyForOutlook() {
-        const d = new Date(date);
-        const day = String(d.getDate()).padStart(2, '0');
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const year = d.getFullYear();
-        const dateSubject = `${day}-${month}-${year}`;
-        const formattedDate = d.toLocaleDateString('fr-BE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-        // Ligne d'espacement (Crucial pour Outlook)
-        const spacerRow = (height = 20) => `<tr><td height="${height}" style="font-size:0px; line-height:0px;">&nbsp;</td></tr>`;
-
-        // Générateur de stats en tableau imbriqué
-        const renderStats = (data) => {
-            let cells = '';
-            Object.entries(data).forEach(([k, v]) => {
-                const valColor = v === 0 ? EXPORT_COLORS.red : '#000000';
-                const label = k.replace('shift_', '').toUpperCase();
-                cells += `
-                    <td width="10">&nbsp;</td>
-                    <td style="background-color: ${EXPORT_COLORS.badge}; border-radius: 4px; padding: 5px 10px; font-family: sans-serif; font-size: 12px; white-space: nowrap;">
-                        <strong>${label}:</strong> <span style="color: ${valColor}; font-weight: bold;">${v}</span>
-                    </td>
-                    <td width="10">&nbsp;</td>
-                `;
-            });
-            return `
-                <table border="0" cellspacing="0" cellpadding="0" align="center">
-                    <tr>${cells}</tr>
-                </table>
-            `;
+        targetUser = {
+            id: profileData.id,
+            user_id: profileData.id, 
+            email: email, 
+            last_sign_in_at: last_sign_in_at,
+            ...profileData
         };
 
-        // Générateur de tableau d'interventions
-        const renderTable = (zone, period) => {
-            const stations = getStationsWithInterventions(zone, period);
-            const headerColor = zone === 'FMS' ? EXPORT_COLORS.mons : EXPORT_COLORS.tournai;
-            
-            let rowsHtml = '';
-            if (stations.length === 0) {
-                rowsHtml = `<tr><td colspan="2" style="padding:15px; border:1px solid #ddd; background-color:#f9f9f9; text-align:center; color:#777;"><em>Aucune intervention</em></td></tr>`;
-            } else {
-                stations.forEach((st, i) => {
-                    const bg = i % 2 === 0 ? '#f4f8fb' : '#ffffff';
-                    rowsHtml += `
-                        <tr>
-                            <td width="120" valign="top" style="padding:10px; border:1px solid #ddd; background-color:${bg}; font-weight:bold; color:${headerColor};">${st}</td>
-                            <td valign="top" style="padding:10px; border:1px solid #ddd; background-color:${bg}; color:#333;">${getStationText(st, zone, period, true)}</td>
-                        </tr>
-                    `;
-                });
-            }
-
-            return `
-                <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">
-                    <thead>
-                        <tr>
-                            <th align="left" style="padding:10px; background-color:${headerColor}; color:#ffffff; border:1px solid ${headerColor};">GARE</th>
-                            <th align="left" style="padding:10px; background-color:${headerColor}; color:#ffffff; border:1px solid ${headerColor};">INTERVENTIONS (${zone})</th>
-                        </tr>
-                    </thead>
-                    <tbody>${rowsHtml}</tbody>
-                </table>
-            `;
-        };
-
-        const html = `
-            <!DOCTYPE html>
-            <html>
-            <body style="margin:0; padding:0; font-family: Helvetica, Arial, sans-serif; background-color:#ffffff;">
-                <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                    <tr>
-                        <td align="center">
-                            <table width="800" border="0" cellspacing="0" cellpadding="0" style="width:800px; background-color:#ffffff;">
-                                
-                                ${spacerRow(30)}
-                                <tr><td align="center" style="color:${EXPORT_COLORS.sncb}; font-size:24px; font-weight:900;">DÉPLACEMENTS PMR</td></tr>
-                                <tr><td align="center" style="font-size:16px; font-weight:bold; padding-bottom:10px; border-bottom:2px solid ${EXPORT_COLORS.sncb};">${formattedDate}</td></tr>
-                                ${spacerRow(30)}
-
-                                <tr><td bgcolor="${EXPORT_COLORS.morning}" style="padding:10px 15px; font-size:18px; font-weight:bold; color:#000;">PRESTATION MATIN</td></tr>
-                                ${spacerRow(20)}
-
-                                <tr><td style="color:${EXPORT_COLORS.mons}; font-size:14px; font-weight:bold;">• Prévu dans Quinyx gare de Mons</td></tr>
-                                ${spacerRow(10)}
-                                <tr><td>${renderStats(presenceMons)}</td></tr>
-                                ${spacerRow(10)}
-                                <tr><td>${renderTable('FMS', 'morning')}</td></tr>
-                                ${spacerRow(25)}
-
-                                <tr><td style="color:${EXPORT_COLORS.tournai}; font-size:14px; font-weight:bold;">• Prévu dans Quinyx gare de Tournai</td></tr>
-                                ${spacerRow(10)}
-                                <tr><td>${renderStats(presenceTournai)}</td></tr>
-                                ${spacerRow(10)}
-                                <tr><td>${renderTable('FTY', 'morning')}</td></tr>
-                                ${spacerRow(40)}
-
-                                <tr><td bgcolor="${EXPORT_COLORS.afternoon}" style="padding:10px 15px; font-size:18px; font-weight:bold; color:#ffffff;">PRESTATION APRÈS-MIDI</td></tr>
-                                ${spacerRow(20)}
-
-                                <tr><td style="color:${EXPORT_COLORS.mons}; font-size:14px; font-weight:bold;">• Prévu dans Quinyx gare de Mons</td></tr>
-                                ${spacerRow(10)}
-                                <tr><td>${renderStats(presenceMonsAM)}</td></tr>
-                                ${spacerRow(10)}
-                                <tr><td>${renderTable('FMS', 'afternoon')}</td></tr>
-                                ${spacerRow(25)}
-
-                                <tr><td style="color:${EXPORT_COLORS.tournai}; font-size:14px; font-weight:bold;">• Prévu dans Quinyx gare de Tournai</td></tr>
-                                ${spacerRow(10)}
-                                <tr><td>${renderStats(presenceTournaiAM)}</td></tr>
-                                ${spacerRow(10)}
-                                <tr><td>${renderTable('FTY', 'afternoon')}</td></tr>
-                                ${spacerRow(40)}
-
-                                <tr>
-                                    <td style="border-top:2px solid ${EXPORT_COLORS.sncb}; padding-top:20px; font-size:12px; color:#555;">
-                                        <p style="margin:5px 0;">• Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.</p>
-                                        <p style="margin:5px 0;">• Interventions PMR pour B-CS : Voir DICOS.</p>
-                                        <p style="margin:15px 0 0 0; font-size:14px; font-weight:bold; color:${EXPORT_COLORS.sncb};">IMPORTANT: L'App DICOS PMR reste la base à consulter</p>
-                                    </td>
-                                </tr>
-                                ${spacerRow(30)}
-                            </table>
-                        </td>
-                    </tr>
-                </table>
-            </body>
-            </html>
-        `;
-
-        try {
-            const blobHtml = new Blob([html], { type: 'text/html' });
-            await navigator.clipboard.write([new ClipboardItem({ 'text/html': blobHtml })]);
-            toast.success("Copié pour Outlook (CTRL+V)");
-            window.location.href = `mailto:${EMAIL_TO}?cc=${EMAIL_CC}&subject=${encodeURIComponent(`Déplacement PMR - ${dateSubject}`)}`;
-        } catch (err) { toast.error("Erreur : " + err.message); }
+    } catch(e) {
+        targetUser = null;
+        goto('/admin');
+    } finally {
+        isLoading = false;
     }
+  }
 
-    // --- PDF ---
-    async function getBase64ImageFromURL(url) {
-        return new Promise((resolve, reject) => {
-            const img = new Image(); img.setAttribute("crossOrigin", "anonymous");
-            img.onload = () => {
-                const canvas = document.createElement("canvas"); canvas.width = img.width; canvas.height = img.height;
-                const ctx = canvas.getContext("2d"); ctx.drawImage(img, 0, 0); resolve(canvas.toDataURL("image/png"));
-            };
-            img.onerror = reject; img.src = url;
-        });
-    }
+  // --- ACTIONS ---
+  async function saveProfile() {
+      if (!targetUser || isSaving) return;
+      isSaving = true;
+      
+      if (!['admin', 'moderator', 'user'].includes(form.role)) {
+          toast.error("Rôle invalide.");
+          isSaving = false;
+          return;
+      }
 
-    async function generatePDF() {
-        const doc = new jsPDF();
-        const formattedDate = new Date(date).toLocaleDateString('fr-BE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-        try {
-            const logoUrl = window.location.origin + '/Logo_100Y_FR_horiz_blue.png';
-            const logoData = await getBase64ImageFromURL(logoUrl);
-            doc.addImage(logoData, 'PNG', 10, 10, 50, 0);
-        } catch (e) { }
+      try {
+        const { error } = await supabase
+            .from('profiles')
+            .update({
+                full_name: form.full_name,
+                avatar_url: form.avatar_url,
+                role: form.role,
+                updated_at: new Date().toISOString() 
+            })
+            .eq('id', targetUser.id); 
 
-        let currentY = 35;
-        doc.setTextColor(EXPORT_COLORS.sncb); doc.setFontSize(22); doc.setFont("helvetica", "bold");
-        doc.text("DEPLACEMENTS PMR", 105, 20, { align: 'center' });
-        doc.setFontSize(14); doc.setTextColor(0, 0, 0);
-        doc.text(formattedDate, 105, 28, { align: 'center' });
-        doc.setDrawColor(EXPORT_COLORS.sncb); doc.setLineWidth(0.5); doc.line(10, 35, 200, 35);
-        currentY = 50;
+        if (error) throw error;
+        toast.success("Profil mis à jour !");
+        loadUsers();
+        goto('/admin'); 
 
-        const drawSection = (title, color) => {
-            doc.setFillColor(color); doc.rect(10, currentY, 190, 12, 'F');
-            doc.setTextColor(color === EXPORT_COLORS.afternoon ? 255 : 0, color === EXPORT_COLORS.afternoon ? 255 : 0, color === EXPORT_COLORS.afternoon ? 255 : 0);
-            doc.setFontSize(14); doc.setFont("helvetica", "bold");
-            doc.text(title, 105, currentY + 8, { align: 'center' });
-            currentY += 22;
-        };
+      } catch (e) {
+          toast.error(`Erreur: ${e.message}`);
+      } finally {
+        isSaving = false;
+      }
+  }
 
-        const drawSub = (title, color) => {
-            doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(color);
-            doc.text(title, 15, currentY); currentY += 10;
-        };
+  function goBackToList() {
+      targetUser = null;
+      goto('/admin');
+  }
 
-        const drawStats = (dataMap) => {
-            const keys = Object.keys(dataMap);
-            let x = 20;
-            doc.setFontSize(11); doc.setFont("helvetica", "bold");
-            keys.forEach((k) => {
-                const val = dataMap[k];
-                const label = k.replace('shift_', '').toUpperCase();
-                doc.setFillColor(EXPORT_COLORS.badge);
-                doc.roundedRect(x, currentY - 5, 32, 8, 2, 2, 'F');
-                doc.setTextColor(0,0,0); doc.text(`${label}: `, x + 2, currentY);
-                const w = doc.getTextWidth(`${label}: `);
-                if (val === 0) doc.setTextColor(EXPORT_COLORS.red); else doc.setTextColor(0,0,0);
-                doc.text(val.toString(), x + w + 2, currentY);
-                x += 37;
-            });
-            currentY += 20;
-        };
+  function handleViewEdit(email) {
+      goto(`/admin?email=${email}`);
+  }
 
-        const drawTable = (stations, zone, period, colorHead) => {
-            if (stations.length === 0) {
-                doc.setFontSize(11); doc.setTextColor(150, 150, 150); doc.setFont("helvetica", "italic");
-                doc.text("Aucune intervention", 105, currentY, { align: 'center' });
-                currentY += 15; return;
-            }
-            const rows = stations.map(st => [st, getStationText(st, zone, period, false)]);
-            autoTable(doc, {
-                startY: currentY, head: [['GARE', `INTERVENTIONS (${zone})`]], body: rows,
-                theme: 'striped',
-                headStyles: { fillColor: colorHead, textColor: 255, fontStyle: 'bold' },
-                columnStyles: { 0: { cellWidth: 35, fontStyle: 'bold', textColor: colorHead } },
-                margin: { left: 10, right: 10 }
-            });
-            currentY = doc.lastAutoTable.finalY + 25;
-        };
+  async function handleCreateUser() {
+    if (!newUser.email || !newUser.password) return;
+    isCreating = true;
 
-        if (currentY > 250) { doc.addPage(); currentY = 20; }
-        drawSection("PRESTATION MATIN", EXPORT_COLORS.morning);
-        drawSub("• Prévu dans Quinyx gare de Mons", EXPORT_COLORS.mons);
-        drawStats(presenceMons);
-        drawTable(getStationsWithInterventions('FMS', 'morning'), 'FMS', 'morning', EXPORT_COLORS.mons);
+    try {
+      const { data: { session: adminSession } } = await supabase.auth.getSession();
+      if (!adminSession) throw new Error("Session admin perdue.");
 
-        if (currentY > 240) { doc.addPage(); currentY = 20; }
-        drawSub("• Prévu dans Quinyx gare de Tournai", EXPORT_COLORS.tournai);
-        drawStats(presenceTournai);
-        drawTable(getStationsWithInterventions('FTY', 'morning'), 'FTY', 'morning', EXPORT_COLORS.tournai);
-
-        doc.addPage(); currentY = 20;
-        drawSection("PRESTATION APRES-MIDI", EXPORT_COLORS.afternoon);
-        drawSub("• Prévu dans Quinyx gare de Mons", EXPORT_COLORS.mons);
-        drawStats(presenceMonsAM);
-        drawTable(getStationsWithInterventions('FMS', 'afternoon'), 'FMS', 'afternoon', EXPORT_COLORS.mons);
-
-        if (currentY > 240) { doc.addPage(); currentY = 20; }
-        drawSub("• Prévu dans Quinyx gare de Tournai", EXPORT_COLORS.tournai);
-        drawStats(presenceTournaiAM);
-        drawTable(getStationsWithInterventions('FTY', 'afternoon'), 'FTY', 'afternoon', EXPORT_COLORS.tournai);
-
-        const pageCount = doc.internal.getNumberOfPages();
-        for (let i = 1; i <= pageCount; i++) {
-            doc.setPage(i);
-            doc.setFontSize(10); doc.setTextColor(0,0,0); doc.setFont("helvetica", "normal");
-            doc.text("• Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.", 15, 272);
-            doc.text("• Interventions PMR pour B-CS : Voir DICOS.", 15, 277);
-            doc.setFontSize(11); doc.setTextColor(EXPORT_COLORS.sncb); doc.setFont("helvetica", "bold");
-            doc.text("IMPORTANT: L'App DICOS PMR reste la base à consulter", 15, 285);
-            doc.setFontSize(9); doc.setTextColor(150); doc.setFont("helvetica", "normal");
-            doc.text(`Page ${i} / ${pageCount}`, 195, 288, { align: 'right' });
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: newUser.email,
+        password: newUser.password,
+        options: {
+          data: {
+            role: newUser.role,
+            full_name: newUser.email.split('@')[0],
+            username: newUser.email.split('@')[0]
+          }
         }
-        
-        doc.save(`deplacement_pmr_${date}.pdf`);
-        toast.success("PDF généré !");
+      });
+
+      if (signUpError) throw signUpError;
+      const { error: restoreError } = await supabase.auth.setSession({
+        access_token: adminSession.access_token,
+        refresh_token: adminSession.refresh_token
+      });
+      if (restoreError) throw restoreError;
+
+      toast.success(`Utilisateur créé !`);
+      newUser = { email: "", password: "", role: "user" };
+      loadUsers();
+
+    } catch (e) {
+      toast.error("Erreur: " + e.message);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) location.reload();
+    } finally {
+      isCreating = false;
     }
+  }
+
+function executeHandleChangeRole(user, nextRole) {
+    return async () => {
+        try {
+            const { error: rpcError } = await supabase.rpc('admin_update_user_role', {
+                p_user_id: user.user_id,
+                p_new_role: nextRole
+            });
+            if (rpcError) throw rpcError;
+            loadUsers();
+            toast.success(`Rôle mis à jour: ${nextRole.toUpperCase()}.`);
+        } catch (e) {
+            toast.error("Erreur: " + e.message);
+        }
+    };
+}
+
+async function handleChangeRole(user, nextRole) {
+    if (user.user_id === currentAdminId) return toast.error("Impossible de modifier votre propre rôle.");
+    openConfirmModal(
+        `Changer le rôle en ${nextRole.toUpperCase()} ?`,
+        executeHandleChangeRole(user, nextRole)
+    );
+}
+
+function executeHandleBanUser(user, shouldBan) {
+    return async () => {
+        try {
+            let banDate = null;
+            if (shouldBan) {
+                const d = new Date();
+                d.setFullYear(d.getFullYear() + 100);
+                banDate = d.toISOString();
+            }
+
+            const updates = {
+                banned_until: banDate,
+                banned_until_status: shouldBan ? 'banned' : null
+            };
+
+            const { error: updateError } = await supabase
+                .from('profiles')
+                .update(updates)
+                .eq('id', user.user_id);
+            if (updateError) throw updateError;
+
+            if (!shouldBan) {
+                await supabase
+                    .from('infractions')
+                    .update({ is_active: false })
+                    .eq('user_id', user.user_id);
+            }
+
+            loadUsers();
+            toast.success(shouldBan ? "Utilisateur banni." : "Utilisateur débanni.");
+
+        } catch (e) {
+            toast.error("Erreur: " + e.message);
+        }
+    };
+}
+
+async function handleBanUser(user, shouldBan) {
+    if (user.user_id === currentAdminId) return toast.error("Impossible.");
+    openConfirmModal(
+        shouldBan ? "Bannir cet utilisateur définitivement ?" : "Débannir cet utilisateur ?",
+        executeHandleBanUser(user, shouldBan)
+    );
+}
+
+  // --- MODALES ---
+
+  function openInfractionModal(user) {
+    selectedUser = user;
+    infractionData = { type: 'yellow', reason: '' };
+    showInfractionModal = true;
+  }
+
+  async function submitInfraction() {
+    if (!infractionData.reason) return toast.error("Raison requise.");
+    try {
+      const { error } = await supabase.rpc('admin_add_infraction', {
+        target_user_id: selectedUser.user_id,
+        p_card_type: infractionData.type,
+        p_reason: infractionData.reason
+      });
+      if (error) throw error;
+      toast.success("Infraction ajoutée !");
+      showInfractionModal = false;
+      loadUsers();
+    } catch (e) {
+      toast.error("Erreur: " + e.message);
+    }
+  }
+
+  async function openHistoryModal(user) {
+    selectedUser = user;
+    showHistoryModal = true;
+    historyData.loading = true;
+    historyData.list = [];
+    try {
+      const { data, error } = await supabase
+        .from('infractions')
+        .select('*, admin:admin_id ( full_name )')
+        .eq('user_id', user.user_id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      historyData.list = data || [];
+    } catch (e) { console.error(e); } finally { historyData.loading = false;
+    }
+  }
+
+function executePardonInfraction(infractionId) {
+    return async () => {
+        try {
+            const { error } = await supabase.rpc('admin_pardon_infraction', { p_infraction_id: infractionId });
+            if (error) throw error;
+            await loadUsers();
+            await openHistoryModal(selectedUser);
+            toast.success("Infraction pardonnée !");
+        } catch (e) { 
+            toast.error("Erreur: " + e.message);
+        }
+    };
+}
+
+async function pardonInfraction(infractionId) {
+    openConfirmModal("Pardonner cette infraction ?", executePardonInfraction(infractionId));
+}
+
+  function openResetModal(user) {
+    selectedUser = user;
+    resetData = { password: generatePassword(), loading: false, status: '' };
+    showResetModal = true;
+  }
+
+  function generatePassword() {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%';
+    return Array(12).fill(0).map(() => chars[Math.floor(Math.random() * chars.length)]).join('');
+  }
+
+  async function confirmResetPassword() {
+    resetData.loading = true;
+    resetData.status = "Envoi...";
+    try {
+      const { error } = await supabase.rpc('admin_reset_user_password', {
+        user_id_to_reset: selectedUser.user_id,
+        new_password: resetData.password
+      });
+      if (error) throw error;
+      resetData.status = "Succès !";
+    } catch (e) {
+      resetData.status = "Erreur: " + e.message;
+    } finally {
+      resetData.loading = false;
+    }
+  }
+
+  function copyPassword() {
+    navigator.clipboard.writeText(resetData.password);
+    toast.info("Copié !");
+  }
+
+ // --- UI HELPERS THÉMÉS ---
+  function getNextRole(current) {
+    if (current === 'user') return { role: 'moderator', icon: Shield, label: 'Promouvoir Modérateur', color: 'text-purple-400' };
+    if (current === 'moderator') return { role: 'admin', icon: ShieldAlert, label: 'Promouvoir Admin', color: 'text-themed' }; 
+    return { role: 'user', icon: User, label: 'Rétrograder User', color: 'text-yellow-400' };
+  }
+
+  // Styles CSS Thémés
+  const inputClass = "block w-full rounded-xl border-white/10 bg-black/40 p-3 text-sm font-medium text-white placeholder-gray-600 focus:ring-2 focus:border-transparent transition-all outline-none disabled:opacity-50";
+  const labelClass = "block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1";
+
+  $: borderClass = targetUser?.role === 'admin' 
+      ? 'bg-gradient-to-br from-yellow-300/80 via-amber-400/50 to-yellow-500/80 shadow-[0_0_35px_rgba(245,158,11,0.6)] ring-1 ring-yellow-400/50' 
+      : targetUser?.role === 'moderator'
+      ? 'bg-gradient-to-br from-purple-500 to-fuchsia-600 shadow-[0_0_30px_rgba(168,85,247,0.6)] animate-pulse' 
+      : 'bg-gradient-to-br from-[rgba(var(--color-primary),0.5)] to-purple-500/50 shadow-[0_0_30px_rgba(var(--color-primary),0.2)]';
+
+  function formatDate(dateStr) {
+    if (!dateStr) return 'Jamais';
+    return new Date(dateStr).toLocaleString('fr-BE', { dateStyle: 'short', timeStyle: 'short' });
+  }
+
 </script>
 
-<div class="space-y-8 p-4 md:p-8 max-w-[1800px] mx-auto pb-32 animate-fade-in">
-    <header class="relative flex flex-col md:flex-row md:justify-between md:items-end gap-6 pb-8 overflow-hidden">
-        <div class="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-pink-600/10 rounded-3xl animate-gradient-shift"></div>
-        <div class="absolute inset-0 border border-white/10 rounded-3xl shadow-2xl backdrop-blur-sm"></div>
-
-        <div class="relative flex items-center gap-4 p-6">
-            <div class="p-4 rounded-2xl text-white shadow-lg animate-pulse-soft" style="background-color: var(--color-primary, #0069B4);">
-                <Car class="w-10 h-10" />
-            </div>
-            <div>
-                <h1 class="text-4xl font-black bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">Déplacements PMR</h1>
-                <p class="text-slate-400 text-sm mt-2 font-medium">Gestion centralisée des prises en charge</p>
-            </div>
+<div class="container mx-auto p-4 md:p-8 space-y-8 min-h-screen">
+  
+  <header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-white/5 pb-6" 
+          in:fly={{ y: -20, duration: 600 }} style="--primary-rgb: var(--color-primary);">
+    <div class="flex items-center gap-3">
+        <div class="p-3 rounded-xl border transition-all duration-500"
+             style="background-color: rgba(var(--primary-rgb), 0.1); color: rgb(var(--primary-rgb)); border-color: rgba(var(--primary-rgb), 0.2); box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.15);">
+          <Shield size={32} />
         </div>
-
-        <div class="relative flex flex-wrap gap-3 p-6">
-            <a href="/deplacements/historique" class="btn-action" style="background-color: var(--color-surface-600, #475569);">
-                <Train class="w-5 h-5" /> Historique
-            </a>
-            <button onclick={saveData} disabled={loading} class="btn-action primary">
-                {#if loading}<span class="animate-spin">⏳</span>{:else}<Save class="w-5 h-5" />{/if} Sauvegarder
-            </button>
-            <button onclick={copyForOutlook} class="btn-action primary">
-                <Mail class="w-5 h-5" /> Copier pour Outlook
-            </button>
-            <button onclick={generatePDF} class="btn-action primary">
-                <FileDown class="w-5 h-5" /> Télécharger PDF
-            </button>
-        </div>
-    </header>
-
-    <div class="relative group">
-        <div class="relative bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-2xl p-6 shadow-2xl">
-            <label class="text-xs uppercase font-bold text-transparent bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text mb-3 flex items-center gap-2 tracking-widest">
-                <Calendar class="w-5 h-5 text-blue-400 animate-pulse-soft" /> Date du rapport
-            </label>
-            <input 
-                type="date" 
-                bind:value={date} 
-                onchange={loadDailyReport}
-                class="datepicker-input w-full max-w-md bg-slate-950 border-2 border-slate-800 text-white rounded-xl px-5 py-3.5 text-lg font-semibold focus:ring-2 focus:ring-blue-500 outline-none transition-all cursor-pointer hover:border-blue-600" 
-            />
+        <div>
+          <h1 class="text-3xl font-bold text-gray-200 tracking-tight">Administration</h1>
+          <p class="text-gray-500 text-sm mt-1">Gestion des utilisateurs et sanctions.</p>
         </div>
     </div>
+ </header>
 
-    <div class="relative group">
-        <div class="relative bg-slate-900/90 backdrop-blur-md border border-blue-500/30 rounded-2xl p-8 shadow-2xl">
-            <h2 class="text-3xl font-black mb-8 flex items-center gap-3 pb-5 border-b-2 border-gradient-to-r from-blue-500 to-cyan-500">
-                <span class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">Prestation matin</span>
+  <main class="space-y-8" style="--primary-rgb: var(--color-primary);">
+    
+    {#if isLoading && !targetUser}
+        <div class="flex justify-center py-20"><Loader2 class="animate-spin themed-spinner w-10 h-10" style="color: rgba(var(--color-primary), 0.5);"/></div>
+    
+    {:else if targetUser}
+        <div class="bg-black/20 border border-white/5 rounded-3xl p-8 shadow-lg relative overflow-hidden" in:fly={{ y: 20, duration: 400 }}>
+          <div class="absolute top-0 right-0 p-32 opacity-10 rounded-full blur-3xl pointer-events-none" style="background-color: rgb(var(--color-primary));"></div>
+
+          <button onclick={goBackToList} class="flex items-center gap-2 hover:opacity-80 mb-6 transition-colors group" style="color: rgb(var(--primary-rgb));">
+              <ChevronLeft class="w-4 h-4 group-hover:-translate-x-1 transition-transform"/> Retour liste
+          </button>
+          
+          <h2 class="text-2xl font-bold text-gray-200 mb-8 flex items-center gap-3 pb-6 border-b border-white/5">
+              <UserCog class="w-8 h-8" style="color: rgb(var(--primary-rgb));"/> Édition : {targetUser.full_name || targetUser.email}
+          </h2>
+          
+          <form onsubmit={(e) => { e.preventDefault(); saveProfile(); }} class="space-y-6 max-w-xl mx-auto">
+              <div class="flex items-center gap-6 pb-6 border-b border-white/5">
+                  <img src={form.avatar_url || '/default-avatar.png'} alt="Avatar" class="w-24 h-24 rounded-full object-cover border-4 border-white/5 shadow-2xl">
+                  <div>
+                      <p class="text-xs font-bold text-gray-500 uppercase tracking-wide">Email</p>
+                      <p class="text-lg font-mono text-gray-200 bg-white/5 px-3 py-1 rounded-lg border border-white/5 mt-1">{targetUser.email}</p>
+                  </div>
+              </div>
+
+              <div>
+                  <label for="full_name" class={labelClass}>Nom Complet</label>
+                  <input type="text" bind:value={form.full_name} class={inputClass} style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);">
+              </div>
+
+              <div>
+                  <label for="role" class={labelClass}>Rôle</label>
+                  <select bind:value={form.role} class="{inputClass} capitalize bg-black/40" style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);">
+                      <option value="user" class="bg-gray-900 text-white">User</option>
+                      <option value="moderator" class="bg-gray-900 text-white">Modérateur</option>
+                      <option value="admin" class="bg-gray-900 text-white">Admin</option>
+                  </select>
+              </div>
+
+              <div class="pt-6 flex justify-end">
+                  <button type="submit" disabled={isSaving} class="btn-primary-glow px-6 py-3 text-white font-bold rounded-xl transition-all disabled:opacity-50 flex items-center gap-2">
+                      {#if isSaving} <Loader2 class="w-5 h-5 animate-spin" /> {:else} <Save class="w-5 h-5" /> {/if}
+                      Sauvegarder
+                  </button>
+              </div>
+          </form>
+        </div>
+
+    {:else}
+    
+    <div class="bg-black/20 border border-white/5 rounded-3xl p-6 shadow-sm mb-8" in:fly={{ y: 20, duration: 400 }}>
+            <h2 class="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
+              <UserPlus size={20} class="text-themed"/> Nouvel Utilisateur
             </h2>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-slate-950/80 border-2 border-blue-500/30 rounded-2xl p-6">
-                    <h3 class="font-black text-slate-100 mb-5 flex items-center gap-2"><MapPin class="w-5 h-5 text-blue-400" /> Quinyx gare de Mons</h3>
-                    <div class="grid grid-cols-5 gap-3">
-                        {#each Object.keys(presenceMons) as key}
-                            <div class="bg-slate-900 rounded-xl p-3 border border-blue-500/20 flex flex-col items-center">
-                                <span class="text-[10px] uppercase text-blue-300 font-bold mb-2">{key.replace('shift_', '')}</span>
-                                <input type="number" min="0" max="20" bind:value={presenceMons[key]} class="input-number" />
-                            </div>
-                        {/each}
-                    </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1">Email</label>
+                    <input type="email" bind:value={newUser.email} class="block w-full rounded-xl border-white/10 bg-black/40 p-3 text-sm font-medium text-white placeholder-gray-600 focus:ring-2 focus:border-primary/50 transition-all outline-none" placeholder="user@baco.be" >
                 </div>
-                <div class="bg-slate-950/80 border-2 border-purple-500/30 rounded-2xl p-6">
-                    <h3 class="font-black text-slate-100 mb-5 flex items-center gap-2"><MapPin class="w-5 h-5 text-purple-400" /> Quinyx gare de Tournai</h3>
-                    <div class="grid grid-cols-5 gap-3">
-                        {#each Object.keys(presenceTournai) as key}
-                            <div class="bg-slate-900 rounded-xl p-3 border border-purple-500/20 flex flex-col items-center">
-                                <span class="text-[10px] uppercase text-purple-300 font-bold mb-2">{key.replace('shift_', '')}</span>
-                                <input type="number" min="0" max="20" bind:value={presenceTournai[key]} class="input-number" />
-                            </div>
-                        {/each}
-                    </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1">Mot de passe</label>
+                    <input type="text" bind:value={newUser.password} class="block w-full rounded-xl border-white/10 bg-black/40 p-3 text-sm font-medium text-white placeholder-gray-600 focus:ring-2 focus:border-primary/50 transition-all outline-none" placeholder="Secret..." >
                 </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 ml-1">Rôle</label>
+                    <select bind:value={newUser.role} class="block w-full rounded-xl border-white/10 bg-black/40 p-3 text-sm font-medium text-white focus:ring-2 focus:border-primary/50 transition-all outline-none appearance-none">
+                        <option value="user" class="bg-gray-900">Utilisateur</option>
+                        <option value="moderator" class="bg-gray-900">Modérateur</option>
+                        <option value="admin" class="bg-gray-900">Admin</option>
+                    </select>
+                </div>
+                <button onclick={handleCreateUser} disabled={isCreating} class="btn-primary-glow flex items-center justify-center gap-2 w-full px-4 py-3 text-white rounded-xl font-bold transition-all disabled:opacity-50 h-[46px]">
+                    {#if isCreating} <Loader2 class="animate-spin" size={18}/> {:else} <UserPlus size={18}/> Créer {/if}
+                </button>
             </div>
         </div>
-    </div>
 
-    <div class="bg-slate-900/90 backdrop-blur-xl border-2 border-blue-500/30 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-        <div class="p-5 border-b-2 border-blue-500/30 flex justify-between items-center bg-slate-950/80">
-            <h3 class="font-black text-lg flex items-center gap-3 text-blue-300">Interventions MATIN <span class="bg-blue-600 text-white text-sm px-3 py-1 rounded-full">{interventions.length}</span></h3>
-            <button onclick={addRow} class="btn-action primary compact"><Plus class="w-4 h-4" /> Ajouter</button>
-        </div>
-        <div class="overflow-x-auto p-4">
-            <table class="w-full text-sm text-left border-collapse">
-                <thead class="text-blue-300 uppercase text-xs font-black bg-slate-950 border-b border-blue-500/30">
-                    <tr><th class="px-4 py-3">Zone</th><th class="px-4 py-3">Gare</th><th class="px-4 py-3 w-96">PMR / Mission</th><th class="px-4 py-3 w-48">Prise en charge</th><th class="px-2 py-3"></th></tr>
-                </thead>
-                <tbody class="divide-y divide-blue-500/10">
-                    {#each interventions as row, i}
-                        <tr class="hover:bg-blue-500/5">
-                            <td class="p-2"><input bind:value={row.zone} class="input-table w-16 text-center text-blue-200" placeholder="-" /></td>
-                            <td class="p-2"><input list="stations" value={row.station} oninput={(e) => handleStationChange(i, e.target.value)} class="input-table font-bold uppercase text-white" placeholder="GARE" /></td>
-                            <td class="p-2"><input bind:value={row.pmr_details} class="input-table text-slate-200" placeholder="Détails..." /></td>
-                            <td class="p-2">
-                                <select bind:value={row.assigned_to} class="input-table text-slate-200">
-                                    <option value="">--</option>
-                                    {#each ASSIGNEES as p}<option value={p} class="bg-slate-800">{p}</option>{/each}
-                                </select>
-                            </td>
-                            <td class="p-2 text-center"><button onclick={() => removeRow(i)} class="text-slate-500 hover:text-red-400 transition-colors"><Trash2 class="w-4 h-4" /></button></td>
+    <div class="bg-black/20 border border-white/5 rounded-3xl shadow-sm overflow-hidden" in:fly={{ y: 20, duration: 400, delay: 100 }}>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-white/5">
+                    <thead class="bg-white/[0.02]">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-white select-none group" onclick={() => toggleSort('full_name')}>
+                                <div class="flex items-center gap-2">Utilisateur <ArrowUpDown size={12} class="opacity-0 group-hover:opacity-50 {sortCol === 'full_name' ? 'opacity-100 text-blue-400' : ''}"/></div>
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-white select-none group" onclick={() => toggleSort('role')}>
+                                <div class="flex items-center gap-2">Rôle <ArrowUpDown size={12} class="opacity-0 group-hover:opacity-50 {sortCol === 'role' ? 'opacity-100 text-blue-400' : ''}"/></div>
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Statut</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Sanctions</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-white select-none group" onclick={() => toggleSort('last_active')}>
+                                <div class="flex items-center gap-2">Dernière Connexion <ArrowUpDown size={12} class="opacity-0 group-hover:opacity-50 {sortCol === 'last_active' ? 'opacity-100 text-blue-400' : ''}"/></div>
+                            </th>
+                            <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
-                    {/each}
-                </tbody>
-            </table>
-        </div>
-    </div>
+                    </thead>
+                    <tbody class="divide-y divide-white/5">
+                        {#each users as user}
+                            {@const isBanned = user.banned_until && new Date(user.banned_until) > new Date()}
+                            {@const nextRoleData = getNextRole(user.role || 'user')}
+                            
+                            <tr class="group hover:bg-white/[0.02] transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <a href="/admin/utilisateur/{user.user_id}" class="flex items-center gap-4 w-full text-left group-hover:opacity-80 transition-opacity">
+                                        <img class="h-10 w-10 rounded-full object-cover border border-white/10" src={user.avatar_url || '/default-avatar.png'} alt="avatar">
+                                        <div>
+                                            <div class="text-sm font-bold text-gray-200" style="color: {user.email === targetEmail ? 'rgb(var(--primary-rgb))' : ''}">{user.full_name || user.email}</div>
+                                            <div class="text-xs text-gray-500">{user.email}</div>
+                                        </div>
+                                    </a>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {#if user.role === 'admin'} <span class="role-badge role-admin">Admin</span>
+                                    {:else if user.role === 'moderator'} <span class="role-badge role-modo">Modérateur</span>
+                                    {:else} <span class="role-badge role-user">Utilisateur</span> {/if}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {#if isBanned}
+                                        <span class="px-2.5 py-1 text-xs font-bold rounded-lg border bg-red-500/10 text-red-400 border-red-500/20 animate-pulse">Banni</span>
+                                    {:else}
+                                        <span class="px-2.5 py-1 text-xs font-bold rounded-lg border bg-green-500/10 text-green-400 border-green-500/20">Actif</span>
+                                    {/if}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex gap-2">
+                                        {#if user.active_yellow_cards > 0} <span class="text-yellow-500 text-xs font-bold bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">⚠ {user.active_yellow_cards}</span> {/if}
+                                        {#if user.active_red_cards > 0} <span class="text-red-500 text-xs font-bold bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">🚷 {user.active_red_cards}</span> {/if}
+                                    </div>
+                                </td>
+                                
+                                <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-400 font-mono">
+                                    {formatDate(user.last_active)}
+                                    {#if user.last_active && new Date(user.last_active) > new Date(Date.now() - 300000)}
+                                        <span class="inline-block w-2 h-2 rounded-full bg-green-500 ml-2 animate-pulse" title="En ligne récemment"></span>
+                                    {/if}
+                                </td>
 
-    <div class="relative group">
-        <div class="relative bg-slate-900/90 backdrop-blur-md border border-[#ADBC16]/50 rounded-2xl p-8 shadow-2xl">
-            <h2 class="text-3xl font-black mb-8 flex items-center gap-3 pb-5 border-b-2" style="border-image: linear-gradient(to right, #ADBC16, #8a9612) 1;">
-                <span class="text-[#ADBC16]">Prestation après-midi</span>
-            </h2>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                 <div class="bg-slate-950/80 border-2 border-blue-500/30 rounded-2xl p-6">
-                    <h3 class="font-black text-slate-100 mb-5 flex items-center gap-2"><MapPin class="w-5 h-5 text-blue-400" /> Quinyx gare de Mons</h3>
-                    <div class="grid grid-cols-5 gap-3">
-                        {#each Object.keys(presenceMonsAM) as key}
-                            <div class="bg-slate-900 rounded-xl p-3 border border-blue-500/20 flex flex-col items-center">
-                                <span class="text-[10px] uppercase text-blue-300 font-bold mb-2">{key.replace('shift_', '')}</span>
-                                <input type="number" min="0" max="20" bind:value={presenceMonsAM[key]} class="input-number" />
-                            </div>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    {#if user.user_id !== currentAdminId}
+                                        <div class="flex justify-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                                            <button onclick={() => openResetModal(user)} class="action-icon-btn hover:text-white" title="Password"><KeyRound size={16}/></button>
+                                            <button onclick={() => openInfractionModal(user)} class="action-icon-btn text-yellow-600 hover:text-yellow-400" title="Sanction"><FileWarning size={16}/></button>
+                                            <button onclick={() => openHistoryModal(user)} class="action-icon-btn hover:text-themed" style="color: rgba(var(--primary-rgb), 0.6);" title="History"><History size={16}/></button>
+                                            <button onclick={() => handleChangeRole(user, nextRoleData.role)} class="action-icon-btn {nextRoleData.color} hover:bg-white/5" title={nextRoleData.label}><svelte:component this={nextRoleData.icon} size={16} /></button>
+                            
+                                            {#if hasPermission(currentUserProfile, ACTIONS.USERS_BAN)}
+                                                {#if isBanned}
+                                                    <button onclick={() => handleBanUser(user, false)} class="action-icon-btn text-green-600 hover:text-green-400" title="Débannir"><UserCheck size={16}/></button>
+                                                {:else}
+                                                    <button onclick={() => handleBanUser(user, true)} class="action-icon-btn text-red-600 hover:text-red-400" title="Bannir"><UserX size={16}/></button>
+                                                {/if}
+                                            {/if}  
+                                        </div>
+                                    {:else}
+                                        <span class="text-xs text-gray-500 italic">Vous</span>
+                                    {/if}
+                                </td>
+                            </tr>
                         {/each}
-                    </div>
-                </div>
-                <div class="bg-slate-950/80 border-2 border-purple-500/30 rounded-2xl p-6">
-                    <h3 class="font-black text-slate-100 mb-5 flex items-center gap-2"><MapPin class="w-5 h-5 text-purple-400" /> Quinyx gare de Tournai</h3>
-                    <div class="grid grid-cols-5 gap-3">
-                        {#each Object.keys(presenceTournaiAM) as key}
-                            <div class="bg-slate-900 rounded-xl p-3 border border-purple-500/20 flex flex-col items-center">
-                                <span class="text-[10px] uppercase text-purple-300 font-bold mb-2">{key.replace('shift_', '')}</span>
-                                <input type="number" min="0" max="20" bind:value={presenceTournaiAM[key]} class="input-number" />
-                            </div>
-                        {/each}
-                    </div>
-                </div>
+                    </tbody>
+                </table>
             </div>
         </div>
-    </div>
+    {/if}
+  </main>
 
-    <div class="bg-slate-900/90 backdrop-blur-xl border-2 border-[#ADBC16]/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-        <div class="p-5 border-b-2 border-[#ADBC16]/50 flex justify-between items-center bg-slate-950/80">
-            <h3 class="font-black text-lg flex items-center gap-3 text-[#ADBC16]">Interventions APRÈS-MIDI <span class="bg-[#ADBC16] text-white text-sm px-3 py-1 rounded-full">{interventionsAM.length}</span></h3>
-            <button onclick={addRowAM} class="btn-action compact text-white" style="background-color: #ADBC16;"><Plus class="w-4 h-4" /> Ajouter</button>
+  {#if showResetModal}
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" transition:fade>
+      <div class="bg-[#0f1115] w-full max-w-md rounded-2xl p-6 shadow-2xl border border-white/10" transition:fly={{ y: 20 }}>
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="text-xl font-bold text-white flex items-center gap-2"><KeyRound class="text-blue-400"/> Reset Password</h3>
+          <button onclick={() => showResetModal = false} class="text-gray-500 hover:text-white"><X size={20}/></button>
         </div>
-        <div class="overflow-x-auto p-4">
-            <table class="w-full text-sm text-left border-collapse">
-                <thead class="text-[#ADBC16] uppercase text-xs font-black bg-slate-950 border-b border-[#ADBC16]/50">
-                    <tr><th class="px-4 py-3">Zone</th><th class="px-4 py-3">Gare</th><th class="px-4 py-3 w-96">PMR / Mission</th><th class="px-4 py-3 w-48">Prise en charge</th><th class="px-2 py-3"></th></tr>
-                </thead>
-                <tbody class="divide-y divide-[#ADBC16]/10">
-                    {#each interventionsAM as row, i}
-                        <tr class="hover:bg-[#ADBC16]/5">
-                            <td class="p-2"><input bind:value={row.zone} class="input-table w-16 text-center text-[#ADBC16]" placeholder="-" /></td>
-                            <td class="p-2"><input list="stations" value={row.station} oninput={(e) => handleStationChangeAM(i, e.target.value)} class="input-table font-bold uppercase text-white" placeholder="GARE" /></td>
-                            <td class="p-2"><input bind:value={row.pmr_details} class="input-table text-slate-200" placeholder="Détails..." /></td>
-                            <td class="p-2">
-                                <select bind:value={row.assigned_to} class="input-table text-slate-200">
-                                    <option value="">--</option>
-                                    {#each ASSIGNEES as p}<option value={p} class="bg-slate-800">{p}</option>{/each}
-                                </select>
-                            </td>
-                            <td class="p-2 text-center"><button onclick={() => removeRowAM(i)} class="text-slate-500 hover:text-red-400 transition-colors"><Trash2 class="w-4 h-4" /></button></td>
-                        </tr>
-                    {/each}
-                </tbody>
-            </table>
+        <p class="text-gray-400 mb-4 text-sm">Générer un nouveau mot de passe pour <span class="text-white font-bold">{selectedUser.email}</span> ?</p>
+        
+        <div class="bg-black/40 p-3 rounded-xl border border-white/10 flex justify-between items-center mb-6">
+            <span class="font-mono text-lg text-white tracking-widest">{resetData.password}</span>
+            <button onclick={copyPassword} class="text-gray-400 hover:text-white"><Copy size={18}/></button>
         </div>
-    </div>
 
-    <div class="relative group mt-8">
-        <div class="bg-slate-900/90 border-2 border-yellow-500/30 rounded-2xl p-6 shadow-2xl flex items-start gap-4">
-            <div class="p-3 bg-yellow-500 rounded-xl shadow-lg"><Briefcase class="w-6 h-6 text-white" /></div>
-            <div class="text-sm space-y-2">
-                <p class="text-slate-300">Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.</p>
-                <p class="text-slate-300">Interventions PMR pour B-CS : Voir DICOS.</p>
-                <p class="font-black text-yellow-400 mt-2">L'App DICOS PMR reste la base à consulter</p>
-            </div>
+        <div class="flex gap-3">
+             <button onclick={confirmResetPassword} disabled={resetData.loading} class="flex-1 btn-primary-glow py-2.5 rounded-xl text-white font-bold flex justify-center items-center gap-2">
+                 {#if resetData.loading} <Loader2 class="animate-spin w-4 h-4"/> {:else} Confirmer {/if}
+             </button>
         </div>
+        {#if resetData.status}
+            <p class="mt-3 text-center text-sm {resetData.status.includes('Erreur') ? 'text-red-400' : 'text-green-400'}">{resetData.status}</p>
+        {/if}
+      </div>
     </div>
+  {/if}
+
+  {#if showInfractionModal}
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" transition:fade>
+      <div class="bg-[#0f1115] w-full max-w-md rounded-2xl p-6 shadow-2xl border border-white/10" transition:fly={{ y: 20 }}>
+          <div class="flex justify-between items-center mb-6">
+              <h3 class="text-xl font-bold text-white flex items-center gap-2"><AlertTriangle class="text-yellow-500"/> Ajouter Sanction</h3>
+              <button onclick={() => showInfractionModal = false} class="text-gray-500 hover:text-white"><X size={20}/></button>
+          </div>
+          
+          <div class="space-y-4">
+              <div class="grid grid-cols-2 gap-3">
+                  <button 
+                      class="p-3 rounded-xl border-2 font-bold transition-all {infractionData.type === 'yellow' ? 'border-yellow-500 bg-yellow-500/10 text-yellow-400' : 'border-white/10 bg-black/40 text-gray-500'}"
+                      onclick={() => infractionData.type = 'yellow'}
+                  >
+                      Avertissement
+                  </button>
+                  <button 
+                      class="p-3 rounded-xl border-2 font-bold transition-all {infractionData.type === 'red' ? 'border-red-500 bg-red-500/10 text-red-400' : 'border-white/10 bg-black/40 text-gray-500'}"
+                      onclick={() => infractionData.type = 'red'}
+                  >
+                      Sanction Grave
+                  </button>
+              </div>
+              
+              <div>
+                  <label for="reason" class={labelClass}>Motif</label>
+                  <textarea bind:value={infractionData.reason} class="{inputClass} h-24 resize-none" placeholder="Ex: Comportement inapproprié..."></textarea>
+              </div>
+              
+              <button onclick={submitInfraction} class="w-full py-3 rounded-xl font-bold text-black bg-white hover:bg-gray-200 transition-colors">
+                  Confirmer
+              </button>
+          </div>
+      </div>
+    </div>
+  {/if}
+
+  {#if showHistoryModal}
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" transition:fade>
+      <div class="bg-[#0f1115] w-full max-w-lg rounded-2xl p-6 shadow-2xl border border-white/10 max-h-[80vh] flex flex-col" transition:fly={{ y: 20 }}>
+          <div class="flex justify-between items-center mb-6">
+              <h3 class="text-xl font-bold text-white flex items-center gap-2"><History class="text-blue-400"/> Historique</h3>
+              <button onclick={() => showHistoryModal = false} class="text-gray-500 hover:text-white"><X size={20}/></button>
+          </div>
+          
+          <div class="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2">
+            {#if historyData.loading}
+                <div class="flex justify-center py-10"><Loader2 class="animate-spin text-white"/></div>
+            {:else if historyData.list.length === 0}
+                <p class="text-gray-500 text-center italic py-10">Aucun historique.</p>
+            {:else}
+                {#each historyData.list as h}
+                    <div class="bg-black/40 border border-white/5 rounded-xl p-3 flex justify-between items-start {h.is_active ? '' : 'opacity-50'}">
+                        <div class="flex gap-3">
+                            <div class="mt-1">
+                                {#if h.card_type === 'red'} <AlertOctagon size={18} class="text-red-500" />
+                                {:else} <FileWarning size={18} class="text-yellow-500" /> {/if}
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-gray-200">{h.reason}</p>
+                                <p class="text-xs text-gray-500">
+                                    {new Date(h.created_at).toLocaleDateString()} • Par {h.admin?.full_name || 'Admin'}
+                                    {#if !h.is_active} <span class="text-green-500 ml-2">(Pardonné)</span> {/if}
+                                </p>
+                            </div>
+                        </div>
+                        {#if h.is_active}
+                             <button onclick={() => pardonInfraction(h.id)} class="text-xs text-blue-400 hover:underline">Pardonner</button>
+                        {/if}
+                    </div>
+                {/each}
+            {/if}
+          </div>
+      </div>
+    </div>
+  {/if}
+
 </div>
 
-<datalist id="stations">{#each stationList as s}<option value={s.abbreviation} />{/each}</datalist>
-
 <style>
-    /* UTILS */
-    .animate-fade-in { animation: fadeIn 0.6s ease-out; }
-    .animate-pulse-soft { animation: pulseSoft 3s ease-in-out infinite; }
-    .animate-gradient-shift { background-size: 200% 200%; animation: gradientShift 15s ease infinite; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes pulseSoft { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.85; transform: scale(1.03); } }
-    @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+  .text-themed { color: rgb(var(--primary-rgb)); }
+  .themed-spinner { color: rgb(var(--primary-rgb)); }
+  .hover-text-themed:hover { color: rgb(var(--primary-rgb)); }
 
-    /* COMPONENTS */
-    .btn-action {
-        display: flex; align-items: center; gap: 0.5rem;
-        padding: 0.75rem 1.5rem; border-radius: 0.75rem;
-        color: white; font-weight: bold; transition: all 0.2s;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    }
-    .btn-action:hover { transform: scale(1.05); }
-    .btn-action.compact { padding: 0.5rem 1rem; font-size: 0.875rem; }
-    
-    /* Bouton Primary qui utilise la variable CSS globale */
-    .btn-action.primary { background-color: var(--color-primary, #0069B4); }
-    .btn-action.primary:hover { filter: brightness(1.1); }
+  .btn-primary-glow {
+    background-color: rgba(var(--primary-rgb), 0.8);
+    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.3);
+    border: 1px solid rgba(var(--primary-rgb), 0.3);
+  }
 
-    .input-number {
-        width: 100%; background: transparent; text-align: center;
-        font-size: 1.125rem; font-weight: bold; color: inherit; outline: none;
-    }
-    .input-table {
-        width: 100%; background: rgba(15, 23, 42, 0.5);
-        border: 1px solid rgba(59, 130, 246, 0.2);
-        border-radius: 0.5rem; padding: 0.5rem;
-        outline: none; transition: border-color 0.2s;
-    }
-    .input-table:focus { border-color: var(--color-primary, #0069B4); }
+  .btn-primary-glow:hover:not(:disabled) {
+    background-color: rgb(var(--primary-rgb));
+    box-shadow: 0 0 25px rgba(var(--primary-rgb), 0.5);
+    transform: translateY(-1px);
+  }
 
-    /* FIX DATEPICKER: Force l'icône en blanc via filtre */
-    .datepicker-input {
-        color-scheme: dark;
-    }
-    .datepicker-input::-webkit-calendar-picker-indicator {
-        filter: invert(1) brightness(2); /* Inversion pour passer de noir à blanc */
-        cursor: pointer;
-        opacity: 1;
-        width: 20px;
-        height: 20px;
-    }
-    
-    input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-    input[type="number"] { -moz-appearance: textfield; }
-    
-    select option { padding: 10px; }
-    select:focus { outline: none; }
+  .action-icon-btn {
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+  }
+  .action-icon-btn:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    transform: scale(1.1);
+  }
+
+  .role-badge {
+    padding: 0.25rem 0.625rem;
+    display: inline-flex;
+    font-size: 0.75rem;
+    font-weight: 800;
+    border-radius: 0.5rem;
+    border-width: 1px;
+  }
+  .role-admin {
+    background-color: rgba(var(--primary-rgb), 0.1);
+    color: rgb(var(--primary-rgb));
+    border-color: rgba(var(--primary-rgb), 0.3);
+  }
+  .role-modo {
+    background-color: rgba(168, 85, 247, 0.1);
+    color: rgb(168, 85, 247);
+    border-color: rgba(168, 85, 247, 0.3);
+  }
+  .role-user {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #9ca3af;
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 </style>

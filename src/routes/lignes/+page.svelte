@@ -1,127 +1,107 @@
 <script>
-  import { onMount } from 'svelte';
-  import { supabase } from '$lib/supabase';
-  import { fly, fade } from 'svelte/transition';
-  import { 
-    Route, MapPin, TrainTrack, Milestone, Building2, Tag, Info, Loader2, Filter, CheckSquare, Square, Map 
-  } from 'lucide-svelte';
+    import { onMount } from 'svelte';
+    import { fly, fade, slide } from 'svelte/transition';
+    import { 
+        Route, MapPin, TrainTrack, Milestone, Building2, Tag, Info, 
+        Loader2, CheckSquare, Square, Filter 
+    } from 'lucide-svelte';
 
-  // --- ÉTAT ---
-  let availableLines = [];
-  let linesToDistricts = {}; 
-  let isLoadingFilters = true;
-  let isLoadingResults = false;
+    // Libs
+    import { LignesService } from '$lib/services/lignes.service.js';
 
-  let selectedDistricts = []; 
-  let selectedCategories = []; 
-  let selectedLines = [];
-  let selectedZones = []; 
+    // --- ÉTAT (RUNES) ---
+    let isLoadingFilters = $state(true);
+    let isLoadingResults = $state(false);
 
-  let results = {};
+    // Données de base
+    let availableLines = $state([]);
+    let linesToDistricts = $state({});
 
-  onMount(async () => {
-    await loadLineFilters();
-  });
+    // Sélections
+    let selectedDistricts = $state([]); 
+    let selectedCategories = $state([]); 
+    let selectedLines = $state([]);
+    let selectedZones = $state([]);
 
-  async function loadLineFilters() {
-    isLoadingFilters = true;
-    try {
-      const [pn, spi, gares] = await Promise.all([
-        supabase.from('pn_data').select('ligne_nom'),
-        supabase.from('spi_data').select('ligne_nom'),
-        supabase.from('ligne_data').select('ligne_nom, district') 
-      ]);
+    // Résultats
+    let results = $state({});
 
-      (gares.data || []).forEach(g => {
-        if (g.ligne_nom && g.district) {
-            linesToDistricts[g.ligne_nom] = g.district;
-        }
-      });
-
-      const allLines = [
-        ...(pn.data || []).map(i => i.ligne_nom),
-        ...(spi.data || []).map(i => i.ligne_nom),
-        ...(gares.data || []).map(i => i.ligne_nom)
-      ];
-
-      availableLines = [...new Set(allLines.filter(Boolean))].sort((a, b) => {
-        const parseLine = (str) => parseFloat(str.replace('L.', '').replace('A', '.1').replace('C', '.2'));
-        return parseLine(a) - parseLine(b);
-      });
-    } catch (e) {
-      console.error("Erreur chargement lignes:", e);
-    } finally {
-      isLoadingFilters = false;
-    }
-  }
-
-  $: filteredAvailableLines = availableLines.filter(line => {
-    if (selectedDistricts.length === 0) return true;
-    const dist = linesToDistricts[line];
-    return dist && selectedDistricts.includes(dist);
-  });
-
-  $: {
-     const visibleLines = new Set(filteredAvailableLines);
-     selectedLines = selectedLines.filter(l => visibleLines.has(l));
-  }
-
-  async function updateDisplay() {
-    if (selectedCategories.length === 0 || selectedLines.length === 0) {
-      results = {};
-      return;
-    }
-
-    isLoadingResults = true;
-    const newResults = {};
-    selectedLines.forEach(line => {
-      newResults[line] = { gares: [], pn: [], spi: [] };
+    // --- DERIVED ---
+    // Filtre les lignes disponibles selon les districts cochés
+    let filteredAvailableLines = $derived.by(() => {
+        return availableLines.filter(line => {
+            if (selectedDistricts.length === 0) return true;
+            const dist = linesToDistricts[line];
+            // Si pas de district connu, on l'affiche si DSO est coché (convention) ou on le masque ?
+            // Ici on affiche seulement si le district correspond explicitement
+            return dist && selectedDistricts.includes(dist);
+        });
     });
 
-    try {
-      const promises = [];
-      if (selectedCategories.includes("Lignes")) {
-        promises.push(
-          supabase.from('ligne_data')
-            .select('ligne_nom, gare')
-            .in('ligne_nom', selectedLines)
-            .order('ordre')
-            .then(res => ({ type: 'gares', data: res.data || [] }))
-        );
-      }
-      
-      if (selectedCategories.includes("Adresse PN")) {
-        promises.push(supabase.from('pn_data').select('*').in('ligne_nom', selectedLines).then(res => ({ type: 'pn', data: res.data || [] })));
-      }
-      if (selectedCategories.includes("Zone SPI")) {
-        let q = supabase.from('spi_data').select('*').in('ligne_nom', selectedLines);
-        if (selectedZones.length > 0) q = q.in('zone', selectedZones);
-        promises.push(q.then(res => ({ type: 'spi', data: res.data || [] })));
-      }
+    // --- EFFECTS ---
+    
+    // 1. Nettoyage de la sélection si les lignes filtrées changent
+    $effect(() => {
+        const visibleSet = new Set(filteredAvailableLines);
+        // On ne garde que les lignes qui sont toujours visibles
+        // (Sauf si on veut permettre de garder une sélection masquée, mais c'est souvent confus)
+        // Ici on garde l'approche "ce qui est masqué est désélectionné"
+        if (selectedLines.some(l => !visibleSet.has(l))) {
+             selectedLines = selectedLines.filter(l => visibleSet.has(l));
+        }
+    });
 
-      const responses = await Promise.all(promises);
-      responses.forEach(res => {
-        res.data.forEach(item => {
-          if (newResults[item.ligne_nom]) {
-            newResults[item.ligne_nom][res.type].push(item);
-          }
-        });
-      });
-      results = newResults;
+    // 2. Chargement automatique des résultats
+    $effect(() => {
+        if (selectedCategories.length > 0 && selectedLines.length > 0) {
+            loadResults();
+        } else {
+            results = {};
+        }
+    });
 
-    } catch (e) {
-      console.error("Erreur chargement données:", e);
-    } finally {
-      isLoadingResults = false;
+    // --- INIT ---
+    onMount(async () => {
+        await loadFilters();
+    });
+
+    async function loadFilters() {
+        isLoadingFilters = true;
+        try {
+            const data = await LignesService.loadFilters();
+            availableLines = data.availableLines;
+            linesToDistricts = data.linesToDistricts;
+        } catch (e) {
+            console.error(e);
+        } finally {
+            isLoadingFilters = false;
+        }
     }
-  }
 
-  $: if (selectedCategories || selectedLines || selectedZones || selectedDistricts) {
-    updateDisplay();
-  }
+    async function loadResults() {
+        isLoadingResults = true;
+        try {
+            results = await LignesService.loadDetails(selectedLines, selectedCategories, selectedZones);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            isLoadingResults = false;
+        }
+    }
 
-  // --- MISE À JOUR DE LA CLASSE DYNAMIQUE ---
-  const toggleBtnClass = (active) => `flex items-center space-x-2 px-4 py-2 border rounded-full transition-all duration-300 text-sm font-medium shadow-sm hover:scale-105 active:scale-95 ${active ? 'btn-active-themed' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white hover:border-white/20'}`;
+    // --- UTILS UI ---
+    function toggleItem(list, item) {
+        if (list.includes(item)) return list.filter(i => i !== item);
+        return [...list, item];
+    }
+
+    const btnClass = (active, color = 'blue') => 
+        `flex items-center space-x-2 px-4 py-2 border rounded-full transition-all duration-300 text-sm font-bold shadow-sm cursor-pointer select-none hover:scale-105 active:scale-95 ${
+            active 
+            ? `bg-${color}-500/20 border-${color}-500/40 text-${color}-400 shadow-[0_0_10px_rgba(0,0,0,0.2)]` 
+            : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white hover:border-white/20'
+        }`;
+
 </script>
 
 <svelte:head>
@@ -130,9 +110,9 @@
 
 <div class="container mx-auto p-4 md:p-8 space-y-8 min-h-screen">
   
-  <header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-white/5 pb-6" in:fly={{ y: -20, duration: 600 }} style="--primary-rgb: var(--color-primary);">
+  <header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-white/5 pb-6" in:fly={{ y: -20 }}>
     <div class="flex items-center gap-3">
-        <div class="main-icon-container p-3 rounded-xl border transition-all duration-500">
+        <div class="p-3 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.15)]">
           <Route size={32} />
         </div>
         <div>
@@ -142,91 +122,104 @@
     </div>
   </header>
 
-  <main class="space-y-8" style="--primary-rgb: var(--color-primary);">
+  <main class="space-y-8">
     
-    <div class="bg-black/20 border border-white/5 rounded-2xl p-6" in:fly={{ y: 20, duration: 600, delay: 50 }}>
+    <div class="bg-black/20 border border-white/5 rounded-2xl p-6" in:fly={{ y: 20, delay: 50 }}>
       <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
-        <div class="step-number">1</div>
+        <div class="w-6 h-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px]">1</div>
         Choisir le District
       </h3>
       <div class="flex flex-wrap gap-3">
         {#each ['DSO', 'DSE'] as dist}
-          <label class="{toggleBtnClass(selectedDistricts.includes(dist))} cursor-pointer select-none">
-            <input type="checkbox" value={dist} bind:group={selectedDistricts} class="hidden">
-            {#if selectedDistricts.includes(dist)}<CheckSquare class="w-4 h-4 text-themed" />{:else}<Square class="w-4 h-4" />{/if}
+          <button 
+            onclick={() => selectedDistricts = toggleItem(selectedDistricts, dist)}
+            class={btnClass(selectedDistricts.includes(dist), 'blue')}
+          >
+            {#if selectedDistricts.includes(dist)}<CheckSquare class="w-4 h-4" />{:else}<Square class="w-4 h-4" />{/if}
             <span>{dist}</span>
-          </label>
+          </button>
         {/each}
       </div>
     </div>
 
-    <div class="bg-black/20 border border-white/5 rounded-2xl p-6" in:fly={{ y: 20, duration: 600, delay: 100 }}>
+    <div class="bg-black/20 border border-white/5 rounded-2xl p-6" in:fly={{ y: 20, delay: 100 }}>
       <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
-        <div class="step-number">2</div>
+        <div class="w-6 h-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px]">2</div>
         Choisir les catégories
       </h3>
       <div class="flex flex-wrap gap-3">
         {#each ['Lignes', 'Adresse PN', 'Zone SPI'] as cat}
-          <label class="{toggleBtnClass(selectedCategories.includes(cat))} cursor-pointer select-none">
-            <input type="checkbox" value={cat} bind:group={selectedCategories} class="hidden">
-            {#if selectedCategories.includes(cat)}<CheckSquare class="w-4 h-4 text-themed" />{:else}<Square class="w-4 h-4" />{/if}
+          <button 
+            onclick={() => selectedCategories = toggleItem(selectedCategories, cat)}
+            class={btnClass(selectedCategories.includes(cat), 'blue')}
+          >
+            {#if selectedCategories.includes(cat)}<CheckSquare class="w-4 h-4" />{:else}<Square class="w-4 h-4" />{/if}
             <span>{cat}</span>
-          </label>
+          </button>
         {/each}
       </div>
     </div>
 
     {#if selectedCategories.length > 0}
-      <div class="bg-black/20 border border-white/5 rounded-2xl p-6" in:fly={{ y: 20, duration: 600 }}>
+      <div class="bg-black/20 border border-white/5 rounded-2xl p-6" in:slide>
         <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
-          <div class="step-number">3</div>
+          <div class="w-6 h-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px]">3</div>
           Sélectionner les lignes 
-          {#if selectedDistricts.length > 0}<span class="text-gray-500 font-normal ml-2 text-[10px] normal-case">({selectedDistricts.join(', ')})</span>{/if}
+          {#if selectedDistricts.length > 0}
+            <span class="text-blue-400 font-normal ml-2 text-[10px] normal-case bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
+                {selectedDistricts.join(', ')}
+            </span>
+          {/if}
         </h3>
         
         {#if isLoadingFilters}
-          <div class="flex items-center gap-2 text-gray-500 p-4"><Loader2 size={20} class="animate-spin text-themed-muted"/> Chargement...</div>
+          <div class="flex items-center gap-2 text-gray-500 p-4"><Loader2 size={20} class="animate-spin"/> Chargement...</div>
         {:else if filteredAvailableLines.length === 0}
-          <div class="p-4 text-center border border-dashed border-white/10 rounded-xl">
+          <div class="p-6 text-center border border-dashed border-white/10 rounded-xl bg-white/[0.02]">
              <p class="text-gray-400 text-sm">Aucune ligne trouvée pour ce district.</p>
           </div>
         {:else}
           <div class="flex flex-wrap gap-2 max-h-60 overflow-y-auto custom-scrollbar p-1">
-          {#each filteredAvailableLines as line}
-              <label class="{toggleBtnClass(selectedLines.includes(line))} cursor-pointer select-none py-1.5 px-3 text-xs">
-                <input type="checkbox" value={line} bind:group={selectedLines} class="hidden">
-                {#if selectedLines.includes(line)}<CheckSquare class="w-3.5 h-3.5 text-themed" />{:else}<Square class="w-3.5 h-3.5" />{/if}
-                <span>{line}</span>
-              </label>
-            {/each} </div>
+            {#each filteredAvailableLines as line}
+               <button 
+                 onclick={() => selectedLines = toggleItem(selectedLines, line)}
+                 class="px-3 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center gap-1.5 {selectedLines.includes(line) ? 'bg-blue-500 text-white border-blue-500 shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-gray-200'}"
+               >
+                 {#if selectedLines.includes(line)}<CheckSquare class="w-3 h-3" />{:else}<Square class="w-3 h-3" />{/if}
+                 {line}
+               </button>
+            {/each}
+          </div>
         {/if}
       </div>
     {/if}
 
     {#if selectedCategories.includes('Zone SPI') && selectedLines.length > 0}
-      <div class="bg-black/20 border border-white/5 rounded-2xl p-6" in:fly={{ y: 20, duration: 600 }}>
+      <div class="bg-black/20 border border-white/5 rounded-2xl p-6" in:slide>
         <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
           <div class="w-6 h-6 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center text-xs font-bold border border-purple-500/20">4</div>
           Filtres SPI (Optionnel)
         </h3>
         <div class="flex flex-wrap gap-3">
           {#each ['FTY', 'FMS', 'FCR'] as zone}
-            <label class="{toggleBtnClass(selectedZones.includes(zone)).replace('btn-active-themed', 'bg-purple-500/20 border-purple-500/40 text-purple-300 shadow-[0_0_10px_rgba(168,85,247,0.2)]')} cursor-pointer select-none">
-              <input type="checkbox" value={zone} bind:group={selectedZones} class="hidden">
-              {#if selectedZones.includes(zone)}<CheckSquare class="w-4 h-4 text-purple-400" />{:else}<Square class="w-4 h-4" />{/if}
+            <button 
+                onclick={() => selectedZones = toggleItem(selectedZones, zone)}
+                class={btnClass(selectedZones.includes(zone), 'purple')}
+            >
+              {#if selectedZones.includes(zone)}<CheckSquare class="w-4 h-4" />{:else}<Square class="w-4 h-4" />{/if}
               <span>{zone}</span>
-            </label>
+            </button>
           {/each}
         </div>
       </div>
     {/if}
 
-    <div class="border-t border-white/10 my-8"></div>
+    <div class="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent my-8"></div>
 
     <div id="resultDisplay" class="min-h-[200px]">
       {#if isLoadingResults}
         <div class="flex flex-col items-center justify-center py-20 text-gray-500">
-            <Loader2 class="w-10 h-10 text-themed-muted animate-spin mb-3" />
+            <Loader2 class="w-10 h-10 text-blue-500/50 animate-spin mb-3" />
             <p>Chargement des données...</p>
         </div>
       {:else if selectedLines.length === 0}
@@ -239,20 +232,20 @@
         {#each selectedLines as line}
           {#if results[line] && (results[line].gares.length > 0 || results[line].pn.length > 0 || results[line].spi.length > 0)}
             
-            <div class="mb-10 animate-in fade-in duration-500 bg-black/20 rounded-3xl border border-white/5 p-6 md:p-8">
+            <div class="mb-10 animate-in fade-in duration-500 bg-black/20 rounded-3xl border border-white/5 p-6 md:p-8 relative overflow-hidden">
               <div class="flex items-center gap-4 mb-8 pb-4 border-b border-white/5">
-                <span class="line-pill">{line}</span>
+                <span class="px-4 py-1.5 rounded-xl bg-blue-600 text-white font-bold text-xl shadow-lg shadow-blue-500/20">{line}</span>
                 <div class="h-px bg-white/10 flex-grow"></div>
               </div>
 
               {#if results[line].gares.length > 0}
                 <div class="mb-8">
                   <h3 class="text-lg font-bold text-gray-300 mb-4 flex items-center gap-2">
-                    <Building2 size={20} class="text-themed" /> Gares
+                    <Building2 size={20} class="text-blue-400" /> Gares
                   </h3>
                   <div class="flex flex-wrap gap-3">
                     {#each results[line].gares as gare}
-                      <div class="bg-white/5 px-4 py-2.5 rounded-xl border border-white/5 text-gray-200 font-medium hover:bg-white/10 transition-colors shadow-sm">
+                      <div class="bg-white/5 px-4 py-2.5 rounded-xl border border-white/5 text-gray-200 font-medium hover:bg-white/10 transition-colors shadow-sm cursor-default">
                         {gare.gare}
                       </div>
                     {/each}
@@ -263,17 +256,21 @@
               {#if results[line].pn.length > 0}
                 <div class="mb-8">
                   <h3 class="text-lg font-bold text-gray-300 mb-4 flex items-center gap-2">
-                    <TrainTrack size={20} class="text-themed" /> Passages à Niveau
+                    <TrainTrack size={20} class="text-blue-400" /> Passages à Niveau
                   </h3>
                   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {#each results[line].pn as pn}
-                      <div class="card-themed group">
-                        <div class="flex justify-between items-center">
-                          <span class="pn-number">{pn.pn}</span>
-                          <span class="bk-pill"><Milestone size={14} /> {pn.bk}</span>
+                      <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/5 hover:border-blue-500/20 transition-all group hover:bg-white/[0.05]">
+                        <div class="flex justify-between items-center mb-2">
+                          <span class="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-black/40 border border-white/10 text-gray-200 font-bold text-sm shadow-sm">
+                              {pn.pn}
+                          </span>
+                          <span class="flex items-center gap-1 text-xs font-mono text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
+                              <Milestone size={12} /> {pn.bk}
+                          </span>
                         </div>
                         <div class="flex items-start gap-2 text-sm text-gray-400 mt-2 pl-1 border-t border-white/5 pt-2">
-                          <MapPin size={16} class="flex-shrink-0 mt-0.5 opacity-50 group-hover:text-themed transition-colors" />
+                          <MapPin size={16} class="flex-shrink-0 mt-0.5 opacity-50 group-hover:text-blue-400 transition-colors" />
                           <span>{pn.adresse}</span>
                         </div>
                       </div>
@@ -289,20 +286,20 @@
                   </h3>
                   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {#each results[line].spi as spi}
-                      <div class="bg-white/5 p-4 rounded-2xl border border-white/5 hover:border-purple-500/20 shadow-sm flex flex-col gap-2 hover:bg-white/10 transition-all group">
+                      <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/5 hover:border-purple-500/20 transition-all group flex flex-col gap-2 hover:bg-white/[0.05]">
                         <div class="flex justify-between items-center">
-                          <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/30 text-gray-200 text-sm font-bold border border-white/5">{spi.lieu}</span>
+                          <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/40 text-gray-200 text-sm font-bold border border-white/5">{spi.lieu}</span>
                           <span class="flex items-center gap-1.5 text-sm font-bold font-mono text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
-                            <Tag size={14} /> {spi.zone}
+                             <Tag size={12} /> {spi.zone}
                           </span>
                         </div>
                         <div class="flex items-start gap-2 text-sm text-gray-400 mt-2 pl-1 border-t border-white/5 pt-2">
-                          <MapPin size={16} class="flex-shrink-0 mt-0.5 opacity-50 group-hover:text-purple-400 transition-colors" />
+                           <MapPin size={16} class="flex-shrink-0 mt-0.5 opacity-50 group-hover:text-purple-400 transition-colors" />
                           <span>{spi.adresse}</span>
                         </div>
                         {#if spi.remarques}
                           <div class="flex items-start gap-2 text-xs text-gray-500 mt-2 pt-2 bg-black/20 p-2 rounded-lg border border-white/5">
-                            <Info size={14} class="flex-shrink-0 mt-0.5 text-themed" />
+                            <Info size={14} class="flex-shrink-0 mt-0.5 text-blue-400" />
                             <span class="italic">{spi.remarques}</span>
                           </div>
                         {/if}
@@ -318,75 +315,3 @@
     </div>
   </main>
 </div>
-
-<style>
-  /* CONFIGURATION DU THÈME DYNAMIQUE */
-  .text-themed { color: rgb(var(--primary-rgb)); }
-  .text-themed-muted { color: rgba(var(--primary-rgb), 0.5); }
-  
-  .main-icon-container { 
-    background-color: rgba(var(--primary-rgb), 0.1); 
-    color: rgb(var(--primary-rgb)); 
-    border-color: rgba(var(--primary-rgb), 0.2); 
-    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.15); 
-  }
-
-  .step-number {
-    width: 1.5rem; height: 1.5rem; border-radius: 999px;
-    background-color: rgba(var(--primary-rgb), 0.1);
-    color: rgb(var(--primary-rgb));
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.75rem; font-weight: bold;
-    border: 1px solid rgba(var(--primary-rgb), 0.2);
-  }
-
-  .btn-active-themed {
-    background-color: rgba(var(--primary-rgb), 0.2);
-    border-color: rgba(var(--primary-rgb), 0.4);
-    color: rgb(var(--primary-rgb));
-    box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.2);
-  }
-
-  .line-pill {
-    background-color: rgb(var(--primary-rgb));
-    color: white;
-    padding: 0.375rem 1rem;
-    border-radius: 0.75rem;
-    font-size: 1.25rem;
-    font-weight: bold;
-    box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.4);
-  }
-
-  .card-themed {
-    background-color: rgba(255, 255, 255, 0.05);
-    padding: 1rem; border-radius: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    transition: all 0.3s;
-  }
-  .card-themed:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-color: rgba(var(--primary-rgb), 0.3);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  }
-
-  .pn-number {
-    display: flex; align-items: center; gap: 0.375rem;
-    padding: 0.25rem 0.625rem; border-radius: 0.5rem;
-    background-color: rgba(0, 0, 0, 0.3);
-    color: #e5e7eb; font-size: 0.875rem; font-weight: bold;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-  }
-
-  .bk-pill {
-    display: flex; align-items: center; gap: 0.375rem;
-    font-size: 0.875rem; font-weight: bold; font-family: monospace;
-    color: rgb(var(--primary-rgb));
-    background-color: rgba(var(--primary-rgb), 0.1);
-    padding: 0.125rem 0.5rem; border-radius: 0.375rem;
-    border: 1px solid rgba(var(--primary-rgb), 0.2);
-  }
-
-  .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-  .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-</style>
