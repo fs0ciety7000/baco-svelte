@@ -1,32 +1,30 @@
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 
 async function proxy(method, params, url, request) {
-    // DIAGNOSTIC : Si ça s'affiche dans les logs Vercel, c'est que la variable est chargée
-    if (!PUBLIC_SUPABASE_ANON_KEY) {
-        console.error("CRITICAL: PUBLIC_SUPABASE_ANON_KEY is missing/undefined on server!");
-        return new Response(JSON.stringify({ error: "Server Configuration Error: Missing API Key" }), { status: 500 });
-    }
-
-    // 1. Construction de l'URL cible
+    // 1. URL Cible
     const baseUrl = PUBLIC_SUPABASE_URL.replace(/\/$/, '');
     const path = params.path;
     
-    // STRATÉGIE "CEINTURE ET BRETELLES" :
-    // On ajoute la clé directement dans l'URL (?apikey=...) en plus du header.
-    // Supabase accepte les deux méthodes.
+    // On force la clé API dans l'URL aussi (Ceinture et Bretelles)
     const targetUrlObj = new URL(`${baseUrl}/${path}${url.search}`);
     targetUrlObj.searchParams.set('apikey', PUBLIC_SUPABASE_ANON_KEY);
-    
     const targetUrl = targetUrlObj.toString();
 
-    // 2. Préparation des headers
+    // 2. HEADERS
     const requestHeaders = new Headers();
+    
+    // A. La clé API (Toujours requise)
     requestHeaders.set('apikey', PUBLIC_SUPABASE_ANON_KEY);
     
+    // B. L'Authentification (LE POINT CRITIQUE)
+    // On récupère le header envoyé par le navigateur (qui contient le Token de l'utilisateur)
     const authHeader = request.headers.get('Authorization');
-    if (authHeader) {
+    
+    if (authHeader && authHeader.includes('Bearer')) {
+        // Si le navigateur envoie un token, ON LE GARDE ! (C'est votre identité Admin)
         requestHeaders.set('Authorization', authHeader);
     } else {
+        // Sinon (Login ou page publique), on utilise la clé Anon par défaut
         requestHeaders.set('Authorization', `Bearer ${PUBLIC_SUPABASE_ANON_KEY}`);
     }
 
@@ -47,7 +45,7 @@ async function proxy(method, params, url, request) {
             duplex: 'half'
         });
 
-        // Copie des headers de réponse (sans les headers bloquants)
+        // Nettoyage des headers de réponse
         const responseHeaders = new Headers();
         upstreamResponse.headers.forEach((value, key) => {
             if (!['content-encoding', 'content-length', 'connection'].includes(key.toLowerCase())) {
@@ -62,8 +60,8 @@ async function proxy(method, params, url, request) {
         });
 
     } catch (error) {
-        console.error(`[PROXY ERROR] ${method} ${targetUrl}`, error);
-        return new Response(JSON.stringify({ error: 'Proxy Failed', details: error.message }), { status: 500 });
+        console.error(`[PROXY ERROR]`, error);
+        return new Response(JSON.stringify({ error: 'Proxy Error' }), { status: 500 });
     }
 }
 
