@@ -12,7 +12,7 @@
   import Nav from '$lib/components/Nav.svelte';
   import Footer from '$lib/components/Footer.svelte';
   import GlobalSearch from '$lib/components/GlobalSearch.svelte';
-  import ToastContainer from '$lib/components/ui/ToastContainer.svelte'; // Attention au chemin (ui/ ou racine ?)
+  import ToastContainer from '$lib/components/ToastContainer.svelte'; // Attention au chemin (ui/ ou racine ?)
   import ConfirmModal from '$lib/components/ConfirmModal.svelte';
   import DashboardSkeleton from '$lib/components/DashboardSkeleton.svelte';
   import SeasonalDecorator from '$lib/components/SeasonalDecorator.svelte';
