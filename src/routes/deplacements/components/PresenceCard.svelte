@@ -4,59 +4,43 @@
     let {
         title,
         presence = $bindable(),
-        themeColor = 'blue',
+        themeColor = 'blue', 
         icon: IconComponent
     } = $props();
 
-    const colorClasses = {
-        blue: {
-            border: 'border-blue-200',
-            text: 'text-blue-900',
-            icon: 'text-blue-600',
-            slider: 'accent-blue-600'
-        },
-        purple: {
-            border: 'border-purple-200',
-            text: 'text-purple-900',
-            icon: 'text-purple-600',
-            slider: 'accent-purple-600'
-        }
-    };
-
-    const colors = colorClasses[themeColor] || colorClasses.blue;
+    // Couleurs d'accentuation uniquement
+    const accent = themeColor === 'blue' ? 'text-blue-400 accent-blue-500' : 'text-purple-400 accent-purple-500';
 </script>
 
-<div class="glass-panel rounded-lg border {colors.border} p-5 shadow-sm">
-    <h3 class="text-sm font-semibold {colors.text} mb-4 flex items-center gap-2">
+<div class="bg-black/20 border border-white/5 rounded-2xl p-5 h-full flex flex-col justify-center">
+    <h3 class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-4 flex items-center gap-2">
         {#if IconComponent}
-            <IconComponent class="w-4 h-4 {colors.icon}" />
+            <IconComponent class="w-3.5 h-3.5 {accent.split(' ')[0]}" />
         {:else}
-            <MapPin class="w-4 h-4 {colors.icon}" />
+            <MapPin class="w-3.5 h-3.5 {accent.split(' ')[0]}" />
         {/if}
         {title}
     </h3>
 
-    <div class="grid grid-cols-5 gap-3">
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-2">
         {#each Object.keys(presence) as key}
-            <div class="bg-white/5 rounded-lg p-3 flex flex-col items-center border border-white/10">
-                <span class="text-xs uppercase font-semibold mb-2 text-gray-300">
+            <div class="bg-black/30 rounded-lg p-2 border border-white/5 flex flex-col items-center gap-1 group relative overflow-hidden">
+                <span class="text-[9px] font-black text-gray-600 uppercase tracking-wider z-10">
                     {key.replace('shift_', '')}
                 </span>
+
+                <span class="text-xl font-bold text-white z-10 tabular-nums">
+                    {presence[key]}
+                </span>
+
                 <input
                     type="range"
                     min="0"
-                    max="20"
+                    max="3"
                     bind:value={presence[key]}
-                    class="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer {colors.slider}"
+                    class="w-full h-1 bg-gray-700 rounded-full appearance-none cursor-pointer {accent.split(' ')[1]} opacity-50 hover:opacity-100 z-10"
                 />
-                <span class="text-lg font-bold mt-2 text-white">
-                    {presence[key]}
-                </span>
             </div>
         {/each}
     </div>
 </div>
-
-<style>
-    @reference "tailwindcss";
-</style>

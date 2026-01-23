@@ -7,13 +7,33 @@ import { COLORS, EMAIL_CONFIG } from '$lib/utils/deplacements.constants.js';
 import {
     formatDate,
     getStationsWithInterventions,
-    getStationText,
-    highlightRoles
+    getStationText
 } from '$lib/utils/deplacements.helpers.js';
 
 /**
+ * Convertit une image URL en chaîne Base64
+ * @param {string} url - Chemin de l'image
+ * @returns {Promise<string>} Chaîne base64
+ */
+async function getBase64Image(url) {
+    try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (e) {
+        console.warn('Erreur conversion image email:', e);
+        return '';
+    }
+}
+
+/**
  * Génère les badges HTML pour les statistiques de présence
- * @param {Object} presenceData - Données de présence (spi, opi, cpi, pa, shift_10_18)
+ * @param {Object} presenceData - Données de présence
  * @returns {string} HTML des badges
  */
 function formatStatsHtml(presenceData) {
@@ -45,11 +65,6 @@ function formatStatsHtml(presenceData) {
 
 /**
  * Génère le tableau HTML des interventions pour une zone
- * @param {Array} interventions - Liste des interventions
- * @param {string} zone - Zone (FMS ou FTY)
- * @param {string} period - Période (morning ou afternoon)
- * @param {string} color - Couleur de la zone
- * @returns {string} HTML du tableau
  */
 function generateInterventionsTable(interventions, zone, period, color) {
     const stations = getStationsWithInterventions(interventions, zone, period);
@@ -109,6 +124,7 @@ function generateInterventionsTable(interventions, zone, period, color) {
 /**
  * Génère le HTML complet de l'email
  * @param {Object} data - Données du rapport
+ * @param {string} logoBase64 - Logo encodé en base64
  * @returns {string} HTML de l'email
  */
 export function generateEmailHtml({
@@ -119,11 +135,14 @@ export function generateEmailHtml({
     presenceTournaiAM,
     interventions,
     interventionsAM
-}) {
+}, logoBase64 = '') {
     const formattedDate = formatDate(date);
-    
-    // On garde les styles de base pour la police
     const baseStyle = `font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 15px; color: #2d3748; line-height: 1.6;`;
+
+    // Si on a un logo Base64, on l'utilise, sinon on fallback sur le texte
+    const logoImg = logoBase64 
+        ? `<img src="${logoBase64}" alt="Logo" style="max-width: 200px; height: auto; margin-bottom: 15px; display: block;" />`
+        : `<div style="font-size: 24px; font-weight: bold; color: white; margin-bottom: 15px;">SNCB</div>`;
 
     return `
 <!DOCTYPE html>
@@ -146,7 +165,7 @@ export function generateEmailHtml({
                             <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, ${COLORS.sncbHex} 0%, #004a8f 100%); padding: 30px 20px;">
                                 <tr>
                                     <td align="center">
-                                        <img src="cid:logo" alt="SNCB Logo" style="max-width: 150px; margin-bottom: 15px;" />
+                                        ${logoImg}
                                         <h1 style="font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 28px; font-weight: 900; color: white; margin: 0; text-transform: uppercase; letter-spacing: 2px;">
                                             DÉPLACEMENTS PMR
                                         </h1>
@@ -238,7 +257,7 @@ export function generateEmailHtml({
                         </td>
                     </tr>
                 </table>
-                </td>
+            </td>
         </tr>
     </table>
 </body>
@@ -252,17 +271,32 @@ export function generateEmailHtml({
  * @returns {Promise<void>}
  */
 export async function copyForOutlook(data) {
-    const html = generateEmailHtml(data);
+    let logoBase64 = '';
+    
+    // Tentative de chargement du logo pour intégration directe
+    try {
+        logoBase64 = await getBase64Image('/Logo_100Y_FR_horiz_white.png');
+    } catch (e) {
+        console.warn("Impossible de charger le logo pour l'email", e);
+    }
+
+    // On passe le logoBase64 à la fonction de génération
+    const html = generateEmailHtml(data, logoBase64);
     const formattedDate = formatDate(data.date);
 
     try {
-        // Copier dans le presse-papier
+        // Copier dans le presse-papier (format HTML)
         const blobHtml = new Blob([html], { type: 'text/html' });
+        
+        // Note: Certains navigateurs/contextes peuvent nécessiter 'text/plain' aussi
+        // mais pour Outlook 'text/html' est le plus important.
         await navigator.clipboard.write([
-            new ClipboardItem({ 'text/html': blobHtml })
+            new ClipboardItem({ 
+                'text/html': blobHtml 
+            })
         ]);
 
-        // Ouvrir Outlook avec subject pré-rempli
+        // Ouvrir Outlook
         const subject = encodeURIComponent(`Déplacements ${formattedDate.subject}`);
         const mailtoUrl = `mailto:${EMAIL_CONFIG.to}?cc=${EMAIL_CONFIG.cc}&subject=${subject}`;
         window.location.href = mailtoUrl;

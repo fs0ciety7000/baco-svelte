@@ -1,60 +1,36 @@
 <script>
     import PresenceCard from './PresenceCard.svelte';
-    import { MapPin } from 'lucide-svelte';
+    import { Sun, Moon } from 'lucide-svelte';
 
     let {
         title,
         presenceMons = $bindable(),
         presenceTournai = $bindable(),
-        period = 'morning'
+        period = 'morning' // 'morning' | 'afternoon'
     } = $props();
 
-    const periodColors = {
-        morning: {
-            bg: 'bg-purple-50',
-            border: 'border-purple-200',
-            text: 'text-purple-900'
-        },
-        afternoon: {
-            bg: 'bg-yellow-50',
-            border: 'border-yellow-200',
-            text: 'text-yellow-900'
-        }
-    };
-
-    const colors = periodColors[period] || periodColors.morning;
+    // Icône et couleur selon la période
+    const Icon = period === 'morning' ? Sun : Moon;
+    const accentColor = period === 'morning' ? 'text-purple-400' : 'text-yellow-400';
 </script>
 
-<div class="glass-panel rounded-lg border border-white/20 shadow-xl overflow-hidden">
-    <!-- Header -->
-    <div class="{colors.bg} px-6 py-4 border-b border-white/20">
-        <h2 class="text-xl font-bold {colors.text}">
-            {title}
-        </h2>
+<div class="space-y-4">
+    <div class="flex items-center gap-2 px-2">
+        <Icon class="w-4 h-4 {accentColor}" />
+        <h2 class="text-sm font-bold uppercase tracking-widest text-gray-400">{title}</h2>
+        <div class="h-px bg-white/10 flex-grow ml-4"></div>
     </div>
 
-    <!-- Content -->
-    <div class="p-6">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Mons -->
-            <PresenceCard
-                title="Quinyx gare de Mons"
-                bind:presence={presenceMons}
-                themeColor="blue"
-                icon={MapPin}
-            />
-
-            <!-- Tournai -->
-            <PresenceCard
-                title="Quinyx gare de Tournai"
-                bind:presence={presenceTournai}
-                themeColor="purple"
-                icon={MapPin}
-            />
-        </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <PresenceCard 
+            title="MONS" 
+            bind:presence={presenceMons} 
+            themeColor="blue"
+        />
+        <PresenceCard 
+            title="TOURNAI" 
+            bind:presence={presenceTournai} 
+            themeColor="purple"
+        />
     </div>
 </div>
-
-<style>
-    @reference "tailwindcss";
-</style>
