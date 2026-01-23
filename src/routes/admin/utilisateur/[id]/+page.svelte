@@ -1,650 +1,328 @@
 <script>
-  import { onMount } from 'svelte';
-  import { page } from '$app/stores'; 
-  import { ACTIONS, ROLE_DEFAULTS } from '$lib/permissions';
-  import { supabase } from '$lib/supabase';
-  import { goto } from '$app/navigation';
-  import { fly, fade, slide } from 'svelte/transition';
-  import { 
-    User, Mail, Shield, Camera, Lock, Save, 
-    FileWarning, AlertOctagon, Loader2, CheckCircle,
-    Tag, Cake, ChevronLeft, Copy, KeyRound, UserX, UserCheck,
-    Plus, X, History, AlertTriangle
-  } from 'lucide-svelte';
-  
-  // IMPORT TOAST
-  import { toast } from '$lib/stores/toast.js';
+    import { onMount } from 'svelte';
+    import { page } from '$app/stores';
+    import { goto } from '$app/navigation';
+    import { fly, fade } from 'svelte/transition';
+    import { 
+        ChevronLeft, Shield, Save, Loader2, KeyRound, 
+        AlertTriangle, FileWarning, History, CheckCircle, 
+        UserX, UserCheck, Copy, X, AlertOctagon 
+    } from 'lucide-svelte';
 
-  // --- ÉTAT (Migration Runes) ---
-  let isLoading = $state(true);
-  let isSaving = $state(false);
-  let isUploading = $state(false);
-  
-  // On récupère l'ID depuis l'URL de manière réactive
-  let targetUserId = $derived($page.params.id);
-  
-  // Utilisez $state pour que les modifications profondes (permissions) soient détectées
-  let profileData = $state({
-    username: "",
-    full_name: "",
-    email: "", 
-    role: "user",
-    fonction: "", 
-    birthday: null, 
-    avatar_url: null,
-    banned_until: null,
-    permissions: {} // Important d'initialiser
-  });
+    import { supabase } from '$lib/supabase';
+    import { toast } from '$lib/stores/toast.js';
+    import { openConfirmModal } from '$lib/stores/modal.js';
+    import { AdminService } from '$lib/services/admin.service.js';
+    import { ProfileService } from '$lib/services/profile.service.js';
 
-  // Les autres variables réactives
-  let infractions = $state([]);
-  let trustScore = $state(100);
-  let trustColor = $state("bg-green-500");
-  let trustLabel = $state("Chargement...");
-  let showInfractionModal = $state(false);
-  let infractionData = $state({ type: 'yellow', reason: '' });
-  let generatedPassword = $state("");
-  let resetLoading = $state(false);
-  let infractionLoading = $state(false);
-
-  onMount(async () => {
-    await checkAdminAccess();
-    await loadProfileData();
-  });
-
-  async function checkAdminAccess() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return goto('/');
+    // --- ÉTAT ---
+    let isLoading = $state(true);
+    let isSaving = $state(false);
+    let user = $state(null);
+    let infractions = $state([]);
+    let trustScore = $state(100);
     
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-    if (profile?.role !== 'admin') return goto('/');
-  }
-
-  // --- CHARGEMENT DES DONNÉES ---
-  async function loadProfileData() {
-    isLoading = true;
-    try {
-        // 1. Charger le profil
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', targetUserId)
-            .single();
-        
-        if (error) throw error;
-        // On fusionne avec l'état existant pour garder la structure réactive
-        Object.assign(profileData, data);
-        // S'assurer que permissions est un objet (pas null)
-        if (!profileData.permissions) profileData.permissions = {};
-
-        // 2. Charger l'email (via RPC car table auth protégée)
-        const { data: email } = await supabase.rpc('admin_get_user_email', { p_user_id: targetUserId });
-        profileData.email = email || "Non accessible";
-
-        // 3. Charger les infractions
-        await loadInfractions();
-
-    } catch (e) {
-        console.error("Erreur chargement:", e);
-        toast.error("Impossible de charger ce profil.");
-    } finally {
-        isLoading = false;
-    }
-  }
-
-  // --- SAUVEGARDE GLOBALE (Profil) ---
-  async function handleUpdateProfile() {
-    isSaving = true;
-    try {
-      const updates = {
-        username: profileData.username,
-        full_name: profileData.full_name,
-        birthday: profileData.birthday, 
-        fonction: profileData.fonction, 
-        permissions: profileData.permissions,
-        role: profileData.role, 
-        updated_at: new Date()
-      };
-
-      const { error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', targetUserId);
-
-      if (error) throw error;
-      toast.success("Profil mis à jour avec succès !");
-    } catch (e) {
-      toast.error("Erreur: " + e.message);
-    } finally {
-      isSaving = false;
-    }
-  }
-
-// --- LOGIQUE UI PERMISSIONS ---
-function getPermissionState(action) {
-    const custom = profileData.permissions?.[action];
-    const roleHasIt = ROLE_DEFAULTS[profileData.role]?.includes(action);
-
-    if (custom === true) return 'granted'; // Surcharge explicite OUI
-    if (custom === false) return 'denied'; // Surcharge explicite NON
-    return roleHasIt ? 'inherited_yes' : 'inherited_no';
-}
-
-function togglePermission(action) {
-    // 1. Initialisation si nécessaire
-    if (!profileData.permissions) {
-        profileData.permissions = {};
-    }
+    // Modales
+    let showInfractionModal = $state(false);
+    let showResetModal = $state(false);
     
-    const currentState = getPermissionState(action);
-    
-    // 2. Mutation directe (Svelte 5 détecte ça tout seul)
-    if (currentState === 'inherited_yes') {
-        profileData.permissions[action] = false; // Force NON
-    } 
-    else if (currentState === 'inherited_no') {
-        profileData.permissions[action] = true; // Force OUI
-    } 
-    else if (currentState === 'granted') {
-        profileData.permissions[action] = false; // Passe à NON
-    } 
-    else if (currentState === 'denied') {
-        // Le delete fonctionne aussi très bien avec les Proxies Svelte 5
-        delete profileData.permissions[action]; // Retour à Hérité
-    }
-}
+    // Données Actions
+    let infractionData = $state({ type: 'yellow', reason: '', duration: 30 });
+    let resetPassword = $state("");
 
-  // --- GESTION AVATAR ---
-  async function handleAvatarUpload(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    isUploading = true;
-    try {
-      const ext = file.name.split('.').pop();
-      const fileName = `${targetUserId}/${Math.random()}.${ext}`;
+    // ID depuis l'URL
+    const userId = $page.params.id;
 
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file, { upsert: true });
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
-      const publicURL = urlData.publicUrl;
-
-      const { error: dbError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: publicURL, updated_at: new Date() })
-        .eq('id', targetUserId);
-      if (dbError) throw dbError;
-
-      profileData.avatar_url = publicURL;
-      toast.success("Avatar mis à jour !");
-    } catch (err) {
-      console.error(err);
-      toast.error("Échec de l'upload.");
-    } finally {
-      isUploading = false;
-    }
-  }
-
-  // --- GESTION DES SANCTIONS ---
-  
-  function openAddInfraction() {
-      infractionData = { type: 'yellow', reason: '' };
-      showInfractionModal = true;
-  }
-
-  async function submitInfraction() {
-      if (!infractionData.reason) return toast.warning("Le motif est obligatoire.");
-      infractionLoading = true;
-      
-      try {
-          const { error } = await supabase.rpc('admin_add_infraction', {
-              target_user_id: targetUserId,
-              p_card_type: infractionData.type,
-              p_reason: infractionData.reason
-          });
-
-          if (error) throw error;
-
-          toast.success("Sanction appliquée !");
-          showInfractionModal = false;
-          await loadInfractions(); 
-      } catch (e) {
-          toast.error("Erreur: " + e.message);
-      } finally {
-          infractionLoading = false;
-      }
-  }
-
-  async function pardonInfraction(infractionId) {
-      if (!confirm("Voulez-vous pardonner cette sanction ? Elle ne comptera plus dans le score.")) return;
-
-      try {
-          const { error } = await supabase.rpc('admin_pardon_infraction', { p_infraction_id: infractionId });
-          if (error) throw error;
-          
-          toast.success("Sanction pardonnée.");
-          await loadInfractions(); 
-      } catch (e) {
-          toast.error("Erreur: " + e.message);
-      }
-  }
-
-  // --- ACTIONS ADMIN (RESET & BAN) ---
-  async function handleResetPassword() {
-    if (!confirm("Voulez-vous générer un nouveau mot de passe pour cet utilisateur ?")) return;
-    
-    resetLoading = true;
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%';
-    const newPass = Array(12).fill(0).map(() => chars[Math.floor(Math.random() * chars.length)]).join('');
-
-    try {
-        const { error } = await supabase.rpc('admin_reset_user_password', {
-            user_id_to_reset: targetUserId,
-            new_password: newPass
-        });
-        if (error) throw error;
-        generatedPassword = newPass;
-        toast.success("Nouveau mot de passe généré !");
-    } catch (e) {
-        toast.error("Erreur reset: " + e.message);
-    } finally {
-        resetLoading = false;
-    }
-  }
-
-  async function toggleBan() {
-    const isBanned = !!profileData.banned_until;
-    const action = isBanned ? "Débannir" : "Bannir";
-    
-    if (!confirm(`${action} cet utilisateur ?`)) return;
-
-    try {
-        const updates = {
-            banned_until: isBanned ? null : new Date(new Date().setFullYear(new Date().getFullYear() + 100)).toISOString(),
-            banned_until_status: isBanned ? null : 'banned'
-        };
-
-        const { error } = await supabase.from('profiles').update(updates).eq('id', targetUserId);
-        if (error) throw error;
-        
-        profileData.banned_until = updates.banned_until;
-        toast.success(`Utilisateur ${isBanned ? 'débanni' : 'banni'} !`);
-        loadInfractions(); 
-    } catch(e) {
-        toast.error("Erreur: " + e.message);
-    }
-  }
-
-  function copyPassword() {
-    navigator.clipboard.writeText(generatedPassword);
-    toast.success("Mot de passe copié !");
-  }
-
-  // --- LOGIQUE TRUST METER ---
-  async function loadInfractions() {
-    const { data } = await supabase
-      .from('infractions')
-      .select('*, admin:admin_id(full_name)')
-      .eq('user_id', targetUserId)
-      .order('created_at', { ascending: false });
-    
-    infractions = data || [];
-    calculateTrustScore();
-  }
-
-  function calculateTrustScore() {
-    const activeInfractions = infractions.filter(i => i.is_active);
-
-    if (activeInfractions.length === 0) {
-      trustScore = 100;
-      trustColor = "bg-gradient-to-r from-green-400 to-green-600 shadow-[0_0_15px_rgba(34,197,94,0.4)]";
-      trustLabel = "Dossier impeccable !";
-      return;
-    }
-
-    let yellow = 0, red = 0;
-    const MAX_POINTS = 6;
-    activeInfractions.forEach(i => {
-      if (i.card_type === 'yellow') yellow++;
-      if (i.card_type === 'red') red++;
+    // --- INIT ---
+    onMount(async () => {
+        await checkAccess();
+        await loadFullProfile();
     });
-    
-    const totalPoints = (red * MAX_POINTS) + yellow;
-    let percentage = 100 - ((totalPoints / MAX_POINTS) * 100);
-    if (percentage < 0) percentage = 0;
-    trustScore = Math.round(percentage);
 
-    if (totalPoints < 3) {
-      trustColor = "bg-gradient-to-r from-yellow-300 to-yellow-500";
-      trustLabel = "Attention (Moyen)";
-    } else if (totalPoints < 6) {
-      trustColor = "bg-gradient-to-r from-orange-500 to-orange-600";
-      trustLabel = "Niveau Bas";
-    } else {
-      trustColor = "bg-gradient-to-r from-red-600 to-red-700";
-      trustLabel = "Critique";
+    async function checkAccess() {
+        const { data: { user: me } } = await supabase.auth.getUser();
+        if (!me) return goto('/');
+        const { data } = await supabase.from('profiles').select('role').eq('id', me.id).single();
+        if (data?.role !== 'admin') goto('/');
     }
-  }
 
-  const inputClass = "block w-full rounded-xl border-white/10 bg-black/40 p-3 text-sm font-medium text-white placeholder-gray-600 focus:ring-2 focus:border-transparent transition-all outline-none disabled:opacity-50";
-  const labelClass = "block text-xs font-bold text-gray-400 uppercase tracking-wide mb-2 ml-1";
+    async function loadFullProfile() {
+        isLoading = true;
+        try {
+            // Profil
+            const profile = await ProfileService.getProfile(userId);
+            const email = await ProfileService.getAdminUserEmail(userId); // RPC
+            user = { ...profile, email: email || 'Email masqué' };
 
-  // $derived remplace $: pour la réactivité calculée
-  let borderClass = $derived(profileData.role === 'admin' 
-      ? 'bg-gradient-to-br from-yellow-300/80 via-amber-400/50 to-yellow-500/80 shadow-[0_0_35px_rgba(245,158,11,0.6)] ring-1 ring-yellow-400/50' 
-      : profileData.role === 'moderator'
-      ? 'bg-gradient-to-br from-purple-500 to-fuchsia-600 shadow-[0_0_30px_rgba(168,85,247,0.6)] animate-pulse' 
-      : 'bg-gradient-to-br from-[rgba(var(--color-primary),0.5)] to-purple-500/50 shadow-[0_0_30px_rgba(var(--color-primary),0.2)]'
-  );
+            // Infractions
+            infractions = await ProfileService.getInfractions(userId);
+            calculateTrustScore();
+        } catch (e) {
+            toast.error("Erreur chargement profil");
+            goto('/admin');
+        } finally {
+            isLoading = false;
+        }
+    }
+
+    function calculateTrustScore() {
+        if (!infractions.length) { trustScore = 100; return; }
+        
+        let points = 0;
+        infractions.forEach(i => {
+            if(i.is_active) points += (i.card_type === 'red' ? 6 : 1);
+        });
+        
+        trustScore = Math.max(0, 100 - (points / 6 * 100));
+    }
+
+    // --- ACTIONS ---
+
+    async function handleUpdate() {
+        isSaving = true;
+        try {
+            await ProfileService.updateProfile(userId, {
+                full_name: user.full_name,
+                role: user.role,
+                fonction: user.fonction
+            });
+            toast.success("Profil mis à jour");
+        } catch(e) {
+            toast.error("Erreur sauvegarde");
+        } finally {
+            isSaving = false;
+        }
+    }
+
+    async function handleBan(shouldBan) {
+        openConfirmModal(shouldBan ? "Bannir cet utilisateur ?" : "Réactiver ?", async () => {
+            const updates = {
+                banned_until: shouldBan ? new Date(2099, 0, 1) : null
+            };
+            await supabase.from('profiles').update(updates).eq('id', userId);
+            user.banned_until = updates.banned_until;
+            toast.success(shouldBan ? "Utilisateur Banni" : "Utilisateur Réactivé");
+        });
+    }
+
+    // --- SANCTIONS ---
+
+    async function addInfraction() {
+        if (!infractionData.reason) return toast.warning("Motif requis");
+        try {
+            const { data: { user: me } } = await supabase.auth.getUser();
+            await AdminService.addInfraction({
+                userId: userId,
+                type: infractionData.type,
+                reason: infractionData.reason,
+                durationDays: infractionData.duration,
+                createdBy: me.id
+            });
+            toast.success("Sanction ajoutée");
+            showInfractionModal = false;
+            loadFullProfile(); // Refresh
+        } catch(e) {
+            toast.error("Erreur sanction");
+        }
+    }
+
+    async function pardonInfraction(id) {
+        openConfirmModal("Pardonner cette infraction ?", async () => {
+            await AdminService.revokeInfraction(id);
+            toast.success("Infraction pardonnée");
+            loadFullProfile();
+        });
+    }
+
+    // --- PASSWORD ---
+
+    async function handleResetPassword() {
+        try {
+            await supabase.rpc('admin_reset_user_password', {
+                user_id_to_reset: userId,
+                new_password: resetPassword
+            });
+            toast.success("Mot de passe modifié !");
+            showResetModal = false;
+        } catch(e) {
+            toast.error("Erreur reset password");
+        }
+    }
+
+    function generatePassword() {
+        resetPassword = Math.random().toString(36).slice(-10) + "!A1";
+        showResetModal = true;
+    }
+
+    // Helpers
+    const inputClass = "w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all";
+    const labelClass = "block text-xs font-bold text-gray-500 uppercase mb-2";
 
 </script>
 
-<div class="container mx-auto p-4 md:p-8 space-y-8 min-h-screen">
-  
-<header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-white/5 pb-6" in:fly={{ y: -20, duration: 600 }} style="--primary-rgb: var(--color-primary);">
-    <div class="flex items-center gap-3">
-        <button on:click={() => goto('/admin')} class="p-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 transition-colors mr-2">
-            <ChevronLeft size={24} />
-        </button>
-        <div class="p-3 rounded-xl border transition-all duration-500"
-             style="background-color: rgba(var(--primary-rgb), 0.1); color: rgb(var(--primary-rgb)); border-color: rgba(var(--primary-rgb), 0.2); box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.15);">
-          <Shield size={32} />
-        </div>
-        <div>
-          <h1 class="text-3xl font-bold text-gray-200 tracking-tight flex items-center gap-3">
-            Édition : <span style="color: rgb(var(--primary-rgb));">{profileData.full_name || 'Utilisateur'}</span>
-            {#if profileData.role === 'admin'}
-              <span class="inline-flex items-center gap-1 px-3 py-1 bg-yellow-500/20 text-yellow-300 text-xs font-bold rounded-full uppercase border border-yellow-500/30">Admin</span>
-            {/if}
-          </h1>
-          <p class="text-gray-500 text-sm mt-1">Gestion complète du profil et des sanctions.</p>
-        </div>
-    </div>
-  </header>
+<div class="container mx-auto p-4 md:p-8 min-h-screen space-y-8">
+    
+    <a href="/admin" class="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors" in:fly={{ x: -20 }}>
+        <ChevronLeft size={20}/> Retour liste
+    </a>
 
-  {#if isLoading}
-    <div class="flex justify-center py-20"><Loader2 class="animate-spin w-10 h-10 themed-spinner" style="color: rgba(var(--color-primary), 0.5);" /></div>
-  {:else}
-
-    <main class="grid grid-cols-1 lg:grid-cols-2 gap-8" style="--primary-rgb: var(--color-primary);">
-      
-      <div class="space-y-8" in:fly={{ x: -20, duration: 600, delay: 100 }}>
-        
-        <div class="bg-black/20 border border-white/5 rounded-3xl p-8 relative overflow-hidden">
-          <div class="absolute top-0 left-0 right-0 h-32 opacity-20 pointer-events-none"
-               style="background: linear-gradient(to b, rgb(var(--color-primary)), transparent);"></div>
-
-         <div class="relative flex flex-col items-center mb-8">
-            <div class="relative group">
-                <div class="w-36 h-36 rounded-full p-1 transition-all duration-500 {borderClass}">
-                    <img src={profileData.avatar_url || 'https://via.placeholder.com/150'} alt="Avatar" class="w-full h-full rounded-full object-cover border-4 border-[#0f1115]">
-                </div>
-                <label class="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-all cursor-pointer text-white backdrop-blur-sm m-1">
-                    {#if isUploading} <Loader2 class="animate-spin w-8 h-8"/> {:else} <Camera size={32} /> {/if}
-                    <input type="file" class="hidden" accept="image/*" on:change={handleAvatarUpload} disabled={isUploading}>
-                </label>
-            </div>
+    {#if isLoading || !user}
+        <div class="flex justify-center py-20"><Loader2 class="animate-spin text-white w-10 h-10"/></div>
+    {:else}
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8" in:fade>
             
-            <h2 class="text-2xl font-bold text-white mt-4">{profileData.full_name || 'Sans Nom'}</h2>
-            <div class="flex items-center gap-2 mt-1">
-                <p class="text-gray-400 text-sm">{profileData.email}</p>
-                <p class="text-gray-600 text-xs bg-black/40 px-2 py-0.5 rounded font-mono select-all">{targetUserId}</p>
-            </div>
-          </div>
-
-          <div class="space-y-6">
-            <div class="grid grid-cols-1 gap-5">
-              <div>
-                <label class={labelClass}>Username</label>
-                <div class="relative">
-                    <User size={16} class="absolute left-3 top-3.5 text-gray-500" />
-                    <input type="text" bind:value={profileData.username} class="{inputClass} pl-10" style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);">
-                </div>
-              </div>
-              <div>
-                <label class={labelClass}>Nom Complet</label>
-                <div class="relative">
-                    <Tag size={16} class="absolute left-3 top-3.5 text-gray-500" />
-                    <input type="text" bind:value={profileData.full_name} class="{inputClass} pl-10" style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);">
-                </div>
-              </div>
-              <div>
-                <label class={labelClass}>Date de Naissance</label>
-                <div class="relative">
-                  <Cake size={16} class="absolute left-3 top-3.5 text-gray-500" />
-                  <input type="date" bind:value={profileData.birthday} class="{inputClass} pl-10 dark:[color-scheme:dark]" style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);">
-                </div>
-              </div>
-              <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <label class={labelClass}>Fonction</label>
-                    <div class="relative">
-                      <Tag size={16} class="absolute left-3 top-3.5 text-gray-500" />
-                      <select bind:value={profileData.fonction} class="{inputClass} pl-10 appearance-none" style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);">
-                          <option value={null} class="bg-gray-900 text-gray-400">-- Non spécifié --</option>
-                          <option value="PACO" class="bg-gray-900">PACO</option>
-                          <option value="RCCA" class="bg-gray-900">RCCA</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label class={labelClass}>Rôle</label>
-                    <div class="relative">
-                      <Shield size={16} class="absolute left-3 top-3.5 text-gray-500" />
-                      <select bind:value={profileData.role} class="{inputClass} pl-10 appearance-none capitalize" style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);">
-                          <option value="user" class="bg-gray-900">User</option>
-                          <option value="moderator" class="bg-gray-900">Modérateur</option>
-                          <option value="admin" class="bg-gray-900">Admin</option>
-                      </select>
-                    </div>
-                  </div>
-              </div>
-            </div>
-
-            <div class="pt-4 flex justify-end border-t border-white/5">
-                <button 
-                  on:click={handleUpdateProfile} 
-                  disabled={isSaving}
-                  class="btn-primary-glow px-6 py-2.5 text-white rounded-xl font-bold transition-all flex items-center gap-2 disabled:opacity-50 border border-white/10"
-                >
-                  {#if isSaving} <Loader2 class="animate-spin w-4 h-4"/> {:else} <Save size={16}/> {/if}
-                  Enregistrer
-                </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="space-y-8" in:fly={{ x: 20, duration: 600, delay: 200 }}>
-        
-        <div class="bg-black/20 border border-white/5 rounded-3xl p-8 shadow-sm relative overflow-hidden">
-          <div class="absolute top-0 right-0 p-32 opacity-10 rounded-full blur-3xl pointer-events-none"
-               style="background-color: rgb(var(--color-primary));"></div>
-          
-          <div class="flex justify-between items-center mb-6">
-              <h2 class="text-lg font-bold text-gray-200 flex items-center gap-2">
-                <CheckCircle size={20} style="color: rgb(var(--color-primary));" /> Niveau de Confiance
-              </h2>
-              <button 
-                on:click={openAddInfraction}
-                class="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold rounded-lg text-gray-300 hover:text-white transition-colors flex items-center gap-2"
-              >
-                  <Plus size={14}/> Ajouter sanction
-              </button>
-          </div>
-          
-          <div class="mb-8">
-            <div class="w-full bg-black/40 rounded-full h-4 overflow-hidden border border-white/5 shadow-inner">
-              <div class="h-4 rounded-full transition-all duration-1000 ease-out {trustColor} relative" style="width: {trustScore}%"></div>
-            </div>
-            <p class="text-right text-xs font-bold mt-2 {trustColor === 'bg-gradient-to-r from-red-600 to-red-700' ? 'text-red-400' : 'text-gray-400'}">{trustLabel} ({trustScore}%)</p>
-          </div>
-
-          <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-2"><History size={12}/> Historique</h3>
-          
-          <div class="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-              {#if infractions.length === 0}
-                  <div class="text-center py-6 text-gray-500 text-sm italic">Aucune sanction enregistrée.</div>
-              {:else}
-                  {#each infractions as inf}
-                      <div class="bg-black/40 border border-white/5 rounded-xl p-3 flex justify-between items-start {inf.is_active ? '' : 'opacity-50 grayscale'}">
-                          <div class="flex gap-3">
-                              <div class="mt-1">
-                                  {#if inf.card_type === 'red'}
-                                      <AlertOctagon size={18} class="text-red-500" />
-                                  {:else}
-                                      <FileWarning size={18} class="text-yellow-500" />
-                                  {/if}
-                              </div>
-                              <div>
-                                  <p class="text-sm font-bold text-gray-200">{inf.reason}</p>
-                                  <p class="text-xs text-gray-500">
-                                      Par {inf.admin?.full_name || 'Admin'} • {new Date(inf.created_at).toLocaleDateString()}
-                                      {#if !inf.is_active} <span class="text-green-500 ml-2">(Pardonné)</span> {/if}
-                                  </p>
-                              </div>
-                          </div>
-                          {#if inf.is_active}
-                              <button on:click={() => pardonInfraction(inf.id)} class="text-xs text-gray-600 hover:text-green-400 underline p-1">Pardonner</button>
-                          {/if}
-                      </div>
-                  {/each}
-              {/if}
-          </div>
-        </div>
-
-        <div class="bg-black/20 border border-purple-500/10 rounded-3xl p-8 shadow-sm relative">
-    <h2 class="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
-        <Shield size={20} class="text-purple-400" /> Granularité des Permissions
-    </h2>
-
-    <div class="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto custom-scrollbar pr-2">
-        {#each Object.entries(ACTIONS) as [key, action]}
-            {@const state = getPermissionState(action)}
-            
-            <button 
-                on:click={() => togglePermission(action)}
-                class="flex items-center justify-between p-3 rounded-xl border text-sm transition-all
-                {state === 'granted' ? 'bg-green-500/10 border-green-500/50 text-green-400' : 
-                 state === 'denied' ? 'bg-red-500/10 border-red-500/50 text-red-400' : 
-                 state === 'inherited_yes' ? 'bg-white/5 border-white/5 text-gray-400 opacity-75' : 
-                 'bg-black/20 border-transparent text-gray-600 opacity-50'}"
-            >
-                <span class="font-mono">{action}</span>
+            <div class="lg:col-span-2 space-y-8">
                 
-                <span class="text-xs font-bold px-2 py-1 rounded border
-                    {state === 'granted' ? 'border-green-500/30 bg-green-500/20' : 
-                     state === 'denied' ? 'border-red-500/30 bg-red-500/20' : 
-                     'border-transparent'}">
+                <div class="bg-black/20 border border-white/5 rounded-3xl p-8 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-32 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
                     
-                    {#if state === 'granted'} FORCÉ: OUI
-                    {:else if state === 'denied'} FORCÉ: NON
-                    {:else if state === 'inherited_yes'} (Hérité: Oui)
-                    {:else} (Hérité: Non)
-                    {/if}
-                </span>
-            </button>
-        {/each}
-    </div>
-    <p class="text-xs text-gray-500 mt-4 italic">
-        Cliquez pour cycler : <br>
-        Hérité &rarr; <span class="text-green-400">Forcé OUI</span> &rarr; <span class="text-red-400">Forcé NON</span> &rarr; Reset.
-    </p>
-</div>
+                    <div class="flex flex-col md:flex-row items-center gap-6 mb-8 border-b border-white/5 pb-8">
+                        <img src={user.avatar_url || '/default-avatar.png'} alt="av" class="w-24 h-24 rounded-full border-4 border-[#1a1d24] shadow-xl object-cover">
+                        <div class="text-center md:text-left">
+                            <h1 class="text-2xl font-bold text-white">{user.full_name || 'Utilisateur'}</h1>
+                            <p class="text-gray-400 font-mono text-sm mt-1">{user.email}</p>
+                            <div class="flex gap-2 justify-center md:justify-start mt-3">
+                                <span class="px-2 py-1 rounded border border-white/10 bg-white/5 text-xs font-bold uppercase text-gray-300">{user.role}</span>
+                                {#if user.banned_until}
+                                    <span class="px-2 py-1 rounded border border-red-500/20 bg-red-500/10 text-xs font-bold uppercase text-red-400 animate-pulse">Banni</span>
+                                {/if}
+                            </div>
+                        </div>
+                    </div>
 
-        <div class="bg-black/20 border border-red-500/10 rounded-3xl p-8 shadow-sm relative">
-            <h2 class="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
-              <Lock size={20} class="text-red-400" /> Zone Admin
-            </h2>
+                    <div class="space-y-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class={labelClass}>Nom Complet</label><input type="text" bind:value={user.full_name} class={inputClass}></div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class={labelClass}>Rôle</label>
+                                <select bind:value={user.role} class={inputClass}>
+                                    <option value="user" class="bg-gray-900">User</option>
+                                    <option value="moderator" class="bg-gray-900">Modérateur</option>
+                                    <option value="admin" class="bg-gray-900">Admin</option>
+                                </select>
+                            </div>
+                            <div><label class={labelClass}>Fonction</label><input type="text" bind:value={user.fonction} class={inputClass}></div>
+                        </div>
 
-            <div class="space-y-6">
-                <div>
-                    <label class={labelClass}>Accès Compte</label>
-                    <button 
-                        on:click={toggleBan}
-                        class="w-full mt-2 py-3 rounded-xl font-bold transition-all shadow-sm flex justify-center gap-2 border {profileData.banned_until ? 'bg-green-600/20 text-green-400 border-green-500/30 hover:bg-green-600/30' : 'bg-red-600/20 text-red-400 border-red-500/30 hover:bg-red-600/30'}"
-                    >
-                        {#if profileData.banned_until}
-                            <UserCheck size={20}/> Débannir l'utilisateur
-                        {:else}
-                            <UserX size={20}/> Bannir l'utilisateur
-                        {/if}
-                    </button>
+                        <div class="flex justify-end pt-4">
+                            <button onclick={handleUpdate} disabled={isSaving} class="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl flex items-center gap-2 disabled:opacity-50 transition-all">
+                                {#if isSaving}<Loader2 class="animate-spin w-4 h-4"/>{/if} Enregistrer
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="pt-4 border-t border-white/5">
-                    <label class={labelClass}>Sécurité</label>
-                    <div class="flex gap-2 mt-2">
-                        <button on:click={handleResetPassword} disabled={resetLoading} class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 py-2.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
-                            {#if resetLoading}<Loader2 class="animate-spin w-4 h-4"/>{:else}<KeyRound size={16}/>{/if} Reset Password
-                        </button>
+                <div class="bg-black/20 border border-white/5 rounded-3xl p-8">
+                    <h3 class="text-lg font-bold text-white mb-6 flex items-center gap-2"><History class="text-gray-400"/> Historique Sanctions</h3>
+                    
+                    <div class="space-y-3">
+                        {#each infractions as inf}
+                            <div class="p-4 rounded-xl border border-white/5 bg-black/40 flex justify-between items-start {inf.is_active ? '' : 'opacity-50'}">
+                                <div class="flex gap-4">
+                                    <div class="mt-1">
+                                        {#if inf.card_type === 'red'}
+                                            <AlertOctagon size={20} class="text-red-500"/>
+                                        {:else}
+                                            <FileWarning size={20} class="text-yellow-500"/>
+                                        {/if}
+                                    </div>
+                                    <div>
+                                        <p class="font-bold text-gray-200 text-sm">{inf.reason}</p>
+                                        <p class="text-xs text-gray-500 mt-1">
+                                            Le {new Date(inf.created_at).toLocaleDateString()} 
+                                            {#if !inf.is_active} <span class="text-green-500 ml-2">(Pardonné)</span> {/if}
+                                        </p>
+                                    </div>
+                                </div>
+                                {#if inf.is_active}
+                                    <button onclick={() => pardonInfraction(inf.id)} class="text-xs text-blue-400 hover:underline">Pardonner</button>
+                                {/if}
+                            </div>
+                        {:else}
+                            <p class="text-gray-500 italic text-center py-4">Casier vierge.</p>
+                        {/each}
                     </div>
-                    {#if generatedPassword}
-                        <div class="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl flex justify-between items-center" transition:slide>
-                            <span class="font-mono text-yellow-400 font-bold tracking-wider">{generatedPassword}</span>
-                            <button on:click={copyPassword} class="text-yellow-500 hover:text-white"><Copy size={16}/></button>
-                        </div>
+                </div>
+
+            </div>
+
+            <div class="space-y-8">
+                
+                <div class="bg-black/20 border border-white/5 rounded-3xl p-8 relative overflow-hidden">
+                    <div class="absolute inset-0 opacity-5 bg-gradient-to-br {trustScore > 50 ? 'from-green-500' : 'from-red-500'} to-transparent pointer-events-none"></div>
+                    <h3 class="text-lg font-bold text-white mb-6 flex items-center gap-2"><CheckCircle class="text-gray-400"/> Trust Score</h3>
+                    
+                    <div class="relative w-full h-4 bg-black/40 rounded-full overflow-hidden mb-2">
+                        <div class="h-full transition-all duration-1000 {trustScore > 80 ? 'bg-green-500' : trustScore > 40 ? 'bg-yellow-500' : 'bg-red-500'}" style="width: {trustScore}%"></div>
+                    </div>
+                    <div class="flex justify-between text-xs font-bold uppercase tracking-wider">
+                        <span class="text-gray-400">Fiabilité</span>
+                        <span class="text-white">{Math.round(trustScore)}%</span>
+                    </div>
+                </div>
+
+                <div class="bg-black/20 border border-white/5 rounded-3xl p-8 space-y-4">
+                    <h3 class="text-lg font-bold text-white mb-4">Actions</h3>
+                    
+                    <button onclick={() => { infractionData.type='yellow'; showInfractionModal = true; }} class="w-full py-3 rounded-xl border border-yellow-500/20 bg-yellow-500/10 text-yellow-400 font-bold hover:bg-yellow-500/20 transition-all flex items-center justify-center gap-2">
+                        <FileWarning size={18}/> Avertissement
+                    </button>
+                    
+                    <button onclick={() => { infractionData.type='red'; showInfractionModal = true; }} class="w-full py-3 rounded-xl border border-red-500/20 bg-red-500/10 text-red-400 font-bold hover:bg-red-500/20 transition-all flex items-center justify-center gap-2">
+                        <AlertTriangle size={18}/> Carton Rouge
+                    </button>
+
+                    <div class="h-px bg-white/10 my-4"></div>
+
+                    <button onclick={generatePassword} class="w-full py-3 rounded-xl border border-white/10 bg-white/5 text-gray-300 font-bold hover:bg-white/10 transition-all flex items-center justify-center gap-2">
+                        <KeyRound size={18}/> Reset Password
+                    </button>
+
+                    {#if user.banned_until}
+                        <button onclick={() => handleBan(false)} class="w-full py-3 rounded-xl border border-green-500/20 bg-green-500/10 text-green-400 font-bold hover:bg-green-500/20 transition-all flex items-center justify-center gap-2">
+                            <UserCheck size={18}/> Débannir
+                        </button>
+                    {:else}
+                        <button onclick={() => handleBan(true)} class="w-full py-3 rounded-xl border border-white/10 bg-black/40 text-gray-500 font-bold hover:text-red-400 hover:border-red-500/30 transition-all flex items-center justify-center gap-2">
+                            <UserX size={18}/> Bannir
+                        </button>
                     {/if}
+                </div>
+
+            </div>
+        </div>
+    {/if}
+
+    {#if showInfractionModal}
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" transition:fade>
+            <div class="bg-[#1a1d24] w-full max-w-md rounded-2xl border border-white/10 p-6 shadow-2xl" in:fly={{ y: 20 }}>
+                <h3 class="text-xl font-bold text-white mb-4">Nouvelle Sanction ({infractionData.type === 'yellow' ? 'Jaune' : 'Rouge'})</h3>
+                <textarea bind:value={infractionData.reason} class="{inputClass} h-32 resize-none mb-4" placeholder="Motif de la sanction..."></textarea>
+                <div class="flex gap-3 justify-end">
+                    <button onclick={() => showInfractionModal = false} class="px-4 py-2 text-gray-400 hover:text-white">Annuler</button>
+                    <button onclick={addInfraction} class="px-6 py-2 bg-white text-black font-bold rounded-xl hover:bg-gray-200">Confirmer</button>
                 </div>
             </div>
         </div>
+    {/if}
 
-      </div>
-    </main>
-
-  {/if}
-
-  {#if showInfractionModal}
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" transition:fade>
-      <div class="bg-[#0f1115] w-full max-w-md rounded-2xl p-6 shadow-2xl border border-white/10" transition:fly={{ y: 20 }}>
-          <div class="flex justify-between items-center mb-6">
-              <h3 class="text-xl font-bold text-white flex items-center gap-2"><AlertTriangle class="text-yellow-500"/> Ajouter Sanction</h3>
-              <button on:click={() => showInfractionModal = false} class="text-gray-500 hover:text-white"><X size={20}/></button>
-          </div>
-          
-          <div class="space-y-4">
-              <div class="grid grid-cols-2 gap-3">
-                  <button 
-                      class="p-3 rounded-xl border-2 font-bold transition-all {infractionData.type === 'yellow' ? 'border-yellow-500 bg-yellow-500/10 text-yellow-400' : 'border-white/10 bg-black/40 text-gray-500'}"
-                      on:click={() => infractionData.type = 'yellow'}
-                  >
-                      Avertissement
-                  </button>
-                  <button 
-                      class="p-3 rounded-xl border-2 font-bold transition-all {infractionData.type === 'red' ? 'border-red-500 bg-red-500/10 text-red-400' : 'border-white/10 bg-black/40 text-gray-500'}"
-                      on:click={() => infractionData.type = 'red'}
-                  >
-                      Sanction Grave
-                  </button>
-              </div>
-              
-              <div>
-                  <label class={labelClass}>Motif</label>
-                  <textarea bind:value={infractionData.reason} class="{inputClass} h-24 resize-none" placeholder="Ex: Comportement inapproprié..."></textarea>
-              </div>
-              
-              <button on:click={submitInfraction} disabled={infractionLoading} class="w-full py-3 rounded-xl font-bold text-black bg-white hover:bg-gray-200 transition-colors flex justify-center items-center gap-2">
-                  {#if infractionLoading} <Loader2 class="animate-spin w-5 h-5"/> {:else} Confirmer {/if}
-              </button>
-          </div>
-      </div>
-    </div>
-  {/if}
+    {#if showResetModal}
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" transition:fade>
+            <div class="bg-[#1a1d24] w-full max-w-md rounded-2xl border border-white/10 p-6 shadow-2xl" in:fly={{ y: 20 }}>
+                <h3 class="text-xl font-bold text-white mb-4">Nouveau Mot de Passe</h3>
+                <div class="bg-black/40 p-4 rounded-xl border border-white/10 flex justify-between items-center mb-6">
+                    <span class="font-mono text-lg text-white tracking-widest">{resetPassword}</span>
+                    <button onclick={() => { navigator.clipboard.writeText(resetPassword); toast.success("Copié"); }} class="text-gray-400 hover:text-white"><Copy size={18}/></button>
+                </div>
+                <div class="flex gap-3 justify-end">
+                    <button onclick={() => showResetModal = false} class="px-4 py-2 text-gray-400 hover:text-white">Annuler</button>
+                    <button onclick={handleResetPassword} class="px-6 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500">Valider</button>
+                </div>
+            </div>
+        </div>
+    {/if}
 
 </div>
-
-<style>
-  .btn-primary-glow {
-    background-color: rgba(var(--primary-rgb), 0.8);
-    box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.3);
-  }
-  .btn-primary-glow:hover:not(:disabled) {
-    background-color: rgb(var(--primary-rgb));
-    box-shadow: 0 0 25px rgba(var(--primary-rgb), 0.5);
-    transform: translateY(-1px);
-  }
-  .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-  .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-</style>
