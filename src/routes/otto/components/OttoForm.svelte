@@ -154,12 +154,17 @@
         }
     }
 
-    function addBus() {
+  function addBus() {
         const last = form.bus_data.at(-1) || {};
         form.bus_data = [...form.bus_data, { 
-            plaque: '', heure_prevue: last.heure_prevue || '', 
-            heure_confirmee: '', heure_demob: last.heure_demob || '', 
-            chauffeur_id: null, is_specific_route: false 
+            plaque: '', 
+            heure_prevue: last.heure_prevue || '', 
+            heure_confirmee: '', 
+            heure_demob: last.heure_demob || '', 
+            chauffeur_id: null, 
+            is_specific_route: false, // Déjà présent
+            origine_specifique: '',   // Nouveau
+            destination_specifique: '' // Nouveau
         }];
     }
 
@@ -284,23 +289,49 @@ PACO Sud-Ouest`;
             </div>
             
             <div class="space-y-4">
-                {#each form.bus_data as bus, i}
-                    <div class="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+               {#each form.bus_data as bus, i}
+                    <div class="bg-white/5 rounded-xl border border-white/10 overflow-hidden" transition:slide|local>
                         <div class="flex justify-between items-center px-4 py-2 bg-black/20 border-b border-white/5">
                             <span class="text-xs font-mono font-bold text-orange-400">BUS #{i+1}</span>
                             <button onclick={() => removeBus(i)} disabled={isLocked} class="text-gray-500 hover:text-red-400 p-1"><MinusCircle size={16}/></button>
                         </div>
-                        <div class="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div><label class="text-[10px] text-gray-500 font-bold block">PLAQUE</label><input type="text" bind:value={bus.plaque} disabled={isLocked} class="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-sm text-white uppercase"></div>
-                            <div><label class="text-[10px] text-gray-500 font-bold block">PREVUE</label><input type="time" bind:value={bus.heure_prevue} disabled={isLocked} class="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-sm text-white dark:[color-scheme:dark]"></div>
-                            <div><label class="text-[10px] text-green-500/70 font-bold block">CONFIRMÉE</label><input type="time" bind:value={bus.heure_confirmee} disabled={isLocked} class="w-full bg-black/30 border border-green-900/30 rounded-lg px-2 py-1 text-sm text-green-300 dark:[color-scheme:dark]"></div>
-                            <div><label class="text-[10px] text-purple-400 font-bold block">DÉMOB.</label><input type="time" bind:value={bus.heure_demob} disabled={isLocked} class="w-full bg-black/30 border border-purple-500/30 rounded-lg px-2 py-1 text-sm text-purple-300 dark:[color-scheme:dark]"></div>
-                            <div>
-                                <label class="text-[10px] text-blue-400 font-bold block">CHAUFFEUR</label>
-                                <select bind:value={bus.chauffeur_id} disabled={isLocked} class="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-sm text-white">
-                                    <option value={null}>--</option>
-                                    {#each chauffeurs as chauf}<option value={chauf.id}>{chauf.nom}</option>{/each}
-                                </select>
+                        
+                        <div class="p-4 space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div><label class="text-[10px] text-gray-500 font-bold block">PLAQUE</label><input type="text" bind:value={bus.plaque} disabled={isLocked} class="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-sm text-white uppercase"></div>
+                                <div><label class="text-[10px] text-gray-500 font-bold block">PREVUE</label><input type="time" bind:value={bus.heure_prevue} disabled={isLocked} class="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-sm text-white dark:[color-scheme:dark]"></div>
+                                <div><label class="text-[10px] text-green-500/70 font-bold block">CONFIRMÉE</label><input type="time" bind:value={bus.heure_confirmee} disabled={isLocked} class="w-full bg-black/30 border border-green-900/30 rounded-lg px-2 py-1 text-sm text-green-300 dark:[color-scheme:dark]"></div>
+                                <div><label class="text-[10px] text-purple-400 font-bold block">DÉMOB.</label><input type="time" bind:value={bus.heure_demob} disabled={isLocked} class="w-full bg-black/30 border border-purple-500/30 rounded-lg px-2 py-1 text-sm text-purple-300 dark:[color-scheme:dark]"></div>
+                                
+                                <div class="md:col-span-4">
+                                    <label class="text-[10px] text-blue-400 font-bold block">CHAUFFEUR</label>
+                                    <select bind:value={bus.chauffeur_id} disabled={isLocked} class="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-sm text-white">
+                                        <option value={null}>-- Sélectionner un chauffeur --</option>
+                                        {#each chauffeurs as chauf}
+                                            <option value={chauf.id}>{chauf.nom} {chauf.tel ? `(${chauf.tel})` : ''}</option>
+                                        {/each}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="pt-2 border-t border-white/5">
+                                <label class="flex items-center gap-2 cursor-pointer w-fit mb-2">
+                                    <input type="checkbox" bind:checked={bus.is_specific_route} disabled={isLocked} class="rounded bg-white/10 border-white/20 text-orange-500 focus:ring-orange-500/50 accent-orange-500">
+                                    <span class="text-xs font-bold text-gray-400 select-none hover:text-white transition-colors">Trajet différent (Spécifique à ce bus)</span>
+                                </label>
+        
+                                {#if bus.is_specific_route}
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-black/20 rounded-lg border border-white/5" transition:slide>
+                                        <div>
+                                            <label class="text-[10px] text-gray-500 font-bold block mb-1">ORIGINE SPÉCIFIQUE</label>
+                                            <input type="text" list="stations" bind:value={bus.origine_specifique} disabled={isLocked} class="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-sm text-white" placeholder="Gare départ bus">
+                                        </div>
+                                        <div>
+                                            <label class="text-[10px] text-gray-500 font-bold block mb-1">DESTINATION SPÉCIFIQUE</label>
+                                            <input type="text" list="stations" bind:value={bus.destination_specifique} disabled={isLocked} class="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-sm text-white" placeholder="Gare arrivée bus">
+                                        </div>
+                                    </div>
+                                {/if}
                             </div>
                         </div>
                     </div>
