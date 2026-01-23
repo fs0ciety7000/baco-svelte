@@ -28,7 +28,7 @@
     let emailBody = $state("");
     let hasCopied = $state(false);
 
-      // --- DERIVED STATE (TRI INTELLIGENT) ---
+    // --- DERIVED STATE (TRI INTELLIGENT) ---
     // Calcul des arrêts intermédiaires triés par logique de ligne
     let availableStops = $derived.by(() => {
         // 1. Récupérer tous les arrêts des lignes sélectionnées
@@ -69,6 +69,7 @@
             .sort((a, b) => a.ordre - b.ordre) // Tri géographique par défaut
             .map(r => `${r.gare} (${r.ligne_nom})`);
     });
+
     // --- HELPERS STYLES ---
     const inputClass = "w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-orange-500/50 outline-none transition-all placeholder-gray-600";
     const labelClass = "block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1 flex items-center gap-1";
@@ -154,7 +155,7 @@
         }
     }
 
-  function addBus() {
+    function addBus() {
         const last = form.bus_data.at(-1) || {};
         form.bus_data = [...form.bus_data, { 
             plaque: '', 
@@ -163,7 +164,7 @@
             heure_demob: last.heure_demob || '', 
             chauffeur_id: null, 
             is_specific_route: false, 
-            origine_specifique: '',   
+            origine_specifique: '', 
             destination_specifique: '' 
         }];
     }
@@ -288,7 +289,7 @@ PACO Sud-Ouest`;
                 {/if}
             </div>
             
-           <div class="space-y-4">
+            <div class="space-y-4">
                 {#each form.bus_data as bus, i}
                     <div class="bg-white/5 rounded-xl border border-white/10 overflow-hidden" transition:slide|local>
                         <div class="flex justify-between items-center px-4 py-2 bg-black/20 border-b border-white/5">
@@ -311,13 +312,15 @@ PACO Sud-Ouest`;
                                             <option value={chauf.id}>{chauf.nom}</option>
                                         {/each}
                                     </select>
-
-                                    {@const activeChauffeur = chauffeurs.find(c => c.id === bus.chauffeur_id)}
-                                    {#if activeChauffeur?.tel}
-                                        <a href="etrali:{activeChauffeur.tel}" class="block mt-2 w-fit text-xs font-bold text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1.5 transition-colors bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20">
-                                            <Phone size={12}/> 
-                                            Tel : {activeChauffeur.tel}
-                                        </a>
+                                    
+                                    {#if bus.chauffeur_id}
+                                        {@const activeChauffeur = chauffeurs.find(c => c.id === bus.chauffeur_id)}
+                                        {#if activeChauffeur?.tel}
+                                            <a href="etrali:{activeChauffeur.tel}" class="block mt-2 w-fit text-xs font-bold text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1.5 transition-colors bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20">
+                                                <Phone size={12}/> 
+                                                APPEL ETRALI : {activeChauffeur.tel}
+                                            </a>
+                                        {/if}
                                     {/if}
                                 </div>
                             </div>
@@ -330,7 +333,7 @@ PACO Sud-Ouest`;
                                     </div>
                                     <span class="text-xs font-bold text-gray-400 select-none group-hover:text-white transition-colors">Trajet différent (Spécifique à ce bus)</span>
                                 </label>
-                
+        
                                 {#if bus.is_specific_route}
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-black/20 rounded-lg border border-white/5" transition:slide>
                                         <div>
@@ -344,11 +347,10 @@ PACO Sud-Ouest`;
                                     </div>
                                 {/if}
                             </div>
-
                         </div>
                     </div>
                 {/each}
-           </div>
+            </div>
         </div>
     </div>
 
