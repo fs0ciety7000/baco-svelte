@@ -1,6 +1,6 @@
 <script>
     import { fade, slide, fly } from 'svelte/transition';
-    import { Loader2, MapPin, Plus, MinusCircle, User, CheckCircle, X, Mail, ClipboardCopy, Check, Printer, LockOpen, Save, FileText, Bus, Hash, Phone } from 'lucide-svelte';
+    import { Loader2, MapPin, Plus, MinusCircle, User, CheckCircle, X, Mail, ClipboardCopy, Check, Printer, LockOpen, Save, FileText, Bus, Hash, Phone, ArrowLeftRight } from 'lucide-svelte';
     import { GeoService } from '$lib/services/geo.service.js';
     import { OttoReportsService } from '$lib/services/ottoReports.service.js';
     import { toast } from '$lib/stores/toast.js';
@@ -28,7 +28,7 @@
     let emailBody = $state("");
     let hasCopied = $state(false);
 
-    // --- DERIVED STATE (TRI INTELLIGENT) ---
+      // --- DERIVED STATE (TRI INTELLIGENT) ---
     // Calcul des arrêts intermédiaires triés par logique de ligne
     let availableStops = $derived.by(() => {
         // 1. Récupérer tous les arrêts des lignes sélectionnées
@@ -69,7 +69,6 @@
             .sort((a, b) => a.ordre - b.ordre) // Tri géographique par défaut
             .map(r => `${r.gare} (${r.ligne_nom})`);
     });
-
     // --- HELPERS STYLES ---
     const inputClass = "w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-orange-500/50 outline-none transition-all placeholder-gray-600";
     const labelClass = "block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1 flex items-center gap-1";
@@ -155,7 +154,7 @@
         }
     }
 
-    function addBus() {
+  function addBus() {
         const last = form.bus_data.at(-1) || {};
         form.bus_data = [...form.bus_data, { 
             plaque: '', 
@@ -164,7 +163,7 @@
             heure_demob: last.heure_demob || '', 
             chauffeur_id: null, 
             is_specific_route: false, 
-            origine_specifique: '', 
+            origine_specifique: '',   
             destination_specifique: '' 
         }];
     }
@@ -193,7 +192,10 @@
 
     function prepareEmail() {
         const society = societes.find(s => s.id === form.societe_id);
-        emailBody = `Bonjour, voici le réquisitoire pour le trajet de ce ${new Date(form.date_commande).toLocaleDateString('fr-BE')} entre ${form.origine || '?'} et ${form.destination || '?'} - ${form.relation} (${form.is_direct ? 'Direct' : 'Omnibus'})
+        // Ajout du sens dans le corps du mail
+        const sensText = form.is_aller_retour ? 'Aller-Retour' : 'Aller Simple';
+        
+        emailBody = `Bonjour, voici le réquisitoire pour le trajet de ce ${new Date(form.date_commande).toLocaleDateString('fr-BE')} entre ${form.origine || '?'} et ${form.destination || '?'} - ${form.relation} (${form.is_direct ? 'Direct' : 'Omnibus'} - ${sensText})
 
 Merci pour vos services,
 
@@ -207,7 +209,8 @@ PACO Sud-Ouest`;
     function sendEmailLink() {
         const society = societes.find(s => s.id === form.societe_id);
         const emailTo = society?.email || "";
-        const subject = encodeURIComponent(`Réquisitoire Bus - ${form.relation} - ${new Date(form.date_commande).toLocaleDateString('fr-BE')}`);
+        const sensText = form.is_aller_retour ? 'A/R' : 'AS';
+        const subject = encodeURIComponent(`Réquisitoire Bus (${sensText}) - ${form.relation} - ${new Date(form.date_commande).toLocaleDateString('fr-BE')}`);
         window.location.href = `mailto:${emailTo}?subject=${subject}&body=${encodeURIComponent(emailBody)}`;
     }
 
@@ -243,14 +246,24 @@ PACO Sud-Ouest`;
         </div>
 
         <div class="bg-black/20 border border-white/5 rounded-2xl p-6 space-y-4">
-            <div class="flex justify-between items-center mb-4">
+            <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
                 <h3 class="text-sm font-bold text-blue-400 uppercase tracking-wide flex items-center gap-2"><MapPin size={16}/> Parcours</h3>
+                
                 <div class="flex items-center gap-4">
                     <label class="flex items-center gap-2 cursor-pointer bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
                         <input type="checkbox" bind:checked={form.is_direct} disabled={isLocked} class="hidden">
                         <span class="text-[10px] font-bold {form.is_direct ? 'text-orange-400' : 'text-gray-500'}">DIRECT</span>
                         <div class="relative w-8 h-4 bg-gray-700 rounded-full transition-colors"><div class="absolute top-1 left-1 w-2 h-2 bg-white rounded-full transition-transform {form.is_direct ? '' : 'translate-x-4'}"></div></div>
                         <span class="text-[10px] font-bold {!form.is_direct ? 'text-yellow-400' : 'text-gray-500'}">OMNIBUS</span>
+                    </label>
+
+                    <label class="flex items-center gap-2 cursor-pointer bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
+                        <input type="checkbox" bind:checked={form.is_aller_retour} disabled={isLocked} class="hidden">
+                        <span class="text-[10px] font-bold {!form.is_aller_retour ? 'text-cyan-400' : 'text-gray-500'}">ALLER SIMPLE</span>
+                        <div class="relative w-8 h-4 bg-gray-700 rounded-full transition-colors">
+                            <div class="absolute top-1 left-1 w-2 h-2 bg-white rounded-full transition-transform {form.is_aller_retour ? 'translate-x-4' : ''}"></div>
+                        </div>
+                        <span class="text-[10px] font-bold {form.is_aller_retour ? 'text-cyan-400' : 'text-gray-500'}">ALLER-RETOUR</span>
                     </label>
                 </div>
             </div>
@@ -289,7 +302,7 @@ PACO Sud-Ouest`;
                 {/if}
             </div>
             
-            <div class="space-y-4">
+           <div class="space-y-4">
                 {#each form.bus_data as bus, i}
                     <div class="bg-white/5 rounded-xl border border-white/10 overflow-hidden" transition:slide|local>
                         <div class="flex justify-between items-center px-4 py-2 bg-black/20 border-b border-white/5">
@@ -312,15 +325,13 @@ PACO Sud-Ouest`;
                                             <option value={chauf.id}>{chauf.nom}</option>
                                         {/each}
                                     </select>
-                                    
-                                    {#if bus.chauffeur_id}
-                                        {@const activeChauffeur = chauffeurs.find(c => c.id === bus.chauffeur_id)}
-                                        {#if activeChauffeur?.tel}
-                                            <a href="etrali:{activeChauffeur.tel}" class="block mt-2 w-fit text-xs font-bold text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1.5 transition-colors bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20">
-                                                <Phone size={12}/> 
-                                                APPEL ETRALI : {activeChauffeur.tel}
-                                            </a>
-                                        {/if}
+
+                                    {@const activeChauffeur = chauffeurs.find(c => c.id === bus.chauffeur_id)}
+                                    {#if activeChauffeur?.tel}
+                                        <a href="etrali:{activeChauffeur.tel}" class="block mt-2 w-fit text-xs font-bold text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1.5 transition-colors bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20">
+                                            <Phone size={12}/> 
+                                            Tel : {activeChauffeur.tel}
+                                        </a>
                                     {/if}
                                 </div>
                             </div>
@@ -333,7 +344,7 @@ PACO Sud-Ouest`;
                                     </div>
                                     <span class="text-xs font-bold text-gray-400 select-none group-hover:text-white transition-colors">Trajet différent (Spécifique à ce bus)</span>
                                 </label>
-        
+                
                                 {#if bus.is_specific_route}
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-black/20 rounded-lg border border-white/5" transition:slide>
                                         <div>
@@ -347,10 +358,11 @@ PACO Sud-Ouest`;
                                     </div>
                                 {/if}
                             </div>
+
                         </div>
                     </div>
                 {/each}
-            </div>
+           </div>
         </div>
     </div>
 
