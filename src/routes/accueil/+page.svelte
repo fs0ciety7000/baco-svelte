@@ -4,7 +4,7 @@
   import { get } from 'svelte/store'; 
   import { supabase } from '$lib/supabase';
   import { toast } from '$lib/stores/toast';
-
+  import { invalidate } from '$app/navigation';
   // --- STORES & THÈMES ---
   import { themesConfig, currentThemeId, applyTheme } from '$lib/stores/theme';
 
@@ -133,6 +133,20 @@
     } catch (e) {
         console.error("Erreur critique au chargement:", e);
     }
+
+     // --- AJOUT : POLLING (Contournement Firewall) ---
+        // Recharge toutes les données de la page (load functions) toutes les 60s
+        const intervalId = setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                // Invalide les données pour forcer SvelteKit à les recharger
+                // Cela mettra à jour les widgets Otto, Taxi, etc. sans recharger la page
+                invalidate('supabase:auth'); 
+                // Ou invalidate((url) => true) pour tout recharger
+            }
+        }, 60000); // 60 secondes
+
+        return () => clearInterval(intervalId);
+
   });
 
   onDestroy(() => {

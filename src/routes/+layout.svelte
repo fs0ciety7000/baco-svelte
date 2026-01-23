@@ -4,7 +4,7 @@
   import { page } from '$app/stores';
   import { supabase } from '$lib/supabase';
   import { goto } from '$app/navigation';
-  
+  import PwaReload from '$lib/components/PwaReload.svelte';
   import Nav from '$lib/components/Nav.svelte';
   import Footer from '$lib/components/Footer.svelte';
   import GlobalSearch from '$lib/components/GlobalSearch.svelte';
@@ -133,6 +133,7 @@
     {/if}
 
     <ToastContainer />
+    <PwaReload />
     <ConfirmModal />
   </div>
 {/if}
