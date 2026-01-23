@@ -1,140 +1,51 @@
 <script>
-  import { onMount } from 'svelte';
-  import { supabase } from '$lib/supabase';
-  import { fade, fly } from 'svelte/transition';
-  import { 
-    BarChart3, TrendingUp, Users, Map, Car, Bus, 
-    Calendar, Building2, Loader2, ArrowRight
-  } from 'lucide-svelte';
-  import { goto } from '$app/navigation';
+    import { onMount } from 'svelte';
+    import { fly, fade } from 'svelte/transition';
+    import { goto } from '$app/navigation';
+    import { 
+        BarChart3, TrendingUp, Users, Map, Car, Bus, 
+        Building2, Loader2, ArrowRight
+    } from 'lucide-svelte';
 
-  // --- ÉTATS ---
-  let isLoading = true;
-  
-  // Données brutes
-  let ottos = [];
-  let taxis = [];
+    // Libs
+    import { supabase } from '$lib/supabase';
+    import { StatsService } from '$lib/services/stats.service.js';
 
-  // Données calculées
-  let stats = {
-    global: { total: 0, otto: 0, taxi: 0 },
-    topSocieties: [],
-    topRoutes: [],
-    topCreators: [],
-    monthlyActivity: []
-  };
-
-  onMount(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return goto('/');
-
-    await loadData();
-  });
-
-  async function loadData() {
-    isLoading = true;
-
-    // 1. OTTO (Table: otto_commandes) -> Utilise la relation user_id
-    const { data: dataOtto, error: errOtto } = await supabase
-      .from('otto_commandes')
-      .select(`
-        id, date_commande, origine, destination, 
-        societes_bus(nom), 
-        creator:user_id(full_name)
-      `);
-
-    // 2. TAXI (Table: taxi_commands) -> Utilise la colonne 'redacteur'
-    // CORRECTION ICI : Suppression de la jointure user_id qui bloquait
-    const { data: dataTaxi, error: errTaxi } = await supabase
-      .from('taxi_commands') 
-      .select(`
-        id, date_trajet, gare_origine, gare_arrivee, 
-        taxi_nom, 
-        redacteur
-      `);
-
-    if (errOtto) console.error("Erreur Otto", errOtto);
-    if (errTaxi) console.error("Erreur Taxi", errTaxi);
-
-    // Normalisation des données
-    ottos = (dataOtto || []).map(o => ({
-        type: 'bus',
-        id: o.id,
-        date: o.date_commande,
-        origine: o.origine,
-        destination: o.destination,
-        societe: o.societes_bus?.nom || 'Inconnue',
-        createur: o.creator?.full_name || 'Inconnu'
-    }));
-
-    taxis = (dataTaxi || []).map(t => ({
-        type: 'taxi',
-        id: t.id,
-        date: t.date_trajet,
-        origine: t.gare_origine,
-        destination: t.gare_arrivee,
-        societe: t.taxi_nom || 'Inconnue',
-        createur: t.redacteur || 'Inconnu' // Utilisation du champ texte rédacteur
-    }));
-
-    calculateStats();
-    isLoading = false;
-  }
-
-  function calculateStats() {
-    // A. Totaux
-    stats.global.otto = ottos.length;
-    stats.global.taxi = taxis.length;
-    stats.global.total = ottos.length + taxis.length;
-
-    // B. Sociétés les plus sollicitées
-    const socMap = {};
-    const allItems = [...ottos, ...taxis];
-
-    allItems.forEach(item => {
-        const name = item.societe;
-        if (!name) return;
-        if (!socMap[name]) socMap[name] = { name, count: 0, type: item.type };
-        socMap[name].count++;
-    });
-    
-    stats.topSocieties = Object.values(socMap)
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
-
-    // C. Trajets les plus fréquents
-    const routeMap = {};
-    allItems.forEach(item => {
-        if(!item.origine || !item.destination) return;
-        const key = `${item.origine} → ${item.destination}`;
-        if (!routeMap[key]) routeMap[key] = { name: key, count: 0, type: item.type };
-        routeMap[key].count++;
+    // --- ÉTAT (RUNES) ---
+    let isLoading = $state(true);
+    let stats = $state({
+        global: { total: 0, otto: 0, taxi: 0 },
+        topSocieties: [],
+        topRoutes: [],
+        topCreators: []
     });
 
-    stats.topRoutes = Object.values(routeMap)
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 8);
-
-    // D. Top Rédacteurs
-    const userMap = {};
-    allItems.forEach(item => {
-        const name = item.createur;
-        if (!name) return;
-        if (!userMap[name]) userMap[name] = { name, count: 0 };
-        userMap[name].count++;
+    // --- INIT ---
+    onMount(async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return goto('/');
+        await loadData();
     });
 
-    stats.topCreators = Object.values(userMap)
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
-  }
+    async function loadData() {
+        isLoading = true;
+        try {
+            stats = await StatsService.getGlobalStats();
+        } catch (e) {
+            console.error(e);
+        } finally {
+            isLoading = false;
+        }
+    }
 
-  // Helper pour calculer le pourcentage de largeur des barres
-  const getPercent = (val, max) => (val / max) * 100;
+    // Helper pour les barres de progression
+    function getPercent(val, max) {
+        return max > 0 ? (val / max) * 100 : 0;
+    }
 </script>
 
 <svelte:head>
-  <title>C3 | Statistiques</title>
+  <title>Statistiques | BACO</title>
 </svelte:head>
 
 <div class="container mx-auto p-4 md:p-8 min-h-screen space-y-8">
@@ -146,12 +57,12 @@
         </div>
         <div>
           <h1 class="text-3xl font-bold text-gray-200 tracking-tight">Statistiques</h1>
-          <p class="text-gray-500 text-sm mt-1">Analyse des commandes des TA et de l'activité.</p>
+          <p class="text-gray-500 text-sm mt-1">Analyse des commandes et de l'activité.</p>
         </div>
     </div>
     
     <div class="flex gap-2">
-        <button on:click={loadData} class="p-2 rounded-lg hover:bg-white/5 text-gray-400 hover:text-white transition-colors" title="Rafraîchir">
+        <button onclick={loadData} class="p-2 rounded-lg hover:bg-white/5 text-gray-400 hover:text-white transition-colors" title="Rafraîchir">
             <TrendingUp size={20} />
         </button>
     </div>
@@ -271,8 +182,7 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {#each stats.topRoutes as route}
-                    {@const parts = route.name.split(' → ')}
-                    
+                    {@const parts = route.name.split('|')}
                     <div class="p-4 bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 hover:border-white/10 rounded-xl transition-all flex flex-col justify-between h-32 relative overflow-hidden">
                         
                         <div class="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl {route.type === 'bus' ? 'from-orange-500/10' : 'from-cyan-500/10'} to-transparent rounded-bl-3xl -mr-4 -mt-4"></div>
