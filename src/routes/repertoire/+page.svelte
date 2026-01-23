@@ -388,7 +388,7 @@
                                             </div>
                                             <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs">
                                                 {#if contact.tel}
-                                                    <a href="tel:{cleanPhone(contact.tel)}" class="flex items-center gap-1.5 px-2 py-0.5 rounded border transition-all bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/20">
+                                                    <a href="etrali:{cleanPhone(contact.tel)}" class="flex items-center gap-1.5 px-2 py-0.5 rounded border transition-all bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/20">
                                                         <Phone size={12} /> {formatPhone(contact.tel)}
                                                     </a>
                                                 {/if}

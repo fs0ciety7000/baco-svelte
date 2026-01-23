@@ -275,7 +275,7 @@
                     {#if client.telephone}
                        <div class="flex items-center gap-3">
                            <div class="p-1.5 bg-green-500/10 text-green-400 rounded-lg border border-green-500/20"><Phone size={14} /></div>
-                           <a href="tel:{client.telephone}" class="font-mono font-medium text-gray-300 hover:text-blue-400 transition-colors tracking-wide">{formatPhone(client.telephone)}</a>
+                           <a href="etrali:{client.telephone}" class="font-mono font-medium text-gray-300 hover:text-blue-400 transition-colors tracking-wide">{formatPhone(client.telephone)}</a>
                        </div>
                     {:else}
                         <div class="text-sm text-gray-600 italic pl-1 flex items-center gap-2"><Phone size={14} class="opacity-50"/> Pas de téléphone</div>
@@ -316,7 +316,7 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             {#if client.telephone}
-                                <a href="tel:{client.telephone}" class="inline-flex items-center gap-2 text-xs font-mono text-gray-400 hover:text-blue-400 transition-colors bg-white/5 px-2 py-1 rounded-lg border border-white/5 hover:border-blue-500/30">
+                                <a href="etrali:{client.telephone}" class="inline-flex items-center gap-2 text-xs font-mono text-gray-400 hover:text-blue-400 transition-colors bg-white/5 px-2 py-1 rounded-lg border border-white/5 hover:border-blue-500/30">
                                     <Phone size={12} /> {formatPhone(client.telephone)}
                                 </a>
                             {:else}<span class="text-xs text-gray-700 italic px-2">—</span>{/if}

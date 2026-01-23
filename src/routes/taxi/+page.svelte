@@ -307,7 +307,7 @@
                       {#each taxi.contacts as contactLine}
                           <div class="flex justify-between items-center group/item hover:bg-white/5 p-1.5 rounded transition-colors -mx-1.5">
                              <span class="text-gray-300 font-medium font-mono">{contactLine}</span>
-                             <a href="tel:{cleanPhone(contactLine)}" class="text-yellow-400/80 hover:text-yellow-300 bg-yellow-500/10 p-1.5 rounded-lg border border-yellow-500/10 hover:border-yellow-500/30 transition-all">
+                             <a href="etrali:{cleanPhone(contactLine)}" class="text-yellow-400/80 hover:text-yellow-300 bg-yellow-500/10 p-1.5 rounded-lg border border-yellow-500/10 hover:border-yellow-500/30 transition-all">
                                 <Phone class="w-3.5 h-3.5"/>
                              </a>
                           </div>

@@ -402,7 +402,7 @@
                                                 <div class="text-sm font-bold text-gray-200">{c.nom}</div>
                                                 <div class="text-[10px] text-gray-500">{c.societes_bus?.nom}</div>
                                             </div>
-                                            <a href="tel:{cleanPhone(c.tel)}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-mono hover:bg-blue-500/20 transition-colors">
+                                            <a href="etrali:{cleanPhone(c.tel)}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-mono hover:bg-blue-500/20 transition-colors">
                                                 <Phone class="w-3 h-3" /> {formatPhone(c.tel)}
                                             </a>
                                         </div>
@@ -421,7 +421,7 @@
                                                 <div class="text-sm font-bold text-gray-200">{c.nom}</div>
                                                 <div class="text-[10px] text-gray-500">{c.societes_bus?.nom}</div>
                                             </div>
-                                            <a href="tel:{cleanPhone(c.tel)}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 border border-green-500/20 text-xs font-mono hover:bg-green-500/20 transition-colors">
+                                            <a href="etrali:{cleanPhone(c.tel)}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 border border-green-500/20 text-xs font-mono hover:bg-green-500/20 transition-colors">
                                                 <Phone class="w-3 h-3" /> {formatPhone(c.tel)}
                                             </a>
                                         </div>

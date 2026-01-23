@@ -1,6 +1,6 @@
 <script>
     import { fade, slide, fly } from 'svelte/transition';
-    import { Loader2, MapPin, Plus, MinusCircle, User, CheckCircle, X, Mail, ClipboardCopy, Check, Printer, LockOpen, Save, FileText, Bus, Hash } from 'lucide-svelte';
+    import { Loader2, MapPin, Plus, MinusCircle, User, CheckCircle, X, Mail, ClipboardCopy, Check, Printer, LockOpen, Save, FileText, Bus, Hash, Phone } from 'lucide-svelte';
     import { GeoService } from '$lib/services/geo.service.js';
     import { OttoReportsService } from '$lib/services/ottoReports.service.js';
     import { toast } from '$lib/stores/toast.js';
@@ -303,14 +303,22 @@ PACO Sud-Ouest`;
                                 <div><label class="text-[10px] text-green-500/70 font-bold block">CONFIRMÉE</label><input type="time" bind:value={bus.heure_confirmee} disabled={isLocked} class="w-full bg-black/30 border border-green-900/30 rounded-lg px-2 py-1 text-sm text-green-300 dark:[color-scheme:dark]"></div>
                                 <div><label class="text-[10px] text-purple-400 font-bold block">DÉMOB.</label><input type="time" bind:value={bus.heure_demob} disabled={isLocked} class="w-full bg-black/30 border border-purple-500/30 rounded-lg px-2 py-1 text-sm text-purple-300 dark:[color-scheme:dark]"></div>
                                 
-                                <div class="md:col-span-4">
+                               <div class="md:col-span-4">
                                     <label class="text-[10px] text-blue-400 font-bold block">CHAUFFEUR</label>
                                     <select bind:value={bus.chauffeur_id} disabled={isLocked} class="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-sm text-white">
                                         <option value={null}>-- Sélectionner un chauffeur --</option>
                                         {#each chauffeurs as chauf}
-                                            <option value={chauf.id}>{chauf.nom} {chauf.tel ? `(${chauf.tel})` : ''}</option>
+                                            <option value={chauf.id}>{chauf.nom}</option>
                                         {/each}
                                     </select>
+
+                                    {@const activeChauffeur = chauffeurs.find(c => c.id === bus.chauffeur_id)}
+                                    {#if activeChauffeur?.tel}
+                                        <a href="etrali:{activeChauffeur.tel}" class="block mt-2 w-fit text-xs font-bold text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1.5 transition-colors bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20">
+                                            <Phone size={12}/> 
+                                            Tel : {activeChauffeur.tel}
+                                        </a>
+                                    {/if}
                                 </div>
                             </div>
 
@@ -318,6 +326,15 @@ PACO Sud-Ouest`;
                                 <label class="flex items-center gap-2 cursor-pointer w-fit mb-2">
                                     <input type="checkbox" bind:checked={bus.is_specific_route} disabled={isLocked} class="rounded bg-white/10 border-white/20 text-orange-500 focus:ring-orange-500/50 accent-orange-500">
                                     <span class="text-xs font-bold text-gray-400 select-none hover:text-white transition-colors">Trajet différent (Spécifique à ce bus)</span>
+                                </label>
+        
+                             <div class="pt-2 border-t border-white/5">
+                                <label class="flex items-center gap-3 cursor-pointer w-fit mb-2 group">
+                                    <div class="relative inline-flex items-center">
+                                        <input type="checkbox" bind:checked={bus.is_specific_route} disabled={isLocked} class="sr-only peer">
+                                        <div class="w-9 h-5 bg-gray-700 peer-focus:ring-2 peer-focus:ring-orange-500/50 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500 transition-colors"></div>
+                                    </div>
+                                    <span class="text-xs font-bold text-gray-400 select-none group-hover:text-white transition-colors">Trajet différent (Spécifique à ce bus)</span>
                                 </label>
         
                                 {#if bus.is_specific_route}
