@@ -5,7 +5,7 @@
     import { toast } from '$lib/stores/toast.js';
     import { 
         Search, Map as MapIcon, Loader2, CheckSquare, Square, Layers, 
-        Navigation, Eye, X, AlertTriangle, Train 
+        Navigation, Eye, X, AlertTriangle, Train, Split
     } from 'lucide-svelte';
 
     // Libs
@@ -13,6 +13,14 @@
     import { hasPermission, ACTIONS } from '$lib/permissions';
     import { PnService } from '$lib/services/pn.service.js';
     import Map from '$lib/components/ui/map/Map.svelte';
+
+    // --- CONFIG DEPOTS ---
+    const DEPOTS = {
+        'FTY': { label: 'Tournai', coords: '50.613056,3.396944', address: 'Place Crombez, 7500 Tournai' },
+        'FMS': { label: 'Mons', coords: '50.4557,3.9395', address: 'Avenue Melina Mercouri 5, 7000 Mons' },
+        'FCR': { label: 'Charleroi', coords: '50.404444,4.438611', address: 'Square des Martyrs, 6000 Charleroi' },
+        'Autre': { label: 'Mons (Défaut)', coords: '50.4557,3.9395' } // Fallback
+    };
 
     // --- ÉTAT (RUNES) ---
     let currentUser = $state(null);
@@ -32,22 +40,16 @@
 
     // UI Carte
     let mapInstance = $state(null);
-    let mapStyle = $state('dark');
-    let showTraffic = $state(false);
+    let mapStyle = $state('dark'); // 'dark' | 'light'
     let viewingPn = $state(null);
 
     // --- DERIVED ---
     let filteredPn = $derived(allPnData.filter(pn => {
-        // Filtre Ligne
         const lineMatch = selectedLines.includes(pn.ligne_nom);
-        
-        // Filtre Zone
         const zoneMatch = selectedZones.includes(pn.zone);
-        
-        // Filtre Recherche
         const q = searchQuery.toLowerCase().trim();
         const searchMatch = !q || 
-            (pn.pn && String(pn.pn).toLowerCase().includes(q)) || // Recherche sur le numéro
+            (pn.pn && String(pn.pn).toLowerCase().includes(q)) || 
             (pn.adresse && pn.adresse.toLowerCase().includes(q)) ||
             (pn.ligne_nom && pn.ligne_nom.toLowerCase().includes(q));
         
@@ -69,7 +71,6 @@
 
         isAuthorized = true;
         mapZones = PnService.getZones();
-        
         await loadData();
     });
 
@@ -116,7 +117,6 @@
     function handlePnClick(pn) {
         if (!pn.geo) return toast.error("Position inconnue");
         const [lat, lon] = pn.geo.split(',').map(parseFloat);
-        // FlyTo sur la map via bind
         if (mapInstance) {
             mapInstance.flyTo({ center: [lon, lat], zoom: 16, essential: true });
         }
@@ -127,10 +127,24 @@
         viewingPn = pn;
     }
 
+    // --- ITINÉRAIRE (TRAFIC) ---
+    function openRoute(pn) {
+        if (!pn.geo) return toast.error("Pas de coordonnées GPS");
+        
+        // Détermination du dépôt selon la zone
+        const depot = DEPOTS[pn.zone] || DEPOTS['Autre'];
+        
+        // URL Google Maps (Calcul itinéraire)
+        // origin = Dépôt | destination = PN | travelmode = driving (voiture)
+        const url = `https://www.google.com/maps/dir/?api=1&origin=${depot.coords}&destination=${pn.geo}&travelmode=driving`;
+        
+        window.open(url, '_blank');
+    }
+
     // --- UTILS ---
     function getZoneColor(zone) {
         const z = mapZones.find(z => z.key === zone);
-        return z ? z.color : '#6b7280'; // Gris par défaut
+        return z ? z.color : '#6b7280';
     }
 
 </script>
@@ -149,11 +163,6 @@
       
       <header class="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-white/5 pb-6" in:fly={{ y: -20 }}>
         <div class="flex gap-3">
-            <button onclick={() => showTraffic = !showTraffic} 
-                class="flex items-center gap-2 px-4 py-2 rounded-xl border transition-all text-sm font-bold {showTraffic ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-black/20 text-gray-400 border-white/10 hover:bg-white/5'}">
-                <AlertTriangle size={16} /> Trafic
-            </button>
-
             <button onclick={() => mapStyle = mapStyle === 'dark' ? 'light' : 'dark'} 
                 class="flex items-center gap-2 px-4 py-2 rounded-xl border transition-all text-sm font-bold {mapStyle === 'light' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-black/20 text-gray-400 border-white/10 hover:bg-white/5'}">
                 <MapIcon size={16} /> {mapStyle === 'dark' ? 'Plan' : 'Satellite'}
@@ -173,7 +182,7 @@
                 <input 
                     type="text" 
                     bind:value={searchQuery}
-                    placeholder="Recherche (PN, Rue, Ligne...)" 
+                    placeholder="PN, Rue, Ligne..." 
                     class="w-full pl-9 pr-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-blue-500/30 outline-none transition-all"
                 />
             </div>
@@ -191,12 +200,6 @@
                                 {z.key}
                             </button>
                         {/each}
-                        <button 
-                            onclick={() => toggleZone('Autre')}
-                            class="px-3 py-1.5 rounded-lg text-xs font-bold border transition-all {selectedZones.includes('Autre') ? 'bg-white/10 text-white border-gray-500' : 'text-gray-500 border-transparent hover:bg-white/5'}"
-                        >
-                            Autre
-                        </button>
                     </div>
                 </div>
 
@@ -227,46 +230,54 @@
 
         <main class="flex-grow flex flex-col gap-4 relative">
             
-            <div class="relative w-full h-[450px] rounded-3xl shadow-2xl border border-white/10 overflow-hidden bg-[#0f1115]">
-                <Map 
-                    bind:map={mapInstance} 
-                    markers={filteredPn} 
-                    zones={mapZones} 
-                    showTraffic={showTraffic}
-                    style={mapStyle}
-                    clustering={true}
-                    className="w-full h-full" 
-                />
+            <div class="relative flex-grow rounded-3xl shadow-2xl border border-white/10 overflow-hidden bg-[#0f1115] min-h-[400px]">
+                {#key mapStyle}
+                    <Map 
+                        bind:map={mapInstance} 
+                        markers={filteredPn} 
+                        zones={mapZones} 
+                        showTraffic={false} 
+                        style={mapStyle}
+                        clustering={true}
+                        className="w-full h-full" 
+                    />
+                {/key}
             </div>
 
             <div class="h-[500px] bg-black/20 border border-white/5 rounded-2xl p-4 overflow-y-auto custom-scrollbar">
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                     {#each filteredPn as pn (pn.pn + pn.ligne_nom)}
-                        <button 
-                            onclick={() => handlePnClick(pn)} 
-                            class="text-left bg-black/40 border border-white/5 p-3 rounded-xl hover:bg-white/5 hover:border-blue-500/30 transition-all group relative"
-                        >
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="font-bold text-gray-200">{pn.pn}</span>
-                                        <span class="text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-gray-400">{pn.ligne_nom}</span>
+                        <div class="bg-black/40 border border-white/5 p-3 rounded-xl hover:bg-white/5 hover:border-blue-500/30 transition-all group relative flex flex-col justify-between">
+                            <button onclick={() => handlePnClick(pn)} class="text-left w-full mb-3">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-bold text-gray-200">{pn.pn}</span> <span class="text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-gray-400">{pn.ligne_nom}</span>
+                                        </div>
+                                        <div class="text-xs text-gray-500 mt-1 truncate max-w-[200px]" title={pn.adresse}>{pn.adresse || 'Sans adresse'}</div>
                                     </div>
-                                    <div class="text-xs text-gray-500 mt-1 truncate max-w-[200px]" title={pn.adresse}>{pn.adresse || 'Sans adresse'}</div>
+                                    <div class="w-2 h-2 rounded-full shadow-[0_0_5px_currentColor]" style="background-color: {getZoneColor(pn.zone)}; color: {getZoneColor(pn.zone)}"></div>
                                 </div>
-                                <div class="w-2 h-2 rounded-full shadow-[0_0_5px_currentColor]" style="background-color: {getZoneColor(pn.zone)}; color: {getZoneColor(pn.zone)}"></div>
-                            </div>
+                            </button>
                             
                             {#if pn.geo}
-                                <button 
-                                    onclick={(e) => { e.stopPropagation(); openStreetView(pn); }} 
-                                    class="absolute bottom-3 right-3 text-gray-600 hover:text-blue-400 transition-colors p-1" 
-                                    title="Street View"
-                                >
-                                    <Eye size={16}/>
-                                </button>
+                                <div class="flex items-center gap-2 pt-2 border-t border-white/5">
+                                    <button 
+                                        onclick={(e) => { e.stopPropagation(); openRoute(pn); }} 
+                                        class="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-green-500/10 text-green-400 border border-green-500/20 text-[10px] font-bold uppercase hover:bg-green-500/20 transition-colors"
+                                        title="Itinéraire depuis {DEPOTS[pn.zone]?.label || 'Dépôt'}"
+                                    >
+                                        <Split size={12}/> Trajet
+                                    </button>
+                                    <button 
+                                        onclick={(e) => { e.stopPropagation(); openStreetView(pn); }} 
+                                        class="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-bold uppercase hover:bg-blue-500/20 transition-colors"
+                                    >
+                                        <Eye size={12}/> Vue
+                                    </button>
+                                </div>
                             {/if}
-                        </button>
+                        </div>
                     {/each}
                     {#if filteredPn.length === 0}
                         <div class="col-span-full text-center py-10 text-gray-500 italic">Aucun PN ne correspond aux filtres.</div>
@@ -283,7 +294,7 @@
             <div class="bg-[#1a1d24] w-full max-w-5xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col" in:scale>
                 <div class="flex justify-between items-center p-4 border-b border-white/5 bg-black/40">
                     <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                        <Eye size={18} class="text-blue-400" /> {viewingPn.pn} <span class="text-gray-500 text-sm font-normal">({viewingPn.adresse})</span>
+                        <Eye size={18} class="text-blue-400" /> PN {viewingPn.pn} <span class="text-gray-500 text-sm font-normal">({viewingPn.adresse})</span>
                     </h3>
                     <button onclick={() => viewingPn = null} class="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white"><X size={20}/></button>
                 </div>
@@ -299,12 +310,12 @@
                         src={`https://maps.google.com/maps?q=${viewingPn.geo}&layer=c&cbll=${viewingPn.geo}&cbp=12,0,0,0,0&output=svembed`}>
                     </iframe>
                     
-                    <div class="absolute bottom-6 right-6 pointer-events-auto">
-                        <a href={`https://www.google.com/maps/search/?api=1&query=${viewingPn.geo}`} 
-                           target="_blank" 
-                           class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg flex items-center gap-2 transition-transform hover:scale-105">
-                            Ouvrir Maps <Navigation size={16}/>
-                        </a>
+                    <div class="absolute bottom-6 right-6 pointer-events-auto flex gap-3">
+                        <button 
+                           onclick={() => openRoute(viewingPn)}
+                           class="bg-green-600 hover:bg-green-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg flex items-center gap-2 transition-transform hover:scale-105">
+                            <Navigation size={16}/> Itinéraire
+                        </button>
                     </div>
                 </div>
             </div>
