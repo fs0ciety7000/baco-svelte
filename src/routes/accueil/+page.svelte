@@ -51,13 +51,13 @@
     journal: { label: 'Journal', component: WidgetJournal, defaultW: 2, defaultH: 1, icon: BookOpen, desc: 'Main courante.' },
     teamboard: { label: 'Tableau Équipe', component: WidgetTeamBoard, defaultW: 2, defaultH: 1, icon: Users, desc: 'Comms équipe.' },
     otto: { 
-    label: 'Commandes C3', 
-    component: WidgetOtto, 
-    defaultW: 1, 
-    defaultH: 1, 
-    icon: Bus, 
-    desc: 'Réquisitoires et suivis de bus.' 
-  },
+     label: 'Commandes C3', 
+     component: WidgetOtto, 
+     defaultW: 1, 
+     defaultH: 1, 
+     icon: Bus, 
+     desc: 'Réquisitoires et suivis de bus.' 
+   },
   };
 
   const DEFAULT_LAYOUT = [
@@ -76,7 +76,7 @@
   
   // NOUVEAU : État pour gérer l'affichage propre de la grille
   let isGridReady = $state(false); 
-let gridStackEl;
+  let gridStackEl;
   let grid = null;
   let GridStackModule = null; 
   let saveTimeout;
@@ -106,8 +106,8 @@ let gridStackEl;
         }
 
         items = loadedItems.map(item => {
-            if (item.w === undefined) {
-                 const reg = WIDGET_REGISTRY[item.type];
+            if (item.w === undefined) { 
+                 const reg = WIDGET_REGISTRY[item.type]; 
                  return { ...item, x: 0, y: 0, w: reg?.defaultW || 1, h: reg?.defaultH || 1, autoPosition: true };
             }
             return item;
@@ -129,11 +129,12 @@ let gridStackEl;
             });
             resizeObserver.observe(gridStackEl); // On observe l'élément précis
         }
-        
+            
     } catch (e) {
         console.error("Erreur critique au chargement:", e);
     }
   });
+
   onDestroy(() => {
      if (resizeObserver) resizeObserver.disconnect();
      if (grid) {
@@ -142,7 +143,7 @@ let gridStackEl;
      }
   });
 
-function initGridStack() {
+  function initGridStack() {
       if (grid || !GridStackModule) return;
       if (!gridStackEl) return; // On vérifie notre référence
 
@@ -164,11 +165,10 @@ function initGridStack() {
                 scroll: true 
               }
           }, gridStackEl); // <--- ICI : gridStackEl au lieu de el
-
+          
           grid.batchUpdate(); 
           grid.compact();
           grid.batchUpdate(false); 
-
           isGridReady = true;
           
           setTimeout(() => {
@@ -234,7 +234,7 @@ function initGridStack() {
     });
   }
 
-function removeWidget(id) {
+  function removeWidget(id) {
       // On cherche l'élément SEULEMENT à l'intérieur de notre grille
       const el = gridStackEl?.querySelector(`[gs-id="${id}"]`);
       if (el && grid) {
@@ -246,8 +246,7 @@ function removeWidget(id) {
       triggerSave();
   }
 
-
-function widgetAction(node, item) {
+  function widgetAction(node, item) {
       // Si la grille n'est pas encore prête, on ne fait RIEN.
       // On laisse initGridStack() s'occuper d'initialiser tous les widgets présents au démarrage.
       if (!isGridReady) return;
@@ -311,10 +310,10 @@ function widgetAction(node, item) {
                 const client = data.supabase || supabase;
                 let currentTheme = 'default';
                 try { currentTheme = get(currentThemeId); } catch(e){}
-
+                
                 const { error } = await client.from('user_preferences').upsert({ 
-                    user_id: session.user.id, 
-                    dashboard_config: items,
+                     user_id: session.user.id, 
+                     dashboard_config: items,
                     theme: currentTheme,
                     updated_at: new Date()
                 }, { onConflict: 'user_id' });
@@ -348,7 +347,6 @@ function widgetAction(node, item) {
         /* Une hauteur min pour que le ResizeObserver ait qqch à détecter au début */
         min-height: 500px; 
     }
-
     :global(.grid-stack-item) {
         min-width: 0;
         position: absolute; /* Gridstack a besoin de ça */
@@ -358,14 +356,17 @@ function widgetAction(node, item) {
         height: 100% !important; 
         overflow: visible !important; 
     }
+
     :global(.grid-stack-placeholder > .placeholder-content) {
         background-color: rgba(59, 130, 246, 0.2) !important;
         border: 2px dashed rgba(59, 130, 246, 0.5);
         border-radius: 1rem;
     }
+
     :global(.grid-stack-locked .ui-resizable-handle) {
         display: none !important;
     }
+
     :global(.grid-stack-item:hover) {
         z-index: 1000 !important;
     }
@@ -375,30 +376,29 @@ function widgetAction(node, item) {
     class="space-y-6 relative pb-20 transition-all duration-300 ease-in-out"
     class:mr-96={isDrawerOpen}
 >
-  
-  <div class="flex justify-between items-center bg-white/5 border border-white/10 p-4 rounded-xl backdrop-blur-md">
+    <div class="flex justify-between items-center bg-white/5 border border-white/10 p-4 rounded-xl backdrop-blur-md shadow-lg">
     <div class="flex items-center gap-3">
-        <LayoutGrid class="text-blue-400" />
-        <h2 class="text-xl font-bold text-white">Mon Tableau de Bord</h2>
+        <div class="p-2 bg-blue-500/10 rounded-lg">
+            <LayoutGrid class="text-blue-400 w-6 h-6" />
+        </div>
+        <h2 class="text-xl font-bold text-white tracking-tight">Mon Tableau de Bord</h2>
     </div>
-
     <div class="flex items-center gap-4">
         {#if isSaving}
-            <span class="text-xs text-blue-300 flex items-center gap-1" transition:fade>
+            <span class="text-xs text-blue-300 flex items-center gap-1.5 bg-blue-500/10 px-2 py-1 rounded-full" transition:fade>
                 <Loader2 class="w-3 h-3 animate-spin"/> Sauvegarde...
             </span>
         {:else}
-            <span class="text-xs text-green-400/50 flex items-center gap-1" transition:fade>
+            <span class="text-xs text-green-400/80 flex items-center gap-1.5 bg-green-500/10 px-2 py-1 rounded-full" transition:fade>
                 <Cloud class="w-3 h-3"/> Synchro
             </span>
         {/if}
-
         <button 
             onclick={toggleDrawer}
             class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all border cursor-pointer
             {isDrawerOpen 
-                ? 'bg-blue-600 border-blue-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' 
-                : 'bg-white/5 border-white/10 hover:bg-white/10 text-gray-300'}"
+                ? 'bg-blue-600 border-blue-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:bg-blue-500' 
+                : 'bg-white/5 border-white/10 hover:bg-white/10 text-gray-300 hover:text-white'}"
         >
             <Settings2 class="w-4 h-4" />
             <span>{isDrawerOpen ? 'Fermer' : 'Personnaliser'}</span>
@@ -406,11 +406,10 @@ function widgetAction(node, item) {
     </div>
   </div>
 
-  <div class="grid-stack w-full min-h-[500px] transition-opacity duration-500 ease-out {isGridReady ? 'opacity-100' : 'opacity-0'}"
-  bind:this={gridStackEl}>
+  <div class="grid-stack w-full min-h-[500px] transition-opacity duration-500 ease-out {isGridReady ? 'opacity-100' : 'opacity-0'}"  bind:this={gridStackEl}>
       {#each items as item (item.id)}
          <div 
-            class="grid-stack-item"
+            class="grid-stack-item" 
             gs-id={item.id} gs-x={item.x} gs-y={item.y} gs-w={item.w} gs-h={item.h}
             use:widgetAction={item} 
          >
@@ -420,14 +419,16 @@ function widgetAction(node, item) {
                     {#if WIDGET_REGISTRY[item.type]}
                         {@const WidgetComponent = WIDGET_REGISTRY[item.type].component}
                         
-                        <div class="h-full w-full rounded-2xl transition-all duration-300 relative
+                        <div class="h-full w-full rounded-2xl transition-all duration-300 relative bg-black/20 border border-white/5 hover:border-white/20 backdrop-blur-md shadow-xl overflow-hidden flex flex-col
                             {isDrawerOpen ? 'ring-2 ring-blue-500/50 scale-[0.98]' : ''}">
                             
                             {#if isDrawerOpen}
-                                <div class="absolute inset-0 z-20 cursor-move bg-transparent"></div>
+                                <div class="absolute inset-0 z-20 cursor-move bg-white/5 backdrop-blur-[1px] flex items-center justify-center">
+                                    <span class="bg-black/50 text-white px-3 py-1 rounded-full text-xs font-bold border border-white/20">Déplacer</span>
+                                </div>
                             {/if}
 
-                            <div class="h-full w-full {isDrawerOpen ? 'pointer-events-none opacity-80' : ''}">
+                            <div class="h-full w-full flex-grow {isDrawerOpen ? 'pointer-events-none opacity-50 blur-[1px]' : ''}">
                                 <WidgetComponent 
                                     {...item} 
                                     ssrData={widgetsData ? widgetsData[item.type] : null}
@@ -438,13 +439,13 @@ function widgetAction(node, item) {
                     {/if}
 
                     {#if isDrawerOpen}
-                        <div class="absolute top-2 right-2 z-50">
+                        <div class="absolute -top-2 -right-2 z-50">
                             <button 
                                 onclick={() => removeWidget(item.id)}
-                                class="bg-red-500/90 hover:bg-red-600 text-white p-1.5 rounded-lg shadow-lg backdrop-blur-sm transform hover:scale-110 transition-all cursor-pointer border border-white/20"
+                                class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full shadow-lg backdrop-blur-sm transform hover:scale-110 transition-all cursor-pointer border-2 border-[#0f1115]"
                                 title="Supprimer ce widget"
                             >
-                                <X size={16} />
+                                <X size={14} />
                             </button>
                         </div>
                     {/if}
@@ -461,30 +462,29 @@ function widgetAction(node, item) {
     class:translate-x-full={!isDrawerOpen}
 >
     <div class="p-0 border-b border-white/10 bg-white/5">
-        <div class="flex justify-between items-center p-6 pb-2">
+        <div class="flex justify-between items-center p-6 pb-4">
             <div>
-                <h3 class="text-xl font-bold text-white">Personnaliser</h3>
-                <p class="text-sm text-gray-400">Configurez votre espace</p>
+                <h3 class="text-xl font-bold text-white tracking-tight">Personnaliser</h3>
+                <p class="text-sm text-gray-400 mt-1">Configurez votre espace</p>
             </div>
-            <button onclick={toggleDrawer} class="text-gray-400 hover:text-white transition-colors cursor-pointer">
-                <X size={24} />
+            <button onclick={toggleDrawer} class="text-gray-400 hover:text-white transition-colors cursor-pointer bg-white/5 p-2 rounded-lg hover:bg-white/10">
+                <X size={20} />
             </button>
         </div>
-
-        <div class="flex px-6 gap-6 mt-2">
+        <div class="flex px-6 gap-4 pb-4">
             <button 
                 onclick={() => drawerTab = 'widgets'}
-                class="pb-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 cursor-pointer
-                {drawerTab === 'widgets' ? 'border-blue-500 text-white' : 'border-transparent text-gray-500 hover:text-gray-300'}"
+                class="flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer
+                {drawerTab === 'widgets' ? 'bg-blue-600 text-white shadow-lg' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'}"
             >
-                <LayoutGrid size={16} /> Widgets
+                <LayoutGrid size={14} /> Widgets
             </button>
             <button 
                 onclick={() => drawerTab = 'themes'}
-                class="pb-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 cursor-pointer
-                {drawerTab === 'themes' ? 'border-blue-500 text-white' : 'border-transparent text-gray-500 hover:text-gray-300'}"
+                class="flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer
+                {drawerTab === 'themes' ? 'bg-blue-600 text-white shadow-lg' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'}"
             >
-                <Palette size={16} /> Ambiance
+                <Palette size={14} /> Ambiance
             </button>
         </div>
     </div>
@@ -492,60 +492,58 @@ function widgetAction(node, item) {
     <div class="flex-grow overflow-y-auto p-6 space-y-4 custom-scrollbar">
         
         {#if drawerTab === 'widgets'}
-            {#each Object.entries(WIDGET_REGISTRY) as [type, def]}
-                {@const Icon = def.icon}
-                <button 
-                    onclick={() => addWidget(type)}
-                    class="w-full text-left group relative bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/50 
-                    p-4 rounded-2xl transition-all duration-200 hover:shadow-lg hover:-translate-y-1 overflow-hidden cursor-pointer"
-                >
-                    <div class="flex items-start gap-4 relative z-10">
-                        <div class="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-blue-400 group-hover:text-blue-300 group-hover:scale-110 transition-transform duration-300">
-                            <Icon size={24} />
-                        </div>
-                        <div>
-                            <h4 class="font-bold text-gray-200 group-hover:text-white text-lg">{def.label}</h4>
-                            <p class="text-xs text-gray-400 leading-relaxed mt-1">{def.desc}</p>
-                            <div class="mt-2 text-[10px] uppercase tracking-wider font-bold text-gray-500 bg-black/20 inline-block px-2 py-0.5 rounded">
-                                Taille: {def.defaultW}x{def.defaultH}
+            <div class="space-y-3">
+                {#each Object.entries(WIDGET_REGISTRY) as [type, def]}
+                    {@const Icon = def.icon}
+                    <button 
+                        onclick={() => addWidget(type)}
+                        class="w-full text-left group relative bg-white/5 hover:bg-white/10 border border-white/5 hover:border-blue-500/50 
+                        p-4 rounded-2xl transition-all duration-200 hover:shadow-lg hover:-translate-y-1 overflow-hidden cursor-pointer"
+                    >
+                        <div class="flex items-start gap-4 relative z-10">
+                            <div class="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-blue-400 group-hover:text-blue-300 group-hover:scale-110 transition-transform duration-300 border border-blue-500/20">
+                                <Icon size={20} />
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-gray-200 group-hover:text-white text-base">{def.label}</h4>
+                                <p class="text-xs text-gray-400 leading-relaxed mt-1 line-clamp-2">{def.desc}</p>
+                                <div class="mt-2 text-[10px] uppercase tracking-wider font-bold text-gray-500 bg-black/20 inline-block px-2 py-0.5 rounded border border-white/5">
+                                    {def.defaultW}x{def.defaultH}
+                                </div>
+                            </div>
+                            <div class="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                                <div class="bg-blue-600 text-white p-1.5 rounded-lg shadow-lg">
+                                    <Plus size={16} />
+                                </div>
                             </div>
                         </div>
-                        <div class="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity -mr-2 group-hover:mr-0 text-blue-400">
-                            <Plus size={24} />
-                        </div>
-                    </div>
-                </button>
-            {/each}
-
+                    </button>
+                {/each}
+            </div>
         {:else}
             <div class="grid grid-cols-1 gap-4">
                 {#each Object.entries(themesConfig) as [key, theme]}
                     <button 
                         onclick={() => selectTheme(key)}
-                        class="relative w-full p-4 rounded-2xl border transition-all duration-300 group overflow-hidden text-left cursor-pointer
+                        class="relative w-full p-1 rounded-2xl border-2 transition-all duration-300 group overflow-hidden text-left cursor-pointer
                         {$currentThemeId === key 
-                            ? 'border-white/40 ring-2 ring-white/10 bg-white/10' 
-                            : 'border-white/10 hover:border-white/30 bg-white/5'}"
+                             ? 'border-blue-500 bg-blue-500/5 scale-[1.02]' 
+                             : 'border-transparent hover:border-white/20 bg-transparent'}"
                     >
-                        <div 
-                            class="absolute inset-0 opacity-20 transition-opacity duration-500"
-                            style="background: {theme.preview || 'transparent'}"
-                        ></div>
-
-                        <div class="relative z-10 flex items-center justify-between">
+                        <div class="bg-black/40 p-4 rounded-xl relative z-10 flex items-center justify-between border border-white/5 group-hover:bg-black/60 transition-colors">
                             <div class="flex items-center gap-4">
                                 <div 
-                                    class="w-12 h-12 rounded-full shadow-lg border border-white/20"
+                                    class="w-10 h-10 rounded-full shadow-lg border-2 border-white/10"
                                     style="background: {theme.preview || 'gray'};"
                                 ></div>
                                 <div>
-                                    <h4 class="font-bold text-white text-lg">{theme.name}</h4>
-                                    <p class="text-xs text-gray-400">Thème {theme.type}</p>
+                                    <h4 class="font-bold text-white text-sm">{theme.name}</h4>
+                                    <p class="text-[10px] text-gray-400 uppercase tracking-wider mt-0.5 opacity-70">Thème {theme.type}</p>
                                 </div>
                             </div>
                             {#if $currentThemeId === key}
-                                <div class="bg-green-500/20 text-green-400 p-2 rounded-full border border-green-500/30">
-                                    <Check size={20} />
+                                <div class="bg-blue-600 text-white p-1.5 rounded-full shadow-lg shadow-blue-500/40 border border-blue-400">
+                                    <Check size={14} />
                                 </div>
                             {/if}
                         </div>
@@ -555,4 +553,3 @@ function widgetAction(node, item) {
         {/if}
     </div>
 </div>
-
