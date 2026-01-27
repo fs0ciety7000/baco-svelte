@@ -2,6 +2,37 @@ import { supabase } from '$lib/supabase';
 
 export const AdminService = {
     /**
+     * Crée un nouvel utilisateur (via API serveur)
+     */
+    async createUser({ email, password, full_name, role = 'reader' }) {
+        const response = await fetch('/api/admin/create-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, full_name, role })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || 'Erreur lors de la création');
+        }
+
+        return data;
+    },
+
+    /**
+     * Met à jour les permissions personnalisées d'un utilisateur
+     */
+    async updateUserPermissions(userId, permissions) {
+        const { error } = await supabase
+            .from('profiles')
+            .update({ permissions, updated_at: new Date().toISOString() })
+            .eq('id', userId);
+
+        if (error) throw error;
+    },
+
+    /**
      * Charge la liste des utilisateurs avec recherche et pagination
      */
     async getUsers({ page = 1, limit = 20, search = "" }) {

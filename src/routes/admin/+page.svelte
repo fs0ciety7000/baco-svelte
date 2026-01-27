@@ -2,11 +2,11 @@
     import { onMount } from 'svelte';
     import { fly, fade } from 'svelte/transition';
     import { goto } from '$app/navigation';
-    import { 
-        Shield, Search, Loader2, ArrowUpDown, 
-        CheckCircle, AlertTriangle 
+    import {
+        Shield, Search, Loader2, ArrowUpDown,
+        CheckCircle, AlertTriangle, UserPlus, X, Eye, EyeOff
     } from 'lucide-svelte';
-  
+
     import { supabase } from '$lib/supabase';
     import { toast } from '$lib/stores/toast.js';
     import { AdminService } from '$lib/services/admin.service.js';
@@ -15,6 +15,17 @@
     let isLoading = $state(true);
     let usersList = $state([]);
     let filteredUsers = $state([]);
+
+    // Modal création utilisateur
+    let showCreateModal = $state(false);
+    let isCreating = $state(false);
+    let showPassword = $state(false);
+    let newUser = $state({
+        email: '',
+        password: '',
+        full_name: '',
+        role: 'reader'
+    });
     
     // Filtres & Tri
     let searchQuery = $state("");
@@ -121,6 +132,44 @@
         // Format court : JJ/MM HH:mm
         return new Date(d).toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit' });
     }
+
+    // --- CRÉATION UTILISATEUR ---
+    function openCreateModal() {
+        newUser = { email: '', password: '', full_name: '', role: 'reader' };
+        showPassword = false;
+        showCreateModal = true;
+    }
+
+    function generatePassword() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+        let pwd = '';
+        for (let i = 0; i < 12; i++) {
+            pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        newUser.password = pwd;
+        showPassword = true;
+    }
+
+    async function handleCreateUser() {
+        if (!newUser.email || !newUser.password) {
+            return toast.error("Email et mot de passe requis");
+        }
+        if (newUser.password.length < 8) {
+            return toast.error("Le mot de passe doit contenir au moins 8 caractères");
+        }
+
+        isCreating = true;
+        try {
+            await AdminService.createUser(newUser);
+            toast.success(`Utilisateur ${newUser.email} créé avec succès`);
+            showCreateModal = false;
+            await loadUsers();
+        } catch (e) {
+            toast.error(e.message || "Erreur lors de la création");
+        } finally {
+            isCreating = false;
+        }
+    }
 </script>
 
 <svelte:head>
@@ -129,14 +178,23 @@
 
 <div class="container mx-auto p-4 md:p-8 space-y-8 min-h-screen">
     
-    <header class="flex items-center gap-4 border-b border-white/5 pb-6" in:fly={{ y: -20 }}>
-        <div class="p-3 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 shadow-[0_0_15px_rgba(220,38,38,0.2)]">
-            <Shield size={32} />
+    <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/5 pb-6" in:fly={{ y: -20 }}>
+        <div class="flex items-center gap-4">
+            <div class="p-3 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 shadow-[0_0_15px_rgba(220,38,38,0.2)]">
+                <Shield size={32} />
+            </div>
+            <div>
+                <h1 class="text-3xl font-bold text-gray-200">Administration</h1>
+                <p class="text-gray-500 text-sm">Annuaire des utilisateurs ({filteredUsers.length})</p>
+            </div>
         </div>
-        <div>
-            <h1 class="text-3xl font-bold text-gray-200">Administration</h1>
-            <p class="text-gray-500 text-sm">Annuaire des utilisateurs ({filteredUsers.length})</p>
-        </div>
+        <button
+            onclick={openCreateModal}
+            class="flex items-center gap-2 px-4 py-2.5 bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 rounded-xl font-bold text-sm transition-all hover:scale-105"
+        >
+            <UserPlus size={18} />
+            Créer un compte
+        </button>
     </header>
 
     <div class="flex flex-col md:flex-row gap-4" in:fly={{ y: 20 }}>
@@ -229,3 +287,113 @@
         </div>
     {/if}
 </div>
+
+<!-- Modal Création Utilisateur -->
+{#if showCreateModal}
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" transition:fade>
+        <div class="bg-[#1a1d24] w-full max-w-md rounded-2xl shadow-2xl border border-white/10" transition:fly={{ y: 20 }}>
+            <div class="flex justify-between items-center px-6 py-4 border-b border-white/10">
+                <h3 class="text-lg font-bold text-gray-200 flex items-center gap-2">
+                    <UserPlus size={20} class="text-green-400" />
+                    Créer un compte
+                </h3>
+                <button onclick={() => showCreateModal = false} class="text-gray-500 hover:text-white p-2 rounded-lg hover:bg-white/5">
+                    <X size={20} />
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5">Email *</label>
+                    <input
+                        type="email"
+                        bind:value={newUser.email}
+                        placeholder="utilisateur@exemple.com"
+                        class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-green-500/50 outline-none"
+                    />
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5">Nom complet</label>
+                    <input
+                        type="text"
+                        bind:value={newUser.full_name}
+                        placeholder="Prénom Nom"
+                        class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-green-500/50 outline-none"
+                    />
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5">Mot de passe * (min 8 caractères)</label>
+                    <div class="relative">
+                        <input
+                            type={showPassword ? 'text' : 'password'}
+                            bind:value={newUser.password}
+                            placeholder="••••••••"
+                            class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 pr-24 text-white focus:ring-2 focus:ring-green-500/50 outline-none font-mono"
+                        />
+                        <div class="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                            <button
+                                type="button"
+                                onclick={() => showPassword = !showPassword}
+                                class="p-1.5 text-gray-500 hover:text-white rounded hover:bg-white/10"
+                                title={showPassword ? 'Masquer' : 'Afficher'}
+                            >
+                                {#if showPassword}<EyeOff size={16} />{:else}<Eye size={16} />{/if}
+                            </button>
+                            <button
+                                type="button"
+                                onclick={generatePassword}
+                                class="px-2 py-1 text-xs bg-white/10 hover:bg-white/20 text-gray-300 rounded font-bold"
+                                title="Générer un mot de passe"
+                            >
+                                Générer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5">Rôle</label>
+                    <select
+                        bind:value={newUser.role}
+                        class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-green-500/50 outline-none"
+                    >
+                        <option value="reader">Lecteur (lecture seule)</option>
+                        <option value="user">Utilisateur (lecture + écriture)</option>
+                        <option value="moderator">Modérateur</option>
+                        <option value="admin">Administrateur</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">
+                        {#if newUser.role === 'reader'}
+                            Accès en lecture seule sur tous les modules.
+                        {:else if newUser.role === 'user'}
+                            Lecture et écriture sur la plupart des modules.
+                        {:else if newUser.role === 'moderator'}
+                            Lecture et écriture, mais pas de suppression.
+                        {:else}
+                            Accès complet à toutes les fonctionnalités.
+                        {/if}
+                    </p>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 border-t border-white/10 flex justify-end gap-3">
+                <button
+                    onclick={() => showCreateModal = false}
+                    class="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl font-bold text-sm"
+                >
+                    Annuler
+                </button>
+                <button
+                    onclick={handleCreateUser}
+                    disabled={isCreating}
+                    class="px-5 py-2 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold text-sm flex items-center gap-2 disabled:opacity-50"
+                >
+                    {#if isCreating}<Loader2 size={16} class="animate-spin" />{/if}
+                    Créer le compte
+                </button>
+            </div>
+        </div>
+    </div>
+{/if}

@@ -14,6 +14,7 @@
     import { openConfirmModal } from '$lib/stores/modal.js';
     import { AdminService } from '$lib/services/admin.service.js';
     import { ProfileService } from '$lib/services/profile.service.js';
+    import { ACTIONS, ROLE_DEFAULTS } from '$lib/permissions';
 
     // --- ÉTAT ---
     let isLoading = $state(true);
@@ -29,6 +30,29 @@
     // Données Actions
     let infractionData = $state({ type: 'yellow', reason: '', duration: 30 });
     let resetPassword = $state("");
+
+    // Permissions
+    let userPermissions = $state({});
+    let isSavingPermissions = $state(false);
+
+    // Groupes de permissions pour l'affichage
+    const permissionGroups = {
+        'Planning': ['planning:read', 'planning:write', 'planning:delete'],
+        'Journal': ['journal:read', 'journal:write', 'journal:delete'],
+        'Documents': ['documents:read', 'documents:write', 'documents:delete'],
+        'Bus': ['bus:read', 'bus:write', 'bus:delete'],
+        'Taxi': ['taxi:read', 'taxi:write', 'taxi:delete'],
+        'Otto': ['otto:read', 'otto:write', 'otto:delete'],
+        'PMR': ['pmr:read', 'pmr:write', 'pmr:delete'],
+        'Répertoire': ['repertoire:read', 'repertoire:write', 'repertoire:delete'],
+        'PTCAR': ['ptcar:read', 'ptcar:write', 'ptcar:delete'],
+        'B201': ['b201:read', 'b201:write', 'b201:delete'],
+        'EBP': ['ebp:read', 'ebp:write', 'ebp:delete'],
+        'Opérationnel': ['ops:read', 'ops:write', 'ops:delete'],
+        'Carte PN': ['carte_pn:read', 'carte_pn:write', 'carte_pn:delete'],
+        'DARTS': ['darts:read', 'darts:write', 'darts:delete'],
+        'Générateur Taxi': ['generate_taxi:read', 'generate_taxi:write', 'generate_taxi:delete']
+    };
 
     // ID depuis l'URL
     const userId = $page.params.id;
@@ -54,6 +78,9 @@
             const email = await ProfileService.getAdminUserEmail(userId); // RPC
             user = { ...profile, email: email || 'Email masqué' };
 
+            // Charger les permissions personnalisées
+            userPermissions = profile.permissions || {};
+
             // Infractions
             infractions = await ProfileService.getInfractions(userId);
             calculateTrustScore();
@@ -62,6 +89,51 @@
             goto('/admin');
         } finally {
             isLoading = false;
+        }
+    }
+
+    // Vérifie si une permission est accordée par défaut via le rôle
+    function isDefaultPermission(action) {
+        if (!user) return false;
+        const rolePerms = ROLE_DEFAULTS[user.role] || [];
+        return rolePerms.includes(action) || rolePerms.includes('*');
+    }
+
+    // Obtient l'état effectif d'une permission (surcharge ou défaut)
+    function getPermissionState(action) {
+        // Surcharge explicite
+        if (userPermissions[action] === true) return 'granted';
+        if (userPermissions[action] === false) return 'denied';
+        // Par défaut du rôle
+        return isDefaultPermission(action) ? 'default-granted' : 'default-denied';
+    }
+
+    // Cycle entre les états : default -> granted -> denied -> default
+    function cyclePermission(action) {
+        const current = getPermissionState(action);
+
+        if (current === 'default-granted' || current === 'default-denied') {
+            // Passer à surcharge granted
+            userPermissions = { ...userPermissions, [action]: true };
+        } else if (current === 'granted') {
+            // Passer à surcharge denied
+            userPermissions = { ...userPermissions, [action]: false };
+        } else {
+            // Revenir au défaut
+            const { [action]: _, ...rest } = userPermissions;
+            userPermissions = rest;
+        }
+    }
+
+    async function savePermissions() {
+        isSavingPermissions = true;
+        try {
+            await AdminService.updateUserPermissions(userId, userPermissions);
+            toast.success("Permissions mises à jour");
+        } catch (e) {
+            toast.error("Erreur sauvegarde permissions");
+        } finally {
+            isSavingPermissions = false;
         }
     }
 
@@ -199,7 +271,8 @@
                             <div>
                                 <label class={labelClass}>Rôle</label>
                                 <select bind:value={user.role} class={inputClass}>
-                                    <option value="user" class="bg-gray-900">User</option>
+                                    <option value="reader" class="bg-gray-900">Lecteur (lecture seule)</option>
+                                    <option value="user" class="bg-gray-900">Utilisateur</option>
                                     <option value="moderator" class="bg-gray-900">Modérateur</option>
                                     <option value="admin" class="bg-gray-900">Admin</option>
                                 </select>
@@ -217,7 +290,7 @@
 
                 <div class="bg-black/20 border border-white/5 rounded-3xl p-8">
                     <h3 class="text-lg font-bold text-white mb-6 flex items-center gap-2"><History class="text-gray-400"/> Historique Sanctions</h3>
-                    
+
                     <div class="space-y-3">
                         {#each infractions as inf}
                             <div class="p-4 rounded-xl border border-white/5 bg-black/40 flex justify-between items-start {inf.is_active ? '' : 'opacity-50'}">
@@ -232,7 +305,7 @@
                                     <div>
                                         <p class="font-bold text-gray-200 text-sm">{inf.reason}</p>
                                         <p class="text-xs text-gray-500 mt-1">
-                                            Le {new Date(inf.created_at).toLocaleDateString()} 
+                                            Le {new Date(inf.created_at).toLocaleDateString()}
                                             {#if !inf.is_active} <span class="text-green-500 ml-2">(Pardonné)</span> {/if}
                                         </p>
                                     </div>
@@ -243,6 +316,59 @@
                             </div>
                         {:else}
                             <p class="text-gray-500 italic text-center py-4">Casier vierge.</p>
+                        {/each}
+                    </div>
+                </div>
+
+                <!-- Gestion des Permissions -->
+                <div class="bg-black/20 border border-white/5 rounded-3xl p-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                            <Shield class="text-gray-400" size={20}/> Permissions
+                        </h3>
+                        <button
+                            onclick={savePermissions}
+                            disabled={isSavingPermissions}
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-lg flex items-center gap-2 disabled:opacity-50"
+                        >
+                            {#if isSavingPermissions}<Loader2 size={14} class="animate-spin" />{/if}
+                            Sauvegarder
+                        </button>
+                    </div>
+
+                    <p class="text-xs text-gray-500 mb-4">
+                        Cliquez sur une permission pour basculer entre les états. Les permissions en surbrillance sont héritées du rôle <strong class="text-gray-300">{user.role}</strong>.
+                    </p>
+
+                    <div class="text-xs text-gray-500 mb-4 flex gap-4 flex-wrap">
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-green-500/20 border border-green-500/30"></span> Accordé (surcharge)</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-red-500/20 border border-red-500/30"></span> Refusé (surcharge)</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-white/10 border border-white/20"></span> Par défaut du rôle</span>
+                    </div>
+
+                    <div class="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                        {#each Object.entries(permissionGroups) as [groupName, actions]}
+                            <div class="border border-white/5 rounded-xl p-4 bg-black/20">
+                                <h4 class="text-sm font-bold text-gray-300 mb-3">{groupName}</h4>
+                                <div class="flex flex-wrap gap-2">
+                                    {#each actions as action}
+                                        {@const state = getPermissionState(action)}
+                                        {@const label = action.split(':')[1]}
+                                        <button
+                                            onclick={() => cyclePermission(action)}
+                                            class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all border
+                                                {state === 'granted' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                                                 state === 'denied' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                                                 state === 'default-granted' ? 'bg-white/5 text-gray-300 border-white/10' :
+                                                 'bg-black/40 text-gray-600 border-white/5'}"
+                                            title="{action} - {state}"
+                                        >
+                                            {label}
+                                            {#if state === 'granted'}✓{:else if state === 'denied'}✗{/if}
+                                        </button>
+                                    {/each}
+                                </div>
+                            </div>
                         {/each}
                     </div>
                 </div>
