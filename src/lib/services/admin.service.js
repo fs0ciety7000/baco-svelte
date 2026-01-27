@@ -151,5 +151,57 @@ export const AdminService = {
             }, { onConflict: 'key' });
 
         if (error) throw error;
+    },
+
+    /**
+     * Récupère l'état du mode gate (façade)
+     */
+    async getGateMode() {
+        const { data, error } = await supabase
+            .from('app_settings')
+            .select('value')
+            .eq('key', 'gate_mode')
+            .single();
+
+        if (error) {
+            return false;
+        }
+
+        return data?.value === 'true' || data?.value === true;
+    },
+
+    /**
+     * Active ou désactive le mode gate (façade)
+     */
+    async setGateMode(enabled) {
+        const { error } = await supabase
+            .from('app_settings')
+            .upsert({
+                key: 'gate_mode',
+                value: enabled ? 'true' : 'false',
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'key' });
+
+        if (error) throw error;
+    },
+
+    /**
+     * Récupère tous les settings de l'application
+     */
+    async getAppSettings() {
+        const { data, error } = await supabase
+            .from('app_settings')
+            .select('key, value');
+
+        if (error) {
+            return { maintenance_mode: false, gate_mode: false };
+        }
+
+        const settings = {};
+        data?.forEach(s => {
+            settings[s.key] = s.value === 'true' || s.value === true;
+        });
+
+        return settings;
     }
 };
