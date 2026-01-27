@@ -2,7 +2,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { redirect } from '@sveltejs/kit'
 
-// Utilisez l'import statique de SvelteKit, c'est plus fiable coté serveur
+// Utilisez l'import statique de SvelteKit, c'est plus fiable côté serveur
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public'
 
 // Cache pour les settings (évite trop de requêtes)
@@ -24,7 +24,6 @@ export const handle = async ({ event, resolve }) => {
   const path = event.url.pathname
 
   // 0. EXCLURE les assets statiques et routes internes (AVANT tout le reste)
-  // Ces routes ne doivent JAMAIS être redirigées
   if (
     path.startsWith('/_app') ||
     path.startsWith('/favicon') ||
@@ -73,45 +72,44 @@ export const handle = async ({ event, resolve }) => {
     }
   )
 
-  // 1. CHARGER LES SETTINGS (avec cache)
+  // 1. CHARGER LES SETTINGS (avec cache) - FORCE REFRESH pour debug
   const now = Date.now();
-  if (now - settingsCache.lastCheck > CACHE_TTL) {
-    try {
-      const { data } = await event.locals.supabase
-        .from('app_settings')
-        .select('key, value')
-        .in('key', ['maintenance_mode', 'gate_mode']);
+  // Toujours recharger pour être sûr (enlève le cache temporairement)
+  try {
+    const { data } = await event.locals.supabase
+      .from('app_settings')
+      .select('key, value')
+      .in('key', ['maintenance_mode', 'gate_mode']);
 
-      const settings = {};
-      data?.forEach(s => { settings[s.key] = s.value === 'true' || s.value === true; });
+    const settings = {};
+    data?.forEach(s => { settings[s.key] = s.value === 'true' || s.value === true; });
 
-      settingsCache = {
-        maintenance: settings.maintenance_mode || false,
-        gate: settings.gate_mode || false,
-        lastCheck: now
-      };
-    } catch (e) {
-      // Table n'existe pas ou erreur
-      settingsCache = { maintenance: false, gate: false, lastCheck: now };
-    }
+    settingsCache = {
+      maintenance: settings.maintenance_mode || false,
+      gate: settings.gate_mode || false,
+      lastCheck: now
+    };
+    
+    console.log('🔒 Gate mode:', settingsCache.gate, '| Maintenance:', settingsCache.maintenance);
+  } catch (e) {
+    console.error('❌ Erreur chargement settings:', e);
+    settingsCache = { maintenance: false, gate: false, lastCheck: now };
   }
 
-  // 2. GATE MODE - PRIORITÉ ABSOLUE (avant maintenance, avant authentification)
-  // Le gate bloque l'accès à tout le site sauf /gate elle-même
+  // 2. GATE MODE - PRIORITÉ ABSOLUE
   const gatePassCookie = event.cookies.get('baco_gate_pass');
   const hasValidGatePass = isValidGatePass(gatePassCookie);
+  
+  console.log('🚪 Gate check - Path:', path, '| Has pass:', hasValidGatePass, '| Gate active:', settingsCache.gate);
 
   if (settingsCache.gate && !hasValidGatePass) {
-    // Gate activée et pas de pass valide -> rediriger vers /gate
     if (path !== '/gate') {
+      console.log('🔴 REDIRECT TO GATE from', path);
       throw redirect(303, '/gate');
     }
   }
 
-  // Si gate pass valide et on est sur /gate, laisser accéder au reste du site
-  // (le client gère la redirection automatique)
-
-  // 3. Vérification de la session (Sécurisé)
+  // 3. Vérification de la session
   const {
     data: { user },
   } = await event.locals.supabase.auth.getUser()
@@ -119,8 +117,7 @@ export const handle = async ({ event, resolve }) => {
   event.locals.user = user
   event.locals.session = !!user
 
-  // 4. MAINTENANCE MODE - Bloque TOUT sauf /maintenance et /gate
-  // Vérifié APRÈS le gate pass
+  // 4. MAINTENANCE MODE
   if (settingsCache.maintenance && path !== '/maintenance' && path !== '/gate') {
     let isAdmin = false;
 
@@ -134,20 +131,18 @@ export const handle = async ({ event, resolve }) => {
       isAdmin = profile?.role === 'admin';
     }
 
-    // Rediriger TOUT LE MONDE (sauf admins) vers la page maintenance
     if (!isAdmin) {
+      console.log('🔧 REDIRECT TO MAINTENANCE from', path);
       throw redirect(303, '/maintenance');
     }
   }
 
-  // Si on est sur /maintenance mais que la maintenance est désactivée, rediriger
   if (path === '/maintenance' && !settingsCache.maintenance) {
     throw redirect(303, user ? '/accueil' : '/');
   }
 
-  // 5. Routes publiques (Login, API, Gate, etc.)
+  // 5. Routes publiques
   if (path === '/' || path === '/gate' || path === '/maintenance' || path.startsWith('/auth') || path.startsWith('/rest') || path.startsWith('/api')) {
-    // Si déjà connecté et sur la page de login, on redirige vers l'accueil
     if (user && path === '/') {
         throw redirect(303, '/accueil')
     }
