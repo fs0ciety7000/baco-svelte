@@ -78,10 +78,10 @@ export const ROLE_DEFAULTS = {
     // MODERATOR : Peut lire et écrire, MAIS PAS SUPPRIMER (sécurité)
     moderator: [
         'users:manage',
-        
+
         'planning:read', 'planning:write', // Pas de delete
         'journal:read', 'journal:write',   // Pas de delete
-        'documents:read', 'documents:write', 
+        'documents:read', 'documents:write',
         'repertoire:read', 'repertoire:write',
         'bus:read', 'bus:write',
         'taxi:read', 'taxi:write',
@@ -114,6 +114,25 @@ export const ROLE_DEFAULTS = {
         'carte_pn:read',
         'pmr:read', 'pmr:write',
         'darts:read', 'darts:write' // Loisir autorisé
+    ],
+
+    // READER : Lecture seule sur tous les modules (rôle par défaut pour les nouveaux utilisateurs)
+    reader: [
+        'planning:read',
+        'journal:read',
+        'documents:read',
+        'repertoire:read',
+        'bus:read',
+        'taxi:read',
+        'otto:read',
+        'ptcar:read',
+        'b201:read',
+        'ebp:read',
+        'ops:read',
+        'carte_pn:read',
+        'pmr:read',
+        'darts:read',
+        'generate_taxi:read'
     ]
 };
 
