@@ -125,10 +125,10 @@ export const BusService = {
 
         const [contacts, chauffeurs] = await Promise.all([
             supabase.from('contacts_bus')
-                .select('id, nom, tel, societes_bus(nom)')
+                .select('id, nom, tel, societe_id, societes_bus(id, nom)')
                 .in('societe_id', societeIds),
             supabase.from('chauffeurs_bus')
-                .select('id, nom, tel, societes_bus(nom)')
+                .select('id, nom, tel, societe_id, societes_bus(id, nom)')
                 .in('societe_id', societeIds)
         ]);
 
@@ -136,6 +136,29 @@ export const BusService = {
             contacts: contacts.data || [],
             chauffeurs: chauffeurs.data || []
         };
+    },
+
+    /**
+     * Récupère les lignes pour une liste de sociétés
+     */
+    async getLignesBySocietes(societeIds) {
+        if (!societeIds || societeIds.length === 0) return {};
+
+        const { data } = await supabase
+            .from('lignes_bus')
+            .select('societe_id, ligne')
+            .in('societe_id', societeIds);
+
+        // Grouper par societe_id
+        const lignesMap = {};
+        (data || []).forEach(item => {
+            if (!lignesMap[item.societe_id]) {
+                lignesMap[item.societe_id] = [];
+            }
+            lignesMap[item.societe_id].push(item.ligne);
+        });
+
+        return lignesMap;
     },
 
     /**

@@ -126,7 +126,8 @@
         loadingSocietes = true;
         try {
             societesAffichees = await BusService.getSocietesByLines(selectedLines);
-            selectedSocieteIds = [];
+            // Auto-sélectionner toutes les sociétés trouvées
+            selectedSocieteIds = societesAffichees.map(s => s.id);
         } catch(e) { console.error(e); }
         finally { loadingSocietes = false; }
     }
@@ -256,11 +257,14 @@
 
         exportingPDF = true;
         try {
-            // Charger les détails de toutes les sociétés affichées
+            // Charger les détails et lignes de toutes les sociétés affichées
             const allIds = societesAffichees.map(s => s.id);
-            const exportDetails = await BusService.getDetails(allIds);
+            const [exportDetails, lignesMap] = await Promise.all([
+                BusService.getDetails(allIds),
+                BusService.getLignesBySocietes(allIds)
+            ]);
 
-            const doc = new jsPDF();
+            const doc = new jsPDF('landscape');
 
             // Titre principal
             doc.setFontSize(14);
@@ -289,7 +293,7 @@
                     filtre += `Recherche: "${searchTerm}"`;
                 }
                 // Tronquer si trop long
-                if (filtre.length > 100) filtre = filtre.substring(0, 97) + '...';
+                if (filtre.length > 120) filtre = filtre.substring(0, 117) + '...';
                 doc.text(filtre, 14, yPos);
             }
 
@@ -297,11 +301,13 @@
 
             // Préparer les données
             const rows = societesAffichees.map(soc => {
-                const socContacts = exportDetails.contacts.filter(c => c.societes_bus?.id === soc.id || c.societe_id === soc.id);
-                const socChauffeurs = exportDetails.chauffeurs.filter(c => c.societes_bus?.id === soc.id || c.societe_id === soc.id);
+                const socContacts = exportDetails.contacts.filter(c => c.societe_id === soc.id);
+                const socChauffeurs = exportDetails.chauffeurs.filter(c => c.societe_id === soc.id);
+                const socLignes = lignesMap[soc.id] || [];
 
                 return [
                     soc.nom,
+                    socLignes.join(', ') || '-',
                     socContacts.map(c => `${c.nom}: ${formatPhone(c.tel)}`).join('\n') || '-',
                     socChauffeurs.map(c => `${c.nom}: ${formatPhone(c.tel)}`).join('\n') || '-'
                 ];
@@ -309,15 +315,16 @@
 
             autoTable(doc, {
                 startY: yPos + 8,
-                head: [['Société', 'Contacts / Dispatch', 'Chauffeurs']],
+                head: [['Société', 'Lignes', 'Contacts / Dispatch', 'Chauffeurs']],
                 body: rows,
                 theme: 'grid',
                 styles: { fontSize: 8, cellPadding: 2 },
                 headStyles: { fillColor: [59, 130, 246] },
                 columnStyles: {
-                    0: { fontStyle: 'bold', cellWidth: 50 },
-                    1: { cellWidth: 70 },
-                    2: { cellWidth: 70 }
+                    0: { fontStyle: 'bold', cellWidth: 45 },
+                    1: { cellWidth: 50 },
+                    2: { cellWidth: 85 },
+                    3: { cellWidth: 85 }
                 }
             });
 
