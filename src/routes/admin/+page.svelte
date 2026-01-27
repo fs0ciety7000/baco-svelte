@@ -4,17 +4,23 @@
     import { goto } from '$app/navigation';
     import {
         Shield, Search, Loader2, ArrowUpDown,
-        CheckCircle, AlertTriangle, UserPlus, X, Eye, EyeOff
+        CheckCircle, AlertTriangle, UserPlus, X, Eye, EyeOff,
+        Power, Terminal
     } from 'lucide-svelte';
 
     import { supabase } from '$lib/supabase';
     import { toast } from '$lib/stores/toast.js';
     import { AdminService } from '$lib/services/admin.service.js';
+    import { openConfirmModal } from '$lib/stores/modal.js';
 
     // --- ÉTAT ---
     let isLoading = $state(true);
     let usersList = $state([]);
     let filteredUsers = $state([]);
+
+    // Mode maintenance
+    let maintenanceMode = $state(false);
+    let togglingMaintenance = $state(false);
 
     // Modal création utilisateur
     let showCreateModal = $state(false);
@@ -26,7 +32,7 @@
         full_name: '',
         role: 'reader'
     });
-    
+
     // Filtres & Tri
     let searchQuery = $state("");
     let sortCol = $state('last_active');
@@ -35,8 +41,16 @@
     // --- INIT ---
     onMount(async () => {
         await checkAccess();
-        await loadUsers();
+        await Promise.all([loadUsers(), loadMaintenanceStatus()]);
     });
+
+    async function loadMaintenanceStatus() {
+        try {
+            maintenanceMode = await AdminService.getMaintenanceMode();
+        } catch (e) {
+            console.warn("Impossible de charger le statut maintenance");
+        }
+    }
 
     async function checkAccess() {
         const { data: { user } } = await supabase.auth.getUser();
@@ -170,6 +184,26 @@
             isCreating = false;
         }
     }
+
+    // --- MODE MAINTENANCE ---
+    function toggleMaintenance() {
+        const action = maintenanceMode ? 'désactiver' : 'activer';
+        openConfirmModal(
+            `Voulez-vous ${action} le mode maintenance ? ${!maintenanceMode ? 'Tous les utilisateurs (sauf admins) seront déconnectés.' : ''}`,
+            async () => {
+                togglingMaintenance = true;
+                try {
+                    await AdminService.setMaintenanceMode(!maintenanceMode);
+                    maintenanceMode = !maintenanceMode;
+                    toast.success(`Mode maintenance ${maintenanceMode ? 'activé' : 'désactivé'}`);
+                } catch (e) {
+                    toast.error("Erreur lors du changement de mode");
+                } finally {
+                    togglingMaintenance = false;
+                }
+            }
+        );
+    }
 </script>
 
 <svelte:head>
@@ -188,13 +222,34 @@
                 <p class="text-gray-500 text-sm">Annuaire des utilisateurs ({filteredUsers.length})</p>
             </div>
         </div>
-        <button
-            onclick={openCreateModal}
-            class="flex items-center gap-2 px-4 py-2.5 bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 rounded-xl font-bold text-sm transition-all hover:scale-105"
-        >
-            <UserPlus size={18} />
-            Créer un compte
-        </button>
+        <div class="flex items-center gap-3">
+            <!-- Bouton Mode Maintenance -->
+            <button
+                onclick={toggleMaintenance}
+                disabled={togglingMaintenance}
+                class="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all hover:scale-105 disabled:opacity-50
+                    {maintenanceMode
+                        ? 'bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 border border-orange-500/30'
+                        : 'bg-white/5 hover:bg-white/10 text-gray-400 border border-white/10'}"
+                title={maintenanceMode ? 'Désactiver la maintenance' : 'Activer la maintenance'}
+            >
+                {#if togglingMaintenance}
+                    <Loader2 size={18} class="animate-spin" />
+                {:else}
+                    <Terminal size={18} />
+                {/if}
+                <span class="hidden sm:inline">{maintenanceMode ? 'Maintenance ON' : 'Maintenance'}</span>
+            </button>
+
+            <!-- Bouton Créer un compte -->
+            <button
+                onclick={openCreateModal}
+                class="flex items-center gap-2 px-4 py-2.5 bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 rounded-xl font-bold text-sm transition-all hover:scale-105"
+            >
+                <UserPlus size={18} />
+                <span class="hidden sm:inline">Créer un compte</span>
+            </button>
+        </div>
     </header>
 
     <div class="flex flex-col md:flex-row gap-4" in:fly={{ y: 20 }}>

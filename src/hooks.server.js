@@ -5,6 +5,10 @@ import { redirect } from '@sveltejs/kit'
 // Utilisez l'import statique de SvelteKit, c'est plus fiable coté serveur
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public'
 
+// Cache pour le mode maintenance (évite trop de requêtes)
+let maintenanceCache = { value: false, lastCheck: 0 };
+const CACHE_TTL = 30000; // 30 secondes
+
 export const handle = async ({ event, resolve }) => {
 
   event.locals.supabase = createServerClient(
@@ -34,9 +38,53 @@ export const handle = async ({ event, resolve }) => {
   // 3. PROTECTION DES ROUTES
   const path = event.url.pathname
 
-  // A. Exclusion des routes publiques (Login, Assets, API auth)
-  // Ajoutez ici vos routes publiques si besoin (ex: /about, /legal)
-  if (path === '/' || path.startsWith('/auth') || path.startsWith('/rest')) {
+  // A. Vérifier le mode maintenance (avec cache)
+  const now = Date.now();
+  if (now - maintenanceCache.lastCheck > CACHE_TTL) {
+    try {
+      const { data } = await event.locals.supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'maintenance_mode')
+        .single();
+
+      maintenanceCache = {
+        value: data?.value === 'true' || data?.value === true,
+        lastCheck: now
+      };
+    } catch (e) {
+      // Table n'existe pas ou erreur - pas de maintenance
+      maintenanceCache = { value: false, lastCheck: now };
+    }
+  }
+
+  // Si maintenance active, vérifier si l'utilisateur est admin
+  if (maintenanceCache.value && !path.startsWith('/maintenance') && path !== '/') {
+    let isAdmin = false;
+
+    if (user) {
+      const { data: profile } = await event.locals.supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      isAdmin = profile?.role === 'admin';
+    }
+
+    // Rediriger les non-admins vers la page maintenance
+    if (!isAdmin) {
+      throw redirect(303, '/maintenance');
+    }
+  }
+
+  // Si on est sur /maintenance mais que la maintenance est désactivée, rediriger vers accueil
+  if (path === '/maintenance' && !maintenanceCache.value && user) {
+    throw redirect(303, '/accueil');
+  }
+
+  // B. Exclusion des routes publiques (Login, Assets, API auth, Maintenance)
+  if (path === '/' || path.startsWith('/auth') || path.startsWith('/rest') || path === '/maintenance') {
     // Si déjà connecté et sur la page de login, on redirige vers l'accueil
     if (user && path === '/') {
         throw redirect(303, '/accueil')
@@ -44,12 +92,12 @@ export const handle = async ({ event, resolve }) => {
     return resolve(event)
   }
 
-  // B. Si pas d'utilisateur -> Redirection Login
+  // C. Si pas d'utilisateur -> Redirection Login
   if (!user) {
     throw redirect(303, '/')
   }
 
-  // C. Protection Spécifique ADMIN
+  // D. Protection Spécifique ADMIN
   if (path.startsWith('/admin')) {
     // On doit vérifier le rôle en base de données
     const { data: profile } = await event.locals.supabase

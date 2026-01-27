@@ -77,9 +77,25 @@
     
     loading = false;
 
+    // Écouter les changements d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      user = session?.user;
-      if (event === 'SIGNED_OUT') goto('/');
+      // Ignorer les événements de refresh de token (évite les redirections intempestives)
+      if (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+        user = session?.user;
+        return;
+      }
+
+      // Mettre à jour l'utilisateur pour SIGNED_IN
+      if (event === 'SIGNED_IN') {
+        user = session?.user;
+        return;
+      }
+
+      // Rediriger uniquement sur déconnexion explicite
+      if (event === 'SIGNED_OUT') {
+        user = null;
+        goto('/');
+      }
     });
 
     // --- 3. NETTOYAGE ---
