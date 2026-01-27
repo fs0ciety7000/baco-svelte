@@ -3,9 +3,11 @@
     import { fly, fade, slide } from 'svelte/transition';
     import { goto } from '$app/navigation';
     import { page } from '$app/stores';
-    import { 
-        Bus, Plus, X, Pencil, Trash2, Phone, Filter, Search, Loader2, Check 
+    import {
+        Bus, Plus, X, Pencil, Trash2, Phone, Filter, Search, Loader2, Check, FileText
     } from 'lucide-svelte';
+    import jsPDF from 'jspdf';
+    import autoTable from 'jspdf-autotable';
 
     // Libs
     import { supabase } from '$lib/supabase';
@@ -246,6 +248,51 @@
     const inputClass = "w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all placeholder-gray-600";
     const labelClass = "block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1";
 
+    // --- EXPORT PDF ---
+    function handleExportPDF() {
+        if (societesAffichees.length === 0) return toast.warning("Rien à exporter");
+
+        const doc = new jsPDF();
+
+        // Titre avec filtres actifs
+        let titre = `Répertoire Bus - ${new Date().toLocaleDateString()}`;
+        if (selectedDistrict) titre += ` (${selectedDistrict})`;
+        if (selectedLines.length > 0) titre += ` - Lignes: ${selectedLines.join(', ')}`;
+        if (searchTerm) titre += ` - Recherche: "${searchTerm}"`;
+
+        doc.setFontSize(12);
+        doc.text(titre, 14, 15);
+
+        // Préparer les données
+        const rows = societesAffichees.map(soc => {
+            const socContacts = details.contacts.filter(c => c.societes_bus?.id === soc.id || c.societe_id === soc.id);
+            const socChauffeurs = details.chauffeurs.filter(c => c.societes_bus?.id === soc.id || c.societe_id === soc.id);
+
+            return [
+                soc.nom,
+                socContacts.map(c => `${c.nom}: ${formatPhone(c.tel)}`).join('\n') || '-',
+                socChauffeurs.map(c => `${c.nom}: ${formatPhone(c.tel)}`).join('\n') || '-'
+            ];
+        });
+
+        autoTable(doc, {
+            startY: 25,
+            head: [['Société', 'Contacts / Dispatch', 'Chauffeurs']],
+            body: rows,
+            theme: 'grid',
+            styles: { fontSize: 8, cellPadding: 2 },
+            headStyles: { fillColor: [59, 130, 246] },
+            columnStyles: {
+                0: { fontStyle: 'bold', cellWidth: 50 },
+                1: { cellWidth: 70 },
+                2: { cellWidth: 70 }
+            }
+        });
+
+        doc.save('Repertoire_Bus.pdf');
+        toast.success("PDF généré avec succès");
+    }
+
 </script>
 
 <svelte:head>
@@ -271,12 +318,19 @@
             </div>
         </div>
         
-        {#if hasPermission(currentUser, ACTIONS.BUS_WRITE)}
-            <button onclick={() => openModal()} class="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all hover:scale-105">
-                <Plus class="w-5 h-5" /> 
-                <span class="hidden sm:inline">Ajouter Société</span>
-            </button>
-        {/if}
+        <div class="flex items-center gap-3">
+            {#if societesAffichees.length > 0}
+                <button onclick={handleExportPDF} class="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 rounded-xl transition-all font-bold text-sm hover:scale-105">
+                    <FileText class="w-4 h-4" /> PDF
+                </button>
+            {/if}
+            {#if hasPermission(currentUser, ACTIONS.BUS_WRITE)}
+                <button onclick={() => openModal()} class="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all hover:scale-105">
+                    <Plus class="w-5 h-5" />
+                    <span class="hidden sm:inline">Ajouter Société</span>
+                </button>
+            {/if}
+        </div>
       </header>
 
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6" in:fly={{ y: 20, delay: 100 }}>
