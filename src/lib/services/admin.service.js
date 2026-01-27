@@ -112,11 +112,44 @@ export const AdminService = {
             .select('*')
             .order('created_at', { ascending: false })
             .limit(limit);
-        
+
         if (error) {
             console.warn("Table action_logs introuvable ou erreur:", error);
             return [];
         }
         return data;
+    },
+
+    /**
+     * Récupère l'état du mode maintenance
+     */
+    async getMaintenanceMode() {
+        const { data, error } = await supabase
+            .from('app_settings')
+            .select('value')
+            .eq('key', 'maintenance_mode')
+            .single();
+
+        if (error) {
+            // Si la table n'existe pas ou pas de ligne, retourner false
+            return false;
+        }
+
+        return data?.value === 'true' || data?.value === true;
+    },
+
+    /**
+     * Active ou désactive le mode maintenance
+     */
+    async setMaintenanceMode(enabled) {
+        const { error } = await supabase
+            .from('app_settings')
+            .upsert({
+                key: 'maintenance_mode',
+                value: enabled ? 'true' : 'false',
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'key' });
+
+        if (error) throw error;
     }
 };
