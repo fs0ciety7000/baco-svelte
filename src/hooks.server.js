@@ -96,22 +96,20 @@ export const handle = async ({ event, resolve }) => {
     }
   }
 
-  // 2. GATE MODE - Vérifier AVANT tout le reste
-  // La gate bloque l'accès à tout le site sauf /gate elle-même
+  // 2. GATE MODE - PRIORITÉ ABSOLUE (avant maintenance, avant authentification)
+  // Le gate bloque l'accès à tout le site sauf /gate elle-même
   const gatePassCookie = event.cookies.get('baco_gate_pass');
   const hasValidGatePass = isValidGatePass(gatePassCookie);
 
-  if (settingsCache.gate) {
-    // Gate activée - vérifier le pass sauf sur /gate
-    if (path !== '/gate' && !hasValidGatePass) {
+  if (settingsCache.gate && !hasValidGatePass) {
+    // Gate activée et pas de pass valide -> rediriger vers /gate
+    if (path !== '/gate') {
       throw redirect(303, '/gate');
     }
-    // Sur /gate -> laisser passer (le client gère la redirection si pass valide)
   }
 
-  // Note: on ne redirige PAS /gate vers / quand gate est désactivée
-  // pour éviter les boucles. L'utilisateur peut y accéder mais sera
-  // redirigé côté client s'il a un pass valide.
+  // Si gate pass valide et on est sur /gate, laisser accéder au reste du site
+  // (le client gère la redirection automatique)
 
   // 3. Vérification de la session (Sécurisé)
   const {
@@ -122,6 +120,7 @@ export const handle = async ({ event, resolve }) => {
   event.locals.session = !!user
 
   // 4. MAINTENANCE MODE - Bloque TOUT sauf /maintenance et /gate
+  // Vérifié APRÈS le gate pass
   if (settingsCache.maintenance && path !== '/maintenance' && path !== '/gate') {
     let isAdmin = false;
 
@@ -147,7 +146,7 @@ export const handle = async ({ event, resolve }) => {
   }
 
   // 5. Routes publiques (Login, API, Gate, etc.)
-  if (path === '/' || path === '/gate' || path.startsWith('/auth') || path.startsWith('/rest') || path.startsWith('/api')) {
+  if (path === '/' || path === '/gate' || path === '/maintenance' || path.startsWith('/auth') || path.startsWith('/rest') || path.startsWith('/api')) {
     // Si déjà connecté et sur la page de login, on redirige vers l'accueil
     if (user && path === '/') {
         throw redirect(303, '/accueil')
