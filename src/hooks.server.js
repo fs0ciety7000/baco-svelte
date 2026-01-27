@@ -21,6 +21,42 @@ function isValidGatePass(pass) {
 }
 
 export const handle = async ({ event, resolve }) => {
+  const path = event.url.pathname
+
+  // 0. EXCLURE les assets statiques et routes internes (AVANT tout le reste)
+  // Ces routes ne doivent JAMAIS être redirigées
+  if (
+    path.startsWith('/_app') ||
+    path.startsWith('/favicon') ||
+    path.endsWith('.js') ||
+    path.endsWith('.css') ||
+    path.endsWith('.png') ||
+    path.endsWith('.jpg') ||
+    path.endsWith('.svg') ||
+    path.endsWith('.ico') ||
+    path.endsWith('.webp') ||
+    path.endsWith('.woff') ||
+    path.endsWith('.woff2') ||
+    path.endsWith('.ttf') ||
+    path.startsWith('/api') ||
+    path.startsWith('/rest')
+  ) {
+    event.locals.supabase = createServerClient(
+      PUBLIC_SUPABASE_URL,
+      PUBLIC_SUPABASE_ANON_KEY,
+      {
+        cookies: {
+          getAll: () => event.cookies.getAll(),
+          setAll: (cookiesToSet) => {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              event.cookies.set(name, value, { ...options, path: '/' })
+            )
+          },
+        },
+      }
+    )
+    return resolve(event)
+  }
 
   event.locals.supabase = createServerClient(
     PUBLIC_SUPABASE_URL,
@@ -36,8 +72,6 @@ export const handle = async ({ event, resolve }) => {
       },
     }
   )
-
-  const path = event.url.pathname
 
   // 1. CHARGER LES SETTINGS (avec cache)
   const now = Date.now();
@@ -64,19 +98,20 @@ export const handle = async ({ event, resolve }) => {
 
   // 2. GATE MODE - Vérifier AVANT tout le reste
   // La gate bloque l'accès à tout le site sauf /gate elle-même
-  if (settingsCache.gate && path !== '/gate') {
-    // Vérifier si l'utilisateur a un pass valide (cookie côté client via localStorage sync)
-    const gatePassCookie = event.cookies.get('baco_gate_pass');
+  const gatePassCookie = event.cookies.get('baco_gate_pass');
+  const hasValidGatePass = isValidGatePass(gatePassCookie);
 
-    if (!isValidGatePass(gatePassCookie)) {
+  if (settingsCache.gate) {
+    // Gate activée - vérifier le pass sauf sur /gate
+    if (path !== '/gate' && !hasValidGatePass) {
       throw redirect(303, '/gate');
     }
+    // Sur /gate -> laisser passer (le client gère la redirection si pass valide)
   }
 
-  // Si on est sur /gate mais que la gate est désactivée, rediriger vers login
-  if (path === '/gate' && !settingsCache.gate) {
-    throw redirect(303, '/');
-  }
+  // Note: on ne redirige PAS /gate vers / quand gate est désactivée
+  // pour éviter les boucles. L'utilisateur peut y accéder mais sera
+  // redirigé côté client s'il a un pass valide.
 
   // 3. Vérification de la session (Sécurisé)
   const {
@@ -111,8 +146,8 @@ export const handle = async ({ event, resolve }) => {
     throw redirect(303, user ? '/accueil' : '/');
   }
 
-  // 5. Routes publiques (Login, API, etc.)
-  if (path === '/' || path.startsWith('/auth') || path.startsWith('/rest') || path.startsWith('/api')) {
+  // 5. Routes publiques (Login, API, Gate, etc.)
+  if (path === '/' || path === '/gate' || path.startsWith('/auth') || path.startsWith('/rest') || path.startsWith('/api')) {
     // Si déjà connecté et sur la page de login, on redirige vers l'accueil
     if (user && path === '/') {
         throw redirect(303, '/accueil')
