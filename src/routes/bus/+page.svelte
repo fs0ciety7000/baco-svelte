@@ -249,48 +249,86 @@
     const labelClass = "block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1";
 
     // --- EXPORT PDF ---
-    function handleExportPDF() {
+    let exportingPDF = $state(false);
+
+    async function handleExportPDF() {
         if (societesAffichees.length === 0) return toast.warning("Rien à exporter");
 
-        const doc = new jsPDF();
+        exportingPDF = true;
+        try {
+            // Charger les détails de toutes les sociétés affichées
+            const allIds = societesAffichees.map(s => s.id);
+            const exportDetails = await BusService.getDetails(allIds);
 
-        // Titre avec filtres actifs
-        let titre = `Répertoire Bus - ${new Date().toLocaleDateString()}`;
-        if (selectedDistrict) titre += ` (${selectedDistrict})`;
-        if (selectedLines.length > 0) titre += ` - Lignes: ${selectedLines.join(', ')}`;
-        if (searchTerm) titre += ` - Recherche: "${searchTerm}"`;
+            const doc = new jsPDF();
 
-        doc.setFontSize(12);
-        doc.text(titre, 14, 15);
+            // Titre principal
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.text('Répertoire Bus', 14, 15);
 
-        // Préparer les données
-        const rows = societesAffichees.map(soc => {
-            const socContacts = details.contacts.filter(c => c.societes_bus?.id === soc.id || c.societe_id === soc.id);
-            const socChauffeurs = details.chauffeurs.filter(c => c.societes_bus?.id === soc.id || c.societe_id === soc.id);
+            // Sous-titre avec filtres
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(100);
 
-            return [
-                soc.nom,
-                socContacts.map(c => `${c.nom}: ${formatPhone(c.tel)}`).join('\n') || '-',
-                socChauffeurs.map(c => `${c.nom}: ${formatPhone(c.tel)}`).join('\n') || '-'
-            ];
-        });
+            let yPos = 22;
+            const date = new Date().toLocaleDateString();
+            doc.text(`Généré le ${date}`, 14, yPos);
 
-        autoTable(doc, {
-            startY: 25,
-            head: [['Société', 'Contacts / Dispatch', 'Chauffeurs']],
-            body: rows,
-            theme: 'grid',
-            styles: { fontSize: 8, cellPadding: 2 },
-            headStyles: { fillColor: [59, 130, 246] },
-            columnStyles: {
-                0: { fontStyle: 'bold', cellWidth: 50 },
-                1: { cellWidth: 70 },
-                2: { cellWidth: 70 }
+            if (selectedDistrict || selectedLines.length > 0 || searchTerm) {
+                yPos += 5;
+                let filtre = 'Filtres: ';
+                if (selectedDistrict) filtre += `District ${selectedDistrict}`;
+                if (selectedLines.length > 0) {
+                    if (selectedDistrict) filtre += ' | ';
+                    filtre += `Lignes: ${selectedLines.join(', ')}`;
+                }
+                if (searchTerm) {
+                    if (selectedDistrict || selectedLines.length > 0) filtre += ' | ';
+                    filtre += `Recherche: "${searchTerm}"`;
+                }
+                // Tronquer si trop long
+                if (filtre.length > 100) filtre = filtre.substring(0, 97) + '...';
+                doc.text(filtre, 14, yPos);
             }
-        });
 
-        doc.save('Repertoire_Bus.pdf');
-        toast.success("PDF généré avec succès");
+            doc.setTextColor(0);
+
+            // Préparer les données
+            const rows = societesAffichees.map(soc => {
+                const socContacts = exportDetails.contacts.filter(c => c.societes_bus?.id === soc.id || c.societe_id === soc.id);
+                const socChauffeurs = exportDetails.chauffeurs.filter(c => c.societes_bus?.id === soc.id || c.societe_id === soc.id);
+
+                return [
+                    soc.nom,
+                    socContacts.map(c => `${c.nom}: ${formatPhone(c.tel)}`).join('\n') || '-',
+                    socChauffeurs.map(c => `${c.nom}: ${formatPhone(c.tel)}`).join('\n') || '-'
+                ];
+            });
+
+            autoTable(doc, {
+                startY: yPos + 8,
+                head: [['Société', 'Contacts / Dispatch', 'Chauffeurs']],
+                body: rows,
+                theme: 'grid',
+                styles: { fontSize: 8, cellPadding: 2 },
+                headStyles: { fillColor: [59, 130, 246] },
+                columnStyles: {
+                    0: { fontStyle: 'bold', cellWidth: 50 },
+                    1: { cellWidth: 70 },
+                    2: { cellWidth: 70 }
+                }
+            });
+
+            doc.save('Repertoire_Bus.pdf');
+            toast.success("PDF généré");
+        } catch (e) {
+            console.error(e);
+            toast.error("Erreur lors de la génération du PDF");
+        } finally {
+            exportingPDF = false;
+        }
     }
 
 </script>
@@ -320,8 +358,13 @@
         
         <div class="flex items-center gap-3">
             {#if societesAffichees.length > 0}
-                <button onclick={handleExportPDF} class="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 rounded-xl transition-all font-bold text-sm hover:scale-105">
-                    <FileText class="w-4 h-4" /> PDF
+                <button onclick={handleExportPDF} disabled={exportingPDF} class="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 rounded-xl transition-all font-bold text-sm hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+                    {#if exportingPDF}
+                        <Loader2 class="w-4 h-4 animate-spin" />
+                    {:else}
+                        <FileText class="w-4 h-4" />
+                    {/if}
+                    PDF
                 </button>
             {/if}
             {#if hasPermission(currentUser, ACTIONS.BUS_WRITE)}
