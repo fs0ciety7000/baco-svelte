@@ -40,7 +40,8 @@ export default defineConfig({
 			},
 			workbox: {
                 // Fichiers à mettre en cache pour le hors-ligne
-				globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
+				globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+				allowEmptyGlob: true
 			},
             devOptions: {
                 enabled: true // Pour tester en dev (optionnel)
