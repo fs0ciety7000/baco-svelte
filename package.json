@@ -1,5 +1,8 @@
 {
 	"name": "baco-svelte",
+	"engines": {
+    "node": ">=22.12.0"
+  },
 	"private": true,
 	"version": "0.0.1",
 	"type": "module",
