@@ -54,7 +54,7 @@ function formatStatsHtml(presenceData) {
     }).join('');
 
     return `
-        <table cellpadding="0" cellspacing="0" border="0" style="margin: 6px 0 14px 0;">
+        <table cellpadding="0" cellspacing="0" border="0" style="margin: 10px 0 20px 0;">
             <tr>${badges}</tr>
         </table>
     `;
@@ -74,7 +74,7 @@ function formatInterventionLines(interventions, stationCode, zone, accentColor) 
     return matches.map((m, idx) => {
         const details = (m.pmr_details || '').trim();
         const assignee = (m.assigned_to || '').trim();
-        const marginBottom = idx < matches.length - 1 ? '10px' : '0';
+        const marginBottom = idx < matches.length - 1 ? '14px' : '0';
         return `
             <div style="margin-bottom: ${marginBottom}; line-height: 1.45;">
                 <span style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 600; color: #111827;">${details || '—'}</span>${assignee
@@ -102,10 +102,10 @@ function generateInterventionsTable(interventions, zone, color) {
         const bgColor = index % 2 === 0 ? '#f9fafb' : '#ffffff';
         return `
             <tr style="background-color: ${bgColor};">
-                <td style="padding: 11px 12px; font-family: Arial, Helvetica, sans-serif; font-weight: 700; color: ${color}; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; vertical-align: top; width: 64px;">
+                <td style="padding: 14px 12px; font-family: Arial, Helvetica, sans-serif; font-weight: 700; color: ${color}; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; vertical-align: top; width: 64px;">
                     ${station}
                 </td>
-                <td style="padding: 11px 14px; border-bottom: 1px solid #e5e7eb; vertical-align: top;">
+                <td style="padding: 14px 16px; border-bottom: 1px solid #e5e7eb; vertical-align: top;">
                     ${formatInterventionLines(interventions, station, zone, color)}
                 </td>
             </tr>
@@ -113,7 +113,7 @@ function generateInterventionsTable(interventions, zone, color) {
     }).join('');
 
     return `
-        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; margin-bottom: 18px; border: 1px solid #e5e7eb;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; margin-bottom: 24px; border: 1px solid #e5e7eb;">
             <thead>
                 <tr>
                     <th style="background-color: ${color}; padding: 7px 12px; text-align: left; color: #ffffff; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; width: 64px;">GARE</th>
@@ -145,7 +145,7 @@ export function generateEmailHtml({
     const formattedDate = formatDate(date);
 
     const logoImg = logoBase64
-        ? `<img src="${logoBase64}" alt="Logo SNCB" style="width: 80px; height: auto; display: block;" />`
+        ? `<img src="${logoBase64}" alt="Logo SNCB" style="width: 40px; height: auto; display: block;" />`
         : `<span style="font-family: Arial, Helvetica, sans-serif; font-size: 16px; font-weight: bold; color: ${COLORS.sncbHex};">SNCB</span>`;
 
     return `
@@ -186,10 +186,10 @@ export function generateEmailHtml({
 
                     <!-- CONTENU -->
                     <tr>
-                        <td style="padding: 24px 28px;">
+                        <td style="padding: 32px 28px;">
 
                             <!-- ══ PRESTATION MATIN ══ -->
-                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 20px;">
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 24px;">
                                 <tr>
                                     <td style="background-color: ${COLORS.morningBg}; padding: 8px 14px; text-align: center;">
                                         <span style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: bold; color: #5b21b6; text-transform: uppercase; letter-spacing: 1px;">PRESTATION MATIN</span>
@@ -203,12 +203,19 @@ export function generateEmailHtml({
                             ${generateInterventionsTable(interventions, 'FMS', COLORS.monsHex)}
 
                             <!-- Tournai Matin -->
-                            <p style="font-family: Arial, Helvetica, sans-serif; font-size: 11px; font-weight: 600; color: #6b7280; margin: 20px 0 6px 0; text-transform: uppercase; letter-spacing: 0.5px; padding-left: 8px; border-left: 2px solid #d1d5db;">Quinyx — Tournai</p>
+                            <p style="font-family: Arial, Helvetica, sans-serif; font-size: 11px; font-weight: 600; color: #6b7280; margin: 32px 0 6px 0; text-transform: uppercase; letter-spacing: 0.5px; padding-left: 8px; border-left: 2px solid #d1d5db;">Quinyx — Tournai</p>
                             ${formatStatsHtml(presenceTournai)}
                             ${generateInterventionsTable(interventions, 'FTY', COLORS.tournaiHex)}
 
+                            <!-- Séparateur matin / après-midi -->
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 48px 0 0 0;">
+                                <tr>
+                                    <td style="border-top: 1px solid #e5e7eb; font-size: 0; line-height: 0; height: 1px;">&nbsp;</td>
+                                </tr>
+                            </table>
+
                             <!-- ══ PRESTATION APRÈS-MIDI ══ -->
-                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 30px 0 20px 0;">
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 24px 0 24px 0;">
                                 <tr>
                                     <td style="background-color: ${COLORS.afternoonBg}; padding: 8px 14px; text-align: center;">
                                         <span style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: bold; color: #4e350f; text-transform: uppercase; letter-spacing: 1px;">PRESTATION APRÈS-MIDI</span>
@@ -222,12 +229,12 @@ export function generateEmailHtml({
                             ${generateInterventionsTable(interventionsAM, 'FMS', COLORS.monsHex)}
 
                             <!-- Tournai Après-midi -->
-                            <p style="font-family: Arial, Helvetica, sans-serif; font-size: 11px; font-weight: 600; color: #6b7280; margin: 20px 0 6px 0; text-transform: uppercase; letter-spacing: 0.5px; padding-left: 8px; border-left: 2px solid #d1d5db;">Quinyx — Tournai</p>
+                            <p style="font-family: Arial, Helvetica, sans-serif; font-size: 11px; font-weight: 600; color: #6b7280; margin: 32px 0 6px 0; text-transform: uppercase; letter-spacing: 0.5px; padding-left: 8px; border-left: 2px solid #d1d5db;">Quinyx — Tournai</p>
                             ${formatStatsHtml(presenceTournaiAM)}
                             ${generateInterventionsTable(interventionsAM, 'FTY', COLORS.tournaiHex)}
 
                             <!-- Notes footer -->
-                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top: 30px; background-color: #f0f7ff; border-left: 3px solid ${COLORS.sncbHex};">
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top: 44px; background-color: #f0f7ff; border-left: 3px solid ${COLORS.sncbHex};">
                                 <tr>
                                     <td style="padding: 12px 14px;">
                                         <p style="font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #6b7280; margin: 3px 0;">• Des TAXIS PMR sont prévus sans intervention B-Pt voir Planificateur PMR.</p>
