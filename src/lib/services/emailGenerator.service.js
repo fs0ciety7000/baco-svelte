@@ -275,7 +275,7 @@ export async function copyForOutlook(data) {
     
     // Tentative de chargement du logo pour intégration directe
     try {
-        logoBase64 = await getBase64Image('/Logo_100Y_FR_horiz_white.png');
+        logoBase64 = await getBase64Image('/Logo_100Y_FR_horiz_blue.png');
     } catch (e) {
         console.warn("Impossible de charger le logo pour l'email", e);
     }
