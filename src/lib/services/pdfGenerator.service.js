@@ -24,7 +24,8 @@ export async function generatePDF({
     presenceMonsAM,
     presenceTournaiAM,
     interventions,
-    interventionsAM
+    interventionsAM,
+    notes = ''
 }) {
     const doc = new jsPDF();
     const formattedDate = formatDate(date);
@@ -227,6 +228,25 @@ export async function generatePDF({
     drawStats(presenceTournaiAM);
     const stationsFTYAfternoon = getStationsWithInterventions(interventionsAM, 'FTY', 'afternoon');
     drawTable(stationsFTYAfternoon, 'FTY', 'afternoon', COLORS.tournai);
+
+    // ========== NOTES & REMARQUES ==========
+    if (notes && notes.trim()) {
+        checkPageBreak(40);
+        doc.setFillColor(240, 247, 255);
+        doc.roundedRect(10, currentY, 190, 8, 2, 2, 'F');
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(...COLORS.sncb);
+        doc.text("NOTES & REMARQUES", 15, currentY + 5.5);
+        currentY += 14;
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(50, 50, 50);
+        const lines = doc.splitTextToSize(notes.trim(), 180);
+        doc.text(lines, 15, currentY);
+        currentY += lines.length * 5 + 10;
+    }
 
     // ========== FOOTER SUR TOUTES LES PAGES ==========
     const pageCount = doc.internal.getNumberOfPages();

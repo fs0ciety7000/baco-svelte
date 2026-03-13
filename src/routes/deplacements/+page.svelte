@@ -28,6 +28,7 @@
     let interventions = $state([]);
     let interventionsAM = $state([]);
     let stationList = $state([]);
+    let notes = $state('');
 
     // --- INIT ---
     onMount(async () => {
@@ -81,14 +82,14 @@
 
     async function handleCopyEmail() {
         try {
-            await copyForOutlook({ date, presenceMons, presenceTournai, presenceMonsAM, presenceTournaiAM, interventions, interventionsAM });
+            await copyForOutlook({ date, presenceMons, presenceTournai, presenceMonsAM, presenceTournaiAM, interventions, interventionsAM, notes });
             toast.success("Copié !");
         } catch (e) { toast.error(e.message); }
     }
 
     async function handleGeneratePDF() {
         try {
-            await generatePDF({ date, presenceMons, presenceTournai, presenceMonsAM, presenceTournaiAM, interventions, interventionsAM });
+            await generatePDF({ date, presenceMons, presenceTournai, presenceMonsAM, presenceTournaiAM, interventions, interventionsAM, notes });
             toast.success("PDF généré !");
         } catch (e) { toast.error(e.message); }
     }
@@ -132,7 +133,7 @@
                 <InterventionsTable title="Interventions Après-Midi" bind:interventions={interventionsAM} {stationList} onAdd={addRowAM} onRemove={removeRowAM} onStationChange={handleStationChangeAM} period="afternoon" />
             </div>
 
-            <NotesFooter />
+            <NotesFooter bind:notes />
         </div>
     {/if}
 </div>

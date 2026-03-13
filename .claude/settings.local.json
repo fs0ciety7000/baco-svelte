@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"NotesFooter\\\\|notes\\\\|remarques\" /var/home/phantomhex/Documents/code/baco-svelte/src/routes/deplacements --include=*.svelte --include=*.js)",
+      "Bash(grep -r \"notes\\\\|remarques\" /var/home/phantomhex/Documents/code/baco-svelte/src/lib/services --include=*.js)",
+      "Bash(find /var/home/phantomhex/Documents/code/baco-svelte -name \"supabase\\\\|migrations\\\\|*.sql\" -type f)",
+      "Bash(find /var/home/phantomhex/Documents/code/baco-svelte -type d -name \"database\\\\|migrations\\\\|supabase\")",
+      "Bash(grep -r \"notes\\\\|remarks\\\\|notes_footer\" /var/home/phantomhex/Documents/code/baco-svelte/src --include=*.js --include=*.svelte)"
+    ]
+  }
+}

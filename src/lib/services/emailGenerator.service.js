@@ -140,7 +140,8 @@ export function generateEmailHtml({
     presenceMonsAM,
     presenceTournaiAM,
     interventions,
-    interventionsAM
+    interventionsAM,
+    notes = ''
 }, logoBase64 = '') {
     const formattedDate = formatDate(date);
 
@@ -232,6 +233,22 @@ export function generateEmailHtml({
                             <p style="font-family: Arial, Helvetica, sans-serif; font-size: 11px; font-weight: 600; color: #6b7280; margin: 32px 0 6px 0; text-transform: uppercase; letter-spacing: 0.5px; padding-left: 8px; border-left: 2px solid #d1d5db;">Quinyx — Tournai</p>
                             ${formatStatsHtml(presenceTournaiAM)}
                             ${generateInterventionsTable(interventionsAM, 'FTY', COLORS.tournaiHex)}
+
+                            ${notes && notes.trim() ? `
+                            <!-- Notes & Remarques utilisateur -->
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top: 32px; border: 1px solid #e5e7eb;">
+                                <tr>
+                                    <td style="background-color: #f0f7ff; padding: 6px 14px; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: bold; color: ${COLORS.sncbHex}; text-transform: uppercase; letter-spacing: 0.5px;">Notes &amp; Remarques</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 14px; background-color: #ffffff;">
+                                        <p style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #374151; margin: 0; white-space: pre-wrap; line-height: 1.6;">${notes.trim().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+                                    </td>
+                                </tr>
+                            </table>
+                            ` : ''}
 
                             <!-- Notes footer -->
                             <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top: 44px; background-color: #f0f7ff; border-left: 3px solid ${COLORS.sncbHex};">
