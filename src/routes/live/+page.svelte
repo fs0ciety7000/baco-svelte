@@ -25,7 +25,8 @@
 		Wind,
 		Toilet,
 		ChevronDown,
-		Zap
+		Zap,
+		Accessibility
 	} from 'lucide-svelte';
 
 	// --- ÉTAT ---
@@ -188,40 +189,68 @@
 		return platforminfo?.normal === '0';
 	}
 
-	function getCompositionUnits() {
+	function getSegmentUnits(segment) {
+		const u = segment?.composition?.units?.unit;
+		if (!u) return [];
+		return Array.isArray(u) ? u : [u];
+	}
+
+	function getCompositionSegments() {
 		try {
-			const segments = compositionData?.composition?.segments?.segment;
-			if (!segments) return [];
-			const segment = Array.isArray(segments) ? segments[0] : segments;
-			const units = segment?.composition?.units?.unit;
-			if (!units) return [];
-			return Array.isArray(units) ? units : [units];
+			const segs = compositionData?.composition?.segments?.segment;
+			if (!segs) return [];
+			const arr = Array.isArray(segs) ? segs : [segs];
+			// Dédupliquer les segments avec des rames identiques (automotrices multi-tronçons)
+			if (arr.length <= 1) return arr;
+			const fingerprint = (seg) =>
+				getSegmentUnits(seg)
+					.map((u) => u.materialNumber)
+					.sort()
+					.join(',');
+			const first = fingerprint(arr[0]);
+			if (arr.every((s) => fingerprint(s) === first)) return [arr[0]];
+			return arr;
 		} catch {
 			return [];
 		}
 	}
 
-	function getUnitSeats(unit) {
-		const seats = unit.seats?.seat;
-		if (!seats) return { c1: 0, c2: 0 };
-		const arr = Array.isArray(seats) ? seats : [seats];
-		let c1 = 0,
-			c2 = 0;
-		arr.forEach((s) => {
-			if (s.class === '1') c1 += parseInt(s.seats || 0);
-			else if (s.class === '2') c2 += parseInt(s.seats || 0);
+	function isLocomotive(unit) {
+		const p = unit.materialType?.parent_type || '';
+		return p.startsWith('HLE') || p.startsWith('HV') || p.startsWith('HH');
+	}
+
+	function isAutomotrice(units) {
+		return units.some((u) => parseInt(u.tractionPosition || 0) > 0);
+	}
+
+	function groupUnitsByTrainset(units) {
+		const groups = new Map();
+		units.forEach((u) => {
+			const key = u.tractionPosition || '0';
+			if (!groups.has(key)) groups.set(key, { number: u.materialNumber, units: [] });
+			groups.get(key).units.push(u);
 		});
-		return { c1, c2 };
+		return [...groups.values()];
+	}
+
+	function getUnitSeats(unit) {
+		return {
+			c1: parseInt(unit.seatsFirstClass || 0),
+			c2: parseInt(unit.seatsSecondClass || 0)
+		};
 	}
 
 	function getTotalSeats(units) {
-		return units.reduce(
-			(acc, u) => {
-				const { c1, c2 } = getUnitSeats(u);
-				return { c1: acc.c1 + c1, c2: acc.c2 + c2 };
-			},
-			{ c1: 0, c2: 0 }
-		);
+		return units
+			.filter((u) => !isLocomotive(u))
+			.reduce(
+				(acc, u) => ({
+					c1: acc.c1 + parseInt(u.seatsFirstClass || 0),
+					c2: acc.c2 + parseInt(u.seatsSecondClass || 0)
+				}),
+				{ c1: 0, c2: 0 }
+			);
 	}
 
 	function getTrainShortname() {
@@ -324,10 +353,11 @@
 			{#if mode === 'gare'}
 				<div class="flex flex-wrap items-end gap-3">
 					<div class="relative min-w-48 flex-1">
-						<label class="mb-1.5 block text-xs font-medium tracking-wider text-gray-500 uppercase"
+						<label for="station-input" class="mb-1.5 block text-xs font-medium tracking-wider text-gray-500 uppercase"
 							>Gare</label
 						>
 						<input
+							id="station-input"
 							type="text"
 							bind:value={stationInput}
 							onfocus={() => (showSuggestions = true)}
@@ -353,10 +383,11 @@
 					</div>
 
 					<div>
-						<label class="mb-1.5 block text-xs font-medium tracking-wider text-gray-500 uppercase"
+						<label for="station-date" class="mb-1.5 block text-xs font-medium tracking-wider text-gray-500 uppercase"
 							>Date</label
 						>
 						<input
+							id="station-date"
 							type="date"
 							bind:value={stationDate}
 							class="rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white transition-all focus:border-[rgba(var(--color-primary),0.5)] focus:outline-none [&::-webkit-calendar-picker-indicator]:invert"
@@ -364,10 +395,11 @@
 					</div>
 
 					<div>
-						<label class="mb-1.5 block text-xs font-medium tracking-wider text-gray-500 uppercase"
+						<label for="station-time" class="mb-1.5 block text-xs font-medium tracking-wider text-gray-500 uppercase"
 							>Heure</label
 						>
 						<input
+							id="station-time"
 							type="time"
 							bind:value={stationTime}
 							class="rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white transition-all focus:border-[rgba(var(--color-primary),0.5)] focus:outline-none [&::-webkit-calendar-picker-indicator]:invert"
@@ -375,8 +407,8 @@
 					</div>
 
 					<div>
-						<label class="mb-1.5 block text-xs font-medium tracking-wider text-gray-500 uppercase"
-							>Type</label
+						<span class="mb-1.5 block text-xs font-medium tracking-wider text-gray-500 uppercase"
+							>Type</span
 						>
 						<div class="flex overflow-hidden rounded-xl border border-white/10">
 							<button
@@ -411,10 +443,11 @@
 			{#if mode === 'train'}
 				<div class="flex flex-wrap items-end gap-3">
 					<div class="min-w-48 flex-1">
-						<label class="mb-1.5 block text-xs font-medium tracking-wider text-gray-500 uppercase"
+						<label for="train-input" class="mb-1.5 block text-xs font-medium tracking-wider text-gray-500 uppercase"
 							>Numéro de train</label
 						>
 						<input
+							id="train-input"
 							type="text"
 							bind:value={trainInput}
 							onkeydown={handleKeydown}
@@ -424,10 +457,11 @@
 					</div>
 
 					<div>
-						<label class="mb-1.5 block text-xs font-medium tracking-wider text-gray-500 uppercase"
+						<label for="train-date" class="mb-1.5 block text-xs font-medium tracking-wider text-gray-500 uppercase"
 							>Date</label
 						>
 						<input
+							id="train-date"
 							type="date"
 							bind:value={trainDate}
 							class="rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white transition-all focus:border-[rgba(var(--color-primary),0.5)] focus:outline-none [&::-webkit-calendar-picker-indicator]:invert"
@@ -582,8 +616,9 @@
 			{@const stops = getStops()}
 			{@const currentIdx = getCurrentStopIndex(stops)}
 			{@const maxDelay = getMaxDelay(stops)}
-			{@const units = getCompositionUnits()}
-			{@const totalSeats = getTotalSeats(units)}
+			{@const segments = getCompositionSegments()}
+			{@const firstUnits = segments.length > 0 ? getSegmentUnits(segments[0]) : []}
+			{@const totalSeats = getTotalSeats(firstUnits)}
 
 			<!-- Bandeau info train -->
 			<div class="rounded-2xl border border-white/5 bg-black/20 p-5">
@@ -621,18 +656,23 @@
 							</div>
 						</div>
 					</div>
-					{#if units.length > 0}
-						<div class="flex items-center gap-4 text-sm text-gray-400">
-							<span class="flex items-center gap-1.5">
-								<Armchair class="h-4 w-4 text-blue-400" />
-								<span class="font-medium text-blue-400">{totalSeats.c1}</span> 1ère
-							</span>
-							<span class="flex items-center gap-1.5">
-								<Armchair class="h-4 w-4 text-gray-300" />
-								<span class="font-medium text-gray-300">{totalSeats.c2}</span> 2ème
-							</span>
+					{#if firstUnits.length > 0}
+						{@const voitures = firstUnits.filter((u) => !isLocomotive(u))}
+						<div class="flex flex-wrap items-center gap-4 text-sm text-gray-400">
+							{#if totalSeats.c1 > 0}
+								<span class="flex items-center gap-1.5">
+									<Armchair class="h-4 w-4 text-blue-400" />
+									<span class="font-medium text-blue-400">{totalSeats.c1}</span> 1ère
+								</span>
+							{/if}
+							{#if totalSeats.c2 > 0}
+								<span class="flex items-center gap-1.5">
+									<Armchair class="h-4 w-4 text-gray-300" />
+									<span class="font-medium text-gray-300">{totalSeats.c2}</span> 2ème
+								</span>
+							{/if}
 							<span class="text-gray-600">·</span>
-							<span>{units.length} voiture{units.length > 1 ? 's' : ''}</span>
+							<span>{voitures.length} voiture{voitures.length > 1 ? 's' : ''}</span>
 						</div>
 					{/if}
 				</div>
@@ -739,61 +779,182 @@
 			</div>
 
 			<!-- Composition -->
-			{#if units.length > 0}
+			{#if segments.length > 0}
 				<div class="overflow-hidden rounded-2xl border border-white/5 bg-black/20">
-					<div class="border-b border-white/5 px-6 py-4">
-						<h3 class="text-xs font-bold tracking-wider text-gray-500 uppercase">
-							Composition · {units.length} voiture{units.length > 1 ? 's' : ''}
-						</h3>
+					<div class="flex items-center justify-between border-b border-white/5 px-6 py-4">
+						<h3 class="text-xs font-bold tracking-wider text-gray-500 uppercase">Composition</h3>
+						{#if segments[0]?.composition?.source}
+							<span class="font-mono text-xs text-gray-600"
+								>Source : {segments[0].composition.source}</span
+							>
+						{/if}
 					</div>
-					<div class="overflow-x-auto p-5">
-						<div class="flex min-w-max gap-2">
-							{#each units as unit, i}
-								{@const seats = getUnitSeats(unit)}
-								<div
-									class="flex min-w-28 flex-col items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3"
+
+					{#each segments as segment, si}
+						{@const segUnits = getSegmentUnits(segment)}
+						{@const auto = isAutomotrice(segUnits)}
+						{@const trainsets = auto ? groupUnitsByTrainset(segUnits) : null}
+
+						{#if segments.length > 1}
+							<div class="flex items-center gap-2 px-5 pt-4 text-xs text-gray-500">
+								<span class="font-medium text-gray-400"
+									>{segment.origin?.standardname || segment.origin?.name}</span
 								>
-									<!-- Type -->
-									<span class="font-mono text-xs font-bold text-[rgb(var(--color-primary))]">
-										{unit.materialType?.type_name || unit.type || '?'}
-									</span>
-									<!-- Places -->
-									<div class="text-center">
-										{#if seats.c1 > 0}
-											<div class="text-xs text-blue-400">
-												<span class="font-bold">{seats.c1}</span> 1ère
+								<ArrowRight class="h-3 w-3" />
+								<span class="font-medium text-gray-400"
+									>{segment.destination?.standardname || segment.destination?.name}</span
+								>
+							</div>
+						{/if}
+
+						<div class="overflow-x-auto p-5 {si < segments.length - 1 ? 'pb-2' : ''}">
+							{#if auto && trainsets}
+								<!-- Automotrices : groupées par rame (tractionPosition) -->
+								<div class="flex min-w-max gap-4">
+									{#each trainsets as trainset, ti}
+										<div class="flex flex-col gap-2">
+											<div class="text-center font-mono text-xs text-gray-500">
+												Rame {trainset.number}
+											</div>
+											<div class="flex gap-1.5">
+												{#each trainset.units as unit}
+													{@const seats = getUnitSeats(unit)}
+													<div
+														class="flex min-w-24 flex-col items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] p-3"
+													>
+														<span
+															class="font-mono text-xs font-bold text-[rgb(var(--color-primary))]"
+														>
+															{unit.materialSubTypeName ||
+																unit.materialType?.parent_type +
+																	(unit.materialType?.sub_type
+																		? '_' + unit.materialType.sub_type
+																		: '')}
+														</span>
+														<div class="text-center">
+															{#if seats.c1 > 0}
+																<div class="text-xs text-blue-400">
+																	<span class="font-bold">{seats.c1}</span> 1ère
+																</div>
+															{/if}
+															{#if seats.c2 > 0}
+																<div class="text-xs text-gray-400">
+																	<span class="font-bold">{seats.c2}</span> 2ème
+																</div>
+															{/if}
+														</div>
+														<div class="flex flex-wrap justify-center gap-1">
+															{#if unit.hasAirco === '1'}<Wind
+																	class="h-3 w-3 text-cyan-400"
+																	title="Climatisation"
+																/>{/if}
+															{#if unit.hasToilets === '1'}<Toilet
+																	class="h-3 w-3 text-gray-400"
+																	title="Toilettes"
+																/>{/if}
+															{#if unit.hasBikeSection === '1'}<Bike
+																	class="h-3 w-3 text-green-400"
+																	title="Section vélos"
+																/>{/if}
+															{#if unit.hasPrmSection === '1'}<Accessibility
+																	class="h-3 w-3 text-purple-400"
+																	title="Section PMR"
+																/>{/if}
+															{#if unit.hasSecondClassOutlets === '1' || unit.hasFirstClassOutlets === '1'}<Zap
+																	class="h-3 w-3 text-yellow-400"
+																	title="Prises"
+																/>{/if}
+														</div>
+													</div>
+												{/each}
+											</div>
+										</div>
+										{#if ti < trainsets.length - 1}
+											<div class="flex items-center self-center">
+												<div class="h-0.5 w-6 bg-white/10"></div>
 											</div>
 										{/if}
-										{#if seats.c2 > 0}
-											<div class="text-xs text-gray-400">
-												<span class="font-bold">{seats.c2}</span> 2ème
-											</div>
-										{/if}
-									</div>
-									<!-- Icônes équipements -->
-									<div class="flex flex-wrap justify-center gap-1.5">
-										{#if unit.hasAirco === '1'}
-											<Wind class="h-3 w-3 text-cyan-400" title="Climatisation" />
-										{/if}
-										{#if unit.hasToilets === '1'}
-											<Toilet class="h-3 w-3 text-gray-400" title="Toilettes" />
-										{/if}
-										{#if unit.hasBikeSection === '1'}
-											<Bike class="h-3 w-3 text-green-400" title="Section vélos" />
-										{/if}
-										{#if unit.hasSecondClassOutlets === '1' || unit.hasFirstClassOutlets === '1'}
-											<Zap class="h-3 w-3 text-yellow-400" title="Prises" />
-										{/if}
-									</div>
+									{/each}
 								</div>
-								{#if i < units.length - 1}
-									<div class="flex items-center self-center text-gray-700">
-										<div class="h-0.5 w-4 bg-white/10"></div>
-									</div>
-								{/if}
-							{/each}
+							{:else}
+								<!-- Rame tractée : voitures en ordre + locomotive -->
+								<div class="flex min-w-max gap-2">
+									{#each segUnits as unit, ui}
+										{@const seats = getUnitSeats(unit)}
+										{@const loco = isLocomotive(unit)}
+										<div
+											class="flex min-w-28 flex-col items-center gap-2 rounded-xl border p-3
+											{loco
+												? 'border-amber-500/20 bg-amber-500/5'
+												: 'border-white/10 bg-white/[0.03]'}"
+										>
+											<!-- Type -->
+											<span
+												class="font-mono text-xs font-bold {loco
+													? 'text-amber-400'
+													: 'text-[rgb(var(--color-primary))]'}"
+											>
+												{unit.materialType?.parent_type}{unit.materialType?.sub_type
+													? ' ' + unit.materialType.sub_type
+													: ''}
+											</span>
+											<!-- Numéro engin -->
+											<span
+												class="font-mono text-xl font-bold {loco
+													? 'text-amber-300'
+													: 'text-white'}"
+											>
+												{unit.materialNumber || '?'}
+											</span>
+											{#if loco}
+												<span class="text-xs text-amber-400/70">Locomotive</span>
+											{:else}
+												<div class="text-center">
+													{#if seats.c1 > 0}
+														<div class="text-xs text-blue-400">
+															<span class="font-bold">{seats.c1}</span> 1ère
+														</div>
+													{/if}
+													{#if seats.c2 > 0}
+														<div class="text-xs text-gray-400">
+															<span class="font-bold">{seats.c2}</span> 2ème
+														</div>
+													{/if}
+												</div>
+												<div class="flex flex-wrap justify-center gap-1">
+													{#if unit.hasAirco === '1'}<Wind
+															class="h-3 w-3 text-cyan-400"
+															title="Climatisation"
+														/>{/if}
+													{#if unit.hasToilets === '1'}<Toilet
+															class="h-3 w-3 text-gray-400"
+															title="Toilettes"
+														/>{/if}
+													{#if unit.hasBikeSection === '1'}<Bike
+															class="h-3 w-3 text-green-400"
+															title="Section vélos"
+														/>{/if}
+													{#if unit.hasPrmSection === '1'}<Accessibility
+															class="h-3 w-3 text-purple-400"
+															title="Section PMR"
+														/>{/if}
+													{#if unit.hasSecondClassOutlets === '1' || unit.hasFirstClassOutlets === '1'}<Zap
+															class="h-3 w-3 text-yellow-400"
+															title="Prises"
+														/>{/if}
+												</div>
+											{/if}
+										</div>
+										{#if ui < segUnits.length - 1}
+											<div class="flex items-center self-center">
+												<div class="h-0.5 w-3 bg-white/10"></div>
+											</div>
+										{/if}
+									{/each}
+								</div>
+							{/if}
 						</div>
-					</div>
+					{/each}
 				</div>
 			{/if}
 		{/if}
