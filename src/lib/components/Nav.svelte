@@ -39,7 +39,8 @@
 		FileClock,
 		Maximize,
 		ClipboardList,
-		BarChart3
+		BarChart3,
+		Radio
 	} from 'lucide-svelte';
 
 	export let user;
@@ -303,6 +304,7 @@
 									<a href="/ptcar" class={dropdownLinkClass}><Tag /> PtCar</a>
 									<a href="/ebp" class={dropdownLinkClass}><Database /> EBP</a>
 									<a href="/carte-pn" class={dropdownLinkClass}><Map /> Carte</a>
+									<a href="/live" class={dropdownLinkClass}><Radio /> Live</a>
 								</div>
 							{/if}
 						</div>
@@ -442,8 +444,8 @@
 										<button on:click|stopPropagation={goToPreviousMonth}
 											><ChevronLeft class="h-4 w-4" /></button
 										>
-										<span class="text-sm font-bold text-white" on:click={goToToday}
-											>{monthNames[displayedMonth]} {displayedYear}</span
+										<button class="text-sm font-bold text-white hover:text-gray-300 transition-colors" on:click|stopPropagation={goToToday}
+											>{monthNames[displayedMonth]} {displayedYear}</button
 										>
 										<button on:click|stopPropagation={goToNextMonth}
 											><ChevronRight class="h-4 w-4" /></button
