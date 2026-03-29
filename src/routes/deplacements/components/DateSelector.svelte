@@ -4,9 +4,12 @@
     let { date = $bindable(), onChange } = $props();
 
     function changeDate(delta) {
-        const d = new Date(date);
-        d.setDate(d.getDate() + delta);
-        date = d.toISOString().split('T')[0];
+        const [y, m, d] = date.split('-').map(Number);
+        const dt = new Date(y, m - 1, d + delta);
+        const year = dt.getFullYear();
+        const month = String(dt.getMonth() + 1).padStart(2, '0');
+        const day = String(dt.getDate()).padStart(2, '0');
+        date = `${year}-${month}-${day}`;
         onChange();
     }
 </script>
