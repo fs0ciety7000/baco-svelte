@@ -213,6 +213,16 @@
         view = 'list';
         goto('/otto', { replaceState: true, noScroll: true });
     }
+
+    async function handleKanbanStatusChange(id, kanbanStatus) {
+        try {
+            await OttoService.updateKanbanStatus(id, kanbanStatus);
+            // Mise à jour locale optimiste (pas de rechargement complet)
+            commandes = commandes.map(c => c.id === id ? { ...c, kanban_status: kanbanStatus } : c);
+        } catch(e) {
+            toast.error("Erreur mise à jour kanban");
+        }
+    }
 </script>
 
 <svelte:head>
@@ -247,14 +257,15 @@
         {#if isLoading}
             <div class="flex justify-center py-20"><Loader2 class="w-10 h-10 animate-spin text-orange-500/50" /></div>
         {:else if view === 'list'}
-            <OttoList 
-                {commandes} 
+            <OttoList
+                {commandes}
                 {currentUser}
                 onEdit={openEdit}
                 onDuplicate={handleDuplicate}
                 onDelete={handleDelete}
                 onNew={openNew}
                 onTutorial={() => showTutorial = true}
+                onKanbanStatusChange={handleKanbanStatusChange}
             />
         {:else}
             <OttoForm 

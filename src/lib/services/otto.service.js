@@ -89,6 +89,18 @@ export const OttoService = {
     },
 
     /**
+     * Met à jour uniquement le statut kanban d'une commande
+     */
+    async updateKanbanStatus(id, kanbanStatus) {
+        const { error } = await supabase
+            .from('otto_commandes')
+            .update({ kanban_status: kanbanStatus })
+            .eq('id', id);
+
+        if (error) throw error;
+    },
+
+    /**
      * Supprime une commande
      */
     async deleteCommande(id) {
