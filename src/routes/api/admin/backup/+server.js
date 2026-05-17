@@ -239,7 +239,10 @@ export async function GET({ request }) {
     try {
         await client.connect();
     } catch (e) {
-        return apiError(500, `Connexion PostgreSQL échouée : ${e.message}`);
+        const hint = e.message.includes('ENOTFOUND') || e.message.includes('ECONNREFUSED')
+            ? ' — Utilise l\'URL du Connection Pooler (Session mode, port 5432) depuis Supabase → Settings → Database → Connection pooling. La connexion directe (db.xxx.supabase.co) est IPv6-only et incompatible avec Vercel.'
+            : '';
+        return apiError(500, `Connexion PostgreSQL échouée : ${e.message}${hint}`);
     }
 
     try {
@@ -263,7 +266,7 @@ export async function GET({ request }) {
             ``,
             `BEGIN;`,
             `SET client_min_messages = WARNING;`,
-            `SET session_replication_role = replica;  -- désactive FK checks`,
+            `SET session_replication_role = replica; -- désactive FK checks (ignorer si erreur)`,
             ``,
             `-- ════════════════════════════════════════════════════════════`,
             `-- SCHÉMA`,
