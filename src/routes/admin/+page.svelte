@@ -457,10 +457,10 @@
                         <Archive size={24} />
                     </div>
                     <div>
-                        <h3 class="font-bold text-gray-200 mb-1">Dump JSON compressé (.json.gz)</h3>
+                        <h3 class="font-bold text-gray-200 mb-1">Dump SQL compressé (.sql.gz)</h3>
                         <p class="text-xs text-gray-500 leading-relaxed">
-                            Exporte toutes les lignes de chaque table en JSON, puis compresse avec gzip (niveau 9).
-                            Le fichier peut être décompressé avec n'importe quel outil standard (7-Zip, gzip, etc.).
+                            Connexion directe à PostgreSQL — génère des <code class="text-cyan-400 font-mono">INSERT INTO</code> pour toutes les tables.
+                            Restauration via <code class="text-cyan-400 font-mono">psql &lt;DATABASE_URL&gt; &lt; fichier.sql</code>.
                         </p>
                     </div>
                 </div>
@@ -471,7 +471,7 @@
                         <Database size={11} class="text-cyan-400" /> Toutes les tables publiques
                     </span>
                     <span class="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-gray-400 flex items-center gap-1.5">
-                        <Archive size={11} class="text-cyan-400" /> Gzip niveau 9
+                        <Archive size={11} class="text-cyan-400" /> SQL + Gzip niveau 9
                     </span>
                     <span class="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-gray-400 flex items-center gap-1.5">
                         <Shield size={11} class="text-red-400" /> Admin uniquement

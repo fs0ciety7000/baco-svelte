@@ -67,6 +67,7 @@
 		"marked": "^17.0.1",
 		"notyf": "^3.10.0",
 		"pdf-lib": "^1.17.1",
+		"pg": "^8.20.0",
 		"snarkdown": "^2.0.0",
 		"svelte-dnd-action": "^0.9.68",
 		"svelte-sonner": "^1.0.7",
