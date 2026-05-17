@@ -219,7 +219,12 @@
         const t0 = Date.now();
 
         try {
-            const res = await fetch('/api/admin/backup');
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) throw new Error('Session expirée, reconnecte-toi.');
+
+            const res = await fetch('/api/admin/backup', {
+                headers: { 'Authorization': `Bearer ${session.access_token}` }
+            });
             if (!res.ok) {
                 const msg = await res.text();
                 throw new Error(msg || `HTTP ${res.status}`);

@@ -45,25 +45,28 @@ async function discoverTables() {
         .sort();
 }
 
-export async function GET({ locals }) {
-    // 1. Auth : admin uniquement
-    // locals.user n'est pas peuplé pour les routes /api (early return dans hooks.server.js)
-    // On récupère la session directement depuis le client Supabase cookie-based
-    const { data: { user } } = await locals.supabase.auth.getUser();
-    if (!user) throw error(401, 'Non authentifié');
+export async function GET({ request }) {
+    // 1. Auth : le client browser stocke la session en localStorage (pas en cookies)
+    // Le frontend doit passer le JWT dans le header Authorization
+    const authHeader = request.headers.get('Authorization');
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) throw error(401, 'Non authentifié');
 
-    const { data: profile } = await locals.supabase
+    const admin = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    // Vérification du token JWT via l'API admin
+    const { data: { user }, error: authErr } = await admin.auth.getUser(token);
+    if (authErr || !user) throw error(401, 'Non authentifié');
+
+    const { data: profile } = await admin
         .from('profiles')
         .select('role')
         .eq('id', user.id)
         .single();
 
     if (profile?.role !== 'admin') throw error(403, 'Admin uniquement');
-
-    // 2. Client admin (service_role pour lire toutes les lignes)
-    const admin = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-        auth: { autoRefreshToken: false, persistSession: false },
-    });
 
     // 3. Découverte des tables via l'OpenAPI PostgREST
     let tables;
