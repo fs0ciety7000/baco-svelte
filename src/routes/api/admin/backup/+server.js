@@ -47,7 +47,9 @@ async function discoverTables() {
 
 export async function GET({ locals }) {
     // 1. Auth : admin uniquement
-    const user = locals.user;
+    // locals.user n'est pas peuplé pour les routes /api (early return dans hooks.server.js)
+    // On récupère la session directement depuis le client Supabase cookie-based
+    const { data: { user } } = await locals.supabase.auth.getUser();
     if (!user) throw error(401, 'Non authentifié');
 
     const { data: profile } = await locals.supabase
