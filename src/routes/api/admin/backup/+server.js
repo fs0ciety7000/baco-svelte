@@ -4,15 +4,46 @@ import { gzipSync } from 'node:zlib';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
 
-// Tables à exclure (tables système / internes Supabase)
+// Tables à exclure du dump
 const EXCLUDED_TABLES = new Set([
     'schema_migrations',
     'spatial_ref_sys',
     'geography_columns',
     'geometry_columns',
-    'raster_columns',
-    'raster_overviews',
 ]);
+
+async function discoverTables() {
+    // PostgREST expose son schéma OpenAPI sur /rest/v1/
+    // C'est le seul moyen fiable de lister les tables sans migration DB
+    const res = await fetch(`${PUBLIC_SUPABASE_URL}/rest/v1/`, {
+        headers: {
+            'apikey': SUPABASE_SERVICE_ROLE_KEY,
+            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+            'Accept': 'application/json',
+        },
+    });
+
+    if (!res.ok) throw new Error(`Impossible de récupérer le schéma PostgREST (${res.status})`);
+
+    const spec = await res.json();
+
+    // PostgREST v10- : spec.definitions  |  v11+ : spec.paths
+    let names = [];
+
+    if (spec.definitions) {
+        names = Object.keys(spec.definitions);
+    } else if (spec.paths) {
+        // Les chemins ressemblent à "/table_name" — on retire le "/"
+        names = Object.keys(spec.paths)
+            .filter(p => p.startsWith('/') && !p.includes('{'))
+            .map(p => p.slice(1))
+            .filter(Boolean);
+    }
+
+    return names
+        .filter(n => !EXCLUDED_TABLES.has(n) && !n.includes('.'))
+        .sort();
+}
 
 export async function GET({ locals }) {
     // 1. Auth : admin uniquement
@@ -27,24 +58,20 @@ export async function GET({ locals }) {
 
     if (profile?.role !== 'admin') throw error(403, 'Admin uniquement');
 
-    // 2. Client admin (service_role)
+    // 2. Client admin (service_role pour lire toutes les lignes)
     const admin = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-        auth: { autoRefreshToken: false, persistSession: false }
+        auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // 3. Lister toutes les tables du schéma public
-    const { data: tableList, error: tableErr } = await admin
-        .from('information_schema.tables')
-        .select('table_name')
-        .eq('table_schema', 'public')
-        .eq('table_type', 'BASE TABLE');
+    // 3. Découverte des tables via l'OpenAPI PostgREST
+    let tables;
+    try {
+        tables = await discoverTables();
+    } catch (e) {
+        throw error(500, 'Découverte des tables impossible : ' + e.message);
+    }
 
-    if (tableErr) throw error(500, 'Impossible de lister les tables : ' + tableErr.message);
-
-    const tables = (tableList || [])
-        .map(r => r.table_name)
-        .filter(name => !EXCLUDED_TABLES.has(name))
-        .sort();
+    if (!tables.length) throw error(500, 'Aucune table trouvée dans le schéma public');
 
     // 4. Dump de chaque table avec pagination
     const dump = {};
@@ -60,28 +87,17 @@ export async function GET({ locals }) {
             const { data, error: fetchErr } = await admin
                 .from(table)
                 .select('*')
-                .range(from, from + PAGE - 1)
-                .order('created_at', { ascending: true, nullsFirst: false })
-                .throwOnError(false);
+                .range(from, from + PAGE - 1);
 
             if (fetchErr) {
-                // Certaines tables n'ont pas created_at — on réessaie sans ordre
-                const { data: data2 } = await admin
-                    .from(table)
-                    .select('*')
-                    .range(from, from + PAGE - 1);
-
-                if (data2) {
-                    rows.push(...data2);
-                    done = data2.length < PAGE;
-                } else {
-                    done = true;
-                }
-            } else {
-                rows.push(...(data || []));
-                done = !data || data.length < PAGE;
+                // Table inaccessible (vue, table système, etc.) — on saute
+                console.warn(`[backup] table "${table}" ignorée : ${fetchErr.message}`);
+                done = true;
+                break;
             }
 
+            rows.push(...(data || []));
+            done = !data || data.length < PAGE;
             from += PAGE;
         }
 
@@ -89,7 +105,7 @@ export async function GET({ locals }) {
         stats[table] = rows.length;
     }
 
-    // 5. Construire le payload JSON final
+    // 5. Payload JSON final
     const totalRows = Object.values(stats).reduce((a, b) => a + b, 0);
     const timestamp = new Date().toISOString();
 
@@ -109,7 +125,7 @@ export async function GET({ locals }) {
     // 6. Compression gzip
     const compressed = gzipSync(Buffer.from(payload, 'utf-8'), { level: 9 });
 
-    // 7. Nom de fichier horodaté
+    // 7. Nom de fichier horodaté : baco_backup_2026-05-17_143022.json.gz
     const dateStr = timestamp.slice(0, 19).replace('T', '_').replace(/:/g, '');
     const filename = `baco_backup_${dateStr}.json.gz`;
 
