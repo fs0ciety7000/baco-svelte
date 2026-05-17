@@ -5,7 +5,7 @@
     import {
         Shield, Search, Loader2, ArrowUpDown,
         CheckCircle, AlertTriangle, UserPlus, X, Eye, EyeOff,
-        Power, Terminal, Lock
+        Power, Terminal, Lock, Database, Download, Archive, RefreshCw
     } from 'lucide-svelte';
 
     import { supabase } from '$lib/supabase';
@@ -209,6 +209,54 @@
         );
     }
 
+    // --- BACKUP ---
+    let backupState = $state('idle'); // 'idle' | 'loading' | 'done' | 'error'
+    let backupMeta = $state(null);   // { tables, rows, size, filename, duration }
+
+    async function handleBackup() {
+        backupState = 'loading';
+        backupMeta = null;
+        const t0 = Date.now();
+
+        try {
+            const res = await fetch('/api/admin/backup');
+            if (!res.ok) {
+                const msg = await res.text();
+                throw new Error(msg || `HTTP ${res.status}`);
+            }
+
+            const tables = res.headers.get('X-Backup-Tables');
+            const rows   = res.headers.get('X-Backup-Rows');
+            const blob   = await res.blob();
+            const duration = ((Date.now() - t0) / 1000).toFixed(1);
+
+            // Déclencher le téléchargement côté navigateur
+            const cd = res.headers.get('Content-Disposition') || '';
+            const filenameMatch = cd.match(/filename="([^"]+)"/);
+            const filename = filenameMatch ? filenameMatch[1] : 'baco_backup.json.gz';
+
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            backupMeta = {
+                tables: parseInt(tables || '0'),
+                rows: parseInt(rows || '0'),
+                size: (blob.size / 1024).toFixed(1),
+                filename,
+                duration,
+            };
+            backupState = 'done';
+            toast.success(`Backup téléchargé — ${backupMeta.rows.toLocaleString('fr-BE')} lignes`);
+        } catch (e) {
+            backupState = 'error';
+            toast.error('Erreur backup : ' + e.message);
+        }
+    }
+
     // --- MODE MAINTENANCE ---
     function toggleMaintenance() {
         const action = maintenanceMode ? 'désactiver' : 'activer';
@@ -383,6 +431,137 @@
             </div>
         </div>
     {/if}
+
+    <!-- ─── Section Backup ─────────────────────────────────────── -->
+    <section class="space-y-4" in:fly={{ y: 20, delay: 100 }}>
+        <div class="flex items-center gap-3 border-b border-white/5 pb-4">
+            <div class="p-2 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                <Database size={18} />
+            </div>
+            <div>
+                <h2 class="text-base font-bold text-gray-200">Sauvegarde de la base de données</h2>
+                <p class="text-xs text-gray-500">Génère un dump compressé de toutes les tables du schéma public.</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Carte action -->
+            <div class="bg-black/20 border border-white/5 rounded-2xl p-6 flex flex-col gap-5">
+                <div class="flex items-start gap-4">
+                    <div class="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 shrink-0">
+                        <Archive size={24} />
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-200 mb-1">Dump JSON compressé (.json.gz)</h3>
+                        <p class="text-xs text-gray-500 leading-relaxed">
+                            Exporte toutes les lignes de chaque table en JSON, puis compresse avec gzip (niveau 9).
+                            Le fichier peut être décompressé avec n'importe quel outil standard (7-Zip, gzip, etc.).
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Info chips -->
+                <div class="flex flex-wrap gap-2 text-[11px]">
+                    <span class="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-gray-400 flex items-center gap-1.5">
+                        <Database size={11} class="text-cyan-400" /> Toutes les tables publiques
+                    </span>
+                    <span class="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-gray-400 flex items-center gap-1.5">
+                        <Archive size={11} class="text-cyan-400" /> Gzip niveau 9
+                    </span>
+                    <span class="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-gray-400 flex items-center gap-1.5">
+                        <Shield size={11} class="text-red-400" /> Admin uniquement
+                    </span>
+                </div>
+
+                <button
+                    onclick={handleBackup}
+                    disabled={backupState === 'loading'}
+                    class="flex items-center justify-center gap-2.5 w-full py-3 px-5 rounded-xl font-bold text-sm transition-all
+                           {backupState === 'loading'
+                               ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 cursor-wait'
+                               : backupState === 'error'
+                                   ? 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20'
+                                   : 'bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 hover:shadow-[0_0_20px_rgba(6,182,212,0.15)]'}"
+                >
+                    {#if backupState === 'loading'}
+                        <Loader2 size={16} class="animate-spin" />
+                        Génération en cours...
+                    {:else if backupState === 'error'}
+                        <RefreshCw size={16} />
+                        Réessayer
+                    {:else}
+                        <Download size={16} />
+                        Générer &amp; Télécharger le backup
+                    {/if}
+                </button>
+            </div>
+
+            <!-- Carte résultat / infos -->
+            <div class="bg-black/20 border border-white/5 rounded-2xl p-6 flex flex-col gap-4">
+                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Dernier backup</h3>
+
+                {#if backupState === 'idle'}
+                    <div class="flex-1 flex flex-col items-center justify-center py-6 text-center gap-3">
+                        <Database size={32} class="text-white/10" />
+                        <p class="text-gray-600 text-sm">Aucun backup généré dans cette session.</p>
+                    </div>
+
+                {:else if backupState === 'loading'}
+                    <div class="flex-1 flex flex-col items-center justify-center py-6 gap-4">
+                        <div class="relative">
+                            <div class="w-12 h-12 rounded-full border-2 border-cyan-500/20 flex items-center justify-center">
+                                <Loader2 size={22} class="animate-spin text-cyan-400" />
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-sm font-bold text-gray-300">Dump en cours...</p>
+                            <p class="text-xs text-gray-500 mt-1">Lecture de toutes les tables, compression gzip</p>
+                        </div>
+                    </div>
+
+                {:else if backupState === 'done' && backupMeta}
+                    <div class="flex-1 space-y-4" in:fly={{ y: 5, duration: 200 }}>
+                        <div class="flex items-center gap-2 text-emerald-400">
+                            <CheckCircle size={16} />
+                            <span class="text-sm font-bold">Téléchargement lancé</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-black/30 rounded-xl p-3 border border-white/5">
+                                <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Tables</p>
+                                <p class="text-xl font-extrabold text-white">{backupMeta.tables}</p>
+                            </div>
+                            <div class="bg-black/30 rounded-xl p-3 border border-white/5">
+                                <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Lignes</p>
+                                <p class="text-xl font-extrabold text-white">{backupMeta.rows.toLocaleString('fr-BE')}</p>
+                            </div>
+                            <div class="bg-black/30 rounded-xl p-3 border border-white/5">
+                                <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Taille</p>
+                                <p class="text-xl font-extrabold text-white">{backupMeta.size} Ko</p>
+                            </div>
+                            <div class="bg-black/30 rounded-xl p-3 border border-white/5">
+                                <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Durée</p>
+                                <p class="text-xl font-extrabold text-white">{backupMeta.duration}s</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-black/30 rounded-xl p-3 border border-white/5">
+                            <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Fichier</p>
+                            <p class="text-xs font-mono text-cyan-400 truncate">{backupMeta.filename}</p>
+                        </div>
+                    </div>
+
+                {:else if backupState === 'error'}
+                    <div class="flex-1 flex flex-col items-center justify-center py-6 text-center gap-3">
+                        <AlertTriangle size={28} class="text-red-500/60" />
+                        <p class="text-red-400 text-sm font-bold">Erreur lors du backup</p>
+                        <p class="text-gray-600 text-xs">Vérifiez la console et réessayez.</p>
+                    </div>
+                {/if}
+            </div>
+        </div>
+    </section>
+
 </div>
 
 <!-- Modal Création Utilisateur -->
