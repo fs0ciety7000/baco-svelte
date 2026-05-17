@@ -6,7 +6,7 @@ import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
 
 export async function POST({ request, locals }) {
     // 1. Vérifier que l'utilisateur est admin
-    const user = locals.user;
+    const { data: { user } } = await locals.supabase.auth.getUser();
     if (!user) {
         throw error(401, 'Non authentifié');
     }
