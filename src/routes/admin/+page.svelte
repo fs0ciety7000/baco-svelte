@@ -226,8 +226,8 @@
                 headers: { 'Authorization': `Bearer ${session.access_token}` }
             });
             if (!res.ok) {
-                const msg = await res.text();
-                throw new Error(msg || `HTTP ${res.status}`);
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body.error || `Erreur HTTP ${res.status}`);
             }
 
             const tables = res.headers.get('X-Backup-Tables');
