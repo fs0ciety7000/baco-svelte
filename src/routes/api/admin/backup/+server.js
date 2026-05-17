@@ -3,7 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { gzipSync } from 'node:zlib';
 import pg from 'pg';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-import { SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL } from '$env/static/private';
+import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 export const config = { runtime: 'nodejs22.x' };
 
@@ -198,24 +199,35 @@ async function buildData(client, tables) {
     return { lines: out, stats };
 }
 
+// Réponse d'erreur lisible (SvelteKit masque les messages 500 en production)
+function apiError(status, message) {
+    return new Response(JSON.stringify({ error: message }), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+    });
+}
+
 // ── Handler principal ──────────────────────────────────────────────────────────
 export async function GET({ request }) {
     // Auth via JWT (localStorage, pas cookies)
     const token = request.headers.get('Authorization')?.slice(7) ?? null;
-    if (!token) throw error(401, 'Non authentifié');
+    if (!token) return apiError(401, 'Non authentifié');
 
     const supabaseAdmin = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
         auth: { autoRefreshToken: false, persistSession: false },
     });
 
     const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
-    if (authErr || !user) throw error(401, 'Non authentifié');
+    if (authErr || !user) return apiError(401, 'Token invalide ou expiré');
 
     const { data: profile } = await supabaseAdmin
         .from('profiles').select('role').eq('id', user.id).single();
-    if (profile?.role !== 'admin') throw error(403, 'Admin uniquement');
+    if (profile?.role !== 'admin') return apiError(403, 'Admin uniquement');
 
-    if (!DATABASE_URL) throw error(500, 'DATABASE_URL non configurée (voir README)');
+    const DATABASE_URL = env.DATABASE_URL;
+    if (!DATABASE_URL) {
+        return apiError(500, 'Variable DATABASE_URL non configurée. Ajoute-la dans Vercel → Settings → Environment Variables (Supabase → Settings → Database → Connection string → Direct).');
+    }
 
     const client = new pg.Client({
         connectionString: DATABASE_URL,
@@ -223,7 +235,12 @@ export async function GET({ request }) {
         connectionTimeoutMillis: 8000,
         statement_timeout: 28000,
     });
-    await client.connect();
+
+    try {
+        await client.connect();
+    } catch (e) {
+        return apiError(500, `Connexion PostgreSQL échouée : ${e.message}`);
+    }
 
     try {
         // Lister les tables
@@ -236,7 +253,6 @@ export async function GET({ request }) {
 
         const now = new Date().toISOString();
 
-        // Assembler le dump final
         const header = [
             `-- ============================================================`,
             `-- BACO — Dump complet (schéma + données)`,
@@ -274,14 +290,7 @@ export async function GET({ request }) {
             ``,
         ];
 
-        const sql = [
-            ...header,
-            ...schemaLines,
-            ...dataHeader,
-            ...dataLines,
-            ...footer,
-        ].join('\n');
-
+        const sql = [...header, ...schemaLines, ...dataHeader, ...dataLines, ...footer].join('\n');
         const compressed = gzipSync(Buffer.from(sql, 'utf-8'), { level: 9 });
         const totalRows = Object.values(stats).reduce((a, b) => a + b, 0);
         const dateStr = now.slice(0, 19).replace('T', '_').replace(/:/g, '');
@@ -295,7 +304,10 @@ export async function GET({ request }) {
                 'X-Backup-Rows': String(totalRows),
             },
         });
+
+    } catch (e) {
+        return apiError(500, `Erreur pendant le dump : ${e.message}`);
     } finally {
-        await client.end();
+        await client.end().catch(() => {});
     }
 }
