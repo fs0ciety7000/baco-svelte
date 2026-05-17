@@ -1,146 +1,150 @@
 import { error } from '@sveltejs/kit';
 import { createClient } from '@supabase/supabase-js';
 import { gzipSync } from 'node:zlib';
+import pg from 'pg';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
+import { SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL } from '$env/static/private';
 
-// Tables à exclure du dump
+// Forcer Node.js runtime (pg n'est pas compatible Edge)
+export const config = { runtime: 'nodejs' };
+
+// Tables internes Supabase / PostgREST à ignorer
 const EXCLUDED_TABLES = new Set([
     'schema_migrations',
     'spatial_ref_sys',
     'geography_columns',
     'geometry_columns',
+    'pg_stat_statements',
 ]);
 
-async function discoverTables() {
-    // PostgREST expose son schéma OpenAPI sur /rest/v1/
-    // C'est le seul moyen fiable de lister les tables sans migration DB
-    const res = await fetch(`${PUBLIC_SUPABASE_URL}/rest/v1/`, {
-        headers: {
-            'apikey': SUPABASE_SERVICE_ROLE_KEY,
-            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-            'Accept': 'application/json',
-        },
-    });
-
-    if (!res.ok) throw new Error(`Impossible de récupérer le schéma PostgREST (${res.status})`);
-
-    const spec = await res.json();
-
-    // PostgREST v10- : spec.definitions  |  v11+ : spec.paths
-    let names = [];
-
-    if (spec.definitions) {
-        names = Object.keys(spec.definitions);
-    } else if (spec.paths) {
-        // Les chemins ressemblent à "/table_name" — on retire le "/"
-        names = Object.keys(spec.paths)
-            .filter(p => p.startsWith('/') && !p.includes('{'))
-            .map(p => p.slice(1))
-            .filter(Boolean);
+/**
+ * Échappe une valeur JS en littéral SQL valide.
+ * Gère : null, boolean, number, string, Date, Buffer, object (JSONB/arrays).
+ */
+function toSql(val) {
+    if (val === null || val === undefined) return 'NULL';
+    if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
+    if (typeof val === 'number') return Number.isFinite(val) ? String(val) : 'NULL';
+    if (val instanceof Date) return `'${val.toISOString().replace(/'/g, "''")}'`;
+    if (Buffer.isBuffer(val)) return `'\\x${val.toString('hex')}'`;
+    if (typeof val === 'object') {
+        // JSONB, tableaux Postgres, etc.
+        return `'${JSON.stringify(val).replace(/'/g, "''")}'`;
     }
-
-    return names
-        .filter(n => !EXCLUDED_TABLES.has(n) && !n.includes('.'))
-        .sort();
+    // String : on double les apostrophes
+    return `'${String(val).replace(/'/g, "''")}'`;
 }
 
 export async function GET({ request }) {
-    // 1. Auth : le client browser stocke la session en localStorage (pas en cookies)
-    // Le frontend doit passer le JWT dans le header Authorization
-    const authHeader = request.headers.get('Authorization');
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    // ── 1. Auth via JWT (le client browser stocke la session en localStorage) ──
+    const token = request.headers.get('Authorization')?.slice(7) ?? null;
     if (!token) throw error(401, 'Non authentifié');
 
-    const admin = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    const supabaseAdmin = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
         auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Vérification du token JWT via l'API admin
-    const { data: { user }, error: authErr } = await admin.auth.getUser(token);
+    const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
     if (authErr || !user) throw error(401, 'Non authentifié');
 
-    const { data: profile } = await admin
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-
+    const { data: profile } = await supabaseAdmin
+        .from('profiles').select('role').eq('id', user.id).single();
     if (profile?.role !== 'admin') throw error(403, 'Admin uniquement');
 
-    // 3. Découverte des tables via l'OpenAPI PostgREST
-    let tables;
+    // ── 2. Connexion Postgres directe ──────────────────────────────────────────
+    if (!DATABASE_URL) throw error(500, 'DATABASE_URL non configurée (voir doc)');
+
+    const client = new pg.Client({
+        connectionString: DATABASE_URL,
+        ssl: { rejectUnauthorized: false }, // nécessaire sur Supabase
+        connectionTimeoutMillis: 8000,
+        statement_timeout: 25000,
+    });
+
+    await client.connect();
+
     try {
-        tables = await discoverTables();
-    } catch (e) {
-        throw error(500, 'Découverte des tables impossible : ' + e.message);
-    }
+        // ── 3. Lister les tables du schéma public ──────────────────────────────
+        const { rows: tableRows } = await client.query(`
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_type = 'BASE TABLE'
+            ORDER BY table_name
+        `);
 
-    if (!tables.length) throw error(500, 'Aucune table trouvée dans le schéma public');
+        const tables = tableRows
+            .map(r => r.table_name)
+            .filter(n => !EXCLUDED_TABLES.has(n));
 
-    // 4. Dump de chaque table avec pagination
-    const dump = {};
-    const stats = {};
+        // ── 4. Générer le SQL ──────────────────────────────────────────────────
+        const now = new Date().toISOString();
+        const lines = [];
 
-    for (const table of tables) {
-        const rows = [];
-        const PAGE = 1000;
-        let from = 0;
-        let done = false;
+        lines.push(`-- ============================================================`);
+        lines.push(`-- BACO — Dump SQL (données uniquement)`);
+        lines.push(`-- Généré le : ${now}`);
+        lines.push(`-- Tables    : ${tables.length}`);
+        lines.push(`-- ⚠  Ce fichier restaure les DONNÉES.`);
+        lines.push(`--    Le schéma doit exister au préalable.`);
+        lines.push(`--    Pour restaurer : psql <DATABASE_URL> < fichier.sql`);
+        lines.push(`-- ============================================================`);
+        lines.push('');
+        lines.push('BEGIN;');
+        lines.push('');
+        // Désactive temporairement les FK checks pour éviter les erreurs d'ordre
+        lines.push('SET session_replication_role = replica;');
+        lines.push('');
 
-        while (!done) {
-            const { data, error: fetchErr } = await admin
-                .from(table)
-                .select('*')
-                .range(from, from + PAGE - 1);
+        const stats = {};
 
-            if (fetchErr) {
-                // Table inaccessible (vue, table système, etc.) — on saute
-                console.warn(`[backup] table "${table}" ignorée : ${fetchErr.message}`);
-                done = true;
-                break;
+        for (const table of tables) {
+            const { rows } = await client.query(
+                `SELECT * FROM "${table}" ORDER BY created_at ASC NULLS LAST`
+            ).catch(() =>
+                // Certaines tables n'ont pas created_at — on réessaie sans ordre
+                client.query(`SELECT * FROM "${table}"`)
+            );
+
+            stats[table] = rows.length;
+            if (!rows.length) continue;
+
+            const cols = Object.keys(rows[0]).map(c => `"${c}"`).join(', ');
+
+            lines.push(`-- ── ${table} (${rows.length} lignes) ──────────────`);
+            lines.push(`DELETE FROM "${table}";`);
+
+            for (const row of rows) {
+                const vals = Object.values(row).map(toSql).join(', ');
+                lines.push(`INSERT INTO "${table}" (${cols}) VALUES (${vals});`);
             }
-
-            rows.push(...(data || []));
-            done = !data || data.length < PAGE;
-            from += PAGE;
+            lines.push('');
         }
 
-        dump[table] = rows;
-        stats[table] = rows.length;
+        lines.push('SET session_replication_role = DEFAULT;');
+        lines.push('');
+        lines.push('COMMIT;');
+
+        const totalRows = Object.values(stats).reduce((a, b) => a + b, 0);
+
+        // ── 5. Compression gzip ────────────────────────────────────────────────
+        const sql = lines.join('\n');
+        const compressed = gzipSync(Buffer.from(sql, 'utf-8'), { level: 9 });
+
+        const dateStr = now.slice(0, 19).replace('T', '_').replace(/:/g, '');
+        const filename = `baco_backup_${dateStr}.sql.gz`;
+
+        return new Response(compressed, {
+            headers: {
+                'Content-Type': 'application/gzip',
+                'Content-Disposition': `attachment; filename="${filename}"`,
+                'Content-Length': String(compressed.byteLength),
+                'X-Backup-Tables': String(tables.length),
+                'X-Backup-Rows': String(totalRows),
+            },
+        });
+
+    } finally {
+        await client.end();
     }
-
-    // 5. Payload JSON final
-    const totalRows = Object.values(stats).reduce((a, b) => a + b, 0);
-    const timestamp = new Date().toISOString();
-
-    const payload = JSON.stringify({
-        meta: {
-            app: 'BACO',
-            version: '1.0',
-            timestamp,
-            supabase_url: PUBLIC_SUPABASE_URL,
-            tables_count: tables.length,
-            total_rows: totalRows,
-            table_stats: stats,
-        },
-        tables: dump,
-    });
-
-    // 6. Compression gzip
-    const compressed = gzipSync(Buffer.from(payload, 'utf-8'), { level: 9 });
-
-    // 7. Nom de fichier horodaté : baco_backup_2026-05-17_143022.json.gz
-    const dateStr = timestamp.slice(0, 19).replace('T', '_').replace(/:/g, '');
-    const filename = `baco_backup_${dateStr}.json.gz`;
-
-    return new Response(compressed, {
-        headers: {
-            'Content-Type': 'application/gzip',
-            'Content-Disposition': `attachment; filename="${filename}"`,
-            'Content-Length': String(compressed.byteLength),
-            'X-Backup-Tables': String(tables.length),
-            'X-Backup-Rows': String(totalRows),
-        },
-    });
 }
