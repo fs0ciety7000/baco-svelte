@@ -6,6 +6,12 @@ const C3_TYPE_LABELS = {
     3: 'Modification Service planifié',
 };
 
+const C3_TYPE_COLORS = {
+    1: [220, 90, 10],   // orange
+    2: [30, 90, 210],   // bleu
+    3: [130, 40, 200],  // violet
+};
+
 function getBase64ImageFromURL(url) {
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -135,27 +141,31 @@ export const OttoReportsService = {
 
             // Titre principal
             let y = 75;
-            doc.setLineWidth(0.5);
-            doc.setDrawColor(0);
-            doc.rect(15, y, 180, isType3 ? 26 : 20);
+            const typeColor = C3_TYPE_COLORS[c3Type] ?? C3_TYPE_COLORS[2];
+            doc.setLineWidth(0.3);
+            doc.setDrawColor(180, 180, 180);
+            doc.rect(15, y, 180, 18);
             doc.setFontSize(14);
             doc.setFont("helvetica", "bold");
+            doc.setTextColor(0);
             doc.text("Demande de service de bus de remplacement", 105, y + 7, { align: 'center' });
-            doc.setFontSize(11);
-            doc.setTextColor(isType3 ? 120 : 200, isType3 ? 0 : 0, isType3 ? 200 : 0);
-            doc.text(isType3 ? "Modification / Réutilisation d'un bus planifié" : "NON planifié / Real Time", 105, y + 13, { align: 'center' });
-            doc.setTextColor(0);
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "normal");
-            doc.text("Partie A – Service opérationnels SNCB", 105, y + (isType3 ? 21 : 18), { align: 'center' });
-
-            // Sous-titre type d'intervention
-            y += isType3 ? 30 : 25;
             doc.setFontSize(9);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(80, 80, 80);
-            doc.text(C3_TYPE_LABELS[c3Type], 105, y - 2, { align: 'center' });
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(100, 100, 100);
+            doc.text("Partie A – Service opérationnels SNCB", 105, y + 14, { align: 'center' });
             doc.setTextColor(0);
+
+            // Bandeau coloré type C3
+            y += 23;
+            doc.setFillColor(...typeColor);
+            doc.setDrawColor(...typeColor);
+            doc.roundedRect(15, y, 180, 10, 1, 1, 'F');
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(255, 255, 255);
+            doc.text(C3_TYPE_LABELS[c3Type].toUpperCase(), 105, y + 6.5, { align: 'center' });
+            doc.setTextColor(0);
+            doc.setDrawColor(0);
 
             // Corps du document
             const infoStartY = y;
