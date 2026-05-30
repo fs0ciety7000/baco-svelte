@@ -97,6 +97,7 @@
     function getInitialForm() {
         return {
             id: null,
+            c3_type: 2,
             status: 'brouillon',
             relation: 'TC_',
             motif: '',
@@ -107,13 +108,13 @@
             arrets: [],
             origine: '',
             destination: '',
-            is_direct: true, 
+            is_direct: true,
             is_mail_sent: false,
             is_aller_retour: false,
             nombre_voyageurs: null,
             nombre_pmr: null,
             capacite_bus: 80,
-            bus_data: [{ plaque: '', heure_prevue: '', heure_confirmee: '', heure_demob: '', chauffeur_id: null }]
+            bus_data: [{ plaque: '', heure_prevue: '', heure_confirmee: '', heure_demob: '', demob_type: 'simple', chauffeur_id: null }]
         };
     }
 
