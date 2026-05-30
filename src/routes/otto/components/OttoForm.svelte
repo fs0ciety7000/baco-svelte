@@ -285,7 +285,6 @@ PACO Sud-Ouest`;
                             {/if}
                         </div>
                         <span class="text-[10px] font-medium ml-8 {isActive ? 'opacity-70' : 'opacity-40'}">{type.sublabel}</span>
-                        <span class="absolute top-2 right-2 text-[9px] font-black opacity-20">{type.shortLabel}</span>
                     </button>
                 {/each}
             </div>

@@ -140,7 +140,7 @@ export const OttoReportsService = {
             doc.rect(15, y, 180, isType3 ? 26 : 20);
             doc.setFontSize(14);
             doc.setFont("helvetica", "bold");
-            doc.text("Demande service bus de remplacement", 105, y + 7, { align: 'center' });
+            doc.text("Demande de service de bus de remplacement", 105, y + 7, { align: 'center' });
             doc.setFontSize(11);
             doc.setTextColor(isType3 ? 120 : 200, isType3 ? 0 : 0, isType3 ? 200 : 0);
             doc.text(isType3 ? "Modification / Réutilisation d'un bus planifié" : "NON planifié / Real Time", 105, y + 13, { align: 'center' });
@@ -149,12 +149,12 @@ export const OttoReportsService = {
             doc.setFont("helvetica", "normal");
             doc.text("Partie A – Service opérationnels SNCB", 105, y + (isType3 ? 21 : 18), { align: 'center' });
 
-            // Badge type C3
+            // Sous-titre type d'intervention
             y += isType3 ? 30 : 25;
-            doc.setFontSize(8.5);
+            doc.setFontSize(9);
             doc.setFont("helvetica", "bold");
-            doc.setTextColor(100, 100, 100);
-            doc.text(`C3-${c3Type} — ${C3_TYPE_LABELS[c3Type]}`, 105, y - 2, { align: 'center' });
+            doc.setTextColor(80, 80, 80);
+            doc.text(C3_TYPE_LABELS[c3Type], 105, y - 2, { align: 'center' });
             doc.setTextColor(0);
 
             // Corps du document
@@ -262,7 +262,7 @@ export const OttoReportsService = {
             doc.text(`Numéro de TVA : BE 0203 430 576`, legX, footerY + 12);
             doc.text(`N° SAP de la commande (PO): 4522 944 778`, legX, footerY + 17);
             doc.setFont("helvetica", "bold");
-            const relationLabel = isType3 ? "Numéro d'ordre" : "Numéro de relation";
+            const relationLabel = isType3 ? "Numéro de commande/BNX" : "Numéro de relation";
             doc.text(`${relationLabel} : ${form.relation}`, legX, footerY + 25);
 
             const safe = (str) => (str || '').replace(/[\\/:*?"<>|]/g, '-');
