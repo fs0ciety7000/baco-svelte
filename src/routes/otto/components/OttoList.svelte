@@ -77,17 +77,19 @@
         return result;
     });
 
-    // --- GROUPEMENT PAR MOTIF ---
-    // Regroupe les commandes ayant le même motif (non-vide) de façon adjacente
+    // --- GROUPEMENT PAR RELATION ---
+    // Regroupe les commandes ayant le même numéro de relation (non-vide) — même relation = même incident
     let groupedCommandes = $derived.by(() => {
         const seen = new Set();
         const groups = [];
         for (const cmd of filteredCommandes) {
             if (seen.has(cmd.id)) continue;
-            const key = (cmd.motif || '').trim().toLowerCase();
-            if (key) {
+            const key = (cmd.relation || '').trim().toLowerCase();
+            // On groupe uniquement si la relation est non-vide et non-générique (pas "tc_" seul)
+            const isGroupable = key && key !== 'tc_' && key.length > 4;
+            if (isGroupable) {
                 const siblings = filteredCommandes.filter(
-                    c => !seen.has(c.id) && (c.motif || '').trim().toLowerCase() === key
+                    c => !seen.has(c.id) && (c.relation || '').trim().toLowerCase() === key
                 );
                 siblings.forEach(c => seen.add(c.id));
                 groups.push(siblings);
