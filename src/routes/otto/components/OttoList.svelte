@@ -117,6 +117,13 @@
         sortBy = "date_desc";
     }
 
+    // --- C3 TYPE STYLES ---
+    const C3_STYLES = {
+        1: { borderClass: 'border-l-[3px] border-l-orange-500/70', badgeClass: 'bg-orange-500/10 text-orange-400 border-orange-500/20', label: 'Évacuation' },
+        2: { borderClass: 'border-l-[3px] border-l-blue-500/70',   badgeClass: 'bg-blue-500/10 text-blue-400 border-blue-500/20',   label: 'Remplacement' },
+        3: { borderClass: 'border-l-[3px] border-l-purple-500/70', badgeClass: 'bg-purple-500/10 text-purple-400 border-purple-500/20', label: 'Modif. Service planifié' },
+    };
+
     // --- EXPORTS ---
     function handleExcel() { OttoReportsService.generateExcel(filteredCommandes); }
     function handlePDFList() { OttoReportsService.generateListPDF(filteredCommandes); }
@@ -336,9 +343,11 @@
                 </div>
             {:else}
                 {#each filteredCommandes as cmd (cmd.id)}
-                    <div class="bg-black/20 border border-white/5 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-4 transition-all group {cmd.status === 'envoye' ? 'opacity-60 grayscale-[30%] hover:opacity-100 hover:grayscale-0' : 'hover:border-orange-500/30'}">
+                    {@const c3Style = C3_STYLES[cmd.c3_type ?? 2] ?? C3_STYLES[2]}
+                    <div class="bg-black/20 border border-white/5 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-4 transition-all group overflow-hidden {c3Style.borderClass} {cmd.status === 'envoye' ? 'opacity-60 grayscale-[30%] hover:opacity-100 hover:grayscale-0' : 'hover:border-orange-500/30'}">
                         <div class="flex-grow min-w-0 w-full">
                             <div class="flex items-center gap-3 mb-3 flex-wrap">
+                                <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border {c3Style.badgeClass}">{c3Style.label}</span>
                                 <span class="text-xl font-extrabold text-white tracking-tight">{cmd.relation}</span>
                                 <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase border {cmd.is_direct ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'}">
                                     {cmd.is_direct ? 'Direct' : 'Omnibus'}
