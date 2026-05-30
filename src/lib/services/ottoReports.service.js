@@ -168,6 +168,7 @@ export const OttoReportsService = {
             doc.setDrawColor(0);
 
             // Corps du document
+            y += 15;
             const infoStartY = y;
             y += 8;
             const labelX = 20;
