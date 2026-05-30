@@ -1,23 +1,65 @@
 <script>
     import { fade, slide, fly } from 'svelte/transition';
-    import { Loader2, MapPin, Plus, MinusCircle, User, CheckCircle, X, Mail, ClipboardCopy, Check, Printer, LockOpen, Save, FileText, Bus, Hash, Phone, ArrowLeftRight } from 'lucide-svelte';
+    import { Loader2, MapPin, Plus, MinusCircle, User, CheckCircle, X, Mail, ClipboardCopy, Check, Printer, LockOpen, Save, FileText, Bus, Hash, Phone, ArrowLeftRight, AlertTriangle, RefreshCw, Shield } from 'lucide-svelte';
     import { GeoService } from '$lib/services/geo.service.js';
     import { OttoReportsService } from '$lib/services/ottoReports.service.js';
     import { toast } from '$lib/stores/toast.js';
     import Map from '$lib/components/ui/map/Map.svelte';
 
     // --- PROPS ---
-    let { 
-        form = $bindable(), 
-        societes = [], 
-        chauffeurs = [], 
+    let {
+        form = $bindable(),
+        societes = [],
+        chauffeurs = [],
         referenceData = { lines: [], stops: [], raw: [] },
-        isLocked, 
+        isLocked,
         currentUser,
-        onSave, 
-        onUnlock, 
-        onBack 
+        onSave,
+        onUnlock,
+        onBack
     } = $props();
+
+    // --- C3 TYPES ---
+    const C3_TYPES = [
+        {
+            id: 1,
+            label: 'Évacuation sur place',
+            sublabel: 'Prise en charge immédiate',
+            icon: Shield,
+            color: 'orange',
+            accentClass: 'border-orange-500/40 bg-orange-500/10 text-orange-300',
+            activeClass: 'border-orange-500 bg-orange-500/20 text-orange-200 shadow-[0_0_20px_rgba(249,115,22,0.2)]',
+            inactiveClass: 'border-white/10 bg-white/3 text-gray-500 hover:border-white/20 hover:bg-white/5',
+            relationLabel: 'Réf. Relation (TC)',
+            relationPlaceholder: 'TC_123456',
+        },
+        {
+            id: 2,
+            label: 'Bus de remplacement',
+            sublabel: 'Service non planifié',
+            icon: Bus,
+            color: 'blue',
+            accentClass: 'border-blue-500/40 bg-blue-500/10 text-blue-300',
+            activeClass: 'border-blue-500 bg-blue-500/20 text-blue-200 shadow-[0_0_20px_rgba(59,130,246,0.2)]',
+            inactiveClass: 'border-white/10 bg-white/3 text-gray-500 hover:border-white/20 hover:bg-white/5',
+            relationLabel: 'Réf. Relation (TC)',
+            relationPlaceholder: 'TC_123456',
+        },
+        {
+            id: 3,
+            label: 'Modification planifiée',
+            sublabel: 'Réutilisation bus planifié',
+            icon: RefreshCw,
+            color: 'purple',
+            accentClass: 'border-purple-500/40 bg-purple-500/10 text-purple-300',
+            activeClass: 'border-purple-500 bg-purple-500/20 text-purple-200 shadow-[0_0_20px_rgba(168,85,247,0.2)]',
+            inactiveClass: 'border-white/10 bg-white/3 text-gray-500 hover:border-white/20 hover:bg-white/5',
+            relationLabel: "N° d'ordre",
+            relationPlaceholder: 'BNX 40M-03454-001  ou  EVAL 88-SO-260302-...',
+        },
+    ];
+
+    let activeType = $derived(C3_TYPES.find(t => t.id === (form.c3_type ?? 2)) ?? C3_TYPES[1]);
 
     // --- LOCAL STATE ---
     let societeInputValue = $state("");
@@ -28,47 +70,38 @@
     let emailBody = $state("");
     let hasCopied = $state(false);
 
-      // --- DERIVED STATE (TRI INTELLIGENT) ---
-    // Calcul des arrêts intermédiaires triés par logique de ligne
+    // --- DERIVED STATE (TRI INTELLIGENT) ---
     let availableStops = $derived.by(() => {
-        // 1. Récupérer tous les arrêts des lignes sélectionnées
         let candidates = (referenceData.raw || [])
             .filter(r => form.lignes.includes(r.ligne_nom));
 
-        // 2. Trouver les objets "Station" correspondant à l'Origine et Destination actuelles
         const startObj = candidates.find(r => r.gare === form.origine);
         const endObj = candidates.find(r => r.gare === form.destination);
 
-        // CAS A : Origine ET Destination sont définies (et sont sur la même ligne)
         if (startObj && endObj && startObj.ligne_nom === endObj.ligne_nom) {
-            // On détermine le sens : 1 (Croissant) ou -1 (Décroissant)
             const isAscending = startObj.ordre < endObj.ordre;
-
             return candidates
-                .filter(r => r.ligne_nom === startObj.ligne_nom) // Filtrer sur la bonne ligne
+                .filter(r => r.ligne_nom === startObj.ligne_nom)
                 .filter(r => {
-                    // Garder uniquement les gares STRICTEMENT ENTRE l'origine et la destination
                     if (isAscending) return r.ordre > startObj.ordre && r.ordre < endObj.ordre;
                     return r.ordre < startObj.ordre && r.ordre > endObj.ordre;
                 })
-                .sort((a, b) => isAscending ? a.ordre - b.ordre : b.ordre - a.ordre) // Trier dans le sens du trajet
+                .sort((a, b) => isAscending ? a.ordre - b.ordre : b.ordre - a.ordre)
                 .map(r => `${r.gare} (${r.ligne_nom})`);
         }
 
-        // CAS B : Seulement Origine définie
         if (startObj) {
-            // On trie par "Proximité" : Les gares les plus proches (avant ou après) apparaissent en premier
             return candidates
                 .filter(r => r.gare !== form.origine && r.ligne_nom === startObj.ligne_nom)
                 .sort((a, b) => Math.abs(a.ordre - startObj.ordre) - Math.abs(b.ordre - startObj.ordre))
                 .map(r => `${r.gare} (${r.ligne_nom})`);
         }
 
-        // CAS C : Rien de spécial, tri par ordre de ligne classique
         return candidates
-            .sort((a, b) => a.ordre - b.ordre) // Tri géographique par défaut
+            .sort((a, b) => a.ordre - b.ordre)
             .map(r => `${r.gare} (${r.ligne_nom})`);
     });
+
     // --- HELPERS STYLES ---
     const inputClass = "w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-orange-500/50 outline-none transition-all placeholder-gray-600";
     const labelClass = "block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1 flex items-center gap-1";
@@ -83,7 +116,6 @@
         }
     });
 
-    // Calcul d'itinéraire (Debounced via timeout interne)
     let searchTimeout;
     $effect(() => {
         if (form.origine && form.destination) {
@@ -97,7 +129,7 @@
     // --- MAP LOGIC ---
     async function calculateRoute() {
         if (currentRoute?.properties?.start === form.origine && currentRoute?.properties?.end === form.destination) return;
-        
+
         isComputingRoute = true;
         try {
             const startCoords = await GeoService.getGareCoordinates(form.origine);
@@ -142,29 +174,30 @@
     }
 
     // --- FORM ACTIONS ---
+    function selectType(typeId) {
+        form.c3_type = typeId;
+    }
+
     function handleSocieteChange(e) {
         const val = e.target.value;
         societeInputValue = val;
         const match = societes.find(s => s.nom.toLowerCase() === val.toLowerCase());
-        
-        if (match) {
-             form.societe_id = match.id;
-        } else if (val === "") {
-             form.societe_id = null;
-        }
+        if (match) form.societe_id = match.id;
+        else if (val === "") form.societe_id = null;
     }
 
-  function addBus() {
+    function addBus() {
         const last = form.bus_data.at(-1) || {};
-        form.bus_data = [...form.bus_data, { 
-            plaque: '', 
-            heure_prevue: last.heure_prevue || '', 
-            heure_confirmee: '', 
-            heure_demob: last.heure_demob || '', 
-            chauffeur_id: null, 
-            is_specific_route: false, 
-            origine_specifique: '',   
-            destination_specifique: '' 
+        form.bus_data = [...form.bus_data, {
+            plaque: '',
+            heure_prevue: last.heure_prevue || '',
+            heure_confirmee: '',
+            heure_demob: last.heure_demob || '',
+            demob_type: 'simple',
+            chauffeur_id: null,
+            is_specific_route: false,
+            origine_specifique: '',
+            destination_specifique: ''
         }];
     }
 
@@ -193,8 +226,10 @@
     function prepareEmail() {
         const society = societes.find(s => s.id === form.societe_id);
         const sensText = form.is_aller_retour ? 'Aller-Retour' : 'Aller Simple';
-        
+        const typeLabel = activeType.label;
+
         emailBody = `Bonjour, voici le réquisitoire pour le trajet de ce ${new Date(form.date_commande).toLocaleDateString('fr-BE')} entre ${form.origine || '?'} et ${form.destination || '?'} - ${form.relation} (${form.is_direct ? 'Direct' : 'Omnibus'} - ${sensText})
+Type d'intervention : ${typeLabel}
 
 Merci pour vos services,
 
@@ -204,7 +239,7 @@ ${form.validator?.full_name || currentUser?.full_name || 'Équipe PACO'}
 PACO Sud-Ouest`;
         showEmailExport = true;
     }
-    
+
     function sendEmailLink() {
         const society = societes.find(s => s.id === form.societe_id);
         const emailTo = society?.email || "";
@@ -225,14 +260,71 @@ PACO Sud-Ouest`;
 
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-8" in:fade>
     <div class="xl:col-span-2 space-y-6">
-        
+
+        <!-- ═══════════════════════════════════════════════ TYPE C3 ═══ -->
+        <div class="bg-black/20 border border-white/5 rounded-2xl p-5">
+            <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3 ml-1">Type d'intervention C3</p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {#each C3_TYPES as type}
+                    {@const isActive = form.c3_type === type.id}
+                    <button
+                        onclick={() => !isLocked && selectType(type.id)}
+                        disabled={isLocked}
+                        class="relative flex flex-col items-start gap-1.5 p-4 rounded-xl border-2 text-left transition-all duration-200 {isActive ? type.activeClass : type.inactiveClass} {isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}"
+                    >
+                        <div class="flex items-center gap-2 w-full">
+                            <div class="p-1.5 rounded-lg {isActive ? type.accentClass : 'bg-white/5 text-gray-600'}">
+                                <svelte:component this={type.icon} size={14} />
+                            </div>
+                            <span class="font-bold text-sm leading-tight flex-1">{type.label}</span>
+                            {#if isActive}
+                                <div class="w-2 h-2 rounded-full {type.color === 'orange' ? 'bg-orange-400' : type.color === 'blue' ? 'bg-blue-400' : 'bg-purple-400'} shadow-lg animate-pulse"></div>
+                            {/if}
+                        </div>
+                        <span class="text-[10px] font-medium ml-8 {isActive ? 'opacity-70' : 'opacity-40'}">{type.sublabel}</span>
+                        <span class="absolute top-2 right-2 text-[9px] font-black opacity-20">C3-{type.id}</span>
+                    </button>
+                {/each}
+            </div>
+        </div>
+
+        <!-- ══════════════════════════ BANNER TYPE 3 ══════════════════ -->
+        {#if form.c3_type === 3}
+            <div class="flex items-center gap-3 bg-purple-500/10 border border-purple-500/30 rounded-xl px-5 py-3" transition:slide>
+                <AlertTriangle size={18} class="text-purple-400 shrink-0" />
+                <div>
+                    <p class="text-sm font-bold text-purple-300">Modification / Réutilisation d'un bus planifié</p>
+                    <p class="text-xs text-purple-400/70 mt-0.5">Le numéro de relation devient un <strong>numéro d'ordre</strong> (ex. BNX 40M-03454-001 ou EVAL 88-SO-260302-77557-01-2335). Cette mention apparaîtra sur le PDF.</p>
+                </div>
+            </div>
+        {/if}
+
+        <!-- ═══════════════════════════════════════════════ MISSION ═══ -->
         <div class="bg-black/20 border border-white/5 rounded-2xl p-6 space-y-4">
             <h3 class="text-sm font-bold text-orange-400 uppercase tracking-wide mb-4 flex items-center gap-2"><FileText size={16}/> Mission</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="md:col-span-2"><label class={labelClass}>Motif</label><input type="text" bind:value={form.motif} disabled={isLocked} class={inputClass} placeholder="Ex: Dérangement L.96..."></div>
-                <div><label class={labelClass}>Date</label><input type="date" bind:value={form.date_commande} disabled={isLocked} class="{inputClass} dark:[color-scheme:dark]"></div>
-                <div><label class={labelClass}>Heure d'appel</label><input type="time" bind:value={form.heure_appel}  disabled={isLocked} class="{inputClass} dark:[color-scheme:dark]"></div>
-                <div><label class={labelClass}>Réf. Relation (TC)</label><input type="text" bind:value={form.relation} disabled={isLocked} class={inputClass} placeholder="TC_123456"></div>
+                <div class="md:col-span-2">
+                    <label class={labelClass}>Motif</label>
+                    <input type="text" bind:value={form.motif} disabled={isLocked} class={inputClass} placeholder="Ex: Dérangement L.96...">
+                </div>
+                <div>
+                    <label class={labelClass}>Date</label>
+                    <input type="date" bind:value={form.date_commande} disabled={isLocked} class="{inputClass} dark:[color-scheme:dark]">
+                </div>
+                <div>
+                    <label class={labelClass}>Heure d'appel</label>
+                    <input type="time" bind:value={form.heure_appel} disabled={isLocked} class="{inputClass} dark:[color-scheme:dark]">
+                </div>
+                <div>
+                    <label class={labelClass}>{activeType.relationLabel}</label>
+                    <input
+                        type="text"
+                        bind:value={form.relation}
+                        disabled={isLocked}
+                        class="{inputClass} {form.c3_type === 3 ? 'border-purple-500/30 focus:ring-purple-500/50' : ''}"
+                        placeholder={activeType.relationPlaceholder}
+                    >
+                </div>
                 <div>
                     <label class={labelClass}>Société</label>
                     <div class="relative group">
@@ -244,10 +336,11 @@ PACO Sud-Ouest`;
             </div>
         </div>
 
+        <!-- ═══════════════════════════════════════════════ PARCOURS ═══ -->
         <div class="bg-black/20 border border-white/5 rounded-2xl p-6 space-y-4">
             <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
                 <h3 class="text-sm font-bold text-blue-400 uppercase tracking-wide flex items-center gap-2"><MapPin size={16}/> Parcours</h3>
-                
+
                 <div class="flex items-center gap-4">
                     <label class="flex items-center gap-2 cursor-pointer bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
                         <input type="checkbox" bind:checked={form.is_direct} disabled={isLocked} class="hidden">
@@ -266,11 +359,31 @@ PACO Sud-Ouest`;
                     </label>
                 </div>
             </div>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 relative">
-                <div><label class={labelClass}>Origine</label><input type="text" list="stations" bind:value={form.origine} disabled={isLocked} class={inputClass} placeholder="Gare"></div>
-                <div><label class={labelClass}>Destination</label><input type="text" list="stations" bind:value={form.destination} disabled={isLocked} class={inputClass} placeholder="Gare"></div>
-                <datalist id="stations">{#each referenceData.stops as st} <option value={st} /> {/each}</datalist>
+                <div>
+                    <label class={labelClass}>Origine</label>
+                    <input
+                        type="text"
+                        list={form.c3_type === 1 ? undefined : 'stations'}
+                        bind:value={form.origine}
+                        disabled={isLocked}
+                        class={inputClass}
+                        placeholder={form.c3_type === 1 ? 'Gare ou adresse' : 'Gare'}
+                    >
+                </div>
+                <div>
+                    <label class={labelClass}>Destination</label>
+                    <input
+                        type="text"
+                        list={form.c3_type === 1 ? undefined : 'stations'}
+                        bind:value={form.destination}
+                        disabled={isLocked}
+                        class={inputClass}
+                        placeholder={form.c3_type === 1 ? 'Gare ou adresse' : 'Gare'}
+                    >
+                </div>
+                <datalist id="stations">{#each referenceData.stops as st}<option value={st} />{/each}</datalist>
             </div>
 
             <div class="w-full h-64 rounded-xl overflow-hidden border border-white/10 relative z-0 mt-4 shadow-inner bg-[#16181d]">
@@ -286,56 +399,92 @@ PACO Sud-Ouest`;
                 {/if}
             </div>
 
-             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-white/5">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-white/5">
                 <div><label class={labelClass}>Voyageurs</label><input type="number" bind:value={form.nombre_voyageurs} disabled={isLocked} class={inputClass}></div>
                 <div><label class={labelClass}>PMR</label><input type="number" bind:value={form.nombre_pmr} disabled={isLocked} class={inputClass}></div>
                 <div><label class={labelClass}>Capacité</label><input type="number" bind:value={form.capacite_bus} disabled={isLocked} class={inputClass}></div>
             </div>
         </div>
 
+        <!-- ═══════════════════════════════════════════════ VÉHICULES ══ -->
         <div class="bg-black/20 border border-white/5 rounded-2xl p-6">
-             <div class="flex justify-between items-center mb-4">
+            <div class="flex justify-between items-center mb-4">
                 <h3 class="text-sm font-bold text-green-400 uppercase tracking-wide flex items-center gap-2"><Bus size={16}/> Véhicules</h3>
                 {#if !isLocked}
                     <button onclick={addBus} class="text-xs bg-green-500/20 text-green-400 px-3 py-1.5 rounded-lg border border-green-500/30 flex items-center gap-1 font-bold"><Plus size={14}/> Ajouter</button>
                 {/if}
             </div>
-            
-           <div class="space-y-4">
+
+            <div class="space-y-4">
                 {#each form.bus_data as bus, i}
                     {@const activeChauffeur = chauffeurs.find(c => c.id === bus.chauffeur_id)}
-                    
-                    <div class="bg-white/5 rounded-xl border border-white/10 overflow-hidden" transition:slide|local>
-                        <div class="flex justify-between items-center px-4 py-2 bg-black/20 border-b border-white/5">
-                            <span class="text-xs font-mono font-bold text-orange-400">BUS #{i+1}</span>
+                    {@const isAnnulation = bus.demob_type === 'annulation'}
+
+                    <div class="bg-white/5 rounded-xl border {isAnnulation ? 'border-red-500/30' : 'border-white/10'} overflow-hidden" transition:slide|local>
+                        <div class="flex justify-between items-center px-4 py-2 bg-black/20 border-b {isAnnulation ? 'border-red-500/20' : 'border-white/5'}">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-mono font-bold text-orange-400">BUS #{i+1}</span>
+                                {#if isAnnulation}
+                                    <span class="text-[9px] font-black uppercase tracking-wider text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full" transition:fade>ANNULATION</span>
+                                {/if}
+                            </div>
                             <button onclick={() => removeBus(i)} disabled={isLocked} class="text-gray-500 hover:text-red-400 p-1"><MinusCircle size={16}/></button>
                         </div>
-                        
-                        <div class="p-4 space-y-4">
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div><label class="text-[10px] text-gray-500 font-bold block">PLAQUE</label><input type="text" bind:value={bus.plaque} disabled={isLocked} class="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-sm text-white uppercase"></div>
-                                <div><label class="text-[10px] text-gray-500 font-bold block">PREVUE</label><input type="time" bind:value={bus.heure_prevue} disabled={isLocked} class="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-sm text-white dark:[color-scheme:dark]"></div>
-                                <div><label class="text-[10px] text-green-500/70 font-bold block">CONFIRMÉE</label><input type="time" bind:value={bus.heure_confirmee} disabled={isLocked} class="w-full bg-black/30 border border-green-900/30 rounded-lg px-2 py-1 text-sm text-green-300 dark:[color-scheme:dark]"></div>
-                                <div><label class="text-[10px] text-purple-400 font-bold block">DÉMOB.</label><input type="time" bind:value={bus.heure_demob} disabled={isLocked} class="w-full bg-black/30 border border-purple-500/30 rounded-lg px-2 py-1 text-sm text-purple-300 dark:[color-scheme:dark]"></div>
-                                
-                                <div class="md:col-span-4">
-                                    <label class="text-[10px] text-blue-400 font-bold block">CHAUFFEUR</label>
-                                    <select bind:value={bus.chauffeur_id} disabled={isLocked} class="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-sm text-white">
-                                        <option value={null}>-- Sélectionner un chauffeur --</option>
-                                        {#each chauffeurs as chauf}
-                                            <option value={chauf.id}>{chauf.nom}</option>
-                                        {/each}
-                                    </select>
 
-                                    {#if activeChauffeur?.tel}
-                                        <a href="etrali:{activeChauffeur.tel}" class="block mt-2 w-fit text-xs font-bold text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1.5 transition-colors bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20">
-                                            <Phone size={12}/> 
-                                            Tel : {activeChauffeur.tel}
-                                        </a>
-                                    {/if}
+                        <div class="p-4 space-y-4">
+                            <!-- Row 1: Plaque + Heures -->
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <div class="col-span-2 md:col-span-1">
+                                    <label class="text-[10px] text-gray-500 font-bold block mb-1">PLAQUE</label>
+                                    <input type="text" bind:value={bus.plaque} disabled={isLocked} class="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white uppercase">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-gray-500 font-bold block mb-1">PRÉVUE</label>
+                                    <input type="time" bind:value={bus.heure_prevue} disabled={isLocked} class="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white dark:[color-scheme:dark]">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-green-500/70 font-bold block mb-1">CONFIRMÉE</label>
+                                    <input type="time" bind:value={bus.heure_confirmee} disabled={isLocked} class="w-full bg-black/30 border border-green-900/30 rounded-lg px-2 py-1.5 text-sm text-green-300 dark:[color-scheme:dark]">
+                                </div>
+                                <!-- DÉMOB + type toggle -->
+                                <div>
+                                    <label class="text-[10px] text-purple-400 font-bold block mb-1">DÉMOB.</label>
+                                    <div class="flex gap-1.5 items-center">
+                                        <input type="time" bind:value={bus.heure_demob} disabled={isLocked} class="flex-1 min-w-0 bg-black/30 border {isAnnulation ? 'border-red-500/30' : 'border-purple-500/30'} rounded-lg px-2 py-1.5 text-sm {isAnnulation ? 'text-red-300' : 'text-purple-300'} dark:[color-scheme:dark]">
+                                    </div>
+                                    <!-- Demob type toggle -->
+                                    <div class="flex mt-1.5 rounded-lg overflow-hidden border border-white/10 text-[9px] font-black">
+                                        <button
+                                            onclick={() => !isLocked && (bus.demob_type = 'simple')}
+                                            disabled={isLocked}
+                                            class="flex-1 py-1 transition-all {!isAnnulation ? 'bg-purple-600 text-white' : 'bg-black/20 text-gray-600 hover:bg-white/5'}"
+                                        >SIMPLE</button>
+                                        <button
+                                            onclick={() => !isLocked && (bus.demob_type = 'annulation')}
+                                            disabled={isLocked}
+                                            class="flex-1 py-1 transition-all {isAnnulation ? 'bg-red-600 text-white' : 'bg-black/20 text-gray-600 hover:bg-white/5'}"
+                                        >ANNULATION</button>
+                                    </div>
                                 </div>
                             </div>
 
+                            <!-- Chauffeur -->
+                            <div>
+                                <label class="text-[10px] text-blue-400 font-bold block mb-1">CHAUFFEUR</label>
+                                <select bind:value={bus.chauffeur_id} disabled={isLocked} class="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white">
+                                    <option value={null}>-- Sélectionner un chauffeur --</option>
+                                    {#each chauffeurs as chauf}
+                                        <option value={chauf.id}>{chauf.nom}</option>
+                                    {/each}
+                                </select>
+                                {#if activeChauffeur?.tel}
+                                    <a href="etrali:{activeChauffeur.tel}" class="block mt-2 w-fit text-xs font-bold text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1.5 transition-colors bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20">
+                                        <Phone size={12}/> Tel : {activeChauffeur.tel}
+                                    </a>
+                                {/if}
+                            </div>
+
+                            <!-- Trajet spécifique -->
                             <div class="pt-2 border-t border-white/5">
                                 <label class="flex items-center gap-3 cursor-pointer w-fit mb-2 group">
                                     <div class="relative inline-flex items-center">
@@ -344,7 +493,7 @@ PACO Sud-Ouest`;
                                     </div>
                                     <span class="text-xs font-bold text-gray-400 select-none group-hover:text-white transition-colors">Trajet différent (Spécifique à ce bus)</span>
                                 </label>
-                
+
                                 {#if bus.is_specific_route}
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-black/20 rounded-lg border border-white/5" transition:slide>
                                         <div>
@@ -358,14 +507,14 @@ PACO Sud-Ouest`;
                                     </div>
                                 {/if}
                             </div>
-
                         </div>
                     </div>
                 {/each}
-           </div>
+            </div>
         </div>
     </div>
 
+    <!-- ═════════════════════════════════════════════ SIDEBAR ══════════ -->
     <div class="space-y-6">
         <div class="bg-black/20 border border-white/5 rounded-2xl p-6 max-h-[400px] overflow-y-auto custom-scrollbar">
             <h3 class="text-sm font-bold text-purple-400 uppercase tracking-wide mb-4 sticky top-0 bg-[#16181d] py-2 z-10 flex items-center gap-2"><Hash size={16}/> Lignes</h3>
@@ -392,6 +541,7 @@ PACO Sud-Ouest`;
     </div>
 </div>
 
+<!-- ═══════════════════════════════════════════ ACTION BAR ════════════ -->
 <div class="fixed bottom-4 left-4 right-4 z-50 flex flex-wrap justify-end items-center gap-4 p-4 border border-white/10 bg-[#0f1115]/90 backdrop-blur-2xl shadow-2xl rounded-2xl" in:fly={{ y: 20 }}>
     <label class="flex items-center gap-3 px-4 py-2 rounded-xl bg-white/5 border border-white/10 cursor-pointer mr-auto {isLocked ? 'opacity-50 pointer-events-none' : ''}">
         <input type="checkbox" bind:checked={form.is_mail_sent} disabled={isLocked} class="hidden peer">
@@ -411,6 +561,7 @@ PACO Sud-Ouest`;
 </div>
 <div class="h-24"></div>
 
+<!-- ══════════════════════════ EMAIL MODAL ═══════════════════════════ -->
 {#if showEmailExport}
     <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" transition:fade>
         <div class="bg-[#1a1d24] border border-white/10 rounded-2xl p-6 w-full max-w-lg shadow-2xl" in:fly={{ y: 20 }}>

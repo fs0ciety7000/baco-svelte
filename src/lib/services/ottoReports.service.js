@@ -1,8 +1,11 @@
 import { toast } from '$lib/stores/toast.js';
 
-/**
- * Helper interne pour convertir une image URL en Base64
- */
+const C3_TYPE_LABELS = {
+    1: 'Évacuation sur place',
+    2: 'Service de bus de remplacement',
+    3: 'Modification / Réutilisation d\'un bus planifié',
+};
+
 function getBase64ImageFromURL(url) {
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -25,14 +28,12 @@ function getBase64ImageFromURL(url) {
 }
 
 export const OttoReportsService = {
-    /**
-     * Génère un fichier Excel des commandes filtrées
-     */
     async generateExcel(commandes) {
         try {
             const XLSX = (await import('xlsx')).default || (await import('xlsx'));
-            
+
             const dataToExport = commandes.map(cmd => ({
+                'Type C3': C3_TYPE_LABELS[cmd.c3_type ?? 2] ?? '-',
                 Relation: cmd.relation,
                 Type: cmd.is_direct ? 'Direct' : 'Omnibus',
                 Société: cmd.societes_bus?.nom || 'Inconnue',
@@ -57,9 +58,6 @@ export const OttoReportsService = {
         }
     },
 
-    /**
-     * Génère une liste simple en PDF
-     */
     async generateListPDF(commandes) {
         try {
             const { jsPDF } = await import('jspdf');
@@ -68,8 +66,9 @@ export const OttoReportsService = {
             const doc = new jsPDF('l', 'mm', 'a4');
             doc.setFontSize(16);
             doc.text("Liste des Commandes Bus (Otto)", 15, 15);
-            
+
             const rows = commandes.map(cmd => [
+                C3_TYPE_LABELS[cmd.c3_type ?? 2]?.replace('Service de bus de ', 'Bus ') ?? '-',
                 cmd.relation,
                 cmd.is_direct ? 'Direct' : 'Omnibus',
                 cmd.societes_bus?.nom || '-',
@@ -81,7 +80,7 @@ export const OttoReportsService = {
 
             autoTable(doc, {
                 startY: 25,
-                head: [['Relation', 'Type', 'Société', 'Statut', 'Date', 'Parcours', 'Motif']],
+                head: [['C3', 'Relation', 'Type', 'Société', 'Statut', 'Date', 'Parcours', 'Motif']],
                 body: rows,
                 theme: 'grid',
                 headStyles: { fillColor: [249, 115, 22] },
@@ -95,9 +94,6 @@ export const OttoReportsService = {
         }
     },
 
-    /**
-     * Génère le bon de commande officiel (C3) en PDF
-     */
     async generateCommandePDF(form, society, currentUser, chauffeurs = []) {
         try {
             const { jsPDF } = await import('jspdf');
@@ -105,6 +101,8 @@ export const OttoReportsService = {
 
             const doc = new jsPDF();
             const creatorName = form.creator?.full_name || currentUser?.full_name || "Inconnu";
+            const c3Type = form.c3_type ?? 2;
+            const isType3 = c3Type === 3;
 
             // Logo
             try {
@@ -127,7 +125,7 @@ export const OttoReportsService = {
             doc.setFontSize(9);
             doc.setFont("helvetica", "normal");
             let yr = 25;
-            if(society?.adresse) {
+            if (society?.adresse) {
                 const splitAdd = doc.splitTextToSize(society.adresse, 60);
                 doc.text(splitAdd, rightX, yr, { align: 'right' });
                 yr += (splitAdd.length * 4);
@@ -135,27 +133,35 @@ export const OttoReportsService = {
             doc.text(`Tel: ${society?.telephone || '-'}`, rightX, yr, { align: 'right' });
             doc.text(society?.email || '-', rightX, yr + 4, { align: 'right' });
 
-            // Titre
+            // Titre principal
             let y = 75;
             doc.setLineWidth(0.5);
             doc.setDrawColor(0);
-            doc.rect(15, y, 180, 20); 
+            doc.rect(15, y, 180, isType3 ? 26 : 20);
             doc.setFontSize(14);
             doc.setFont("helvetica", "bold");
             doc.text("Demande service bus de remplacement", 105, y + 7, { align: 'center' });
             doc.setFontSize(11);
-            doc.setTextColor(200, 0, 0);
-            doc.text("NON planifié / Real Time", 105, y + 12, { align: 'center' });
+            doc.setTextColor(isType3 ? 120 : 200, isType3 ? 0 : 0, isType3 ? 200 : 0);
+            doc.text(isType3 ? "Modification / Réutilisation d'un bus planifié" : "NON planifié / Real Time", 105, y + 13, { align: 'center' });
             doc.setTextColor(0);
             doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
-            doc.text("Partie A – Service opérationnels SNCB", 105, y + 17, { align: 'center' });
+            doc.text("Partie A – Service opérationnels SNCB", 105, y + (isType3 ? 21 : 18), { align: 'center' });
+
+            // Badge type C3
+            y += isType3 ? 30 : 25;
+            doc.setFontSize(8.5);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(100, 100, 100);
+            doc.text(`C3-${c3Type} — ${C3_TYPE_LABELS[c3Type]}`, 105, y - 2, { align: 'center' });
+            doc.setTextColor(0);
 
             // Corps du document
-            y += 25;
-            const infoStartY = y; 
+            const infoStartY = y;
             y += 8;
-            const labelX = 20; const valueX = 70;
+            const labelX = 20;
+            const valueX = 70;
 
             doc.setFont("helvetica", "bold"); doc.text("Date de circulation :", labelX, y);
             doc.setFont("helvetica", "normal"); doc.text(new Date(form.date_commande).toLocaleDateString('fr-BE'), valueX, y);
@@ -166,18 +172,15 @@ export const OttoReportsService = {
             doc.setFont("helvetica", "bold"); doc.text("Motif :", labelX, y);
             doc.setFont("helvetica", "normal"); doc.text(form.motif || '', valueX, y);
             y += 8;
-            doc.setDrawColor(200); doc.line(20, y-4, 190, y-4); doc.setDrawColor(0);
+            doc.setDrawColor(200); doc.line(20, y - 4, 190, y - 4); doc.setDrawColor(0);
 
             doc.setFont("helvetica", "bold"); doc.text("Lieu Origine :", labelX, y);
             doc.setFont("helvetica", "normal"); doc.text(form.origine || '?', valueX, y);
             y += 6;
-            
-            // Arrêts intermédiaires
+
             if (!form.is_direct && form.arrets?.length > 0) {
                 doc.setFont("helvetica", "bold"); doc.text("Arrêts intermédiaires :", labelX, y);
-                doc.setFont("helvetica", "normal"); 
-                // Note: On suppose ici que les arrêts sont déjà triés dans form.arrets
-                // Si besoin de retrier, la logique doit être passée ou refaite ici
+                doc.setFont("helvetica", "normal");
                 const arretsSplit = doc.splitTextToSize(form.arrets.join(', '), 120);
                 doc.text(arretsSplit, valueX, y);
                 y += (arretsSplit.length * 5) + 2;
@@ -195,7 +198,7 @@ export const OttoReportsService = {
             doc.setFont("helvetica", "normal"); doc.text(form.lignes.join(', ') || '-', valueX, y);
             doc.setFont("helvetica", "bold"); doc.text("Heure d'appel :", 110, y);
             doc.setFont("helvetica", "normal"); doc.text(form.heure_appel || '--:--', 140, y);
-            y += 5; 
+            y += 5;
 
             doc.rect(15, infoStartY, 180, y - infoStartY);
             y += 10;
@@ -203,10 +206,17 @@ export const OttoReportsService = {
             // Tableau des Bus
             const busRows = form.bus_data.map((b, i) => {
                 const chauf = chauffeurs.find(c => c.id == b.chauffeur_id);
-                const chauffeurStr = chauf ? `\nChauffeur: ${chauf.nom}\nTel: ${chauf.tel}` : ''; 
+                const chauffeurStr = chauf ? `\nChauffeur: ${chauf.nom}\nTel: ${chauf.tel}` : '';
                 const routeStr = b.is_specific_route && (b.origine_specifique || b.destination_specifique)
                     ? `\n[TRAJET]: ${b.origine_specifique || '?'} -> ${b.destination_specifique || '?'}` : '';
-                return [`Bus ${i+1}${chauffeurStr}${routeStr}`, b.plaque || '?', b.heure_prevue || '-', b.heure_confirmee || '-', b.heure_demob || '-'];
+                const demobStr = b.demob_type === 'annulation' ? '\n⚠ ANNULATION' : '';
+                return [
+                    `Bus ${i+1}${chauffeurStr}${routeStr}`,
+                    b.plaque || '?',
+                    b.heure_prevue || '-',
+                    b.heure_confirmee || '-',
+                    `${b.heure_demob || '-'}${demobStr}`
+                ];
             });
 
             autoTable(doc, {
@@ -215,10 +225,17 @@ export const OttoReportsService = {
                 body: busRows,
                 theme: 'grid',
                 headStyles: { fillColor: [230, 230, 230], textColor: 0, fontStyle: 'bold' },
-                styles: { fontSize: 9, cellPadding: 3, valign: 'middle', lineColor: [0, 0, 0], lineWidth: 0.1 }, 
-                margin: { left: 15, right: 15 }, 
-                tableWidth: 180,                 
-                columnStyles: { 0: { cellWidth: 80 } }
+                styles: { fontSize: 9, cellPadding: 3, valign: 'middle', lineColor: [0, 0, 0], lineWidth: 0.1 },
+                margin: { left: 15, right: 15 },
+                tableWidth: 180,
+                columnStyles: { 0: { cellWidth: 80 } },
+                didParseCell: (data) => {
+                    // Rouge pour les lignes annulation dans la col Démob.
+                    if (data.column.index === 4 && data.cell.raw?.includes('ANNULATION')) {
+                        data.cell.styles.textColor = [200, 0, 0];
+                        data.cell.styles.fontStyle = 'bold';
+                    }
+                }
             });
             y = doc.lastAutoTable.finalY + 10;
             if (y > 270) { doc.addPage(); y = 20; }
@@ -234,21 +251,23 @@ export const OttoReportsService = {
 
             doc.setDrawColor(0);
             doc.rect(15, footerY, 180, 45);
-            doc.setFontSize(10); 
+            doc.setFontSize(10);
             doc.setFont("helvetica", "bold"); doc.text("Adresse de facturation :", 20, footerY + 6);
             doc.setFont("helvetica", "normal");
             doc.text(["SNCB", "Purchase Accounting B-F.224", "Rue de France 56", "1060 BRUXELLES"], 20, footerY + 12);
-            
+
             const legX = 100;
             doc.setFont("helvetica", "bold"); doc.text("Mentions obligatoires sur la facture :", legX, footerY + 6);
             doc.setFont("helvetica", "normal");
             doc.text(`Numéro de TVA : BE 0203 430 576`, legX, footerY + 12);
             doc.text(`N° SAP de la commande (PO): 4522 944 778`, legX, footerY + 17);
             doc.setFont("helvetica", "bold");
-            doc.text(`Numéro de relation : ${form.relation}`, legX, footerY + 25);
+            const relationLabel = isType3 ? "Numéro d'ordre" : "Numéro de relation";
+            doc.text(`${relationLabel} : ${form.relation}`, legX, footerY + 25);
 
             const safe = (str) => (str || '').replace(/[\\/:*?"<>|]/g, '-');
-            const fileName = `${form.date_commande} - C3 - ${safe(society?.nom || 'Inconnue')} - ${safe(form.origine)} - ${safe(form.destination)}.pdf`;
+            const typePrefix = `C3-${c3Type}`;
+            const fileName = `${form.date_commande} - ${typePrefix} - ${safe(society?.nom || 'Inconnue')} - ${safe(form.origine)} - ${safe(form.destination)}.pdf`;
             doc.save(fileName);
             toast.success("PDF généré !");
         } catch (e) {
