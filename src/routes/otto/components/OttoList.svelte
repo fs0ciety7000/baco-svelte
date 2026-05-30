@@ -39,7 +39,6 @@
 
     let filteredCommandes = $derived.by(() => {
         let result = commandes.filter(cmd => {
-            // Search
             if (searchTerm) {
                 const term = searchTerm.toLowerCase();
                 const matches =
@@ -77,6 +76,39 @@
 
         return result;
     });
+
+    // --- GROUPEMENT PAR MOTIF ---
+    // Regroupe les commandes ayant le même motif (non-vide) de façon adjacente
+    let groupedCommandes = $derived.by(() => {
+        const seen = new Set();
+        const groups = [];
+        for (const cmd of filteredCommandes) {
+            if (seen.has(cmd.id)) continue;
+            const key = (cmd.motif || '').trim().toLowerCase();
+            if (key) {
+                const siblings = filteredCommandes.filter(
+                    c => !seen.has(c.id) && (c.motif || '').trim().toLowerCase() === key
+                );
+                siblings.forEach(c => seen.add(c.id));
+                groups.push(siblings);
+            } else {
+                seen.add(cmd.id);
+                groups.push([cmd]);
+            }
+        }
+        return groups;
+    });
+
+    // --- CONNECTOR COLOR PER GROUP ---
+    const C3_CONNECTOR = {
+        1: 'bg-orange-500/50',
+        2: 'bg-blue-500/50',
+        3: 'bg-purple-500/50',
+    };
+    function groupConnectorClass(group) {
+        const type = group[0]?.c3_type ?? 2;
+        return C3_CONNECTOR[type] ?? C3_CONNECTOR[2];
+    }
 
     // Stats
     let stats = $derived({
@@ -342,72 +374,98 @@
                     {/if}
                 </div>
             {:else}
-                {#each filteredCommandes as cmd (cmd.id)}
-                    {@const c3Style = C3_STYLES[cmd.c3_type ?? 2] ?? C3_STYLES[2]}
-                    <div class="bg-black/20 border border-white/5 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-4 transition-all group overflow-hidden {c3Style.borderClass} {cmd.status === 'envoye' ? 'opacity-60 grayscale-[30%] hover:opacity-100 hover:grayscale-0' : 'hover:border-orange-500/30'}">
-                        <div class="flex-grow min-w-0 w-full">
-                            <div class="flex items-center gap-3 mb-3 flex-wrap">
-                                <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border {c3Style.badgeClass}">{c3Style.label}</span>
-                                <span class="text-xl font-extrabold text-white tracking-tight">{cmd.relation}</span>
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase border {cmd.is_direct ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'}">
-                                    {cmd.is_direct ? 'Direct' : 'Omnibus'}
-                                </span>
-                                <span class="flex items-center gap-1.5 px-3 py-1 bg-blue-600/20 text-blue-300 border border-blue-500/30 rounded-lg text-xs font-bold uppercase">
-                                    <Building2 size={12} /> {cmd.societes_bus?.nom || 'Inconnu'}
-                                </span>
-                                <span class="text-xs px-2 py-0.5 rounded border ml-auto md:ml-0 font-bold {cmd.status === 'envoye' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-gray-500/10 text-gray-400 border-gray-500/20'}">
-                                    {cmd.status === 'envoye' ? 'Clôturé' : 'Brouillon'}
-                                </span>
-                                {#if cmd.is_mail_sent}
-                                    <span class="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-[10px] font-bold uppercase">
-                                        <CheckCircle size={12} /> Mail envoyé
-                                    </span>
-                                {/if}
-                                <!-- Kanban status badge -->
-                                {#if cmd.kanban_status && cmd.kanban_status !== 'commande'}
-                                    {@const kLabels = { en_approche: 'En approche', sur_place: 'Sur place', termine: 'Terminé' }}
-                                    {@const kColors = { en_approche: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20', sur_place: 'bg-orange-500/10 text-orange-400 border-orange-500/20', termine: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' }}
-                                    <span class="text-xs px-2 py-0.5 rounded border font-bold {kColors[cmd.kanban_status]}">
-                                        {kLabels[cmd.kanban_status]}
-                                    </span>
-                                {/if}
+                {#each groupedCommandes as group}
+                    <!-- Groupe de commandes liées par motif -->
+                    {#if group.length > 1}
+                        {@const connectorClass = groupConnectorClass(group)}
+                        <div class="relative flex gap-3">
+                            <!-- Connecteur vertical -->
+                            <div class="flex flex-col items-center shrink-0 pt-5 pb-5">
+                                <div class="w-2 h-2 rounded-full {connectorClass} shrink-0"></div>
+                                <div class="w-0.5 flex-1 my-1 {connectorClass} rounded-full"></div>
+                                <div class="w-2 h-2 rounded-full {connectorClass} shrink-0"></div>
                             </div>
-
-                            <div class="flex flex-wrap gap-4 text-sm text-gray-400 bg-black/20 p-3 rounded-xl border border-white/5 mb-3">
-                                <div class="flex items-center gap-2"><Calendar size={14} class="text-orange-400"/> <span class="text-gray-200 font-medium">{new Date(cmd.date_commande).toLocaleDateString('fr-BE')}</span></div>
-                                <div class="flex items-center gap-2"><Clock size={14} class="text-orange-400"/> <span>{cmd.heure_appel?.slice(0,5) || '--:--'}</span></div>
-                                <div class="flex items-center gap-2"><Bus size={14} class="text-orange-400"/> <span>{cmd.bus_data?.length || 1} bus</span></div>
-                                <div class="flex items-center gap-2 truncate text-gray-500"><span class="w-px h-4 bg-white/10 mx-1"></span>{cmd.motif}</div>
-                            </div>
-
-                            <div class="flex items-center gap-2 text-sm text-gray-400 mb-3">
-                                <span class="text-gray-500 text-xs font-bold uppercase">Parcours :</span>
-                                <span class="text-gray-300">{cmd.origine || '?'}</span>
-                                <ArrowRightLeft size={12} class="text-orange-500/50" />
-                                <span class="text-gray-300">{cmd.destination || '?'}</span>
-                            </div>
-
-                            <div class="flex items-center gap-4 text-xs pt-3 border-t border-white/5">
-                                {#if cmd.status === 'envoye' && cmd.sent_at}
-                                    <div class="flex items-center gap-1.5 text-emerald-500/80">
-                                        <Mail size={12} /> <span class="text-emerald-400">Le {new Date(cmd.sent_at).toLocaleDateString('fr-BE')} par {cmd.sent_by_name || 'Inconnu'}</span>
+                            <!-- Cartes du groupe -->
+                            <div class="flex-1 flex flex-col gap-3">
+                                {#each group as cmd (cmd.id)}
+                                    {@const c3Style = C3_STYLES[cmd.c3_type ?? 2] ?? C3_STYLES[2]}
+                                    <div class="bg-black/20 border border-white/5 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-4 transition-all group-item overflow-hidden {c3Style.borderClass} {cmd.status === 'envoye' ? 'opacity-60 grayscale-[30%] hover:opacity-100 hover:grayscale-0' : 'hover:border-white/20'}">
+                                        {@render cmdCard(cmd, c3Style)}
                                     </div>
-                                {:else if cmd.validator}
-                                    <div class="flex items-center gap-1.5 text-red-500/70">
-                                        <UserCheck size={12} /> <span class="text-red-400">{cmd.validator.full_name}</span>
-                                    </div>
-                                {/if}
+                                {/each}
                             </div>
                         </div>
-
-                        <div class="flex items-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity self-start mt-2 md:mt-0">
-                            <button onclick={() => onEdit(cmd)} class="p-2 hover:bg-white/10 rounded-lg text-blue-400" title="Éditer"><FileText class="w-5 h-5" /></button>
-                            <button onclick={() => onDuplicate(cmd)} class="p-2 hover:bg-green-500/10 rounded-lg text-green-400" title="Dupliquer"><ClipboardCopy class="w-5 h-5" /></button>
-                            <button onclick={() => onDelete(cmd.id)} class="p-2 hover:bg-red-500/10 rounded-lg text-red-400" title="Supprimer"><Trash2 class="w-5 h-5" /></button>
+                    {:else}
+                        {@const cmd = group[0]}
+                        {@const c3Style = C3_STYLES[cmd.c3_type ?? 2] ?? C3_STYLES[2]}
+                        <div class="bg-black/20 border border-white/5 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-4 transition-all group overflow-hidden {c3Style.borderClass} {cmd.status === 'envoye' ? 'opacity-60 grayscale-[30%] hover:opacity-100 hover:grayscale-0' : 'hover:border-orange-500/30'}">
+                            {@render cmdCard(cmd, c3Style)}
                         </div>
-                    </div>
+                    {/if}
                 {/each}
             {/if}
         </div>
     {/if}
 </div>
+
+{#snippet cmdCard(cmd, c3Style)}
+    <div class="flex-grow min-w-0 w-full">
+        <div class="flex items-center gap-3 mb-3 flex-wrap">
+            <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border {c3Style.badgeClass}">{c3Style.label}</span>
+            <span class="text-xl font-extrabold text-white tracking-tight">{cmd.relation}</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase border {cmd.is_direct ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'}">
+                {cmd.is_direct ? 'Direct' : 'Omnibus'}
+            </span>
+            <span class="flex items-center gap-1.5 px-3 py-1 bg-blue-600/20 text-blue-300 border border-blue-500/30 rounded-lg text-xs font-bold uppercase">
+                <Building2 size={12} /> {cmd.societes_bus?.nom || 'Inconnu'}
+            </span>
+            <span class="text-xs px-2 py-0.5 rounded border ml-auto md:ml-0 font-bold {cmd.status === 'envoye' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-gray-500/10 text-gray-400 border-gray-500/20'}">
+                {cmd.status === 'envoye' ? 'Clôturé' : 'Brouillon'}
+            </span>
+            {#if cmd.is_mail_sent}
+                <span class="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-[10px] font-bold uppercase">
+                    <CheckCircle size={12} /> Mail envoyé
+                </span>
+            {/if}
+            {#if cmd.kanban_status && cmd.kanban_status !== 'commande'}
+                {@const kLabels = { en_approche: 'En approche', sur_place: 'Sur place', termine: 'Terminé' }}
+                {@const kColors = { en_approche: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20', sur_place: 'bg-orange-500/10 text-orange-400 border-orange-500/20', termine: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' }}
+                <span class="text-xs px-2 py-0.5 rounded border font-bold {kColors[cmd.kanban_status]}">
+                    {kLabels[cmd.kanban_status]}
+                </span>
+            {/if}
+        </div>
+
+        <div class="flex flex-wrap gap-4 text-sm text-gray-400 bg-black/20 p-3 rounded-xl border border-white/5 mb-3">
+            <div class="flex items-center gap-2"><Calendar size={14} class="text-orange-400"/> <span class="text-gray-200 font-medium">{new Date(cmd.date_commande).toLocaleDateString('fr-BE')}</span></div>
+            <div class="flex items-center gap-2"><Clock size={14} class="text-orange-400"/> <span>{cmd.heure_appel?.slice(0,5) || '--:--'}</span></div>
+            <div class="flex items-center gap-2"><Bus size={14} class="text-orange-400"/> <span>{cmd.bus_data?.length || 1} bus</span></div>
+            <div class="flex items-center gap-2 truncate text-gray-500"><span class="w-px h-4 bg-white/10 mx-1"></span>{cmd.motif}</div>
+        </div>
+
+        <div class="flex items-center gap-2 text-sm text-gray-400 mb-3">
+            <span class="text-gray-500 text-xs font-bold uppercase">Parcours :</span>
+            <span class="text-gray-300">{cmd.origine || '?'}</span>
+            <ArrowRightLeft size={12} class="text-orange-500/50" />
+            <span class="text-gray-300">{cmd.destination || '?'}</span>
+        </div>
+
+        <div class="flex items-center gap-4 text-xs pt-3 border-t border-white/5">
+            {#if cmd.status === 'envoye' && cmd.sent_at}
+                <div class="flex items-center gap-1.5 text-emerald-500/80">
+                    <Mail size={12} /> <span class="text-emerald-400">Le {new Date(cmd.sent_at).toLocaleDateString('fr-BE')} par {cmd.sent_by_name || 'Inconnu'}</span>
+                </div>
+            {:else if cmd.validator}
+                <div class="flex items-center gap-1.5 text-red-500/70">
+                    <UserCheck size={12} /> <span class="text-red-400">{cmd.validator.full_name}</span>
+                </div>
+            {/if}
+        </div>
+    </div>
+
+    <div class="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity self-start mt-2 md:mt-0">
+        <button onclick={() => onEdit(cmd)} class="p-2 hover:bg-white/10 rounded-lg text-blue-400" title="Éditer"><FileText class="w-5 h-5" /></button>
+        <button onclick={() => onDuplicate(cmd)} class="p-2 hover:bg-green-500/10 rounded-lg text-green-400" title="Dupliquer"><ClipboardCopy class="w-5 h-5" /></button>
+        <button onclick={() => onDelete(cmd.id)} class="p-2 hover:bg-red-500/10 rounded-lg text-red-400" title="Supprimer"><Trash2 class="w-5 h-5" /></button>
+    </div>
+{/snippet}
