@@ -1,9 +1,9 @@
 import { toast } from '$lib/stores/toast.js';
 
 const C3_TYPE_LABELS = {
-    1: 'Évacuation sur place',
-    2: 'Service de bus de remplacement',
-    3: 'Modification / Réutilisation d\'un bus planifié',
+    1: 'Évacuation',
+    2: 'Remplacement',
+    3: 'Modification Service planifié',
 };
 
 function getBase64ImageFromURL(url) {
