@@ -467,7 +467,7 @@
 
     <div class="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity self-start mt-2 md:mt-0">
         <button onclick={() => onEdit(cmd)} class="p-2 hover:bg-white/10 rounded-lg text-blue-400" title="Éditer"><FileText class="w-5 h-5" /></button>
-        <button onclick={() => onDuplicate(cmd)} class="p-2 hover:bg-green-500/10 rounded-lg text-green-400" title="Dupliquer"><ClipboardCopy class="w-5 h-5" /></button>
+        <!-- <button onclick={() => onDuplicate(cmd)} class="p-2 hover:bg-green-500/10 rounded-lg text-green-400" title="Dupliquer"><ClipboardCopy class="w-5 h-5" /></button> -->
         <button onclick={() => onDelete(cmd.id)} class="p-2 hover:bg-red-500/10 rounded-lg text-red-400" title="Supprimer"><Trash2 class="w-5 h-5" /></button>
     </div>
 {/snippet}

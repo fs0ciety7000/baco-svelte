@@ -176,9 +176,9 @@
                                     <button onclick={() => onEdit(cmd)} class="p-1 hover:bg-blue-500/10 rounded text-blue-400" title="Éditer">
                                         <FileText size={12} />
                                     </button>
-                                    <button onclick={() => onDuplicate(cmd)} class="p-1 hover:bg-green-500/10 rounded text-green-400" title="Dupliquer">
+                                    <!-- <button onclick={() => onDuplicate(cmd)} class="p-1 hover:bg-green-500/10 rounded text-green-400" title="Dupliquer">
                                         <ClipboardCopy size={12} />
-                                    </button>
+                                    </button> -->
                                     <button onclick={() => onDelete(cmd.id)} class="p-1 hover:bg-red-500/10 rounded text-red-400" title="Supprimer">
                                         <Trash2 size={12} />
                                     </button>
