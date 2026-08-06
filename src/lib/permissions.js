@@ -69,6 +69,11 @@ export const ACTIONS = {
     GENERATE_TAXI_READ: 'generate_taxi:read',
     GENERATE_TAXI_WRITE: 'generate_taxi:write',
     GENERATE_TAXI_DELETE: 'generate_taxi:delete',
+
+    // --- GESTION LIGNES & ARRÊTS (Admin/Modérateur uniquement) ---
+    LIGNES_READ: 'lignes:read',
+    LIGNES_WRITE: 'lignes:write',
+    LIGNES_DELETE: 'lignes:delete',
 };
 
 export const ROLE_DEFAULTS = {
@@ -93,7 +98,8 @@ export const ROLE_DEFAULTS = {
         'carte_pn:read', 'carte_pn:write',
         'pmr:read', 'pmr:write',
         'darts:read', 'darts:write',
-        'generate_taxi:read', 'generate_taxi:write'
+        'generate_taxi:read', 'generate_taxi:write',
+        'lignes:read', 'lignes:write' // Pas de delete
     ],
 
     // USER : Lecture seule sur la plupart des outils pro, écriture sur le "social/quotidien"
