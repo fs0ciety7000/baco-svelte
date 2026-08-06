@@ -105,6 +105,15 @@
             .map(r => `${r.gare} (${r.ligne_nom})`);
     });
 
+    // --- ARRÊTS EFFECTIFS (auto vs manuel) ---
+    let effectiveArrets = $derived(
+        form.is_direct
+            ? []
+            : (form.arrets_mode === 'manuel'
+                ? (form.arrets_manuel || '').split(',').map(s => s.trim()).filter(Boolean)
+                : form.arrets)
+    );
+
     // --- HELPERS STYLES ---
     const inputClass = "w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-orange-500/50 outline-none transition-all placeholder-gray-600";
     const labelClass = "block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1 flex items-center gap-1";
@@ -146,8 +155,8 @@
                 waypoints.push(startCoords);
             }
 
-            if (!form.is_direct && form.arrets.length > 0) {
-                for (const stop of form.arrets) {
+            if (!form.is_direct && effectiveArrets.length > 0) {
+                for (const stop of effectiveArrets) {
                     const stopName = stop.split('(')[0].trim();
                     const coords = await GeoService.getGareCoordinates(stopName);
                     if (coords) {
@@ -223,7 +232,7 @@
     // --- EXPORTS ---
     async function handlePDF() {
         const society = societes.find(s => s.id === form.societe_id);
-        await OttoReportsService.generateCommandePDF(form, society, currentUser, chauffeurs);
+        await OttoReportsService.generateCommandePDF({ ...form, arrets: effectiveArrets }, society, currentUser, chauffeurs);
     }
 
     function prepareEmail() {
@@ -527,17 +536,54 @@ PACO Sud-Ouest`;
             </div>
         </div>
 
-        {#if !form.is_direct && form.lignes.length > 0}
-            <div class="bg-black/20 border border-white/5 rounded-2xl p-6 max-h-[400px] overflow-y-auto custom-scrollbar" transition:slide>
-                <h3 class="text-sm font-bold text-yellow-400 uppercase tracking-wide mb-4 sticky top-0 bg-[#16181d] py-2 z-10 flex items-center gap-2"><MapPin size={16}/> Arrêts</h3>
-                <div class="space-y-1">
-                    {#each availableStops as stop}
-                        <button onclick={() => !isLocked && toggleStop(stop)} class="w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-3 transition-colors {form.arrets.includes(stop) ? 'bg-yellow-500/10 text-yellow-300 border border-yellow-500/20' : 'hover:bg-white/5 text-gray-400'}">
-                            <div class="w-4 h-4 border rounded flex items-center justify-center border-white/30">{#if form.arrets.includes(stop)}<Check size={10}/>{/if}</div>
-                            {stop}
-                        </button>
-                    {/each}
+        {#if !form.is_direct}
+            <div class="bg-black/20 border border-white/5 rounded-2xl p-6 max-h-[460px] overflow-y-auto custom-scrollbar" transition:slide>
+                <div class="flex items-center justify-between sticky top-0 bg-[#16181d] py-2 z-10 mb-2">
+                    <h3 class="text-sm font-bold text-yellow-400 uppercase tracking-wide flex items-center gap-2"><MapPin size={16}/> Arrêts</h3>
+                    <div class="flex rounded-lg overflow-hidden border border-white/10 text-[9px] font-black">
+                        <button
+                            onclick={() => !isLocked && (form.arrets_mode = 'auto')}
+                            disabled={isLocked}
+                            class="px-2.5 py-1 transition-all {form.arrets_mode !== 'manuel' ? 'bg-yellow-600 text-white' : 'bg-black/20 text-gray-600 hover:bg-white/5'}"
+                        >AUTO</button>
+                        <button
+                            onclick={() => !isLocked && (form.arrets_mode = 'manuel')}
+                            disabled={isLocked}
+                            class="px-2.5 py-1 transition-all {form.arrets_mode === 'manuel' ? 'bg-orange-600 text-white' : 'bg-black/20 text-gray-600 hover:bg-white/5'}"
+                        >MANUEL</button>
+                    </div>
                 </div>
+
+                {#if form.arrets_mode === 'manuel'}
+                    <div transition:slide|local>
+                        <p class="text-[10px] text-gray-500 mb-2">Saisie libre, séparez les arrêts par une virgule.</p>
+                        <textarea
+                            bind:value={form.arrets_manuel}
+                            disabled={isLocked}
+                            rows="4"
+                            class="w-full bg-black/40 border border-orange-500/20 rounded-xl px-3 py-2 text-sm text-white focus:ring-2 focus:ring-orange-500/50 outline-none transition-all placeholder-gray-600 resize-none"
+                            placeholder="Ex: Rue de la Gare 12, Arrêt provisoire Marché, ..."
+                        ></textarea>
+                        {#if effectiveArrets.length > 0}
+                            <div class="flex flex-wrap gap-1.5 mt-3">
+                                {#each effectiveArrets as stop}
+                                    <span class="px-2 py-1 rounded-lg text-[10px] font-bold bg-orange-500/10 text-orange-300 border border-orange-500/20">{stop}</span>
+                                {/each}
+                            </div>
+                        {/if}
+                    </div>
+                {:else if form.lignes.length > 0}
+                    <div class="space-y-1" transition:slide|local>
+                        {#each availableStops as stop}
+                            <button onclick={() => !isLocked && toggleStop(stop)} class="w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-3 transition-colors {form.arrets.includes(stop) ? 'bg-yellow-500/10 text-yellow-300 border border-yellow-500/20' : 'hover:bg-white/5 text-gray-400'}">
+                                <div class="w-4 h-4 border rounded flex items-center justify-center border-white/30">{#if form.arrets.includes(stop)}<Check size={10}/>{/if}</div>
+                                {stop}
+                            </button>
+                        {/each}
+                    </div>
+                {:else}
+                    <p class="text-xs text-gray-600 italic py-4 text-center">Sélectionnez une ligne pour voir les arrêts, ou passez en mode manuel.</p>
+                {/if}
             </div>
         {/if}
     </div>
