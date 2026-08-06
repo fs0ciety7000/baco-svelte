@@ -40,7 +40,8 @@
 		Maximize,
 		ClipboardList,
 		BarChart3,
-		Radio
+		Radio,
+		Route
 	} from 'lucide-svelte';
 
 	export let user;
@@ -545,6 +546,9 @@
 										>
 									</div>
 									<a href="/profil" class={dropdownLinkClass}><UserCog /> Mon Profil</a>
+									{#if isAdmin || isModerator}
+										<a href="/admin/lignes" class={dropdownLinkClass}><Route /> Lignes & Arrêts</a>
+									{/if}
 									{#if isAdmin}
 										<a href="/admin" class={dropdownLinkClass}><ShieldCheck /> Admin</a>
 										<a href="/audit" class={dropdownLinkClass}><FileClock /> Logs</a>
