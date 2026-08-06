@@ -106,6 +106,8 @@
             societe_id: null,
             lignes: [],
             arrets: [],
+            arrets_mode: 'auto',
+            arrets_manuel: '',
             origine: '',
             destination: '',
             is_direct: true,
@@ -131,7 +133,7 @@
             ? cmd.bus_data.map(b => ({ ...b, chauffeur_id: b.chauffeur_id || null }))
             : [{ plaque: '', heure_prevue: '', chauffeur_id: null }];
 
-        form = { ...cmd, bus_data: safeBusData };
+        form = { ...cmd, bus_data: safeBusData, arrets_mode: cmd.arrets_mode || 'auto', arrets_manuel: cmd.arrets_manuel || '' };
         view = 'form';
         if (updateUrl) goto(`?id=${cmd.id}`, { replaceState: false, noScroll: true });
     }
@@ -182,10 +184,16 @@
             ...cleanForm 
         } = form;
 
+        const effectiveArrets = form.is_direct
+            ? []
+            : (form.arrets_mode === 'manuel'
+                ? (form.arrets_manuel || '').split(',').map(s => s.trim()).filter(Boolean)
+                : form.arrets);
+
         const payload = {
             ...cleanForm,
             status,
-            arrets: form.is_direct ? [] : form.arrets
+            arrets: effectiveArrets
         };
 
         if (!form.id) payload.user_id = currentUser.id;
