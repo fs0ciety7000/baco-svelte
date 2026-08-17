@@ -4,6 +4,7 @@
     import { GeoService } from '$lib/services/geo.service.js';
     import { OttoReportsService } from '$lib/services/ottoReports.service.js';
     import { toast } from '$lib/stores/toast.js';
+    import { getDistrictStyle } from '$lib/utils/districtColors.js';
     import Map from '$lib/components/ui/map/Map.svelte';
 
     // --- PROPS ---
@@ -11,7 +12,7 @@
         form = $bindable(),
         societes = [],
         chauffeurs = [],
-        referenceData = { lines: [], stops: [], raw: [] },
+        referenceData = { lines: [], stops: [], raw: [], lineDistricts: {} },
         isLocked,
         currentUser,
         onSave,
@@ -531,7 +532,13 @@ PACO Sud-Ouest`;
             <h3 class="text-sm font-bold text-purple-400 uppercase tracking-wide mb-4 sticky top-0 bg-[#16181d] py-2 z-10 flex items-center gap-2"><Hash size={16}/> Lignes</h3>
             <div class="flex flex-wrap gap-2">
                 {#each referenceData.lines as line}
-                    <button onclick={() => !isLocked && toggleLine(line)} class="px-3 py-1.5 rounded-lg text-xs font-bold border transition-all {form.lignes.includes(line) ? 'bg-purple-600 text-white border-purple-500' : 'bg-white/5 border-white/10 text-gray-400'}">{line}</button>
+                    {@const isSelected = form.lignes.includes(line)}
+                    {@const districtStyle = getDistrictStyle(referenceData.lineDistricts?.[line])}
+                    <button
+                        onclick={() => !isLocked && toggleLine(line)}
+                        class="px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition-all {isSelected ? 'bg-purple-600 text-white border-purple-500' : `bg-white/5 text-gray-400 ${districtStyle.border}`}"
+                        title={referenceData.lineDistricts?.[line] ? `District : ${districtStyle.label}` : ''}
+                    >{line}</button>
                 {/each}
             </div>
         </div>

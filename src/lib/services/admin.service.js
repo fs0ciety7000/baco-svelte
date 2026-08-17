@@ -4,11 +4,11 @@ export const AdminService = {
     /**
      * Crée un nouvel utilisateur (via API serveur)
      */
-    async createUser({ email, password, full_name, role = 'reader' }) {
+    async createUser({ email, password, full_name, role = 'reader', district = 'Sud-Ouest' }) {
         const response = await fetch('/api/admin/create-user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, full_name, role })
+            body: JSON.stringify({ email, password, full_name, role, district })
         });
 
         const data = await response.json();

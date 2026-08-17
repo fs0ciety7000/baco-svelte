@@ -8,8 +8,8 @@ export const OttoService = {
         const { data, error } = await supabase
             .from('otto_commandes')
             .select(`
-                *, 
-                creator:user_id(full_name), 
+                *,
+                creator:user_id(full_name, district),
                 validator:validated_by(full_name),
                 societes_bus(nom, adresse, telephone, email)
             `)
@@ -54,22 +54,30 @@ export const OttoService = {
     async loadReferenceData() {
         const { data } = await supabase
             .from('ligne_data')
-            .select('ligne_nom, gare, ordre')
+            .select('ligne_nom, gare, ordre, district')
             .not('gare', 'is', null)
             .order('ligne_nom');
 
-        if (!data) return { lines: [], stops: [], raw: [] };
+        if (!data) return { lines: [], stops: [], raw: [], lineDistricts: {} };
 
         // On crée un Set pour dédoubler, puis on trie avec localeCompare en mode numérique
         // Cela permet de trier correctement "L.90" avant "L.100" par exemple.
         const lines = [...new Set(data.map(l => l.ligne_nom))]
             .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 
+        // Map ligne_nom -> district (premier district non-vide rencontré pour cette ligne)
+        const lineDistricts = {};
+        data.forEach(row => {
+            if (row.ligne_nom && row.district && !lineDistricts[row.ligne_nom]) {
+                lineDistricts[row.ligne_nom] = row.district;
+            }
+        });
 
         return {
             lines,
             stops: [...new Set(data.map(d => d.gare))].sort(),
-            raw: data // Gardé pour le calcul de l'ordre des arrêts
+            raw: data, // Gardé pour le calcul de l'ordre des arrêts
+            lineDistricts
         };
     },
 

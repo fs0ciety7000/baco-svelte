@@ -80,6 +80,11 @@ export const ROLE_DEFAULTS = {
     // ADMIN : A accès à tout (*) y compris les DELETE
     admin: ['*'],
 
+    // OTTO_AGENT : Accès UNIQUEMENT au module C3 (Otto), lecture + écriture, pas de suppression
+    otto_agent: [
+        'otto:read', 'otto:write'
+    ],
+
     // MODERATOR : Peut lire et écrire, MAIS PAS SUPPRIMER (sécurité)
     moderator: [
         'users:manage',

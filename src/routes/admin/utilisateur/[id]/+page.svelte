@@ -156,7 +156,8 @@
             await ProfileService.updateProfile(userId, {
                 full_name: user.full_name,
                 role: user.role,
-                fonction: user.fonction
+                fonction: user.fonction,
+                district: user.district
             });
             toast.success("Profil mis à jour");
         } catch(e) {
@@ -255,6 +256,7 @@
                             <p class="text-gray-400 font-mono text-sm mt-1">{user.email}</p>
                             <div class="flex gap-2 justify-center md:justify-start mt-3">
                                 <span class="px-2 py-1 rounded border border-white/10 bg-white/5 text-xs font-bold uppercase text-gray-300">{user.role}</span>
+                                <span class="px-2 py-1 rounded border border-sky-500/20 bg-sky-500/10 text-xs font-bold uppercase text-sky-300">{user.district || 'Sud-Ouest'}</span>
                                 {#if user.banned_until}
                                     <span class="px-2 py-1 rounded border border-red-500/20 bg-red-500/10 text-xs font-bold uppercase text-red-400 animate-pulse">Banni</span>
                                 {/if}
@@ -273,11 +275,23 @@
                                 <select bind:value={user.role} class={inputClass}>
                                     <option value="reader" class="bg-gray-900">Lecteur (lecture seule)</option>
                                     <option value="user" class="bg-gray-900">Utilisateur</option>
+                                    <option value="otto_agent" class="bg-gray-900">Agent Otto (C3 uniquement)</option>
                                     <option value="moderator" class="bg-gray-900">Modérateur</option>
                                     <option value="admin" class="bg-gray-900">Admin</option>
                                 </select>
                             </div>
                             <div><label class={labelClass}>Fonction</label><input type="text" bind:value={user.fonction} class={inputClass}></div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class={labelClass}>District</label>
+                                <select bind:value={user.district} class={inputClass}>
+                                    <option value="Sud-Ouest" class="bg-gray-900">Sud-Ouest</option>
+                                    <option value="Sud-Est" class="bg-gray-900">Sud-Est</option>
+                                    <option value="Centre" class="bg-gray-900">Centre</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div class="flex justify-end pt-4">

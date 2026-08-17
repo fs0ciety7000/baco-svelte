@@ -31,7 +31,8 @@
         username: "", full_name: "", email: "", role: "user",
         // Business
        fonction: "",
-      
+       district: "Sud-Ouest",
+
         birthday: null, avatar_url: null, theme: "default"
     });
 
@@ -238,6 +239,9 @@
                 <Shield size={12} /> Admin
               </span>
             {/if}
+            <span class="inline-flex items-center gap-1 px-3 py-1 bg-sky-500/10 text-sky-300 text-xs font-bold rounded-full uppercase border border-sky-500/20">
+              <MapPin size={12} /> {profileData.district || 'Sud-Ouest'}
+            </span>
           </h1>
           <p class="text-gray-500 text-sm mt-1">
              ID: <span class="font-mono text-gray-600">{targetUserId}</span>
@@ -309,7 +313,7 @@
                 </div>
               </div>
    
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-3 gap-4">
                   <div>
                     <label class={labelClass}>Fonction</label>
                     <div class="relative">
@@ -319,6 +323,13 @@
                           <option value="PACO" class="bg-gray-900">PACO</option>
                           <option value="RCCA" class="bg-gray-900">RCCA</option>
                       </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label class={labelClass}>District</label>
+                    <div class="relative">
+                      <MapPin size={16} class="absolute left-3 top-3.5 text-gray-500" />
+                      <input type="text" value={profileData.district || 'Sud-Ouest'} class="{inputClass} pl-10" disabled>
                     </div>
                   </div>
                   <div>
