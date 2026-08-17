@@ -74,15 +74,18 @@ export const ACTIONS = {
     LIGNES_READ: 'lignes:read',
     LIGNES_WRITE: 'lignes:write',
     LIGNES_DELETE: 'lignes:delete',
+
+    // --- STATISTIQUES ---
+    STATS_READ: 'stats:read',
 };
 
 export const ROLE_DEFAULTS = {
     // ADMIN : A accès à tout (*) y compris les DELETE
     admin: ['*'],
 
-    // OTTO_AGENT : Accès UNIQUEMENT au module C3 (Otto), lecture + écriture, pas de suppression
+    // OTTO_AGENT : Accès UNIQUEMENT au module C3 (Otto) + Statistiques, lecture + écriture, pas de suppression
     otto_agent: [
-        'otto:read', 'otto:write'
+        'otto:read', 'otto:write', 'stats:read'
     ],
 
     // MODERATOR : Peut lire et écrire, MAIS PAS SUPPRIMER (sécurité)
@@ -104,7 +107,8 @@ export const ROLE_DEFAULTS = {
         'pmr:read', 'pmr:write',
         'darts:read', 'darts:write',
         'generate_taxi:read', 'generate_taxi:write',
-        'lignes:read', 'lignes:write' // Pas de delete
+        'lignes:read', 'lignes:write', // Pas de delete
+        'stats:read'
     ],
 
     // USER : Lecture seule sur la plupart des outils pro, écriture sur le "social/quotidien"
@@ -124,7 +128,8 @@ export const ROLE_DEFAULTS = {
         'generate_taxi:read', 'generate_taxi:write',
         'carte_pn:read',
         'pmr:read', 'pmr:write',
-        'darts:read', 'darts:write' // Loisir autorisé
+        'darts:read', 'darts:write', // Loisir autorisé
+        'stats:read'
     ],
 
     // READER : Lecture seule sur tous les modules (rôle par défaut pour les nouveaux utilisateurs)
@@ -143,7 +148,8 @@ export const ROLE_DEFAULTS = {
         'carte_pn:read',
         'pmr:read',
         'darts:read',
-        'generate_taxi:read'
+        'generate_taxi:read',
+        'stats:read'
     ]
 };
 
