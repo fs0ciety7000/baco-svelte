@@ -2,7 +2,7 @@
     import { fly, fade } from 'svelte/transition';
     import { Search, Calendar, X, Download, Printer, Plus, Building2, CheckCircle, Mail, UserCheck, FileText, ClipboardCopy, Trash2, Bus, Clock, ArrowRightLeft, School, SlidersHorizontal, LayoutList, Kanban, ChevronDown, ArrowUpDown } from 'lucide-svelte';
     import { OttoReportsService } from '$lib/services/ottoReports.service.js';
-    import { getDistrictStyle, districtSortIndex } from '$lib/utils/districtColors.js';
+    import { getDistrictStyle, districtSortIndex, normalizeDistrict, DISTRICT_ORDER } from '$lib/utils/districtColors.js';
     import OttoKanban from './OttoKanban.svelte';
 
     // --- PROPS ---
@@ -23,6 +23,7 @@
     let dateFrom = $state("");
     let dateTo = $state("");
     let societeFilter = $state("all");
+    let districtFilter = $state("all");
     let sortBy = $state("date_desc");
     let view = $state("list"); // "list" | "kanban"
     let showFilters = $state(false);
@@ -35,6 +36,7 @@
         (dateFrom ? 1 : 0) +
         (dateTo ? 1 : 0) +
         (societeFilter !== 'all' ? 1 : 0) +
+        (districtFilter !== 'all' ? 1 : 0) +
         (searchTerm ? 1 : 0)
     );
 
@@ -60,6 +62,9 @@
 
             // Société
             if (societeFilter !== 'all' && cmd.societes_bus?.nom !== societeFilter) return false;
+
+            // District (créateur)
+            if (districtFilter !== 'all' && normalizeDistrict(cmd.creator?.district) !== districtFilter) return false;
 
             return true;
         });
@@ -150,6 +155,7 @@
         dateFrom = "";
         dateTo = "";
         societeFilter = "all";
+        districtFilter = "all";
         sortBy = "date_desc";
     }
 
@@ -207,6 +213,23 @@
                     <button onclick={() => statusFilter = 'all'} class="px-3 py-2 rounded-xl text-sm font-bold border transition-all {statusFilter === 'all' ? 'bg-orange-500/20 text-orange-300 border-orange-500/30' : 'bg-white/5 text-gray-400 border-white/5 hover:bg-white/10'}">Tous</button>
                     <button onclick={() => statusFilter = 'brouillon'} class="px-3 py-2 rounded-xl text-sm font-bold border transition-all {statusFilter === 'brouillon' ? 'bg-gray-500/20 text-gray-300 border-gray-500/30' : 'bg-white/5 text-gray-400 border-white/5 hover:bg-white/10'}">Brouillons</button>
                     <button onclick={() => statusFilter = 'envoye'} class="px-3 py-2 rounded-xl text-sm font-bold border transition-all {statusFilter === 'envoye' ? 'bg-red-500/20 text-red-300 border-red-500/30' : 'bg-white/5 text-gray-400 border-white/5 hover:bg-white/10'}">Clôturés</button>
+                </div>
+
+                <div class="w-px h-6 bg-white/10 hidden sm:block"></div>
+
+                <!-- District pills -->
+                <div class="flex gap-1">
+                    <button onclick={() => districtFilter = 'all'} class="px-3 py-2 rounded-xl text-sm font-bold border transition-all {districtFilter === 'all' ? 'bg-orange-500/20 text-orange-300 border-orange-500/30' : 'bg-white/5 text-gray-400 border-white/5 hover:bg-white/10'}">Toutes zones</button>
+                    {#each DISTRICT_ORDER as d}
+                        {@const style = getDistrictStyle(d)}
+                        <button
+                            onclick={() => districtFilter = d}
+                            class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold border transition-all {districtFilter === d ? style.badge : 'bg-white/5 text-gray-400 border-white/5 hover:bg-white/10'}"
+                        >
+                            <span class="w-1.5 h-1.5 rounded-full {style.dot}"></span>
+                            {style.label}
+                        </button>
+                    {/each}
                 </div>
 
                 <div class="w-px h-6 bg-white/10 hidden sm:block"></div>
