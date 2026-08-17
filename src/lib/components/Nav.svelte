@@ -52,6 +52,7 @@
 	let userProfile = null;
 	let isAdmin = false;
 	let isModerator = false;
+	let isOttoAgent = false;
 	let notificationsCount = 0;
 	let notifications = [];
 
@@ -169,6 +170,7 @@
 				userProfile = data;
 				isAdmin = data.role === 'admin';
 				isModerator = data.role === 'moderator';
+				isOttoAgent = data.role === 'otto_agent';
 			}
 			const { data: notifs } = await supabase
 				.from('notifications')
@@ -235,6 +237,13 @@
 				</button>
 
 				<div class="ml-6 hidden w-full flex-row items-center justify-between gap-1 md:flex">
+					{#if isOttoAgent}
+						<div class="flex flex-row items-center gap-2">
+							<a href="/otto" class={getLinkClass('otto')}
+								><Bus class="h-4 w-4" /><span>C3 (Otto)</span></a
+							>
+						</div>
+					{:else}
 					<div class="flex flex-row items-center gap-2">
 						<a href="/operationnel" class={getLinkClass('operationnel')}
 							><Shield class="h-4 w-4" /><span>Opérationnel</span></a
@@ -347,6 +356,7 @@
 							{/if}
 						</div>
 					</div>
+					{/if}
 
 					<div class="flex items-center gap-2">
 						<div class="relative">
@@ -570,21 +580,30 @@
 					transition:slide
 					class="mt-4 flex flex-col gap-2 border-t border-white/5 pt-4 pb-2 md:hidden"
 				>
-					<a href="/operationnel" class="flex items-center gap-3 p-3 text-gray-400"
-						><Shield class="h-4 w-4" /> Opérationnel</a
-					>
-					<a href="/pmr" class="flex items-center gap-3 p-3 text-gray-400"
-						><Accessibility class="h-4 w-4" /> PMR</a
-					>
-					<a href="/journal" class="flex items-center gap-3 p-3 text-gray-400"
-						><BookCopy class="h-4 w-4" /> Journal</a
-					>
-					<a href="/generateTaxi" class="flex items-center gap-3 p-3 text-gray-400"
-						><Car class="h-4 w-4" /> Cmd Taxi</a
-					>
-					<a href="/deplacements" class="flex items-center gap-3 p-3 text-gray-400"
-						><Car class="h-4 w-4" /> Déplacements PMR</a
-					>
+					{#if isOttoAgent}
+						<a href="/otto" class="flex items-center gap-3 p-3 text-gray-400"
+							><Bus class="h-4 w-4" /> C3 (Otto)</a
+						>
+						<a href="/profil" class="flex items-center gap-3 p-3 text-gray-400"
+							><UserCog class="h-4 w-4" /> Mon Profil</a
+						>
+					{:else}
+						<a href="/operationnel" class="flex items-center gap-3 p-3 text-gray-400"
+							><Shield class="h-4 w-4" /> Opérationnel</a
+						>
+						<a href="/pmr" class="flex items-center gap-3 p-3 text-gray-400"
+							><Accessibility class="h-4 w-4" /> PMR</a
+						>
+						<a href="/journal" class="flex items-center gap-3 p-3 text-gray-400"
+							><BookCopy class="h-4 w-4" /> Journal</a
+						>
+						<a href="/generateTaxi" class="flex items-center gap-3 p-3 text-gray-400"
+							><Car class="h-4 w-4" /> Cmd Taxi</a
+						>
+						<a href="/deplacements" class="flex items-center gap-3 p-3 text-gray-400"
+							><Car class="h-4 w-4" /> Déplacements PMR</a
+						>
+					{/if}
 					<button on:click={handleLogout} class="flex items-center gap-3 p-3 text-red-400"
 						><LogOut class="h-4 w-4" /> Déconnexion</button
 					>
