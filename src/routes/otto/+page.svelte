@@ -27,7 +27,7 @@
     // Data
     let commandes = $state([]);
     let societes = $state([]);
-    let referenceData = $state({ lines: [], stops: [], raw: [] });
+    let referenceData = $state({ lines: [], stops: [], raw: [], lineDistricts: {} });
     
     // Form State
     let form = $state(getInitialForm());

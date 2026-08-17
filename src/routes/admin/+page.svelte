@@ -32,8 +32,19 @@
         email: '',
         password: '',
         full_name: '',
-        role: 'reader'
+        role: 'reader',
+        district: 'Sud-Ouest'
     });
+
+    // --- STYLES DISTRICT ---
+    const DISTRICT_STYLES = {
+        'Sud-Ouest': 'bg-sky-500/10 text-sky-400 border-sky-500/20',
+        'Sud-Est':   'bg-amber-500/10 text-amber-400 border-amber-500/20',
+        'Centre':    'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+    };
+    function districtClass(d) {
+        return DISTRICT_STYLES[d] || 'bg-white/5 text-gray-400 border-white/10';
+    }
 
     // Filtres & Tri
     let searchQuery = $state("");
@@ -153,7 +164,7 @@
 
     // --- CRÉATION UTILISATEUR ---
     function openCreateModal() {
-        newUser = { email: '', password: '', full_name: '', role: 'reader' };
+        newUser = { email: '', password: '', full_name: '', role: 'reader', district: 'Sud-Ouest' };
         showPassword = false;
         showCreateModal = true;
     }
@@ -369,6 +380,7 @@
                         <tr>
                             <th class="px-6 py-4 cursor-pointer hover:text-white" onclick={() => toggleSort('full_name')}>Utilisateur <ArrowUpDown size={12} class="inline"/></th>
                             <th class="px-6 py-4 cursor-pointer hover:text-white" onclick={() => toggleSort('role')}>Rôle <ArrowUpDown size={12} class="inline"/></th>
+                            <th class="px-6 py-4 cursor-pointer hover:text-white" onclick={() => toggleSort('district')}>District <ArrowUpDown size={12} class="inline"/></th>
                             <th class="px-6 py-4">Statut</th>
                             <th class="px-6 py-4 text-center">Sanctions</th> <th class="px-6 py-4 cursor-pointer hover:text-white" onclick={() => toggleSort('last_active')}>Dernière Activité <ArrowUpDown size={12} class="inline"/></th>
                             <th class="px-6 py-4 text-right">Action</th>
@@ -392,6 +404,11 @@
                                          user.role === 'moderator' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 
                                          'bg-white/5 text-gray-400 border-white/10'}">
                                         {user.role || 'user'}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="px-2 py-1 rounded text-[10px] font-bold uppercase border {districtClass(user.district)}">
+                                        {user.district || 'Sud-Ouest'}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4">
@@ -642,6 +659,7 @@
                     >
                         <option value="reader">Lecteur (lecture seule)</option>
                         <option value="user">Utilisateur (lecture + écriture)</option>
+                        <option value="otto_agent">Agent Otto (C3 uniquement)</option>
                         <option value="moderator">Modérateur</option>
                         <option value="admin">Administrateur</option>
                     </select>
@@ -650,12 +668,26 @@
                             Accès en lecture seule sur tous les modules.
                         {:else if newUser.role === 'user'}
                             Lecture et écriture sur la plupart des modules.
+                        {:else if newUser.role === 'otto_agent'}
+                            Accès uniquement au module C3 (Otto), lecture + écriture.
                         {:else if newUser.role === 'moderator'}
                             Lecture et écriture, mais pas de suppression.
                         {:else}
                             Accès complet à toutes les fonctionnalités.
                         {/if}
                     </p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5">District</label>
+                    <select
+                        bind:value={newUser.district}
+                        class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-green-500/50 outline-none"
+                    >
+                        <option value="Sud-Ouest">Sud-Ouest</option>
+                        <option value="Sud-Est">Sud-Est</option>
+                        <option value="Centre">Centre</option>
+                    </select>
                 </div>
             </div>
 

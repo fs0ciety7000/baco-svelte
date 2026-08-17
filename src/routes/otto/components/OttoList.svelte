@@ -2,6 +2,7 @@
     import { fly, fade } from 'svelte/transition';
     import { Search, Calendar, X, Download, Printer, Plus, Building2, CheckCircle, Mail, UserCheck, FileText, ClipboardCopy, Trash2, Bus, Clock, ArrowRightLeft, School, SlidersHorizontal, LayoutList, Kanban, ChevronDown, ArrowUpDown } from 'lucide-svelte';
     import { OttoReportsService } from '$lib/services/ottoReports.service.js';
+    import { getDistrictStyle, districtSortIndex } from '$lib/utils/districtColors.js';
     import OttoKanban from './OttoKanban.svelte';
 
     // --- PROPS ---
@@ -70,6 +71,7 @@
                 case 'date_desc': return b.date_commande.localeCompare(a.date_commande);
                 case 'relation':  return (a.relation || '').localeCompare(b.relation || '');
                 case 'societe':   return (a.societes_bus?.nom || '').localeCompare(b.societes_bus?.nom || '');
+                case 'district':  return districtSortIndex(a.creator?.district) - districtSortIndex(b.creator?.district);
                 default: return 0;
             }
         });
@@ -297,6 +299,7 @@
                             <option value="date_asc">Date ↑ (ancien)</option>
                             <option value="relation">Relation A→Z</option>
                             <option value="societe">Société A→Z</option>
+                            <option value="district">District</option>
                         </select>
                         <ChevronDown class="absolute right-2.5 top-2.5 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
                     </div>
@@ -391,8 +394,9 @@
                             <div class="flex-1 flex flex-col gap-3">
                                 {#each group as cmd (cmd.id)}
                                     {@const c3Style = C3_STYLES[cmd.c3_type ?? 2] ?? C3_STYLES[2]}
-                                    <div class="bg-black/20 border border-white/5 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-4 transition-all group-item overflow-hidden {c3Style.borderClass} {cmd.status === 'envoye' ? 'opacity-60 grayscale-[30%] hover:opacity-100 hover:grayscale-0' : 'hover:border-white/20'}">
-                                        {@render cmdCard(cmd, c3Style)}
+                                    {@const districtStyle = getDistrictStyle(cmd.creator?.district)}
+                                    <div class="bg-black/20 border border-white/5 border-r-[3px] rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-4 transition-all group-item overflow-hidden {c3Style.borderClass} {districtStyle.border} {cmd.status === 'envoye' ? 'opacity-60 grayscale-[30%] hover:opacity-100 hover:grayscale-0' : 'hover:border-white/20'}">
+                                        {@render cmdCard(cmd, c3Style, districtStyle)}
                                     </div>
                                 {/each}
                             </div>
@@ -400,8 +404,9 @@
                     {:else}
                         {@const cmd = group[0]}
                         {@const c3Style = C3_STYLES[cmd.c3_type ?? 2] ?? C3_STYLES[2]}
-                        <div class="bg-black/20 border border-white/5 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-4 transition-all group overflow-hidden {c3Style.borderClass} {cmd.status === 'envoye' ? 'opacity-60 grayscale-[30%] hover:opacity-100 hover:grayscale-0' : 'hover:border-orange-500/30'}">
-                            {@render cmdCard(cmd, c3Style)}
+                        {@const districtStyle = getDistrictStyle(cmd.creator?.district)}
+                        <div class="bg-black/20 border border-white/5 border-r-[3px] rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-4 transition-all group overflow-hidden {c3Style.borderClass} {districtStyle.border} {cmd.status === 'envoye' ? 'opacity-60 grayscale-[30%] hover:opacity-100 hover:grayscale-0' : 'hover:border-orange-500/30'}">
+                            {@render cmdCard(cmd, c3Style, districtStyle)}
                         </div>
                     {/if}
                 {/each}
@@ -410,10 +415,14 @@
     {/if}
 </div>
 
-{#snippet cmdCard(cmd, c3Style)}
+{#snippet cmdCard(cmd, c3Style, districtStyle)}
     <div class="flex-grow min-w-0 w-full">
         <div class="flex items-center gap-3 mb-3 flex-wrap">
             <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border {c3Style.badgeClass}">{c3Style.label}</span>
+            <span class="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border {districtStyle.badge}">
+                <span class="w-1.5 h-1.5 rounded-full {districtStyle.dot}"></span>
+                {districtStyle.label}
+            </span>
             <span class="text-xl font-extrabold text-white tracking-tight">{cmd.relation}</span>
             <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase border {cmd.is_direct ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'}">
                 {cmd.is_direct ? 'Direct' : 'Omnibus'}

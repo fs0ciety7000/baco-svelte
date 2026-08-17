@@ -22,7 +22,7 @@ export async function POST({ request, locals }) {
     }
 
     // 2. Récupérer les données du formulaire
-    const { email, password, full_name, role = 'reader' } = await request.json();
+    const { email, password, full_name, role = 'reader', district = 'Sud-Ouest' } = await request.json();
 
     if (!email || !password) {
         throw error(400, 'Email et mot de passe requis');
@@ -33,9 +33,15 @@ export async function POST({ request, locals }) {
     }
 
     // Validation du rôle
-    const validRoles = ['reader', 'user', 'moderator', 'admin'];
+    const validRoles = ['reader', 'user', 'moderator', 'admin', 'otto_agent'];
     if (!validRoles.includes(role)) {
         throw error(400, 'Rôle invalide');
+    }
+
+    // Validation du district
+    const validDistricts = ['Sud-Ouest', 'Sud-Est', 'Centre'];
+    if (!validDistricts.includes(district)) {
+        throw error(400, 'District invalide');
     }
 
     // 3. Créer le client admin Supabase (avec service_role key)
@@ -62,15 +68,17 @@ export async function POST({ request, locals }) {
             throw error(400, createError.message);
         }
 
-        // 5. Mettre à jour le profil avec le rôle et le nom
+        // 5. Mettre à jour (ou créer si le trigger auto n'a pas encore fait son travail) le profil
+        //    avec le rôle, le nom et le district
         const { error: updateError } = await supabaseAdmin
             .from('profiles')
-            .update({
+            .upsert({
+                id: newUser.user.id,
                 role: role,
                 full_name: full_name || '',
+                district: district,
                 updated_at: new Date().toISOString()
-            })
-            .eq('id', newUser.user.id);
+            }, { onConflict: 'id' });
 
         if (updateError) {
             console.error('Erreur mise à jour profil:', updateError);
@@ -82,7 +90,8 @@ export async function POST({ request, locals }) {
             user: {
                 id: newUser.user.id,
                 email: newUser.user.email,
-                role: role
+                role: role,
+                district: district
             }
         });
 
