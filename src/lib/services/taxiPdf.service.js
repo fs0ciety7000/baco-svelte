@@ -17,8 +17,14 @@ const getBase64ImageFromURL = (url) => {
     });
 };
 
-const formatDate = (d) => new Date(d).toLocaleDateString('fr-BE', { timeZone: 'UTC' });
-const formatTime = (d) => new Date(d).toLocaleTimeString('fr-BE', { hour: '2-digit', minute:'2-digit', timeZone: 'UTC' });
+// Les dates de trajet sont saisies via <input type="datetime-local"> (heure murale Bruxelles,
+// sans fuseau) et affichées ailleurs dans l'app (liste des commandes) sans forcer de timeZone,
+// ce qui les rend correctement en heure locale du navigateur. Forcer 'UTC' ici décalait
+// l'affichage PDF de 2h (heure d'été) par rapport au reste de l'application — on aligne donc
+// le PDF sur le même fuseau explicite (Europe/Brussels) plutôt que de dépendre du fuseau du
+// poste qui génère le PDF.
+const formatDate = (d) => new Date(d).toLocaleDateString('fr-BE', { timeZone: 'Europe/Brussels' });
+const formatTime = (d) => new Date(d).toLocaleTimeString('fr-BE', { hour: '2-digit', minute:'2-digit', timeZone: 'Europe/Brussels' });
 const cleanData = (str) => String(str || '').replace(/[\[\]"]/g, '').replace(/,/g, ', ');
 
 export const TaxiPdfService = {
