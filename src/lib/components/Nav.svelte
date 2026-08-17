@@ -242,6 +242,9 @@
 							<a href="/otto" class={getLinkClass('otto')}
 								><Bus class="h-4 w-4" /><span>C3 (Otto)</span></a
 							>
+							<a href="/stats" class={getLinkClass('stats')}
+								><BarChart3 class="h-4 w-4" /><span>Statistiques</span></a
+							>
 						</div>
 					{:else}
 					<div class="flex flex-row items-center gap-2">
@@ -583,6 +586,9 @@
 					{#if isOttoAgent}
 						<a href="/otto" class="flex items-center gap-3 p-3 text-gray-400"
 							><Bus class="h-4 w-4" /> C3 (Otto)</a
+						>
+						<a href="/stats" class="flex items-center gap-3 p-3 text-gray-400"
+							><BarChart3 class="h-4 w-4" /> Statistiques</a
 						>
 						<a href="/profil" class="flex items-center gap-3 p-3 text-gray-400"
 							><UserCog class="h-4 w-4" /> Mon Profil</a
