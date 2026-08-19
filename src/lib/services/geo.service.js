@@ -10,15 +10,21 @@ export const GeoService = {
         
         if (COORDS_CACHE.has(cleanName)) return COORDS_CACHE.get(cleanName);
 
+        // Restreindre à la Belgique et ses voisins directement desservis par des lignes
+        // SNCB transfrontalières (Luxembourg-Ville, Lille, Aachen, Maastricht...) plutôt que
+        // de forcer ", Belgique" dans le texte de recherche — ce qui empêchait toute gare
+        // hors-Belgique (ex: "Luxembourg") d'être trouvée et faisait retomber sur un résultat
+        // belge approximatif.
+        const countryCodes = 'be,fr,de,lu,nl';
         const queries = [
-            `Gare de ${cleanName}, Belgique`,
-            `${cleanName} Station, Belgium`,
-            `${cleanName}, Belgique`
+            `Gare de ${cleanName}`,
+            `${cleanName} railway station`,
+            cleanName
         ];
 
         for (const query of queries) {
             try {
-                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=${countryCodes}&limit=1`;
                 const res = await fetch(url, { headers: { 'User-Agent': 'BacoApp/2.0' } });
                 
                 if (res.ok) {
