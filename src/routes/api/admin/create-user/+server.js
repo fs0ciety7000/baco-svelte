@@ -4,14 +4,27 @@ import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
 
-export async function POST({ request, locals }) {
+export async function POST({ request }) {
     // 1. Vérifier que l'utilisateur est admin
-    const { data: { user } } = await locals.supabase.auth.getUser();
-    if (!user) {
+    // La session Supabase est stockée côté client en localStorage (pas en cookies),
+    // donc `locals.supabase` (basé sur les cookies) ne voit jamais l'utilisateur connecté ici.
+    // On vérifie donc via le token Bearer envoyé explicitement par AdminService.createUser,
+    // exactement comme /api/admin/backup.
+    const token = request.headers.get('Authorization')?.slice(7) ?? null;
+    if (!token) {
         throw error(401, 'Non authentifié');
     }
 
-    const { data: profile } = await locals.supabase
+    const supabaseAuth = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { autoRefreshToken: false, persistSession: false }
+    });
+
+    const { data: { user }, error: authErr } = await supabaseAuth.auth.getUser(token);
+    if (authErr || !user) {
+        throw error(401, 'Session invalide ou expirée');
+    }
+
+    const { data: profile } = await supabaseAuth
         .from('profiles')
         .select('role')
         .eq('id', user.id)
@@ -44,13 +57,8 @@ export async function POST({ request, locals }) {
         throw error(400, 'District invalide');
     }
 
-    // 3. Créer le client admin Supabase (avec service_role key)
-    const supabaseAdmin = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-        auth: {
-            autoRefreshToken: false,
-            persistSession: false
-        }
-    });
+    // 3. Réutilise le même client (déjà avec la clé service_role) pour les opérations admin
+    const supabaseAdmin = supabaseAuth;
 
     try {
         // 4. Créer l'utilisateur via l'admin API
