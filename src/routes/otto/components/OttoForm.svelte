@@ -67,6 +67,12 @@
 
     // --- LOCAL STATE ---
     let societeInputValue = $state("");
+    let showSocieteDropdown = $state(false);
+    let filteredSocietes = $derived(
+        societeInputValue.trim()
+            ? societes.filter(s => s.nom.toLowerCase().includes(societeInputValue.trim().toLowerCase()))
+            : societes
+    );
     let isComputingRoute = $state(false);
     let currentRoute = $state(null);
     let currentMarkers = $state([]);
@@ -200,6 +206,12 @@
         // l'ancienne société à chaque frappe, rendant le champ impossible à vider/modifier.
         if (match) form.societe_id = match.id;
         else form.societe_id = null;
+    }
+
+    function selectSociete(soc) {
+        societeInputValue = soc.nom;
+        form.societe_id = soc.id;
+        showSocieteDropdown = false;
     }
 
     function addBus() {
@@ -343,9 +355,31 @@ PACO Sud-Ouest`;
                 <div>
                     <label class={labelClass}>Société</label>
                     <div class="relative group">
-                       <input type="text" list="list_societes" bind:value={societeInputValue} oninput={handleSocieteChange} disabled={isLocked} class="{inputClass} pr-8" placeholder="Rechercher...">
-                       <datalist id="list_societes">{#each societes as soc}<option value={soc.nom}>{soc.nom}</option>{/each}</datalist>
+                       <input
+                           type="text"
+                           autocomplete="off"
+                           bind:value={societeInputValue}
+                           oninput={handleSocieteChange}
+                           onfocus={() => showSocieteDropdown = true}
+                           onblur={() => setTimeout(() => showSocieteDropdown = false, 150)}
+                           disabled={isLocked}
+                           class="{inputClass} pr-8"
+                           placeholder="Rechercher..."
+                       >
                        {#if form.societe_id}<div class="absolute right-3 top-2.5 text-orange-400 pointer-events-none"><CheckCircle size={16} /></div>{/if}
+
+                       {#if showSocieteDropdown && filteredSocietes.length > 0 && !isLocked}
+                           <div class="absolute z-20 top-full mt-1.5 w-full max-h-56 overflow-y-auto custom-scrollbar bg-[#1a1d24] border border-white/10 rounded-xl shadow-2xl py-1.5" transition:fade={{ duration: 100 }}>
+                               {#each filteredSocietes as soc}
+                                   <button
+                                       type="button"
+                                       onmousedown={(e) => e.preventDefault()}
+                                       onclick={() => selectSociete(soc)}
+                                       class="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-orange-500/10 hover:text-orange-300 transition-colors {soc.id === form.societe_id ? 'text-orange-400 font-bold' : ''}"
+                                   >{soc.nom}</button>
+                               {/each}
+                           </div>
+                       {/if}
                     </div>
                 </div>
             </div>
