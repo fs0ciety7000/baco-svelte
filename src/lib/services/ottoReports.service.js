@@ -1,4 +1,16 @@
 import { toast } from '$lib/stores/toast.js';
+import { normalizeDistrict } from '$lib/utils/districtColors.js';
+
+// Adresse + mail PACO affichés dans l'en-tête du PDF, selon le district du rédacteur de la commande
+const PACO_OFFICE_BY_DISTRICT = {
+    'Sud-Ouest': { rue: 'Rue du Musée François Duesberg 1', ville: '7000 Mons', tel: '+32(0)2 436 0460', email: 'paco.mons@belgiantrain.be' },
+    'Sud-Est': { rue: 'Place de la Station 1', ville: '5000 Namur', tel: '+32 2 436 05 60', email: 'paco.namur@belgiantrain.be' },
+    'Centre': { rue: 'Rue du Musée François Duesberg 1', ville: '7000 Mons', tel: '+32(0)2 436 0460', email: 'paco.brussels@belgiantrain.be' }, // adresse/tél. Centre à confirmer
+};
+
+function getPacoOffice(district) {
+    return PACO_OFFICE_BY_DISTRICT[normalizeDistrict(district)] || PACO_OFFICE_BY_DISTRICT['Sud-Ouest'];
+}
 
 const C3_TYPE_LABELS = {
     1: 'Évacuation',
@@ -107,6 +119,7 @@ export const OttoReportsService = {
 
             const doc = new jsPDF();
             const creatorName = form.creator?.full_name || currentUser?.full_name || "Inconnu";
+            const pacoOffice = getPacoOffice(form.creator?.district || currentUser?.district);
             const c3Type = form.c3_type ?? 2;
             const isType3 = c3Type === 3;
 
@@ -121,7 +134,7 @@ export const OttoReportsService = {
             doc.setFont("helvetica", "bold");
             doc.text(creatorName, 15, 40);
             doc.setFont("helvetica", "normal");
-            doc.text(["SNCB", "Coordinateur Passenger BPT2", "Rue du Musée François Duesberg 1", "7000 Mons", "TEL: +32(0)2 436 0460", "paco.mons@belgiantrain.be"], 15, 45);
+            doc.text(["SNCB", "Coordinateur Passenger BPT2", pacoOffice.rue, pacoOffice.ville, `TEL: ${pacoOffice.tel}`, pacoOffice.email], 15, 45);
 
             // En-tête Droite (Société)
             const rightX = 195;

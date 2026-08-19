@@ -195,8 +195,11 @@
         const val = e.target.value;
         societeInputValue = val;
         const match = societes.find(s => s.nom.toLowerCase() === val.toLowerCase());
+        // Dès qu'il n'y a plus de correspondance exacte, on efface la sélection —
+        // sinon l'effet de synchronisation ci-dessus réécrit societeInputValue avec
+        // l'ancienne société à chaque frappe, rendant le champ impossible à vider/modifier.
         if (match) form.societe_id = match.id;
-        else if (val === "") form.societe_id = null;
+        else form.societe_id = null;
     }
 
     function addBus() {
