@@ -3,9 +3,9 @@ import { normalizeDistrict } from '$lib/utils/districtColors.js';
 
 // Adresse + mail PACO affichés dans l'en-tête du PDF, selon le district du rédacteur de la commande
 const PACO_OFFICE_BY_DISTRICT = {
-    'Sud-Ouest': { rue: 'Rue du Musée François Duesberg 1', ville: '7000 Mons', email: 'paco.mons@belgiantrain.be' },
-    'Sud-Est': { rue: 'Place de la Station 1', ville: '5000 Namur', email: 'paco.namur@belgiantrain.be' },
-    'Centre': { rue: 'Rue du Musée François Duesberg 1', ville: '7000 Mons', email: 'paco.brussels@belgiantrain.be' }, // adresse Centre à confirmer
+    'Sud-Ouest': { rue: 'Rue du Musée François Duesberg 1', ville: '7000 Mons', tel: '+32(0)2 436 0460', email: 'paco.mons@belgiantrain.be' },
+    'Sud-Est': { rue: 'Place de la Station 1', ville: '5000 Namur', tel: '+32 2 436 05 60', email: 'paco.namur@belgiantrain.be' },
+    'Centre': { rue: 'Rue du Musée François Duesberg 1', ville: '7000 Mons', tel: '+32(0)2 436 0460', email: 'paco.brussels@belgiantrain.be' }, // adresse/tél. Centre à confirmer
 };
 
 function getPacoOffice(district) {
@@ -134,7 +134,7 @@ export const OttoReportsService = {
             doc.setFont("helvetica", "bold");
             doc.text(creatorName, 15, 40);
             doc.setFont("helvetica", "normal");
-            doc.text(["SNCB", "Coordinateur Passenger BPT2", pacoOffice.rue, pacoOffice.ville, "TEL: +32(0)2 436 0460", pacoOffice.email], 15, 45);
+            doc.text(["SNCB", "Coordinateur Passenger BPT2", pacoOffice.rue, pacoOffice.ville, `TEL: ${pacoOffice.tel}`, pacoOffice.email], 15, 45);
 
             // En-tête Droite (Société)
             const rightX = 195;
