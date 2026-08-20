@@ -1,6 +1,6 @@
 <script>
     import { fly, fade } from 'svelte/transition';
-    import { Search, Calendar, X, Download, Printer, Plus, Building2, CheckCircle, Mail, UserCheck, FileText, ClipboardCopy, Trash2, Bus, Clock, ArrowRightLeft, School, SlidersHorizontal, LayoutList, Kanban, ChevronDown, ArrowUpDown } from 'lucide-svelte';
+    import { Search, Calendar, X, Download, Printer, Plus, Building2, CheckCircle, Mail, UserCheck, FileText, ClipboardCopy, Trash2, Bus, Clock, ArrowRightLeft, School, SlidersHorizontal, LayoutList, Kanban, ChevronDown, ArrowUpDown, CalendarClock } from 'lucide-svelte';
     import { OttoReportsService } from '$lib/services/ottoReports.service.js';
     import { getDistrictStyle, districtSortIndex, normalizeDistrict, DISTRICT_ORDER } from '$lib/utils/districtColors.js';
     import OttoKanban from './OttoKanban.svelte';
@@ -50,7 +50,7 @@
     let societeFilter = $state("all");
     let districtFilter = $state("all");
     let sortBy = $state("date_desc");
-    let view = $state("list"); // "list" | "kanban"
+    let view = $state("list"); // "list" | "kanban" | "today"
     let showFilters = $state(false);
 
     // --- COMPUTED DATA ---
@@ -194,6 +194,25 @@
     // --- EXPORTS ---
     function handleExcel() { OttoReportsService.generateExcel(filteredCommandes); }
     function handlePDFList() { OttoReportsService.generateListPDF(filteredCommandes); }
+
+    // --- VUE "AUJOURD'HUI" ---
+    const todayStr = new Date().toISOString().split('T')[0];
+    let todayCommandes = $derived(commandes.filter(c => c.date_commande === todayStr));
+
+    let todayGrouped = $derived.by(() => {
+        const groups = {};
+        for (const cmd of todayCommandes) {
+            const district = normalizeDistrict(getRouteDistrict(cmd)) || 'Non déterminé';
+            const societe = cmd.societes_bus?.nom || 'Société inconnue';
+            (groups[district] ??= {})[societe] ??= [];
+            groups[district][societe].push(cmd);
+        }
+        return groups;
+    });
+
+    function handleDailyReport() {
+        OttoReportsService.generateDailyReportPDF(todayCommandes, todayStr, getRouteDistrict);
+    }
 </script>
 
 <div class="space-y-4" in:fade>
@@ -275,6 +294,13 @@
                     >
                         <Kanban size={15} />
                     </button>
+                    <button
+                        onclick={() => view = 'today'}
+                        class="p-1.5 rounded-lg transition-all {view === 'today' ? 'bg-orange-500/20 text-orange-400' : 'text-gray-500 hover:text-gray-300'}"
+                        title="Vue Aujourd'hui"
+                    >
+                        <CalendarClock size={15} />
+                    </button>
                 </div>
 
                 <div class="w-px h-6 bg-white/10 hidden sm:block"></div>
@@ -285,6 +311,9 @@
                 </button>
                 <button onclick={handlePDFList} class="px-3 py-2 rounded-xl text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all flex items-center gap-1.5">
                     <Printer size={13} /> PDF
+                </button>
+                <button onclick={handleDailyReport} class="px-3 py-2 rounded-xl text-xs font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-all flex items-center gap-1.5" title="Rapport journalier PDF (toutes les commandes du jour)">
+                    <CalendarClock size={13} /> Rapport du jour
                 </button>
             </div>
         </div>
@@ -408,8 +437,54 @@
         </button>
     </div>
 
-    <!-- ─── Content: List or Kanban ─────────────────────────────────── -->
-    {#if view === 'kanban'}
+    <!-- ─── Content: List, Kanban or Aujourd'hui ─────────────────────────────────── -->
+    {#if view === 'today'}
+        <div class="space-y-5" in:fly={{ y: 20, duration: 400 }}>
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-gray-300 flex items-center gap-2">
+                    <CalendarClock size={16} class="text-orange-400" />
+                    Aujourd'hui — {new Date(todayStr).toLocaleDateString('fr-BE', { weekday: 'long', day: '2-digit', month: 'long' })}
+                </h3>
+                <span class="text-xs text-gray-500">{todayCommandes.length} commande(s)</span>
+            </div>
+
+            {#if todayCommandes.length === 0}
+                <div class="text-center py-12 border border-dashed border-white/10 rounded-2xl bg-black/20">
+                    <p class="text-gray-500">Aucune commande pour aujourd'hui.</p>
+                </div>
+            {:else}
+                {#each Object.keys(todayGrouped).sort() as district}
+                    {@const dStyle = getDistrictStyle(district)}
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-2 px-1">
+                            <span class="w-2 h-2 rounded-full {dStyle.dot}"></span>
+                            <h4 class="text-xs font-black uppercase tracking-widest text-gray-400">{district}</h4>
+                        </div>
+                        {#each Object.keys(todayGrouped[district]).sort() as societe}
+                            <div class="bg-black/20 border border-white/5 rounded-2xl overflow-hidden">
+                                <div class="bg-white/[0.03] px-4 py-2 border-b border-white/5 flex items-center gap-2">
+                                    <Building2 size={13} class="text-yellow-400" />
+                                    <span class="text-xs font-bold text-gray-300">{societe}</span>
+                                    <span class="text-[10px] text-gray-500 ml-auto">{todayGrouped[district][societe].length} commande(s)</span>
+                                </div>
+                                <div class="divide-y divide-white/5">
+                                    {#each todayGrouped[district][societe] as cmd (cmd.id)}
+                                        {@const c3Style = C3_STYLES[cmd.c3_type ?? 2] ?? C3_STYLES[2]}
+                                        <button onclick={() => onEdit(cmd)} class="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-white/[0.03] transition-colors {cmd.status === 'envoye' ? 'opacity-60' : ''}">
+                                            <span class="text-[10px] font-bold px-2 py-0.5 rounded border {c3Style.badgeClass} shrink-0">{c3Style.label}</span>
+                                            <span class="text-xs font-mono text-gray-500 shrink-0 w-12">{cmd.heure_appel || '--:--'}</span>
+                                            <span class="text-sm text-gray-200 truncate flex-1">{cmd.origine || '?'} → {cmd.destination || '?'}</span>
+                                            <span class="text-[10px] text-gray-500 shrink-0">{cmd.status === 'envoye' ? 'Clôturé' : 'Brouillon'}</span>
+                                        </button>
+                                    {/each}
+                                </div>
+                            </div>
+                        {/each}
+                    </div>
+                {/each}
+            {/if}
+        </div>
+    {:else if view === 'kanban'}
         <OttoKanban
             commandes={filteredCommandes}
             {onEdit}
