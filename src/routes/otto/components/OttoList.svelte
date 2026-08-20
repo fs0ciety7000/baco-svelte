@@ -9,6 +9,7 @@
     let {
         commandes = [],
         currentUser,
+        referenceData = { lines: [], stops: [], raw: [], lineDistricts: {} },
         onEdit,
         onDuplicate,
         onDelete,
@@ -16,6 +17,30 @@
         onTutorial,
         onKanbanStatusChange
     } = $props();
+
+    // --- DISTRICT DU TRAJET (et non du rédacteur) ---
+    // Détermine le district à partir de la ligne/gare réellement utilisée, plutôt que du
+    // district du profil de la personne qui a créé la commande — un rédacteur Sud-Ouest
+    // peut très bien commander un bus pour un trajet Sud-Est, et inversement.
+    function getRouteDistrict(cmd) {
+        // 1. Via les lignes concernées (le plus fiable : district déjà associé à la ligne)
+        if (cmd.lignes?.length) {
+            for (const ligne of cmd.lignes) {
+                const d = referenceData.lineDistricts?.[ligne];
+                if (d) return d;
+            }
+        }
+        // 2. Via la gare d'origine ou de destination (recherche dans les gares connues)
+        const raw = referenceData.raw || [];
+        for (const gareName of [cmd.origine, cmd.destination]) {
+            if (!gareName) continue;
+            const clean = gareName.split('(')[0].trim();
+            const match = raw.find(r => r.gare === clean);
+            if (match?.district) return match.district;
+        }
+        // 3. Repli : district du rédacteur (trajet non identifiable, ex: gare inconnue)
+        return cmd.creator?.district || null;
+    }
 
     // --- LOCAL STATE ---
     let searchTerm = $state("");
@@ -63,8 +88,8 @@
             // Société
             if (societeFilter !== 'all' && cmd.societes_bus?.nom !== societeFilter) return false;
 
-            // District (créateur)
-            if (districtFilter !== 'all' && normalizeDistrict(cmd.creator?.district) !== districtFilter) return false;
+            // District (déterminé par le trajet, pas par le rédacteur)
+            if (districtFilter !== 'all' && normalizeDistrict(getRouteDistrict(cmd)) !== districtFilter) return false;
 
             return true;
         });
@@ -76,7 +101,7 @@
                 case 'date_desc': return b.date_commande.localeCompare(a.date_commande);
                 case 'relation':  return (a.relation || '').localeCompare(b.relation || '');
                 case 'societe':   return (a.societes_bus?.nom || '').localeCompare(b.societes_bus?.nom || '');
-                case 'district':  return districtSortIndex(a.creator?.district) - districtSortIndex(b.creator?.district);
+                case 'district':  return districtSortIndex(getRouteDistrict(a)) - districtSortIndex(getRouteDistrict(b));
                 default: return 0;
             }
         });
@@ -417,7 +442,7 @@
                             <div class="flex-1 flex flex-col gap-3">
                                 {#each group as cmd (cmd.id)}
                                     {@const c3Style = C3_STYLES[cmd.c3_type ?? 2] ?? C3_STYLES[2]}
-                                    {@const districtStyle = getDistrictStyle(cmd.creator?.district)}
+                                    {@const districtStyle = getDistrictStyle(getRouteDistrict(cmd))}
                                     <div class="bg-black/20 border border-white/5 border-r-[3px] rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-4 transition-all group-item overflow-hidden {c3Style.borderClass} {districtStyle.border} {cmd.status === 'envoye' ? 'opacity-60 grayscale-[30%] hover:opacity-100 hover:grayscale-0' : 'hover:border-white/20'}">
                                         {@render cmdCard(cmd, c3Style, districtStyle)}
                                     </div>
@@ -427,7 +452,7 @@
                     {:else}
                         {@const cmd = group[0]}
                         {@const c3Style = C3_STYLES[cmd.c3_type ?? 2] ?? C3_STYLES[2]}
-                        {@const districtStyle = getDistrictStyle(cmd.creator?.district)}
+                        {@const districtStyle = getDistrictStyle(getRouteDistrict(cmd))}
                         <div class="bg-black/20 border border-white/5 border-r-[3px] rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-4 transition-all group overflow-hidden {c3Style.borderClass} {districtStyle.border} {cmd.status === 'envoye' ? 'opacity-60 grayscale-[30%] hover:opacity-100 hover:grayscale-0' : 'hover:border-orange-500/30'}">
                             {@render cmdCard(cmd, c3Style, districtStyle)}
                         </div>

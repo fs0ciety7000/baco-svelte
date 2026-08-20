@@ -269,6 +269,7 @@
             <OttoList
                 {commandes}
                 {currentUser}
+                {referenceData}
                 onEdit={openEdit}
                 onDuplicate={handleDuplicate}
                 onDelete={handleDelete}
