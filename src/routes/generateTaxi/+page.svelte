@@ -6,10 +6,11 @@
     import { openConfirmModal } from '$lib/stores/modal.js';
     
     // Icons
-    import { 
+    import {
         Car, Calendar, Clock, MapPin, FileText, Save, Trash2, Plus, Loader2, ArrowLeft,
-        Printer, Search, X, User, Users, ArrowRightLeft, Mail, ClipboardCopy, Check, 
-        Phone, ArrowRight, MoreHorizontal, FilePenLine, MessageSquare, Repeat
+        Printer, Search, X, User, Users, ArrowRightLeft, Mail, ClipboardCopy, Check,
+        Phone, ArrowRight, MoreHorizontal, FilePenLine, MessageSquare, Repeat,
+        SlidersHorizontal, ChevronDown, ArrowUpDown, UserCog
     } from 'lucide-svelte';
 
     // Services & Libs
@@ -49,8 +50,115 @@
     let emailContent = $state("");
     let hasCopied = $state(false);
 
+    // --- FILTRES / RECHERCHE (liste) ---
+    let searchTerm = $state("");
+    let statusFilter = $state("all");   // all | brouillon | envoye
+    let typeFilter = $state("all");     // all | standard | pmr
+    let dateFrom = $state("");
+    let dateTo = $state("");
+    let societeFilter = $state("all");
+    let redacteurFilter = $state("all");
+    let sortBy = $state("date_desc");
+    let showFilters = $state(false);
+
     // --- DERIVED ---
     let isLocked = $derived(form.status === 'envoye' || !hasPermission(currentUser, ACTIONS.GENERATE_TAXI_WRITE));
+
+    let societesList = $derived([...new Set(commandes.map(c => c.taxi_nom).filter(Boolean))].sort());
+    let redacteursList = $derived([...new Set(commandes.map(c => c.redacteur).filter(Boolean))].sort());
+
+    let activeFilterCount = $derived(
+        (statusFilter !== 'all' ? 1 : 0) +
+        (typeFilter !== 'all' ? 1 : 0) +
+        (dateFrom ? 1 : 0) +
+        (dateTo ? 1 : 0) +
+        (societeFilter !== 'all' ? 1 : 0) +
+        (redacteurFilter !== 'all' ? 1 : 0) +
+        (searchTerm ? 1 : 0)
+    );
+
+    let filteredCommandes = $derived.by(() => {
+        let result = commandes.filter(cmd => {
+            if (searchTerm) {
+                const term = searchTerm.toLowerCase();
+                const matches =
+                    (cmd.taxi_nom || '').toLowerCase().includes(term) ||
+                    (cmd.motif || '').toLowerCase().includes(term) ||
+                    (cmd.gare_origine || '').toLowerCase().includes(term) ||
+                    (cmd.gare_arrivee || '').toLowerCase().includes(term) ||
+                    (cmd.redacteur || '').toLowerCase().includes(term) ||
+                    (cmd.pmr_nom || '').toLowerCase().includes(term) ||
+                    (cmd.pmr_prenom || '').toLowerCase().includes(term) ||
+                    (cmd.pmr_dossier || '').toLowerCase().includes(term) ||
+                    (cmd.relation_number || '').toLowerCase().includes(term) ||
+                    (cmd.passager_nom || '').toLowerCase().includes(term);
+                if (!matches) return false;
+            }
+
+            // Statut
+            if (statusFilter !== 'all' && cmd.status !== statusFilter) return false;
+
+            // Type (Standard / PMR)
+            if (typeFilter === 'pmr' && !cmd.is_pmr) return false;
+            if (typeFilter === 'standard' && cmd.is_pmr) return false;
+
+            // Date (comparaison sur la partie date de date_trajet)
+            const cmdDate = (cmd.date_trajet || '').slice(0, 10);
+            if (dateFrom && cmdDate < dateFrom) return false;
+            if (dateTo && cmdDate > dateTo) return false;
+
+            // Société
+            if (societeFilter !== 'all' && cmd.taxi_nom !== societeFilter) return false;
+
+            // Rédacteur
+            if (redacteurFilter !== 'all' && cmd.redacteur !== redacteurFilter) return false;
+
+            return true;
+        });
+
+        result = [...result].sort((a, b) => {
+            switch (sortBy) {
+                case 'date_asc':  return new Date(a.date_trajet) - new Date(b.date_trajet);
+                case 'date_desc': return new Date(b.date_trajet) - new Date(a.date_trajet);
+                case 'societe':   return (a.taxi_nom || '').localeCompare(b.taxi_nom || '');
+                case 'redacteur': return (a.redacteur || '').localeCompare(b.redacteur || '');
+                default: return 0;
+            }
+        });
+
+        return result;
+    });
+
+    let listStats = $derived({
+        total: filteredCommandes.length,
+        pmr: filteredCommandes.filter(c => c.is_pmr).length,
+        societes: new Set(filteredCommandes.map(c => c.taxi_nom).filter(Boolean)).size,
+        brouillons: filteredCommandes.filter(c => c.status === 'brouillon').length
+    });
+
+    // --- QUICK DATE PRESETS ---
+    function setToday() {
+        const today = new Date().toISOString().split('T')[0];
+        dateFrom = today; dateTo = today;
+    }
+    function setThisWeek() {
+        const now = new Date();
+        const day = now.getDay() || 7;
+        const mon = new Date(now); mon.setDate(now.getDate() - day + 1);
+        const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+        dateFrom = mon.toISOString().split('T')[0];
+        dateTo = sun.toISOString().split('T')[0];
+    }
+    function setThisMonth() {
+        const now = new Date();
+        dateFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        dateTo = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    }
+    function clearAllFilters() {
+        searchTerm = ""; statusFilter = "all"; typeFilter = "all";
+        dateFrom = ""; dateTo = ""; societeFilter = "all"; redacteurFilter = "all";
+        sortBy = "date_desc";
+    }
 
     // --- HELPERS ---
     const cleanData = (input) => {
@@ -279,37 +387,224 @@ ${data.redacteur || 'SNCB'}`;
       {:else}
     
         {#if view === 'list'}
-            <div class="grid grid-cols-1 gap-4" in:fly={{ y: 20 }}>
-                {#if commandes.length === 0}
-                    <div class="text-center py-12 border border-dashed border-white/10 rounded-2xl bg-black/20"><p class="text-gray-500">Aucune commande.</p></div>
-                {:else}
-                    {#each commandes as cmd}
-                        <button onclick={() => selectedCommand = cmd} class="w-full text-left bg-black/20 border border-white/5 rounded-2xl p-4 md:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-yellow-500/30 hover:bg-white/[0.02] transition-all group relative overflow-hidden">
-                            <div class="flex-grow space-y-3 relative z-10 w-full">
-                                 <div class="flex items-center gap-3 flex-wrap">
-                                    {#if cmd.is_pmr}
-                                        <span class="px-2 py-1 rounded text-[10px] font-bold uppercase bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1"><Users size={10}/> PMR</span>
-                                    {:else}
-                                        <span class="px-2 py-1 rounded text-[10px] font-bold uppercase bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 flex items-center gap-1"><User size={10}/> Standard</span>
-                                    {/if}
-                                    <span class="text-lg font-bold text-white tracking-tight">{cmd.taxi_nom}</span>
-                                    {#if cmd.pmr_dossier}<span class="text-xs font-mono text-gray-500 border border-white/10 px-2 py-0.5 rounded">{cmd.pmr_dossier}</span>{/if}
-                                 </div>
-                                 <div class="flex flex-wrap items-center gap-4 text-sm text-gray-400">
-                                    <div class="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-lg border border-white/5">
-                                        <Calendar size={14} class="text-gray-500"/> 
-                                        <span class="font-medium text-gray-200">{new Date(cmd.date_trajet).toLocaleDateString()}</span>
-                                        <span class="font-bold text-yellow-500">{new Date(cmd.date_trajet).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-                                    </div>
-                                    <div class="flex items-center gap-2 text-gray-300">
-                                        <span>{cmd.gare_origine}</span> <ArrowRight size={14} class="text-gray-600"/> <span>{cmd.gare_arrivee}</span>
-                                    </div>
-                                 </div>
+            <div class="space-y-4" in:fly={{ y: 20 }}>
+
+                <!-- ─── Barre de recherche / filtres ─────────────────────────── -->
+                <div class="bg-black/20 border border-white/5 rounded-2xl p-4 flex flex-col gap-3">
+                    <div class="flex flex-col xl:flex-row gap-3 justify-between items-center">
+                        <!-- Recherche -->
+                        <div class="relative w-full xl:w-96 group">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 group-focus-within:text-yellow-400 transition-colors">
+                                <Search class="w-5 h-5" />
                             </div>
-                            <div class="opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 bg-white/5 p-2 rounded-full border border-white/10"><MoreHorizontal size={20} /></div>
-                        </button>
-                    {/each}
-                {/if}
+                            <input
+                                type="text"
+                                bind:value={searchTerm}
+                                placeholder="Rechercher (Société, Motif, Gare, Rédacteur...)"
+                                class="w-full bg-black/40 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/30 transition-all"
+                            />
+                            {#if searchTerm}
+                                <button onclick={() => searchTerm = ""} class="absolute right-2 top-2.5 text-gray-500 hover:text-white"><X size={14}/></button>
+                            {/if}
+                        </div>
+
+                        <div class="flex items-center gap-2 w-full xl:w-auto flex-wrap justify-end">
+                            <!-- Toggle filtres avancés -->
+                            <button
+                                onclick={() => showFilters = !showFilters}
+                                class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold border transition-all
+                                       {showFilters ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10'}"
+                            >
+                                <SlidersHorizontal size={14} />
+                                Filtres
+                                {#if activeFilterCount > 0}
+                                    <span class="bg-yellow-500 text-black text-[10px] font-black rounded-full w-4 h-4 flex items-center justify-center">{activeFilterCount}</span>
+                                {/if}
+                            </button>
+
+                            <!-- Statut pills -->
+                            <div class="flex gap-1">
+                                <button onclick={() => statusFilter = 'all'} class="px-3 py-2 rounded-xl text-sm font-bold border transition-all {statusFilter === 'all' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' : 'bg-white/5 text-gray-400 border-white/5 hover:bg-white/10'}">Tous</button>
+                                <button onclick={() => statusFilter = 'brouillon'} class="px-3 py-2 rounded-xl text-sm font-bold border transition-all {statusFilter === 'brouillon' ? 'bg-gray-500/20 text-gray-300 border-gray-500/30' : 'bg-white/5 text-gray-400 border-white/5 hover:bg-white/10'}">Brouillons</button>
+                                <button onclick={() => statusFilter = 'envoye'} class="px-3 py-2 rounded-xl text-sm font-bold border transition-all {statusFilter === 'envoye' ? 'bg-red-500/20 text-red-300 border-red-500/30' : 'bg-white/5 text-gray-400 border-white/5 hover:bg-white/10'}">Clôturés</button>
+                            </div>
+
+                            <div class="w-px h-6 bg-white/10 hidden sm:block"></div>
+
+                            <!-- Type pills -->
+                            <div class="flex gap-1">
+                                <button onclick={() => typeFilter = 'all'} class="px-3 py-2 rounded-xl text-sm font-bold border transition-all {typeFilter === 'all' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' : 'bg-white/5 text-gray-400 border-white/5 hover:bg-white/10'}">Tout type</button>
+                                <button onclick={() => typeFilter = 'standard'} class="px-3 py-2 rounded-xl text-sm font-bold border transition-all flex items-center gap-1.5 {typeFilter === 'standard' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' : 'bg-white/5 text-gray-400 border-white/5 hover:bg-white/10'}"><User size={12}/> Standard</button>
+                                <button onclick={() => typeFilter = 'pmr'} class="px-3 py-2 rounded-xl text-sm font-bold border transition-all flex items-center gap-1.5 {typeFilter === 'pmr' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' : 'bg-white/5 text-gray-400 border-white/5 hover:bg-white/10'}"><Users size={12}/> PMR</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filtres avancés (repliable) -->
+                    {#if showFilters}
+                        <div class="border-t border-white/5 pt-3 flex flex-col sm:flex-row gap-3 flex-wrap" in:fly={{ y: -5, duration: 150 }}>
+                            <!-- Date from -->
+                            <div class="flex flex-col gap-1">
+                                <label class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Du</label>
+                                <div class="relative group">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500"><Calendar class="w-3.5 h-3.5" /></div>
+                                    <input type="date" bind:value={dateFrom} class="w-36 bg-black/40 border border-white/10 rounded-xl py-2 pl-9 pr-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500/30 dark:[color-scheme:dark]" />
+                                    {#if dateFrom}<button onclick={() => dateFrom = ""} class="absolute right-2 top-2.5 text-gray-500 hover:text-white"><X size={12}/></button>{/if}
+                                </div>
+                            </div>
+
+                            <!-- Date to -->
+                            <div class="flex flex-col gap-1">
+                                <label class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Au</label>
+                                <div class="relative group">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500"><Calendar class="w-3.5 h-3.5" /></div>
+                                    <input type="date" bind:value={dateTo} class="w-36 bg-black/40 border border-white/10 rounded-xl py-2 pl-9 pr-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500/30 dark:[color-scheme:dark]" />
+                                    {#if dateTo}<button onclick={() => dateTo = ""} class="absolute right-2 top-2.5 text-gray-500 hover:text-white"><X size={12}/></button>{/if}
+                                </div>
+                            </div>
+
+                            <!-- Quick presets -->
+                            <div class="flex flex-col gap-1">
+                                <label class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Raccourcis</label>
+                                <div class="flex gap-1">
+                                    <button onclick={setToday} class="px-3 py-2 text-xs font-bold rounded-xl bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10 transition-all">Aujourd'hui</button>
+                                    <button onclick={setThisWeek} class="px-3 py-2 text-xs font-bold rounded-xl bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10 transition-all">Semaine</button>
+                                    <button onclick={setThisMonth} class="px-3 py-2 text-xs font-bold rounded-xl bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10 transition-all">Mois</button>
+                                </div>
+                            </div>
+
+                            <!-- Société filter -->
+                            <div class="flex flex-col gap-1">
+                                <label class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Société</label>
+                                <div class="relative">
+                                    <Car class="absolute left-3 top-2.5 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
+                                    <select bind:value={societeFilter} class="w-44 bg-black/40 border border-white/10 rounded-xl py-2 pl-9 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500/30 appearance-none cursor-pointer">
+                                        <option value="all">Toutes</option>
+                                        {#each societesList as s}<option value={s}>{s}</option>{/each}
+                                    </select>
+                                    <ChevronDown class="absolute right-2.5 top-2.5 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
+                                </div>
+                            </div>
+
+                            <!-- Rédacteur filter -->
+                            <div class="flex flex-col gap-1">
+                                <label class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Rédacteur</label>
+                                <div class="relative">
+                                    <UserCog class="absolute left-3 top-2.5 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
+                                    <select bind:value={redacteurFilter} class="w-44 bg-black/40 border border-white/10 rounded-xl py-2 pl-9 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500/30 appearance-none cursor-pointer">
+                                        <option value="all">Tous</option>
+                                        {#each redacteursList as r}<option value={r}>{r}</option>{/each}
+                                    </select>
+                                    <ChevronDown class="absolute right-2.5 top-2.5 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
+                                </div>
+                            </div>
+
+                            <!-- Sort -->
+                            <div class="flex flex-col gap-1">
+                                <label class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Trier par</label>
+                                <div class="relative">
+                                    <ArrowUpDown class="absolute left-3 top-2.5 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
+                                    <select bind:value={sortBy} class="w-44 bg-black/40 border border-white/10 rounded-xl py-2 pl-9 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500/30 appearance-none cursor-pointer">
+                                        <option value="date_desc">Date ↓ (récent)</option>
+                                        <option value="date_asc">Date ↑ (ancien)</option>
+                                        <option value="societe">Société A→Z</option>
+                                        <option value="redacteur">Rédacteur A→Z</option>
+                                    </select>
+                                    <ChevronDown class="absolute right-2.5 top-2.5 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
+                                </div>
+                            </div>
+
+                            <!-- Clear all -->
+                            {#if activeFilterCount > 0}
+                                <div class="flex flex-col gap-1">
+                                    <label class="text-[10px] text-gray-500 font-bold uppercase tracking-wider opacity-0">·</label>
+                                    <button onclick={clearAllFilters} class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all">
+                                        <X size={12} /> Effacer tout
+                                    </button>
+                                </div>
+                            {/if}
+                        </div>
+                    {/if}
+                </div>
+
+                <!-- ─── Stats bar ─────────────────────────────────────────────── -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="bg-black/20 border border-white/5 rounded-xl px-4 py-3 flex items-center gap-3">
+                        <FileText class="w-4 h-4 text-yellow-400 shrink-0" />
+                        <div>
+                            <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Commandes</p>
+                            <p class="text-lg font-extrabold text-white">{listStats.total}</p>
+                        </div>
+                    </div>
+                    <div class="bg-black/20 border border-white/5 rounded-xl px-4 py-3 flex items-center gap-3">
+                        <Users class="w-4 h-4 text-purple-400 shrink-0" />
+                        <div>
+                            <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">PMR</p>
+                            <p class="text-lg font-extrabold text-white">{listStats.pmr}</p>
+                        </div>
+                    </div>
+                    <div class="bg-black/20 border border-white/5 rounded-xl px-4 py-3 flex items-center gap-3">
+                        <Car class="w-4 h-4 text-blue-400 shrink-0" />
+                        <div>
+                            <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Sociétés</p>
+                            <p class="text-lg font-extrabold text-white">{listStats.societes}</p>
+                        </div>
+                    </div>
+                    <div class="bg-black/20 border border-white/5 rounded-xl px-4 py-3 flex items-center gap-3">
+                        <Clock class="w-4 h-4 text-gray-400 shrink-0" />
+                        <div>
+                            <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">En cours</p>
+                            <p class="text-lg font-extrabold text-white">{listStats.brouillons}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ─── Liste ─────────────────────────────────────────────────── -->
+                <div class="grid grid-cols-1 gap-4">
+                    {#if filteredCommandes.length === 0}
+                        <div class="text-center py-12 border border-dashed border-white/10 rounded-2xl bg-black/20">
+                            <p class="text-gray-500">Aucune commande trouvée.</p>
+                            {#if activeFilterCount > 0}
+                                <button onclick={clearAllFilters} class="mt-3 text-yellow-400 text-sm hover:underline">Effacer les filtres</button>
+                            {/if}
+                        </div>
+                    {:else}
+                        {#each filteredCommandes as cmd (cmd.id)}
+                            <button onclick={() => selectedCommand = cmd} class="w-full text-left bg-black/20 border border-white/5 rounded-2xl p-4 md:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-yellow-500/30 hover:bg-white/[0.02] transition-all group relative overflow-hidden">
+                                <div class="flex-grow space-y-3 relative z-10 w-full">
+                                     <div class="flex items-center gap-3 flex-wrap">
+                                        {#if cmd.is_pmr}
+                                            <span class="px-2 py-1 rounded text-[10px] font-bold uppercase bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1"><Users size={10}/> PMR</span>
+                                        {:else}
+                                            <span class="px-2 py-1 rounded text-[10px] font-bold uppercase bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 flex items-center gap-1"><User size={10}/> Standard</span>
+                                        {/if}
+                                        <span class="text-lg font-bold text-white tracking-tight">{cmd.taxi_nom}</span>
+                                        {#if cmd.pmr_dossier}<span class="text-xs font-mono text-gray-500 border border-white/10 px-2 py-0.5 rounded">{cmd.pmr_dossier}</span>{/if}
+                                        <span class="text-xs px-2 py-0.5 rounded border ml-auto md:ml-0 font-bold {cmd.status === 'envoye' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-gray-500/10 text-gray-400 border-gray-500/20'}">
+                                            {cmd.status === 'envoye' ? 'Clôturé' : 'Brouillon'}
+                                        </span>
+                                     </div>
+                                     <div class="flex flex-wrap items-center gap-4 text-sm text-gray-400">
+                                        <div class="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-lg border border-white/5">
+                                            <Calendar size={14} class="text-gray-500"/>
+                                            <span class="font-medium text-gray-200">{new Date(cmd.date_trajet).toLocaleDateString()}</span>
+                                            <span class="font-bold text-yellow-500">{new Date(cmd.date_trajet).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                                        </div>
+                                        <div class="flex items-center gap-2 text-gray-300">
+                                            <span>{cmd.gare_origine}</span> <ArrowRight size={14} class="text-gray-600"/> <span>{cmd.gare_arrivee}</span>
+                                        </div>
+                                        {#if cmd.redacteur}
+                                            <div class="flex items-center gap-1.5 text-gray-400">
+                                                <UserCog size={13} class="text-gray-500"/> <span>{cmd.redacteur}</span>
+                                            </div>
+                                        {/if}
+                                     </div>
+                                </div>
+                                <div class="opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 bg-white/5 p-2 rounded-full border border-white/10"><MoreHorizontal size={20} /></div>
+                            </button>
+                        {/each}
+                    {/if}
+                </div>
             </div>
         {:else}
             <div class="grid grid-cols-1 xl:grid-cols-3 gap-8" in:fade>
@@ -430,7 +725,12 @@ ${data.redacteur || 'SNCB'}`;
             <div class="bg-[#1a1d24] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl relative" in:scale={{start: 0.95}}>
                 <button onclick={() => selectedCommand = null} class="absolute top-4 right-4 text-gray-500 hover:text-white"><X size={20}/></button>
                 <h3 class="text-lg font-bold text-white mb-1">Commande #{selectedCommand.id}</h3>
-                <p class="text-sm text-gray-400 mb-6">{new Date(selectedCommand.date_trajet).toLocaleDateString()} - {selectedCommand.taxi_nom}</p>
+                <p class="text-sm text-gray-400 mb-1">{new Date(selectedCommand.date_trajet).toLocaleDateString()} - {selectedCommand.taxi_nom}</p>
+                {#if selectedCommand.redacteur}
+                    <p class="text-xs text-gray-500 mb-6 flex items-center gap-1.5"><UserCog size={12}/> {selectedCommand.redacteur}</p>
+                {:else}
+                    <div class="mb-6"></div>
+                {/if}
                 <div class="space-y-3">
                     {#if hasPermission(currentUser, ACTIONS.GENERATE_TAXI_WRITE)}
                         <button onclick={() => openEdit(selectedCommand)} class="w-full py-3 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 font-bold hover:bg-purple-500/20 flex items-center justify-center gap-2"><FilePenLine size={18}/> Modifier</button>
