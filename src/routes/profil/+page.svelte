@@ -19,7 +19,8 @@
     import { ProfileService } from '$lib/services/profile.service.js';
     import { ActivityStatsService } from '$lib/services/activityStats.service.js';
     import { SocialService, REACTIONS, QUICK_EMOJIS } from '$lib/services/social.service.js';
-    import { computeBadges } from '$lib/utils/badges.js';
+    import { computeBadges, getActivityProgress } from '$lib/utils/badges.js';
+    import ActivityCalendar from '$lib/components/ActivityCalendar.svelte';
 
     // Map nom d'icône (string, défini dans badges.js) -> composant lucide
     const BADGE_ICONS = { Code2, ShieldCheck, Shield, Bus, Car, Trophy, Medal, Flame, Crown, Heart };
@@ -56,7 +57,9 @@
 
     // Activité / Badges
     let activityStats = $state({ ottoCount: 0, taxiCount: 0, total: 0 });
+    let activityCalendar = $state({ counts: {}, from: null, to: null });
     let badges = $derived(computeBadges(profileData, activityStats, likes.length));
+    let activityProgress = $derived(getActivityProgress(activityStats));
     let linkCopied = $state(false);
     let myFullName = $state("");
 
@@ -190,6 +193,7 @@
             // full_name provisoire (profileData pas encore fusionné à ce stade si appelé en parallèle)
             const data = await ProfileService.getProfile(targetUserId);
             activityStats = await ActivityStatsService.getUserStats(targetUserId, data.full_name);
+            activityCalendar = await ActivityStatsService.getUserActivityCalendar(targetUserId, data.full_name, 6);
         } catch (e) {
             console.error(e);
         }
@@ -534,6 +538,19 @@
                     {/each}
                 </div>
             {/if}
+            {#if activityProgress}
+                {@const ProgressIcon = BADGE_ICONS[activityProgress.icon] || Award}
+                <div class="w-full max-w-xs mx-auto mt-3">
+                    <div class="flex items-center justify-between text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">
+                        <span class="flex items-center gap-1"><ProgressIcon size={11}/> {activityProgress.label}</span>
+                        <span>{activityProgress.current}/{activityProgress.target}</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-black/40 rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-orange-500 to-amber-400 rounded-full transition-all duration-700" style="width: {activityProgress.progress}%"></div>
+                    </div>
+                    <p class="text-[10px] text-gray-600 mt-1 text-center">Plus que {activityProgress.remaining} commande{activityProgress.remaining > 1 ? 's' : ''} pour "{activityProgress.label}"</p>
+                </div>
+            {/if}
             {#if likes.length > 0}
                 <div class="flex justify-center gap-3 mt-3">
                     {#each REACTIONS as r}
@@ -645,6 +662,15 @@
             Voir le classement <Trophy size={12} />
           </a>
         </div>
+
+        {#if Object.keys(activityCalendar.counts).length > 0 || activityCalendar.from}
+          <div class="bg-black/20 border border-white/5 rounded-3xl p-6 shadow-sm">
+            <h2 class="text-sm font-bold text-gray-300 mb-4 flex items-center gap-2 uppercase tracking-wide">
+              <CheckCircle size={16} class="text-gray-500" /> Activité (6 derniers mois)
+            </h2>
+            <ActivityCalendar counts={activityCalendar.counts} from={activityCalendar.from} to={activityCalendar.to} />
+          </div>
+        {/if}
 
         <div class="bg-black/20 border border-white/5 rounded-3xl p-8 shadow-sm relative overflow-hidden">
           <div class="absolute top-0 right-0 p-32 opacity-10 rounded-full blur-3xl pointer-events-none" style="background-color: rgb(var(--color-primary));"></div>

@@ -112,6 +112,105 @@ export const OttoReportsService = {
         }
     },
 
+    /**
+     * Rapport journalier — toutes les commandes d'une date donnée en un seul PDF,
+     * groupées par district puis par société, pour la clôture de service.
+     * @param {Array} commandes - Commandes déjà filtrées sur la date souhaitée
+     * @param {string} dateStr - Date au format YYYY-MM-DD (jour du rapport)
+     * @param {Function} getRouteDistrict - Fonction (cmd) => district (cf. OttoList)
+     */
+    async generateDailyReportPDF(commandes, dateStr, getRouteDistrict) {
+        try {
+            const { jsPDF } = await import('jspdf');
+            const { default: autoTable } = await import('jspdf-autotable');
+
+            const doc = new jsPDF('p', 'mm', 'a4');
+            const dateLabel = new Date(dateStr).toLocaleDateString('fr-BE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+
+            doc.setFontSize(17);
+            doc.setFont("helvetica", "bold");
+            doc.text("Rapport journalier — Commandes Bus (Otto)", 15, 15);
+            doc.setFontSize(11);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(100);
+            doc.text(dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1), 15, 22);
+            doc.setTextColor(0);
+
+            if (commandes.length === 0) {
+                doc.setFontSize(11);
+                doc.text("Aucune commande pour cette date.", 15, 35);
+                doc.save(`Rapport_Journalier_Otto_${dateStr}.pdf`);
+                toast.success("Rapport journalier généré (vide)");
+                return;
+            }
+
+            // Groupement district -> société -> commandes
+            const groups = {};
+            for (const cmd of commandes) {
+                const district = normalizeDistrict(getRouteDistrict ? getRouteDistrict(cmd) : cmd.creator?.district) || 'Non déterminé';
+                const societe = cmd.societes_bus?.nom || 'Société inconnue';
+                (groups[district] ??= {})[societe] ??= [];
+                groups[district][societe].push(cmd);
+            }
+
+            let y = 32;
+            const totalBuses = commandes.reduce((acc, c) => acc + (c.bus_data?.length || 1), 0);
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "bold");
+            doc.text(`${commandes.length} commande(s) — ${totalBuses} bus engagé(s)`, 15, y);
+            y += 6;
+
+            for (const district of Object.keys(groups).sort()) {
+                if (y > 270) { doc.addPage(); y = 15; }
+                doc.setFillColor(249, 115, 22);
+                doc.rect(15, y, 180, 7, 'F');
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(11);
+                doc.setFont("helvetica", "bold");
+                doc.text(district.toUpperCase(), 18, y + 5);
+                doc.setTextColor(0);
+                y += 11;
+
+                for (const societe of Object.keys(groups[district]).sort()) {
+                    const cmds = groups[district][societe];
+                    if (y > 265) { doc.addPage(); y = 15; }
+
+                    doc.setFontSize(10);
+                    doc.setFont("helvetica", "bold");
+                    doc.text(societe, 15, y);
+                    y += 3;
+
+                    const rows = cmds.map(cmd => [
+                        C3_TYPE_LABELS[cmd.c3_type ?? 2]?.replace('Service de bus de ', 'Bus ') ?? '-',
+                        cmd.relation || '-',
+                        cmd.heure_appel || '-',
+                        `${cmd.origine || '?'} → ${cmd.destination || '?'}`,
+                        cmd.status === 'envoye' ? 'Clôturé' : 'Brouillon',
+                        cmd.motif || ''
+                    ]);
+
+                    autoTable(doc, {
+                        startY: y,
+                        head: [['C3', 'Relation', 'H. Appel', 'Parcours', 'Statut', 'Motif']],
+                        body: rows,
+                        theme: 'grid',
+                        headStyles: { fillColor: [230, 230, 230], textColor: 0, fontStyle: 'bold' },
+                        styles: { fontSize: 8, cellPadding: 2 },
+                        margin: { left: 15, right: 15 },
+                        tableWidth: 180,
+                    });
+                    y = doc.lastAutoTable.finalY + 6;
+                }
+            }
+
+            doc.save(`Rapport_Journalier_Otto_${dateStr}.pdf`);
+            toast.success("Rapport journalier PDF généré !");
+        } catch (e) {
+            console.error(e);
+            toast.error("Erreur génération du rapport journalier");
+        }
+    },
+
     async generateCommandePDF(form, society, currentUser, chauffeurs = []) {
         try {
             const { jsPDF } = await import('jspdf');
