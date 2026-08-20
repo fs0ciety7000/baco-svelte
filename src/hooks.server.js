@@ -128,7 +128,7 @@ export const handle = async ({ event, resolve }) => {
         .eq('id', user.id)
         .single();
 
-      isAdmin = profile?.role === 'admin';
+      isAdmin = profile?.role === 'admin' || profile?.role === 'sysop';
     }
 
     if (!isAdmin) {
@@ -162,7 +162,7 @@ export const handle = async ({ event, resolve }) => {
         .eq('id', user.id)
         .single()
 
-    if (profile?.role !== 'admin') {
+    if (profile?.role !== 'admin' && profile?.role !== 'sysop') {
         throw redirect(303, '/accueil')
     }
   }

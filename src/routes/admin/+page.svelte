@@ -71,7 +71,7 @@
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return goto('/');
         const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-        if (data?.role !== 'admin') return goto('/');
+        if (data?.role !== 'admin' && data?.role !== 'sysop') return goto('/');
     }
 
     async function loadUsers() {

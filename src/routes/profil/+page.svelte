@@ -73,7 +73,7 @@
         
         // Vérif Admin
         const myProfile = await ProfileService.getProfile(currentUser.id);
-        isAdmin = myProfile?.role === 'admin';
+        isAdmin = myProfile?.role === 'admin' || myProfile?.role === 'sysop';
         
         // Initialisation Theme
         if (myProfile?.theme) {

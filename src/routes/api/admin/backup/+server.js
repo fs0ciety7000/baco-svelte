@@ -222,7 +222,7 @@ export async function GET({ request }) {
 
     const { data: profile } = await supabaseAdmin
         .from('profiles').select('role').eq('id', user.id).single();
-    if (profile?.role !== 'admin') return apiError(403, 'Admin uniquement');
+    if (profile?.role !== 'admin' && profile?.role !== 'sysop') return apiError(403, 'Admin uniquement');
 
     const DATABASE_URL = env.DATABASE_URL;
     if (!DATABASE_URL) {
