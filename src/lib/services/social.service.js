@@ -211,8 +211,11 @@ export const SocialService = {
             throw new Error('Image trop lourde (100 Ko max)');
         }
 
+        // Le bucket 'avatars' n'autorise l'upload que dans un dossier préfixé par l'ID
+        // de l'utilisateur (même règle que ProfileService.uploadAvatar) — on suit le
+        // même format pour passer la policy RLS du bucket.
         const ext = file.name.split('.').pop();
-        const path = `emojis/${cleanName}-${Date.now()}.${ext}`;
+        const path = `${userId}/emojis/${cleanName}-${Date.now()}.${ext}`;
 
         const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file);
         if (uploadError) throw uploadError;
