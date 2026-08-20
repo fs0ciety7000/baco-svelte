@@ -3,9 +3,10 @@
   import { goto } from '$app/navigation';
   import { supabase } from '$lib/supabase';
   import { fly, fade, slide } from 'svelte/transition';
-  import { 
-    FileClock, Search, Filter, Calendar, User, 
-    PlusCircle, Pencil, Trash2, Shield, LogIn, Info, 
+  import { hasPermission, ACTIONS } from '$lib/permissions';
+  import {
+    FileClock, Search, Filter, Calendar, User,
+    PlusCircle, Pencil, Trash2, Shield, LogIn, Info,
     Loader2, RefreshCw, ChevronDown, ChevronUp, Database
   } from 'lucide-svelte';
 
@@ -43,14 +44,15 @@
   async function checkAdminAccess() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return goto('/');
-    
+
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role')
+      .select('*')
       .eq('id', user.id)
       .single();
 
-    if (profile?.role !== 'admin' && profile?.role !== 'sysop') {
+    const currentUser = { ...user, ...profile };
+    if (!hasPermission(currentUser, ACTIONS.AUDIT_READ)) {
       goto('/');
     }
   }

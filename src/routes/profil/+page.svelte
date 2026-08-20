@@ -7,15 +7,18 @@
         User, Mail, Shield, Camera, Lock, Save, LogOut,
         Loader2, CheckCircle, Tag, Cake, Palette,
         Briefcase, Hash, Building, MapPin, Smartphone, Phone, FileText,
-        Link2, Check, Bus, Car, Trophy, Code2, ShieldCheck, Medal, Flame, Crown, Award
+        Link2, Check, Bus, Car, Trophy, Code2, ShieldCheck, Medal, Flame, Crown, Award,
+        Heart, MessageCircle, Send, Trash2
     } from 'lucide-svelte';
 
     // Stores & Libs
     import { toast } from '$lib/stores/toast';
+    import { openConfirmModal } from '$lib/stores/modal.js';
     import { supabase } from '$lib/supabase';
     import { currentThemeId, themesConfig, applyTheme } from '$lib/stores/theme';
     import { ProfileService } from '$lib/services/profile.service.js';
     import { ActivityStatsService } from '$lib/services/activityStats.service.js';
+    import { SocialService } from '$lib/services/social.service.js';
     import { computeBadges } from '$lib/utils/badges.js';
 
     // Map nom d'icône (string, défini dans badges.js) -> composant lucide
@@ -55,6 +58,14 @@
     let activityStats = $state({ ottoCount: 0, taxiCount: 0, total: 0 });
     let badges = $derived(computeBadges(profileData, activityStats));
     let linkCopied = $state(false);
+
+    // Social (Likes / Commentaires)
+    let likes = $state([]);
+    let hasLiked = $derived(likes.some(l => l.liker_id === currentUser?.id));
+    let isLiking = $state(false);
+    let comments = $state([]);
+    let newComment = $state("");
+    let isPostingComment = $state(false);
 
     // --- STYLE DYNAMIQUE (Basé sur le rôle) ---
     let borderClass = $derived(profileData.role === 'admin' 
@@ -105,12 +116,25 @@
     async function loadAllData() {
         isLoading = true;
         try {
-            await Promise.all([loadProfile(), loadInfractions(), loadActivityStats()]);
+            await Promise.all([loadProfile(), loadInfractions(), loadActivityStats(), loadSocial()]);
         } catch(e) {
             console.error(e);
             toast.error("Erreur chargement données");
         } finally {
             isLoading = false;
+        }
+    }
+
+    async function loadSocial() {
+        try {
+            const [l, c] = await Promise.all([
+                SocialService.getLikes(targetUserId),
+                SocialService.getComments(targetUserId)
+            ]);
+            likes = l;
+            comments = c;
+        } catch (e) {
+            console.error(e);
         }
     }
 
@@ -250,6 +274,57 @@
         }
     }
 
+    // --- SOCIAL ---
+    async function handleToggleLike() {
+        if (!currentUser || isLiking) return;
+        isLiking = true;
+        try {
+            const nowLiked = await SocialService.toggleLike(targetUserId, currentUser.id);
+            likes = nowLiked
+                ? [...likes, { liker_id: currentUser.id }]
+                : likes.filter(l => l.liker_id !== currentUser.id);
+        } catch (e) {
+            toast.error("Erreur");
+        } finally {
+            isLiking = false;
+        }
+    }
+
+    async function handlePostComment() {
+        if (!newComment.trim() || isPostingComment) return;
+        isPostingComment = true;
+        try {
+            await SocialService.addComment(targetUserId, currentUser.id, newComment);
+            newComment = "";
+            comments = await SocialService.getComments(targetUserId);
+        } catch (e) {
+            toast.error(e.message || "Erreur lors de l'envoi");
+        } finally {
+            isPostingComment = false;
+        }
+    }
+
+    function handleDeleteComment(comment) {
+        if (!isMyProfile && !isAdmin && comment.author_id !== currentUser?.id) return;
+        openConfirmModal("Supprimer ce commentaire ?", async () => {
+            try {
+                await SocialService.deleteComment(comment.id);
+                comments = comments.filter(c => c.id !== comment.id);
+                toast.success("Commentaire supprimé");
+            } catch (e) {
+                toast.error("Erreur suppression");
+            }
+        });
+    }
+
+    function timeAgo(dateStr) {
+        const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
+        if (diff < 60) return "à l'instant";
+        if (diff < 3600) return `il y a ${Math.floor(diff / 60)} min`;
+        if (diff < 86400) return `il y a ${Math.floor(diff / 3600)} h`;
+        return `il y a ${Math.floor(diff / 86400)} j`;
+    }
+
     // Classes CSS partagées
     const inputClass = "block w-full rounded-xl border-white/10 bg-black/40 p-3 text-sm font-medium text-white placeholder-gray-600 focus:ring-2 focus:border-transparent transition-all outline-none disabled:opacity-50 disabled:cursor-not-allowed";
     const labelClass = "block text-xs font-bold text-gray-400 uppercase tracking-wide mb-2 ml-1 flex items-center gap-2";
@@ -278,6 +353,14 @@
     </div>
 
     <div class="flex items-center gap-2">
+        <button
+            onclick={handleToggleLike}
+            disabled={isLiking}
+            class="px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all border disabled:opacity-50
+                {hasLiked ? 'bg-pink-500/15 text-pink-400 border-pink-500/30' : 'bg-white/5 hover:bg-white/10 text-gray-300 border-white/10'}"
+        >
+            <Heart size={16} class={hasLiked ? 'fill-pink-400' : ''} /> {likes.length}
+        </button>
         <button onclick={copyProfileLink} class="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 rounded-xl text-sm font-bold flex items-center gap-2 transition-all">
             {#if linkCopied}<Check size={16} class="text-emerald-400"/> Copié !{:else}<Link2 size={16}/> Partager{/if}
         </button>
@@ -516,6 +599,60 @@
         {/if}
       </div>
     </main>
+
+    <!-- ─── Commentaires ─────────────────────────────────────────────── -->
+    <div class="bg-black/20 border border-white/5 rounded-3xl p-8 shadow-sm" in:fly={{ y: 20, delay: 250 }}>
+      <h2 class="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
+        <MessageCircle size={20} style="color: rgb(var(--color-primary));" /> Commentaires ({comments.length})
+      </h2>
+
+      {#if currentUser}
+        <div class="flex gap-3 mb-6">
+          <textarea
+            bind:value={newComment}
+            placeholder="Laisser un commentaire..."
+            maxlength="500"
+            rows="2"
+            class="{inputClass} resize-none flex-grow"
+            style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);"
+          ></textarea>
+          <button
+            onclick={handlePostComment}
+            disabled={!newComment.trim() || isPostingComment}
+            class="px-4 rounded-xl bg-[#1a1d24] hover:bg-white/10 text-white border border-white/10 disabled:opacity-40 flex items-center justify-center transition-all shrink-0"
+            style="border-color: rgba(var(--primary-rgb), 0.4);"
+          >
+            {#if isPostingComment}<Loader2 size={18} class="animate-spin" />{:else}<Send size={18} />{/if}
+          </button>
+        </div>
+      {/if}
+
+      <div class="space-y-4 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+        {#if comments.length === 0}
+          <p class="text-sm text-gray-500 italic text-center py-6">Aucun commentaire pour l'instant.</p>
+        {:else}
+          {#each comments as c (c.id)}
+            <div class="flex gap-3 group">
+              <img src={c.author?.avatar_url || '/default-avatar.png'} alt="av" class="w-9 h-9 rounded-full object-cover border border-white/10 shrink-0">
+              <div class="flex-grow min-w-0 bg-black/30 rounded-xl p-3 border border-white/5">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-sm font-bold text-gray-200">{c.author?.full_name || 'Utilisateur'}</span>
+                  <div class="flex items-center gap-2 shrink-0">
+                    <span class="text-[10px] text-gray-500">{timeAgo(c.created_at)}</span>
+                    {#if isMyProfile || isAdmin || c.author_id === currentUser?.id}
+                      <button onclick={() => handleDeleteComment(c)} class="text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Trash2 size={12} />
+                      </button>
+                    {/if}
+                  </div>
+                </div>
+                <p class="text-sm text-gray-300 mt-1 whitespace-pre-wrap break-words">{c.content}</p>
+              </div>
+            </div>
+          {/each}
+        {/if}
+      </div>
+    </div>
   {/if}
 </div>
 

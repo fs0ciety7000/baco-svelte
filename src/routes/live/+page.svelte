@@ -1,6 +1,9 @@
 <script>
 	import { onMount, onDestroy } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { toast } from '$lib/stores/toast';
+	import { supabase } from '$lib/supabase';
+	import { hasPermission, ACTIONS } from '$lib/permissions';
 	import {
 		iRailService,
 		formatDelay,
@@ -70,7 +73,21 @@
 	let refreshInterval = null;
 	let countdownInterval = null;
 
+	let isAuthorized = $state(false);
+
 	onMount(async () => {
+		const { data: { session } } = await supabase.auth.getSession();
+		if (!session) return goto('/');
+
+		const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+		const currentUser = { ...session.user, ...profile };
+
+		if (!hasPermission(currentUser, ACTIONS.LIVE_READ)) {
+			toast.error("Accès refusé.");
+			return goto('/accueil');
+		}
+		isAuthorized = true;
+
 		const now = new Date();
 		stationTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 		try {
@@ -270,6 +287,11 @@
 	}
 </script>
 
+{#if !isAuthorized}
+	<div class="h-screen w-full flex items-center justify-center">
+		<RefreshCw class="w-10 h-10 animate-spin text-gray-500" />
+	</div>
+{:else}
 <div class="min-h-screen w-full pb-20">
 	<div class="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
 		<!-- Header -->
@@ -973,3 +995,4 @@
 		{/if}
 	</div>
 </div>
+{/if}

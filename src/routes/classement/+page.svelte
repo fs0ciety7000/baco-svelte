@@ -6,6 +6,7 @@
 
     import { supabase } from '$lib/supabase';
     import { toast } from '$lib/stores/toast.js';
+    import { hasPermission, ACTIONS } from '$lib/permissions';
     import { ActivityStatsService } from '$lib/services/activityStats.service.js';
     import { getDistrictStyle } from '$lib/utils/districtColors.js';
 
@@ -19,6 +20,14 @@
     onMount(async () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return goto('/');
+
+        const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+        const currentUser = { ...session.user, ...profile };
+
+        if (!hasPermission(currentUser, ACTIONS.CLASSEMENT_READ)) {
+            toast.error("Accès refusé.");
+            return goto('/accueil');
+        }
         isAuthorized = true;
 
         try {

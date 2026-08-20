@@ -1,12 +1,18 @@
 <script>
     import { onMount } from 'svelte';
+    import { goto } from '$app/navigation';
     import { toast } from '$lib/stores/toast';
+    import { supabase } from '$lib/supabase';
+    import { hasPermission, ACTIONS } from '$lib/permissions';
     import { detectZone } from '$lib/utils/deplacements.helpers.js';
     import { DEFAULT_PRESENCE } from '$lib/utils/deplacements.constants.js';
     import { DeplacementsService } from '$lib/services/deplacements.service.js';
     import { copyForOutlook } from '$lib/services/emailGenerator.service.js';
     import { generatePDF } from '$lib/services/pdfGenerator.service.js';
     import { Loader2 } from 'lucide-svelte';
+
+    let isAuthorized = $state(false);
+    let currentUser = $state(null);
 
     // Components
     import DeplacementHeader from './components/DeplacementHeader.svelte';
@@ -32,6 +38,18 @@
 
     // --- INIT ---
     onMount(async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return goto('/');
+
+        const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+        currentUser = { ...session.user, ...profile };
+
+        if (!hasPermission(currentUser, ACTIONS.DEPLACEMENTS_READ)) {
+            toast.error("Accès refusé.");
+            return goto('/accueil');
+        }
+        isAuthorized = true;
+
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('date')) date = urlParams.get('date');
 
@@ -104,6 +122,11 @@
     function handleStationChangeAM(i, v) { interventionsAM[i].station = v.toUpperCase(); interventionsAM[i].zone = detectZone(v); }
 </script>
 
+{#if !isAuthorized}
+    <div class="h-screen w-full flex items-center justify-center">
+        <Loader2 class="w-10 h-10 animate-spin text-gray-500" />
+    </div>
+{:else}
 <div class="w-full min-h-screen pb-20">
     <DeplacementHeader
         bind:loading
@@ -141,3 +164,4 @@
 <datalist id="stations">
     {#each stationList as station}<option value={station.abbreviation}>{station.zone_name}</option>{/each}
 </datalist>
+{/if}
