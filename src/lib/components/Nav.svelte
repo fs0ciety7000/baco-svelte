@@ -42,7 +42,8 @@
 		BarChart3,
 		Radio,
 		Route,
-		Trophy
+		Trophy,
+		Compass
 	} from 'lucide-svelte';
 
 	export let user;
@@ -560,6 +561,7 @@
 										>
 									</div>
 									<a href="/profil" class={dropdownLinkClass}><UserCog /> Mon Profil</a>
+									<a href="/decouvrir" class={dropdownLinkClass}><Compass /> Découvrir</a>
 									<a href="/classement" class={dropdownLinkClass}><Trophy /> Classement</a>
 									{#if isAdmin || isModerator}
 										<a href="/admin/lignes" class={dropdownLinkClass}><Route /> Lignes & Arrêts</a>

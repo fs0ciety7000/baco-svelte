@@ -7,7 +7,7 @@
         ChevronLeft, Shield, Save, Loader2, KeyRound,
         AlertTriangle, FileWarning, History, CheckCircle,
         UserX, UserCheck, Copy, X, AlertOctagon,
-        Trophy, Bus, Car, Code2, ShieldCheck, Medal, Flame, Crown, Award
+        Trophy, Bus, Car, Code2, ShieldCheck, Medal, Flame, Crown, Award, Heart
     } from 'lucide-svelte';
 
     import { supabase } from '$lib/supabase';
@@ -16,11 +16,12 @@
     import { AdminService } from '$lib/services/admin.service.js';
     import { ProfileService } from '$lib/services/profile.service.js';
     import { ActivityStatsService } from '$lib/services/activityStats.service.js';
+    import { SocialService } from '$lib/services/social.service.js';
     import { computeBadges } from '$lib/utils/badges.js';
     import { ACTIONS, ROLE_DEFAULTS } from '$lib/permissions';
 
     // Map nom d'icône (string, défini dans badges.js) -> composant lucide
-    const BADGE_ICONS = { Code2, ShieldCheck, Shield, Bus, Car, Trophy, Medal, Flame, Crown };
+    const BADGE_ICONS = { Code2, ShieldCheck, Shield, Bus, Car, Trophy, Medal, Flame, Crown, Heart };
 
     // --- ÉTAT ---
     let isLoading = $state(true);
@@ -31,7 +32,8 @@
 
     // Activité / Badges
     let activityStats = $state({ ottoCount: 0, taxiCount: 0, total: 0 });
-    let badges = $derived(user ? computeBadges(user, activityStats) : []);
+    let likesCount = $state(0);
+    let badges = $derived(user ? computeBadges(user, activityStats, likesCount) : []);
     
     // Modales
     let showInfractionModal = $state(false);
@@ -103,6 +105,7 @@
 
             // Activité (Bus Otto + Taxi)
             activityStats = await ActivityStatsService.getUserStats(userId, profile.full_name);
+            likesCount = await SocialService.getLikesCount(userId);
         } catch (e) {
             toast.error("Erreur chargement profil");
             goto('/admin');
