@@ -43,8 +43,11 @@
 		Radio,
 		Route,
 		Trophy,
-		Compass
+		Compass,
+		Eye,
+		EyeOff
 	} from 'lucide-svelte';
+	import { PREVIEW_ROLE_KEY, getPreviewRole } from '$lib/permissions';
 
 	export let user;
 
@@ -55,8 +58,27 @@
 	let isAdmin = false;
 	let isModerator = false;
 	let isOttoAgent = false;
+	let isSysop = false;
+	let previewRole = getPreviewRole();
 	let notificationsCount = 0;
 	let notifications = [];
+
+	const PREVIEW_ROLES = [
+		{ value: 'reader', label: 'Lecteur' },
+		{ value: 'user', label: 'Utilisateur' },
+		{ value: 'otto_agent', label: 'Agent Otto' },
+		{ value: 'moderator', label: 'Modérateur' }
+	];
+
+	function setPreviewRole(role) {
+		sessionStorage.setItem(PREVIEW_ROLE_KEY, role);
+		location.reload();
+	}
+
+	function exitPreview() {
+		sessionStorage.removeItem(PREVIEW_ROLE_KEY);
+		location.reload();
+	}
 
 	// --- STYLES DYNAMIQUES ---
 	const glassTileBase =
@@ -173,6 +195,7 @@
 				isAdmin = data.role === 'admin' || data.role === 'sysop'; // sysop = accès admin complet
 				isModerator = data.role === 'moderator';
 				isOttoAgent = data.role === 'otto_agent';
+				isSysop = data.role === 'sysop';
 			}
 			const { data: notifs } = await supabase
 				.from('notifications')
@@ -219,6 +242,15 @@
 </script>
 
 <svelte:window on:click={closeDropdowns} />
+
+{#if previewRole}
+	<div class="fixed top-0 left-0 right-0 z-[60] bg-purple-600/90 backdrop-blur-sm text-white text-xs font-bold text-center py-1.5 flex items-center justify-center gap-3">
+		<span class="flex items-center gap-1.5"><Eye class="h-3.5 w-3.5" /> Mode aperçu — vous voyez l'app avec le rôle « {PREVIEW_ROLES.find(r => r.value === previewRole)?.label || previewRole} »</span>
+		<button on:click={exitPreview} class="flex items-center gap-1 rounded-md bg-white/20 px-2 py-0.5 hover:bg-white/30 transition-colors">
+			<EyeOff class="h-3 w-3" /> Quitter
+		</button>
+	</div>
+{/if}
 
 <div class="sticky top-4 z-50 mx-4">
 	<nav
@@ -569,6 +601,31 @@
 									{#if isAdmin}
 										<a href="/admin" class={dropdownLinkClass}><ShieldCheck /> Admin</a>
 										<a href="/audit" class={dropdownLinkClass}><FileClock /> Logs</a>
+									{/if}
+									{#if isSysop}
+										<div class="border-t border-white/5 mt-1 pt-1 px-3 py-1.5">
+											<p class="flex items-center gap-1.5 text-[9px] font-bold tracking-widest text-purple-400 uppercase mb-1.5">
+												<Eye class="h-3 w-3" /> Voir comme
+											</p>
+											<div class="flex flex-wrap gap-1">
+												{#each PREVIEW_ROLES as pr}
+													<button
+														on:click={() => setPreviewRole(pr.value)}
+														class="rounded-md px-2 py-1 text-[10px] font-bold transition-colors {previewRole === pr.value ? 'bg-purple-500/20 text-purple-300' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-200'}"
+													>
+														{pr.label}
+													</button>
+												{/each}
+											</div>
+											{#if previewRole}
+												<button
+													on:click={exitPreview}
+													class="mt-1.5 flex items-center gap-1.5 text-[10px] font-bold text-red-400 hover:text-red-300 transition-colors"
+												>
+													<EyeOff class="h-3 w-3" /> Quitter le mode aperçu
+												</button>
+											{/if}
+										</div>
 									{/if}
 									<button
 										on:click={handleLogout}

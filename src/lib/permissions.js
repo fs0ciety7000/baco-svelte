@@ -176,18 +176,45 @@ export const ROLE_DEFAULTS = {
     ]
 };
 
-// --- 3. FONCTION DE VÉRIFICATION (Inchangée) ---
+// --- 3. FONCTION DE VÉRIFICATION ---
+
+// Clé sessionStorage utilisée par le mode "Voir comme" (SysOp uniquement) : permet de
+// prévisualiser l'app avec les permissions d'un autre rôle sans changer de compte.
+// Non persisté en base — purement une simulation côté client, effacée à la fermeture
+// de l'onglet ou via le bouton "Quitter" dans Nav.svelte.
+export const PREVIEW_ROLE_KEY = 'baco_preview_role';
+
+export function getPreviewRole() {
+    if (typeof sessionStorage === 'undefined') return null;
+    try {
+        return sessionStorage.getItem(PREVIEW_ROLE_KEY);
+    } catch {
+        return null;
+    }
+}
+
 export function hasPermission(userProfile, action) {
     if (!userProfile) return false;
-    if (userProfile.role === 'admin') return true;
 
-    const customPerms = userProfile.permissions || {};
-    
+    // Mode "Voir comme" : seul un SysOp peut simuler un autre rôle, et uniquement pour
+    // lui-même (le vrai rôle stocké en base n'est jamais modifié).
+    let effectiveRole = userProfile.role;
+    let customPerms = userProfile.permissions || {};
+    if (userProfile.role === 'sysop') {
+        const preview = getPreviewRole();
+        if (preview) {
+            effectiveRole = preview;
+            customPerms = {}; // on ignore les surcharges du sysop, on simule un rôle "propre"
+        }
+    }
+
+    if (effectiveRole === 'admin') return true;
+
     // 1. Surcharge explicite (Priorité max)
     if (customPerms[action] === true) return true;
     if (customPerms[action] === false) return false;
 
     // 2. Rôle par défaut
-    const rolePerms = ROLE_DEFAULTS[userProfile.role] || [];
+    const rolePerms = ROLE_DEFAULTS[effectiveRole] || [];
     return rolePerms.includes(action) || rolePerms.includes('*');
 }
