@@ -8,7 +8,7 @@
         Loader2, CheckCircle, Tag, Cake, Palette,
         Briefcase, Hash, Building, MapPin, Smartphone, Phone, FileText,
         Link2, Check, Bus, Car, Trophy, Code2, ShieldCheck, Medal, Flame, Crown, Award,
-        Heart, MessageCircle, Send, Trash2, Compass, AtSign
+        Heart, MessageCircle, Send, Trash2, Compass, AtSign, Smile, Plus, Upload
     } from 'lucide-svelte';
 
     // Stores & Libs
@@ -18,7 +18,7 @@
     import { currentThemeId, themesConfig, applyTheme } from '$lib/stores/theme';
     import { ProfileService } from '$lib/services/profile.service.js';
     import { ActivityStatsService } from '$lib/services/activityStats.service.js';
-    import { SocialService, REACTIONS } from '$lib/services/social.service.js';
+    import { SocialService, REACTIONS, QUICK_EMOJIS } from '$lib/services/social.service.js';
     import { computeBadges } from '$lib/utils/badges.js';
 
     // Map nom d'icône (string, défini dans badges.js) -> composant lucide
@@ -86,6 +86,14 @@
             : allProfiles.slice(0, 6)
     );
 
+    // Barre d'emojis (standards + personnalisés)
+    let showEmojiBar = $state(false);
+    let customEmojis = $state([]);
+    let showEmojiUpload = $state(false);
+    let emojiUploadName = $state("");
+    let emojiUploadFile = $state(null);
+    let isUploadingEmoji = $state(false);
+
     // --- STYLE DYNAMIQUE (Basé sur le rôle) ---
     let borderClass = $derived(profileData.role === 'admin' 
       ? 'bg-gradient-to-br from-yellow-300/80 via-amber-400/50 to-yellow-500/80 shadow-[0_0_35px_rgba(245,158,11,0.6)] ring-1 ring-yellow-400/50' 
@@ -114,6 +122,7 @@
 
         // Annuaire léger pour l'autocomplete @mention
         SocialService.getAllProfiles().then(list => allProfiles = list).catch(() => {});
+        SocialService.getCustomEmojis().then(list => customEmojis = list).catch(() => {});
 
         handleUrlParams();
     });
@@ -335,6 +344,48 @@
         newComment = replaced + afterCaret;
         showMentionList = false;
         commentInputEl?.focus();
+    }
+
+    // --- BARRE D'EMOJIS ---
+    function insertAtCaret(text) {
+        const el = commentInputEl;
+        const caret = el?.selectionStart ?? newComment.length;
+        newComment = newComment.slice(0, caret) + text + newComment.slice(caret);
+        const pos = caret + text.length;
+        requestAnimationFrame(() => {
+            el?.focus();
+            el?.setSelectionRange?.(pos, pos);
+        });
+    }
+
+    function insertQuickEmoji(char) {
+        insertAtCaret(char);
+    }
+
+    function insertCustomEmoji(emoji) {
+        insertAtCaret(`:${emoji.name}: `);
+        showEmojiBar = false;
+    }
+
+    function handleEmojiFileChange(e) {
+        emojiUploadFile = e.target.files?.[0] || null;
+    }
+
+    async function handleUploadEmoji() {
+        if (!emojiUploadFile || !emojiUploadName.trim() || isUploadingEmoji) return;
+        isUploadingEmoji = true;
+        try {
+            const created = await SocialService.uploadCustomEmoji(emojiUploadFile, emojiUploadName, currentUser.id);
+            customEmojis = [...customEmojis, created].sort((a, b) => a.name.localeCompare(b.name));
+            toast.success(`Emoji :${created.name}: ajouté !`);
+            emojiUploadName = "";
+            emojiUploadFile = null;
+            showEmojiUpload = false;
+        } catch (e) {
+            toast.error(e.message || "Erreur upload emoji");
+        } finally {
+            isUploadingEmoji = false;
+        }
     }
 
     async function handlePostComment() {
@@ -717,6 +768,76 @@
               </div>
             {/if}
           </div>
+
+          <div class="relative shrink-0">
+            <button
+              onclick={() => showEmojiBar = !showEmojiBar}
+              class="px-3 h-full rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 flex items-center justify-center transition-all"
+              title="Emojis"
+            >
+              <Smile size={18} />
+            </button>
+
+            {#if showEmojiBar}
+              <div class="absolute bottom-full mb-1.5 right-0 w-72 bg-[#1a1d24] border border-white/10 rounded-2xl shadow-2xl p-3 z-20" in:fly={{ y: 5, duration: 120 }}>
+                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-2">Emojis</p>
+                <div class="grid grid-cols-8 gap-1 mb-3">
+                  {#each QUICK_EMOJIS as e}
+                    <button
+                      onmousedown={(ev) => ev.preventDefault()}
+                      onclick={() => insertQuickEmoji(e)}
+                      class="w-7 h-7 flex items-center justify-center text-base rounded-lg hover:bg-white/10 transition-all hover:scale-125"
+                    >{e}</button>
+                  {/each}
+                </div>
+
+                {#if customEmojis.length > 0}
+                  <div class="flex items-center justify-between mb-2">
+                    <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Personnalisés</p>
+                    <button onmousedown={(ev) => ev.preventDefault()} onclick={() => showEmojiUpload = !showEmojiUpload} class="text-gray-500 hover:text-white"><Plus size={13}/></button>
+                  </div>
+                  <div class="grid grid-cols-8 gap-1 mb-1 max-h-28 overflow-y-auto custom-scrollbar">
+                    {#each customEmojis as emoji}
+                      <button
+                        onmousedown={(ev) => ev.preventDefault()}
+                        onclick={() => insertCustomEmoji(emoji)}
+                        class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 transition-all hover:scale-125"
+                        title=":{emoji.name}:"
+                      ><img src={emoji.image_url} alt={emoji.name} class="w-5 h-5 object-contain"></button>
+                    {/each}
+                  </div>
+                {:else}
+                  <button onmousedown={(ev) => ev.preventDefault()} onclick={() => showEmojiUpload = !showEmojiUpload} class="flex items-center gap-1.5 text-xs text-gray-500 hover:text-white transition-colors mb-1">
+                    <Plus size={13}/> Ajouter un emoji perso
+                  </button>
+                {/if}
+
+                {#if showEmojiUpload}
+                  <div class="mt-2 pt-3 border-t border-white/10 space-y-2" in:fly={{ y: -5, duration: 100 }}>
+                    <input
+                      type="text"
+                      bind:value={emojiUploadName}
+                      placeholder="nom_emoji"
+                      maxlength="32"
+                      class="w-full bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-white/20"
+                    >
+                    <label class="flex items-center justify-center gap-1.5 w-full py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-dashed border-white/15 text-[11px] text-gray-400 cursor-pointer transition-colors">
+                      <Upload size={12}/> {emojiUploadFile ? emojiUploadFile.name : 'Choisir une image (100 Ko max)'}
+                      <input type="file" accept="image/*" class="hidden" onchange={handleEmojiFileChange}>
+                    </label>
+                    <button
+                      onclick={handleUploadEmoji}
+                      disabled={!emojiUploadFile || !emojiUploadName.trim() || isUploadingEmoji}
+                      class="w-full py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold disabled:opacity-40 flex items-center justify-center gap-1.5 transition-all"
+                    >
+                      {#if isUploadingEmoji}<Loader2 size={13} class="animate-spin"/>{:else}<Plus size={13}/>{/if} Créer l'emoji
+                    </button>
+                  </div>
+                {/if}
+              </div>
+            {/if}
+          </div>
+
           <button
             onclick={handlePostComment}
             disabled={!newComment.trim() || isPostingComment}
@@ -747,7 +868,15 @@
                     {/if}
                   </div>
                 </div>
-                <p class="text-sm text-gray-300 mt-1 whitespace-pre-wrap break-words">{c.content}</p>
+                <p class="text-sm text-gray-300 mt-1 whitespace-pre-wrap break-words">
+                  {#each SocialService.renderCommentParts(c.content, customEmojis) as part}
+                    {#if part.type === 'emoji'}
+                      <img src={part.value.image_url} alt=":{part.value.name}:" title=":{part.value.name}:" class="inline-block w-4 h-4 align-text-bottom object-contain mx-0.5">
+                    {:else}
+                      {part.value}
+                    {/if}
+                  {/each}
+                </p>
               </div>
             </div>
           {/each}

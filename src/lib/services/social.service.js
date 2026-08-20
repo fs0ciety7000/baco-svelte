@@ -7,6 +7,16 @@ export const REACTIONS = [
     { type: 'laugh', emoji: '😂', label: 'Rire' }
 ];
 
+// Barre d'emojis "standards" pour les commentaires (pas de nouvelle table nécessaire,
+// simples caractères unicode insérés tels quels dans le texte)
+export const QUICK_EMOJIS = [
+    '😀', '😂', '😍', '😮', '😢', '😡', '🙏', '👏',
+    '👍', '👎', '❤️', '🔥', '🎉', '💯', '😴', '🤔'
+];
+
+const EMOJI_NAME_REGEX = /^[a-z0-9_-]{2,32}$/;
+const MAX_EMOJI_SIZE = 100 * 1024; // 100 Ko
+
 function emojiFor(type) {
     return REACTIONS.find(r => r.type === type)?.emoji || '👍';
 }
@@ -161,5 +171,78 @@ export const SocialService = {
     async deleteComment(commentId) {
         const { error } = await supabase.from('profile_comments').delete().eq('id', commentId);
         if (error) throw error;
+    },
+
+    // --- EMOJIS PERSONNALISÉS ---
+
+    async getCustomEmojis() {
+        const { data, error } = await supabase
+            .from('custom_emojis')
+            .select('id, name, image_url, created_by')
+            .order('name');
+        if (error) throw error;
+        return data || [];
+    },
+
+    /**
+     * Upload une image comme emoji personnalisé, réutilisable ensuite via :nom:.
+     * @param {File} file image (png/jpg/gif/webp, 100 Ko max)
+     * @param {string} name identifiant court, lettres/chiffres/tirets uniquement
+     * @param {string} userId créateur
+     */
+    async uploadCustomEmoji(file, name, userId) {
+        const cleanName = (name || '').trim().toLowerCase().replace(/\s+/g, '-');
+        if (!EMOJI_NAME_REGEX.test(cleanName)) {
+            throw new Error('Nom invalide (2-32 caractères : lettres, chiffres, - ou _)');
+        }
+        if (!file || !file.type.startsWith('image/')) {
+            throw new Error('Fichier image requis');
+        }
+        if (file.size > MAX_EMOJI_SIZE) {
+            throw new Error('Image trop lourde (100 Ko max)');
+        }
+
+        const ext = file.name.split('.').pop();
+        const path = `emojis/${cleanName}-${Date.now()}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file);
+        if (uploadError) throw uploadError;
+
+        const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
+
+        const { error } = await supabase
+            .from('custom_emojis')
+            .insert([{ name: cleanName, image_url: pub.publicUrl, created_by: userId }]);
+
+        if (error) {
+            if (error.code === '23505') throw new Error(`L'emoji ":${cleanName}:" existe déjà`);
+            throw error;
+        }
+
+        return { name: cleanName, image_url: pub.publicUrl };
+    },
+
+    /**
+     * Découpe un texte de commentaire en segments {type:'text'|'emoji', value}
+     * en remplaçant les shortcodes :nom: connus par l'emoji personnalisé correspondant.
+     */
+    renderCommentParts(content, customEmojis = []) {
+        const map = new Map(customEmojis.map(e => [e.name, e]));
+        const regex = /:([a-z0-9_-]{2,32}):/gi;
+        const parts = [];
+        let lastIndex = 0;
+        let match;
+        while ((match = regex.exec(content))) {
+            if (match.index > lastIndex) parts.push({ type: 'text', value: content.slice(lastIndex, match.index) });
+            const emoji = map.get(match[1].toLowerCase());
+            if (emoji) {
+                parts.push({ type: 'emoji', value: emoji });
+            } else {
+                parts.push({ type: 'text', value: match[0] });
+            }
+            lastIndex = regex.lastIndex;
+        }
+        if (lastIndex < content.length) parts.push({ type: 'text', value: content.slice(lastIndex) });
+        return parts;
     }
 };
