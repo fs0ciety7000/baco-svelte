@@ -7,8 +7,10 @@
   import {
     FileClock, Search, Filter, Calendar, User,
     PlusCircle, Pencil, Trash2, Shield, LogIn, Info,
-    Loader2, RefreshCw, ChevronDown, ChevronUp, Database
+    Loader2, RefreshCw, ChevronDown, ChevronUp, Database,
+    Download, FileSpreadsheet
   } from 'lucide-svelte';
+  import { toast } from '$lib/stores/toast.js';
 
   // --- CONFIG ---
   const ROWS_PER_PAGE = 25;
@@ -29,7 +31,8 @@
     action: "all",
     table: "all",
     userId: "all",
-    dateStart: ""
+    dateStart: "",
+    dateEnd: ""
   };
 
   let uniqueTables = [];
@@ -90,6 +93,7 @@
     if (filters.table !== 'all') query = query.eq('table_name', filters.table);
     if (filters.userId !== 'all') query = query.eq('user_id', filters.userId);
     if (filters.dateStart) query = query.gte('timestamp', `${filters.dateStart}T00:00:00`);
+    if (filters.dateEnd) query = query.lte('timestamp', `${filters.dateEnd}T23:59:59`);
 
     const { data, error } = await query;
 
@@ -106,6 +110,81 @@
       currentPage++;
     }
     isLoading = false;
+  }
+
+  // --- EXPORT ---
+  let isExporting = false;
+
+  async function fetchAllFilteredLogs() {
+    let query = supabase
+      .from('audit_logs')
+      .select(`*, profiles ( full_name )`)
+      .order('timestamp', { ascending: false });
+
+    if (filters.search) query = query.or(`record_id.ilike.%${filters.search}%,changes.ilike.%${filters.search}%`);
+    if (filters.action !== 'all') query = query.eq('action_type', filters.action);
+    if (filters.table !== 'all') query = query.eq('table_name', filters.table);
+    if (filters.userId !== 'all') query = query.eq('user_id', filters.userId);
+    if (filters.dateStart) query = query.gte('timestamp', `${filters.dateStart}T00:00:00`);
+    if (filters.dateEnd) query = query.lte('timestamp', `${filters.dateEnd}T23:59:59`);
+
+    const { data, error } = await query.limit(50000);
+    if (error) throw error;
+    return data || [];
+  }
+
+  function buildExportRows(rows) {
+    return rows.map(l => ({
+      Date: formatDate(l.timestamp),
+      Utilisateur: l.profiles?.full_name || (l.user_id ? `UID:${l.user_id.slice(0, 8)}` : 'Système'),
+      Action: l.action_type,
+      Table: l.table_name,
+      Enregistrement: l.record_id,
+      Détails: typeof l.changes === 'string' ? l.changes : JSON.stringify(l.changes || {})
+    }));
+  }
+
+  async function exportCSV() {
+    isExporting = true;
+    try {
+      const rows = buildExportRows(await fetchAllFilteredLogs());
+      if (rows.length === 0) { toast.error("Aucun log à exporter"); return; }
+      const headers = Object.keys(rows[0]);
+      const escape = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const csv = [headers.join(';'), ...rows.map(r => headers.map(h => escape(r[h])).join(';'))].join('\n');
+      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Audit_Logs_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`${rows.length} log(s) exporté(s) en CSV`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Erreur lors de l'export CSV");
+    } finally {
+      isExporting = false;
+    }
+  }
+
+  async function exportExcel() {
+    isExporting = true;
+    try {
+      const rows = buildExportRows(await fetchAllFilteredLogs());
+      if (rows.length === 0) { toast.error("Aucun log à exporter"); return; }
+      const XLSX = (await import('xlsx')).default || (await import('xlsx'));
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Audit Logs");
+      XLSX.writeFile(workbook, `Audit_Logs_${new Date().toISOString().split('T')[0]}.xlsx`);
+      toast.success(`${rows.length} log(s) exporté(s) en Excel`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Erreur lors de l'export Excel");
+    } finally {
+      isExporting = false;
+    }
   }
 
   // --- UI HELPERS ---
@@ -180,17 +259,25 @@
           <p class="text-gray-500 text-sm mt-1">Traçabilité et historique système.</p>
         </div>
     </div>
-    <button on:click={() => loadLogs(true)} class="p-2 text-gray-400 hover:bg-white/10 rounded-xl transition-all border border-white/5" 
-            style="--hover-col: rgb(var(--primary-rgb));"
-            title="Rafraîchir">
-      <RefreshCw size={20} class="{isLoading ? 'animate-spin' : ''} transition-colors" style="color: {isLoading ? 'rgb(var(--primary-rgb))' : ''}" />
-    </button>
+    <div class="flex items-center gap-2">
+      <button on:click={exportCSV} disabled={isExporting} class="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-gray-400 hover:bg-white/10 hover:text-white rounded-xl transition-all border border-white/5 disabled:opacity-50" title="Exporter en CSV">
+        <Download size={16} /> CSV
+      </button>
+      <button on:click={exportExcel} disabled={isExporting} class="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-gray-400 hover:bg-white/10 hover:text-white rounded-xl transition-all border border-white/5 disabled:opacity-50" title="Exporter en Excel">
+        {#if isExporting} <Loader2 size={16} class="animate-spin" /> {:else} <FileSpreadsheet size={16} /> {/if} Excel
+      </button>
+      <button on:click={() => loadLogs(true)} class="p-2 text-gray-400 hover:bg-white/10 rounded-xl transition-all border border-white/5"
+              style="--hover-col: rgb(var(--primary-rgb));"
+              title="Rafraîchir">
+        <RefreshCw size={20} class="{isLoading ? 'animate-spin' : ''} transition-colors" style="color: {isLoading ? 'rgb(var(--primary-rgb))' : ''}" />
+      </button>
+    </div>
   </header>
 
   <main class="space-y-6" style="--primary-rgb: var(--color-primary);">
     
     <div class="bg-black/20 border border-white/5 rounded-3xl p-6 shadow-sm" in:fly={{ y: 20, duration: 600, delay: 100 }}>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 items-end">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-5 items-end">
         
         <div class="lg:col-span-2">
           <label class={labelClass}>Recherche</label>
@@ -228,6 +315,16 @@
               <option value={u.id} class="bg-gray-900">{u.full_name || 'Inconnu'}</option>
             {/each}
           </select>
+        </div>
+
+        <div>
+          <label class={labelClass}>Depuis le</label>
+          <input type="date" bind:value={filters.dateStart} on:change={() => loadLogs(true)} class={selectClass} style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);" />
+        </div>
+
+        <div>
+          <label class={labelClass}>Jusqu'au</label>
+          <input type="date" bind:value={filters.dateEnd} on:change={() => loadLogs(true)} class={selectClass} style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);" />
         </div>
 
       </div>
