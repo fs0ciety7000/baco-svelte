@@ -169,7 +169,7 @@
 				.single();
 			if (data) {
 				userProfile = data;
-				isAdmin = data.role === 'admin';
+				isAdmin = data.role === 'admin' || data.role === 'sysop'; // sysop = accès admin complet
 				isModerator = data.role === 'moderator';
 				isOttoAgent = data.role === 'otto_agent';
 			}

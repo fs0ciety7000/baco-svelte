@@ -67,7 +67,7 @@
         const { data: { user: me } } = await supabase.auth.getUser();
         if (!me) return goto('/');
         const { data } = await supabase.from('profiles').select('role').eq('id', me.id).single();
-        if (data?.role !== 'admin') goto('/');
+        if (data?.role !== 'admin' && data?.role !== 'sysop') goto('/');
     }
 
     async function loadFullProfile() {

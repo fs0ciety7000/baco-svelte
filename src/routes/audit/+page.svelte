@@ -50,7 +50,7 @@
       .eq('id', user.id)
       .single();
 
-    if (profile?.role !== 'admin') {
+    if (profile?.role !== 'admin' && profile?.role !== 'sysop') {
       goto('/');
     }
   }

@@ -30,7 +30,7 @@ export async function POST({ request }) {
         .eq('id', user.id)
         .single();
 
-    if (profile?.role !== 'admin') {
+    if (profile?.role !== 'admin' && profile?.role !== 'sysop') {
         throw error(403, 'Accès refusé - Admin uniquement');
     }
 
