@@ -45,7 +45,8 @@
 		Trophy,
 		Compass,
 		Eye,
-		EyeOff
+		EyeOff,
+		MapPin
 	} from 'lucide-svelte';
 	import { PREVIEW_ROLE_KEY, getPreviewRole } from '$lib/permissions';
 
@@ -600,6 +601,7 @@
 									{/if}
 									{#if isAdmin}
 										<a href="/admin" class={dropdownLinkClass}><ShieldCheck /> Admin</a>
+										<a href="/admin/gares" class={dropdownLinkClass}><MapPin /> Cache gares</a>
 										<a href="/audit" class={dropdownLinkClass}><FileClock /> Logs</a>
 									{/if}
 									{#if isSysop}
