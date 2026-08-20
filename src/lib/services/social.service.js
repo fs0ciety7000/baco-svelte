@@ -256,5 +256,24 @@ export const SocialService = {
         }
         if (lastIndex < content.length) parts.push({ type: 'text', value: content.slice(lastIndex) });
         return parts;
+    },
+
+    /**
+     * Vrai si le commentaire ne contient que des emojis (personnalisés et/ou unicode
+     * standards), aucun texte réel — pour un affichage "jumbo" comme sur Slack/Discord.
+     */
+    isEmojiOnly(content, customEmojis = []) {
+        if (!content) return false;
+        const parts = this.renderCommentParts(content, customEmojis);
+        let hasCustomEmoji = false;
+        for (const p of parts) {
+            if (p.type === 'emoji') { hasCustomEmoji = true; continue; }
+            if (p.value.trim() !== '') return false; // du texte réel présent
+        }
+        if (hasCustomEmoji) return true;
+        // Pas de shortcode connu : vérifie que le texte restant n'est composé que
+        // d'emojis unicode standards (ex: "🔥🔥").
+        const stripped = content.replace(/\s+/gu, '');
+        return stripped.length > 0 && /^\p{Extended_Pictographic}+$/u.test(stripped);
     }
 };

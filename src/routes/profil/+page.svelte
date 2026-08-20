@@ -868,10 +868,16 @@
                     {/if}
                   </div>
                 </div>
-                <p class="text-sm text-gray-300 mt-1 whitespace-pre-wrap break-words">
+                {@const jumbo = SocialService.isEmojiOnly(c.content, customEmojis)}
+                <p class="mt-1 whitespace-pre-wrap break-words {jumbo ? 'text-3xl leading-relaxed' : 'text-sm text-gray-300'}">
                   {#each SocialService.renderCommentParts(c.content, customEmojis) as part}
                     {#if part.type === 'emoji'}
-                      <img src={part.value.image_url} alt=":{part.value.name}:" title=":{part.value.name}:" class="inline-block w-4 h-4 align-text-bottom object-contain mx-0.5">
+                      <img
+                        src={part.value.image_url}
+                        alt=":{part.value.name}:"
+                        title=":{part.value.name}:"
+                        class="inline-block object-contain {jumbo ? 'w-10 h-10 mx-0.5' : 'w-5 h-5 align-text-bottom mx-0.5'}"
+                      >
                     {:else}
                       {part.value}
                     {/if}
