@@ -8,7 +8,7 @@
         Loader2, CheckCircle, Tag, Cake, Palette,
         Briefcase, Hash, Building, MapPin, Smartphone, Phone, FileText,
         Link2, Check, Bus, Car, Trophy, Code2, ShieldCheck, Medal, Flame, Crown, Award,
-        Heart, MessageCircle, Send, Trash2
+        Heart, MessageCircle, Send, Trash2, Compass, AtSign
     } from 'lucide-svelte';
 
     // Stores & Libs
@@ -18,11 +18,11 @@
     import { currentThemeId, themesConfig, applyTheme } from '$lib/stores/theme';
     import { ProfileService } from '$lib/services/profile.service.js';
     import { ActivityStatsService } from '$lib/services/activityStats.service.js';
-    import { SocialService } from '$lib/services/social.service.js';
+    import { SocialService, REACTIONS } from '$lib/services/social.service.js';
     import { computeBadges } from '$lib/utils/badges.js';
 
     // Map nom d'icône (string, défini dans badges.js) -> composant lucide
-    const BADGE_ICONS = { Code2, ShieldCheck, Shield, Bus, Car, Trophy, Medal, Flame, Crown };
+    const BADGE_ICONS = { Code2, ShieldCheck, Shield, Bus, Car, Trophy, Medal, Flame, Crown, Heart };
 
     // --- ÉTAT (RUNES) ---
     let isLoading = $state(true);
@@ -56,16 +56,35 @@
 
     // Activité / Badges
     let activityStats = $state({ ottoCount: 0, taxiCount: 0, total: 0 });
-    let badges = $derived(computeBadges(profileData, activityStats));
+    let badges = $derived(computeBadges(profileData, activityStats, likes.length));
     let linkCopied = $state(false);
+    let myFullName = $state("");
 
-    // Social (Likes / Commentaires)
+    // Social (Réactions / Commentaires)
     let likes = $state([]);
-    let hasLiked = $derived(likes.some(l => l.liker_id === currentUser?.id));
+    let myReaction = $derived(likes.find(l => l.liker_id === currentUser?.id)?.reaction_type || null);
+    let reactionCounts = $derived.by(() => {
+        const map = {};
+        REACTIONS.forEach(r => map[r.type] = 0);
+        likes.forEach(l => { if (map[l.reaction_type] !== undefined) map[l.reaction_type]++; });
+        return map;
+    });
+    let showReactionPicker = $state(false);
     let isLiking = $state(false);
     let comments = $state([]);
     let newComment = $state("");
     let isPostingComment = $state(false);
+    let allProfiles = $state([]); // pour l'autocomplete @mention
+
+    // Mentions (@Nom)
+    let showMentionList = $state(false);
+    let mentionQuery = $state("");
+    let commentInputEl = $state(null);
+    let mentionCandidates = $derived(
+        mentionQuery.trim()
+            ? allProfiles.filter(p => p.full_name?.toLowerCase().includes(mentionQuery.trim().toLowerCase())).slice(0, 6)
+            : allProfiles.slice(0, 6)
+    );
 
     // --- STYLE DYNAMIQUE (Basé sur le rôle) ---
     let borderClass = $derived(profileData.role === 'admin' 
@@ -85,12 +104,16 @@
         // Vérif Admin
         const myProfile = await ProfileService.getProfile(currentUser.id);
         isAdmin = myProfile?.role === 'admin' || myProfile?.role === 'sysop';
-        
+        myFullName = myProfile?.full_name || 'Un collègue';
+
         // Initialisation Theme
         if (myProfile?.theme) {
             currentThemeId.set(myProfile.theme);
             applyTheme(myProfile.theme);
         }
+
+        // Annuaire léger pour l'autocomplete @mention
+        SocialService.getAllProfiles().then(list => allProfiles = list).catch(() => {});
 
         handleUrlParams();
     });
@@ -275,14 +298,14 @@
     }
 
     // --- SOCIAL ---
-    async function handleToggleLike() {
+    async function handleReact(reactionType) {
         if (!currentUser || isLiking) return;
         isLiking = true;
+        showReactionPicker = false;
         try {
-            const nowLiked = await SocialService.toggleLike(targetUserId, currentUser.id);
-            likes = nowLiked
-                ? [...likes, { liker_id: currentUser.id }]
-                : likes.filter(l => l.liker_id !== currentUser.id);
+            const active = await SocialService.setReaction(targetUserId, currentUser.id, reactionType, { actorName: myFullName });
+            likes = likes.filter(l => l.liker_id !== currentUser.id);
+            if (active) likes = [...likes, { liker_id: currentUser.id, reaction_type: active }];
         } catch (e) {
             toast.error("Erreur");
         } finally {
@@ -290,12 +313,40 @@
         }
     }
 
+    // --- MENTIONS (@Nom) dans le champ commentaire ---
+    function handleCommentInput(e) {
+        const val = e.target.value;
+        const caret = e.target.selectionStart;
+        const beforeCaret = val.slice(0, caret);
+        const match = beforeCaret.match(/@([^\s@]*)$/);
+        if (match) {
+            mentionQuery = match[1];
+            showMentionList = true;
+        } else {
+            showMentionList = false;
+        }
+    }
+
+    function insertMention(person) {
+        const caret = commentInputEl?.selectionStart ?? newComment.length;
+        const beforeCaret = newComment.slice(0, caret);
+        const afterCaret = newComment.slice(caret);
+        const replaced = beforeCaret.replace(/@([^\s@]*)$/, `@${person.full_name} `);
+        newComment = replaced + afterCaret;
+        showMentionList = false;
+        commentInputEl?.focus();
+    }
+
     async function handlePostComment() {
         if (!newComment.trim() || isPostingComment) return;
         isPostingComment = true;
         try {
-            await SocialService.addComment(targetUserId, currentUser.id, newComment);
+            await SocialService.addComment(targetUserId, currentUser.id, newComment, {
+                actorName: myFullName,
+                mentionCandidates: allProfiles
+            });
             newComment = "";
+            showMentionList = false;
             comments = await SocialService.getComments(targetUserId);
         } catch (e) {
             toast.error(e.message || "Erreur lors de l'envoi");
@@ -353,14 +404,34 @@
     </div>
 
     <div class="flex items-center gap-2">
-        <button
-            onclick={handleToggleLike}
-            disabled={isLiking}
-            class="px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all border disabled:opacity-50
-                {hasLiked ? 'bg-pink-500/15 text-pink-400 border-pink-500/30' : 'bg-white/5 hover:bg-white/10 text-gray-300 border-white/10'}"
-        >
-            <Heart size={16} class={hasLiked ? 'fill-pink-400' : ''} /> {likes.length}
-        </button>
+        <div class="relative">
+            <button
+                onclick={() => showReactionPicker = !showReactionPicker}
+                onblur={() => setTimeout(() => showReactionPicker = false, 150)}
+                disabled={isLiking}
+                class="px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all border disabled:opacity-50
+                    {myReaction ? 'bg-pink-500/15 text-pink-300 border-pink-500/30' : 'bg-white/5 hover:bg-white/10 text-gray-300 border-white/10'}"
+            >
+                {#if myReaction}
+                    <span class="text-base leading-none">{REACTIONS.find(r => r.type === myReaction)?.emoji}</span>
+                {:else}
+                    <Heart size={16} />
+                {/if}
+                {likes.length}
+            </button>
+            {#if showReactionPicker}
+                <div class="absolute top-full mt-1.5 left-0 z-20 bg-[#1a1d24] border border-white/10 rounded-2xl shadow-2xl p-1.5 flex gap-1" in:fly={{ y: -5, duration: 120 }}>
+                    {#each REACTIONS as r}
+                        <button
+                            onmousedown={(e) => e.preventDefault()}
+                            onclick={() => handleReact(r.type)}
+                            class="w-9 h-9 rounded-xl flex items-center justify-center text-lg hover:bg-white/10 transition-all hover:scale-125 {myReaction === r.type ? 'bg-white/10 ring-1 ring-pink-400/50' : ''}"
+                            title={r.label}
+                        >{r.emoji}</button>
+                    {/each}
+                </div>
+            {/if}
+        </div>
         <button onclick={copyProfileLink} class="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 rounded-xl text-sm font-bold flex items-center gap-2 transition-all">
             {#if linkCopied}<Check size={16} class="text-emerald-400"/> Copié !{:else}<Link2 size={16}/> Partager{/if}
         </button>
@@ -409,6 +480,17 @@
                         <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border {badge.badgeClass} {badge.glow}" title={badge.label}>
                             <Icon size={13} /> {badge.label}
                         </span>
+                    {/each}
+                </div>
+            {/if}
+            {#if likes.length > 0}
+                <div class="flex justify-center gap-3 mt-3">
+                    {#each REACTIONS as r}
+                        {#if reactionCounts[r.type] > 0}
+                            <span class="flex items-center gap-1 text-xs text-gray-500" title={r.label}>
+                                <span class="text-sm leading-none">{r.emoji}</span> {reactionCounts[r.type]}
+                            </span>
+                        {/if}
                     {/each}
                 </div>
             {/if}
@@ -607,15 +689,34 @@
       </h2>
 
       {#if currentUser}
-        <div class="flex gap-3 mb-6">
-          <textarea
-            bind:value={newComment}
-            placeholder="Laisser un commentaire..."
-            maxlength="500"
-            rows="2"
-            class="{inputClass} resize-none flex-grow"
-            style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);"
-          ></textarea>
+        <div class="flex gap-3 mb-6 relative">
+          <div class="relative flex-grow">
+            <textarea
+              bind:this={commentInputEl}
+              bind:value={newComment}
+              oninput={handleCommentInput}
+              onblur={() => setTimeout(() => showMentionList = false, 150)}
+              placeholder="Laisser un commentaire... (@ pour mentionner)"
+              maxlength="500"
+              rows="2"
+              class="{inputClass} resize-none w-full"
+              style="--tw-ring-color: rgba(var(--primary-rgb), 0.3);"
+            ></textarea>
+            {#if showMentionList && mentionCandidates.length > 0}
+              <div class="absolute bottom-full mb-1.5 left-0 w-64 max-h-48 overflow-y-auto bg-[#1a1d24] border border-white/10 rounded-xl shadow-2xl py-1.5 z-20 custom-scrollbar" in:fly={{ y: 5, duration: 120 }}>
+                {#each mentionCandidates as person}
+                  <button
+                    onmousedown={(e) => e.preventDefault()}
+                    onclick={() => insertMention(person)}
+                    class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/10 transition-colors"
+                  >
+                    <img src={person.avatar_url || '/default-avatar.png'} alt="av" class="w-6 h-6 rounded-full object-cover border border-white/10">
+                    <span class="flex items-center gap-1"><AtSign size={11} class="text-gray-500"/>{person.full_name}</span>
+                  </button>
+                {/each}
+              </div>
+            {/if}
+          </div>
           <button
             onclick={handlePostComment}
             disabled={!newComment.trim() || isPostingComment}

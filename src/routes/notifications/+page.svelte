@@ -3,9 +3,9 @@
   import { supabase } from '$lib/supabase';
   import { toast } from '$lib/stores/toast.js';
   import { fly, fade } from 'svelte/transition';
-  import { 
-    Bell, Mail, MailOpen, Trash2, Loader2, Filter, 
-    CheckCheck, ShieldCheck, ClipboardPaste, X
+  import {
+    Bell, Mail, MailOpen, Trash2, Loader2, Filter,
+    CheckCheck, ShieldCheck, ClipboardPaste, X, Heart
   } from 'lucide-svelte';
 
   // --- ÉTAT ---
@@ -105,6 +105,7 @@
   function getIcon(type) {
     switch(type) {
       case 'mention': return Bell;
+      case 'social': return Heart;
       case 'system': return ShieldCheck;
       case 'procedure': return ClipboardPaste;
       default: return Mail;
@@ -114,6 +115,7 @@
   function getIconColor(type) {
     switch(type) {
       case 'mention': return 'text-blue-400';
+      case 'social': return 'text-pink-400';
       case 'system': return 'text-yellow-400';
       case 'procedure': return 'text-green-400';
       default: return 'text-gray-400';

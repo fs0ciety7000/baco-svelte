@@ -44,12 +44,19 @@ const ACTIVITY_TIERS = [
     { id: 'actif',    min: 10,  label: 'Actif',     icon: 'Flame',   badgeClass: 'bg-orange-600/15 text-orange-400 border-orange-600/30',     glow: '' }
 ];
 
+// --- PALIERS DE POPULARITÉ (basés sur le nombre de réactions reçues) ---
+const POPULARITY_TIERS = [
+    { id: 'icone',    min: 50, label: 'Icône',     icon: 'Flame', badgeClass: 'bg-rose-500/15 text-rose-300 border-rose-500/30',   glow: 'shadow-[0_0_15px_rgba(244,63,94,0.35)]' },
+    { id: 'populaire', min: 10, label: 'Populaire', icon: 'Heart', badgeClass: 'bg-pink-500/15 text-pink-300 border-pink-500/30',   glow: '' }
+];
+
 /**
  * Construit la liste des badges à afficher pour un profil donné.
  * @param {{role: string}} profile
  * @param {{ottoCount: number, taxiCount: number, total: number}} stats
+ * @param {number} likesCount nombre de réactions reçues sur le profil
  */
-export function computeBadges(profile, stats) {
+export function computeBadges(profile, stats, likesCount = 0) {
     const badges = [];
 
     const roleBadge = ROLE_BADGES[profile?.role];
@@ -57,6 +64,9 @@ export function computeBadges(profile, stats) {
 
     const tier = ACTIVITY_TIERS.find(t => (stats?.total || 0) >= t.min);
     if (tier) badges.push(tier);
+
+    const popTier = POPULARITY_TIERS.find(t => (likesCount || 0) >= t.min);
+    if (popTier) badges.push(popTier);
 
     if ((stats?.ottoCount || 0) > 0) {
         badges.push({ id: 'otto_contrib', label: 'Contributeur Bus', icon: 'Bus', badgeClass: 'bg-blue-500/15 text-blue-300 border-blue-500/30', glow: '' });
