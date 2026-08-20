@@ -46,7 +46,7 @@ export async function POST({ request }) {
     }
 
     // Validation du rôle
-    const validRoles = ['reader', 'user', 'moderator', 'admin', 'otto_agent'];
+    const validRoles = ['reader', 'user', 'moderator', 'admin', 'otto_agent', 'sysop'];
     if (!validRoles.includes(role)) {
         throw error(400, 'Rôle invalide');
     }

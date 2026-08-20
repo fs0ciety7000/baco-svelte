@@ -3,17 +3,23 @@
     import { page } from '$app/stores';
     import { fly, fade } from 'svelte/transition';
     import { goto } from '$app/navigation';
-    import { 
+    import {
         User, Mail, Shield, Camera, Lock, Save, LogOut,
-        Loader2, CheckCircle, Tag, Cake, Palette, 
-        Briefcase, Hash, Building, MapPin, Smartphone, Phone, FileText 
+        Loader2, CheckCircle, Tag, Cake, Palette,
+        Briefcase, Hash, Building, MapPin, Smartphone, Phone, FileText,
+        Link2, Check, Bus, Car, Trophy, Code2, ShieldCheck, Medal, Flame, Crown, Award
     } from 'lucide-svelte';
-  
+
     // Stores & Libs
     import { toast } from '$lib/stores/toast';
     import { supabase } from '$lib/supabase';
     import { currentThemeId, themesConfig, applyTheme } from '$lib/stores/theme';
     import { ProfileService } from '$lib/services/profile.service.js';
+    import { ActivityStatsService } from '$lib/services/activityStats.service.js';
+    import { computeBadges } from '$lib/utils/badges.js';
+
+    // Map nom d'icône (string, défini dans badges.js) -> composant lucide
+    const BADGE_ICONS = { Code2, ShieldCheck, Shield, Bus, Car, Trophy, Medal, Flame, Crown };
 
     // --- ÉTAT (RUNES) ---
     let isLoading = $state(true);
@@ -44,6 +50,11 @@
     let trustScore = $state(100);
     let trustColor = $state("bg-green-500");
     let trustLabel = $state("Chargement...");
+
+    // Activité / Badges
+    let activityStats = $state({ ottoCount: 0, taxiCount: 0, total: 0 });
+    let badges = $derived(computeBadges(profileData, activityStats));
+    let linkCopied = $state(false);
 
     // --- STYLE DYNAMIQUE (Basé sur le rôle) ---
     let borderClass = $derived(profileData.role === 'admin' 
@@ -94,7 +105,7 @@
     async function loadAllData() {
         isLoading = true;
         try {
-            await Promise.all([loadProfile(), loadInfractions()]);
+            await Promise.all([loadProfile(), loadInfractions(), loadActivityStats()]);
         } catch(e) {
             console.error(e);
             toast.error("Erreur chargement données");
@@ -115,6 +126,16 @@
             profileData.email = adminEmail || "Masqué (RPC manquant)";
         } else {
             profileData.email = "Confidentiel";
+        }
+    }
+
+    async function loadActivityStats() {
+        try {
+            // full_name provisoire (profileData pas encore fusionné à ce stade si appelé en parallèle)
+            const data = await ProfileService.getProfile(targetUserId);
+            activityStats = await ActivityStatsService.getUserStats(targetUserId, data.full_name);
+        } catch (e) {
+            console.error(e);
         }
     }
 
@@ -217,6 +238,18 @@
         goto('/');
     }
 
+    async function copyProfileLink() {
+        try {
+            const url = `${window.location.origin}/profil?id=${targetUserId}`;
+            await navigator.clipboard.writeText(url);
+            linkCopied = true;
+            toast.success("Lien du profil copié !");
+            setTimeout(() => linkCopied = false, 2000);
+        } catch (e) {
+            toast.error("Impossible de copier le lien");
+        }
+    }
+
     // Classes CSS partagées
     const inputClass = "block w-full rounded-xl border-white/10 bg-black/40 p-3 text-sm font-medium text-white placeholder-gray-600 focus:ring-2 focus:border-transparent transition-all outline-none disabled:opacity-50 disabled:cursor-not-allowed";
     const labelClass = "block text-xs font-bold text-gray-400 uppercase tracking-wide mb-2 ml-1 flex items-center gap-2";
@@ -234,11 +267,6 @@
         <div>
           <h1 class="text-3xl font-bold text-gray-200 tracking-tight flex items-center gap-3">
             {#if isMyProfile} Mon Profil {:else} Profil de {profileData.full_name || 'Utilisateur'} {/if}
-            {#if profileData.role === 'admin'}
-              <span class="inline-flex items-center gap-1 px-3 py-1 bg-yellow-500/20 text-yellow-300 text-xs font-bold rounded-full uppercase border border-yellow-500/30">
-                <Shield size={12} /> Admin
-              </span>
-            {/if}
             <span class="inline-flex items-center gap-1 px-3 py-1 bg-sky-500/10 text-sky-300 text-xs font-bold rounded-full uppercase border border-sky-500/20">
               <MapPin size={12} /> {profileData.district || 'Sud-Ouest'}
             </span>
@@ -249,11 +277,16 @@
         </div>
     </div>
 
-    {#if isMyProfile}
-        <button onclick={handleSignOut} class="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-sm font-bold flex items-center gap-2 transition-all">
-            <LogOut size={16}/> Déconnexion
+    <div class="flex items-center gap-2">
+        <button onclick={copyProfileLink} class="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 rounded-xl text-sm font-bold flex items-center gap-2 transition-all">
+            {#if linkCopied}<Check size={16} class="text-emerald-400"/> Copié !{:else}<Link2 size={16}/> Partager{/if}
         </button>
-    {/if}
+        {#if isMyProfile}
+            <button onclick={handleSignOut} class="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-sm font-bold flex items-center gap-2 transition-all">
+                <LogOut size={16}/> Déconnexion
+            </button>
+        {/if}
+    </div>
   </header>
 
   {#if isLoading}
@@ -284,7 +317,18 @@
                 {/if}
             </div>
             <h2 class="text-2xl font-bold text-white mt-4">{profileData.full_name || 'Utilisateur'}</h2>
-            <p class="text-gray-400 text-sm">@{profileData.username || 'user'}</p>
+            <p class="text-gray-400 text-sm mb-4">@{profileData.username || 'user'}</p>
+
+            {#if badges.length > 0}
+                <div class="flex flex-wrap justify-center gap-2">
+                    {#each badges as badge}
+                        {@const Icon = BADGE_ICONS[badge.icon] || Award}
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border {badge.badgeClass} {badge.glow}" title={badge.label}>
+                            <Icon size={13} /> {badge.label}
+                        </span>
+                    {/each}
+                </div>
+            {/if}
           </div>
 
           <div class="space-y-6">
@@ -359,10 +403,36 @@
       </div>
 
       <div class="space-y-8" in:fly={{ x: 20, delay: 200 }}>
-        
+
+        <div class="bg-black/20 border border-white/5 rounded-3xl p-8 shadow-sm relative overflow-hidden">
+          <h2 class="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
+            <Trophy size={20} class="text-amber-400" /> Activité
+          </h2>
+          <div class="grid grid-cols-3 gap-3">
+            <div class="bg-black/30 rounded-2xl p-4 border border-white/5 text-center">
+              <Bus size={18} class="mx-auto mb-2 text-blue-400" />
+              <p class="text-2xl font-extrabold text-white">{activityStats.ottoCount}</p>
+              <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mt-1">Bus (Otto)</p>
+            </div>
+            <div class="bg-black/30 rounded-2xl p-4 border border-white/5 text-center">
+              <Car size={18} class="mx-auto mb-2 text-yellow-400" />
+              <p class="text-2xl font-extrabold text-white">{activityStats.taxiCount}</p>
+              <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mt-1">Taxis</p>
+            </div>
+            <div class="bg-gradient-to-br from-white/10 to-white/5 rounded-2xl p-4 border border-white/10 text-center">
+              <Trophy size={18} class="mx-auto mb-2 text-amber-400" />
+              <p class="text-2xl font-extrabold text-white">{activityStats.total}</p>
+              <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mt-1">Total</p>
+            </div>
+          </div>
+          <a href="/classement" class="mt-4 flex items-center justify-center gap-1.5 text-xs font-bold text-gray-500 hover:text-amber-400 transition-colors">
+            Voir le classement <Trophy size={12} />
+          </a>
+        </div>
+
         <div class="bg-black/20 border border-white/5 rounded-3xl p-8 shadow-sm relative overflow-hidden">
           <div class="absolute top-0 right-0 p-32 opacity-10 rounded-full blur-3xl pointer-events-none" style="background-color: rgb(var(--color-primary));"></div>
-          
+
           <h2 class="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
             <CheckCircle size={20} style="color: rgb(var(--color-primary));" /> Niveau de Confiance
           </h2>
