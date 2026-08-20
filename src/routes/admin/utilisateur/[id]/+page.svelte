@@ -3,10 +3,11 @@
     import { page } from '$app/stores';
     import { goto } from '$app/navigation';
     import { fly, fade } from 'svelte/transition';
-    import { 
-        ChevronLeft, Shield, Save, Loader2, KeyRound, 
-        AlertTriangle, FileWarning, History, CheckCircle, 
-        UserX, UserCheck, Copy, X, AlertOctagon 
+    import {
+        ChevronLeft, Shield, Save, Loader2, KeyRound,
+        AlertTriangle, FileWarning, History, CheckCircle,
+        UserX, UserCheck, Copy, X, AlertOctagon,
+        Trophy, Bus, Car, Code2, ShieldCheck, Medal, Flame, Crown, Award
     } from 'lucide-svelte';
 
     import { supabase } from '$lib/supabase';
@@ -14,7 +15,12 @@
     import { openConfirmModal } from '$lib/stores/modal.js';
     import { AdminService } from '$lib/services/admin.service.js';
     import { ProfileService } from '$lib/services/profile.service.js';
+    import { ActivityStatsService } from '$lib/services/activityStats.service.js';
+    import { computeBadges } from '$lib/utils/badges.js';
     import { ACTIONS, ROLE_DEFAULTS } from '$lib/permissions';
+
+    // Map nom d'icône (string, défini dans badges.js) -> composant lucide
+    const BADGE_ICONS = { Code2, ShieldCheck, Shield, Bus, Car, Trophy, Medal, Flame, Crown };
 
     // --- ÉTAT ---
     let isLoading = $state(true);
@@ -22,6 +28,10 @@
     let user = $state(null);
     let infractions = $state([]);
     let trustScore = $state(100);
+
+    // Activité / Badges
+    let activityStats = $state({ ottoCount: 0, taxiCount: 0, total: 0 });
+    let badges = $derived(user ? computeBadges(user, activityStats) : []);
     
     // Modales
     let showInfractionModal = $state(false);
@@ -90,6 +100,9 @@
             // Infractions
             infractions = await ProfileService.getInfractions(userId);
             calculateTrustScore();
+
+            // Activité (Bus Otto + Taxi)
+            activityStats = await ActivityStatsService.getUserStats(userId, profile.full_name);
         } catch (e) {
             toast.error("Erreur chargement profil");
             goto('/admin');
@@ -267,6 +280,16 @@
                                     <span class="px-2 py-1 rounded border border-red-500/20 bg-red-500/10 text-xs font-bold uppercase text-red-400 animate-pulse">Banni</span>
                                 {/if}
                             </div>
+                            {#if badges.length > 0}
+                                <div class="flex flex-wrap gap-1.5 justify-center md:justify-start mt-3">
+                                    {#each badges as badge}
+                                        {@const Icon = BADGE_ICONS[badge.icon] || Award}
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border {badge.badgeClass}" title={badge.label}>
+                                            <Icon size={11} /> {badge.label}
+                                        </span>
+                                    {/each}
+                                </div>
+                            {/if}
                         </div>
                     </div>
 
@@ -397,7 +420,28 @@
             </div>
 
             <div class="space-y-8">
-                
+
+                <div class="bg-black/20 border border-white/5 rounded-3xl p-8">
+                    <h3 class="text-lg font-bold text-white mb-6 flex items-center gap-2"><Trophy size={20} class="text-amber-400" /> Activité</h3>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="bg-black/30 rounded-2xl p-4 border border-white/5 text-center">
+                            <Bus size={18} class="mx-auto mb-2 text-blue-400" />
+                            <p class="text-2xl font-extrabold text-white">{activityStats.ottoCount}</p>
+                            <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mt-1">Bus (Otto)</p>
+                        </div>
+                        <div class="bg-black/30 rounded-2xl p-4 border border-white/5 text-center">
+                            <Car size={18} class="mx-auto mb-2 text-yellow-400" />
+                            <p class="text-2xl font-extrabold text-white">{activityStats.taxiCount}</p>
+                            <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mt-1">Taxis</p>
+                        </div>
+                        <div class="bg-gradient-to-br from-white/10 to-white/5 rounded-2xl p-4 border border-white/10 text-center">
+                            <Trophy size={18} class="mx-auto mb-2 text-amber-400" />
+                            <p class="text-2xl font-extrabold text-white">{activityStats.total}</p>
+                            <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mt-1">Total</p>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="bg-black/20 border border-white/5 rounded-3xl p-8 relative overflow-hidden">
                     <div class="absolute inset-0 opacity-5 bg-gradient-to-br {trustScore > 50 ? 'from-green-500' : 'from-red-500'} to-transparent pointer-events-none"></div>
                     <h3 class="text-lg font-bold text-white mb-6 flex items-center gap-2"><CheckCircle class="text-gray-400"/> Trust Score</h3>
