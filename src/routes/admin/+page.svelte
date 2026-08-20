@@ -400,8 +400,9 @@
                                 </td>
                                 <td class="px-6 py-4">
                                     <span class="px-2 py-1 rounded text-[10px] font-bold uppercase border 
-                                        {user.role === 'admin' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 
-                                         user.role === 'moderator' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 
+                                        {user.role === 'admin' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                         user.role === 'sysop' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' :
+                                         user.role === 'moderator' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
                                          'bg-white/5 text-gray-400 border-white/10'}">
                                         {user.role || 'user'}
                                     </span>
@@ -662,6 +663,7 @@
                         <option value="otto_agent">Agent Otto (C3 uniquement)</option>
                         <option value="moderator">Modérateur</option>
                         <option value="admin">Administrateur</option>
+                        <option value="sysop">SysOp (Développeur)</option>
                     </select>
                     <p class="text-xs text-gray-500 mt-1">
                         {#if newUser.role === 'reader'}
@@ -672,6 +674,8 @@
                             Accès uniquement au module C3 (Otto), lecture + écriture.
                         {:else if newUser.role === 'moderator'}
                             Lecture et écriture, mais pas de suppression.
+                        {:else if newUser.role === 'sysop'}
+                            Accès complet — rôle technique/développeur, badge "Développeur" affiché sur le profil.
                         {:else}
                             Accès complet à toutes les fonctionnalités.
                         {/if}

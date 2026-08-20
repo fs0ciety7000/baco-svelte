@@ -83,6 +83,9 @@ export const ROLE_DEFAULTS = {
     // ADMIN : A accès à tout (*) y compris les DELETE
     admin: ['*'],
 
+    // SYSOP : Rôle développeur/technique — accès complet, comme admin
+    sysop: ['*'],
+
     // OTTO_AGENT : Accès UNIQUEMENT au module C3 (Otto) + Statistiques, lecture + écriture, pas de suppression
     otto_agent: [
         'otto:read', 'otto:write', 'stats:read'

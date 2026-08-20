@@ -278,6 +278,7 @@
                                     <option value="otto_agent" class="bg-gray-900">Agent Otto (C3 uniquement)</option>
                                     <option value="moderator" class="bg-gray-900">Modérateur</option>
                                     <option value="admin" class="bg-gray-900">Admin</option>
+                                    <option value="sysop" class="bg-gray-900">SysOp (Développeur)</option>
                                 </select>
                             </div>
                             <div><label class={labelClass}>Fonction</label><input type="text" bind:value={user.fonction} class={inputClass}></div>
