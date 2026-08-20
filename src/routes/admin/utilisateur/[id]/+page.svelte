@@ -51,7 +51,13 @@
         'Opérationnel': ['ops:read', 'ops:write', 'ops:delete'],
         'Carte PN': ['carte_pn:read', 'carte_pn:write', 'carte_pn:delete'],
         'DARTS': ['darts:read', 'darts:write', 'darts:delete'],
-        'Générateur Taxi': ['generate_taxi:read', 'generate_taxi:write', 'generate_taxi:delete']
+        'Générateur Taxi': ['generate_taxi:read', 'generate_taxi:write', 'generate_taxi:delete'],
+        'Lignes & Arrêts': ['lignes:read', 'lignes:write', 'lignes:delete'],
+        'Statistiques': ['stats:read'],
+        'Déplacements PMR': ['deplacements:read', 'deplacements:write', 'deplacements:delete'],
+        'Live (trafic temps réel)': ['live:read'],
+        'Classement': ['classement:read'],
+        'Audit (logs)': ['audit:read']
     };
 
     // ID depuis l'URL
