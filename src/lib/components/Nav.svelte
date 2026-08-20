@@ -46,7 +46,8 @@
 		Compass,
 		Eye,
 		EyeOff,
-		MapPin
+		MapPin,
+		Activity
 	} from 'lucide-svelte';
 	import { PREVIEW_ROLE_KEY, getPreviewRole } from '$lib/permissions';
 
@@ -603,6 +604,9 @@
 										<a href="/admin" class={dropdownLinkClass}><ShieldCheck /> Admin</a>
 										<a href="/admin/gares" class={dropdownLinkClass}><MapPin /> Cache gares</a>
 										<a href="/audit" class={dropdownLinkClass}><FileClock /> Logs</a>
+									{/if}
+									{#if isSysop}
+										<a href="/admin/sante" class={dropdownLinkClass}><Activity /> Santé de l'app</a>
 									{/if}
 									{#if isSysop}
 										<div class="border-t border-white/5 mt-1 pt-1 px-3 py-1.5">

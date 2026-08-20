@@ -295,6 +295,17 @@ export async function GET({ request }) {
         const totalRows = Object.values(stats).reduce((a, b) => a + b, 0);
         const dateStr = now.slice(0, 19).replace('T', '_').replace(/:/g, '');
 
+        // Journalise le backup pour le dashboard santé (/admin/sante) — best-effort,
+        // ne doit jamais faire échouer le téléchargement du backup lui-même.
+        supabaseAdmin.from('app_backups').insert({
+            user_id: user.id,
+            tables_count: tables.length,
+            rows_count: totalRows,
+            size_bytes: compressed.byteLength
+        }).then(({ error: logErr }) => {
+            if (logErr) console.warn('app_backups: échec journalisation', logErr);
+        });
+
         return new Response(compressed, {
             headers: {
                 'Content-Type': 'application/gzip',
