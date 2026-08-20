@@ -109,8 +109,9 @@
                             {@const style = PODIUM_STYLES[podiumIdx]}
                             {@const PodiumIcon = style.icon}
                             {@const dStyle = getDistrictStyle(r.district)}
-                            <div
-                                class="bg-black/20 border-2 {style.border} {style.glow} rounded-2xl p-6 text-center relative overflow-hidden bg-gradient-to-b {style.bg} {podiumIdx === 0 ? 'sm:order-2 sm:-mt-4' : podiumIdx === 1 ? 'sm:order-1' : 'sm:order-3'}"
+                            <a
+                                href="/profil?id={r.id}"
+                                class="block bg-black/20 border-2 {style.border} {style.glow} rounded-2xl p-6 text-center relative overflow-hidden bg-gradient-to-b {style.bg} hover:brightness-110 transition-all {podiumIdx === 0 ? 'sm:order-2 sm:-mt-4' : podiumIdx === 1 ? 'sm:order-1' : 'sm:order-3'}"
                                 in:fly={{ y: 20, delay: podiumIdx * 80 }}
                             >
                                 <PodiumIcon size={podiumIdx === 0 ? 32 : 26} class="mx-auto mb-2 {style.iconClass}" />
@@ -123,7 +124,7 @@
                                     <span class="flex items-center gap-1"><Bus size={11} class="text-blue-400"/> {r.ottoCount}</span>
                                     <span class="flex items-center gap-1"><Car size={11} class="text-yellow-400"/> {r.taxiCount}</span>
                                 </div>
-                            </div>
+                            </a>
                         {/if}
                     {/each}
                 </div>
@@ -138,7 +139,7 @@
                         {#each filtered as r, i (r.id)}
                             {@const rank = ranking.indexOf(r) + 1}
                             {@const dStyle = getDistrictStyle(r.district)}
-                            <div class="flex items-center gap-4 px-4 md:px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                            <a href="/profil?id={r.id}" class="flex items-center gap-4 px-4 md:px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
                                 <span class="w-8 text-center font-mono font-bold text-sm {rank <= 3 ? 'text-amber-400' : 'text-gray-600'}">{rank}</span>
                                 <img src={r.avatar_url || '/default-avatar.png'} alt="av" class="w-10 h-10 rounded-full object-cover border border-white/10 shrink-0" />
                                 <div class="flex-grow min-w-0">
@@ -155,7 +156,7 @@
                                     <span class="text-xl font-extrabold text-white">{r.total}</span>
                                     <p class="text-[9px] text-gray-500 uppercase font-bold tracking-wider">total</p>
                                 </div>
-                            </div>
+                            </a>
                         {/each}
                     {/if}
                 </div>
