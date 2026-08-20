@@ -854,6 +854,7 @@
           <p class="text-sm text-gray-500 italic text-center py-6">Aucun commentaire pour l'instant.</p>
         {:else}
           {#each comments as c (c.id)}
+            {@const jumbo = SocialService.isEmojiOnly(c.content, customEmojis)}
             <div class="flex gap-3 group">
               <img src={c.author?.avatar_url || '/default-avatar.png'} alt="av" class="w-9 h-9 rounded-full object-cover border border-white/10 shrink-0">
               <div class="flex-grow min-w-0 bg-black/30 rounded-xl p-3 border border-white/5">
@@ -868,7 +869,6 @@
                     {/if}
                   </div>
                 </div>
-                {@const jumbo = SocialService.isEmojiOnly(c.content, customEmojis)}
                 <p class="mt-1 whitespace-pre-wrap break-words {jumbo ? 'text-3xl leading-relaxed' : 'text-sm text-gray-300'}">
                   {#each SocialService.renderCommentParts(c.content, customEmojis) as part}
                     {#if part.type === 'emoji'}
