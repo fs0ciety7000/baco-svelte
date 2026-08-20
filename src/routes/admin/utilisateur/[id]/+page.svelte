@@ -17,7 +17,7 @@
     import { ProfileService } from '$lib/services/profile.service.js';
     import { ActivityStatsService } from '$lib/services/activityStats.service.js';
     import { SocialService } from '$lib/services/social.service.js';
-    import { computeBadges } from '$lib/utils/badges.js';
+    import { computeBadges, getActivityProgress } from '$lib/utils/badges.js';
     import { ACTIONS, ROLE_DEFAULTS } from '$lib/permissions';
 
     // Map nom d'icône (string, défini dans badges.js) -> composant lucide
@@ -34,6 +34,7 @@
     let activityStats = $state({ ottoCount: 0, taxiCount: 0, total: 0 });
     let likesCount = $state(0);
     let badges = $derived(user ? computeBadges(user, activityStats, likesCount) : []);
+    let activityProgress = $derived(getActivityProgress(activityStats));
     
     // Modales
     let showInfractionModal = $state(false);
@@ -291,6 +292,18 @@
                                             <Icon size={11} /> {badge.label}
                                         </span>
                                     {/each}
+                                </div>
+                            {/if}
+                            {#if activityProgress}
+                                {@const ProgressIcon = BADGE_ICONS[activityProgress.icon] || Award}
+                                <div class="w-full max-w-xs mt-3">
+                                    <div class="flex items-center justify-between text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">
+                                        <span class="flex items-center gap-1"><ProgressIcon size={11}/> {activityProgress.label}</span>
+                                        <span>{activityProgress.current}/{activityProgress.target}</span>
+                                    </div>
+                                    <div class="w-full h-1.5 bg-black/40 rounded-full overflow-hidden">
+                                        <div class="h-full bg-gradient-to-r from-orange-500 to-amber-400 rounded-full transition-all duration-700" style="width: {activityProgress.progress}%"></div>
+                                    </div>
                                 </div>
                             {/if}
                         </div>

@@ -77,3 +77,28 @@ export function computeBadges(profile, stats, likesCount = 0) {
 
     return badges;
 }
+
+/**
+ * Progression vers le prochain palier d'activité (Otto + Taxi confondus).
+ * @returns {null|{current:number, target:number, remaining:number, label:string, icon:string, progress:number}}
+ * null si le palier maximum (Légende) est déjà atteint.
+ */
+export function getActivityProgress(stats) {
+    const total = stats?.total || 0;
+    const sorted = [...ACTIVITY_TIERS].sort((a, b) => a.min - b.min); // croissant
+    const next = sorted.find(t => total < t.min);
+    if (!next) return null; // palier max déjà atteint
+
+    const reachedTiers = sorted.filter(t => total >= t.min);
+    const prevMin = reachedTiers.length ? Math.max(...reachedTiers.map(t => t.min)) : 0;
+    const progress = Math.min(100, Math.round(((total - prevMin) / (next.min - prevMin)) * 100));
+
+    return {
+        current: total,
+        target: next.min,
+        remaining: next.min - total,
+        label: next.label,
+        icon: next.icon,
+        progress
+    };
+}
