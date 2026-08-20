@@ -10,21 +10,26 @@ export const GeoService = {
         
         if (COORDS_CACHE.has(cleanName)) return COORDS_CACHE.get(cleanName);
 
-        // Restreindre à la Belgique et ses voisins directement desservis par des lignes
-        // SNCB transfrontalières (Luxembourg-Ville, Lille, Aachen, Maastricht...) plutôt que
-        // de forcer ", Belgique" dans le texte de recherche — ce qui empêchait toute gare
-        // hors-Belgique (ex: "Luxembourg") d'être trouvée et faisait retomber sur un résultat
-        // belge approximatif.
-        const countryCodes = 'be,fr,de,lu,nl';
+        // Restreindre géographiquement à la Belgique et une bande frontalière proche
+        // (Lille, Aachen, Maastricht, Luxembourg-Ville...) plutôt qu'à des pays entiers :
+        // countrycodes=...,de,fr seul autorisait n'importe quel résultat n'importe où en
+        // Allemagne/France dès qu'une requête de repli ambiguë (ex: juste "Nivelles") ne
+        // trouvait pas de correspondance précise — d'où des gares belges qui se
+        // retrouvaient géocodées près de Heidelberg. bounded=1 + viewbox élimine ce
+        // problème tout en gardant les vraies gares transfrontalières proches.
+        const viewbox = '2.0,51.6,6.6,49.0'; // lon_gauche,lat_haut,lon_droite,lat_bas
+        // "X railway station" cible en priorité le nœud ferroviaire précis ; "Gare de X"
+        // matche parfois un bâtiment de gare voisin proche mais différent (ex: recherche
+        // "Gare de Nivelles" → répond "Gare de Court-Saint-Étienne").
         const queries = [
-            `Gare de ${cleanName}`,
             `${cleanName} railway station`,
+            `Gare de ${cleanName}`,
             cleanName
         ];
 
         for (const query of queries) {
             try {
-                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=${countryCodes}&limit=1`;
+                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&viewbox=${viewbox}&bounded=1&limit=1`;
                 const res = await fetch(url, { headers: { 'User-Agent': 'BacoApp/2.0' } });
                 
                 if (res.ok) {

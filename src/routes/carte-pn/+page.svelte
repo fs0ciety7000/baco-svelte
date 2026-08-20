@@ -130,15 +130,30 @@
     // --- ITINÉRAIRE (TRAFIC) ---
     function openRoute(pn) {
         if (!pn.geo) return toast.error("Pas de coordonnées GPS");
-        
+
+        // Validation du format "lat,lon" (évite une URL cassée si la donnée est malformée)
+        const geoParts = pn.geo.split(',').map(s => parseFloat(s.trim()));
+        if (geoParts.length !== 2 || geoParts.some(Number.isNaN)) {
+            return toast.error("Coordonnées GPS invalides pour ce PN");
+        }
+
         // Détermination du dépôt selon la zone
         const depot = DEPOTS[pn.zone] || DEPOTS['Autre'];
-        
+
         // URL Google Maps (Calcul itinéraire)
         // origin = Dépôt | destination = PN | travelmode = driving (voiture)
-        const url = `https://www.google.com/maps/dir/?api=1&origin=${depot.coords}&destination=${pn.geo}&travelmode=driving`;
-        
-        window.open(url, '_blank');
+        const url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(depot.coords)}&destination=${encodeURIComponent(geoParts.join(','))}&travelmode=driving`;
+
+        // Ouverture via un <a> cliqué programmatiquement plutôt que window.open() direct :
+        // plus fiable face aux bloqueurs de popups dans certains navigateurs/contextes,
+        // tout en restant déclenché de façon synchrone par le geste utilisateur.
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 
     // --- UTILS ---
