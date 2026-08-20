@@ -191,9 +191,18 @@ export const SocialService = {
      * @param {string} userId créateur
      */
     async uploadCustomEmoji(file, name, userId) {
-        const cleanName = (name || '').trim().toLowerCase().replace(/\s+/g, '-');
+        // Normalisation permissive : accents retirés, tout caractère non autorisé
+        // remplacé par un tiret, plutôt que de rejeter le nom (ex: "Café ☕" -> "cafe").
+        const cleanName = (name || '')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // retire les accents
+            .trim().toLowerCase()
+            .replace(/[^a-z0-9_-]+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 32);
+
         if (!EMOJI_NAME_REGEX.test(cleanName)) {
-            throw new Error('Nom invalide (2-32 caractères : lettres, chiffres, - ou _)');
+            throw new Error('Nom invalide : utilise au moins 2 lettres ou chiffres');
         }
         if (!file || !file.type.startsWith('image/')) {
             throw new Error('Fichier image requis');

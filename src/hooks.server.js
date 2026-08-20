@@ -142,7 +142,12 @@ export const handle = async ({ event, resolve }) => {
   }
 
   // 5. Routes publiques
-  if (path === '/' || path === '/gate' || path === '/maintenance' || path.startsWith('/auth') || path.startsWith('/rest') || path.startsWith('/api')) {
+  // NB: /profil est inclus ici car la session est stockée côté client en localStorage
+  // (pas en cookies) — event.locals.supabase (basé cookies) ne voit donc jamais la
+  // session sur une navigation "fraîche" (lien partagé ouvert dans un nouvel onglet),
+  // ce qui déclenchait un redirect(303,'/') perdant le ?id= au passage. La page
+  // /profil fait déjà sa propre vérification de session côté client (onMount).
+  if (path === '/' || path === '/gate' || path === '/maintenance' || path.startsWith('/auth') || path.startsWith('/rest') || path.startsWith('/api') || path.startsWith('/profil')) {
     if (user && path === '/') {
         throw redirect(303, '/accueil')
     }
