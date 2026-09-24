@@ -49,6 +49,7 @@
 		"@tiptap/extension-heading": "^3.13.0",
 		"@tiptap/pm": "^3.13.0",
 		"@tiptap/starter-kit": "^3.13.0",
+		"@vercel/analytics": "^2.0.1",
 		"carta-md": "^4.11.1",
 		"chart.js": "^4.5.1",
 		"clsx": "^2.1.0",
