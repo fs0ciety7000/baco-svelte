@@ -1,49 +1,64 @@
-# Message de lancement — session CSM v2
+# Message de lancement — session CSM v2 n° 2
 
 À copier tel quel dans une nouvelle session Claude Code, sur le dépôt `fs0ciety7000/baco-svelte`.
 
+**Avant de lancer** (facultatif mais utile) : dans les réglages de l'environnement, ajoute `COOLIFY_API_URL`
+et `COOLIFY_API_TOKEN` si tu veux que Claude crée lui-même les ressources Coolify. Sinon, il préparera
+les fichiers et la procédure, et tu cliqueras dans Coolify.
+
 ---
 
-Tu reprends le projet **CSM — Client Solutions Management Tool**, successeur de BACO : outil métier ferroviaire SNCB de l'équipe Client Solutions (ex-PACO). Il sert à commander des bus et des taxis de remplacement, à gérer l'assistance PMR, et réunit les lignes, l'EBP, le répertoire, les trains en direct (iRail), le planning, la main courante, les statistiques et l'administration.
+Tu reprends **CSM — Client Solutions Management Tool**, le successeur de BACO. C'est un outil métier ferroviaire SNCB de l'équipe Client Solutions : commandes de bus et de taxis de remplacement, assistance PMR, lignes, EBP, répertoire, trains en direct (iRail), planning, main courante, statistiques et administration.
 
-**Contexte à lire en premier.** Tout est sur la branche `ccr-5dca0da8-4yg4i6` (v1 SvelteKit, gelée comme référence). Récupère-la avec `git fetch origin ccr-5dca0da8-4yg4i6`, puis lis :
-1. `docs/CSM-V2.md` : le cahier des charges de cette session (pivot, décisions, retours UX, stack, feuille de route) ;
-2. `CLAUDE.md` : contraintes non négociables, workflow, journal des décisions ;
-3. `docs/DESIGN-DIRECTION.md` + `docs/references/*.jpg` : direction artistique « Tactical premium » (thèmes, polices, formes, composants, GSAP, références) ;
-4. `docs/AUDIT.md` et `docs/PROPOSITION.md` : audit complet, nouveautés et parcours métier.
+**Point de départ.** La session précédente a travaillé sur la branche `claude/eloquent-cori-a9kk4x`. Elle contient les docs v2, les scripts de sauvegarde et le `CLAUDE.md` à jour. Récupère-la avec `git fetch origin claude/eloquent-cori-a9kk4x` et crée ta branche de session à partir d'elle. Lis ensuite, dans l'ordre :
+1. `CLAUDE.md` (§0 à §8), qui donne l'état du projet, les variables d'environnement, les contraintes et le journal ;
+2. `docs/CSM-V2.md`, le cahier des charges ;
+3. `docs/DESIGN-DIRECTION.md` et `docs/references/*.jpg` ;
+4. `docs/SAUVEGARDE-SUPABASE.md` ;
+5. `docs/AUDIT.md` et `docs/PROPOSITION.md` §3 à §6.
+
+**Décisions déjà prises** (ne pas les rediscuter) :
+- Next.js et **PocketBase**, dans une instance PocketBase **dédiée à CSM sur Coolify**, déployée avec l'app web ;
+- migration des données **en une fois** à une date de bascule, sans synchronisation avec BACO ;
+- export des empreintes de mot de passe **autorisé**, pour les importer dans PocketBase ;
+- plan des étapes 1 à 3 validé.
 
 **Règles de base**
-- **BACO reste en production et on n'y touche pas** : pas de commit sur `main`, rien n'est modifié dans la base Supabase. Supabase est en **lecture seule**.
-- Travaille sur **ta branche de session**, créée à partir de `ccr-5dca0da8-4yg4i6` pour récupérer les docs. Le nouveau code va dans `/web` (Next.js) et `/pocketbase`. Le code SvelteKit à la racine sert de référence métier, ne le modifie pas.
-- **Mobile obligatoire** : chaque écran doit être vérifié en 390×844 (Playwright, Chromium dans `/opt/pw-browsers`).
-- Le réseau de l'entreprise bloque `*.supabase.co` et les WebSockets : le navigateur ne parle qu'au domaine CSM.
-- Commits atomiques en français. `CLAUDE.md` est à mettre à jour à chaque décision.
+- **BACO reste en production et on n'y touche pas.** Pas de commit sur `main`. Supabase est en **lecture seule** : uniquement des SELECT par le connecteur, et seulement des GET avec la clé de service.
+- `PREPROD_PB_*` est le PocketBase de mon jeu (test.fs0ciety.org), **pas** celui de CSM : n'y écris rien.
+- Le nouveau code va dans `/web` et `/pocketbase`. Le SvelteKit à la racine sert de référence métier, ne le modifie pas.
+- **Mobile obligatoire** : vérifie chaque écran en 390×844 avec Playwright (Chromium dans `/opt/pw-browsers`).
+- Le navigateur ne parle qu'au domaine CSM : ni `*.supabase.co`, ni WebSocket, ni appel direct à PocketBase.
+- Les données personnelles ne vont jamais dans Git ni dans un artefact publié.
+- Commits atomiques en français.
+- **Tiens à jour, dans le même commit que chaque changement, `CLAUDE.md` et tous les fichiers d'instructions** (§4.8) : `docs/CSM-V2.md`, `docs/DESIGN-DIRECTION.md`, `docs/DEPLOIEMENT-V2.md`, `docs/NOUVELLE-SESSION.md`, ainsi que `web/CLAUDE.md` et `pocketbase/CLAUDE.md` dès que ces dossiers existent.
 
 **Ce que je veux dans cette session, dans l'ordre**
-0. **Sauvegarde complète de Supabase** avant toute autre chose : schéma, données des 51 tables, rôles et policies, fonctions, triggers, fichiers Storage (`avatars`, `documents`, `taxis`, `movements_pdf`) et liste des comptes. L'archive reste **hors Git** car elle contient des données personnelles. Documente la procédure de restauration. Utilise ce que l'environnement fournit (connecteur Supabase, variables d'environnement). S'il manque un accès, dis-moi lequel.
-1. **Stack** : Next.js (App Router) + React + TypeScript + Tailwind v4 + shadcn/ui personnalisé + **GSAP** (@gsap/react) + TanStack Query/Table + zod. **PocketBase** est probable comme backend, auto-hébergé sur Coolify ; une instance de préproduction est dans les variables `PREPROD_PB_*`. Fais un prototype rapide, PocketBase contre Supabase via le serveur Next, et donne-moi une recommandation chiffrée (import des comptes, règles d'accès, temps réel en SSE, sauvegardes, effort de migration) **avant** de migrer les données.
-2. **Design system** et **bibliothèque de composants réutilisables**, avec une page interne `/design` qui montre chaque composant dans chaque thème. Suis `docs/DESIGN-DIRECTION.md` : 5 thèmes (Commandement par défaut, Ivoire, Rail, Contraste élevé, Nocturne bleu), mode automatique, densité. Animations GSAP courtes et fluides, qui respectent `prefers-reduced-motion`.
-3. **Shell** :
-   - **6 entrées principales au maximum** (Accueil, Commandes, PMR, Opérations, Référentiels, Équipe), avec des onglets à l'intérieur des modules ;
-   - l'administration dans le menu utilisateur ;
-   - la palette ⌘K ;
-   - sur mobile, 4 onglets en bas plus « Plus ».
-4. **Tableau de bord** : widgets vraiment responsive (container queries) et réorganisables.
-5. **UI/UX** : nettement plus lisible et moderne que la v1. La v1 a été jugée trop chargée, peu lisible et pas assez moderne.
-
-   **Références : mes captures de test.fs0ciety.org (/game, /decisions) dans `docs/references/`**, et les références listées dans `DESIGN-DIRECTION.md` (Linear, Vercel Geist, Raycast, Attio…). Je veux un rendu premium. Lance des agents UI/UX en parallèle pour la recherche de références et l'audit d'ergonomie. **Soumets-moi des captures desktop et mobile pour validation avant de généraliser.**
-6. **Déploiement Docker sur Coolify** en **https://test-csm.fs0ciety.org** :
-   - `web` en Next standalone ;
-   - `pocketbase` avec volume et sauvegardes ;
+0. **Données de travail.** Le conteneur de la session précédente a été effacé. Relance `scripts/supabase-backup.mjs` avec la nouvelle `SUPABASE_SECRET_KEY`, qui exporte aussi les comptes. Exporte ensuite par le connecteur, en SELECT, l'`id` et l'`encrypted_password` de `auth.users`. Recoupe les comptes de lignes avec `docs/SAUVEGARDE-SUPABASE.md` §5. Tout reste hors Git, dans `/home/user/csm-backup`.
+1. **Prototype et squelette.**
+   - Squelette `/web` : Next 15 standalone, TypeScript strict, Tailwind v4, shadcn, zod, TanStack Query.
+   - Couche d'accès aux données côté serveur.
+   - PocketBase **local** dans `/pocketbase` : migrations, hooks, script d'import depuis la sauvegarde.
+   - Teste l'import des comptes avec les empreintes bcrypt, la connexion par cookie httpOnly, les règles d'accès, le relais SSE et les sauvegardes.
+   - Écris une recommandation chiffrée dans `docs/BACKEND-DECISION.md` (effort de migration des 51 tables, de Storage et des triggers d'audit) et soumets-la-moi.
+2. **Design system** : jetons des 5 thèmes avec un test de contraste AA, mode automatique, densité, polices, composants dans `web/src/components/ui`, GSAP avec `matchMedia`, et la page `/design`. Lance en parallèle des agents UI (références) et UX (audit des parcours Commandes de la v1). **Soumets-moi des captures desktop et mobile avant de généraliser.**
+3. **Shell et tableau de bord** : 6 entrées, onglets en routes, ⌘K, menu utilisateur avec l'administration, mobile en 4 onglets plus « Plus », widgets en container queries réorganisables. Captures à faire valider.
+4. **Déploiement Coolify** sur https://test-csm.fs0ciety.org :
+   - `csm-web` (Next standalone) ;
+   - `csm-pocketbase` (volume `/pb_data`, sauvegardes planifiées) ;
    - CI GitHub ;
-   - doc `docs/DEPLOIEMENT-V2.md`.
-7. Ensuite seulement, les modules un par un, en commençant par les **Commandes** (bus C3 et taxi). Au programme :
+   - `docs/DEPLOIEMENT-V2.md`.
+
+   Si `COOLIFY_API_*` est absent, prépare les fichiers et dis-moi exactement quoi créer. Une fois PocketBase déployé, je créerai `CSM_PB_URL`, `CSM_PB_ADMIN_EMAIL` et `CSM_PB_ADMIN_PASSWORD`.
+5. Ensuite seulement, les modules, en commençant par les **Commandes** (bus C3 et taxi) :
    - statuts unifiés ;
-   - brouillon Outlook `.eml` avec le PDF joint (envoi manuel depuis la boîte fonctionnelle, aucun SMTP) ;
+   - brouillon `.eml` avec le PDF joint (sans SMTP) ;
    - modèles et duplication ;
    - enregistrement automatique ;
    - suivi commun.
 
-Les identifiants de test et d'administration sont dans les variables d'environnement de cette session. Liste les noms disponibles, sans afficher leurs valeurs. Commence par l'étape 0, puis présente-moi ton plan pour les étapes 1 à 3 avant de coder.
+Commence par l'étape 0, puis enchaîne l'étape 1 et arrête-toi à la recommandation pour que je la valide.
 
-Rappel : la migration de sécurité Supabase prête dans `supabase/migrations/20261008120000_security_hotfix.sql` corrige des failles graves en production (escalade admin, données PMR accessibles sans connexion). Ne l'applique pas sans mon accord explicite, mais rappelle-la-moi.
+Rappels :
+- la migration de sécurité `supabase/migrations/20261008120000_security_hotfix.sql` n'est **pas appliquée** (escalade admin, données PMR lisibles sans connexion, 11 tables sans RLS, 30 fonctions exécutables par `anon`) : ne l'applique pas sans mon accord explicite, mais rappelle-la-moi ;
+- les clés Supabase collées dans la conversation précédente doivent avoir été tournées.

@@ -11,7 +11,8 @@
 | **Supabase** | Accès en **lecture seule**. Première action : une **sauvegarde complète** (schéma, données, Storage, utilisateurs). |
 | **CSM v2** | Nouvelle branche dédiée, déployée sur **https://test-csm.fs0ciety.org** (Coolify, Docker). |
 | **Framework** | **Next.js (App Router) + React + TypeScript**, choisi par l'utilisateur. |
-| **Backend** | **PocketBase** probable, auto-hébergé sur Coolify ; son temps réel en SSE passe le pare-feu de l'entreprise. À valider au début du chantier, voir §3. |
+| **Backend** | **PocketBase**, retenu par l'utilisateur le 8 octobre 2026, auto-hébergé sur Coolify dans une instance **dédiée à CSM**, déployée avec l'app web. Son temps réel en SSE passe le pare-feu de l'entreprise. Le prototype de l'étape 1 sert au chiffrage et à valider l'import des comptes (§3). |
+| **Bascule des données** | Migration **en une fois**, à une date de bascule : gel de BACO, export Supabase, import PocketBase, vérification. Pas de synchronisation entre les deux bases. |
 | **Mobile** | Obligatoire, pensé mobile d'abord dès la conception. |
 
 ### Point de sécurité ouvert sur BACO (à rappeler à l'utilisateur)
@@ -74,7 +75,9 @@ La correction est prête et testée dans `supabase/migrations/20261008120000_sec
 - sauvegardes ;
 - effort de migration des 51 tables, de Storage et des triggers d'audit.
 
-L'environnement fournit une instance PocketBase de préproduction (`PREPROD_PB_URL`, `PREPROD_PB_ADMIN_EMAIL`, `PREPROD_PB_ADMIN_PASSWORD`).
+⚠️ Les variables `PREPROD_PB_*` pointent vers le PocketBase de **test.fs0ciety.org** (le jeu Cosmic Empires), pas vers une instance CSM : **n'y rien écrire**. Le prototype tourne avec un PocketBase local, puis sur l'instance CSM dédiée de Coolify.
+
+**Comptes** : l'export des empreintes bcrypt (`auth.users.encrypted_password`) est autorisé pour tester leur import dans PocketBase. Si l'import échoue, il faudra réinitialiser les mots de passe.
 
 ## 4. Direction artistique
 
@@ -120,7 +123,7 @@ Dans Coolify, deux ressources :
 
 | # | Étape | Livrable |
 |---|---|---|
-| 0 | **Sauvegarde Supabase** (schéma, données, rôles, Storage, liste des comptes) | Archive chiffrée hors Git, procédure documentée |
+| 0 | **Sauvegarde Supabase** (schéma, données, rôles, Storage, liste des comptes) | ✅ 8 oct. — `docs/SAUVEGARDE-SUPABASE.md`, restauration testée |
 | 1 | Prototype PocketBase ou Supabase + squelette Next (auth, 1 module) | Recommandation à l'utilisateur |
 | 2 | Design system : jetons, 5 thèmes, bibliothèque de composants, GSAP, page `/design` | Captures desktop et mobile validées par l'utilisateur |
 | 3 | Shell : 6 entrées, onglets par module, ⌘K, menu utilisateur, mobile | Captures validées |
