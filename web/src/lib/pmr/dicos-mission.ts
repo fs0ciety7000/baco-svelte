@@ -449,3 +449,120 @@ export function mapDossier(raw: unknown): {
   }
   return { legs };
 }
+
+// ---------------------------------------------------------------------------------------------------
+// Missions PMR v3 bis : une ligne par TRAJET reconstruite depuis la LISTE des missions du jour (+ détail par
+// mission), sans l'endpoint trip-details. Chaque mission (Departure / Arrival) porte son trajet : gare et heure de
+// la mission (`stationName`/`time`) et de l'autre extrémité (`otherStationName`/`otherTime`), les drapeaux IN/OUT.
+// On regroupe par `journey.id` (même identifiant que dans le dossier complet → même ligne `j<id>`).
+// Les réservations de GROUPE (écoles…, sans PMR) et les tâches « Stickering » sont écartées (absentes de la vue
+// PMR de DICOS : constaté le 9 oct. 2026, 100 lignes CSM contre 78 missions DICOS).
+
+const listJourney = z
+  .object({
+    id: z.coerce.string().optional(),
+    reservationType: z.string().optional(),
+    missionType: z.string().optional(),
+    status: z.string().optional(),
+    journey: z
+      .object({
+        id: z.coerce.string().nullish(),
+        time: z.string().nullish(),
+        otherTime: z.string().nullish(),
+        withDepartureAssistance: z.boolean().nullish(),
+        withArrivalAssistance: z.boolean().nullish(),
+        isTrainCancelled: z.boolean().nullish(),
+        transportType: z.string().nullish(),
+        trainNumber: z.coerce.number().nullish(),
+        transportId: z.string().nullish(),
+      })
+      .passthrough()
+      .default({}),
+  })
+  .passthrough();
+
+/** Heure murale d'une date DICOS, « 0001-01-01 » (valeur vide côté DICOS) → vide. */
+const wallOrEmpty = (iso: unknown) =>
+  typeof iso === "string" && !iso.startsWith("0001-") ? wall(iso) : { day: "", time: "" };
+
+/** Réservation PMR (et non de groupe), mission d'assistance (et non « Stickering »). */
+export function isPmrMission(raw: unknown): boolean {
+  const p = listJourney.safeParse(raw);
+  if (!p.success) return false;
+  const type = p.data.reservationType ?? "";
+  const mt = p.data.missionType ?? "";
+  return (type === "Disabled" || type === "") && (mt === "Departure" || mt === "Arrival");
+}
+
+/** Liste de missions DICOS (détail fusionné si disponible) → une ligne par trajet. */
+export function mapMissionList(raws: unknown[]): { assist: MappedLeg; mission: MappedMission }[] {
+  type Part = { p: z.infer<typeof listJourney>; m: ReturnType<typeof mapMission> };
+  const groups = new Map<string, Part[]>();
+  for (const raw of raws) {
+    if (!isPmrMission(raw)) continue;
+    const p = listJourney.safeParse(raw);
+    if (!p.success) continue;
+    let m: ReturnType<typeof mapMission>;
+    try {
+      m = mapMission(raw);
+    } catch {
+      continue;
+    }
+    const key = p.data.journey.id || p.data.id || "";
+    if (!key) continue;
+    const list = groups.get(key) ?? [];
+    list.push({ p: p.data, m });
+    groups.set(key, list);
+  }
+  const first = <T>(xs: T[], ok: (x: T) => boolean = Boolean) => xs.find(ok);
+  const out: { assist: MappedLeg; mission: MappedMission }[] = [];
+  for (const [key, parts] of groups) {
+    const dep = parts.find((x) => x.p.missionType === "Departure");
+    const arr = parts.find((x) => x.p.missionType === "Arrival");
+    // Depuis une mission de départ : gare de la mission = départ ; depuis une arrivée : gare de la mission = arrivée.
+    const depStation = dep ? dep.m.assist.station : (arr?.m.assist.other_station ?? "");
+    const arrStation = arr ? arr.m.assist.station : (dep?.m.assist.other_station ?? "");
+    const depW = dep ? wallOrEmpty(dep.p.journey.time) : wallOrEmpty(arr?.p.journey.otherTime);
+    const arrW = arr ? wallOrEmpty(arr.p.journey.time) : wallOrEmpty(dep?.p.journey.otherTime);
+    const j = (dep ?? arr ?? parts[0]!).p.journey;
+    const statuses = parts.map((x) => x.p.status ?? "");
+    const status: MappedLeg["status"] =
+      j.isTrainCancelled || statuses.every((s) => s === "Deleted" || s === "Suspended")
+        ? "annulee"
+        : parts.some((x) => x.m.assist.status === "absent")
+          ? "absent"
+          : statuses.every((s) => s === "Completed")
+            ? "realisee"
+            : "prevue";
+    const typed = first(parts, (x) => !!x.m.assist.pmr_type);
+    const isTaxi = str(j.transportType).toLowerCase() === "taxi";
+    const pick = (k: keyof MappedMission) => first(parts.map((x) => x.m.mission[k])) ?? "";
+    const mission = Object.fromEntries(
+      (Object.keys(parts[0]!.m.mission) as (keyof MappedMission)[]).map((k) => [k, pick(k)]),
+    ) as MappedMission;
+    if (isTaxi && !mission.driver_name) mission.driver_name = str(j.transportId).slice(0, 200);
+    out.push({
+      assist: {
+        dicos_id: key,
+        day: depW.day || arrW.day || parts[0]!.m.assist.day,
+        time: depW.time,
+        station: depStation,
+        district: districtForStation(depStation),
+        other_station: arrStation,
+        arr_time: arrW.time,
+        arr_district: districtForStation(arrStation),
+        in_assist: parts.some((x) => !!x.p.journey.withDepartureAssistance),
+        out_assist: parts.some((x) => !!x.p.journey.withArrivalAssistance),
+        transport: isTaxi ? "taxi" : "train",
+        train: n(j.trainNumber) > 0 ? String(j.trainNumber) : str(j.transportId).slice(0, 20),
+        dicos_ref: first(parts.map((x) => x.m.assist.dicos_ref)) ?? "",
+        pax: (typed ?? parts[0]!).m.assist.pax,
+        pmr_type: typed?.m.assist.pmr_type ?? "",
+        status,
+        source: "dicos",
+      },
+      mission,
+    });
+  }
+  return out;
+}

@@ -3,9 +3,13 @@ import { timingSafeEqual } from "node:crypto";
 import type PocketBase from "pocketbase";
 import { z } from "zod";
 
-import { mapDossier, mapMission, missionDay, type MappedMission } from "@/lib/pmr/dicos-mission";
+import {
+  isPmrMission,
+  mapDossier,
+  mapMissionList,
+  type MappedMission,
+} from "@/lib/pmr/dicos-mission";
 import { isValidDay } from "@/lib/orders/time";
-import { districtForStation } from "@/lib/pmr/districts";
 import { createPb } from "@/server/pocketbase";
 import { env } from "@/server/env";
 import { allow } from "@/server/rate-limit";
@@ -201,49 +205,32 @@ export async function POST(request: Request) {
     }
   }
 
-  // v2 : ancien format (une ligne par mission).
-  for (const raw of body.missions ?? []) {
+  // v2 (liste + détail par mission) : regroupée en une ligne par TRAJET (`j<journeyId>`, même clé que les dossiers
+  // complets). Réservations de groupe et « Stickering » écartées par `mapMissionList`.
+  const raws = body.missions ?? [];
+  const legs = mapMissionList(raws);
+  c.skipped += raws.filter((r) => !isPmrMission(r)).length;
+  for (const { assist, mission } of legs) {
     received++;
-    const md = missionDay(raw);
-    if (!md || !dayClose(md, body.day)) {
+    if (!assist.dicos_id || !isValidDay(assist.day) || !dayClose(assist.day, body.day)) {
       c.skipped++;
       continue;
     }
-    let mapped: ReturnType<typeof mapMission>;
-    try {
-      mapped = mapMission(raw);
-    } catch {
-      c.skipped++;
-      continue;
-    }
-    const { assist, mission } = mapped;
-    // « Stickering » = tâche interne DICOS (pose d'autocollant) qui double la mission de départ, sans sens ni type :
-    // ce n'est pas une assistance à afficher.
-    if (assist.mission_type === "Stickering") {
-      c.skipped++;
-      continue;
-    }
-    if (!assist.dicos_id || !assist.day) {
-      c.skipped++;
-      continue;
-    }
+    const { dicos_id, source: _s, ...rest } = assist;
+    void _s;
     const base: Rec = {
-      day: assist.day,
-      time: assist.time,
-      station: assist.station,
-      other_station: assist.other_station,
+      ...rest,
       district: assist.district || null,
-      // v2 : district de la gare d'arrivée aussi (sinon « ? » dans la liste).
-      arr_district: districtForStation(assist.other_station) || null,
-      direction: assist.direction || null,
-      mission_type: assist.mission_type,
-      train: assist.train,
-      dicos_ref: assist.dicos_ref,
-      pax: assist.pax,
+      arr_district: assist.arr_district || null,
       pmr_type: assist.pmr_type || null,
-      status: assist.status,
+      direction:
+        assist.in_assist && !assist.out_assist
+          ? "depart"
+          : !assist.in_assist && assist.out_assist
+            ? "arrivee"
+            : null,
     };
-    await upsert(pb, svc.id, assist.dicos_id, base, mission, c);
+    await upsert(pb, svc.id, `j${dicos_id}`, base, mission, c);
   }
 
   return Response.json(

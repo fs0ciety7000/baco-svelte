@@ -390,6 +390,15 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   **avancement en direct** dans le popup (phase, x / y, secondes) ; « déjà en cours » affiche l'avancement ;
   garde-fou 4 min ; erreur interne détaillée (recharger l'onglet DICOS après mise à jour de l'extension) ;
   **synchro de plusieurs jours** (1, 2, 3 ou 7, un jour après l'autre, cache de dossiers partagé, totaux cumulés).
+- 2026-10-09 — **Missions PMR : une ligne par trajet reconstruite depuis la LISTE** (trip-details toujours injoignable).
+  La liste DICOS du jour contient aussi des **réservations de groupe** (`reservationType: Group`, écoles, 0 PMR) et des
+  tâches **Stickering** : absentes de la vue PMR de DICOS (100 lignes CSM contre 78 missions) → écartées (serveur +
+  extension). `mapMissionList` regroupe les missions Departure/Arrival par `journey.id` (= id du dossier complet →
+  même clé `j<id>`) : gare + heure de départ (mission de départ, ou `otherStationName`/`otherTime` de l'arrivée), d'arrivée,
+  IN/OUT (`withDepartureAssistance`/`withArrivalAssistance`), taxi, statut agrégé ; type, n° de dossier et nominatif
+  depuis le détail par mission. Dates DICOS « 0001-01-01 » = vide. Gare assistée **toujours surlignée** (IN → départ,
+  OUT → arrivée ; avec filtre district, seulement celles du district). Extension **1.4.0** : ne lit que les missions
+  PMR, trip-details seulement si un gabarit a été relevé.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

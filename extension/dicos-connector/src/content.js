@@ -253,13 +253,23 @@
       currentDay = day;
       progress("Liste des missions du jour", 0, 0, true);
       const list = await dicos(API, { method: "POST", body: JSON.stringify({ stationIds, date: day }) });
-      const items = Array.isArray(list) ? list : Array.isArray(list && list.missions) ? list.missions : [];
+      const all = Array.isArray(list) ? list : Array.isArray(list && list.missions) ? list.missions : [];
+      // Seulement les missions PMR : pas les réservations de groupe (écoles…) ni les tâches « Stickering »
+      // (absentes de la vue PMR de DICOS ; le serveur les écarte aussi).
+      const items = all.filter(
+        (m) =>
+          m &&
+          (m.reservationType === "Disabled" || !m.reservationType) &&
+          (m.missionType === "Departure" || m.missionType === "Arrival"),
+      );
       if (!items.length) {
         const r = { day, found: 0, received: 0, created: 0, updated: 0, skipped: 0 };
         setLast(r);
         return r;
       }
-      const dossiers = await fetchDossiers(items);
+      // Dossiers complets seulement si un gabarit trip-details a été relevé sur DICOS (sinon : liste + détail,
+      // regroupés en trajets par le serveur — même résultat, sans essais inutiles).
+      const dossiers = tripPathOk || tripPaths.length ? await fetchDossiers(items) : null;
       const sent = dossiers
         ? await pushAll(day, "dossiers", dossiers)
         : await pushAll(

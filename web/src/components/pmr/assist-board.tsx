@@ -129,7 +129,9 @@ const HIGHLIGHT = "bg-[color-mix(in_oklab,var(--accent)_22%,transparent)] px-1 t
 function RouteText({ a, district, barred }: { a: Assist; district: string; barred?: boolean }) {
   const l = legOf(a);
   const end = (name: string, time: string, assisted: boolean, d: string) => (
-    <span className={district && d === district && assisted ? HIGHLIGHT : ""}>
+    // Gare assistée toujours surlignée (IN → départ, OUT → arrivée) ; avec un filtre district, seulement celles du
+    // district (retour utilisateur du 9 oct. 2026).
+    <span className={assisted && (!district || d === district) ? HIGHLIGHT : ""}>
       {time ? <span className="font-mono tabular text-fg-muted">{time} </span> : null}
       <span
         className={

@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   frName,
   frText,
+  isPmrMission,
   mapDossier,
+  mapMissionList,
   mapMission,
   mapStatus,
   missionDay,
@@ -316,5 +318,164 @@ describe("mapDossier (trip-details, une ligne par trajet)", () => {
   it("dossier vide ou invalide", () => {
     expect(mapDossier({}).legs).toEqual([]);
     expect(() => mapDossier("x")).toThrow();
+  });
+});
+
+// Liste DICOS fictive (forme réelle du 9 oct. 2026) : une mission par gare d'assistance, même `journey.id`.
+const lm = (
+  id: string,
+  journeyId: string,
+  missionType: string,
+  station: string,
+  time: string,
+  other: string,
+  otherTime: string,
+  extra: Record<string, unknown> = {},
+) => ({
+  id,
+  missionType,
+  reservationType: "Disabled",
+  status: "New",
+  clientStatus: "Unknown",
+  client: { firstName: "Exemple", lastName: "Fictif" },
+  traveler: { disableds: 1, fullAssistances: 0, lightAssistances: 1 },
+  journey: {
+    id: journeyId,
+    stationName: station,
+    time,
+    otherStationName: other,
+    otherTime,
+    withDepartureAssistance: true,
+    withArrivalAssistance: true,
+    trainNumber: 4006,
+    transportId: "4006",
+    transportType: "Train",
+  },
+  ...extra,
+});
+
+describe("mapMissionList (liste → une ligne par trajet)", () => {
+  const list = [
+    lm(
+      "1",
+      "500",
+      "Departure",
+      "LUTTRE",
+      "2026-10-09T06:55:00+02:00",
+      "NIVELLES / NIJVEL",
+      "2026-10-09T07:04:00+02:00",
+      {
+        reservationDisplayId: "2026-09-29-0001",
+        traveler: {
+          disableds: [{ typeId: "pmr-to", symbol: "orientation-problems", quantity: 1 }],
+        },
+      },
+    ),
+    lm(
+      "2",
+      "500",
+      "Arrival",
+      "NIVELLES / NIJVEL",
+      "2026-10-09T07:04:00+02:00",
+      "LUTTRE",
+      "2026-10-09T06:55:00+02:00",
+    ),
+    // Taxi, mission d'arrivée seule.
+    lm(
+      "3",
+      "501",
+      "Arrival",
+      "ATH / AAT",
+      "2026-10-09T05:55:00+02:00",
+      "LESSINES / LESSEN",
+      "2026-10-09T05:40:00+02:00",
+      {
+        journey: {
+          id: "501",
+          stationName: "ATH / AAT",
+          time: "2026-10-09T05:55:00+02:00",
+          otherStationName: "LESSINES / LESSEN",
+          otherTime: "0001-01-01T00:00:00+00:00",
+          withDepartureAssistance: true,
+          withArrivalAssistance: true,
+          trainNumber: 0,
+          transportId: "Taxi fictif",
+          transportType: "Taxi",
+        },
+      },
+    ),
+    // Départ seul, OUT non demandé, supprimé.
+    lm(
+      "4",
+      "502",
+      "Departure",
+      "TOURNAI / DOORNIK",
+      "2026-10-09T05:57:00+02:00",
+      "BRUXELLES-MIDI / BRUSSEL-ZUID",
+      "2026-10-09T07:00:00+02:00",
+      {
+        status: "Deleted",
+        journey: {
+          id: "502",
+          stationName: "TOURNAI / DOORNIK",
+          time: "2026-10-09T05:57:00+02:00",
+          otherStationName: "BRUXELLES-MIDI / BRUSSEL-ZUID",
+          otherTime: "2026-10-09T07:00:00+02:00",
+          withDepartureAssistance: true,
+          withArrivalAssistance: false,
+          trainNumber: 2407,
+        },
+      },
+    ),
+    // Écartés : réservation de groupe et tâche « Stickering ».
+    lm(
+      "5",
+      "600",
+      "Departure",
+      "MONS / BERGEN",
+      "2026-10-09T08:27:00+02:00",
+      "CAMBRON-CASTEAU",
+      "",
+      {
+        reservationType: "Group",
+      },
+    ),
+    lm("6", "500", "Stickering", "LUTTRE", "2026-10-09T06:55:00+02:00", "NIVELLES / NIJVEL", ""),
+  ];
+
+  it("regroupe départ + arrivée d'un trajet, écarte groupes et Stickering", () => {
+    expect(isPmrMission(list[4])).toBe(false);
+    expect(isPmrMission(list[5])).toBe(false);
+    const legs = mapMissionList(list).map((l) => l.assist);
+    expect(legs).toHaveLength(3);
+    expect(legs[0]).toMatchObject({
+      dicos_id: "500",
+      day: "2026-10-09",
+      time: "06:55",
+      station: "LUTTRE",
+      other_station: "NIVELLES",
+      arr_time: "07:04",
+      in_assist: true,
+      out_assist: true,
+      pmr_type: "DCO",
+      pax: 1,
+      dicos_ref: "2026-09-29-0001",
+      status: "prevue",
+    });
+  });
+
+  it("taxi à heure de départ inconnue, trajet supprimé avec IN seul", () => {
+    const [, taxi, del] = mapMissionList(list);
+    expect(taxi?.assist).toMatchObject({
+      station: "LESSINES",
+      other_station: "ATH",
+      time: "",
+      arr_time: "05:55",
+      transport: "taxi",
+      train: "Taxi fictif",
+      day: "2026-10-09",
+    });
+    expect(taxi?.mission.driver_name).toBe("Taxi fictif");
+    expect(del?.assist).toMatchObject({ in_assist: true, out_assist: false, status: "annulee" });
   });
 });
