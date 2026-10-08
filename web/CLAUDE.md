@@ -122,6 +122,25 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - Variables : `IRAIL_URL`, `TILES_URL`, `CSM_USER_AGENT` (facultatives). E2E : `e2e/operations.spec.ts` avec
   `node e2e/mock-services.mjs 8094` et `IRAIL_URL=http://127.0.0.1:8094/v1 TILES_URL=http://127.0.0.1:8094/tiles/{z}/{x}/{y}.png`.
 
+## Module Référentiels (étape 5, session 3)
+
+- Données : `src/server/data/referentiels.ts` (lectures serveur, filtres `pb.filter` liés), `src/lib/referentiels/model.ts`
+  (schémas zod contacts / procédures / documents). Écritures : `src/app/(app)/referentiels/actions.ts` (contacts,
+  procédures, documents + upload `FormData`, restauration de version **réservée aux coordinateurs**).
+- Écrans (`src/app/(app)/referentiels/`) : `/` **Annuaire** (liste groupée, filtres catégorie/zone/groupe, fiche en
+  panneau, création avec détection de doublon — coordinateurs) ; `/lignes` (district DSE/DSO/DCE **majoritaire** + ligne
+  d'un clic, sections Gares/PN/SPI, lien Carte PN) ; `/ptcar` et `/ebp` (`ReferenceTable` : recherche serveur paginée,
+  cartes < 640 px, EBP « incomplètes ») ; `/documents` (**Procédures** Markdown + **Documents**, `Segmented` par `?vue=`,
+  filtre catégorie). Composants `src/components/referentiels/*`.
+- **Markdown** : `markdown-view.tsx` rend un sous-ensemble SÛR en **éléments React** (aucun `dangerouslySetInnerHTML`,
+  liens bornés http(s)) — pas de dépendance ni de surface XSS.
+- **Fichiers** : servis par `GET /api/referentiels/documents/[id]` avec le jeton de l'agent (fichier PocketBase
+  **protégé**, jamais d'URL publique) ; **images en aperçu, PDF et le reste en téléchargement** (CSP `sandbox` → le
+  visionneur PDF de Chrome ne s'ouvre pas en inline, comme la main courante). Upload borné (type/taille, octets).
+- Import des données v1 (contacts 385, SPI 112, PtCar 1148, EBP 466, procédures 8 + 24 versions, 11 documents +
+  fichiers, liens par relation) : script `scratchpad/referentiels-import.mjs` (PostgREST plafonne à 1000 lignes →
+  paginer PtCar par `offset`).
+
 ## Conventions
 
 - **Le navigateur ne parle qu'au domaine CSM** : ni PocketBase, ni Supabase, ni WebSocket (test E2E dédié).

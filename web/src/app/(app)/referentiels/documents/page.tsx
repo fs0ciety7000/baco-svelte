@@ -5,7 +5,7 @@ import Link from "next/link";
 import { DocumentBoard } from "@/components/referentiels/document-board";
 import { ProcedureBoard } from "@/components/referentiels/procedure-board";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, Select } from "@/components/ui/input";
 import { can, isAdmin } from "@/lib/permissions";
 import { requirePermission } from "@/server/auth";
 import {
@@ -25,8 +25,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
   const f = await searchParams;
   const vue = f.vue === "documents" ? "documents" : "procedures";
   const q = (f.q ?? "").trim();
+  const categorie = (f.categorie ?? "").trim();
   const canWrite = can(user, "documents:write");
   const canManage = isAdmin(user) || user.role === "moderator";
+  const categories = vue === "documents" ? await documentCategories() : await procedureCategories();
 
   return (
     <section className="flex flex-col gap-4" aria-label="Procédures et documents">
@@ -48,10 +50,21 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             <Input name="q" defaultValue={q} placeholder={vue === "documents" ? "Nom du fichier…" : "Titre ou contenu…"} className="pl-9" maxLength={60} />
           </span>
         </label>
+        <label className="flex min-w-0 flex-col gap-1 md:w-44">
+          <span className="text-small text-fg-muted">Catégorie</span>
+          <Select name="categorie" defaultValue={categorie}>
+            <option value="">Toutes</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </Select>
+        </label>
         <Button type="submit" variant="secondary">
           Filtrer
         </Button>
-        {q ? (
+        {q || categorie ? (
           <Button asChild variant="ghost">
             <Link href={vue === "documents" ? "/referentiels/documents?vue=documents" : "/referentiels/documents"}>Effacer</Link>
           </Button>
@@ -60,16 +73,16 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
 
       {vue === "procedures" ? (
         <ProcedureBoard
-          procedures={await listProcedures({ q })}
-          categories={await procedureCategories()}
+          procedures={await listProcedures({ q, category: categorie })}
+          categories={categories}
           documents={await listDocumentOptions()}
           canWrite={canWrite}
           canManage={canManage}
         />
       ) : (
         <DocumentBoard
-          documents={await listDocuments({ q })}
-          categories={await documentCategories()}
+          documents={await listDocuments({ q, category: categorie })}
+          categories={categories}
           canWrite={canWrite}
           canManage={canManage}
         />

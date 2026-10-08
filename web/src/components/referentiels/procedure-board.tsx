@@ -198,7 +198,7 @@ export function ProcedureBoard({
                     >
                       <span className="font-mono text-fg-muted tabular">{d ? at.format(d) : ""}</span>
                       <span className="min-w-0 flex-1 truncate">{v.by || "Import BACO"}</span>
-                      {canWrite ? (
+                      {canManage ? (
                         <Button
                           size="sm"
                           variant="ghost"

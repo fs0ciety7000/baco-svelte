@@ -62,7 +62,8 @@ export async function listContacts(input: z.input<typeof contactListSchema>) {
     parts.push(
       pb.filter("(name ~ {:q} || phone ~ {:q} || email ~ {:q} || group ~ {:q})", { q: p.q }),
     );
-  const res = await pb.collection("directory_contacts").getList(p.page, 50, {
+  // Annuaire borné (≈ 385 contacts) : une page large suffit à tout afficher groupé, sans pagination fantôme.
+  const res = await pb.collection("directory_contacts").getList(p.page, 500, {
     filter: parts.join(" && "),
     sort: "group,name",
     expand: "updated_by",
@@ -131,17 +132,24 @@ export async function listLines(): Promise<LineRef[]> {
   const items = await pb
     .collection("line_stations")
     .getFullList({ fields: "line,district", batch: 1000 });
-  const by = new Map<string, { district: string; stations: number }>();
+  // District par ligne = district MAJORITAIRE de ses gares (une ligne à cheval sur deux districts ne disparaît pas
+  // du filtre de l'autre selon l'ordre de lecture).
+  const by = new Map<string, { stations: number; districts: Record<string, number> }>();
   for (const i of items) {
     const line = str(i.line);
     if (!line) continue;
-    const cur = by.get(line) ?? { district: str(i.district), stations: 0 };
+    const cur = by.get(line) ?? { stations: 0, districts: {} };
     cur.stations += 1;
-    if (!cur.district && str(i.district)) cur.district = str(i.district);
+    const d = str(i.district);
+    if (d) cur.districts[d] = (cur.districts[d] ?? 0) + 1;
     by.set(line, cur);
   }
   return [...by.entries()]
-    .map(([line, v]) => ({ line, ...v }))
+    .map(([line, v]) => ({
+      line,
+      stations: v.stations,
+      district: Object.entries(v.districts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "",
+    }))
     .sort((a, b) => a.line.localeCompare(b.line, "fr", { numeric: true }));
 }
 

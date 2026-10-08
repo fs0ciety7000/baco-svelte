@@ -35,7 +35,7 @@ gelée** (v1, branche `ccr-5dca0da8-4yg4i6`) : ne pas le modifier.
 | 2 | Design system + page `/design` (5 thèmes, GSAP) | ✅ 8 oct. — jetons + test AA (156 contrôles), 19 composants, `/design`, 17 E2E ; captures et écarts **validés** |
 | 3 | Shell (6 entrées, onglets, ⌘K, mobile 4 + Plus) + tableau de bord | ✅ 8 oct. — 24 E2E, CSP, gardes par page, captures validées |
 | 4 | Données : schéma PocketBase, règles d'accès, import | 🔄 données BACO du 8 oct. importées sur l'instance de test (5 collections) ; migration réelle **en une fois à la bascule** |
-| 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 **Commandes** livré en session 3 (schéma + 66 contrôles de règles, bus, taxi, envoi `.eml` + PDF, suivi, B201, E2E) : **validé le 8 oct.** ; **PMR validé le 8 oct.** (schéma + 105 contrôles de règles, prestations, collage DICOS, clients, matériel, E2E) ; **Opérations validé le 8 oct.** (trains en direct iRail, main courante, carte PN, statistiques, cloche ; 149 contrôles de règles, 46 E2E) ; **DICOS / Missions PMR livré, à valider** (extension de navigateur + ingestion serveur, renommage, création manuelle retirée ; 161 contrôles de règles ; audit + revue passés) ; suivant : Référentiels |
+| 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 **Commandes** livré en session 3 (schéma + 66 contrôles de règles, bus, taxi, envoi `.eml` + PDF, suivi, B201, E2E) : **validé le 8 oct.** ; **PMR validé le 8 oct.** (schéma + 105 contrôles de règles, prestations, collage DICOS, clients, matériel, E2E) ; **Opérations validé le 8 oct.** (trains en direct iRail, main courante, carte PN, statistiques, cloche ; 149 contrôles de règles, 46 E2E) ; **DICOS / Missions PMR validé** (extension + ingestion, lecture seule, trajet/IN-OUT/district/copier) ; **Référentiels livré, à valider** (annuaire, lignes, PtCar, EBP, procédures + documents ; 7 collections ; 173 contrôles de règles ; audit + revue passés ; données v1 importées sur l'instance de test) ; suivant : Équipe, Admin |
 | 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | ✅ 8 oct. — https://test-csm.fs0ciety.org en ligne ; projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
 | — | Hotfix sécurité BACO (`supabase/migrations/20261008120000_security_hotfix.sql`) | ✅ appliqué par l'utilisateur (SQL Editor) le 8 oct., vérifié : 0 ERROR (36 avant). Suite **non appliquée** : `20261008130000_hotfix_followup.sql` (test NULL de `get_my_role()`) et `20261008140000_pn_data_update_fix.sql` (XSS stocké carte PN), accord requis ; protection des mots de passe compromis encore désactivée |
 
@@ -364,6 +364,23 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   accord genre/nombre, `assistCopyText`). Migration `1760000800` (`other_station`, `district`). **Type PMR encore à
   fiabiliser** : sur 139 missions, 69 sans type + 29 « AUTRE » (le détail DICOS n'est pas toujours récupéré / codes
   d'assistance inconnus) → échantillon brut à demander à l'utilisateur.
+- 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
+  `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
+  `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans
+  `extension/dist/` (`build-zips.sh`) ; workflow `.github/workflows/dicos-extension-release.yml` publie la Release sur
+  un tag `dicos-connector-v*` (pas de CLI `gh` ni d'API Releases dans l'environnement cloud, et push de tag bloqué par
+  le proxy → l'utilisateur crée le tag / la Release).
+- 2026-10-08 — **Module Référentiels** (audit `docs/design/AUDIT-UX-REFERENTIELS.md`, tout validé). 7 collections
+  (`1760000900` : `directory_contacts`, `spi_points`, `ptcar` [abbr unique], `ebp_views`, `documents` [fichier
+  protégé], `procedures`, `procedure_versions` hook-only) ; écriture annuaire/SPI/PtCar/EBP = coordinateurs,
+  procédures + documents = user + moderator. Hooks : versioning atomique (seulement si le texte change) + refus de
+  suppression d'un document référencé. 5 écrans (annuaire, lignes district majoritaire, PtCar/EBP, procédures +
+  documents), Markdown rendu en éléments React (sans injection HTML), fichiers servis par route Next (fin du bucket
+  public). Données v1 importées sur l'instance de test (385/112/1148/466/8/24/11). **Audit sécurité** (0 critique/élevé)
+  + **revue** passés ; corrigés : PDF en téléchargement sous CSP sandbox (bug déjà vu en Opérations), pagination de
+  l'annuaire (page large, référentiel borné), `documents.updateRule` resserré aux coordinateurs + `uploaded_by` figé
+  (`1760001000`), hook de suppression fail-closed (`findRecordsByFilter`), restauration de version réservée aux
+  coordinateurs, filtre par catégorie câblé, e-mail validé. 173 contrôles de règles.
 
 ---
 

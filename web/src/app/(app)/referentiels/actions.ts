@@ -135,6 +135,7 @@ export async function restoreProcedureVersion(
 ): Promise<Result> {
   try {
     const user = await need("documents:write");
+    if (!coordinator(user)) throw new Error("DROIT:Restauration réservée aux coordinateurs.");
     const pb = await pbForRequest();
     const v = await pb.collection("procedure_versions").getOne(pbId.parse(versionId));
     if (v.procedure !== pbId.parse(procedureId)) throw new Error("DROIT:Version d'une autre procédure.");

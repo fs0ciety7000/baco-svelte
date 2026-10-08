@@ -87,5 +87,13 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
   `1760000700`) : il ne lit QUE `pmr_assists` et `pmr_mission` (branche `dicos:write` ajoutée à leurs list/view), pas
   le reste du nominatif PMR (`pmr_clients`, `pmr_assist_legacy`, taxis) — moindre privilège (audit du 8 oct.).
   17 contrôles de règles dédiés (161 au total).
+- **Module Référentiels** (`1760000900_referentiels.js`, `referentiels.pb.js`) : `directory_contacts` (annuaire),
+  `spi_points` (zones SPI par ligne), `ptcar` (abréviations, `abbr` **unique**), `ebp_views` (correspondances),
+  `documents` (fichier **protégé**, servi par Next), `procedures` (Markdown, `attachments` → `documents`),
+  `procedure_versions` (écrites **par hook** seulement). Écriture annuaire / SPI / PtCar / EBP = **coordinateurs**
+  (`*:write`, moderator) ; procédures + documents = **user + moderator** (comme la v1). `updated_by`/`uploaded_by`
+  non forgeables, `legacy_id` figé. Hooks : **versioning atomique** des procédures (snapshot de l'état précédent à
+  chaque modif, BUG-8) et **refus de suppression** d'un document référencé par une procédure (BUG-6/9). Les gares
+  (`line_stations`) et PN (`level_crossings`) sont seulement **lus** par l'onglet Lignes. 12 contrôles de règles.
 - **Sauvegardes** : réglées par migration (`0 2 * * *`, 14 conservées dans `pb_data/backups`).
 - `PREPROD_PB_*` désigne une autre instance (jeu) : **n'y jamais écrire**, ne pas y lancer `test-rules.mjs`.

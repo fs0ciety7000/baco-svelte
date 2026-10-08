@@ -10,7 +10,9 @@ import { env } from "@/server/env";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const INLINE: Record<string, string> = {
+// Type MIME par extension (pour l'en-tête). Seules les IMAGES sont servies en aperçu ; le PDF est TÉLÉCHARGÉ : sous
+// CSP `sandbox`, le visionneur PDF de Chrome ne s'ouvre pas (même correctif que la main courante d'Opérations).
+const TYPES: Record<string, string> = {
   png: "image/png",
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
@@ -18,6 +20,7 @@ const INLINE: Record<string, string> = {
   webp: "image/webp",
   pdf: "application/pdf",
 };
+const INLINE = new Set(["png", "jpg", "jpeg", "gif", "webp"]);
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
@@ -31,19 +34,23 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const file = typeof rec.file === "string" ? rec.file : "";
     if (!file) return new Response("Introuvable", { status: 404 });
     const ext = file.split(".").pop()?.toLowerCase() ?? "";
-    const inlineType = INLINE[ext];
+    const type = TYPES[ext];
+    const inline = INLINE.has(ext);
     const token = await pb.files.getToken();
     const res = await fetch(
       `${env.PB_URL}/api/files/documents/${id}/${encodeURIComponent(file)}?token=${encodeURIComponent(token)}`,
       { cache: "no-store" },
     );
     if (!res.ok || !res.body) return new Response("Introuvable", { status: 404 });
-    // Nom de téléchargement lisible (le nom saisi + l'extension réelle), caractères de contrôle retirés.
-    const downloadName = `${String(rec.name || "document").replace(/[\u0000-\u001f\u007f"/\\]/g, "_")}.${ext}`;
+    // Nom de téléchargement lisible (nom saisi sans extension + l'extension réelle), caractères de contrôle retirés.
+    const base = String(rec.name || "document")
+      .replace(/\.[^.]+$/, "")
+      .replace(/[\u0000-\u001f\u007f"/\\]/g, "_");
+    const downloadName = ext ? `${base}.${ext}` : base;
     return new Response(res.body, {
       headers: {
-        "content-type": inlineType ?? "application/octet-stream",
-        "content-disposition": `${inlineType ? "inline" : "attachment"}; filename="${downloadName}"`,
+        "content-type": type ?? "application/octet-stream",
+        "content-disposition": `${inline ? "inline" : "attachment"}; filename="${downloadName}"`,
         "cache-control": "private, no-store",
         "x-content-type-options": "nosniff",
         "content-security-policy":

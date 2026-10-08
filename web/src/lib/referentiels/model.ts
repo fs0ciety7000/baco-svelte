@@ -13,7 +13,13 @@ const line = (max: number) =>
 export const contactSchema = z.object({
   name: z.string().trim().min(1, "Nom manquant").max(200),
   phone: line(60),
-  email: z.string().trim().max(200).default(""),
+  // E-mail simple validé s'il est présent (évite une injection d'en-têtes mailto via « ? » / « & »).
+  email: z
+    .string()
+    .trim()
+    .max(200)
+    .default("")
+    .refine((v) => v === "" || /^[^\s@?&]+@[^\s@?&]+\.[^\s@?&]+$/.test(v), "E-mail invalide"),
   category: line(60).pipe(z.string().min(1, "Catégorie obligatoire")),
   zone: line(60),
   group: line(120),
