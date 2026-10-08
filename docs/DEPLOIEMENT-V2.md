@@ -26,8 +26,8 @@ proxy Traefik). Source : GitHub App `breakable-bee-gkkc8wwg8sswo044`, dépôt `f
 
 | Application | Variable | Valeur |
 |---|---|---|
-| `csm-pocketbase` | `PB_ADMIN_EMAIL` | `admin@test-csm.fs0ciety.org` |
-| `csm-pocketbase` | `PB_ADMIN_PASSWORD` | généré (32 caractères), **visible seulement dans Coolify** (Environment Variables), littéral |
+| `csm-pocketbase` | `PB_ADMIN_EMAIL` | `claude-import@test-csm.fs0ciety.org` (session 3 ; l'ancien superuser existe toujours avec son mot de passe) |
+| `csm-pocketbase` | `PB_ADMIN_PASSWORD` | regénéré en session 3 (32 caractères), **visible seulement dans Coolify** (Environment Variables), littéral |
 | `csm-web` | `PB_URL` | `http://csm-pocketbase:8090` |
 | `csm-web` | `CSM_COOKIE_SECURE` | `true` |
 
@@ -85,6 +85,10 @@ Import des données de BACO (méthode utilisée le 8 octobre, sans route HTTP d'
 3. sur l'instance de test, en superuser : `POST /api/backups/upload` (champ `file`), puis
    `POST /api/backups/<clé>/restore` (PocketBase redémarre tout seul) ;
 4. vérifier les comptages, un avatar et l'accès anonyme ; supprimer la copie locale.
+
+Session 3 : les variables `CSM_PB_*` de l'environnement cloud étant mal formées, Claude a fixé par l'API un superuser
+dédié (`PB_ADMIN_EMAIL` / `PB_ADMIN_PASSWORD` ci-dessus) puis **redéployé** `csm-pocketbase` (un simple « restart » ne
+relit pas les variables). Recopier ces deux valeurs dans `CSM_PB_ADMIN_EMAIL` / `CSM_PB_ADMIN_PASSWORD`, une par ligne.
 
 Variante « module seul » (session 3, comptes et mots de passe gardés, sans les empreintes) : télécharger une
 sauvegarde de l'instance de test, la restaurer en local, `CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase

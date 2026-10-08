@@ -193,6 +193,11 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   dialogue perdus). Le brouillon créé garde sa route : `/commandes/nouveau?id=…`, rendu par la même structure
   (`div > BusForm`, clé `nouveau-<k>-<statut>` où `k` est tiré à chaque visite et gardé dans l'URL) que la fiche.
   Clé des formulaires = identité + statut, jamais `updated`.
+- (v2) **`.chamfer` ne doit jamais fixer `position`** avec une spécificité > 0 : il écrasait le `fixed` des dialogues
+  (dialogue rendu en bas de page, invisible en mobile ; l'E2E desktop passait car Playwright fait défiler). Règle en
+  `:where(.chamfer)` ; l'E2E commandes vérifie que le dialogue tient dans la fenêtre.
+- (v2) Grille / flex : tout conteneur de champ doit avoir `min-w-0` (`Field` l'a) ; un `<select>` impose sinon la
+  largeur de sa plus longue option (débordement horizontal en 390 px).
 - (v2) PocketBase : un champ nombre vide vaut 0 → index uniques partiels en `WHERE legacy_id > 0` (voir `pocketbase/CLAUDE.md`).
 - (v2) Playwright : un libellé avec astérisque requis (`Arrivée *`) ne répond pas à `getByLabel(…, { exact: true })` ;
   passer par `getByRole(…, { name, exact: true })`.

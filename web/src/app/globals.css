@@ -213,7 +213,9 @@
    * ::after = remplissage 1 px à l'intérieur) : l'élément lui-même n'est pas clippé, donc l'anneau de focus
    * reste visible (docs/design/REFERENCES-UI.md).
    */
-  .chamfer {
+  /* :where() = spécificité nulle : `fixed` / `absolute` (dialogues chanfreinés) l'emportent toujours, sinon le
+     dialogue retombait dans le flux en bas de page. */
+  :where(.chamfer) {
     --c: var(--chamfer);
     position: relative;
     isolation: isolate;

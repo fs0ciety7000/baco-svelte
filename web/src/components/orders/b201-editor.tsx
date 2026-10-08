@@ -159,7 +159,7 @@ export function B201Editor({
             key={p.id}
             aria-labelledby={`b201-${p.id}`}
             className={cn(
-              "flex-col gap-3 border border-border bg-surface p-4 md:flex",
+              "min-w-0 flex-col gap-3 border border-border bg-surface p-4 md:flex",
               tab === p.id ? "flex" : "hidden",
             )}
             data-testid={`b201-${p.id}`}

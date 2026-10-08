@@ -219,6 +219,13 @@ test("taxi : création liée à une société, aller-retour pré-inversé", asyn
   await page.getByLabel("Heure du retour").fill("23:30");
   await page.getByTestId("prepare-send").click();
   await expect(page.getByTestId("send-to")).toHaveText("dispatch@taxis-demo.invalid");
+  // Dialogue centré dans la fenêtre (régression : `.chamfer` écrasait `fixed`, dialogue en bas de page).
+  const box = await page.getByRole("dialog").boundingBox();
+  const vp = page.viewportSize();
+  expect(
+    box && vp && box.y >= 0 && box.y + box.height <= vp.height,
+    "dialogue visible sans défiler",
+  ).toBe(true);
 });
 
 for (const t of ["commandement", "ivoire"] as const) {

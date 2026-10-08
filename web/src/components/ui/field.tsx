@@ -28,7 +28,7 @@ function Field({ label, hint, error, required, className, children }: FieldProps
     "aria-required": required || undefined,
   });
   return (
-    <div className={cn("flex flex-col gap-1.5", className)}>
+    <div className={cn("flex min-w-0 flex-col gap-1.5", className)}>
       <Label htmlFor={id}>
         {label}
         {required ? (
