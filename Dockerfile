@@ -25,7 +25,6 @@ ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     PORT=3000 \
     BODY_SIZE_LIMIT=25M
-RUN apk add --no-cache tini
 COPY --from=build --chown=node:node /app/build ./build
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/package.json ./package.json
@@ -33,5 +32,5 @@ USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD wget -qO- http://127.0.0.1:3000/healthz || exit 1
-ENTRYPOINT ["/sbin/tini", "--"]
+# adapter-node gère SIGTERM (arrêt propre) : pas besoin d'init supplémentaire.
 CMD ["node", "build"]
