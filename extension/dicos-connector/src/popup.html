@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CSM — Connecteur DICOS</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0f1419;
+        --surface: #171d24;
+        --line: #2a333d;
+        --fg: #e6edf3;
+        --muted: #9aa7b2;
+        --accent: #4f9cf9;
+        --ok: #3fb950;
+        --danger: #f85149;
+      }
+      * { box-sizing: border-box; }
+      body {
+        width: 320px;
+        margin: 0;
+        padding: 14px;
+        font: 13px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+      }
+      h1 { font-size: 14px; margin: 0 0 10px; display: flex; align-items: center; gap: 6px; }
+      h1 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+      h1 .dot.on { background: var(--ok); }
+      label { display: block; margin: 8px 0 3px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+      input[type="text"], input[type="password"], input[type="date"], input[type="number"] {
+        width: 100%; padding: 7px 8px; border: 1px solid var(--line); border-radius: 7px;
+        background: var(--surface); color: var(--fg); font: inherit;
+      }
+      .row { display: flex; gap: 8px; align-items: center; }
+      .row > * { flex: 1; }
+      .check { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+      .check input { flex: 0 0 auto; width: auto; }
+      .check label { margin: 0; text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--fg); }
+      button {
+        width: 100%; margin-top: 12px; padding: 9px; border: 0; border-radius: 8px;
+        background: var(--accent); color: #04111f; font: inherit; font-weight: 600; cursor: pointer;
+      }
+      button.secondary { background: var(--surface); color: var(--fg); border: 1px solid var(--line); font-weight: 500; }
+      button:disabled { opacity: .5; cursor: default; }
+      .status { margin-top: 10px; padding: 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); font-size: 12px; }
+      .status b { color: var(--fg); }
+      .hint { color: var(--muted); font-size: 11px; margin-top: 6px; }
+      .err { color: var(--danger); }
+      .ok { color: var(--ok); }
+    </style>
+  </head>
+  <body>
+    <h1><span class="dot" id="dot"></span> Connecteur DICOS → CSM</h1>
+
+    <label for="csmUrl">URL CSM</label>
+    <input type="text" id="csmUrl" placeholder="https://test-csm.fs0ciety.org" autocomplete="off" />
+
+    <label for="token">Jeton de connecteur (x-dicos-token)</label>
+    <input type="password" id="token" placeholder="jeton fourni par CSM" autocomplete="off" />
+
+    <div class="check">
+      <input type="checkbox" id="auto" />
+      <label for="auto">Synchroniser automatiquement</label>
+    </div>
+    <div class="row">
+      <div>
+        <label for="minutes">Toutes les (min)</label>
+        <input type="number" id="minutes" min="2" max="120" value="10" />
+      </div>
+      <div>
+        <label for="day">Jour à synchroniser</label>
+        <input type="date" id="day" />
+      </div>
+    </div>
+
+    <button class="secondary" id="save">Enregistrer les réglages</button>
+    <button id="sync">Synchroniser ce jour</button>
+
+    <div class="status" id="status">…</div>
+    <div class="hint" id="hint"></div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

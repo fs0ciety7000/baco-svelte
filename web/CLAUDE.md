@@ -82,11 +82,18 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `src/lib/pmr/dicos.ts` (`parseDicos`, même logique que `pocketbase/pb_hooks/lib/pmr.js`, testée).
 - Données : `src/server/data/pmr.ts` — le nom / téléphone d'un client n'est lu (expand) et rendu **que** si l'agent a
   `pmr:read` ; `legacyText` (texte BACO, peut contenir un nom) idem. Écritures : `src/app/(app)/pmr/actions.ts`.
-- Écrans : `/pmr` (prestations par jour, panneau + transitions), `/pmr/nouveau` (collage DICOS, plusieurs
-  assistances ; `?id=` = modification), `/pmr/historique` (+ `GET /api/pmr/export` CSV **sans nom**, formules
-  neutralisées, BOM), `/pmr/clients` (`?id=` ouvre la fiche), `/pmr/materiel` (vues, état, zones). Composants
-  `src/components/pmr/*` ; `PmrClientPicker` (exporté de `components/orders/taxi-form.tsx`) est partagé.
+- Écrans : `/pmr` (**Missions PMR** — missions par jour, panneau + transitions, sélecteur `?du=&au=` + raccourcis),
+  `/pmr/historique` (+ `GET /api/pmr/export` CSV **sans nom**, formules neutralisées, BOM), `/pmr/clients` (`?id=`
+  ouvre la fiche), `/pmr/materiel` (vues, état, zones). Composants `src/components/pmr/*` ; `PmrClientPicker` (exporté
+  de `components/orders/taxi-form.tsx`) est partagé. **Plus de création manuelle** : les missions viennent de DICOS
+  (décision du 8 oct. 2026) — `/pmr/nouveau` et `assist-form` retirés, `createAssists`/`updateAssist` supprimés.
 - Téléphone : `PhoneLink` (`etrali:` desktop, `tel:` mobile, deux liens alternés en CSS).
+- **Ingestion DICOS** (`src/lib/pmr/dicos-mission.ts`, pur et testé + `app/api/pmr/missions/ingest/route.ts`) : mapping
+  mission DICOS → prestation CSM (type PMR, statut, n° de dossier `AAAA-MM-JJ-NNNN`, détail nominatif) **côté serveur**
+  = source unique de vérité ; l'extension (`extension/dicos-connector/`) envoie la mission brute. Endpoint authentifié
+  par `x-dicos-token` (`CSM_DICOS_TOKEN`, comparaison à temps constant), écrit via le compte de service
+  (`CSM_DICOS_PB_EMAIL`/`CSM_DICOS_PB_PASSWORD`, droit `dicos:write`), idempotent (dédup `dicos_id`), ignore les
+  prestations anonymisées ; **503** tant que les variables sont vides. Heure/jour lus en mur d'horloge de l'ISO local.
 - E2E `e2e/pmr.spec.ts` (fixtures superuser, captures `test-results/pmr-*`).
 
 ## Module Opérations (étape 5, session 3)

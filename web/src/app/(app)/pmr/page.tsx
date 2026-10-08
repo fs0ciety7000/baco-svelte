@@ -9,7 +9,7 @@ import { listAssists, listZones } from "@/server/data/pmr";
 
 import { LiveRefresh } from "../commandes/live-refresh";
 
-export const metadata: Metadata = { title: "Prestations PMR · CSM" };
+export const metadata: Metadata = { title: "Missions PMR · CSM" };
 
 export default async function Page({ searchParams }: { searchParams: Promise<PmrFilters> }) {
   const user = await requirePermission("deplacements:read");
@@ -23,10 +23,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
     listZones(),
   ]);
   return (
-    <section className="flex flex-col gap-4" aria-label="Prestations PMR">
+    <section className="flex flex-col gap-4" aria-label="Missions PMR">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-body text-fg-muted" data-testid="assists-count">
-          <span className="font-mono text-fg tabular">{total}</span> prestation(s)
+          <span className="font-mono text-fg tabular">{total}</span> mission(s)
           {total > rows.length ? ` · ${rows.length} affichées : réduisez la période` : ""}
         </p>
         {/* Plus de création manuelle : les missions sont synchronisées depuis DICOS (décision du 8 octobre 2026). */}

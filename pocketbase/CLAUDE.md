@@ -74,5 +74,15 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
   supprimées au retrait de l'entrée ; purge 30 j lues / 90 j), `level_crossings` (zone = code texte, coordinateurs),
   `train_watches` (10 par agent, aujourd'hui ou demain ; cron `train-watches` toutes les 2 min, 40 trains et 90 s au
   plus, 350 ms entre appels iRail via `sleep`). Dépôts (`depot_*`) sur `pmr_zones`, zone FNR créée.
+- **Intégration DICOS / Missions PMR** (`1760000600_dicos.js`, `pmr.pb.js`) : les missions PMR de DICOS sont ingérées
+  dans `pmr_assists` (`dicos_id` unique partiel `WHERE dicos_id != ''`, `source`, `mission_type`) par un **compte de
+  service** portant le droit `dicos:write` (jamais un agent interactif). Branche ajoutée à `createRule`/`updateRule` :
+  `source = "dicos"`, `dicos_id` posé, `created_by`/`updated_by` = l'appelant, `legacy_id`/`anonymized` non forgeables,
+  `dicos_id`/`created_by` non modifiables. Statut libre à l'ingestion (une mission peut arriver déjà réalisée) : le hook
+  **saute les contrôles de transition seulement pour `source=dicos` + `dicos:write`** (`dicosIngest`), un agent reste
+  soumis aux transitions. Le détail **nominatif** (client, e-mail, téléphone, accompagnateur, conducteur, point de
+  rencontre, voiture / porte) va dans **`pmr_mission`** (une par assist, `cascadeDelete`), lisible avec `pmr:read`
+  seulement (`otto_agent` ne lit pas) — une règle ne masque pas un champ. La purge `pmr-retention` efface aussi
+  `pmr_mission` quand l'assist est anonymisée. 12 contrôles de règles dédiés (156 au total).
 - **Sauvegardes** : réglées par migration (`0 2 * * *`, 14 conservées dans `pb_data/backups`).
 - `PREPROD_PB_*` désigne une autre instance (jeu) : **n'y jamais écrire**, ne pas y lancer `test-rules.mjs`.

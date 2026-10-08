@@ -1,0 +1,111 @@
+// Popup : réglages (URL CSM, jeton de connecteur, auto + période), choix du jour, bouton de synchro manuelle.
+// Il parle au content script de l'onglet DICOS actif (statut + synchro) ; l'envoi vers CSM passe par le service worker.
+const $ = (id) => document.getElementById(id);
+const DICOS = /^https:\/\/dicos\.intern-belgiantrain\.be\//;
+
+function today() {
+  const d = new Date();
+  const p = (x) => String(x).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+function setStatus(html, cls) {
+  $("status").className = "status" + (cls ? " " + cls : "");
+  $("status").innerHTML = html;
+}
+function setHint(text, cls) {
+  $("hint").className = "hint" + (cls ? " " + cls : "");
+  $("hint").textContent = text || "";
+}
+
+async function activeDicosTab() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  return tab && DICOS.test(tab.url || "") ? tab : null;
+}
+
+function fmtResult(r) {
+  if (!r) return "Aucune synchro récente.";
+  if (r.error) return `<span class="err">${escapeHtml(r.error)}</span>`;
+  const when = r.at ? ` · ${new Date(r.at).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" })}` : "";
+  return `<span class="ok">✓ ${r.day || ""}${when}</span><br>${r.found ?? r.received ?? 0} mission(s) · <b>${r.created || 0}</b> créée(s), <b>${r.updated || 0}</b> maj, ${r.skipped || 0} ignorée(s)`;
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+}
+
+async function refreshStatus() {
+  const tab = await activeDicosTab();
+  if (!tab) {
+    $("dot").classList.remove("on");
+    setHint("Ouvre l'onglet DICOS (dicos.intern-belgiantrain.be) pour synchroniser.", "err");
+    $("sync").disabled = true;
+    return;
+  }
+  $("sync").disabled = false;
+  try {
+    const s = await chrome.tabs.sendMessage(tab.id, { cmd: "status" });
+    if (s && s.hasToken) {
+      $("dot").classList.add("on");
+      setHint(`Session DICOS détectée · ${s.stationCount} gare(s) au périmètre.`);
+    } else {
+      $("dot").classList.remove("on");
+      setHint("Session pas encore détectée : navigue dans les missions DICOS une fois.", "err");
+    }
+  } catch (_) {
+    $("dot").classList.remove("on");
+    setHint("Recharge l'onglet DICOS après avoir installé l'extension.", "err");
+  }
+}
+
+async function load() {
+  const v = await chrome.storage.local.get(["csmUrl", "token", "auto", "last"]);
+  $("csmUrl").value = v.csmUrl || "";
+  $("token").value = v.token || "";
+  $("auto").checked = !!(v.auto && v.auto.enabled);
+  $("minutes").value = (v.auto && v.auto.minutes) || 10;
+  $("day").value = today();
+  setStatus(fmtResult(v.last));
+  refreshStatus();
+}
+
+$("save").addEventListener("click", async () => {
+  const csmUrl = $("csmUrl").value.trim().replace(/\/+$/, "");
+  const token = $("token").value.trim();
+  const auto = { enabled: $("auto").checked, minutes: Math.max(2, Math.min(120, Number($("minutes").value) || 10)) };
+  if (csmUrl) {
+    let origin;
+    try {
+      origin = new URL(csmUrl).origin + "/*";
+    } catch (_) {
+      setHint("URL CSM invalide.", "err");
+      return;
+    }
+    // Permission d'hôte pour l'appel cross-origin vers CSM (demandée sur geste utilisateur).
+    try {
+      const granted = await chrome.permissions.request({ origins: [origin] });
+      if (!granted) {
+        setHint("Permission refusée pour l'URL CSM : la synchro ne pourra pas envoyer.", "err");
+      }
+    } catch (_) {}
+  }
+  await chrome.storage.local.set({ csmUrl, token, auto });
+  setHint("Réglages enregistrés.", "ok");
+});
+
+$("sync").addEventListener("click", async () => {
+  const tab = await activeDicosTab();
+  if (!tab) return;
+  $("sync").disabled = true;
+  setStatus("Synchronisation en cours…");
+  try {
+    const r = await chrome.tabs.sendMessage(tab.id, { cmd: "sync", day: $("day").value || today() });
+    setStatus(fmtResult(r), r && r.error ? "" : "");
+  } catch (_) {
+    setStatus('<span class="err">Content script indisponible : recharge l\'onglet DICOS.</span>');
+  } finally {
+    $("sync").disabled = false;
+    refreshStatus();
+  }
+});
+
+load();
