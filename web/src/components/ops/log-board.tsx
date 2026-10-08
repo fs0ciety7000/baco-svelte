@@ -219,14 +219,14 @@ export function LogBoard({
         </section>
       ) : null}
       <section aria-label="Fil de la main courante" className="flex flex-col gap-2">
-        {rows.length === 0 ? (
+        {rows.filter((r) => !pinned.some((p) => p.id === r.id)).length === 0 && !pinned.length ? (
           <EmptyState
             title="Aucune entrée"
             description="Rien n'a été noté pour ce jour ou ces filtres."
           />
         ) : (
           <ul className="flex flex-col gap-2" data-testid="log-list">
-            {rows.map(card)}
+            {rows.filter((r) => !pinned.some((p) => p.id === r.id)).map(card)}
           </ul>
         )}
       </section>

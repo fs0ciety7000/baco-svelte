@@ -93,6 +93,8 @@ export function TrainsWidget({ favorites }: { favorites: FavoriteStation[] | nul
                 .map((r) => ({ ...r, station: b.station })),
             )
             .sort((a, b) => a.at - b.at)
+            // Un train qui passe par plusieurs gares favorites n'apparaît qu'une fois (premier passage).
+            .filter((r, i, all) => all.findIndex((x) => x.train === r.train) === i)
             .slice(0, 8),
         );
         setError(false);
