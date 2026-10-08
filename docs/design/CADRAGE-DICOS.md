@@ -65,12 +65,12 @@ Mapping mission DICOS → prestation CSM (`pmr_assists`, champs à compléter) :
 | Source DICOS | Cible CSM | Note |
 |---|---|---|
 | `id` | `dicos_id` (nouveau, unique) | Clé de **déduplication** |
-| `reservationId` / `reservationDisplayId` | `dicos_ref` | N° de dossier `AAAA-MM-JJ-NNNN` (le format diffère de l'ancien DICOS `1234-56-78-9012` → élargir le motif) |
+| `reservationId` / `reservationDisplayId` | `dicos_ref` | N° de dossier `AAAA-MM-JJ-NNNN` (= **date de création de la réservation**, pas le jour de service). Format **déjà compatible** avec le motif `dicos_ref` existant |
 | `journey.time`, `journey.stationName` | heure, gare | Instant réel → jour + heure Europe/Brussels |
 | `journey.otherStationName` | autre gare | Origine/destination selon le sens |
 | `missionType` (`Departure`/`Arrival`/`Stickering`) | sens / type de mission | `Stickering` = étiquetage groupe, à distinguer |
 | `journey.trainNumber`, `transportId` | train | |
-| `traveler.disableds[]` (`typeId`, `quantity`, `symbol`) [détail] + `fullAssistances`, `lightAssistances` | type + nombre PMR | `pmr-bp`/`blind-person` → NV ; table complétée au fil des imports, repli « Autre » |
+| `traveler.disableds[]` (`typeId`, `quantity`, `symbol`) [détail] + `fullAssistances`, `lightAssistances` | type + nombre PMR | Codes connus : `pmr-bp`/blind-person → **NV**, `pmr-ew`/electric-wheelchair → **CRE** ; table complétée au fil des imports, repli « Autre » |
 | `reservationType` | type de réservation | `Disabled` / `Group` |
 | `status` | statut (voir §5) | |
 | `client` (nom, prénom, **e-mail, téléphone, langue**) | fiche client PMR liée | **nominatif** → `pmr:read`, anonymisé 12 mois |

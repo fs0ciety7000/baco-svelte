@@ -514,6 +514,34 @@ try {
 		auditIds.push(id);
 	}
 
+	// --- Missions PMR (ingestion DICOS) : compte de service dicos:write, détail nominatif protégé ---
+	await api('PATCH', `/api/collections/users/records/${roles.reader.id}`, { token: root, body: { grants: ['dicos:write'] } });
+	const svcTok = (await api('POST', '/api/collections/users/auth-with-password', { body: { identity: `test-reader-${suffix}@csm.invalid`, password: `Test-${suffix}-reader` } })).json?.token;
+	const dm = await api('POST', '/api/collections/pmr_assists/records', {
+		token: svcTok,
+		body: { day: '2099-05-01', time: '07:30', station: 'XDICOS', status: 'realisee', source: 'dicos', dicos_id: `D${suffix}`, created_by: roles.reader.id, updated_by: roles.reader.id }
+	});
+	check('service dicos:write crée une mission (statut libre)', dm.status === 200, `HTTP ${dm.status}`);
+	const did = dm.json?.id;
+	const dmForge = await api('POST', '/api/collections/pmr_assists/records', {
+		token: u.token,
+		body: { day: '2099-05-01', status: 'realisee', source: 'dicos', dicos_id: `F${suffix}`, created_by: u.id, updated_by: u.id }
+	});
+	check('agent sans dicos:write ne crée pas de mission DICOS', dmForge.status >= 400, `HTTP ${dmForge.status}`);
+	const detail = await api('POST', '/api/collections/pmr_mission/records', { token: svcTok, body: { assist: did, client_last: 'Nom test', client_email: 'x@invalid.test' } });
+	check('service écrit le détail nominatif', detail.status === 200, `HTTP ${detail.status}`);
+	const detailForge = await api('POST', '/api/collections/pmr_mission/records', { token: u.token, body: { assist: did, client_last: 'X' } });
+	check('agent n’écrit pas le détail nominatif (dicos:write)', detailForge.status >= 400, `HTTP ${detailForge.status}`);
+	const detO = await api('GET', '/api/collections/pmr_mission/records?perPage=1', { token: roles.otto_agent.token });
+	check('sans pmr:read, le détail nominatif est invisible', detO.status !== 200 || detO.json.totalItems === 0, `HTTP ${detO.status}`);
+	const detR = await api('GET', '/api/collections/pmr_mission/records?perPage=1', { token: svcTok });
+	check('avec pmr:read, le détail nominatif est lisible', detR.status === 200 && detR.json.totalItems >= 1, `${detR.json?.totalItems}`);
+	// Un agent reste soumis à la table des transitions sur une mission DICOS (réalisée → absent est interdit).
+	const dmTrans = await api('PATCH', `/api/collections/pmr_assists/records/${did}`, { token: u.token, body: { status: 'absent', cancel_reason: 'x', updated_by: u.id } });
+	check('agent reste soumis aux transitions sur une mission DICOS', dmTrans.status === 400, `HTTP ${dmTrans.status}`);
+	await api('PATCH', `/api/collections/users/records/${roles.reader.id}`, { token: root, body: { grants: [] } });
+	if (did) { await api('DELETE', `/api/collections/pmr_assists/records/${did}`, { token: root }); auditIds.push(did); }
+
 	// Admin : supprime.
 	const adel = await api('DELETE', `/api/collections/bus_orders/records/${order.json.id}`, { token: roles.admin.token });
 	check('admin supprime', adel.status === 204, `HTTP ${adel.status}`);

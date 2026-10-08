@@ -1,10 +1,7 @@
-import { Plus } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { AssistBoard } from "@/components/pmr/assist-board";
 import { PmrFilterBar, type PmrFilters } from "@/components/pmr/filter-bar";
-import { Button } from "@/components/ui/button";
 import { can } from "@/lib/permissions";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
 import { requirePermission } from "@/server/auth";
@@ -32,16 +29,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
           <span className="font-mono text-fg tabular">{total}</span> prestation(s)
           {total > rows.length ? ` · ${rows.length} affichées : réduisez la période` : ""}
         </p>
-        <div className="flex items-center gap-3">
-          <LiveRefresh topics={["pmr_assists"]} />
-          {can(user, "deplacements:write") ? (
-            <Button asChild variant="primary">
-              <Link href={`/pmr/nouveau?jour=${du}`}>
-                <Plus aria-hidden /> Nouvelle prestation
-              </Link>
-            </Button>
-          ) : null}
-        </div>
+        {/* Plus de création manuelle : les missions sont synchronisées depuis DICOS (décision du 8 octobre 2026). */}
+        <LiveRefresh topics={["pmr_assists"]} />
       </div>
       <PmrFilterBar
         action="/pmr"

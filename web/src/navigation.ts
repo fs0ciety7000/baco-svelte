@@ -73,7 +73,7 @@ export const MODULES: NavModule[] = [
     tabs: [
       {
         href: "/pmr",
-        label: "Prestations",
+        label: "Missions PMR",
         permission: "deplacements:read",
         keywords: ["déplacements", "DICOS", "assistance"],
       },
@@ -178,12 +178,6 @@ export const QUICK_ACTIONS: QuickAction[] = [
     label: "Bon de commande taxi",
     icon: Car,
     permission: "generate_taxi:write",
-  },
-  {
-    href: "/pmr/nouveau",
-    label: "Prestation PMR",
-    icon: Accessibility,
-    permission: "deplacements:write",
   },
   {
     href: "/operations/main-courante/nouveau",

@@ -31,7 +31,9 @@ onRecordUpdateRequest((e) => {
 	const from = before.getString('status');
 	const to = e.record.getString('status');
 	if (before.getBool('anonymized')) throw new BadRequestError('Prestation anonymisée : elle ne se modifie plus.');
-	if (from !== to) {
+	// Mission DICOS mise à jour par le service d'ingestion : DICOS fait foi, pas de table de transitions ni de motif.
+	const dicosIngest = e.record.getString('source') === 'dicos' && e.auth && e.auth.getString('grants').indexOf('"dicos:write"') !== -1;
+	if (from !== to && !dicosIngest) {
 		if ((pmr.TRANSITIONS[from] || []).indexOf(to) === -1) throw new BadRequestError(`Transition impossible : ${from} → ${to}.`);
 		if ((to === 'annulee' || to === 'absent') && !e.record.getString('cancel_reason').trim()) {
 			throw new BadRequestError('Le motif est obligatoire.');
@@ -110,6 +112,8 @@ cronAdd('pmr-retention', '15 3 * * *', () => {
 		{ limit: limit }
 	);
 	q("DELETE FROM pmr_assist_legacy WHERE assist IN (SELECT id FROM pmr_assists WHERE anonymized = 1)");
+	// Détail nominatif des missions DICOS (client, contacts, accompagnement) : supprimé à l'anonymisation.
+	q("DELETE FROM pmr_mission WHERE assist IN (SELECT id FROM pmr_assists WHERE anonymized = 1)");
 	q("UPDATE pmr_events SET note = '', \"from\" = CASE WHEN field IN ('status') THEN \"from\" ELSE '' END, \"to\" = CASE WHEN field IN ('status') THEN \"to\" ELSE '' END WHERE kind = 'assist' AND record IN (SELECT id FROM pmr_assists WHERE anonymized = 1)");
 	q("DELETE FROM audit_log WHERE collection = 'pmr_assists' AND record IN (SELECT id FROM pmr_assists WHERE anonymized = 1)");
 	// Taxis PMR de plus de 12 mois : copie nominative et lien vers la fiche effacés.

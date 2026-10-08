@@ -34,7 +34,7 @@ describe("navigation", () => {
 
   it("actions rapides selon les droits d'écriture", () => {
     expect(quickActions({ role: "reader" })).toEqual([]);
-    expect(quickActions({ role: "user" }).length).toBe(4);
+    expect(quickActions({ role: "user" }).length).toBe(3);
   });
 
   it("module et onglet actifs", () => {

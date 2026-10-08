@@ -16,6 +16,11 @@ const schema = z.object({
   CSM_USER_AGENT: z
     .string()
     .default("CSM/1.0 (Client Solutions Management Tool; test-csm.fs0ciety.org)"),
+  // Ingestion DICOS (Missions PMR) : secret partagé présenté par l'extension + compte de service PocketBase (droit
+  // dicos:write). Vides = endpoint désactivé (503). Jamais de jeton SNCB ici.
+  CSM_DICOS_TOKEN: z.string().default(""),
+  CSM_DICOS_PB_EMAIL: z.string().default(""),
+  CSM_DICOS_PB_PASSWORD: z.string().default(""),
 });
 
 export const env = schema.parse({
@@ -24,4 +29,7 @@ export const env = schema.parse({
   IRAIL_URL: process.env.IRAIL_URL,
   TILES_URL: process.env.TILES_URL,
   CSM_USER_AGENT: process.env.CSM_USER_AGENT,
+  CSM_DICOS_TOKEN: process.env.CSM_DICOS_TOKEN,
+  CSM_DICOS_PB_EMAIL: process.env.CSM_DICOS_PB_EMAIL,
+  CSM_DICOS_PB_PASSWORD: process.env.CSM_DICOS_PB_PASSWORD,
 });
