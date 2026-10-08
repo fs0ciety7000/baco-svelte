@@ -28,12 +28,26 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         <span className="font-mono text-fg tabular">{total}</span> contact(s)
         {total > rows.length ? ` · ${rows.length} affichés : affinez les filtres` : ""}
       </p>
-      <form action="/referentiels" method="get" role="search" className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end">
+      <form
+        action="/referentiels"
+        method="get"
+        role="search"
+        className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
+      >
         <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-60">
           <span className="text-small text-fg-muted">Recherche</span>
           <span className="relative">
-            <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted" />
-            <Input name="q" defaultValue={q} placeholder="Nom, tél., e-mail, groupe…" className="pl-9" maxLength={60} />
+            <Search
+              aria-hidden
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted"
+            />
+            <Input
+              name="q"
+              defaultValue={q}
+              placeholder="Nom, tél., e-mail, groupe…"
+              className="pl-9"
+              maxLength={60}
+            />
           </span>
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-44">

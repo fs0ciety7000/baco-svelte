@@ -62,12 +62,18 @@ export function DocumentBoard({
                   <Tr key={d.id}>
                     <Td className="font-medium">{d.name}</Td>
                     <Td>{d.category ? <Badge tone="info">{d.category}</Badge> : "—"}</Td>
-                    <Td className="font-mono text-small tabular">{formatShortDay(dayOf(d.created))}</Td>
+                    <Td className="font-mono text-small tabular">
+                      {formatShortDay(dayOf(d.created))}
+                    </Td>
                     <Td className="text-fg-muted">{d.author || "—"}</Td>
                     <Td>
                       <div className="flex gap-1">
                         <Button asChild size="sm" variant="ghost" className="border border-border">
-                          <a href={`/api/referentiels/documents/${d.id}`} target="_blank" rel="noopener noreferrer">
+                          <a
+                            href={`/api/referentiels/documents/${d.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
                             <Download aria-hidden className="size-4" /> Ouvrir
                           </a>
                         </Button>
@@ -92,7 +98,12 @@ export function DocumentBoard({
           <ul className="flex flex-col gap-2 md:hidden" data-testid="documents-cards">
             {documents.map((d) => (
               <li key={d.id}>
-                <a href={`/api/referentiels/documents/${d.id}`} target="_blank" rel="noopener noreferrer" className="block">
+                <a
+                  href={`/api/referentiels/documents/${d.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block"
+                >
                   <ListCard
                     title={d.name}
                     meta={`${d.category || "—"} · ${formatShortDay(dayOf(d.created))}`}
@@ -106,7 +117,10 @@ export function DocumentBoard({
       )}
 
       <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
-        <DialogContent title="Importer un document" description="PDF, image ou document bureautique (max 30 Mo).">
+        <DialogContent
+          title="Importer un document"
+          description="PDF, image ou document bureautique (max 30 Mo)."
+        >
           <UploadForm
             categories={categories}
             onDone={() => {
@@ -185,7 +199,8 @@ function UploadForm({ categories, onDone }: { categories: string[]; onDone: () =
           required
           className="block w-full text-small file:mr-3 file:min-h-11 file:rounded file:border file:border-border file:bg-surface-2 file:px-3 file:text-fg"
           onChange={(e) => {
-            if (!name && e.target.files?.[0]) setName(e.target.files[0].name.replace(/\.[^.]+$/, ""));
+            if (!name && e.target.files?.[0])
+              setName(e.target.files[0].name.replace(/\.[^.]+$/, ""));
           }}
         />
       </Field>
@@ -193,7 +208,12 @@ function UploadForm({ categories, onDone }: { categories: string[]; onDone: () =
         <Input value={name} onChange={(e) => setName(e.target.value)} required maxLength={300} />
       </Field>
       <Field label="Catégorie">
-        <Input list="doc-cat" value={category} onChange={(e) => setCategory(e.target.value)} maxLength={60} />
+        <Input
+          list="doc-cat"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          maxLength={60}
+        />
       </Field>
       <DialogFooter>
         <Button type="submit" variant="primary" loading={pending} data-testid="document-save">

@@ -35,7 +35,7 @@ gelée** (v1, branche `ccr-5dca0da8-4yg4i6`) : ne pas le modifier.
 | 2 | Design system + page `/design` (5 thèmes, GSAP) | ✅ 8 oct. — jetons + test AA (156 contrôles), 19 composants, `/design`, 17 E2E ; captures et écarts **validés** |
 | 3 | Shell (6 entrées, onglets, ⌘K, mobile 4 + Plus) + tableau de bord | ✅ 8 oct. — 24 E2E, CSP, gardes par page, captures validées |
 | 4 | Données : schéma PocketBase, règles d'accès, import | 🔄 données BACO du 8 oct. importées sur l'instance de test (5 collections) ; migration réelle **en une fois à la bascule** |
-| 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 **Commandes** livré en session 3 (schéma + 66 contrôles de règles, bus, taxi, envoi `.eml` + PDF, suivi, B201, E2E) : **validé le 8 oct.** ; **PMR validé le 8 oct.** (schéma + 105 contrôles de règles, prestations, collage DICOS, clients, matériel, E2E) ; **Opérations validé le 8 oct.** (trains en direct iRail, main courante, carte PN, statistiques, cloche ; 149 contrôles de règles, 46 E2E) ; **DICOS / Missions PMR validé** (extension + ingestion, lecture seule, trajet/IN-OUT/district/copier) ; **Référentiels livré, à valider** (annuaire, lignes, PtCar, EBP, procédures + documents ; 7 collections ; 173 contrôles de règles ; audit + revue passés ; données v1 importées sur l'instance de test) ; suivant : Équipe, Admin |
+| 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 **Commandes** livré en session 3 (schéma + 66 contrôles de règles, bus, taxi, envoi `.eml` + PDF, suivi, B201, E2E) : **validé le 8 oct.** ; **PMR validé le 8 oct.** (schéma + 105 contrôles de règles, prestations, collage DICOS, clients, matériel, E2E) ; **Opérations validé le 8 oct.** (trains en direct iRail, main courante, carte PN, statistiques, cloche ; 149 contrôles de règles, 46 E2E) ; **DICOS / Missions PMR validé** (extension + ingestion, lecture seule, trajet/IN-OUT/district/copier) ; **Annuaire et données (ex-Référentiels) livré** (annuaire, lignes, PtCar, EBP, procédures + documents ; 7 collections ; 173 contrôles de règles ; audit + revue passés ; données v1 importées sur l'instance de test) ; suivant : Équipe, Admin |
 | 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | ✅ 8 oct. — https://test-csm.fs0ciety.org en ligne ; projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
 | — | Hotfix sécurité BACO (`supabase/migrations/20261008120000_security_hotfix.sql`) | ✅ appliqué par l'utilisateur (SQL Editor) le 8 oct., vérifié : 0 ERROR (36 avant). Suite **non appliquée** : `20261008130000_hotfix_followup.sql` (test NULL de `get_my_role()`) et `20261008140000_pn_data_update_fix.sql` (XSS stocké carte PN), accord requis ; protection des mots de passe compromis encore désactivée |
 
@@ -404,6 +404,12 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   adresse e-mail** → champ libre « E-mail de la société » (`bus_orders.company_email`, migration `1760001300` ; le taxi avait
   déjà `taxi_email`) ; l'adresse n'est **plus bloquante** : sans adresse, la feuille d'envoi propose « Télécharger le PDF »
   (`/pdf?download=1`) puis la même confirmation « marquer envoyé », pas de brouillon .eml.
+- 2026-10-09 — **Valider l'envoi = « Terminé »** (brouillon → terminé, heure d'envoi posée aussi ; hook `lib/orders.js`) ;
+  le chemin envoyé → confirmé → en cours reste pour les commandes déjà envoyées. **Le hook refusait encore l'envoi sans
+  adresse e-mail** (le « PDF seul » de la veille aurait échoué) → refus retiré. Bon PDF : **logo SNCB** en haut à
+  gauche (`server/pdf/sncb-logo.ts`, PNG 16 couleurs en base64), plus de ligne « Statut » (seul « ANNULÉ » reste).
+  Widget « À confirmer » : chaque bon est un lien. Nouveaux widgets **Perturbations** et **Travaux** (messages iRail,
+  `DisturbanceWidget`). Module « Référentiels » renommé **« Annuaire et données »** (libellés ; routes inchangées).
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

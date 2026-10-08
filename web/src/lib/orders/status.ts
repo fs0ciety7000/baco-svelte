@@ -1,5 +1,7 @@
 // Cycle de vie des commandes (miroir d'affichage de pocketbase/pb_hooks/lib/orders.js, qui fait foi).
 // brouillon → envoyé → confirmé → en cours → terminé, ou annulé. Pas de « facturé » (décision du 8 oct. 2026).
+// Valider l'envoi passe directement à « terminé » (décision du 9 oct. 2026) ; « envoyé » ne concerne plus que les
+// commandes déjà envoyées avant ce changement.
 
 export const ORDER_STATUSES = [
   "brouillon",
@@ -22,7 +24,7 @@ export const STATUS_LABEL: Record<Status, string> = {
 };
 
 const TRANSITIONS: Record<Status, Status[]> = {
-  brouillon: ["envoye", "annule"],
+  brouillon: ["termine", "annule"],
   envoye: ["brouillon", "confirme", "annule"],
   confirme: ["envoye", "en_cours", "termine", "annule"],
   en_cours: ["termine"],
@@ -44,7 +46,7 @@ export type Transition = {
 };
 
 const ACTION: Record<string, Omit<Transition, "to">> = {
-  "brouillon>envoye": { label: "Marquer envoyé", primary: true },
+  "brouillon>termine": { label: "Marquer envoyé", primary: true },
   "envoye>confirme": { label: "Confirmer", primary: true },
   "envoye>brouillon": { label: "Revenir en brouillon", tone: "back" },
   "confirme>en_cours": { label: "Démarrer", primary: true },

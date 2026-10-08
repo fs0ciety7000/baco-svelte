@@ -33,21 +33,43 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
   return (
     <section className="flex flex-col gap-4" aria-label="Procédures et documents">
       <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Vue">
-        <Button asChild variant={vue === "procedures" ? "primary" : "ghost"} className={vue === "procedures" ? "" : "border border-border"}>
+        <Button
+          asChild
+          variant={vue === "procedures" ? "primary" : "ghost"}
+          className={vue === "procedures" ? "" : "border border-border"}
+        >
           <Link href="/referentiels/documents">Procédures</Link>
         </Button>
-        <Button asChild variant={vue === "documents" ? "primary" : "ghost"} className={vue === "documents" ? "" : "border border-border"}>
+        <Button
+          asChild
+          variant={vue === "documents" ? "primary" : "ghost"}
+          className={vue === "documents" ? "" : "border border-border"}
+        >
           <Link href="/referentiels/documents?vue=documents">Documents</Link>
         </Button>
       </div>
 
-      <form action="/referentiels/documents" method="get" role="search" className="flex flex-wrap items-end gap-2">
+      <form
+        action="/referentiels/documents"
+        method="get"
+        role="search"
+        className="flex flex-wrap items-end gap-2"
+      >
         {vue === "documents" ? <input type="hidden" name="vue" value="documents" /> : null}
         <label className="flex min-w-0 flex-1 flex-col gap-1 md:max-w-80">
           <span className="text-small text-fg-muted">Recherche</span>
           <span className="relative">
-            <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted" />
-            <Input name="q" defaultValue={q} placeholder={vue === "documents" ? "Nom du fichier…" : "Titre ou contenu…"} className="pl-9" maxLength={60} />
+            <Search
+              aria-hidden
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted"
+            />
+            <Input
+              name="q"
+              defaultValue={q}
+              placeholder={vue === "documents" ? "Nom du fichier…" : "Titre ou contenu…"}
+              className="pl-9"
+              maxLength={60}
+            />
           </span>
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-44">
@@ -66,7 +88,15 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         </Button>
         {q || categorie ? (
           <Button asChild variant="ghost">
-            <Link href={vue === "documents" ? "/referentiels/documents?vue=documents" : "/referentiels/documents"}>Effacer</Link>
+            <Link
+              href={
+                vue === "documents"
+                  ? "/referentiels/documents?vue=documents"
+                  : "/referentiels/documents"
+              }
+            >
+              Effacer
+            </Link>
           </Button>
         ) : null}
       </form>

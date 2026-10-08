@@ -117,7 +117,10 @@ export function ContactBoard({
                         <Td className="font-mono tabular" onClick={(e) => e.stopPropagation()}>
                           {c.phone ? <PhoneLink phone={c.phone} /> : "—"}
                         </Td>
-                        <Td className="max-w-56 truncate text-fg-muted" onClick={(e) => e.stopPropagation()}>
+                        <Td
+                          className="max-w-56 truncate text-fg-muted"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           {c.email ? (
                             <a className="hover:underline" href={`mailto:${c.email}`}>
                               {c.email}
@@ -163,7 +166,9 @@ export function ContactBoard({
         }}
         eyebrow="// Annuaire"
         title={detail?.name ?? "Contact"}
-        description={detail ? [detail.category, detail.zone].filter(Boolean).join(" · ") : undefined}
+        description={
+          detail ? [detail.category, detail.zone].filter(Boolean).join(" · ") : undefined
+        }
       >
         {!detail ? (
           <div className="flex flex-col gap-3" aria-busy="true">
@@ -354,7 +359,12 @@ function ContactForm({
         ))}
       </datalist>
       <Field label="Nom" required>
-        <Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required maxLength={200} />
+        <Input
+          value={f.name}
+          onChange={(e) => setF({ ...f, name: e.target.value })}
+          required
+          maxLength={200}
+        />
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Téléphone">
@@ -401,7 +411,11 @@ function ContactForm({
         />
       </Field>
       <Field label="Remarque">
-        <Textarea value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} maxLength={1000} />
+        <Textarea
+          value={f.note}
+          onChange={(e) => setF({ ...f, note: e.target.value })}
+          maxLength={1000}
+        />
       </Field>
       {dupes.length ? (
         <div role="alert" className="flex flex-col gap-1 border border-warn/60 p-3 text-small">
@@ -419,12 +433,15 @@ function ContactForm({
               </li>
             ))}
           </ul>
-          <p className="text-fg-muted">Enregistrer à nouveau pour créer quand même un nouveau contact.</p>
+          <p className="text-fg-muted">
+            Enregistrer à nouveau pour créer quand même un nouveau contact.
+          </p>
         </div>
       ) : null}
       <DialogFooter className={id ? "mx-0 mb-0 border-0 px-0" : undefined}>
         <Button type="submit" variant="primary" loading={pending} data-testid="contact-save">
-          <Save aria-hidden /> {id ? "Enregistrer" : dupes.length ? "Créer quand même" : "Créer le contact"}
+          <Save aria-hidden />{" "}
+          {id ? "Enregistrer" : dupes.length ? "Créer quand même" : "Créer le contact"}
         </Button>
       </DialogFooter>
     </form>

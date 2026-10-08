@@ -71,7 +71,8 @@ export function MarkdownView({ content, className }: { content: string; classNam
     if (h) {
       flush();
       const level = (h[1] ?? "#").length;
-      const cls = level === 1 ? "text-h3" : level === 2 ? "text-body-lg font-semibold" : "font-semibold";
+      const cls =
+        level === 1 ? "text-h3" : level === 2 ? "text-body-lg font-semibold" : "font-semibold";
       blocks.push(
         <p key={`h${n}`} className={`${cls} text-fg`}>
           {inline(h[2] ?? "", `h${n}`)}

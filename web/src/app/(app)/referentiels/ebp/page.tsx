@@ -29,7 +29,11 @@ export default async function Page({
         placeholder="Ligne, PtCar, abréviation, vue EBP…"
         hidden={incomplete ? { incomplete: "1" } : undefined}
       >
-        <Button asChild variant={incomplete ? "primary" : "ghost"} className={incomplete ? "" : "border border-border"}>
+        <Button
+          asChild
+          variant={incomplete ? "primary" : "ghost"}
+          className={incomplete ? "" : "border border-border"}
+        >
           <Link
             href={`/referentiels/ebp?${new URLSearchParams(incomplete ? { q } : { q, incomplete: "1" }).toString()}`}
           >
@@ -37,9 +41,18 @@ export default async function Page({
           </Link>
         </Button>
       </RefSearchBar>
-      <RefPager base="/referentiels/ebp" params={params} page={page} totalPages={totalPages} total={total} />
+      <RefPager
+        base="/referentiels/ebp"
+        params={params}
+        page={page}
+        totalPages={totalPages}
+        total={total}
+      />
       {rows.length === 0 ? (
-        <EmptyState title="Aucune correspondance" description="Aucune vue EBP pour cette recherche." />
+        <EmptyState
+          title="Aucune correspondance"
+          description="Aucune vue EBP pour cette recherche."
+        />
       ) : (
         <>
           <div className="hidden md:block">

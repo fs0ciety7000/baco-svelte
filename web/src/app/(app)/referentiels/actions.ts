@@ -31,11 +31,15 @@ function fail(e: unknown): { ok: false; error: string } {
     if (e.status === 404) return { ok: false, error: "Fiche introuvable ou accès refusé." };
     return {
       ok: false,
-      error: field ? `${field[0]} : ${field[1]?.message ?? "invalide"}` : e.response?.message || "Refusé.",
+      error: field
+        ? `${field[0]} : ${field[1]?.message ?? "invalide"}`
+        : e.response?.message || "Refusé.",
     };
   }
-  if (e instanceof z.ZodError) return { ok: false, error: e.issues[0]?.message ?? "Saisie invalide." };
-  if (e instanceof Error && e.message.startsWith("DROIT:")) return { ok: false, error: e.message.slice(6) };
+  if (e instanceof z.ZodError)
+    return { ok: false, error: e.issues[0]?.message ?? "Saisie invalide." };
+  if (e instanceof Error && e.message.startsWith("DROIT:"))
+    return { ok: false, error: e.message.slice(6) };
   return { ok: false, error: "Erreur inattendue, réessayez." };
 }
 
@@ -50,7 +54,10 @@ function coordinator(user: SessionUser) {
 
 // --- Annuaire -------------------------------------------------------------------------------------
 
-export async function saveContact(id: string | null, input: unknown): Promise<Result<{ id: string }>> {
+export async function saveContact(
+  id: string | null,
+  input: unknown,
+): Promise<Result<{ id: string }>> {
   try {
     const user = await need("repertoire:write");
     const c = contactSchema.parse(input);
@@ -79,7 +86,10 @@ export async function deleteContact(id: string): Promise<Result> {
   }
 }
 
-export async function findContactDuplicates(name: string, phone: string): Promise<Result<Contact[]>> {
+export async function findContactDuplicates(
+  name: string,
+  phone: string,
+): Promise<Result<Contact[]>> {
   try {
     await need("repertoire:read");
     return { ok: true, data: await similarContacts(String(name), String(phone)) };
@@ -99,7 +109,10 @@ export async function loadContact(id: string): Promise<Result<Contact>> {
 
 // --- Procédures et documents ----------------------------------------------------------------------
 
-export async function saveProcedure(id: string | null, input: unknown): Promise<Result<{ id: string }>> {
+export async function saveProcedure(
+  id: string | null,
+  input: unknown,
+): Promise<Result<{ id: string }>> {
   try {
     const user = await need("documents:write");
     const p = procedureSchema.parse(input);
@@ -138,7 +151,8 @@ export async function restoreProcedureVersion(
     if (!coordinator(user)) throw new Error("DROIT:Restauration réservée aux coordinateurs.");
     const pb = await pbForRequest();
     const v = await pb.collection("procedure_versions").getOne(pbId.parse(versionId));
-    if (v.procedure !== pbId.parse(procedureId)) throw new Error("DROIT:Version d'une autre procédure.");
+    if (v.procedure !== pbId.parse(procedureId))
+      throw new Error("DROIT:Version d'une autre procédure.");
     await pb.collection("procedures").update(pbId.parse(procedureId), {
       title: v.title,
       category: v.category,

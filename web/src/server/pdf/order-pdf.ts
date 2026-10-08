@@ -1,12 +1,22 @@
 import "server-only";
 
-import { PDFDocument, rgb, StandardFonts, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
+import {
+  PDFDocument,
+  rgb,
+  StandardFonts,
+  type PDFFont,
+  type PDFImage,
+  type PDFPage,
+  type RGB,
+} from "pdf-lib";
 
 import { busStops, c3Label, officeFor, pmrTypeLabel, type PacoOffice } from "@/lib/orders/mail";
 import { parseEmails, type BusDraft, type TaxiDraft } from "@/lib/orders/schemas";
-import { STATUS_LABEL, type Status } from "@/lib/orders/status";
+import type { Status } from "@/lib/orders/status";
 import { brusselsDay, brusselsTime, formatLongDay, formatShortDay } from "@/lib/orders/time";
 import type { OrderMeta, PmrClient, TaxiCompany } from "@/server/data/orders";
+
+import { SNCB_LOGO_PNG_BASE64, SNCB_LOGO_RATIO } from "./sncb-logo";
 
 // Bons de commande PDF (bus C3 et taxi), vectoriels, A4 portrait, lisibles en noir et blanc.
 // Polices standard (Helvetica) : encodage WinAnsi, d'où `safe()` sur tout texte dessiné.
@@ -105,6 +115,8 @@ class Layout {
   y = 0;
   /** Redessiné en haut de chaque nouvelle page (ex. en-tête d'un tableau). */
   onBreak: (() => void) | null = null;
+  /** Logo SNCB de l'en-tête (posé par `setup`). */
+  logo: PDFImage | null = null;
 
   constructor(
     readonly doc: PDFDocument,
@@ -216,8 +228,15 @@ type Party = { name: string; lines: string[] };
 function header(l: Layout, office: PacoOffice, agentName: string, party: Party) {
   const top = l.y;
   let yl = top - 10;
-  l.text("SNCB", MARGIN, yl, { size: 13, bold: true });
-  yl -= 13;
+  // Logo SNCB en haut à gauche (demande du 9 oct. 2026), puis le service émetteur.
+  if (l.logo) {
+    const h = 34;
+    l.page.drawImage(l.logo, { x: MARGIN, y: top - h, width: h * SNCB_LOGO_RATIO, height: h });
+    yl = top - h - 14;
+  } else {
+    l.text("SNCB", MARGIN, yl, { size: 13, bold: true });
+    yl -= 13;
+  }
   l.text("Client Solutions", MARGIN, yl, { bold: true });
   for (const s of [office.name, office.street, office.city, `Tél. ${office.phone}`, office.email]) {
     yl -= 12;
@@ -268,8 +287,9 @@ function title(l: Layout, main: string, sub: string | null, banner: string) {
 
 function numberLine(l: Layout, label: string, number: number, status: Status) {
   l.text(`${label} n° ${number || "—"}`, MARGIN, l.y - 10, { size: 11, bold: true });
-  const st = `Statut : ${STATUS_LABEL[status]}`;
-  l.textRight(st, MARGIN + WIDTH, l.y - 10, { size: 10, bold: status === "annule" });
+  // Plus de « Statut » sur le bon (demande du 9 oct. 2026) ; seule une annulation reste signalée au fournisseur.
+  if (status === "annule")
+    l.textRight("ANNULÉ", MARGIN + WIDTH, l.y - 10, { size: 10, bold: true });
   l.y -= 16;
 }
 
@@ -311,6 +331,7 @@ async function setup(titleText: string, runningTitle: string, ctx: PdfContext) {
   doc.setCreationDate(at);
   doc.setModificationDate(at);
   const l = new Layout(doc, font, bold, runningTitle);
+  l.logo = await doc.embedPng(SNCB_LOGO_PNG_BASE64);
   l.addPage(true);
   return { doc, font, l, at };
 }

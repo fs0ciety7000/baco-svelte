@@ -56,12 +56,16 @@ export default async function Page({
       {!detail ? (
         <>
           <p className="text-small text-fg-muted">
-            <span className="font-mono text-fg tabular">{shown.length}</span> ligne(s) · choisissez-en une.
+            <span className="font-mono text-fg tabular">{shown.length}</span> ligne(s) ·
+            choisissez-en une.
           </p>
           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="lines-grid">
             {shown.map((l) => (
               <li key={l.line} className="min-w-0">
-                <Link href={`/referentiels/lignes?ligne=${encodeURIComponent(l.line)}`} className="block">
+                <Link
+                  href={`/referentiels/lignes?ligne=${encodeURIComponent(l.line)}`}
+                  className="block"
+                >
                   <ListCard
                     title={<span className="font-mono">{l.line}</span>}
                     meta={`${l.stations} gares${l.district ? ` · ${l.district}` : ""}`}
@@ -123,7 +127,9 @@ export default async function Page({
             </summary>
             <div className="mt-2 flex flex-col gap-2">
               {detail.crossings.length === 0 ? (
-                <p className="text-small text-fg-muted">Aucun PN au référentiel pour cette ligne.</p>
+                <p className="text-small text-fg-muted">
+                  Aucun PN au référentiel pour cette ligne.
+                </p>
               ) : null}
               {detail.crossings.map((c) => (
                 <div key={c.id} className="flex items-start gap-2 border border-border px-2 py-1.5">
@@ -137,7 +143,12 @@ export default async function Page({
                 </div>
               ))}
               {detail.crossings.length ? (
-                <Button asChild variant="ghost" size="sm" className="self-start border border-border">
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="self-start border border-border"
+                >
                   <Link href={`/operations/carte-pn?q=${encodeURIComponent(detail.line)}`}>
                     <MapPin aria-hidden className="size-4" /> Ouvrir dans la Carte PN
                   </Link>

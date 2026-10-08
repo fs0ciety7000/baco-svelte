@@ -170,9 +170,18 @@ try {
 	check('numéro de bon attribué', bo.status === 200 && bo.json.number > 0, `n° ${bo.json?.number}`);
 	const bid = bo.json.id;
 	const patch = (token, body) => api('PATCH', `/api/collections/bus_orders/records/${bid}`, { token, body });
-	let t = await patch(u.token, { status: 'envoye' });
-	check('envoi refusé sans e-mail fournisseur', t.status === 400, `HTTP ${t.status}`);
-	t = await patch(u.token, { company: withMail.json.id, status: 'envoye' });
+	// Envoi validé = terminé directement, même sans adresse e-mail (PDF seul) — décision du 9 oct. 2026.
+	const direct = await api('POST', '/api/collections/bus_orders/records', {
+		token: u.token,
+		body: { status: 'brouillon', created_by: u.id, company: noMail.json.id, reason: 'Test envoi direct' }
+	});
+	const dt = await api('PATCH', `/api/collections/bus_orders/records/${direct.json.id}`, { token: u.token, body: { status: 'termine' } });
+	check(
+		'brouillon → terminé sans e-mail (heure d\'envoi posée)',
+		dt.status === 200 && !!dt.json.sent_at && dt.json.sent_by === u.id && !!dt.json.ended_at,
+		`HTTP ${dt.status}`
+	);
+	let t = await patch(u.token, { company: withMail.json.id, status: 'envoye' });
 	check('brouillon → envoyé', t.status === 200 && t.json.sent_by === u.id && !!t.json.sent_at, `HTTP ${t.status}`);
 	t = await patch(u.token, { sent_by: roles.admin.id });
 	check('sent_by non modifiable', t.status >= 400, `HTTP ${t.status}`);

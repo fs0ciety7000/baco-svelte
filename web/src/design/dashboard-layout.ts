@@ -8,6 +8,8 @@ export const WIDGET_IDS = [
   "raccourcis",
   "trains",
   "main-courante",
+  "perturbations",
+  "travaux",
   "equipe",
 ] as const;
 export type WidgetId = (typeof WIDGET_IDS)[number];

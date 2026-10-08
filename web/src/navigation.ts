@@ -113,7 +113,7 @@ export const MODULES: NavModule[] = [
   {
     id: "referentiels",
     href: "/referentiels",
-    label: "Référentiels",
+    label: "Annuaire et données",
     icon: Database,
     tabs: [
       {

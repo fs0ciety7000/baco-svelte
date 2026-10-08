@@ -31,7 +31,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition, type ReactNode } from "react";
 
-import { LogWidget, TrainsWidget, type LogDigest } from "@/components/ops/dashboard-widgets";
+import {
+  DisturbanceWidget,
+  LogWidget,
+  TrainsWidget,
+  type LogDigest,
+} from "@/components/ops/dashboard-widgets";
 import { useShell } from "@/components/shell/shell-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -55,6 +60,8 @@ const TITLES: Record<WidgetId, { eyebrow: string; title: string; wide?: boolean 
   raccourcis: { eyebrow: "Actions", title: "Raccourcis" },
   trains: { eyebrow: "Opérations", title: "Trains perturbés" },
   "main-courante": { eyebrow: "Opérations", title: "Main courante" },
+  perturbations: { eyebrow: "Opérations", title: "Perturbations" },
+  travaux: { eyebrow: "Opérations", title: "Travaux" },
   equipe: { eyebrow: "Équipe", title: "Présents aujourd'hui" },
 };
 
@@ -120,12 +127,19 @@ function WidgetBody({
         <ul className="grid gap-2 @3xl:grid-cols-2">
           {stats.pending.map((o) => (
             <li key={o.id}>
-              <ListCard
-                statusColor={statusColor(o.status)}
-                title={`${o.origin || "?"} → ${o.destination || "?"}`}
-                meta={[o.relation, o.call_time].filter(Boolean).join(" · ") || "—"}
-                aside={<StatusBadge status={o.status} />}
-              />
+              {/* Lien vers le bon (demande du 9 oct. 2026). */}
+              <Link
+                href={`/commandes/bus/${o.id}`}
+                className="block outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                <ListCard
+                  statusColor={statusColor(o.status)}
+                  title={`${o.origin || "?"} → ${o.destination || "?"}`}
+                  meta={[o.relation, o.call_time].filter(Boolean).join(" · ") || "—"}
+                  aside={<StatusBadge status={o.status} />}
+                  className="hover:bg-surface-2"
+                />
+              </Link>
             </li>
           ))}
         </ul>
@@ -152,6 +166,10 @@ function WidgetBody({
       return <TrainsWidget favorites={ops.favorites} />;
     case "main-courante":
       return <LogWidget entries={ops.log} />;
+    case "perturbations":
+      return <DisturbanceWidget kind="incident" allowed={ops.favorites !== null} />;
+    case "travaux":
+      return <DisturbanceWidget kind="travaux" allowed={ops.favorites !== null} />;
     case "equipe":
       return (
         <EmptyState

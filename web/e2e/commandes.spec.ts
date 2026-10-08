@@ -203,19 +203,9 @@ test("bus : création, enregistrement automatique, envoi, confirmation", async (
   await download;
   await expect(page.getByTestId("confirm-banner")).toBeVisible();
   await page.getByTestId("mark-sent").click();
-  await expect(page.getByText("Envoyé", { exact: true }).first()).toBeVisible();
-
-  // Suivi « À confirmer » : panneau latéral puis confirmation (heure et plaque facultatives).
-  await page.goto("/commandes/suivi?vue=a-confirmer");
-  // La commande créée par ce test (jamais une autre commande de la base).
-  await page.getByRole("button", { name: `Ouvrir la commande bus n° ${number}` }).click();
-  await expect(page.getByTestId("order-panel")).toBeVisible();
-  await page.getByTestId("transition-confirme").click();
-  await page.getByLabel("Plaque").first().fill("1-ABC-123");
-  await page.getByRole("dialog").getByRole("button", { name: "Confirmer" }).click();
-  await expect(
-    page.getByTestId("order-panel").getByText("Confirmé", { exact: true }).first(),
-  ).toBeVisible();
+  // Valider l'envoi termine la commande (décision du 9 oct. 2026).
+  await expect(page.getByText("Terminé", { exact: true }).first()).toBeVisible();
+  void number;
   expect(errors).toEqual([]);
 });
 

@@ -53,8 +53,8 @@ export function TransitionButtons({
   const [pending, start] = useTransition();
   const [dialog, setDialog] = useState<Transition | null>(null);
   const list = transitionsFor(status, { coordinator, statusBeforeCancel }).filter(
-    // Seul « brouillon → envoyé » est masqué (« Annuler la confirmation » vise aussi « envoyé »).
-    (t) => !(hideSend && status === "brouillon" && t.to === "envoye"),
+    // Seul l'envoi depuis le brouillon (« Marquer envoyé » → terminé) est masqué : il passe par la feuille d'envoi.
+    (t) => !(hideSend && status === "brouillon" && t.to === "termine"),
   );
 
   const run = (t: Transition, extra: Extra) =>

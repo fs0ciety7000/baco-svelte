@@ -79,7 +79,8 @@ export function SendDialog({
     start(async () => {
       let res: Awaited<ReturnType<typeof transitionOrder>>;
       try {
-        res = await transitionOrder({ kind, id: id ?? "", to: "envoye" });
+        // Valider l'envoi termine la commande (décision du 9 oct. 2026).
+        res = await transitionOrder({ kind, id: id ?? "", to: "termine" });
       } catch {
         toast.error("Serveur injoignable : réessayez dans un instant.");
         return;
@@ -88,7 +89,7 @@ export function SendDialog({
         toast.error(res.error);
         return;
       }
-      toast.success("Commande marquée envoyée.");
+      toast.success("Commande envoyée : statut « Terminé ».");
       onOpenChange(false);
       router.refresh();
     });
@@ -139,7 +140,7 @@ export function SendDialog({
               {noMail ? "Avez-vous transmis le bon ?" : "Avez-vous envoyé l'e-mail ?"}
             </p>
             <p className="text-small text-fg-muted">
-              La commande passe à « Envoyé » seulement si vous le confirmez.
+              La commande passe à « Terminé » seulement si vous le confirmez.
             </p>
           </div>
         ) : null}

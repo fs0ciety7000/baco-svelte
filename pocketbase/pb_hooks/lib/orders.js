@@ -1,11 +1,13 @@
 // Cycle de vie des commandes bus et taxi (docs/design/AUDIT-UX-COMMANDES.md §4, décisions du 8 octobre 2026).
 // brouillon → envoyé → confirmé → en cours → terminé, ou annulé. Pas de « facturé ».
+// Depuis le 9 oct. 2026 : valider l'envoi passe directement à « terminé » (brouillon → terminé) ; le chemin long reste
+// permis pour les commandes déjà « envoyées ».
 
 const KIND = { bus_orders: 'bus', taxi_orders: 'taxi' };
 
 // Transitions permises à tout agent qui écrit des commandes.
 const TRANSITIONS = {
-	brouillon: ['envoye', 'annule'],
+	brouillon: ['envoye', 'termine', 'annule'],
 	envoye: ['brouillon', 'confirme', 'annule'],
 	confirme: ['envoye', 'en_cours', 'termine', 'annule'],
 	en_cours: ['termine'],
@@ -62,9 +64,7 @@ function checkTransition(app, record, from, to, auth) {
 	if (to === 'annule' && !record.getString('cancel_reason').trim()) {
 		throw new BadRequestError("Le motif d'annulation est obligatoire.");
 	}
-	if (to === 'envoye' && from === 'brouillon' && !recipient(app, record)) {
-		throw new BadRequestError("Aucune adresse e-mail pour le fournisseur : impossible de marquer l'envoi.");
-	}
+	// Plus de refus sans adresse e-mail (9 oct. 2026) : sans adresse, le bon part en PDF par un autre canal.
 	return true;
 }
 
@@ -101,6 +101,11 @@ function stamp(record, from, to, auth) {
 	if (fields && from !== 'annule') {
 		record.set(fields[0], now());
 		record.set(fields[1], by);
+	}
+	// Envoi validé directement en « terminé » : l'heure d'envoi est aussi posée (suivi, statistiques).
+	if (to === 'termine' && from === 'brouillon' && !record.getString('sent_at')) {
+		record.set('sent_at', now());
+		record.set('sent_by', by);
 	}
 	if (to === 'annule') record.set('status_before_cancel', from);
 	if (from === 'annule') {

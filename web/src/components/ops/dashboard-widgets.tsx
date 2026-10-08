@@ -12,6 +12,7 @@ import {
   delayTone,
   type Board,
   type BoardRow,
+  type Disturbance,
   type FavoriteStation,
 } from "@/lib/ops/irail";
 import { CATEGORY, type LogCategory } from "@/lib/ops/log";
@@ -167,5 +168,83 @@ export function TrainsWidget({ favorites }: { favorites: FavoriteStation[] | nul
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * Widgets « Perturbations » et « Travaux » (demande du 9 oct. 2026) : messages iRail du réseau, via le relais du
+ * serveur CSM (même source que l'onglet Perturbations de /operations). Rechargés toutes les 5 min, onglet visible.
+ */
+export function DisturbanceWidget({
+  kind,
+  allowed,
+}: {
+  kind: Disturbance["kind"];
+  allowed: boolean;
+}) {
+  const [items, setItems] = useState<Disturbance[] | null>(null);
+  const [error, setError] = useState(false);
+  useEffect(() => {
+    if (!allowed) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/operations/irail/perturbations", { cache: "no-store" });
+        if (!res.ok) throw new Error();
+        const data = (await res.json()) as { items: Disturbance[] };
+        if (!cancelled) {
+          setItems(data.items);
+          setError(false);
+        }
+      } catch {
+        if (!cancelled) setError(true);
+      }
+    };
+    void load();
+    const t = setInterval(() => document.visibilityState === "visible" && void load(), 300_000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [allowed]);
+  if (!allowed) return <EmptyState title="Accès restreint" />;
+  if (error && !items) return <p className="text-small text-warn">iRail ne répond pas.</p>;
+  if (!items) return <Skeleton className="h-20 w-full" />;
+  const list = items.filter((d) => d.kind === kind).sort((a, b) => b.at - a.at);
+  if (!list.length)
+    return (
+      <EmptyState
+        icon={<TriangleAlert className="size-6" />}
+        title="Rien à signaler"
+        description={
+          kind === "incident" ? "Aucune perturbation en cours." : "Aucun travaux annoncé."
+        }
+      />
+    );
+  return (
+    <div className="flex flex-col gap-2">
+      <ul className="flex flex-col gap-2">
+        {list.slice(0, 5).map((d) => (
+          <li key={d.id}>
+            <ListCard
+              statusColor={kind === "incident" ? "var(--danger)" : "var(--warn)"}
+              title={d.title}
+              meta={d.description}
+              aside={
+                <Badge tone={kind === "incident" ? "danger" : "warn"}>
+                  {brusselsTime(new Date(d.at))}
+                </Badge>
+              }
+            />
+          </li>
+        ))}
+      </ul>
+      <Link
+        href="/operations"
+        className="inline-flex min-h-11 items-center text-small text-accent underline-offset-2 hover:underline"
+      >
+        {list.length > 5 ? `Voir les ${list.length} messages` : "Ouvrir les trains en direct"}
+      </Link>
+    </div>
   );
 }

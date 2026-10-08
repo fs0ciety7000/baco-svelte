@@ -20,7 +20,13 @@ export default async function Page({
   return (
     <section className="flex flex-col gap-4" aria-label="PtCar">
       <RefSearchBar action="/referentiels/ptcar" q={q} placeholder="Abréviation, nom FR ou NL…" />
-      <RefPager base="/referentiels/ptcar" params={{ q }} page={page} totalPages={totalPages} total={total} />
+      <RefPager
+        base="/referentiels/ptcar"
+        params={{ q }}
+        page={page}
+        totalPages={totalPages}
+        total={total}
+      />
       {rows.length === 0 ? (
         <EmptyState title="Aucune gare" description="Aucun code PtCar pour cette recherche." />
       ) : (

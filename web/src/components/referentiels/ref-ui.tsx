@@ -33,7 +33,13 @@ export function RefSearchBar({
             aria-hidden
             className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted"
           />
-          <Input name="q" defaultValue={q} placeholder={placeholder} className="pl-9" maxLength={60} />
+          <Input
+            name="q"
+            defaultValue={q}
+            placeholder={placeholder}
+            className="pl-9"
+            maxLength={60}
+          />
         </span>
       </label>
       {children}
@@ -73,7 +79,13 @@ export function RefPager({
       </p>
       {totalPages > 1 ? (
         <div className="flex gap-2">
-          <Button asChild variant="ghost" size="sm" className="border border-border" disabled={page <= 1}>
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="border border-border"
+            disabled={page <= 1}
+          >
             <Link href={href(Math.max(1, page - 1))} aria-disabled={page <= 1}>
               Précédent
             </Link>

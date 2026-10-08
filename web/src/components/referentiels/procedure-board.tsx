@@ -38,7 +38,10 @@ const at = new Intl.DateTimeFormat("fr-BE", {
   minute: "2-digit",
 });
 const excerpt = (s: string) => {
-  const t = s.replace(/[#*>`-]/g, "").replace(/\s+/g, " ").trim();
+  const t = s
+    .replace(/[#*>`-]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
   return t.length > 160 ? `${t.slice(0, 160)}…` : t;
 };
 const toInput = (p?: Procedure | null): ProcedureInput => ({
@@ -174,7 +177,9 @@ export function ProcedureBoard({
                       >
                         <FileText aria-hidden className="size-4 text-fg-muted" />
                         <span className="min-w-0 flex-1 truncate">{a.name}</span>
-                        {a.category ? <span className="text-small text-fg-muted">{a.category}</span> : null}
+                        {a.category ? (
+                          <span className="text-small text-fg-muted">{a.category}</span>
+                        ) : null}
                       </a>
                     </li>
                   ))}
@@ -183,7 +188,8 @@ export function ProcedureBoard({
             ) : null}
             <section className="flex flex-col gap-2" aria-label="Historique">
               <h3 className="label-mono text-fg-muted">
-                <History aria-hidden className="mr-1 inline size-4" /> Historique ({data.versions.length})
+                <History aria-hidden className="mr-1 inline size-4" /> Historique (
+                {data.versions.length})
               </h3>
               {data.versions.length === 0 ? (
                 <p className="text-small text-fg-muted">Aucune version antérieure.</p>
@@ -196,7 +202,9 @@ export function ProcedureBoard({
                       key={v.id}
                       className="flex items-center gap-2 border border-border px-2 py-1 text-small"
                     >
-                      <span className="font-mono text-fg-muted tabular">{d ? at.format(d) : ""}</span>
+                      <span className="font-mono text-fg-muted tabular">
+                        {d ? at.format(d) : ""}
+                      </span>
                       <span className="min-w-0 flex-1 truncate">{v.by || "Import BACO"}</span>
                       {canManage ? (
                         <Button
@@ -306,12 +314,25 @@ function ProcedureForm({
         ))}
       </datalist>
       <Field label="Titre" required>
-        <Input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} required maxLength={300} />
+        <Input
+          value={f.title}
+          onChange={(e) => setF({ ...f, title: e.target.value })}
+          required
+          maxLength={300}
+        />
       </Field>
       <Field label="Catégorie">
-        <Input list="proc-cat" value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} maxLength={60} />
+        <Input
+          list="proc-cat"
+          value={f.category}
+          onChange={(e) => setF({ ...f, category: e.target.value })}
+          maxLength={60}
+        />
       </Field>
-      <Field label="Contenu (Markdown)" hint="Titres #, listes -, **gras**, liens [texte](https://…).">
+      <Field
+        label="Contenu (Markdown)"
+        hint="Titres #, listes -, **gras**, liens [texte](https://…)."
+      >
         <Textarea
           value={f.content}
           onChange={(e) => setF({ ...f, content: e.target.value })}
