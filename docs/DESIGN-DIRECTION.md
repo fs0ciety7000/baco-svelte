@@ -164,7 +164,7 @@ de chaque paire texte/fond dans les 5 thèmes (AAA pour le texte du thème Contr
 - B201 : trois colonnes de périodes en desktop (onglets en mobile), transports liés aux commandes (lien), saisie
   manuelle en pointillés.
 
-## Module PMR (session 3) — à valider
+## Module PMR (session 3) — **validé le 8 octobre 2026**
 
 - Mêmes briques que Commandes : listes en table dense / cartes mobiles avec bordure de statut, détail en panneau
   latéral, historique en `Timeline`, vues enregistrées en puces avec compteur (matériel).
