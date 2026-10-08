@@ -14,10 +14,11 @@ RUN apk add --no-cache ca-certificates unzip wget \
 
 COPY --chown=pb:pb pb_migrations /pb/pb_migrations
 COPY --chown=pb:pb pb_hooks /pb/pb_hooks
+COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 USER pb
 VOLUME /pb_data
 EXPOSE 8090
 HEALTHCHECK --interval=30s --timeout=5s CMD wget -qO- http://127.0.0.1:8090/api/health || exit 1
-# Les migrations s'appliquent automatiquement au démarrage.
-CMD ["pocketbase", "serve", "--http=0.0.0.0:8090", "--dir=/pb_data", "--migrationsDir=/pb/pb_migrations", "--hooksDir=/pb/pb_hooks"]
+# Migrations appliquées au démarrage ; superuser créé depuis PB_ADMIN_EMAIL / PB_ADMIN_PASSWORD (Coolify).
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
