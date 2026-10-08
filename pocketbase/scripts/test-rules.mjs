@@ -37,7 +37,7 @@ if (!su.json?.token) throw new Error(`Connexion superuser impossible (${su.statu
 const root = su.json.token;
 
 const suffix = Math.random().toString(36).slice(2, 8);
-const roles = { admin: null, user: null, reader: null, otto_agent: null, denied: null };
+const roles = { admin: null, user: null, reader: null, otto_agent: null, denied: null, moderator: null };
 const created = [];
 // Fiches de test supprimées par le superuser : leurs lignes d'audit sont nettoyées à la fin.
 const auditIds = [];
@@ -52,6 +52,7 @@ try {
 				password,
 				passwordConfirm: password,
 				name: `Test ${role}`,
+				username: `t${role.replace('_', '')}${suffix}`,
 				role: role === 'denied' ? 'user' : role,
 				// Comptes créés sans grants/denies (comme par l'interface admin) : le hook doit les normaliser.
 				...(role === 'denied' ? { denies: ['otto:write'] } : {}),
@@ -396,6 +397,106 @@ try {
 	const eqo = await api('GET', '/api/collections/pmr_equipment/records?perPage=1', { token: roles.otto_agent.token });
 	check('otto_agent ne lit pas le matériel', eqo.status !== 200 || eqo.json.totalItems === 0, `HTTP ${eqo.status}`);
 	for (const [c, id] of [['pmr_assists', aid], ['pmr_equipment', eqa.json?.id], ['pmr_zones', zone.json?.id]]) {
+		if (!id) continue;
+		await api('DELETE', `/api/collections/${c}/records/${id}`, { token: root });
+		auditIds.push(id);
+	}
+
+	// --- Opérations : main courante, notifications, passages à niveau, trains suivis ---
+	const mod = roles.moderator;
+	for (const r of [u, roles.reader, mod]) await api('PATCH', `/api/collections/users/records/${r.id}`, { token: root, body: { district: 'Sud-Ouest' } });
+	const lg = await api('POST', '/api/collections/ops_log/records', {
+		token: u.token,
+		body: { body: `Essai @tmoderator${suffix} voir le PN`, category: 'info', author: u.id, urgent: true }
+	});
+	check('agent publie une entrée (statut, heure, district, mention posés)', lg.status === 200 && lg.json.status === 'active' && !!lg.json.occurred_at && lg.json.district === 'Sud-Ouest' && lg.json.mentions?.includes(mod.id), `HTTP ${lg.status}`);
+	const lid = lg.json?.id;
+	const lgF = await api('POST', '/api/collections/ops_log/records', { token: u.token, body: { body: 'x', category: 'info', author: roles.admin.id } });
+	check('auteur non forgeable', lgF.status >= 400, `HTTP ${lgF.status}`);
+	const lgM = await api('POST', '/api/collections/ops_log/records', { token: u.token, body: { body: 'x', category: 'info', author: u.id, mentions: [roles.admin.id] } });
+	check('mentions non forgeables', lgM.status >= 400, `HTTP ${lgM.status}`);
+	const lgR = await api('POST', '/api/collections/ops_log/records', { token: roles.reader.token, body: { body: 'x', category: 'info', author: roles.reader.id } });
+	check('lecteur ne publie pas', lgR.status >= 400, `HTTP ${lgR.status}`);
+	const lgO = await api('GET', '/api/collections/ops_log/records?perPage=1', { token: roles.otto_agent.token });
+	check('otto_agent ne lit pas la main courante', lgO.status !== 200 || lgO.json.totalItems === 0, `HTTP ${lgO.status}`);
+	const lgRd = await api('GET', `/api/collections/ops_log/records/${lid}`, { token: roles.reader.token });
+	check('lecteur lit une entrée', lgRd.status === 200, `HTTP ${lgRd.status}`);
+	const nMod = await api('GET', `/api/collections/notifications/records?filter=${encodeURIComponent(`source_id="${lid}"`)}`, { token: mod.token });
+	check('mention notifiée (une seule, même si urgente)', nMod.json?.items?.length === 1 && nMod.json.items[0].kind === 'mention' && nMod.json.items[0].link.startsWith('/operations/main-courante'), JSON.stringify(nMod.json?.items?.map((i) => i.kind)));
+	const nRd = await api('GET', `/api/collections/notifications/records?filter=${encodeURIComponent(`source_id="${lid}"`)}`, { token: roles.reader.token });
+	check('urgence notifiée aux lecteurs du district', nRd.json?.items?.length === 1 && nRd.json.items[0].kind === 'urgent', `${nRd.json?.items?.length}`);
+	const nOt = await api('GET', `/api/collections/notifications/records?filter=${encodeURIComponent(`source_id="${lid}"`)}`, { token: roles.otto_agent.token });
+	check('otto_agent pas notifié', (nOt.json?.items?.length ?? 0) === 0, `${nOt.json?.items?.length}`);
+	const nAll = await api('GET', `/api/collections/notifications/records?perPage=200`, { token: u.token });
+	check("l'agent ne voit que ses notifications", (nAll.json?.items ?? []).every((i) => i.user === u.id), `${nAll.json?.items?.length}`);
+	const nid = nMod.json?.items?.[0]?.id;
+	let np = await api('PATCH', `/api/collections/notifications/records/${nid}`, { token: u.token, body: { read_at: new Date().toISOString() } });
+	check("on ne marque pas lue la notification d'un autre", np.status >= 400, `HTTP ${np.status}`);
+	np = await api('PATCH', `/api/collections/notifications/records/${nid}`, { token: mod.token, body: { title: 'Faux titre' } });
+	check('notification non modifiable (titre)', np.status >= 400, `HTTP ${np.status}`);
+	np = await api('PATCH', `/api/collections/notifications/records/${nid}`, { token: mod.token, body: { read_at: new Date().toISOString() } });
+	check('destinataire marque lu', np.status === 200 && !!np.json.read_at, `HTTP ${np.status}`);
+	const nf = await api('POST', '/api/collections/notifications/records', { token: roles.admin.token, body: { user: u.id, kind: 'systeme', title: 'Faux' } });
+	check('personne ne crée de notification par l API (BUG-8 v1)', nf.status >= 400, `HTTP ${nf.status}`);
+	const lp = (body, token = u.token) => api('PATCH', `/api/collections/ops_log/records/${lid}`, { token, body });
+	let lr = await lp({ body: 'Essai corrigé' });
+	check('auteur corrige son entrée (edited_at posé)', lr.status === 200 && !!lr.json.edited_at, `HTTP ${lr.status}`);
+	lr = await lp({ body: 'Pas à moi' }, roles.denied.token);
+	check("un agent ne modifie pas l'entrée d'un autre", lr.status >= 400, `HTTP ${lr.status}`);
+	lr = await lp({ edited_at: '' });
+	check('edited_at non forgeable', lr.status >= 400, `HTTP ${lr.status}`);
+	lr = await lp({ status: 'retiree' });
+	check('retrait sans motif refusé', lr.status === 400, `HTTP ${lr.status}`);
+	lr = await lp({ status: 'retiree', retired_reason: 'Doublon' });
+	check("l'auteur retire dans les 15 min", lr.status === 200 && lr.json.status === 'retiree', `HTTP ${lr.status}`);
+	const hid = await api('GET', `/api/collections/ops_log/records/${lid}`, { token: roles.reader.token });
+	check('entrée retirée masquée aux autres agents', hid.status === 404, `HTTP ${hid.status}`);
+	lr = await lp({ status: 'active' });
+	check("l'auteur ne rétablit pas (coordinateur)", lr.status === 403, `HTTP ${lr.status}`);
+	lr = await lp({ status: 'active' }, mod.token);
+	check('coordinateur rétablit', lr.status === 200 && lr.json.retired_reason === '', `HTTP ${lr.status}`);
+	const lev = await api('GET', `/api/collections/ops_log_events/records?sort=at&perPage=50&filter=${encodeURIComponent(`entry="${lid}"`)}`, { token: roles.reader.token });
+	const lchain = (lev.json?.items ?? []).map((i) => `${i.kind}:${i.field}`).join(',');
+	check('historique de l entrée', lchain === 'create:,edit:body,retire:status,restore:status', lchain);
+	const levw = await api('POST', '/api/collections/ops_log_events/records', { token: roles.admin.token, body: { entry: lid, kind: 'edit', at: new Date().toISOString() } });
+	check("personne n'écrit l'historique de la main courante", levw.status >= 400, `HTTP ${levw.status}`);
+	const rd = await api('POST', '/api/collections/ops_log_reads/records', { token: roles.reader.token, body: { entry: lid, user: roles.reader.id } });
+	check('lecteur marque « Lu »', rd.status === 200, `HTTP ${rd.status}`);
+	const rd2 = await api('POST', '/api/collections/ops_log_reads/records', { token: roles.reader.token, body: { entry: lid, user: u.id } });
+	check('« Lu » au nom d un autre refusé', rd2.status >= 400, `HTTP ${rd2.status}`);
+	const ld = await api('DELETE', `/api/collections/ops_log/records/${lid}`, { token: mod.token });
+	check('coordinateur ne supprime pas (admin seulement)', ld.status >= 400, `HTTP ${ld.status}`);
+
+	// Passages à niveau : lecture large, écriture coordinateurs (BUG-1 de la v1 : UPDATE ouvert à tous).
+	const pn = await api('POST', '/api/collections/level_crossings/records', { token: mod.token, body: { line: 'L.999', number: '12 bis', zone: 'FMS', active: true, updated_by: mod.id } });
+	check('coordinateur crée un PN', pn.status === 200, `HTTP ${pn.status} ${JSON.stringify(pn.json?.data ?? '')}`);
+	const pnU = await api('PATCH', `/api/collections/level_crossings/records/${pn.json?.id}`, { token: roles.reader.token, body: { address: '<img src=x onerror=alert(1)>', updated_by: roles.reader.id } });
+	check('lecteur ne modifie pas un PN', pnU.status >= 400, `HTTP ${pnU.status}`);
+	const pnA = await api('PATCH', `/api/collections/level_crossings/records/${pn.json?.id}`, { token: u.token, body: { address: 'x', updated_by: u.id } });
+	check('agent ne modifie pas un PN', pnA.status >= 400, `HTTP ${pnA.status}`);
+	const pnL = await api('GET', `/api/collections/level_crossings/records/${pn.json?.id}`, { token: roles.reader.token });
+	check('lecteur lit un PN', pnL.status === 200, `HTTP ${pnL.status}`);
+	const pnO = await api('GET', '/api/collections/level_crossings/records?perPage=1', { token: roles.otto_agent.token });
+	check('otto_agent ne lit pas les PN', pnO.status !== 200 || pnO.json.totalItems === 0, `HTTP ${pnO.status}`);
+	const pnD = await api('POST', '/api/collections/level_crossings/records', { token: mod.token, body: { line: 'L.999', number: '12 bis', updated_by: mod.id } });
+	check('PN en double (ligne + n°) refusé', pnD.status >= 400, `HTTP ${pnD.status}`);
+
+	// Trains suivis : propres à l'agent, 10 au maximum, aujourd'hui ou demain.
+	const bxl = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Brussels' }).format(new Date());
+	const tw = await api('POST', '/api/collections/train_watches/records', { token: u.token, body: { user: u.id, train: 'IC2134', day: bxl } });
+	check('agent suit un train', tw.status === 200 && tw.json.threshold_min === 5, `HTTP ${tw.status}`);
+	const twO = await api('GET', `/api/collections/train_watches/records/${tw.json?.id}`, { token: roles.reader.token });
+	check("un autre agent ne voit pas le suivi", twO.status === 404, `HTTP ${twO.status}`);
+	const twF = await api('POST', '/api/collections/train_watches/records', { token: u.token, body: { user: roles.reader.id, train: 'IC1', day: bxl } });
+	check('suivi au nom d un autre refusé', twF.status >= 400, `HTTP ${twF.status}`);
+	const twP = await api('POST', '/api/collections/train_watches/records', { token: u.token, body: { user: u.id, train: 'IC2', day: '2020-01-01' } });
+	check('suivi d un jour passé refusé', twP.status === 400, `HTTP ${twP.status}`);
+	let lastW = 200;
+	for (let i = 0; i < 10; i++) lastW = (await api('POST', '/api/collections/train_watches/records', { token: u.token, body: { user: u.id, train: `S${100 + i}`, day: bxl } })).status;
+	check('11e train suivi refusé', lastW === 400, `HTTP ${lastW}`);
+	const twOtto = await api('POST', '/api/collections/train_watches/records', { token: roles.otto_agent.token, body: { user: roles.otto_agent.id, train: 'IC1', day: bxl } });
+	check('otto_agent ne suit pas de train (live:read)', twOtto.status >= 400, `HTTP ${twOtto.status}`);
+	for (const [c, id] of [['ops_log', lid], ['level_crossings', pn.json?.id]]) {
 		if (!id) continue;
 		await api('DELETE', `/api/collections/${c}/records/${id}`, { token: root });
 		auditIds.push(id);

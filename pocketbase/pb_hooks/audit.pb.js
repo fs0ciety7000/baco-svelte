@@ -9,18 +9,18 @@ onRecordCreateRequest((e) => {
 	e.next();
 	const audit = require(`${__hooks}/lib/audit.js`);
 	audit.write(e.app, 'create', e.record, {}, audit.snapshot(e.record), e.auth);
-}, 'users', 'bus_companies', 'bus_orders', 'taxi_orders', 'bus_drivers', 'bus_contacts', 'bus_company_lines', 'taxi_companies', 'pmr_clients', 'order_templates', 'b201_reports', 'line_stations', 'pmr_zones', 'pmr_assists', 'pmr_equipment');
+}, 'users', 'bus_companies', 'bus_orders', 'taxi_orders', 'bus_drivers', 'bus_contacts', 'bus_company_lines', 'taxi_companies', 'pmr_clients', 'order_templates', 'b201_reports', 'line_stations', 'pmr_zones', 'pmr_assists', 'pmr_equipment', 'ops_log', 'level_crossings');
 
 onRecordUpdateRequest((e) => {
 	const audit = require(`${__hooks}/lib/audit.js`);
 	const before = audit.snapshot(e.record.original());
 	e.next();
 	audit.write(e.app, 'update', e.record, before, audit.snapshot(e.record), e.auth);
-}, 'users', 'bus_companies', 'bus_orders', 'taxi_orders', 'bus_drivers', 'bus_contacts', 'bus_company_lines', 'taxi_companies', 'pmr_clients', 'order_templates', 'b201_reports', 'line_stations', 'pmr_zones', 'pmr_assists', 'pmr_equipment');
+}, 'users', 'bus_companies', 'bus_orders', 'taxi_orders', 'bus_drivers', 'bus_contacts', 'bus_company_lines', 'taxi_companies', 'pmr_clients', 'order_templates', 'b201_reports', 'line_stations', 'pmr_zones', 'pmr_assists', 'pmr_equipment', 'ops_log', 'level_crossings');
 
 onRecordDeleteRequest((e) => {
 	const audit = require(`${__hooks}/lib/audit.js`);
 	const before = audit.snapshot(e.record);
 	e.next();
 	audit.write(e.app, 'delete', e.record, before, {}, e.auth);
-}, 'users', 'bus_companies', 'bus_orders', 'taxi_orders', 'bus_drivers', 'bus_contacts', 'bus_company_lines', 'taxi_companies', 'pmr_clients', 'order_templates', 'b201_reports', 'line_stations', 'pmr_zones', 'pmr_assists', 'pmr_equipment');
+}, 'users', 'bus_companies', 'bus_orders', 'taxi_orders', 'bus_drivers', 'bus_contacts', 'bus_company_lines', 'taxi_companies', 'pmr_clients', 'order_templates', 'b201_reports', 'line_stations', 'pmr_zones', 'pmr_assists', 'pmr_equipment', 'ops_log', 'level_crossings');

@@ -246,10 +246,12 @@ function importLineStations(app, dir, report) {
 }
 
 // --- Module PMR : zones (graine), matériel (pmr_data), prestations (movement_interventions analysées) ---
+// Dépôts : ceux de la v1 (carte PN), base de l'itinéraire vers un PN. FNR n'existe que pour les PN (district à préciser).
 const ZONES = [
-	{ code: 'FMS', label: 'Mons', district: 'Sud-Ouest' },
-	{ code: 'FTY', label: 'Tournai', district: 'Sud-Ouest' },
-	{ code: 'FCR', label: 'Charleroi', district: 'Sud-Ouest' }
+	{ code: 'FMS', label: 'Mons', district: 'Sud-Ouest', depot: ['Mons', 50.4557, 3.9395] },
+	{ code: 'FTY', label: 'Tournai', district: 'Sud-Ouest', depot: ['Tournai', 50.613056, 3.396944] },
+	{ code: 'FCR', label: 'Charleroi', district: 'Sud-Ouest', depot: ['Charleroi', 50.404444, 4.438611] },
+	{ code: 'FNR', label: 'Namur', district: '', depot: null }
 ];
 
 function importPmr(app, dir, report) {
@@ -270,6 +272,11 @@ function importPmr(app, dir, report) {
 		r.set('label', z.label);
 		r.set('district', z.district);
 		r.set('stations', Object.keys(stations[z.code]).sort());
+		if (z.depot) {
+			r.set('depot_label', z.depot[0]);
+			r.set('depot_lat', z.depot[1]);
+			r.set('depot_lon', z.depot[2]);
+		}
 		app.save(r);
 		zoneIds[z.code] = r.id;
 	}
@@ -481,6 +488,138 @@ function importAudit(app, dir, report) {
 	}
 }
 
+// --- Module Opérations : main courante (+ « Lu » depuis les réactions), passages à niveau ---
+// Polygones de zone de la v1 (pn.service.js), seulement pour les PN connus par leur position (zone à valider).
+const PN_POLYGONS = {
+	FTY: [[3.171566, 50.762703], [3.259986, 50.703089], [3.42234, 50.54589], [3.60959, 50.519025], [3.666147, 50.505289], [4.17826, 50.713701], [3.849421, 50.746417], [3.633609, 50.715668]],
+	FMS: [[3.907979, 50.329412], [4.255675, 50.431412], [4.228154, 50.721537], [3.666565, 50.505424], [3.684118, 50.409855]],
+	FCR: [[4.378195, 50.73055], [4.235961, 50.505222], [4.248338, 50.457706], [4.223177, 50.210008], [4.4918, 50.055506], [4.543671, 50.086156], [4.564718, 50.206071], [4.53854, 50.39926], [4.685786, 50.465597], [4.56453, 50.517162], [4.536164, 50.537715]]
+};
+function inPolygon(lon, lat, poly) {
+	let inside = false;
+	for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+		const xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1];
+		if (yi > lat !== yj > lat && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
+	}
+	return inside;
+}
+
+function importOperations(app, dir, report) {
+	const ops = require(`${__hooks}/lib/operations.js`);
+	const districtOf = {};
+	for (const u of app.findAllRecords('users')) districtOf[u.id] = u.getString('district');
+
+	const lcol = app.findCollectionByNameOrId('ops_log');
+	const entryIds = {};
+	report.ops_log = 0;
+	report.ops_log_skipped = 0;
+	for (const m of readJson(`${dir}/data/main_courante.json`)) {
+		if (!m.user_id || districtOf[m.user_id] === undefined || !String(m.message_content || '').trim()) {
+			report.ops_log_skipped++;
+			continue;
+		}
+		const r = new Record(lcol);
+		r.set('legacy_id', m.id);
+		r.set('body', String(m.message_content).slice(0, 4000));
+		r.set('category', 'info');
+		r.set('occurred_at', toDate(m.created_at));
+		r.set('urgent', !!m.is_urgent);
+		r.set('district', districtOf[m.user_id] || '');
+		r.set('status', 'active');
+		r.set('author', m.user_id);
+		r.set('mentions', ops.mentionsFrom(app, m.message_content, m.user_id));
+		const edited = m.updated_at && new Date(m.updated_at).getTime() - new Date(m.created_at).getTime() > 60000;
+		if (edited) r.set('edited_at', toDate(m.updated_at));
+		app.save(r);
+		keepCreated(app, 'ops_log', r.id, m.created_at);
+		entryIds[m.id] = r.id;
+		report.ops_log++;
+	}
+	// Réactions (toutes 👍) → « Lu », une par agent et par entrée.
+	const rcol = app.findCollectionByNameOrId('ops_log_reads');
+	const seen = {};
+	report.ops_log_reads = 0;
+	for (const x of readJson(`${dir}/data/log_reactions.json`)) {
+		const entry = entryIds[x.log_id];
+		const key = `${entry}:${x.user_id}`;
+		if (!entry || districtOf[x.user_id] === undefined || seen[key]) continue;
+		seen[key] = true;
+		const r = new Record(rcol);
+		r.set('entry', entry);
+		r.set('user', x.user_id);
+		app.save(r);
+		keepCreated(app, 'ops_log_reads', r.id, x.created_at);
+		report.ops_log_reads++;
+	}
+
+	// Passages à niveau : pn_data (zone reprise telle quelle) puis positions seules de temp_geo_data.
+	const pcol = app.findCollectionByNameOrId('level_crossings');
+	const keys = {};
+	const points = [];
+	report.level_crossings = 0;
+	report.level_crossings_no_position = 0;
+	report.level_crossings_no_zone = 0;
+	report.level_crossings_rejected = 0;
+	for (const p of readJson(`${dir}/data/pn_data.json`)) {
+		const number = ops.pnNumber(p.pn);
+		const line = String(p.ligne_nom || '').trim().toUpperCase().replace(/^L\.?\s*/, 'L.');
+		if (!number || !/^L\.[0-9]{1,3}[A-Z]?$/.test(line) || keys[`${line}|${number}`]) {
+			report.level_crossings_rejected++;
+			continue;
+		}
+		keys[`${line}|${number}`] = true;
+		const r = new Record(pcol);
+		r.set('legacy_id', p.id);
+		r.set('line', line);
+		r.set('number', number);
+		r.set('bk', ops.bkValue(p.bk));
+		r.set('address', String(p.adresse || '').trim().slice(0, 500));
+		const pos = ops.latLon(p.geo);
+		if (pos) {
+			r.set('lat', pos.lat);
+			r.set('lon', pos.lon);
+			points.push(pos);
+		} else report.level_crossings_no_position++;
+		const zone = String(p.zone || '').trim().toUpperCase();
+		if (/^[A-Z0-9]{2,10}$/.test(zone)) r.set('zone', zone);
+		else report.level_crossings_no_zone++;
+		r.set('active', true);
+		r.set('source', 'baco');
+		app.save(r);
+		keepCreated(app, 'level_crossings', r.id, p.created_at);
+		report.level_crossings++;
+	}
+	report.level_crossings_positions = 0;
+	const tempPath = `${dir}/data/temp_geo_data.json`;
+	if (exists(tempPath)) {
+		for (const t of readJson(tempPath)) {
+			const d = ops.denomination(t.denomination);
+			const pos = ops.latLon(t.position);
+			if (!d || !pos || keys[`${d.line}|${d.number}`]) continue;
+			// Même PN déjà connu à moins de 200 m (numérotation différente) : ignoré.
+			const near = points.some((q) => Math.abs(q.lat - pos.lat) < 0.0018 && Math.abs(q.lon - pos.lon) < 0.0028);
+			if (near) continue;
+			keys[`${d.line}|${d.number}`] = true;
+			const r = new Record(pcol);
+			r.set('line', d.line);
+			r.set('number', d.number);
+			r.set('lat', pos.lat);
+			r.set('lon', pos.lon);
+			let zone = '';
+			for (const code of Object.keys(PN_POLYGONS)) if (inPolygon(pos.lon, pos.lat, PN_POLYGONS[code])) zone = code;
+			r.set('zone', zone);
+			r.set('notes', 'Position seule (reprise BACO) : adresse, BK et zone à vérifier.');
+			r.set('active', true);
+			r.set('source', 'positions');
+			app.save(r);
+			points.push(pos);
+			report.level_crossings_positions++;
+		}
+	}
+}
+
+const OPS_COLLECTIONS = ['notifications', 'train_watches', 'ops_log_events', 'ops_log_reads', 'ops_log', 'level_crossings'];
+
 // Collections du module Commandes, dans l'ordre de purge (dépendances d'abord).
 const PMR_COLLECTIONS = ['pmr_events', 'pmr_assist_legacy', 'pmr_assists', 'pmr_equipment', 'pmr_zones'];
 const ORDER_COLLECTIONS = [
@@ -499,6 +638,7 @@ const ORDER_COLLECTIONS = [
 ];
 
 /**
+ * scope = 'operations' : main courante et passages à niveau seuls (comptes et zones gardés) ;
  * scope = 'all' : tout (comptes compris) ; scope = 'pmr' : zones, matériel, prestations (fiches clients gardées) ;
  * scope = 'commandes' : Commandes + PMR (les prestations pointent vers les fiches clients réimportées), les comptes
  * existants sont gardés (rejouer l'import sur une base qui a déjà ses comptes, sans les empreintes).
@@ -513,7 +653,13 @@ function run(app, dir, reset, scope) {
 		app.runInTransaction((tx) => {
 			// Les prestations PMR pointent vers pmr_clients : purgées avec le module Commandes (qui réimporte les fiches).
 			const names =
-				scope === 'pmr' ? PMR_COLLECTIONS : scope === 'commandes' ? [...PMR_COLLECTIONS, ...ORDER_COLLECTIONS] : ['audit_log', ...PMR_COLLECTIONS, ...ORDER_COLLECTIONS];
+				scope === 'pmr'
+					? PMR_COLLECTIONS
+					: scope === 'operations'
+						? OPS_COLLECTIONS
+						: scope === 'commandes'
+							? [...OPS_COLLECTIONS, ...PMR_COLLECTIONS, ...ORDER_COLLECTIONS]
+							: ['audit_log', ...OPS_COLLECTIONS, ...PMR_COLLECTIONS, ...ORDER_COLLECTIONS];
 			for (const name of names) {
 				// SQL direct : pas de hooks (historique, audit) ni de cascade à rejouer pendant la purge.
 				tx.db().newQuery(`DELETE FROM ${name}`).execute();
@@ -526,6 +672,10 @@ function run(app, dir, reset, scope) {
 		if (scope === 'pmr') {
 			importPmr(tx, dir, report);
 			tx.db().newQuery("UPDATE pmr_clients SET last_activity = created WHERE last_activity = '' OR last_activity IS NULL").execute();
+			return;
+		}
+		if (scope === 'operations') {
+			importOperations(tx, dir, report);
 			return;
 		}
 		if (scope === 'all') importUsers(tx, dir, report);
@@ -550,6 +700,7 @@ function run(app, dir, reset, scope) {
 		// Dernière activité des fiches : leur date de création BACO (`updated` vaut la date de l'import ; aucun lien
 		// n'est repris de BACO).
 		tx.db().newQuery("UPDATE pmr_clients SET last_activity = created WHERE last_activity = '' OR last_activity IS NULL").execute();
+		importOperations(tx, dir, report);
 		if (scope === 'all') importAudit(tx, dir, report);
 	});
 	return report;
