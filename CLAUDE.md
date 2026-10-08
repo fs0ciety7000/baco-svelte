@@ -37,7 +37,7 @@ gelée** (v1, branche `ccr-5dca0da8-4yg4i6`) : ne pas le modifier.
 | 4 | Données : schéma PocketBase, règles d'accès, import | 🔄 données BACO du 8 oct. importées sur l'instance de test (5 collections) ; migration réelle **en une fois à la bascule** |
 | 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 **Commandes** livré en session 3 (schéma + 66 contrôles de règles, bus, taxi, envoi `.eml` + PDF, suivi, B201, E2E) : **validé le 8 oct.** ; **PMR validé le 8 oct.** (schéma + 105 contrôles de règles, prestations, collage DICOS, clients, matériel, E2E) ; suivant : Opérations |
 | 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | ✅ 8 oct. — https://test-csm.fs0ciety.org en ligne ; projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
-| — | Hotfix sécurité BACO (`supabase/migrations/20261008120000_security_hotfix.sql`) | ✅ appliqué par l'utilisateur (SQL Editor) le 8 oct., vérifié : 0 ERROR (36 avant). Suite **non appliquée** : `20261008130000_hotfix_followup.sql` (test NULL de `get_my_role()`), accord requis ; protection des mots de passe compromis encore désactivée |
+| — | Hotfix sécurité BACO (`supabase/migrations/20261008120000_security_hotfix.sql`) | ✅ appliqué par l'utilisateur (SQL Editor) le 8 oct., vérifié : 0 ERROR (36 avant). Suite **non appliquée** : `20261008130000_hotfix_followup.sql` (test NULL de `get_my_role()`) et `20261008140000_pn_data_update_fix.sql` (XSS stocké carte PN), accord requis ; protection des mots de passe compromis encore désactivée |
 
 **Ne pas commencer une étape sans validation de l'utilisateur.** Les captures desktop (1440×900) et
 mobile (390×844) sont soumises avant de généraliser un design.
@@ -305,6 +305,11 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - 2026-10-08 — **Module PMR validé** (captures). Durées de conservation 12 / 24 mois et texte libre visible des lecteurs
   jusqu'à l'anonymisation : acceptés, à confirmer avec le DPO. Accord de l'utilisateur pour la branche
   `occ-studios-showcase` (captures de démo sur base fictive + `showcase/README.md`, demande de la session du site studio).
+- 2026-10-08 — Branche `occ-studios-showcase` poussée (orpheline, 4 captures fictives + README). **Module Opérations** :
+  audit `docs/design/AUDIT-UX-OPERATIONS.md` (13 bugs v1, 12 questions soumises). Vérifié en lecture sur Supabase :
+  **XSS stocké de la carte PN dans BACO** (`pn_data` modifiable par tout compte connecté, popup `setHTML` sans
+  échappement) → correctif `supabase/migrations/20261008140000_pn_data_update_fix.sql` préparé, **non appliqué**
+  (aucun code de BACO `main` n'écrit `pn_data`). `/operationnel`, `/lignes`, `/ptcar` → Référentiels ; `/planning` → Équipe.
 
 
 ---
