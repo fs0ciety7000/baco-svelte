@@ -9,13 +9,23 @@ import { PMR_TYPE_CODES } from "./model";
 
 type PmrType = (typeof PMR_TYPE_CODES)[number];
 
-/** Codes d'assistance DICOS connus → type PMR CSM. Complété au fil des imports ; tout code inconnu → « AUTRE ». */
+// Codes d'assistance DICOS connus → type PMR CSM. On mappe d'abord par `symbol` (plus stable que `typeId`), repli
+// sur `typeId`, puis « AUTRE ». Confirmés sur données réelles le 8 oct. 2026.
+export const DICOS_SYMBOL: Record<string, PmrType> = {
+  "blind-person": "NV",
+  "electric-wheelchair": "CRE",
+  "fixed-wheelchair": "CRF",
+  "manual-wheelchair": "CRF",
+  "folding-wheelchair": "CRP",
+  "reduced-mobility": "MR",
+};
 export const DICOS_TYPE: Record<string, PmrType> = {
   "pmr-bp": "NV", // blind-person
   "pmr-ew": "CRE", // electric-wheelchair
-  "pmr-mw": "CRF", // manual-wheelchair (hypothèse, à confirmer)
-  "pmr-fw": "CRP", // folding-wheelchair (hypothèse)
-  "pmr-rm": "MR", // reduced-mobility (hypothèse)
+  "pmr-wc": "CRF", // fixed-wheelchair
+  "pmr-mw": "CRF", // manual-wheelchair
+  "pmr-fw": "CRP", // folding-wheelchair
+  "pmr-rm": "MR", // reduced-mobility
 };
 
 /** Statut DICOS → statut CSM. `clientStatus = Absent` l'emporte (voir mapMission). */
@@ -148,7 +158,7 @@ export function travelerSummary(traveler: MissionInput["traveler"]): {
     for (const item of d) {
       const q = n(item.quantity) || 1;
       pax += q;
-      const type = DICOS_TYPE[str(item.typeId)] ?? "AUTRE";
+      const type = DICOS_SYMBOL[str(item.symbol)] ?? DICOS_TYPE[str(item.typeId)] ?? "AUTRE";
       if (!best || q > best.q) best = { type, q };
     }
     return { type: best?.type ?? (full + light > 0 ? "MR" : ""), pax: clampPax(pax) };

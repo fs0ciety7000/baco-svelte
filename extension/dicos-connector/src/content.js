@@ -105,10 +105,12 @@
           continue;
         }
         let merged = item;
-        if (id && type) {
+        if (id) {
           await gate();
+          // reservationType si connu (certaines missions de liste ne le portent pas → on tente sans).
+          const q = type ? `?reservationType=${encodeURIComponent(type)}` : "";
           try {
-            const detail = await dicos(`${API}/${encodeURIComponent(id)}?reservationType=${encodeURIComponent(type)}`);
+            const detail = await dicos(`${API}/${encodeURIComponent(id)}${q}`);
             merged = { ...item, ...detail };
           } catch (err) {
             if (err && err.code === "expired") throw err;

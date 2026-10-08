@@ -70,6 +70,26 @@ describe("mapping DICOS", () => {
       type: "AUTRE",
       pax: 1,
     });
+    // Codes réels confirmés le 8 oct. 2026 (par symbole d'abord, repli typeId).
+    expect(
+      travelerSummary({
+        disableds: [{ typeId: "pmr-wc", quantity: 3, symbol: "fixed-wheelchair" }],
+        fullAssistances: 3,
+      }),
+    ).toEqual({ type: "CRF", pax: 6 });
+    expect(
+      travelerSummary({
+        disableds: [{ typeId: "pmr-fw", quantity: 1, symbol: "folding-wheelchair" }],
+        fullAssistances: 1,
+      }),
+    ).toEqual({ type: "CRP", pax: 2 });
+    // Symbole inconnu mais typeId connu → repli sur typeId.
+    expect(
+      travelerSummary({ disableds: [{ typeId: "pmr-bp", symbol: "x", quantity: 1 }] }),
+    ).toEqual({
+      type: "NV",
+      pax: 1,
+    });
   });
 
   it("type et nombre depuis la liste (compteurs seuls)", () => {
