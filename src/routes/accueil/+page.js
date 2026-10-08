@@ -1,45 +1,29 @@
-import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+import { supabase } from '$lib/supabase';
 
 export const ssr = false;
 
-// On récupère 'fetch' dans les paramètres de la fonction load
-export async function load({ parent, fetch }) {
-    const parentData = await parent();
-    let session = parentData.session;
+export async function load({ parent }) {
+	const { user } = await parent();
 
-    // ASTUCE : On crée un client temporaire qui utilise le fetch de SvelteKit
-    // Cela supprime l'erreur "using window.fetch"
-    const supabaseLoad = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
-        global: { fetch: fetch }
-    });
+	let savedConfig = [];
+	let savedTheme = 'default';
 
-    // Si pas de session via le parent, on la récupère proprement avec notre client
-    if (!session) {
-        const { data } = await supabaseLoad.auth.getSession();
-        session = data.session;
-    }
+	if (user) {
+		const { data, error } = await supabase
+			.from('user_preferences')
+			.select('dashboard_config, theme')
+			.eq('user_id', user.id)
+			.maybeSingle();
 
-    let savedConfig = [];
-    let savedTheme = 'default';
+		if (!error && data) {
+			savedConfig = data.dashboard_config || [];
+			savedTheme = data.theme || 'default';
+		}
+	}
 
-    if (session?.user) {
-        // On utilise 'supabaseLoad' au lieu de l'import global
-        const { data, error } = await supabaseLoad
-            .from('user_preferences')
-            .select('dashboard_config, theme')
-            .eq('user_id', session.user.id)
-            .maybeSingle();
+	const {
+		data: { session }
+	} = await supabase.auth.getSession();
 
-        if (!error && data) {
-            savedConfig = data.dashboard_config || [];
-            savedTheme = data.theme || 'default';
-        }
-    }
-
-    return {
-        savedConfig,
-        savedTheme,
-        session
-    };
+	return { savedConfig, savedTheme, session };
 }

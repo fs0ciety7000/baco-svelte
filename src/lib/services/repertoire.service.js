@@ -1,7 +1,7 @@
 import { supabase } from '$lib/supabase';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import * as XLSX from 'xlsx';
+import { exportRowsToXlsx } from '$lib/utils/excel.js';
 
 export const RepertoireService = {
     /**
@@ -65,7 +65,7 @@ export const RepertoireService = {
     /**
      * Export Excel/PDF
      */
-    exportData(contacts, type) {
+    async exportData(contacts, type) {
         const flatData = contacts.map(c => ({
             "Nom": c.nom,
             "Groupe": c.groupe || '',
@@ -76,10 +76,7 @@ export const RepertoireService = {
         }));
 
         if (type === 'xlsx') {
-            const ws = XLSX.utils.json_to_sheet(flatData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Repertoire");
-            XLSX.writeFile(wb, `repertoire_${new Date().toISOString().slice(0,10)}.xlsx`);
+            await exportRowsToXlsx(flatData, 'Repertoire', `repertoire_${new Date().toISOString().slice(0,10)}.xlsx`);
         } else {
             const doc = new jsPDF();
             doc.text(`Répertoire BACO - ${new Date().toLocaleDateString()}`, 14, 15);

@@ -1,10 +1,10 @@
 {
-	"name": "baco-svelte",
+	"name": "csm",
 	"engines": {
 		"node": ">=22.12.0"
 	},
 	"private": true,
-	"version": "0.0.1",
+	"version": "2.0.0-alpha.1",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
@@ -19,7 +19,6 @@
 		"test:coverage": "vitest run --coverage"
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-auto": "^7.0.0",
 		"@sveltejs/adapter-node": "^5.5.2",
 		"@sveltejs/kit": "^2.49.1",
 		"@sveltejs/vite-plugin-svelte": "^6.2.1",
@@ -30,9 +29,7 @@
 		"@testing-library/svelte": "^5.3.1",
 		"@vite-pwa/sveltekit": "^1.1.0",
 		"@vitest/ui": "^4.0.17",
-		"autoprefixer": "^10.4.22",
 		"jsdom": "^27.4.0",
-		"postcss": "^8.5.6",
 		"prettier": "^3.7.4",
 		"prettier-plugin-svelte": "^3.4.0",
 		"prettier-plugin-tailwindcss": "^0.7.2",
@@ -45,33 +42,19 @@
 	"dependencies": {
 		"@supabase/ssr": "^0.8.0",
 		"@supabase/supabase-js": "^2.91.0",
-		"@tiptap/core": "^3.13.0",
-		"@tiptap/extension-heading": "^3.13.0",
-		"@tiptap/pm": "^3.13.0",
-		"@tiptap/starter-kit": "^3.13.0",
-		"carta-md": "^4.11.1",
 		"chart.js": "^4.5.1",
-		"clsx": "^2.1.0",
 		"easymde": "^2.20.0",
 		"emoji-picker-element": "^1.28.1",
-		"flatpickr": "^4.6.13",
+		"exceljs": "^4.4.0",
 		"gridstack": "^12.4.2",
 		"html2canvas": "^1.4.1",
 		"isomorphic-dompurify": "^2.34.0",
-		"jspdf": "^3.0.4",
+		"jspdf": "^4.2.1",
 		"jspdf-autotable": "^5.0.2",
-		"leaflet": "^1.9.4",
 		"lucide-svelte": "^0.561.0",
-		"mapbox-gl": "^3.18.1",
-		"maplibre-gl": "^5.1.0",
+		"maplibre-gl": "^6.13.0",
 		"marked": "^17.0.1",
-		"notyf": "^3.10.0",
-		"pdf-lib": "^1.17.1",
 		"pg": "^8.20.0",
-		"snarkdown": "^2.0.0",
-		"svelte-dnd-action": "^0.9.68",
-		"svelte-sonner": "^1.0.7",
-		"tailwind-merge": "^2.2.1",
-		"xlsx": "^0.18.5"
+		"svelte-dnd-action": "^0.9.68"
 	}
 }

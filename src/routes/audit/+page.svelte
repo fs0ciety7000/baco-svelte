@@ -173,11 +173,8 @@
     try {
       const rows = buildExportRows(await fetchAllFilteredLogs());
       if (rows.length === 0) { toast.error("Aucun log à exporter"); return; }
-      const XLSX = (await import('xlsx')).default || (await import('xlsx'));
-      const worksheet = XLSX.utils.json_to_sheet(rows);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Audit Logs");
-      XLSX.writeFile(workbook, `Audit_Logs_${new Date().toISOString().split('T')[0]}.xlsx`);
+      const { exportRowsToXlsx } = await import('$lib/utils/excel.js');
+      await exportRowsToXlsx(rows, 'Audit Logs', `Audit_Logs_${new Date().toISOString().split('T')[0]}.xlsx`);
       toast.success(`${rows.length} log(s) exporté(s) en Excel`);
     } catch (e) {
       console.error(e);

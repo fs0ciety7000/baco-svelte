@@ -18,11 +18,9 @@
     let usersList = $state([]);
     let filteredUsers = $state([]);
 
-    // Mode maintenance & gate
+    // Mode maintenance
     let maintenanceMode = $state(false);
     let togglingMaintenance = $state(false);
-    let gateMode = $state(false);
-    let togglingGate = $state(false);
 
     // Modal création utilisateur
     let showCreateModal = $state(false);
@@ -61,7 +59,6 @@
         try {
             const settings = await AdminService.getAppSettings();
             maintenanceMode = settings.maintenance_mode || false;
-            gateMode = settings.gate_mode || false;
         } catch (e) {
             console.warn("Impossible de charger les settings");
         }
@@ -200,25 +197,6 @@
         }
     }
 
-    // --- MODE GATE (FAÇADE) ---
-    function toggleGate() {
-        const action = gateMode ? 'désactiver' : 'activer';
-        openConfirmModal(
-            `Voulez-vous ${action} le mode façade ? ${!gateMode ? 'Le site sera complètement masqué. Seul le code secret permet d\'y accéder.' : ''}`,
-            async () => {
-                togglingGate = true;
-                try {
-                    await AdminService.setGateMode(!gateMode);
-                    gateMode = !gateMode;
-                    toast.success(`Mode façade ${gateMode ? 'activé' : 'désactivé'}`);
-                } catch (e) {
-                    toast.error("Erreur lors du changement de mode");
-                } finally {
-                    togglingGate = false;
-                }
-            }
-        );
-    }
 
     // --- BACKUP ---
     let backupState = $state('idle'); // 'idle' | 'loading' | 'done' | 'error'
@@ -311,24 +289,6 @@
             </div>
         </div>
         <div class="flex items-center gap-2 flex-wrap">
-            <!-- Bouton Mode Gate (Façade) -->
-            <button
-                onclick={toggleGate}
-                disabled={togglingGate}
-                class="flex items-center gap-2 px-3 py-2 rounded-xl font-bold text-xs transition-all hover:scale-105 disabled:opacity-50
-                    {gateMode
-                        ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border border-purple-500/30'
-                        : 'bg-white/5 hover:bg-white/10 text-gray-500 border border-white/10'}"
-                title={gateMode ? 'Désactiver la façade (Code: BACO ou Konami)' : 'Activer la façade'}
-            >
-                {#if togglingGate}
-                    <Loader2 size={16} class="animate-spin" />
-                {:else}
-                    <Lock size={16} />
-                {/if}
-                <span class="hidden md:inline">{gateMode ? 'Façade ON' : 'Façade'}</span>
-            </button>
-
             <!-- Bouton Mode Maintenance -->
             <button
                 onclick={toggleMaintenance}

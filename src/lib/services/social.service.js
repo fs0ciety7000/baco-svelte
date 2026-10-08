@@ -1,12 +1,5 @@
 import { supabase } from '$lib/supabase';
 
-export const REACTIONS = [
-    { type: 'like', emoji: '👍', label: 'Jaime' },
-    { type: 'love', emoji: '❤️', label: 'Adore' },
-    { type: 'fire', emoji: '🔥', label: 'Feu' },
-    { type: 'laugh', emoji: '😂', label: 'Rire' }
-];
-
 // Barre d'emojis "standards" pour les commentaires (pas de nouvelle table nécessaire,
 // simples caractères unicode insérés tels quels dans le texte)
 export const QUICK_EMOJIS = [
@@ -16,10 +9,6 @@ export const QUICK_EMOJIS = [
 
 const EMOJI_NAME_REGEX = /^[a-z0-9_-]{2,32}$/;
 const MAX_EMOJI_SIZE = 100 * 1024; // 100 Ko
-
-function emojiFor(type) {
-    return REACTIONS.find(r => r.type === type)?.emoji || '👍';
-}
 
 async function notifyUser(userIdTarget, { title, message, type = 'system', link_to = null }) {
     try {
@@ -49,7 +38,6 @@ function extractMentions(text, candidates = []) {
 }
 
 export const SocialService = {
-    REACTIONS,
     extractMentions,
 
     // --- ANNUAIRE (pour mentions & page Découvrir) ---
@@ -60,67 +48,6 @@ export const SocialService = {
             .order('full_name');
         if (error) throw error;
         return data || [];
-    },
-
-    // --- RÉACTIONS ---
-
-    async getLikes(profileId) {
-        const { data, error } = await supabase
-            .from('profile_likes')
-            .select('liker_id, reaction_type')
-            .eq('profile_id', profileId);
-        if (error) throw error;
-        return data || [];
-    },
-
-    async getLikesCount(profileId) {
-        const { count, error } = await supabase
-            .from('profile_likes')
-            .select('id', { count: 'exact', head: true })
-            .eq('profile_id', profileId);
-        if (error) throw error;
-        return count || 0;
-    },
-
-    /**
-     * Définit/bascule la réaction de `likerId` sur le profil `profileId`.
-     * Même réaction re-cliquée -> retirée. Réaction différente -> remplacée.
-     * @returns {string|null} type de réaction actif après l'opération (null si retirée)
-     */
-    async setReaction(profileId, likerId, reactionType, { actorName } = {}) {
-        const { data: existing } = await supabase
-            .from('profile_likes')
-            .select('id, reaction_type')
-            .eq('profile_id', profileId)
-            .eq('liker_id', likerId)
-            .maybeSingle();
-
-        let active = reactionType;
-
-        if (existing) {
-            if (existing.reaction_type === reactionType) {
-                const { error } = await supabase.from('profile_likes').delete().eq('id', existing.id);
-                if (error) throw error;
-                active = null;
-            } else {
-                const { error } = await supabase.from('profile_likes').update({ reaction_type: reactionType }).eq('id', existing.id);
-                if (error) throw error;
-            }
-        } else {
-            const { error } = await supabase.from('profile_likes').insert([{ profile_id: profileId, liker_id: likerId, reaction_type: reactionType }]);
-            if (error) throw error;
-        }
-
-        if (active && profileId !== likerId && actorName) {
-            await notifyUser(profileId, {
-                title: 'Nouvelle réaction',
-                message: `${actorName} a réagi ${emojiFor(active)} à votre profil.`,
-                type: 'social',
-                link_to: `/profil?id=${profileId}`
-            });
-        }
-
-        return active;
     },
 
     // --- COMMENTAIRES ---

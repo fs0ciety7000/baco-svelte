@@ -77,6 +77,23 @@ export const AdminService = {
     },
 
     /**
+     * Sanctions actives d'un utilisateur (Rouge OU Jaune non expiré).
+     * Outil de modération réservé à l'admin : ne jamais afficher sur le profil utilisateur.
+     */
+    async getInfractions(userId) {
+        const { data, error } = await supabase
+            .from('infractions')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('is_active', true)
+            .or('card_type.eq.red, and(card_type.eq.yellow,expires_at.gt.now())')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return data || [];
+    },
+
+    /**
      * Ajoute une infraction (Carton Jaune/Rouge)
      */
     async addInfraction({ userId, type, reason, durationDays = 30, createdBy }) {
@@ -154,38 +171,6 @@ export const AdminService = {
             .from('app_settings')
             .upsert({
                 key: 'maintenance_mode',
-                value: enabled ? 'true' : 'false',
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'key' });
-
-        if (error) throw error;
-    },
-
-    /**
-     * Récupère l'état du mode gate (façade)
-     */
-    async getGateMode() {
-        const { data, error } = await supabase
-            .from('app_settings')
-            .select('value')
-            .eq('key', 'gate_mode')
-            .single();
-
-        if (error) {
-            return false;
-        }
-
-        return data?.value === 'true' || data?.value === true;
-    },
-
-    /**
-     * Active ou désactive le mode gate (façade)
-     */
-    async setGateMode(enabled) {
-        const { error } = await supabase
-            .from('app_settings')
-            .upsert({
-                key: 'gate_mode',
                 value: enabled ? 'true' : 'false',
                 updated_at: new Date().toISOString()
             }, { onConflict: 'key' });

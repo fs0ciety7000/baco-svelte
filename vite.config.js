@@ -1,51 +1,37 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 import { SvelteKitPWA } from '@vite-pwa/sveltekit';
-import tailwindcss from '@tailwindcss/vite'; 
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
 	plugins: [
-        tailwindcss(),
+		tailwindcss(),
 		sveltekit(),
 		SvelteKitPWA({
-			registerType: 'autoUpdate', // Mise à jour auto quand une nouvelle version est déployée
+			registerType: 'autoUpdate',
 			manifest: {
-				name: 'BACO - Gestion',
-				short_name: 'BACO',
-				description: 'Application de gestion opérationnelle',
-				theme_color: '#0f1115', // Couleur du fond (Dark mode)
-				background_color: '#0f1115',
-				display: 'standalone', // Mode "App" sans barre d'URL
-				orientation: 'portrait',
+				name: 'CSM — Client Solutions Management Tool',
+				short_name: 'CSM',
+				description: 'Outil de gestion Client Solutions',
+				lang: 'fr',
+				theme_color: '#0B0E14',
+				background_color: '#0B0E14',
+				display: 'standalone',
 				scope: '/',
-				start_url: '/',
+				start_url: '/accueil',
 				icons: [
-					{
-						src: 'pwa-192x192.png',
-						sizes: '192x192',
-						type: 'image/png'
-					},
-					{
-						src: 'pwa-512x512.png',
-						sizes: '512x512',
-						type: 'image/png'
-					},
-                    {
-						src: 'pwa-512x512.png',
-						sizes: '512x512',
-						type: 'image/png',
-                        purpose: 'any maskable'
-					}
+					{ src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+					{ src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
+					{ src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
 				]
 			},
 			workbox: {
-                // Fichiers à mettre en cache pour le hors-ligne
-				globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-				
+				// Uniquement le shell applicatif : jamais de données authentifiées en cache.
+				globPatterns: ['client/**/*.{js,css,woff2}', 'client/*.{ico,png}'],
+				navigateFallback: null,
+				maximumFileSizeToCacheInBytes: 3 * 1024 * 1024
 			},
-            devOptions: {
-                enabled: true // Pour tester en dev (optionnel)
-            }
+			devOptions: { enabled: false }
 		})
 	]
 });

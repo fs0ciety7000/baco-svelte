@@ -2,8 +2,7 @@ import { error } from '@sveltejs/kit';
 import { createClient } from '@supabase/supabase-js';
 import { gzipSync } from 'node:zlib';
 import pg from 'pg';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
+import { env as publicEnv } from '$env/dynamic/public';
 import { env } from '$env/dynamic/private';
 
 export const config = { runtime: 'nodejs22.x' };
@@ -213,7 +212,7 @@ export async function GET({ request }) {
     const token = request.headers.get('Authorization')?.slice(7) ?? null;
     if (!token) return apiError(401, 'Non authentifié');
 
-    const supabaseAdmin = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    const supabaseAdmin = createClient(publicEnv.PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
         auth: { autoRefreshToken: false, persistSession: false },
     });
 

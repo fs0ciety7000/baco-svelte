@@ -1,179 +1,166 @@
 // src/hooks.server.js
-import { createServerClient } from '@supabase/ssr'
-import { redirect } from '@sveltejs/kit'
+import { createServerClient } from '@supabase/ssr';
+import { redirect, error } from '@sveltejs/kit';
+import { sequence } from '@sveltejs/kit/hooks';
+import { dev } from '$app/environment';
+import { env } from '$env/dynamic/public';
+import { AUTH_COOKIE, SUPABASE_PROXY_PATH } from '$lib/config';
+import { isPublicRoute, canAccessRoute, isAdminLike } from '$lib/server/guards';
 
-// Utilisez l'import statique de SvelteKit, c'est plus fiable côté serveur
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public'
+const SETTINGS_TTL = 30_000;
+let settingsCache = { maintenance: false, at: 0 };
 
-// Cache pour les settings (évite trop de requêtes)
-let settingsCache = { maintenance: false, gate: false, lastCheck: 0 };
-const CACHE_TTL = 30000; // 30 secondes
-
-// Fonction pour valider le gate pass
-function isValidGatePass(pass) {
-  if (!pass) return false;
-  try {
-    const data = JSON.parse(Buffer.from(pass, 'base64').toString());
-    return data.exp > Date.now();
-  } catch {
-    return false;
-  }
+/** Chemins qui ne passent ni par l'auth ni par les gardes (assets, santé, proxy). */
+function isBypassed(path) {
+	return (
+		path.startsWith('/_app/') ||
+		path === '/healthz' ||
+		path === '/sw.js' ||
+		path.startsWith('/workbox-') ||
+		path === '/manifest.webmanifest' ||
+		/\.[a-z0-9]{2,5}$/i.test(path)
+	);
 }
 
-export const handle = async ({ event, resolve }) => {
-  const path = event.url.pathname
+/** 1. Client Supabase serveur (cookies) + helpers de session. */
+const supabaseHandle = async ({ event, resolve }) => {
+	event.locals.supabase = createServerClient(
+		env.PUBLIC_SUPABASE_URL,
+		env.PUBLIC_SUPABASE_ANON_KEY,
+		{
+			cookieOptions: { name: AUTH_COOKIE },
+			cookies: {
+				getAll: () => event.cookies.getAll(),
+				setAll: (cookiesToSet) => {
+					cookiesToSet.forEach(({ name, value, options }) =>
+						event.cookies.set(name, value, {
+							...options,
+							path: '/',
+							sameSite: 'lax',
+							secure: !dev,
+							// Le client navigateur doit pouvoir lire la session (requêtes via le proxy).
+							httpOnly: false
+						})
+					);
+				}
+			}
+		}
+	);
 
-  // 0. EXCLURE les assets statiques et routes internes (AVANT tout le reste)
-  if (
-    path.startsWith('/_app') ||
-    path.startsWith('/favicon') ||
-    path.endsWith('.js') ||
-    path.endsWith('.css') ||
-    path.endsWith('.png') ||
-    path.endsWith('.jpg') ||
-    path.endsWith('.svg') ||
-    path.endsWith('.ico') ||
-    path.endsWith('.webp') ||
-    path.endsWith('.woff') ||
-    path.endsWith('.woff2') ||
-    path.endsWith('.ttf') ||
-    path.startsWith('/api') ||
-    path.startsWith('/rest')
-  ) {
-    event.locals.supabase = createServerClient(
-      PUBLIC_SUPABASE_URL,
-      PUBLIC_SUPABASE_ANON_KEY,
-      {
-        cookies: {
-          getAll: () => event.cookies.getAll(),
-          setAll: (cookiesToSet) => {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              event.cookies.set(name, value, { ...options, path: '/' })
-            )
-          },
-        },
-      }
-    )
-    return resolve(event)
-  }
+	/** getUser() valide le JWT auprès de Supabase (contrairement à getSession()). Mémoïsé par requête. */
+	let userPromise;
+	event.locals.getUser = () => {
+		userPromise ??= event.locals.supabase.auth
+			.getUser()
+			.then(({ data, error: err }) => (err ? null : data.user))
+			.catch(() => null);
+		return userPromise;
+	};
 
-  event.locals.supabase = createServerClient(
-    PUBLIC_SUPABASE_URL,
-    PUBLIC_SUPABASE_ANON_KEY,
-    {
-      cookies: {
-        getAll: () => event.cookies.getAll(),
-        setAll: (cookiesToSet) => {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            event.cookies.set(name, value, { ...options, path: '/' })
-          )
-        },
-      },
-    }
-  )
+	let profilePromise;
+	event.locals.getProfile = () => {
+		profilePromise ??= event.locals.getUser().then(async (user) => {
+			if (!user) return null;
+			const { data } = await event.locals.supabase
+				.from('profiles')
+				.select('id, role, permissions, banned_until, full_name, avatar_url, username')
+				.eq('id', user.id)
+				.single();
+			return data ?? null;
+		});
+		return profilePromise;
+	};
 
-  // 1. CHARGER LES SETTINGS (avec cache) - FORCE REFRESH pour debug
-  const now = Date.now();
-  // Toujours recharger pour être sûr (enlève le cache temporairement)
-  try {
-    const { data } = await event.locals.supabase
-      .from('app_settings')
-      .select('key, value')
-      .in('key', ['maintenance_mode', 'gate_mode']);
+	return resolve(event, {
+		filterSerializedResponseHeaders: (name) =>
+			name === 'content-range' || name === 'x-supabase-api-version'
+	});
+};
 
-    const settings = {};
-    data?.forEach(s => { settings[s.key] = s.value === 'true' || s.value === true; });
+/** 2. Mode maintenance + authentification + autorisation par route. */
+const guardHandle = async ({ event, resolve }) => {
+	const path = event.url.pathname;
 
-    settingsCache = {
-      maintenance: settings.maintenance_mode || false,
-      gate: settings.gate_mode || false,
-      lastCheck: now
-    };
-    
-    console.log('🔒 Gate mode:', settingsCache.gate, '| Maintenance:', settingsCache.maintenance);
-  } catch (e) {
-    console.error('❌ Erreur chargement settings:', e);
-    settingsCache = { maintenance: false, gate: false, lastCheck: now };
-  }
+	if (isBypassed(path) || path.startsWith(SUPABASE_PROXY_PATH)) {
+		return resolve(event);
+	}
 
-  // 2. GATE MODE - PRIORITÉ ABSOLUE
-  const gatePassCookie = event.cookies.get('baco_gate_pass');
-  const hasValidGatePass = isValidGatePass(gatePassCookie);
-  
-  console.log('🚪 Gate check - Path:', path, '| Has pass:', hasValidGatePass, '| Gate active:', settingsCache.gate);
+	const isApi = path.startsWith('/api/');
 
-  if (settingsCache.gate && !hasValidGatePass) {
-    if (path !== '/gate') {
-      console.log('🔴 REDIRECT TO GATE from', path);
-      throw redirect(303, '/gate');
-    }
-  }
+	// Maintenance (lecture anon autorisée par RLS sur app_settings)
+	if (Date.now() - settingsCache.at > SETTINGS_TTL) {
+		const { data } = await event.locals.supabase
+			.from('app_settings')
+			.select('value')
+			.eq('key', 'maintenance_mode')
+			.maybeSingle();
+		settingsCache = { maintenance: data?.value === 'true' || data?.value === true, at: Date.now() };
+	}
 
-  // 3. Vérification de la session
-  const {
-    data: { user },
-  } = await event.locals.supabase.auth.getUser()
+	const user = await event.locals.getUser();
+	event.locals.user = user;
 
-  event.locals.user = user
-  event.locals.session = !!user
+	if (path === '/') {
+		redirect(303, user ? '/accueil' : '/login');
+	}
 
-  // 4. MAINTENANCE MODE
-  if (settingsCache.maintenance && path !== '/maintenance' && path !== '/gate') {
-    let isAdmin = false;
+	if (isPublicRoute(path)) {
+		if (path === '/login' && user) redirect(303, '/accueil');
+		if (path === '/maintenance' && !settingsCache.maintenance)
+			redirect(303, user ? '/accueil' : '/login');
+		return resolve(event);
+	}
 
-    if (user) {
-      const { data: profile } = await event.locals.supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
+	if (!user) {
+		if (isApi) error(401, 'Non authentifié');
+		const redirectTo = path + event.url.search;
+		redirect(303, `/login?redirectTo=${encodeURIComponent(redirectTo)}`);
+	}
 
-      isAdmin = profile?.role === 'admin' || profile?.role === 'sysop';
-    }
+	const profile = await event.locals.getProfile();
+	event.locals.profile = profile;
 
-    if (!isAdmin) {
-      console.log('🔧 REDIRECT TO MAINTENANCE from', path);
-      throw redirect(303, '/maintenance');
-    }
-  }
+	if (profile?.banned_until && new Date(profile.banned_until) > new Date()) {
+		await event.locals.supabase.auth.signOut();
+		redirect(303, '/login?banned=1');
+	}
 
-  if (path === '/maintenance' && !settingsCache.maintenance) {
-    throw redirect(303, user ? '/accueil' : '/');
-  }
+	if (settingsCache.maintenance && !isAdminLike(profile)) {
+		if (isApi) error(503, 'Maintenance en cours');
+		redirect(303, '/maintenance');
+	}
 
-  // 5. Routes publiques
-  // NB: /profil est inclus ici car la session est stockée côté client en localStorage
-  // (pas en cookies) — event.locals.supabase (basé cookies) ne voit donc jamais la
-  // session sur une navigation "fraîche" (lien partagé ouvert dans un nouvel onglet),
-  // ce qui déclenchait un redirect(303,'/') perdant le ?id= au passage. La page
-  // /profil fait déjà sa propre vérification de session côté client (onMount).
-  if (path === '/' || path === '/gate' || path === '/maintenance' || path.startsWith('/auth') || path.startsWith('/rest') || path.startsWith('/api') || path.startsWith('/profil')) {
-    if (user && path === '/') {
-        throw redirect(303, '/accueil')
-    }
-    return resolve(event)
-  }
+	if (!isApi && !canAccessRoute(path, profile)) {
+		redirect(303, '/accueil?denied=1');
+	}
 
-  // 6. Si pas d'utilisateur -> Redirection Login
-  if (!user) {
-    throw redirect(303, '/')
-  }
+	return resolve(event);
+};
 
-  // 7. Protection Spécifique ADMIN
-  if (path.startsWith('/admin')) {
-    const { data: profile } = await event.locals.supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
+/** 3. En-têtes de sécurité (la CSP est gérée par kit.csp dans svelte.config.js). */
+const headersHandle = async ({ event, resolve }) => {
+	const response = await resolve(event);
+	response.headers.set('X-Content-Type-Options', 'nosniff');
+	response.headers.set('X-Frame-Options', 'DENY');
+	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+	response.headers.set(
+		'Permissions-Policy',
+		'camera=(), microphone=(), geolocation=(self), payment=()'
+	);
+	response.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
+	if (!dev)
+		response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+	return response;
+};
 
-    if (profile?.role !== 'admin' && profile?.role !== 'sysop') {
-        throw redirect(303, '/accueil')
-    }
-  }
+export const handle = sequence(supabaseHandle, guardHandle, headersHandle);
 
-  // 8. Exécution de la requête
-  return resolve(event, {
-    filterSerializedResponseHeaders: (name) => name === 'content-range',
-  })
+/** @type {import('@sveltejs/kit').HandleServerError} */
+export function handleError({ error: err, event, status }) {
+	if (status !== 404) {
+		console.error(
+			JSON.stringify({ level: 'error', path: event.url.pathname, status, message: err?.message })
+		);
+	}
+	return { message: status === 404 ? 'Page introuvable' : 'Une erreur inattendue est survenue.' };
 }

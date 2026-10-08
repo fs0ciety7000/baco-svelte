@@ -20,13 +20,12 @@
   import WidgetShift from '$lib/components/widgets/WidgetShift.svelte';
   import WidgetTeamBoard from '$lib/components/widgets/WidgetTeamBoard.svelte';
   import WidgetOtto from '$lib/components/widgets/WidgetOtto.svelte';
-  import WidgetChampionsMois from '$lib/components/widgets/WidgetChampionsMois.svelte';
 
   // --- ICONS ---
   import {
     LayoutGrid, Cloud, Loader2, Plus, X,
     Sun, Car, TrainFront, Accessibility, Link, Calendar, BookOpen, PenLine, Briefcase,
-    Settings2, Users, Palette, Check, Bus, Trophy
+    Settings2, Users, Palette, Check, Bus
   } from 'lucide-svelte';
 
   // --- CSS GRIDSTACK ---
@@ -59,14 +58,6 @@
      icon: Bus,
      desc: 'Réquisitoires et suivis de bus.'
    },
-    champions: {
-      label: 'Champions du mois',
-      component: WidgetChampionsMois,
-      defaultW: 2,
-      defaultH: 1,
-      icon: Trophy,
-      desc: 'Meilleur rédacteur du mois par district.'
-    },
   };
 
   const DEFAULT_LAYOUT = [
@@ -74,8 +65,7 @@
     { type: 'planning', x: 1, y: 0, w: 1, h: 2 },
     { type: 'links', x: 0, y: 1, w: 1, h: 1 },
     { type: 'trains', x: 2, y: 0, w: 2, h: 1 },
-    { type: 'otto', x: 2, y: 1, w: 1, h: 1 },
-    { type: 'champions', x: 0, y: 2, w: 2, h: 1 }
+    { type: 'otto', x: 2, y: 1, w: 1, h: 1 }
   ];
 
   // --- ÉTAT ---
@@ -115,7 +105,9 @@
             else loadedItems = DEFAULT_LAYOUT.map(i => ({ ...i, id: crypto.randomUUID() }));
         }
 
-        items = loadedItems.map(item => {
+        // Ignore les widgets inconnus (ex : anciens widgets supprimés encore présents
+        // dans une config sauvegardée) pour ne pas laisser de cellule vide.
+        items = loadedItems.filter(item => item && WIDGET_REGISTRY[item.type]).map(item => {
             if (item.w === undefined) { 
                  const reg = WIDGET_REGISTRY[item.type]; 
                  return { ...item, x: 0, y: 0, w: reg?.defaultW || 1, h: reg?.defaultH || 1, autoPosition: true };

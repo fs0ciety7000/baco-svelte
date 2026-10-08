@@ -61,10 +61,6 @@ export const ACTIONS = {
     PMR_WRITE: 'pmr:write',
     PMR_DELETE: 'pmr:delete', // Nouveau
 
-    DARTS_READ: 'darts:read',
-    DARTS_WRITE: 'darts:write',
-    DARTS_DELETE: 'darts:delete', // Nouveau
-
     // --- NOUVEAU : GENERATE TAXI ---
     GENERATE_TAXI_READ: 'generate_taxi:read',
     GENERATE_TAXI_WRITE: 'generate_taxi:write',
@@ -85,9 +81,6 @@ export const ACTIONS = {
 
     // --- LIVE (info trafic temps réel) ---
     LIVE_READ: 'live:read',
-
-    // --- CLASSEMENT (page compétitive) ---
-    CLASSEMENT_READ: 'classement:read',
 };
 
 export const ROLE_DEFAULTS = {
@@ -119,13 +112,11 @@ export const ROLE_DEFAULTS = {
         'ops:read', 'ops:write',
         'carte_pn:read', 'carte_pn:write',
         'pmr:read', 'pmr:write',
-        'darts:read', 'darts:write',
         'generate_taxi:read', 'generate_taxi:write',
         'lignes:read', 'lignes:write', // Pas de delete
         'stats:read',
         'deplacements:read', 'deplacements:write', // Pas de delete
-        'live:read',
-        'classement:read'
+        'live:read'
     ],
 
     // USER : Lecture seule sur la plupart des outils pro, écriture sur le "social/quotidien"
@@ -145,11 +136,9 @@ export const ROLE_DEFAULTS = {
         'generate_taxi:read', 'generate_taxi:write',
         'carte_pn:read',
         'pmr:read', 'pmr:write',
-        'darts:read', 'darts:write', // Loisir autorisé
         'stats:read',
         'deplacements:read', 'deplacements:write',
-        'live:read',
-        'classement:read'
+        'live:read'
     ],
 
     // READER : Lecture seule sur tous les modules (rôle par défaut pour les nouveaux utilisateurs)
@@ -167,12 +156,10 @@ export const ROLE_DEFAULTS = {
         'ops:read',
         'carte_pn:read',
         'pmr:read',
-        'darts:read',
         'generate_taxi:read',
         'stats:read',
         'deplacements:read',
-        'live:read',
-        'classement:read'
+        'live:read'
     ]
 };
 

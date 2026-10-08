@@ -1,0 +1,17 @@
+node_modules
+build
+.svelte-kit
+.git
+.github
+.env
+.env.*
+!.env.example
+dev-dist
+coverage
+docs
+supabase
+*.md
+!README.md
+.claude
+.idea
+.vscode

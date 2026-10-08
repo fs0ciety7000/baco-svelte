@@ -13,20 +13,6 @@ export const ProfileService = {
         return data || {};
     },
 
-    async getInfractions(userId) {
-        const { data, error } = await supabase
-            .from('infractions')
-            .select('*')
-            .eq('user_id', userId)
-            .eq('is_active', true)
-            // Filtre : Rouge OU (Jaune non expiré)
-            .or('card_type.eq.red, and(card_type.eq.yellow,expires_at.gt.now())')
-            .order('created_at', { ascending: false });
-            
-        if (error) throw error;
-        return data || [];
-    },
-
     async getAdminUserEmail(userId) {
         // Nécessite une fonction RPC 'admin_get_user_email' dans Supabase
         // Si elle n'existe pas, on retourne null sans planter

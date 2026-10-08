@@ -17,7 +17,6 @@
   import { Minimize } from 'lucide-svelte';
   import { fly, fade } from 'svelte/transition';
   import { cubicIn, cubicOut } from 'svelte/easing';
-  import SeasonalDecorator from '$lib/components/SeasonalDecorator.svelte';
   // Import du store de présence
   import { presenceState } from '$lib/stores/presence.svelte.js';
 
@@ -25,10 +24,9 @@
   // On remplace "let x = y" par "let x = $state(y)" pour la réactivité
   let user = $state(null);
   let loading = $state(true);
-  let isScreenshotFlashing = $state(false);
 
   // On remplace "$: x = ..." par "$derived(...)"
-  let isLoginPage = $derived($page.url.pathname === '/');
+  let isLoginPage = $derived($page.url.pathname === '/login' || $page.url.pathname === '/maintenance');
 
   function handleKeydown(event) {
     if (event.key === 'Escape' && $zenMode) {
@@ -44,36 +42,10 @@
   });
 
   onMount(async () => {
-    // --- 1. LOGIQUE DE FLOU FLASH (SCREENSHOT) ---
-    const handlePrintScreen = async (e) => {
-      if (e.key === 'PrintScreen' || e.keyCode === 44) {
-        isScreenshotFlashing = true;
-        
-        toast.warning("Sécurité : Les données ont été floutées pour la capture.");
-
-        try {
-          await navigator.clipboard.writeText("Contenu protégé - BACO");
-        } catch (err) {
-          // Échec silencieux
-        }
-
-        setTimeout(() => {
-          isScreenshotFlashing = false;
-        }, 1500); 
-      }
-    };
-
-    window.addEventListener('keydown', handlePrintScreen);
-
     // --- 2. AUTHENTICATION ---
     const { data: { session } } = await supabase.auth.getSession();
     user = session?.user;
 
-    if (!user && !isLoginPage) {
-        goto('/');
-    } else if (user && isLoginPage) {
-        goto('/accueil');
-    }
     
     loading = false;
 
@@ -94,13 +66,12 @@
       // Rediriger uniquement sur déconnexion explicite
       if (event === 'SIGNED_OUT') {
         user = null;
-        goto('/');
+        goto('/login');
       }
     });
 
     // --- 3. NETTOYAGE ---
     return () => {
-      window.removeEventListener('keydown', handlePrintScreen);
       subscription.unsubscribe();
     };
   });
@@ -111,8 +82,7 @@
 {#if loading && !isLoginPage}
   <DashboardSkeleton />
 {:else}
-  <div class="min-h-screen flex flex-col bg-deep-space text-gray-900 dark:text-gray-100 transition-all duration-300 relative {isScreenshotFlashing ? 'blur-3xl scale-95 pointer-events-none select-none' : ''}">
-    <SeasonalDecorator />
+  <div class="min-h-screen flex flex-col bg-deep-space text-gray-900 dark:text-gray-100 transition-all duration-300 relative">
     {#if !isLoginPage && !$zenMode}
       <div transition:fade={{ duration: 200 }}>
           <Nav {user} />
@@ -155,7 +125,4 @@
 {/if}
 
 <style>
-  @media print {
-    :global(body) { display: none !important; }
-  }
 </style>

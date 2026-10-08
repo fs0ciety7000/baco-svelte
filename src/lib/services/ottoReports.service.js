@@ -1,4 +1,5 @@
 import { toast } from '$lib/stores/toast.js';
+import { exportRowsToXlsx } from '$lib/utils/excel.js';
 import { normalizeDistrict } from '$lib/utils/districtColors.js';
 
 // Adresse + mail PACO affichés dans l'en-tête du PDF, selon le district du rédacteur de la commande
@@ -48,8 +49,6 @@ function getBase64ImageFromURL(url) {
 export const OttoReportsService = {
     async generateExcel(commandes) {
         try {
-            const XLSX = (await import('xlsx')).default || (await import('xlsx'));
-
             const dataToExport = commandes.map(cmd => ({
                 'Type C3': C3_TYPE_LABELS[cmd.c3_type ?? 2] ?? '-',
                 Relation: cmd.relation,
@@ -65,10 +64,7 @@ export const OttoReportsService = {
                 Créateur: cmd.creator?.full_name || ''
             }));
 
-            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Commandes Otto");
-            XLSX.writeFile(workbook, `Export_Otto_${new Date().toISOString().split('T')[0]}.xlsx`);
+            await exportRowsToXlsx(dataToExport, 'Commandes Otto', `Export_Otto_${new Date().toISOString().split('T')[0]}.xlsx`);
             toast.success("Fichier Excel généré !");
         } catch (e) {
             console.error(e);

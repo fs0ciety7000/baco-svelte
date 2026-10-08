@@ -5,10 +5,9 @@
     import { goto } from '$app/navigation';
     import {
         User, Mail, Shield, Camera, Lock, Save, LogOut,
-        Loader2, CheckCircle, Tag, Cake, Palette,
+        Loader2, Tag, Cake, Palette,
         Briefcase, Hash, Building, MapPin, Smartphone, Phone, FileText,
-        Link2, Check, Bus, Car, Trophy, Code2, ShieldCheck, Medal, Flame, Crown, Award,
-        Heart, MessageCircle, Send, Trash2, Compass, AtSign, Smile, Plus, Upload
+        Link2, Check, MessageCircle, Send, Trash2, Compass, AtSign, Smile, Plus, Upload
     } from 'lucide-svelte';
 
     // Stores & Libs
@@ -17,13 +16,7 @@
     import { supabase } from '$lib/supabase';
     import { currentThemeId, themesConfig, applyTheme } from '$lib/stores/theme';
     import { ProfileService } from '$lib/services/profile.service.js';
-    import { ActivityStatsService } from '$lib/services/activityStats.service.js';
-    import { SocialService, REACTIONS, QUICK_EMOJIS } from '$lib/services/social.service.js';
-    import { computeBadges, getActivityProgress } from '$lib/utils/badges.js';
-    import ActivityCalendar from '$lib/components/ActivityCalendar.svelte';
-
-    // Map nom d'icône (string, défini dans badges.js) -> composant lucide
-    const BADGE_ICONS = { Code2, ShieldCheck, Shield, Bus, Car, Trophy, Medal, Flame, Crown, Heart };
+    import { SocialService, QUICK_EMOJIS } from '$lib/services/social.service.js';
 
     // --- ÉTAT (RUNES) ---
     let isLoading = $state(true);
@@ -49,31 +42,10 @@
     // Mot de passe
     let passwordData = $state({ new: "", confirm: "" });
 
-    // Trust Meter
-    let infractions = $state([]);
-    let trustScore = $state(100);
-    let trustColor = $state("bg-green-500");
-    let trustLabel = $state("Chargement...");
-
-    // Activité / Badges
-    let activityStats = $state({ ottoCount: 0, taxiCount: 0, total: 0 });
-    let activityCalendar = $state({ counts: {}, from: null, to: null });
-    let badges = $derived(computeBadges(profileData, activityStats, likes.length));
-    let activityProgress = $derived(getActivityProgress(activityStats));
     let linkCopied = $state(false);
     let myFullName = $state("");
 
-    // Social (Réactions / Commentaires)
-    let likes = $state([]);
-    let myReaction = $derived(likes.find(l => l.liker_id === currentUser?.id)?.reaction_type || null);
-    let reactionCounts = $derived.by(() => {
-        const map = {};
-        REACTIONS.forEach(r => map[r.type] = 0);
-        likes.forEach(l => { if (map[l.reaction_type] !== undefined) map[l.reaction_type]++; });
-        return map;
-    });
-    let showReactionPicker = $state(false);
-    let isLiking = $state(false);
+    // Commentaires
     let comments = $state([]);
     let newComment = $state("");
     let isPostingComment = $state(false);
@@ -151,7 +123,7 @@
     async function loadAllData() {
         isLoading = true;
         try {
-            await Promise.all([loadProfile(), loadInfractions(), loadActivityStats(), loadSocial()]);
+            await Promise.all([loadProfile(), loadSocial()]);
         } catch(e) {
             console.error(e);
             toast.error("Erreur chargement données");
@@ -162,12 +134,7 @@
 
     async function loadSocial() {
         try {
-            const [l, c] = await Promise.all([
-                SocialService.getLikes(targetUserId),
-                SocialService.getComments(targetUserId)
-            ]);
-            likes = l;
-            comments = c;
+            comments = await SocialService.getComments(targetUserId);
         } catch (e) {
             console.error(e);
         }
@@ -185,49 +152,6 @@
             profileData.email = adminEmail || "Masqué (RPC manquant)";
         } else {
             profileData.email = "Confidentiel";
-        }
-    }
-
-    async function loadActivityStats() {
-        try {
-            // full_name provisoire (profileData pas encore fusionné à ce stade si appelé en parallèle)
-            const data = await ProfileService.getProfile(targetUserId);
-            activityStats = await ActivityStatsService.getUserStats(targetUserId, data.full_name);
-            activityCalendar = await ActivityStatsService.getUserActivityCalendar(targetUserId, data.full_name, 6);
-        } catch (e) {
-            console.error(e);
-        }
-    }
-
-    // --- TRUST METER LOGIC ---
-    async function loadInfractions() {
-        infractions = await ProfileService.getInfractions(targetUserId);
-        calculateTrustScore();
-    }
-
-    function calculateTrustScore() {
-        if (infractions.length === 0) {
-            trustScore = 100; trustColor = "bg-green-500"; trustLabel = "Dossier impeccable !";
-            return;
-        }
-
-        let yellow = 0, red = 0;
-        const MAX_POINTS = 6;
-        infractions.forEach(i => {
-            if (i.card_type === 'yellow') yellow++;
-            if (i.card_type === 'red') red++;
-        });
-
-        const totalPoints = (red * MAX_POINTS) + yellow;
-        let percentage = Math.max(0, 100 - ((totalPoints / MAX_POINTS) * 100));
-        trustScore = Math.round(percentage);
-
-        if (totalPoints < 3) {
-            trustColor = "bg-gradient-to-r from-yellow-300 to-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.4)]"; trustLabel = "Attention (Moyen)";
-        } else if (totalPoints < 6) {
-            trustColor = "bg-gradient-to-r from-orange-500 to-orange-600 shadow-[0_0_15px_rgba(249,115,22,0.4)]"; trustLabel = "Niveau Bas";
-        } else {
-            trustColor = "bg-gradient-to-r from-red-600 to-red-700 shadow-[0_0_15px_rgba(220,38,38,0.4)]"; trustLabel = "Critique (Banni)";
         }
     }
 
@@ -307,22 +231,6 @@
             setTimeout(() => linkCopied = false, 2000);
         } catch (e) {
             toast.error("Impossible de copier le lien");
-        }
-    }
-
-    // --- SOCIAL ---
-    async function handleReact(reactionType) {
-        if (!currentUser || isLiking) return;
-        isLiking = true;
-        showReactionPicker = false;
-        try {
-            const active = await SocialService.setReaction(targetUserId, currentUser.id, reactionType, { actorName: myFullName });
-            likes = likes.filter(l => l.liker_id !== currentUser.id);
-            if (active) likes = [...likes, { liker_id: currentUser.id, reaction_type: active }];
-        } catch (e) {
-            toast.error("Erreur");
-        } finally {
-            isLiking = false;
         }
     }
 
@@ -459,34 +367,6 @@
     </div>
 
     <div class="flex items-center gap-2">
-        <div class="relative">
-            <button
-                onclick={() => showReactionPicker = !showReactionPicker}
-                onblur={() => setTimeout(() => showReactionPicker = false, 150)}
-                disabled={isLiking}
-                class="px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all border disabled:opacity-50
-                    {myReaction ? 'bg-pink-500/15 text-pink-300 border-pink-500/30' : 'bg-white/5 hover:bg-white/10 text-gray-300 border-white/10'}"
-            >
-                {#if myReaction}
-                    <span class="text-base leading-none">{REACTIONS.find(r => r.type === myReaction)?.emoji}</span>
-                {:else}
-                    <Heart size={16} />
-                {/if}
-                {likes.length}
-            </button>
-            {#if showReactionPicker}
-                <div class="absolute top-full mt-1.5 left-0 z-20 bg-[#1a1d24] border border-white/10 rounded-2xl shadow-2xl p-1.5 flex gap-1" in:fly={{ y: -5, duration: 120 }}>
-                    {#each REACTIONS as r}
-                        <button
-                            onmousedown={(e) => e.preventDefault()}
-                            onclick={() => handleReact(r.type)}
-                            class="w-9 h-9 rounded-xl flex items-center justify-center text-lg hover:bg-white/10 transition-all hover:scale-125 {myReaction === r.type ? 'bg-white/10 ring-1 ring-pink-400/50' : ''}"
-                            title={r.label}
-                        >{r.emoji}</button>
-                    {/each}
-                </div>
-            {/if}
-        </div>
         <button onclick={copyProfileLink} class="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 rounded-xl text-sm font-bold flex items-center gap-2 transition-all">
             {#if linkCopied}<Check size={16} class="text-emerald-400"/> Copié !{:else}<Link2 size={16}/> Partager{/if}
         </button>
@@ -527,41 +407,6 @@
             </div>
             <h2 class="text-2xl font-bold text-white mt-4">{profileData.full_name || 'Utilisateur'}</h2>
             <p class="text-gray-400 text-sm mb-4">@{profileData.username || 'user'}</p>
-
-            {#if badges.length > 0}
-                <div class="flex flex-wrap justify-center gap-2">
-                    {#each badges as badge}
-                        {@const Icon = BADGE_ICONS[badge.icon] || Award}
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border {badge.badgeClass} {badge.glow}" title={badge.label}>
-                            <Icon size={13} /> {badge.label}
-                        </span>
-                    {/each}
-                </div>
-            {/if}
-            {#if activityProgress}
-                {@const ProgressIcon = BADGE_ICONS[activityProgress.icon] || Award}
-                <div class="w-full max-w-xs mx-auto mt-3">
-                    <div class="flex items-center justify-between text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">
-                        <span class="flex items-center gap-1"><ProgressIcon size={11}/> {activityProgress.label}</span>
-                        <span>{activityProgress.current}/{activityProgress.target}</span>
-                    </div>
-                    <div class="w-full h-1.5 bg-black/40 rounded-full overflow-hidden">
-                        <div class="h-full bg-gradient-to-r from-orange-500 to-amber-400 rounded-full transition-all duration-700" style="width: {activityProgress.progress}%"></div>
-                    </div>
-                    <p class="text-[10px] text-gray-600 mt-1 text-center">Plus que {activityProgress.remaining} commande{activityProgress.remaining > 1 ? 's' : ''} pour "{activityProgress.label}"</p>
-                </div>
-            {/if}
-            {#if likes.length > 0}
-                <div class="flex justify-center gap-3 mt-3">
-                    {#each REACTIONS as r}
-                        {#if reactionCounts[r.type] > 0}
-                            <span class="flex items-center gap-1 text-xs text-gray-500" title={r.label}>
-                                <span class="text-sm leading-none">{r.emoji}</span> {reactionCounts[r.type]}
-                            </span>
-                        {/if}
-                    {/each}
-                </div>
-            {/if}
           </div>
 
           <div class="space-y-6">
@@ -636,80 +481,6 @@
       </div>
 
       <div class="space-y-8" in:fly={{ x: 20, delay: 200 }}>
-
-        <div class="bg-black/20 border border-white/5 rounded-3xl p-8 shadow-sm relative overflow-hidden">
-          <h2 class="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
-            <Trophy size={20} class="text-amber-400" /> Activité
-          </h2>
-          <div class="grid grid-cols-3 gap-3">
-            <div class="bg-black/30 rounded-2xl p-4 border border-white/5 text-center">
-              <Bus size={18} class="mx-auto mb-2 text-blue-400" />
-              <p class="text-2xl font-extrabold text-white">{activityStats.ottoCount}</p>
-              <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mt-1">Bus (Otto)</p>
-            </div>
-            <div class="bg-black/30 rounded-2xl p-4 border border-white/5 text-center">
-              <Car size={18} class="mx-auto mb-2 text-yellow-400" />
-              <p class="text-2xl font-extrabold text-white">{activityStats.taxiCount}</p>
-              <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mt-1">Taxis</p>
-            </div>
-            <div class="bg-gradient-to-br from-white/10 to-white/5 rounded-2xl p-4 border border-white/10 text-center">
-              <Trophy size={18} class="mx-auto mb-2 text-amber-400" />
-              <p class="text-2xl font-extrabold text-white">{activityStats.total}</p>
-              <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mt-1">Total</p>
-            </div>
-          </div>
-          <a href="/classement" class="mt-4 flex items-center justify-center gap-1.5 text-xs font-bold text-gray-500 hover:text-amber-400 transition-colors">
-            Voir le classement <Trophy size={12} />
-          </a>
-        </div>
-
-        {#if Object.keys(activityCalendar.counts).length > 0 || activityCalendar.from}
-          <div class="bg-black/20 border border-white/5 rounded-3xl p-6 shadow-sm">
-            <h2 class="text-sm font-bold text-gray-300 mb-4 flex items-center gap-2 uppercase tracking-wide">
-              <CheckCircle size={16} class="text-gray-500" /> Activité (6 derniers mois)
-            </h2>
-            <ActivityCalendar counts={activityCalendar.counts} from={activityCalendar.from} to={activityCalendar.to} />
-          </div>
-        {/if}
-
-        <div class="bg-black/20 border border-white/5 rounded-3xl p-8 shadow-sm relative overflow-hidden">
-          <div class="absolute top-0 right-0 p-32 opacity-10 rounded-full blur-3xl pointer-events-none" style="background-color: rgb(var(--color-primary));"></div>
-
-          <h2 class="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
-            <CheckCircle size={20} style="color: rgb(var(--color-primary));" /> Niveau de Confiance
-          </h2>
-          
-          <div class="mb-8">
-            <div class="w-full bg-black/40 rounded-full h-4 overflow-hidden border border-white/5 shadow-inner">
-              <div class="h-4 rounded-full transition-all duration-1000 ease-out {trustColor} relative" style="width: {trustScore}%">
-                <div class="absolute inset-0 bg-white/20 animate-pulse"></div>
-              </div>
-            </div>
-            <div class="flex justify-between items-center mt-3 text-xs font-bold uppercase tracking-wide">
-              <span class="text-gray-400">{trustLabel}</span>
-              <span class="text-white bg-white/10 px-2 py-1 rounded border border-white/10">{trustScore}%</span>
-            </div>
-          </div>
-
-          <div class="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-            {#if infractions.length === 0}
-              <div class="text-center py-8 border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
-                  <CheckCircle size={32} class="mx-auto opacity-30 mb-2" style="color: rgb(var(--color-primary));" />
-                  <p class="text-sm text-gray-400">Aucune infraction active.</p>
-              </div>
-            {:else}
-              {#each infractions as inf}
-                <div class="flex items-start gap-4 p-4 bg-black/30 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                    <div class="w-2 h-2 mt-1.5 rounded-full {inf.card_type === 'red' ? 'bg-red-500 shadow-[0_0_8px_red]' : 'bg-yellow-500 shadow-[0_0_8px_orange]'}"></div>
-                    <div>
-                        <p class="text-sm font-bold text-gray-200">{inf.reason}</p>
-                        <p class="text-xs text-gray-500">{new Date(inf.created_at).toLocaleDateString()}</p>
-                    </div>
-                </div>
-              {/each}
-            {/if}
-          </div>
-        </div>
 
         {#if isMyProfile}
           <div class="bg-black/20 border border-white/5 rounded-3xl p-8 shadow-sm" in:fly={{ x: 20, delay: 300 }}>

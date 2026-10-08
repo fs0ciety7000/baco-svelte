@@ -1,20 +1,28 @@
+import { createBrowserClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+import { browser } from '$app/environment';
+import { env } from '$env/dynamic/public';
+import { AUTH_COOKIE, SUPABASE_PROXY_PATH } from '$lib/config';
 
-// On détermine l'URL à utiliser
-let supabaseUrl = PUBLIC_SUPABASE_URL; // Par défaut : la vraie URL (pour le serveur)
-
-// Si on est dans le navigateur, on passe par le proxy
-if (typeof window !== 'undefined') {
-    // On construit l'URL manuellement pour éviter les erreurs de format
-    // window.location.origin donne "https://baco-inky.vercel.app"
-    supabaseUrl = `${window.location.origin}/api-proxy`;
-}
-
-export const supabase = createClient(supabaseUrl, PUBLIC_SUPABASE_ANON_KEY, {
-    auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true
-    }
-});
+/**
+ * Client Supabase « navigateur ».
+ * - Session stockée en cookie (`csm-auth`) pour que le serveur SvelteKit la voie
+ *   (gardes de route côté serveur, voir hooks.server.js).
+ * - Toutes les requêtes passent par le proxy same-origin, car le réseau de
+ *   l'entreprise bloque *.supabase.co.
+ *
+ * Côté serveur (SSR d'un composant qui importe ce module), on expose un client
+ * anonyme sans session : les données authentifiées se chargent via
+ * `locals.supabase` dans les fichiers +page.server / +layout.server.
+ */
+export const supabase = browser
+	? createBrowserClient(
+			`${window.location.origin}${SUPABASE_PROXY_PATH}`,
+			env.PUBLIC_SUPABASE_ANON_KEY,
+			{
+				cookieOptions: { name: AUTH_COOKIE }
+			}
+		)
+	: createClient(env.PUBLIC_SUPABASE_URL, env.PUBLIC_SUPABASE_ANON_KEY, {
+			auth: { persistSession: false, autoRefreshToken: false }
+		});

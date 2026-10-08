@@ -5,9 +5,8 @@
     import { fly, fade } from 'svelte/transition';
     import {
         ChevronLeft, Shield, Save, Loader2, KeyRound,
-        AlertTriangle, FileWarning, History, CheckCircle,
-        UserX, UserCheck, Copy, X, AlertOctagon,
-        Trophy, Bus, Car, Code2, ShieldCheck, Medal, Flame, Crown, Award, Heart
+        AlertTriangle, FileWarning, History,
+        UserX, UserCheck, Copy, X, AlertOctagon
     } from 'lucide-svelte';
 
     import { supabase } from '$lib/supabase';
@@ -15,27 +14,15 @@
     import { openConfirmModal } from '$lib/stores/modal.js';
     import { AdminService } from '$lib/services/admin.service.js';
     import { ProfileService } from '$lib/services/profile.service.js';
-    import { ActivityStatsService } from '$lib/services/activityStats.service.js';
-    import { SocialService } from '$lib/services/social.service.js';
-    import { computeBadges, getActivityProgress } from '$lib/utils/badges.js';
     import { ACTIONS, ROLE_DEFAULTS } from '$lib/permissions';
-
-    // Map nom d'icône (string, défini dans badges.js) -> composant lucide
-    const BADGE_ICONS = { Code2, ShieldCheck, Shield, Bus, Car, Trophy, Medal, Flame, Crown, Heart };
 
     // --- ÉTAT ---
     let isLoading = $state(true);
     let isSaving = $state(false);
     let user = $state(null);
+    // Sanctions (outil de modération réservé aux admins, jamais affiché sur /profil)
     let infractions = $state([]);
-    let trustScore = $state(100);
 
-    // Activité / Badges
-    let activityStats = $state({ ottoCount: 0, taxiCount: 0, total: 0 });
-    let likesCount = $state(0);
-    let badges = $derived(user ? computeBadges(user, activityStats, likesCount) : []);
-    let activityProgress = $derived(getActivityProgress(activityStats));
-    
     // Modales
     let showInfractionModal = $state(false);
     let showResetModal = $state(false);
@@ -63,13 +50,11 @@
         'EBP': ['ebp:read', 'ebp:write', 'ebp:delete'],
         'Opérationnel': ['ops:read', 'ops:write', 'ops:delete'],
         'Carte PN': ['carte_pn:read', 'carte_pn:write', 'carte_pn:delete'],
-        'DARTS': ['darts:read', 'darts:write', 'darts:delete'],
         'Générateur Taxi': ['generate_taxi:read', 'generate_taxi:write', 'generate_taxi:delete'],
         'Lignes & Arrêts': ['lignes:read', 'lignes:write', 'lignes:delete'],
         'Statistiques': ['stats:read'],
         'Déplacements PMR': ['deplacements:read', 'deplacements:write', 'deplacements:delete'],
         'Live (trafic temps réel)': ['live:read'],
-        'Classement': ['classement:read'],
         'Audit (logs)': ['audit:read']
     };
 
@@ -100,13 +85,8 @@
             // Charger les permissions personnalisées
             userPermissions = profile.permissions || {};
 
-            // Infractions
-            infractions = await ProfileService.getInfractions(userId);
-            calculateTrustScore();
-
-            // Activité (Bus Otto + Taxi)
-            activityStats = await ActivityStatsService.getUserStats(userId, profile.full_name);
-            likesCount = await SocialService.getLikesCount(userId);
+            // Sanctions
+            infractions = await AdminService.getInfractions(userId);
         } catch (e) {
             toast.error("Erreur chargement profil");
             goto('/admin');
@@ -158,17 +138,6 @@
         } finally {
             isSavingPermissions = false;
         }
-    }
-
-    function calculateTrustScore() {
-        if (!infractions.length) { trustScore = 100; return; }
-        
-        let points = 0;
-        infractions.forEach(i => {
-            if(i.is_active) points += (i.card_type === 'red' ? 6 : 1);
-        });
-        
-        trustScore = Math.max(0, 100 - (points / 6 * 100));
     }
 
     // --- ACTIONS ---
@@ -284,28 +253,6 @@
                                     <span class="px-2 py-1 rounded border border-red-500/20 bg-red-500/10 text-xs font-bold uppercase text-red-400 animate-pulse">Banni</span>
                                 {/if}
                             </div>
-                            {#if badges.length > 0}
-                                <div class="flex flex-wrap gap-1.5 justify-center md:justify-start mt-3">
-                                    {#each badges as badge}
-                                        {@const Icon = BADGE_ICONS[badge.icon] || Award}
-                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border {badge.badgeClass}" title={badge.label}>
-                                            <Icon size={11} /> {badge.label}
-                                        </span>
-                                    {/each}
-                                </div>
-                            {/if}
-                            {#if activityProgress}
-                                {@const ProgressIcon = BADGE_ICONS[activityProgress.icon] || Award}
-                                <div class="w-full max-w-xs mt-3">
-                                    <div class="flex items-center justify-between text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">
-                                        <span class="flex items-center gap-1"><ProgressIcon size={11}/> {activityProgress.label}</span>
-                                        <span>{activityProgress.current}/{activityProgress.target}</span>
-                                    </div>
-                                    <div class="w-full h-1.5 bg-black/40 rounded-full overflow-hidden">
-                                        <div class="h-full bg-gradient-to-r from-orange-500 to-amber-400 rounded-full transition-all duration-700" style="width: {activityProgress.progress}%"></div>
-                                    </div>
-                                </div>
-                            {/if}
                         </div>
                     </div>
 
@@ -436,40 +383,6 @@
             </div>
 
             <div class="space-y-8">
-
-                <div class="bg-black/20 border border-white/5 rounded-3xl p-8">
-                    <h3 class="text-lg font-bold text-white mb-6 flex items-center gap-2"><Trophy size={20} class="text-amber-400" /> Activité</h3>
-                    <div class="grid grid-cols-3 gap-3">
-                        <div class="bg-black/30 rounded-2xl p-4 border border-white/5 text-center">
-                            <Bus size={18} class="mx-auto mb-2 text-blue-400" />
-                            <p class="text-2xl font-extrabold text-white">{activityStats.ottoCount}</p>
-                            <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mt-1">Bus (Otto)</p>
-                        </div>
-                        <div class="bg-black/30 rounded-2xl p-4 border border-white/5 text-center">
-                            <Car size={18} class="mx-auto mb-2 text-yellow-400" />
-                            <p class="text-2xl font-extrabold text-white">{activityStats.taxiCount}</p>
-                            <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mt-1">Taxis</p>
-                        </div>
-                        <div class="bg-gradient-to-br from-white/10 to-white/5 rounded-2xl p-4 border border-white/10 text-center">
-                            <Trophy size={18} class="mx-auto mb-2 text-amber-400" />
-                            <p class="text-2xl font-extrabold text-white">{activityStats.total}</p>
-                            <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mt-1">Total</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-black/20 border border-white/5 rounded-3xl p-8 relative overflow-hidden">
-                    <div class="absolute inset-0 opacity-5 bg-gradient-to-br {trustScore > 50 ? 'from-green-500' : 'from-red-500'} to-transparent pointer-events-none"></div>
-                    <h3 class="text-lg font-bold text-white mb-6 flex items-center gap-2"><CheckCircle class="text-gray-400"/> Trust Score</h3>
-                    
-                    <div class="relative w-full h-4 bg-black/40 rounded-full overflow-hidden mb-2">
-                        <div class="h-full transition-all duration-1000 {trustScore > 80 ? 'bg-green-500' : trustScore > 40 ? 'bg-yellow-500' : 'bg-red-500'}" style="width: {trustScore}%"></div>
-                    </div>
-                    <div class="flex justify-between text-xs font-bold uppercase tracking-wider">
-                        <span class="text-gray-400">Fiabilité</span>
-                        <span class="text-white">{Math.round(trustScore)}%</span>
-                    </div>
-                </div>
 
                 <div class="bg-black/20 border border-white/5 rounded-3xl p-8 space-y-4">
                     <h3 class="text-lg font-bold text-white mb-4">Actions</h3>
