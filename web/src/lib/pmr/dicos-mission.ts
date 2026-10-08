@@ -47,11 +47,27 @@ const str = (v: unknown) => (typeof v === "string" ? v : "");
 const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
 
 // L'heure DICOS est déjà locale (« 2026-10-08T18:41:00+02:00 ») : on lit le mur d'horloge, pas d'instant UTC.
-function dayOf(iso: string): string {
-  return /^\d{4}-\d{2}-\d{2}T/.test(iso) ? iso.slice(0, 10) : "";
-}
-function timeOf(iso: string): string {
-  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(iso) ? iso.slice(11, 16) : "";
+// Garde défensive : si DICOS renvoyait un jour un offset UTC (`Z`/`+00:00`), on convertit en Europe/Brussels pour ne
+// pas décaler d'un jour/heure les missions de fin de soirée.
+export function wall(iso: unknown): { day: string; time: string } {
+  if (typeof iso !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(iso)) return { day: "", time: "" };
+  if (!/(Z|[+-]00:00)$/.test(iso)) return { day: iso.slice(0, 10), time: iso.slice(11, 16) };
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return { day: iso.slice(0, 10), time: iso.slice(11, 16) };
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("fr-BE", {
+      timeZone: "Europe/Brussels",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+      .formatToParts(d)
+      .map((p) => [p.type, p.value]),
+  );
+  return { day: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}` };
 }
 
 // Schéma d'entrée tolérant : on ne valide que ce qu'on lit, le reste est ignoré.
@@ -189,10 +205,11 @@ export function mapMission(raw: unknown): { assist: MappedAssist; mission: Mappe
   const dir =
     m.missionType === "Departure" ? "depart" : m.missionType === "Arrival" ? "arrivee" : "";
   const ref = m.reservationDisplayId || m.reservationId || "";
+  const w = wall(m.journey.time);
   const assist: MappedAssist = {
     dicos_id: m.id,
-    day: dayOf(str(m.journey.time)),
-    time: timeOf(str(m.journey.time)),
+    day: w.day,
+    time: w.time,
     station: frName(m.journey.stationName),
     direction: dir,
     mission_type: m.missionType || "",
@@ -227,5 +244,5 @@ export function mapMission(raw: unknown): { assist: MappedAssist; mission: Mappe
 /** Jour de service d'une mission (Europe/Brussels), pour filtrer l'ingestion par jour. */
 export function missionDay(raw: unknown): string {
   const m = missionSchema.safeParse(raw);
-  return m.success ? dayOf(str(m.data.journey.time)) : "";
+  return m.success ? wall(m.data.journey.time).day : "";
 }

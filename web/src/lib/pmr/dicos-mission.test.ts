@@ -95,6 +95,23 @@ describe("mapping DICOS", () => {
     expect(missionDay({ id: "x", journey: {} })).toBe("");
   });
 
+  it("garde défensive : offset UTC converti en Europe/Brussels", () => {
+    // 2026-10-07T23:30:00Z = 2026-10-08 01:30 à Bruxelles (heure d'été, +02:00).
+    const { assist } = mapMission({
+      ...detail,
+      journey: { ...detail.journey, time: "2026-10-07T23:30:00Z" },
+    });
+    expect(assist.day).toBe("2026-10-08");
+    expect(assist.time).toBe("01:30");
+    // Heure d'hiver (+01:00) : 2026-01-07T23:30:00Z = 2026-01-08 00:30 à Bruxelles.
+    const w = mapMission({
+      ...detail,
+      journey: { ...detail.journey, time: "2026-01-07T23:30:00Z" },
+    }).assist;
+    expect(w.day).toBe("2026-01-08");
+    expect(w.time).toBe("00:30");
+  });
+
   it("mappe une mission complète", () => {
     const { assist, mission } = mapMission(detail);
     expect(assist).toMatchObject({

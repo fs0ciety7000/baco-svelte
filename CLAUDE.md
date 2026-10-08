@@ -35,7 +35,7 @@ gelée** (v1, branche `ccr-5dca0da8-4yg4i6`) : ne pas le modifier.
 | 2 | Design system + page `/design` (5 thèmes, GSAP) | ✅ 8 oct. — jetons + test AA (156 contrôles), 19 composants, `/design`, 17 E2E ; captures et écarts **validés** |
 | 3 | Shell (6 entrées, onglets, ⌘K, mobile 4 + Plus) + tableau de bord | ✅ 8 oct. — 24 E2E, CSP, gardes par page, captures validées |
 | 4 | Données : schéma PocketBase, règles d'accès, import | 🔄 données BACO du 8 oct. importées sur l'instance de test (5 collections) ; migration réelle **en une fois à la bascule** |
-| 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 **Commandes** livré en session 3 (schéma + 66 contrôles de règles, bus, taxi, envoi `.eml` + PDF, suivi, B201, E2E) : **validé le 8 oct.** ; **PMR validé le 8 oct.** (schéma + 105 contrôles de règles, prestations, collage DICOS, clients, matériel, E2E) ; **Opérations livré, à valider** (trains en direct iRail, main courante, carte PN, statistiques, cloche ; 149 contrôles de règles, 46 E2E) |
+| 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 **Commandes** livré en session 3 (schéma + 66 contrôles de règles, bus, taxi, envoi `.eml` + PDF, suivi, B201, E2E) : **validé le 8 oct.** ; **PMR validé le 8 oct.** (schéma + 105 contrôles de règles, prestations, collage DICOS, clients, matériel, E2E) ; **Opérations validé le 8 oct.** (trains en direct iRail, main courante, carte PN, statistiques, cloche ; 149 contrôles de règles, 46 E2E) ; **DICOS / Missions PMR livré, à valider** (extension de navigateur + ingestion serveur, renommage, création manuelle retirée ; 161 contrôles de règles ; audit + revue passés) ; suivant : Référentiels |
 | 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | ✅ 8 oct. — https://test-csm.fs0ciety.org en ligne ; projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
 | — | Hotfix sécurité BACO (`supabase/migrations/20261008120000_security_hotfix.sql`) | ✅ appliqué par l'utilisateur (SQL Editor) le 8 oct., vérifié : 0 ERROR (36 avant). Suite **non appliquée** : `20261008130000_hotfix_followup.sql` (test NULL de `get_my_role()`) et `20261008140000_pn_data_update_fix.sql` (XSS stocké carte PN), accord requis ; protection des mots de passe compromis encore désactivée |
 
@@ -341,6 +341,20 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   `pmr:read`, anonymisés à 12 mois, jamais en Git/capture (à confirmer DPO) ; **deux modes de synchro** (bouton +
   auto onglet visible) ; **renommer Prestations → Missions PMR** + sélecteur de jour. Jeton DICOS collé dans la
   conversation = à régénérer (secret exposé). Suivant : audit UX Référentiels (en cours) puis implémentation.
+- 2026-10-08 — **DICOS / Missions PMR implémenté.** Extension MV3 `extension/dicos-connector/` (inject.js en monde MAIN
+  capte le Bearer en vol — jamais stocké — + les stationIds ; content.js lit DICOS en même origine, débit global ~4 req/s,
+  modes bouton + auto avec pause onglet caché ; background.js pousse vers CSM avec le jeton de connecteur ; popup avec
+  sélecteur de jour en Europe/Brussels). Mapping **côté serveur** (`web/src/lib/pmr/dicos-mission.ts`, source unique) ;
+  ingestion `POST /api/pmr/missions/ingest` (secret `x-dicos-token` timing-safe, compte de service `dicos:write`,
+  idempotent, dédup `dicos_id`, ignore les anonymisées). Renommage Prestations → **Missions PMR**, **création manuelle
+  retirée** (`/pmr/nouveau` supprimé). **Validé en prod test** (test-csm) : mauvais jeton 401, mission fictive créée puis
+  dédupliquée, mapping correct (CRE, dossier AAAA-MM-JJ-NNNN, heure mur d'horloge), fiche fictive supprimée.
+  **Audit sécurité** (0 critique/élevé) + **revue** passés ; corrigés : compte de service passé d'un rôle `reader`
+  (lisait tout le nominatif PMR) à un **rôle dédié `connector`** hors READERS lisant seulement `pmr_assists`/`pmr_mission`
+  (`1760000700`) ; `optional_host_permissions` resserré à `*.fs0ciety.org` ; XSS potentiel du popup (coercition +
+  échappement) ; endpoint borné (taille de corps + débit) ; lecture d'upsert ne masquant plus que le 404 ; compteurs
+  exacts + pas de réécriture inutile ; cache de l'extension purgé à la synchro manuelle ; jour calculé en Europe/Brussels
+  + garde de lot tolérante à ±1 jour (missions de nuit) ; parse d'heure défensif si offset UTC. 161 contrôles de règles.
 
 ---
 

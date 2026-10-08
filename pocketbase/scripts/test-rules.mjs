@@ -536,6 +536,27 @@ try {
 	check('sans pmr:read, le détail nominatif est invisible', detO.status !== 200 || detO.json.totalItems === 0, `HTTP ${detO.status}`);
 	const detR = await api('GET', '/api/collections/pmr_mission/records?perPage=1', { token: svcTok });
 	check('avec pmr:read, le détail nominatif est lisible', detR.status === 200 && detR.json.totalItems >= 1, `${detR.json?.totalItems}`);
+
+	// Moindre privilège : le vrai compte de service a le rôle `connector` (hors READERS). Il lit pmr_assists et
+	// pmr_mission (branche dicos:write) mais AUCUNE autre donnée nominative (pmr_clients, pmr_assist_legacy).
+	const cpass = `Test-${suffix}-connector`;
+	const cu = await api('POST', '/api/collections/users/records', {
+		token: root,
+		body: { email: `test-connector-${suffix}@csm.invalid`, password: cpass, passwordConfirm: cpass, name: 'Test connector', username: `tconn${suffix}`, role: 'connector', grants: ['dicos:write'], verified: true }
+	});
+	check('compte connector créé (rôle dédié)', cu.status === 200, `HTTP ${cu.status} ${JSON.stringify(cu.json).slice(0, 80)}`);
+	if (cu.status === 200) {
+		created.push(cu.json.id);
+		const ctok = (await api('POST', '/api/collections/users/auth-with-password', { body: { identity: cu.json.email, password: cpass } })).json?.token;
+		const cAssists = await api('GET', '/api/collections/pmr_assists/records?perPage=1', { token: ctok });
+		check('connector lit pmr_assists (dédup)', cAssists.status === 200, `HTTP ${cAssists.status}`);
+		const cMission = await api('GET', '/api/collections/pmr_mission/records?perPage=1', { token: ctok });
+		check('connector lit pmr_mission (dédup)', cMission.status === 200 && cMission.json.totalItems >= 1, `HTTP ${cMission.status} ${cMission.json?.totalItems}`);
+		const cClients = await api('GET', '/api/collections/pmr_clients/records?perPage=1', { token: ctok });
+		check('connector ne lit PAS pmr_clients', cClients.status !== 200 || cClients.json.totalItems === 0, `HTTP ${cClients.status} ${cClients.json?.totalItems}`);
+		const cLegacy = await api('GET', '/api/collections/pmr_assist_legacy/records?perPage=1', { token: ctok });
+		check('connector ne lit PAS pmr_assist_legacy', cLegacy.status !== 200 || cLegacy.json.totalItems === 0, `HTTP ${cLegacy.status} ${cLegacy.json?.totalItems}`);
+	}
 	// Un agent reste soumis à la table des transitions sur une mission DICOS (réalisée → absent est interdit).
 	const dmTrans = await api('PATCH', `/api/collections/pmr_assists/records/${did}`, { token: u.token, body: { status: 'absent', cancel_reason: 'x', updated_by: u.id } });
 	check('agent reste soumis aux transitions sur une mission DICOS', dmTrans.status === 400, `HTTP ${dmTrans.status}`);

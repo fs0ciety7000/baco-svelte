@@ -21,7 +21,7 @@ extension, dont le service worker a la permission d'hôte CSM.
 
 | Fichier | Monde | Rôle |
 |---|---|---|
-| `src/inject.js` | page DICOS (`MAIN`) | observe `fetch`/`XHR` de la SPA, relève **en vol** l'en-tête `Authorization: Bearer …` et le corps de `POST /api/missions` (`stationIds` = périmètre de gares). Aucune requête émise, aucune donnée personnelle lue. |
+| `src/inject.js` | page DICOS (`world: MAIN`, déclaré dans le manifest à `document_start`) | observe `fetch`/`XHR` de la SPA, relève **en vol** l'en-tête `Authorization: Bearer …` et le corps de `POST /api/missions` (`stationIds` = périmètre de gares) et les transmet au content script par `postMessage` (même origine). Aucune requête émise, aucune donnée personnelle lue. |
 | `src/content.js` | isolé, même origine | appelle **en même origine** `POST /api/missions` (liste) puis `GET /api/missions/{id}?reservationType=…` (détail, ~4 req/s, 3 en vol), fusionne, et transmet les missions **brutes** au service worker. Modes bouton **et** automatique (pause si l'onglet est caché). |
 | `src/background.js` | service worker | seul à faire l'appel **cross-origin** vers CSM : `POST {csmUrl}/api/pmr/missions/ingest` avec l'en-tête `x-dicos-token`. Ne voit jamais le Bearer DICOS. |
 
@@ -68,7 +68,9 @@ CSM_DICOS_PB_PASSWORD=<mot de passe du compte de service>
 - Jeton de connecteur CSM : stocké en `chrome.storage.local`, **révocable** côté CSM, sans accès à DICOS.
 - Données nominatives : traitées comme le reste du PMR → **`pmr:read`**, **anonymisation 12 mois**, jamais en
   Git / capture / export nominatif.
-- Permission d'hôte CSM demandée **à l'enregistrement** (geste utilisateur), pas à l'installation.
+- Permission d'hôte CSM demandée **à l'enregistrement** (geste utilisateur), pas à l'installation ;
+  `optional_host_permissions` est **restreint au domaine CSM** (`https://*.fs0ciety.org/*`) — un autre hôte ne peut
+  jamais être accordé. **Si la production passe sur un autre domaine, l'ajouter ici** avant déploiement.
 
 ## Limites
 

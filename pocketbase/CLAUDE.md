@@ -83,6 +83,9 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
   soumis aux transitions. Le détail **nominatif** (client, e-mail, téléphone, accompagnateur, conducteur, point de
   rencontre, voiture / porte) va dans **`pmr_mission`** (une par assist, `cascadeDelete`), lisible avec `pmr:read`
   seulement (`otto_agent` ne lit pas) — une règle ne masque pas un champ. La purge `pmr-retention` efface aussi
-  `pmr_mission` quand l'assist est anonymisée. 12 contrôles de règles dédiés (156 au total).
+  `pmr_mission` quand l'assist est anonymisée. Le compte de service a un **rôle dédié `connector`** (hors READERS,
+  `1760000700`) : il ne lit QUE `pmr_assists` et `pmr_mission` (branche `dicos:write` ajoutée à leurs list/view), pas
+  le reste du nominatif PMR (`pmr_clients`, `pmr_assist_legacy`, taxis) — moindre privilège (audit du 8 oct.).
+  17 contrôles de règles dédiés (161 au total).
 - **Sauvegardes** : réglées par migration (`0 2 * * *`, 14 conservées dans `pb_data/backups`).
 - `PREPROD_PB_*` désigne une autre instance (jeu) : **n'y jamais écrire**, ne pas y lancer `test-rules.mjs`.

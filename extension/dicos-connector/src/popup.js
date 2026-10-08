@@ -4,9 +4,18 @@ const $ = (id) => document.getElementById(id);
 const DICOS = /^https:\/\/dicos\.intern-belgiantrain\.be\//;
 
 function today() {
-  const d = new Date();
-  const p = (x) => String(x).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Brussels",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+  } catch (_) {
+    const d = new Date();
+    const p = (x) => String(x).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  }
 }
 
 function setStatus(html, cls) {
@@ -25,9 +34,12 @@ async function activeDicosTab() {
 
 function fmtResult(r) {
   if (!r) return "Aucune synchro récente.";
-  if (r.error) return `<span class="err">${escapeHtml(r.error)}</span>`;
+  if (r.error) return `<span class="err">${escapeHtml(String(r.error))}</span>`;
+  // Les valeurs viennent d'une réponse réseau : tout est coercé/échappé avant innerHTML (jamais de HTML injecté).
+  const num = (v) => Number(v) || 0;
   const when = r.at ? ` · ${new Date(r.at).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" })}` : "";
-  return `<span class="ok">✓ ${r.day || ""}${when}</span><br>${r.found ?? r.received ?? 0} mission(s) · <b>${r.created || 0}</b> créée(s), <b>${r.updated || 0}</b> maj, ${r.skipped || 0} ignorée(s)`;
+  const found = num(r.found ?? r.received);
+  return `<span class="ok">✓ ${escapeHtml(String(r.day || ""))}${escapeHtml(when)}</span><br>${found} mission(s) · <b>${num(r.created)}</b> créée(s), <b>${num(r.updated)}</b> maj, ${num(r.skipped)} ignorée(s)`;
 }
 function escapeHtml(s) {
   return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);

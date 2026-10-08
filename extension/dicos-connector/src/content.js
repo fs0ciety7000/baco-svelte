@@ -1,5 +1,5 @@
 // Content script DICOS (monde isolé, même origine que la SPA). Il :
-//  1. injecte inject.js dans le monde de la page pour relever le Bearer et les stationIds que la SPA émet déjà ;
+//  1. reçoit du capteur `inject.js` (déclaré en monde MAIN, voir manifest) le Bearer et les stationIds que la SPA émet ;
 //  2. appelle l'API DICOS /api/missions (liste) et /api/missions/{id} (détail) EN MÊME ORIGINE, avec ce Bearer ;
 //  3. fusionne liste + détail et envoie les missions BRUTES au service worker, qui les pousse vers CSM
 //     (le mapping et la validation sont faits par le serveur CSM : source unique de vérité).
@@ -15,18 +15,11 @@
   let auto = { enabled: false, minutes: 10 };
   let timer = null;
   let syncing = false;
+  let autoTicks = 0;
 
-  // 1) Injection du capteur dans le monde de la page.
-  try {
-    const s = document.createElement("script");
-    s.src = chrome.runtime.getURL("src/inject.js");
-    s.async = false;
-    (document.head || document.documentElement).appendChild(s);
-    s.remove();
-  } catch (_) {}
-
+  // Capteur injecté en monde MAIN (manifest) : on n'accepte que les messages de CETTE fenêtre et de CETTE origine.
   window.addEventListener("message", (e) => {
-    if (e.source !== window || !e.data || e.data.source !== TAG) return;
+    if (e.source !== window || e.origin !== location.origin || !e.data || e.data.source !== TAG) return;
     if (e.data.kind === "auth" && typeof e.data.token === "string") {
       bearer = e.data.token; // « Bearer … »
     } else if (e.data.kind === "filter" && Array.isArray(e.data.stationIds)) {
@@ -57,11 +50,30 @@
     });
   } catch (_) {}
 
+  // Jour « aujourd'hui » en Europe/Brussels (le poste peut être sur un autre fuseau).
   function localDay(d = new Date()) {
-    const p = (x) => String(x).padStart(2, "0");
-    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    try {
+      return new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/Brussels",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(d);
+    } catch (_) {
+      const p = (x) => String(x).padStart(2, "0");
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    }
   }
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // Gate de débit GLOBAL : au plus un départ de requête toutes les 250 ms (~4 req/s), quelle que soit la concurrence.
+  let nextAt = 0;
+  async function gate() {
+    const now = Date.now();
+    const wait = Math.max(0, nextAt - now);
+    nextAt = Math.max(now, nextAt) + 250;
+    if (wait) await sleep(wait);
+  }
 
   async function dicos(url, opts) {
     if (!bearer) throw { code: "no-token" };
@@ -75,7 +87,7 @@
     return res.json();
   }
 
-  // Débit limité : ~4 req/s, 3 en vol au plus (voir cadrage DICOS).
+  // Appels de détail, débit limité (~4 req/s globalement, 3 en vol au plus pour masquer la latence).
   async function fetchDetails(items, onProgress) {
     const out = [];
     let i = 0;
@@ -94,6 +106,7 @@
         }
         let merged = item;
         if (id && type) {
+          await gate();
           try {
             const detail = await dicos(`${API}/${encodeURIComponent(id)}?reservationType=${encodeURIComponent(type)}`);
             merged = { ...item, ...detail };
@@ -101,7 +114,6 @@
             if (err && err.code === "expired") throw err;
             // détail indisponible : on garde l'item de liste (le serveur upsert quand même la base)
           }
-          await sleep(230);
         }
         if (id) detailCache.set(id, { sig, mission: merged });
         out.push(merged);
@@ -113,12 +125,15 @@
     return out;
   }
 
-  async function doSync(day) {
+  // `fresh` (bouton de synchro manuelle) = rafraîchir vraiment : on purge le cache de détail pour reprendre
+  // toute mission même si son statut n'a pas changé (le cache ne capte pas les corrections de point de rencontre, etc.).
+  async function doSync(day, { fresh = false } = {}) {
     if (syncing) return { error: "Synchronisation déjà en cours." };
     if (!stationIds.length)
       return { error: "Périmètre de gares inconnu : ouvre une fois la liste des missions dans DICOS." };
     if (!bearer)
       return { error: "Session DICOS non détectée : recharge l'onglet DICOS et navigue dans les missions." };
+    if (fresh) detailCache.clear();
     syncing = true;
     try {
       const list = await dicos(API, { method: "POST", body: JSON.stringify({ stationIds, date: day }) });
@@ -162,7 +177,9 @@
     const ms = Math.max(2, auto.minutes) * 60_000;
     timer = setInterval(() => {
       if (document.hidden || syncing) return; // onglet caché : on ne sollicite pas DICOS
-      doSync(localDay());
+      // En auto, on purge le cache tous les ~6 cycles pour reprendre d'éventuelles corrections DICOS sans surcharge.
+      autoTicks = (autoTicks + 1) % 6;
+      doSync(localDay(), { fresh: autoTicks === 0 });
     }, ms);
   }
 
@@ -173,7 +190,7 @@
       return;
     }
     if (msg.cmd === "sync") {
-      doSync(msg.day || localDay()).then(reply);
+      doSync(msg.day || localDay(), { fresh: msg.fresh !== false }).then(reply);
       return true; // réponse asynchrone
     }
   });
