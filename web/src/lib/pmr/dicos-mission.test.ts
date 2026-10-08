@@ -119,6 +119,8 @@ describe("mapping DICOS", () => {
       day: "2026-10-08",
       time: "07:30",
       station: "LIÈGE-GUILLEMINS",
+      other_station: "BRUXELLES-MIDI",
+      district: "DSE", // Liège-Guillemins → Sud-Est
       direction: "depart",
       train: "429",
       dicos_ref: "2026-10-07-0999",

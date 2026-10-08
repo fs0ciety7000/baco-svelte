@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { isValidDay } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
-import { ASSIST_STATUS, DIRECTION_LABEL } from "@/lib/pmr/model";
+import { ASSIST_STATUS, DIRECTION_IO, DIRECTION_LABEL } from "@/lib/pmr/model";
 import { getCurrentUser } from "@/server/auth";
 import { listAssists } from "@/server/data/pmr";
 
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     {
       from: du.data,
       to: au.data,
-      zone: sp.get("zone") ?? undefined,
+      district: sp.get("district") ?? undefined,
       status: sp.get("statut") ?? undefined,
       q: sp.get("q") ?? undefined,
     },
@@ -41,28 +41,32 @@ export async function GET(request: Request) {
     "Date",
     "Heure",
     "Gare",
-    "Zone",
+    "Autre gare",
+    "District",
     "Sens",
+    "IN/OUT",
     "Train",
     "Nombre",
     "Type",
     "Réf. DICOS",
     "Statut",
-    "Client lié",
+    "Voyageur lié",
   ];
   const lines = rows.map((a) =>
     [
       a.day,
       a.time,
       a.station,
-      a.zoneCode,
+      a.otherStation,
+      a.district,
       DIRECTION_LABEL[a.direction] ?? "",
+      DIRECTION_IO[a.direction]?.io ?? "",
       a.train,
       a.pax,
       a.pmrType,
       a.dicosRef,
       ASSIST_STATUS[a.status].label,
-      a.clientId ? "oui" : "non",
+      a.clientId || a.clientName ? "oui" : "non",
     ]
       .map(cell)
       .join(";"),

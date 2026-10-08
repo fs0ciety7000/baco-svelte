@@ -95,23 +95,24 @@ test.afterAll(async () => {
     await pb("DELETE", `/api/collections/${f.col}/records/${f.id}`);
 });
 
-test("prestation : panneau, annulation avec motif, rétablissement", async ({ page }, info) => {
+test("mission : panneau en lecture seule, libellé à copier", async ({ page }, info) => {
   test.skip(info.project.name !== "desktop", "parcours en desktop ; mobile en captures");
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  // Plus de création manuelle (synchro DICOS) : on ouvre la prestation de démo créée en amont.
+  // Lecture seule (synchro DICOS, aucune édition) : on ouvre la mission de démo créée en amont.
   await login(page, "/pmr");
-  const row = page.getByRole("button", { name: `Ouvrir la prestation de 08:15 à ${STATION}` });
+  const row = page.getByRole("button", { name: `Ouvrir la mission de 08:15 à ${STATION}` });
   await row.click();
   await expect(page.getByTestId("assist-panel")).toContainText("1 × NV");
-  await expect(page.getByTestId("assist-panel")).toContainText(`Z${suffix}`);
-  await page.getByTestId("assist-annulee").click();
-  await page.getByLabel("Motif").fill("Train supprimé (essai)");
-  await page.getByRole("dialog").getByRole("button", { name: "Annuler" }).last().click();
-  await expect(page.getByTestId("assist-panel")).toContainText("Train supprimé (essai)");
-  await expect(page.getByTestId("assist-panel")).toContainText("Prévue → Annulée");
-  await page.getByTestId("assist-prevue").click();
-  await expect(page.getByTestId("assist-panel")).toContainText("Annulée → Prévue");
+  // Sens IN/OUT : la mission de démo est une arrivée → débarquement (OUT).
+  await expect(page.getByTestId("assist-panel")).toContainText("Débarquement");
+  // Aucune action d'édition dans le panneau (ni « Annuler », ni « Marquer réalisée »).
+  await expect(page.getByTestId("assist-annulee")).toHaveCount(0);
+  await expect(page.getByTestId("assist-realisee")).toHaveCount(0);
+  // Bouton « copier le libellé » présent (arrivée + NV → « Débarquement d'un non-voyant »).
+  await expect(
+    page.getByRole("button", { name: /Copier le libellé : Débarquement d'un non-voyant/ }),
+  ).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -161,7 +162,7 @@ for (const t of ["commandement", "ivoire"] as const) {
     await snap(page, `${t}-prestations`, p);
     await (
       p === "desktop"
-        ? page.getByRole("button", { name: /Ouvrir la prestation/ }).first()
+        ? page.getByRole("button", { name: /Ouvrir la mission/ }).first()
         : page.getByTestId("assists-cards").getByRole("button").first()
     ).click();
     await expect(page.getByTestId("assist-panel")).toBeVisible();

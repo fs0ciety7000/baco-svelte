@@ -88,6 +88,14 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   de `components/orders/taxi-form.tsx`) est partagé. **Plus de création manuelle** : les missions viennent de DICOS
   (décision du 8 oct. 2026) — `/pmr/nouveau` et `assist-form` retirés, `createAssists`/`updateAssist` supprimés.
 - Téléphone : `PhoneLink` (`etrali:` desktop, `tel:` mobile, deux liens alternés en CSS).
+- **Missions PMR = lecture seule** (synchro DICOS, aucune édition/transition dans l'UI, décision du 8 oct. 2026) :
+  la liste montre le **trajet** gare départ → gare arrivée (gare d'assistance soulignée), le **sens IN/OUT**
+  (départ = IN/embarquement, arrivée = OUT/débarquement), le **district** (DSE/DSO/DCE), le **nom du voyageur** (avec
+  `pmr:read`) et un bouton **Copier** (`assistCopyText` : « Embarquement d'une chaise roulante »…). Le panneau montre
+  en plus le détail nominatif DICOS (e-mail, langue, point de rencontre, voiture/porte, accompagnateur, conducteur,
+  affectée à) via l'expand `pmr_mission_via_assist` (back-relation), avec `pmr:read` seulement.
+- **District** : `src/lib/pmr/districts.ts` (généré depuis Supabase `ligne_data`, `scratchpad/gen-districts.mjs`) →
+  `districtForStation(gare)`. Posé à l'ingestion sur `pmr_assists.district` ; filtre de l'écran = district (plus zone).
 - **Ingestion DICOS** (`src/lib/pmr/dicos-mission.ts`, pur et testé + `app/api/pmr/missions/ingest/route.ts`) : mapping
   mission DICOS → prestation CSM (type PMR, statut, n° de dossier `AAAA-MM-JJ-NNNN`, détail nominatif) **côté serveur**
   = source unique de vérité ; l'extension (`extension/dicos-connector/`) envoie la mission brute. Endpoint authentifié

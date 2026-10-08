@@ -1,15 +1,12 @@
 "use client";
 
+import { Copy } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import { loadAssistPanel, transitionAssist } from "@/app/(app)/pmr/actions";
+import { loadAssistPanel } from "@/app/(app)/pmr/actions";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
-import { Field } from "@/components/ui/field";
 import { Timeline } from "@/components/ui/form-kit";
-import { Textarea } from "@/components/ui/input";
 import { EmptyState, Skeleton } from "@/components/ui/misc";
 import { Sheet } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/status-badge";
@@ -17,9 +14,11 @@ import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
 import { toast } from "@/components/ui/toast";
 import { safeCall } from "@/lib/orders/safe-call";
 import { formatDay, pbDate } from "@/lib/orders/time";
+import { DISTRICT_LABEL } from "@/lib/pmr/districts";
 import {
   ASSIST_STATUS,
-  assistTransitions,
+  assistCopyText,
+  DIRECTION_IO,
   DIRECTION_LABEL,
   PMR_TYPE_LABEL,
   type AssistStatus,
@@ -37,6 +36,78 @@ const toneVar = {
 export function AssistBadge({ status }: { status: AssistStatus }) {
   const s = ASSIST_STATUS[status];
   return <Badge tone={s.tone}>{s.label}</Badge>;
+}
+
+/** Trajet d'une mission : gare de départ → gare d'arrivée. La gare d'assistance (avec l'heure) dépend du sens :
+ *  départ (embarquement/IN) = on assiste au départ ; arrivée (débarquement/OUT) = on assiste à l'arrivée. */
+function routeOf(a: Assist): { dep: string; arr: string; here: "dep" | "arr" } {
+  if (a.direction === "arrivee")
+    return { dep: a.otherStation || "?", arr: a.station || "?", here: "arr" };
+  return { dep: a.station || "?", arr: a.otherStation || "?", here: "dep" };
+}
+
+/** « IN · Embarquement » / « OUT · Débarquement », ou « » si sens inconnu. */
+function ioLabel(direction: string): string {
+  const io = DIRECTION_IO[direction];
+  return io ? `${io.io} · ${io.label}` : "";
+}
+
+/** Badge IN/OUT (embarquement / débarquement). */
+function IoBadge({ direction }: { direction: string }) {
+  const io = DIRECTION_IO[direction];
+  if (!io) return <span className="text-fg-muted">—</span>;
+  return (
+    <Badge tone={io.tone} title={io.label}>
+      {io.io}
+    </Badge>
+  );
+}
+
+/** Trajet affiché : départ → arrivée, la gare d'assistance soulignée. */
+function RouteText({ a, barred }: { a: Assist; barred?: boolean }) {
+  const r = routeOf(a);
+  const mark = (s: string, is: boolean) =>
+    is ? (
+      <span className="font-medium text-fg underline decoration-dotted underline-offset-2">{s}</span>
+    ) : (
+      <span>{s}</span>
+    );
+  return (
+    <span className={barred ? "line-through" : ""}>
+      {mark(r.dep, r.here === "dep")} <span className="text-fg-muted">→</span>{" "}
+      {mark(r.arr, r.here === "arr")}
+    </span>
+  );
+}
+
+async function copyLabel(a: Assist) {
+  const text = assistCopyText(a);
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success(`Copié : ${text}`);
+  } catch {
+    toast.error("Copie impossible (presse-papiers indisponible).");
+  }
+}
+
+/** Bouton « copier le libellé » (ex. « Embarquement d'une chaise roulante »). */
+function CopyButton({ a, label }: { a: Assist; label?: boolean }) {
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      className="border border-border"
+      aria-label={`Copier le libellé : ${assistCopyText(a)}`}
+      title={assistCopyText(a)}
+      onClick={(e) => {
+        e.stopPropagation();
+        void copyLabel(a);
+      }}
+    >
+      <Copy aria-hidden className="size-4" />
+      {label ? "Copier" : null}
+    </Button>
+  );
 }
 
 const at = new Intl.DateTimeFormat("fr-BE", {
@@ -64,24 +135,19 @@ function eventTitle(e: PmrEvent) {
   return `${FIELD_LABEL[e.field] ?? e.field} : ${e.from || "—"} → ${e.to || "—"}`;
 }
 
-/** Prestations PMR : table (cartes en mobile), détail en panneau latéral, transitions avec motif. */
+/** Missions PMR (lecture seule, synchronisées depuis DICOS) : table (cartes en mobile), détail en panneau latéral,
+ *  bouton « copier le libellé ». Aucune édition : le statut et les données viennent de DICOS. */
 export function AssistBoard({
   rows,
-  canWrite,
   canPmr,
   groupByDay,
 }: {
   rows: Assist[];
-  canWrite: boolean;
   canPmr: boolean;
   groupByDay: boolean;
 }) {
-  const router = useRouter();
   const [open, setOpen] = useState<Assist | null>(null);
   const [panel, setPanel] = useState<{ assist: Assist; events: PmrEvent[] } | null>(null);
-  const [reasonFor, setReasonFor] = useState<{ to: AssistStatus; label: string } | null>(null);
-  const [reason, setReason] = useState("");
-  const [pending, start] = useTransition();
   const wanted = useRef<string | null>(null);
 
   const load = useCallback(async (id: string) => {
@@ -102,26 +168,14 @@ export function AssistBoard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openUpdated]);
 
-  const transition = (to: AssistStatus, why?: string) =>
-    start(async () => {
-      if (!open) return;
-      const res = await safeCall(transitionAssist({ id: open.id, to, reason: why }));
-      if (!res.ok) return void toast.error(res.error);
-      toast.success(`Prestation : ${ASSIST_STATUS[to].label.toLowerCase()}.`);
-      setReasonFor(null);
-      setReason("");
-      void load(open.id);
-      router.refresh();
-    });
-
   if (rows.length === 0)
-    return (
-      <EmptyState title="Aucune prestation" description="Aucune prestation PMR pour ces filtres." />
-    );
+    return <EmptyState title="Aucune mission" description="Aucune mission PMR pour ces filtres." />;
 
   const days = groupByDay ? [...new Set(rows.map((r) => r.day))] : [""];
-  const label = (a: Assist) =>
-    `${a.station || "?"}${a.direction ? ` · ${DIRECTION_LABEL[a.direction]}` : ""}${a.train ? ` · ${a.train}` : ""}`;
+  const routeLabel = (a: Assist) => {
+    const r = routeOf(a);
+    return `${r.dep} → ${r.arr}`;
+  };
 
   return (
     <>
@@ -131,11 +185,11 @@ export function AssistBoard({
           <section
             key={d || "tout"}
             className="flex flex-col gap-2"
-            aria-label={d ? formatDay(d) : "Prestations"}
+            aria-label={d ? formatDay(d) : "Missions PMR"}
           >
             {d ? (
               <h2 className="label-mono text-fg-muted first-letter:uppercase">
-                {formatDay(d)} · {list.length} prestation(s)
+                {formatDay(d)} · {list.length} mission(s)
               </h2>
             ) : null}
             <div className="hidden md:block">
@@ -144,13 +198,14 @@ export function AssistBoard({
                   <tr>
                     {!groupByDay ? <Th>Date</Th> : null}
                     <Th>Heure</Th>
-                    <Th>Gare</Th>
-                    <Th>Zone</Th>
+                    <Th>Trajet (départ → arrivée)</Th>
+                    <Th>District</Th>
                     <Th>Sens</Th>
                     <Th>Train</Th>
                     <Th>Voyageur</Th>
                     <Th>Réf. DICOS</Th>
                     <Th>Statut</Th>
+                    <Th>Copier</Th>
                   </tr>
                 </THead>
                 <tbody data-testid="assists-table">
@@ -168,7 +223,7 @@ export function AssistBoard({
                         <button
                           type="button"
                           className="cursor-pointer focus-visible:outline-1 focus-visible:outline-accent"
-                          aria-label={`Ouvrir la prestation de ${a.time || "—"} à ${a.station}`}
+                          aria-label={`Ouvrir la mission de ${a.time || "—"} à ${a.station}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             show(a);
@@ -177,11 +232,15 @@ export function AssistBoard({
                           {a.time || "--:--"}
                         </button>
                       </Td>
-                      <Td className={a.status === "annulee" ? "line-through" : ""}>
-                        {a.station || "—"}
+                      <Td className="max-w-72">
+                        <RouteText a={a} barred={a.status === "annulee"} />
                       </Td>
-                      <Td className="font-mono text-fg-muted">{a.zoneCode || "—"}</Td>
-                      <Td>{DIRECTION_LABEL[a.direction] ?? "—"}</Td>
+                      <Td className="font-mono text-fg-muted" title={DISTRICT_LABEL[a.district] ?? ""}>
+                        {a.district || "—"}
+                      </Td>
+                      <Td>
+                        <IoBadge direction={a.direction} />
+                      </Td>
                       <Td className="font-mono">{a.train || "—"}</Td>
                       <Td className="max-w-56 truncate">
                         {a.pax} × {a.pmrType || "?"}
@@ -193,6 +252,9 @@ export function AssistBoard({
                       <Td>
                         <AssistBadge status={a.status} />
                       </Td>
+                      <Td>
+                        <CopyButton a={a} />
+                      </Td>
                     </Tr>
                   ))}
                 </tbody>
@@ -200,23 +262,27 @@ export function AssistBoard({
             </div>
             <ul className="flex flex-col gap-2 md:hidden" data-testid="assists-cards">
               {list.map((a) => (
-                <li key={a.id}>
+                <li key={a.id} className="flex items-stretch gap-2">
                   <button
                     type="button"
-                    className="block w-full cursor-pointer text-left"
+                    className="block flex-1 cursor-pointer text-left"
                     onClick={() => show(a)}
                   >
                     <ListCard
                       statusColor={toneVar[ASSIST_STATUS[a.status].tone]}
                       title={
                         <span className="inline-flex items-center gap-2">
-                          <span className="font-mono tabular">{a.time || "--:--"}</span> {label(a)}
+                          <span className="font-mono tabular">{a.time || "--:--"}</span>
+                          <span className={a.status === "annulee" ? "line-through" : ""}>
+                            {routeLabel(a)}
+                          </span>
                         </span>
                       }
-                      meta={`${!groupByDay ? `${formatDay(a.day)} · ` : ""}${a.pax} × ${a.pmrType || "?"}${a.zoneCode ? ` · ${a.zoneCode}` : ""}${canPmr && a.clientName ? ` · ${a.clientName}` : ""}`}
+                      meta={`${!groupByDay ? `${formatDay(a.day)} · ` : ""}${DIRECTION_IO[a.direction]?.io ?? ""}${a.train ? ` · ${a.train}` : ""} · ${a.pax} × ${a.pmrType || "?"}${a.district ? ` · ${a.district}` : ""}${canPmr && a.clientName ? ` · ${a.clientName}` : ""}`}
                       aside={<AssistBadge status={a.status} />}
                     />
                   </button>
+                  <CopyButton a={a} />
                 </li>
               ))}
             </ul>
@@ -233,34 +299,12 @@ export function AssistBoard({
             wanted.current = null;
           }
         }}
-        eyebrow={open ? `// Prestation PMR · ${formatDay(open.day)}` : undefined}
-        title={open ? `${open.time || "--:--"} · ${open.station || "?"}` : "Prestation"}
+        eyebrow={open ? `// Mission PMR · ${formatDay(open.day)}` : undefined}
+        title={open ? `${open.time || "--:--"} · ${open.station || "?"}` : "Mission PMR"}
         description={
           open
-            ? `${DIRECTION_LABEL[open.direction] ?? "Sens ?"}${open.train ? ` · train ${open.train}` : ""}`
+            ? `${ioLabel(open.direction) || "Sens ?"}${open.train ? ` · train ${open.train}` : ""}`
             : undefined
-        }
-        footer={
-          open && panel && canWrite && !panel.assist.anonymized ? (
-            <div className="flex w-full flex-wrap gap-2">
-              {assistTransitions(panel.assist.status).map((t) => (
-                <Button
-                  key={t.to}
-                  size="sm"
-                  variant={
-                    t.to === "realisee" ? "primary" : t.to === "annulee" ? "danger" : "secondary"
-                  }
-                  disabled={pending}
-                  onClick={() =>
-                    t.needsReason ? setReasonFor({ to: t.to, label: t.label }) : transition(t.to)
-                  }
-                  data-testid={`assist-${t.to}`}
-                >
-                  {t.label}
-                </Button>
-              ))}
-            </div>
-          ) : null
         }
       >
         {!panel ? (
@@ -270,8 +314,41 @@ export function AssistBoard({
           </div>
         ) : (
           <div className="flex flex-col gap-5" data-testid="assist-panel">
-            <AssistBadge status={panel.assist.status} />
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <AssistBadge status={panel.assist.status} />
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => void copyLabel(panel.assist)}
+                aria-label={`Copier le libellé : ${assistCopyText(panel.assist)}`}
+              >
+                <Copy aria-hidden className="size-4" /> Copier le libellé
+              </Button>
+            </div>
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-body">
+              <dt className="text-small text-fg-muted">Trajet</dt>
+              <dd>
+                <RouteText a={panel.assist} />
+                {panel.assist.time ? (
+                  <span className="text-fg-muted">
+                    {" "}
+                    · {DIRECTION_IO[panel.assist.direction]?.io === "OUT" ? "arrivée" : "départ"}{" "}
+                    {panel.assist.time}
+                  </span>
+                ) : null}
+              </dd>
+              <dt className="text-small text-fg-muted">Sens</dt>
+              <dd>
+                {ioLabel(panel.assist.direction)
+                  ? `${ioLabel(panel.assist.direction)} (${DIRECTION_LABEL[panel.assist.direction]})`
+                  : "—"}
+              </dd>
+              <dt className="text-small text-fg-muted">District</dt>
+              <dd>
+                {panel.assist.district
+                  ? `${panel.assist.district} · ${DISTRICT_LABEL[panel.assist.district] ?? ""}`
+                  : "—"}
+              </dd>
               <dt className="text-small text-fg-muted">Voyageur</dt>
               <dd>
                 {panel.assist.pax} ×{" "}
@@ -281,32 +358,96 @@ export function AssistBoard({
               </dd>
               <dt className="text-small text-fg-muted">Réf. DICOS</dt>
               <dd className="font-mono">{panel.assist.dicosRef || "—"}</dd>
-              <dt className="text-small text-fg-muted">Zone</dt>
-              <dd>{panel.assist.zoneCode || "—"}</dd>
               <dt className="text-small text-fg-muted">Client</dt>
               <dd>
                 {canPmr && panel.assist.clientName ? (
                   <span className="flex flex-col">
-                    <Link
-                      className="text-accent underline-offset-2 hover:underline"
-                      href={`/pmr/clients?id=${panel.assist.clientId}`}
-                    >
-                      {panel.assist.clientName}
-                    </Link>
-                    {panel.assist.clientPhone ? (
-                      <PhoneLink phone={panel.assist.clientPhone} />
-                    ) : null}
+                    {panel.assist.clientId ? (
+                      <Link
+                        className="text-accent underline-offset-2 hover:underline"
+                        href={`/pmr/clients?id=${panel.assist.clientId}`}
+                      >
+                        {panel.assist.clientName}
+                      </Link>
+                    ) : (
+                      <span>{panel.assist.clientName}</span>
+                    )}
+                    {panel.assist.clientPhone ? <PhoneLink phone={panel.assist.clientPhone} /> : null}
                   </span>
-                ) : panel.assist.clientId ? (
-                  "Client lié (droit PMR requis pour le voir)"
+                ) : panel.assist.clientId || panel.assist.clientName ? (
+                  "Voyageur enregistré (droit PMR requis pour le voir)"
                 ) : (
                   "—"
                 )}
               </dd>
-              {panel.assist.note ? (
+              {canPmr && panel.assist.mission ? (
                 <>
-                  <dt className="text-small text-fg-muted">Remarque</dt>
-                  <dd>{panel.assist.note}</dd>
+                  {panel.assist.mission.clientEmail ? (
+                    <>
+                      <dt className="text-small text-fg-muted">E-mail</dt>
+                      <dd className="break-all">{panel.assist.mission.clientEmail}</dd>
+                    </>
+                  ) : null}
+                  {panel.assist.mission.clientLang ? (
+                    <>
+                      <dt className="text-small text-fg-muted">Langue</dt>
+                      <dd>{panel.assist.mission.clientLang}</dd>
+                    </>
+                  ) : null}
+                  {panel.assist.mission.clientDesc ? (
+                    <>
+                      <dt className="text-small text-fg-muted">Précisions</dt>
+                      <dd>{panel.assist.mission.clientDesc}</dd>
+                    </>
+                  ) : null}
+                  {panel.assist.mission.meetingPoint ? (
+                    <>
+                      <dt className="text-small text-fg-muted">Point de rencontre</dt>
+                      <dd>{panel.assist.mission.meetingPoint}</dd>
+                    </>
+                  ) : null}
+                  {panel.assist.mission.coach || panel.assist.mission.door ? (
+                    <>
+                      <dt className="text-small text-fg-muted">Voiture / porte</dt>
+                      <dd>
+                        {[
+                          panel.assist.mission.coach ? `voiture ${panel.assist.mission.coach}` : "",
+                          panel.assist.mission.door ? `porte ${panel.assist.mission.door}` : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </dd>
+                    </>
+                  ) : null}
+                  {panel.assist.mission.trainManagerName ||
+                  panel.assist.mission.trainManagerPhone ? (
+                    <>
+                      <dt className="text-small text-fg-muted">Accompagnateur</dt>
+                      <dd className="flex flex-col">
+                        <span>{panel.assist.mission.trainManagerName || "—"}</span>
+                        {panel.assist.mission.trainManagerPhone ? (
+                          <PhoneLink phone={panel.assist.mission.trainManagerPhone} />
+                        ) : null}
+                      </dd>
+                    </>
+                  ) : null}
+                  {panel.assist.mission.driverName || panel.assist.mission.driverPhone ? (
+                    <>
+                      <dt className="text-small text-fg-muted">Conducteur</dt>
+                      <dd className="flex flex-col">
+                        <span>{panel.assist.mission.driverName || "—"}</span>
+                        {panel.assist.mission.driverPhone ? (
+                          <PhoneLink phone={panel.assist.mission.driverPhone} />
+                        ) : null}
+                      </dd>
+                    </>
+                  ) : null}
+                  {panel.assist.mission.ownerName ? (
+                    <>
+                      <dt className="text-small text-fg-muted">Affectée à</dt>
+                      <dd>{panel.assist.mission.ownerName}</dd>
+                    </>
+                  ) : null}
                 </>
               ) : null}
               {panel.assist.cancelReason ? (
@@ -315,11 +456,17 @@ export function AssistBoard({
                   <dd className="text-danger">{panel.assist.cancelReason}</dd>
                 </>
               ) : null}
+              {panel.assist.note ? (
+                <>
+                  <dt className="text-small text-fg-muted">Remarque</dt>
+                  <dd>{panel.assist.note}</dd>
+                </>
+              ) : null}
               <dt className="text-small text-fg-muted">Saisie</dt>
               <dd>{panel.assist.legacy ? "Reprise de BACO" : panel.assist.author || "—"}</dd>
             </dl>
             {panel.assist.anonymized ? (
-              <p className="text-small text-fg-muted">Prestation anonymisée (plus de 12 mois).</p>
+              <p className="text-small text-fg-muted">Mission anonymisée (plus de 12 mois).</p>
             ) : null}
             {panel.assist.legacyText ? (
               <details className="text-small">
@@ -350,41 +497,6 @@ export function AssistBoard({
           </div>
         )}
       </Sheet>
-
-      {reasonFor ? (
-        <Dialog open onOpenChange={(o) => !o && setReasonFor(null)}>
-          <DialogContent
-            title={reasonFor.label}
-            description="Le motif est gardé dans l'historique."
-          >
-            <form
-              className="flex flex-col gap-3"
-              onSubmit={(e) => {
-                e.preventDefault();
-                transition(reasonFor.to, reason);
-              }}
-            >
-              <Field label="Motif" required>
-                <Textarea
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  maxLength={500}
-                  required
-                  autoFocus
-                />
-              </Field>
-              <DialogFooter>
-                <Button type="button" variant="ghost" onClick={() => setReasonFor(null)}>
-                  Retour
-                </Button>
-                <Button type="submit" variant="danger" loading={pending} disabled={!reason.trim()}>
-                  {reasonFor.label}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      ) : null}
     </>
   );
 }

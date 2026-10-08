@@ -48,6 +48,64 @@ export const PMR_TYPE_LABEL: Record<string, string> = {
 
 export const DIRECTION_LABEL: Record<string, string> = { arrivee: "Arrivée", depart: "Départ" };
 
+// IN / OUT (convention SNCB) : un DÉPART est un embarquement (le voyageur monte → IN), une ARRIVÉE un débarquement
+// (le voyageur descend → OUT). Source : retour utilisateur du 8 octobre 2026.
+export const DIRECTION_IO: Record<string, { io: "IN" | "OUT"; label: string; tone: "info" | "ok" }> = {
+  depart: { io: "IN", label: "Embarquement", tone: "info" },
+  arrivee: { io: "OUT", label: "Débarquement", tone: "ok" },
+};
+
+// --- Libellé « à copier » d'une mission (retour utilisateur du 8 oct. 2026) ------------------------
+// Ex. « Embarquement d'une chaise roulante », « Débarquement de trois non-voyants ».
+const FR_UNITS = [
+  "zéro", "un", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf", "dix",
+  "onze", "douze", "treize", "quatorze", "quinze", "seize", "dix-sept", "dix-huit", "dix-neuf",
+];
+const FR_TENS: Record<number, string> = { 20: "vingt", 30: "trente", 40: "quarante", 50: "cinquante" };
+
+/** Nombre en toutes lettres (1 à 50 ; `fem` pour « une », « vingt et une »). */
+export function numberFr(n: number, fem = false): string {
+  const x = Math.max(0, Math.min(50, Math.round(n)));
+  if (x === 1) return fem ? "une" : "un";
+  if (x < 20) return FR_UNITS[x] ?? String(x);
+  const t = Math.floor(x / 10) * 10;
+  const u = x % 10;
+  const base = FR_TENS[t] ?? String(x);
+  if (u === 0) return base;
+  if (u === 1) return `${base} et ${fem ? "une" : "un"}`;
+  return `${base}-${FR_UNITS[u]}`;
+}
+
+/** Nom PMR accordé (féminin/masculin, singulier/pluriel) à partir du code type. */
+function pmrNoun(type: string, plural: boolean): { fem: boolean; word: string } {
+  switch (type) {
+    case "NV":
+      return { fem: false, word: plural ? "non-voyants" : "non-voyant" };
+    case "CRE":
+    case "CRF":
+    case "CRP":
+      return { fem: true, word: plural ? "chaises roulantes" : "chaise roulante" };
+    case "MR":
+      return {
+        fem: true,
+        word: plural ? "personnes à mobilité réduite" : "personne à mobilité réduite",
+      };
+    default:
+      return { fem: false, word: plural ? "voyageurs PMR" : "voyageur PMR" };
+  }
+}
+
+/** Phrase à copier : « Embarquement/Débarquement de <nombre> <type accordé> ». */
+export function assistCopyText(a: { direction: string; pax: number; pmrType: string }): string {
+  const verb = a.direction === "arrivee" ? "Débarquement" : "Embarquement";
+  const n = Math.max(1, a.pax || 1);
+  const { fem, word } = pmrNoun(a.pmrType, n > 1);
+  const count = numberFr(n, fem);
+  // Élision « de » → « d' » devant un/une/onze (« d'une chaise roulante »).
+  const de = /^(une?|onze)$/.test(count) ? "d'" : "de ";
+  return `${verb} ${de}${count} ${word}`;
+}
+
 export const EQUIPMENT_STATES = ["ok", "hs", "en_attente"] as const;
 export type EquipmentState = (typeof EQUIPMENT_STATES)[number];
 export const EQUIPMENT_STATE: Record<

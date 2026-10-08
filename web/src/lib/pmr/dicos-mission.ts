@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { districtForStation } from "./districts";
 import { PMR_TYPE_CODES } from "./model";
 
 // Correspondance mission DICOS → prestation CSM (Missions PMR). Logique PURE et testée : l'extension envoie la mission
@@ -170,6 +171,8 @@ export type MappedAssist = {
   day: string;
   time: string;
   station: string;
+  other_station: string;
+  district: "DCE" | "DSE" | "DSO" | "";
   direction: "arrivee" | "depart" | "";
   mission_type: string;
   train: string;
@@ -206,11 +209,16 @@ export function mapMission(raw: unknown): { assist: MappedAssist; mission: Mappe
     m.missionType === "Departure" ? "depart" : m.missionType === "Arrival" ? "arrivee" : "";
   const ref = m.reservationDisplayId || m.reservationId || "";
   const w = wall(m.journey.time);
+  const station = frName(m.journey.stationName);
+  const otherStation = frName(m.journey.otherStationName);
   const assist: MappedAssist = {
     dicos_id: m.id,
     day: w.day,
     time: w.time,
-    station: frName(m.journey.stationName),
+    station,
+    other_station: otherStation,
+    // District déduit de la gare d'assistance, repli sur l'autre extrémité (ex. gare hors région).
+    district: districtForStation(station) || districtForStation(otherStation) || "",
     direction: dir,
     mission_type: m.missionType || "",
     train: m.journey.transportId || (m.journey.trainNumber ? String(m.journey.trainNumber) : ""),

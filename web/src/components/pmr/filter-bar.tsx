@@ -3,24 +3,23 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
+import { DISTRICT_LABEL, DISTRICTS } from "@/lib/pmr/districts";
 import { ASSIST_STATUS, ASSIST_STATUSES } from "@/lib/pmr/model";
 
-export type PmrFilters = { du?: string; au?: string; zone?: string; q?: string; statut?: string };
+export type PmrFilters = { du?: string; au?: string; district?: string; q?: string; statut?: string };
 
-/** Filtres des prestations en GET (URL partageable, sans JS) + raccourcis de dates. */
+/** Filtres des missions PMR en GET (URL partageable, sans JS) + raccourcis de dates. */
 export function PmrFilterBar({
   action,
   filters,
-  zones,
   shortcuts,
 }: {
   action: string;
   filters: PmrFilters;
-  zones: { id: string; code: string }[];
   shortcuts: { label: string; du: string; au: string }[];
 }) {
   const keep = Object.fromEntries(
-    Object.entries({ zone: filters.zone, q: filters.q, statut: filters.statut }).filter(
+    Object.entries({ district: filters.district, q: filters.q, statut: filters.statut }).filter(
       ([, v]) => v,
     ),
   ) as Record<string, string>;
@@ -69,13 +68,13 @@ export function PmrFilterBar({
             />
           </span>
         </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-32">
-          <span className="text-small text-fg-muted">Zone</span>
-          <Select name="zone" defaultValue={filters.zone ?? ""}>
-            <option value="">Toutes</option>
-            {zones.map((z) => (
-              <option key={z.id} value={z.id}>
-                {z.code}
+        <label className="flex min-w-0 flex-col gap-1 md:w-40">
+          <span className="text-small text-fg-muted">District</span>
+          <Select name="district" defaultValue={filters.district ?? ""}>
+            <option value="">Tous</option>
+            {DISTRICTS.map((d) => (
+              <option key={d} value={d}>
+                {d} · {DISTRICT_LABEL[d]}
               </option>
             ))}
           </Select>

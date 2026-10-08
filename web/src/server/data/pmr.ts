@@ -38,6 +38,22 @@ export async function listZones(): Promise<Zone[]> {
 // ---------------------------------------------------------------------------------------------------
 // Prestations
 
+/** Détail nominatif d'une mission DICOS (collection `pmr_mission`) : seulement avec `pmr:read`. */
+export type MissionDetail = {
+  reservationType: string;
+  clientEmail: string;
+  clientLang: string;
+  clientDesc: string;
+  trainManagerName: string;
+  trainManagerPhone: string;
+  driverName: string;
+  driverPhone: string;
+  meetingPoint: string;
+  coach: string;
+  door: string;
+  ownerName: string;
+};
+
 export type Assist = {
   id: string;
   day: string;
@@ -46,15 +62,19 @@ export type Assist = {
   direction: string;
   train: string;
   station: string;
+  otherStation: string;
+  district: string;
   zone: string;
   zoneCode: string;
   dicosRef: string;
   pax: number;
   pmrType: string;
   clientId: string;
-  /** Vide sans `pmr:read`. */
+  /** Vide sans `pmr:read` (nom du voyageur : DICOS → `pmr_mission`, repris de BACO → `pmr_clients`). */
   clientName: string;
   clientPhone: string;
+  /** Détail nominatif DICOS, seulement avec `pmr:read`. */
+  mission?: MissionDetail;
   note: string;
   status: AssistStatus;
   cancelReason: string;
@@ -69,6 +89,16 @@ export type Assist = {
 function assist(r: RecordModel, canPmr: boolean): Assist {
   const e = exp(r);
   const client = canPmr ? e.client : undefined;
+  // Back-relation pmr_mission (détail nominatif DICOS) : tableau, on prend la première.
+  const m = canPmr
+    ? (
+        (r.expand as Record<string, RecordModel[] | undefined> | undefined)?.[
+          "pmr_mission_via_assist"
+        ] ?? []
+      )[0]
+    : undefined;
+  const nameFromMission = m ? `${str(m.client_last)} ${str(m.client_first)}`.trim() : "";
+  const nameFromClient = client ? `${str(client.last_name)} ${str(client.first_name)}`.trim() : "";
   return {
     id: r.id,
     day: str(r.day),
@@ -77,14 +107,32 @@ function assist(r: RecordModel, canPmr: boolean): Assist {
     direction: str(r.direction),
     train: str(r.train),
     station: str(r.station),
+    otherStation: str(r.other_station),
+    district: str(r.district),
     zone: str(r.zone),
     zoneCode: str(e.zone?.code),
     dicosRef: str(r.dicos_ref),
     pax: num(r.pax) || 1,
     pmrType: str(r.pmr_type),
     clientId: str(r.client),
-    clientName: client ? `${str(client.last_name)} ${str(client.first_name)}`.trim() : "",
-    clientPhone: client ? str(client.phone) : "",
+    clientName: nameFromMission || nameFromClient,
+    clientPhone: m ? str(m.client_phone) : client ? str(client.phone) : "",
+    mission: m
+      ? {
+          reservationType: str(m.reservation_type),
+          clientEmail: str(m.client_email),
+          clientLang: str(m.client_lang),
+          clientDesc: str(m.client_desc),
+          trainManagerName: str(m.train_manager_name),
+          trainManagerPhone: str(m.train_manager_phone),
+          driverName: str(m.driver_name),
+          driverPhone: str(m.driver_phone),
+          meetingPoint: str(m.meeting_point),
+          coach: str(m.coach),
+          door: str(m.door),
+          ownerName: str(m.owner_name),
+        }
+      : undefined,
     note: str(r.note),
     status: (ASSIST_STATUSES as readonly string[]).includes(str(r.status))
       ? (str(r.status) as AssistStatus)
@@ -101,11 +149,10 @@ function assist(r: RecordModel, canPmr: boolean): Assist {
 export const assistListSchema = z.object({
   from: z.string().refine(isValidDay).optional().catch(undefined),
   to: z.string().refine(isValidDay).optional().catch(undefined),
-  zone: z
+  district: z
     .string()
-    .regex(/^[a-z0-9]{15}$/)
     .optional()
-    .catch(undefined),
+    .transform((v) => (["DCE", "DSE", "DSO"] as const).find((x) => x === v)),
   q: z.string().trim().max(60).default(""),
   status: z
     .string()
@@ -124,17 +171,18 @@ export async function listAssists(
   const parts = [
     pb.filter("day >= {:a} && day <= {:b}", { a: p.from ?? today, b: p.to ?? p.from ?? today }),
   ];
-  if (p.zone) parts.push(pb.filter("zone = {:z}", { z: p.zone }));
+  if (p.district) parts.push(pb.filter("district = {:d}", { d: p.district }));
   if (p.status) parts.push(pb.filter("status = {:s}", { s: p.status }));
   if (p.q) {
-    const ors = ["station ~ {:q}", "train ~ {:q}", "dicos_ref ~ {:q}"];
-    if (ctx.canPmr) ors.push("client.last_name ~ {:q}");
+    const ors = ["station ~ {:q}", "other_station ~ {:q}", "train ~ {:q}", "dicos_ref ~ {:q}"];
+    // Nom du voyageur : BACO (client lié) et DICOS (détail nominatif), avec `pmr:read` seulement.
+    if (ctx.canPmr) ors.push("client.last_name ~ {:q}", "pmr_mission_via_assist.client_last ~ {:q}");
     parts.push(pb.filter(`(${ors.join(" || ")})`, { q: p.q }));
   }
   const options = {
     filter: parts.join(" && "),
     sort: ctx.order === "desc" ? "-day,-time" : "day,time",
-    expand: ctx.canPmr ? "zone,client,created_by" : "zone,created_by",
+    expand: ctx.canPmr ? "zone,client,created_by,pmr_mission_via_assist" : "zone,created_by",
   };
   // Export : toutes les lignes (PocketBase plafonne une page à 1000).
   if (ctx.all) {
@@ -152,7 +200,7 @@ export async function getAssist(id: string, canPmr: boolean) {
     .regex(/^[a-z0-9]{15}$/)
     .parse(id);
   const r = await pb.collection("pmr_assists").getOne(aid, {
-    expand: canPmr ? "zone,client,created_by" : "zone,created_by",
+    expand: canPmr ? "zone,client,created_by,pmr_mission_via_assist" : "zone,created_by",
   });
   const a = assist(r, canPmr);
   // Texte d'origine de BACO : collection à part, lisible avec pmr:read seulement (règle PocketBase).

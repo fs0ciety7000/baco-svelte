@@ -355,6 +355,15 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   échappement) ; endpoint borné (taille de corps + débit) ; lecture d'upsert ne masquant plus que le 404 ; compteurs
   exacts + pas de réécriture inutile ; cache de l'extension purgé à la synchro manuelle ; jour calculé en Europe/Brussels
   + garde de lot tolérante à ±1 jour (missions de nuit) ; parse d'heure défensif si offset UTC. 161 contrôles de règles.
+- 2026-10-08 — **Missions PMR v2** (retours utilisateur après 1re synchro réelle, 139 missions) : écran **lecture seule**
+  (aucune édition/transition) ; **trajet** gare départ → gare arrivée (`other_station` ajouté) ; **sens IN/OUT** (départ =
+  IN/embarquement, arrivée = OUT/débarquement) ; **district** DSE/DSO/DCE déduit de la gare via Supabase `ligne_data`
+  (`web/src/lib/pmr/districts.ts`, 324 gares) et filtre par district (remplace zone) ; **nom du voyageur** en liste et au
+  détail (lu dans `pmr_mission` via back-relation, `pmr:read`), + e-mail/point de rencontre/voiture-porte/accompagnateur/
+  conducteur au panneau ; bouton **Copier** un libellé (« Embarquement d'une chaise roulante », nombre en toutes lettres,
+  accord genre/nombre, `assistCopyText`). Migration `1760000800` (`other_station`, `district`). **Type PMR encore à
+  fiabiliser** : sur 139 missions, 69 sans type + 29 « AUTRE » (le détail DICOS n'est pas toujours récupéré / codes
+  d'assistance inconnus) → échantillon brut à demander à l'utilisateur.
 
 ---
 
