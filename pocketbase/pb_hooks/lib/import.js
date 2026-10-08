@@ -525,6 +525,7 @@ function run(app, dir, reset, scope) {
 	app.runInTransaction((tx) => {
 		if (scope === 'pmr') {
 			importPmr(tx, dir, report);
+			tx.db().newQuery("UPDATE pmr_clients SET last_activity = created WHERE last_activity = '' OR last_activity IS NULL").execute();
 			return;
 		}
 		if (scope === 'all') importUsers(tx, dir, report);

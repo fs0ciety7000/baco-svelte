@@ -92,7 +92,9 @@ relit pas les variables). Recopier ces deux valeurs dans `CSM_PB_ADMIN_EMAIL` / 
 
 Variante « module seul » (session 3, comptes et mots de passe gardés, sans les empreintes) : télécharger une
 sauvegarde de l'instance de test, la restaurer en local, `CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase
-csm-import /home/user/csm-backup`, refaire un zip et le restaurer sur l'instance de test.
+csm-import /home/user/csm-backup`, refaire un zip et le restaurer sur l'instance de test. Même méthode avec
+`CSM_IMPORT_SCOPE=pmr` pour le module PMR seul (commandes et comptes gardés) : rejouée le 8 octobre (445 prestations,
+55 rampes, 3 zones).
 
 La restauration **remplace** toute la base distante (y compris les superusers) : à réserver à une base vide ou à la
 répétition de la bascule. Le zip reste dans `/pb_data/backups` comme point de restauration.
