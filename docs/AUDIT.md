@@ -66,4 +66,23 @@ Audit réalisé en lecture seule : code (28 k lignes, 178 fichiers), base Supaba
 
 ## 5. UX / design
 
-Voir `docs/PROPOSITION.md` (inventaire fonctionnel, points de friction, architecture de l'information, design system).
+**Système de design**
+- 16 thèmes fantaisie animés, dont aucun ne respecte `prefers-reduced-motion`.
+- La couleur principale est définie à partir d'elle-même ; les couleurs d'état ne sont pas définies, d'où 118 hex écrits en dur.
+- Mode sombre forcé dans `app.html`, donc pas de vrai mode clair.
+
+**Composants**
+- Cinq rayons différents, et un bouton principal différent selon les pages.
+- Trois façons de confirmer : `ConfirmModal`, `confirm()` natif et des modales maison.
+- `Sidebar.svelte` n'est utilisé nulle part.
+
+**Accessibilité**
+- 217 champs pour 11 libellés reliés ; modales sans piège de focus ; toasts sans `aria-live`.
+
+**Comportements globaux**
+- L'impression est bloquée par le CSS global.
+- Chaque changement de page prend 600 ms d'animation.
+- Bug de la palette : taper « K » dans un champ l'ouvre.
+- Le menu mobile est incomplet.
+
+Points de friction métier, architecture de l'information et améliorations : voir `docs/PROPOSITION.md`.

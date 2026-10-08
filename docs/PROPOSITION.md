@@ -85,13 +85,101 @@ Le thème suit le système (clair/sombre) par défaut. Un **mode densité** (con
 
 ---
 
-## 3. Architecture de l'information & fonctionnel
+## 3. Architecture de l'information
 
-_(complété avec l'audit UX — voir section suivante)_
+Sidebar groupée (repliable), palette ⌘K et bouton global **« + Nouveau »** (Bon bus · Bon taxi · Prestation PMR).
+
+| Section | Contenu (routes actuelles) |
+|---|---|
+| **Tableau de bord** | Widgets métier uniquement : commandes du jour, PMR du jour, trains perturbés, journal, équipe présente |
+| **Commandes** | Bus (`/otto`), Taxi (`/generateTaxi`), **Suivi unifié** (nouveau), Remise de service (B201, générée automatiquement) |
+| **PMR** | Prestations du jour + historique (`/deplacements`), Clients (`/clients-pmr`), Rampes et matériel (`/pmr`) |
+| **Opérations** | Trains en direct (`/live`), Main courante (`/journal`), Carte PN |
+| **Référentiels** | Lignes, PtCar, EBP, **Annuaire unifié** (répertoire, sociétés bus, taxis) |
+| **Connaissances** | Procédures et documents fusionnés |
+| **Équipe** | Planning et congés, annuaire de l'équipe, nouveautés |
+| **Pilotage** | Statistiques |
+| **Administration** | Utilisateurs, lignes et arrêts, gares, santé, audit, maintenance |
+
+### Gamification et gadgets : à retirer (**à confirmer**)
+- Le classement et « Champions du mois » : ils récompensent le volume de commandes.
+- Les badges et les likes.
+- **La « jauge de confiance » calculée à partir des sanctions** : c'est une donnée RH sensible exposée sur les profils.
+- Le jeu de fléchettes, la page vitrine à code Konami, le flou anti-capture d'écran, le décorateur saisonnier et 14 des 16 thèmes fantaisie.
 
 ---
 
-## 4. Déploiement Coolify
+## 4. Corrections fonctionnelles (constatées à l'audit)
+
+1. **Une commande taxi ne peut jamais être clôturée** : le filtre « Clôturés » existe, mais aucune action n'y mène.
+2. **Le statut d'une commande bus est éclaté** en trois (statut, colonne kanban, case « mail envoyé » cochée à la main).
+3. **L'envoi d'e-mail passe par `mailto:`** : Outlook tronque le texte et le PDF n'est jamais joint.
+4. **Les contrôles de saisie sont quasi inexistants** : date de retour, nombre de PMR, dates passées…
+5. **La date des déplacements PMR est calculée en UTC** : entre 0 h et 2 h, l'écran affiche la veille.
+6. **Le nom PMR est coupé au premier espace** pour séparer nom et prénom, et le taxi PMR n'est pas relié à la fiche client.
+7. **La remise B201 fait ressaisir les transports** déjà commandés, et la page est absente du menu.
+8. **L'impression est bloquée globalement** (CSS), et Impr. écran floute l'écran et écrase le presse-papier.
+9. **Bug ⌘K** : taper un « K » majuscule dans n'importe quel champ ouvre la palette.
+10. **Le menu mobile est incomplet** (bus, taxi, répertoire, planning… inaccessibles), et 15 pages n'ont pas de titre d'onglet.
+11. **Accessibilité** : 217 champs pour seulement 11 libellés reliés, des modales qui ne retiennent pas le focus clavier, des toasts non annoncés aux lecteurs d'écran.
+
+---
+
+## 5. Nouveautés proposées
+
+### Commandes (cœur métier)
+- **Cycle de vie unifié** bus et taxi : `brouillon → envoyé → confirmé → en cours → terminé → facturé / annulé`, avec un horodatage et un auteur pour chaque transition.
+- **Envoi du bon en 1 clic** depuis le serveur : PDF en pièce jointe, copie à l'équipe, accusé dans l'historique.
+- **Modèles et duplication** (« refaire la commande d'hier »), commandes récurrentes.
+- **Brouillons enregistrés automatiquement** (on ne perd plus une saisie en quittant la page).
+- **Assistant de commande** : la gare d'origine est pré-remplie selon le district de l'agent, et la fiche client PMR est liée (téléphone, besoins, historique).
+- **Suivi unifié** : un seul tableau filtrable de toutes les commandes, avec des vues enregistrées (« À confirmer », « Aujourd'hui », « Non facturées »).
+- **B201 générée automatiquement** à partir des commandes et prestations du service.
+- **Tableau de bord fournisseurs** : délais de confirmation, annulations, coût par société (pour négocier et facturer).
+
+### Opérations
+- **Trains en direct** :
+  - favoris de gares ;
+  - alerte quand un train suivi a plus de X minutes de retard ou est supprimé ;
+  - lien direct « commander un bus de substitution » pré-rempli (ligne, gares, horaire).
+- **Main courante en temps réel** (Realtime) avec mentions, épinglage des événements et export du service.
+- **Notifications** dans l'app, plus des notifications push PWA en option (commande non confirmée après X minutes).
+
+### Transverse
+- **Recherche globale ⌘K** sur tout le contenu métier et les actions.
+- **Hors-ligne en lecture** pour l'annuaire et les référentiels (PWA).
+- **Journal d'audit lisible** : qui a modifié quoi, avec le différentiel avant/après.
+- **Rôles revus** : Agent, Coordinateur, Admin, Sysop, avec des permissions appliquées en RLS.
+- **Statistiques métier** : volumes par ligne et par motif, coûts, délais, à exporter vers Excel.
+
+---
+
+## 6. Feuille de route
+
+| Phase | Contenu | Livrable |
+|---|---|---|
+| **0 · Hotfix sécurité** (urgent, avant tout) | Migration SQL : révoquer UPDATE sur `profiles.role/permissions`, activer RLS sur 11 tables, rôles lus depuis `profiles` et non plus `user_metadata`, révoquer l'accès `anon` aux RPC admin, fixer `search_path`, rendre privés les buckets sensibles, activer la protection des mots de passe compromis ; dans le code, DOMPurify partout | 1 migration relue + 1 PR |
+| **1 · Socle** | Renommage en CSM, TypeScript, session en cookie + gardes serveur, suppression du proxy et du gate, nettoyage des dépendances et du code mort, Dockerfile + doc Coolify, CI | App identique, sécurisée et déployable sur `csm.fs0ciety.org` |
+| **2 · Design system** | Tokens, 5 thèmes, polices, composants de base (Button, Input, Select, Dialog, Drawer, Table, StatusPill, Toast, Kbd), shell (sidebar, topbar, ⌘K), transitions de page | Nouveau shell, pages existantes intégrées |
+| **3 · Commandes** | Bus + Taxi refondus, statuts unifiés (migration), envoi SMTP, modèles, brouillons, suivi unifié, B201 automatique | Cœur métier v2 |
+| **4 · PMR & Opérations** | Déplacements, clients, live, journal en temps réel, notifications | |
+| **5 · Référentiels, Équipe, Admin, Stats** | Annuaire unifié, procédures et documents, planning, admin, statistiques | |
+| **6 · Durcissement** | Tests Playwright des parcours, audit d'accessibilité, performance, nettoyage de la base (policies dupliquées, index, tables mortes) | |
+
+---
+
+## 7. Questions ouvertes
+
+1. **Stack** : validez-vous SvelteKit + TypeScript + Supabase hébergé (plutôt qu'une réécriture) ?
+2. **Hotfix base (phase 0)** : m'autorisez-vous à appliquer les migrations de sécurité sur la base de **production** ? Je préparerais d'abord les fichiers SQL pour relecture.
+3. **Gamification** : je supprime tout (classement, badges, likes, jauge de confiance, fléchettes, Konami) ou j'en garde une partie ?
+4. **E-mail** : quel serveur SMTP utiliser (Outlook / M365 de l'entreprise, Resend, autre) ? Et faut-il envoyer depuis une adresse partagée ?
+5. **Identifiants de test** : un compte `user` et un compte `admin` sur https://baco-inky.vercel.app/ me permettraient de voir les écrans réels.
+6. **Bascule** : Vercel reste-t-il en ligne pendant la refonte (BACO) jusqu'à la mise en service de CSM ?
+
+---
+
+## 8. Déploiement Coolify
 
 - `Dockerfile` multi-stage : `deps` → `build` → `runtime` (node:22-alpine, utilisateur non-root, `HEALTHCHECK` sur `/healthz`, ~120 Mo).
 - `docker-compose.yml` (référence locale et Coolify), `.dockerignore`.
