@@ -42,9 +42,13 @@ Pourquoi pas les alternatives :
 
 | Appel | Usage | Remarque |
 |---|---|---|
-| `POST /api/missions` (corps = filtre, dont le **jour**) | Liste des missions d'un jour | Le corps exact (champ de date) est à confirmer sur le réseau |
+| `POST /api/missions` (corps = filtre) | Liste des missions d'un jour | Corps **confirmé** : `{ "stationIds": ["8863008", …], "date": "AAAA-MM-JJ" }` (gares du périmètre de l'agent + jour). `traveler` n'y donne que des **compteurs** |
 | `GET /api/missions/{id}?reservationType={type}` | Détail d'une mission | Porte le **n° de dossier** (`reservationId` = `reservationDisplayId`, format `AAAA-MM-JJ-NNNN`) et le point de rencontre |
 
+- Le filtre `stationIds` est la **liste des gares du périmètre de l'agent** : l'extension la reprend telle quelle de la
+  requête que DICOS émet déjà, et ne change que `date` selon le jour choisi (aucune config de périmètre à saisir).
+- Les **types d'assistance** (`typeId`/`symbol`, ex. `pmr-bp`/`blind-person`) ne sont **que dans le détail** ; la liste
+  ne donne que des compteurs → la table de correspondance se construit aux appels de détail (repli « Autre »).
 - Le n° de dossier **n'est pas** dans la liste : il faut **un appel de détail par mission** → pour un jour (~150
   missions) prévoir une **limitation de débit** (par ex. 3–5 req/s, file bornée) côté extension, et ne recharger le
   détail que des missions nouvelles ou modifiées (voir dédup).
@@ -66,7 +70,7 @@ Mapping mission DICOS → prestation CSM (`pmr_assists`, champs à compléter) :
 | `journey.otherStationName` | autre gare | Origine/destination selon le sens |
 | `missionType` (`Departure`/`Arrival`/`Stickering`) | sens / type de mission | `Stickering` = étiquetage groupe, à distinguer |
 | `journey.trainNumber`, `transportId` | train | |
-| `traveler.disableds[]` (`typeId`, `quantity`, `symbol`), `fullAssistances`, `lightAssistances` | type + nombre PMR | `pmr-bp`/`blind-person` → NV, etc. (table de correspondance à établir) |
+| `traveler.disableds[]` (`typeId`, `quantity`, `symbol`) [détail] + `fullAssistances`, `lightAssistances` | type + nombre PMR | `pmr-bp`/`blind-person` → NV ; table complétée au fil des imports, repli « Autre » |
 | `reservationType` | type de réservation | `Disabled` / `Group` |
 | `status` | statut (voir §5) | |
 | `client` (nom, prénom, **e-mail, téléphone, langue**) | fiche client PMR liée | **nominatif** → `pmr:read`, anonymisé 12 mois |
@@ -106,8 +110,8 @@ absent) à caler ensemble. Piste : `New`/`Assigned`/`Started` → **prévue** ; 
 
 ## 8. Points ouverts (à confirmer)
 
-1. Corps exact de `POST /api/missions` (champ de date, pagination éventuelle).
-2. Liste complète des `reservationType` et des `typeId`/`symbol` d'assistance (table de correspondance PMR).
+1. ~~Corps de `POST /api/missions`~~ — **confirmé** : `{ stationIds[], date }` (voir §3).
+2. Liste complète des `reservationType` et des `typeId`/`symbol` — connus `pmr-bp`/`blind-person`, le reste se complète aux imports (repli « Autre »).
 3. Poste **Entra-joint** ? (n'est plus bloquant avec l'extension, mais utile si on voulait un connecteur natif).
-4. Validation **DPO** de la conservation de l'e-mail/téléphone/accompagnateur (12 mois) comme pour le reste du PMR.
+4. ~~Validation DPO~~ — **confirmée (8 oct.)** : conservation autorisée, durée libre ; on garde 12 mois par défaut (modifiable), tout derrière `pmr:read`.
 5. Navigateur cible (Edge/Chromium) et mode de distribution de l'extension (chargement local vs magasin interne).
