@@ -111,7 +111,7 @@ export function B201Editor({
         <div
           role="tablist"
           aria-label="Périodes"
-          className="-mx-4 flex gap-1.5 overflow-x-auto px-4 md:hidden"
+          className="flex w-full gap-1.5 overflow-x-auto md:hidden"
         >
           {[...PERIODS, { id: "suivant" as const, label: "Suivant", range: "" }].map((p) => (
             <button

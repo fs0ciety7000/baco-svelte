@@ -24,7 +24,7 @@ export const districtSchema = z.enum(DISTRICTS).or(z.literal("")).default("");
 export const C3_TYPES = [
   { value: 2, label: "Remplacement" },
   { value: 1, label: "Évacuation" },
-  { value: 3, label: "Modif. service planifié" },
+  { value: 3, label: "Modif. planifiée" },
 ] as const;
 
 export const busSchema = z.object({

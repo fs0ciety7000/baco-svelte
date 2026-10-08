@@ -14,6 +14,7 @@
 | **Backend** | **PocketBase**, retenu par l'utilisateur le 8 octobre 2026, auto-hébergé sur Coolify dans une instance **dédiée à CSM**, déployée avec l'app web. Son temps réel en SSE passe le pare-feu de l'entreprise. Le prototype de l'étape 1 sert au chiffrage et à valider l'import des comptes (§3). |
 | **Données non migrées** | `darts_games`, `temp_geo_data`, `profile_likes`, `remise_*` (4), `app_backups`, **`infractions`** (abandonnée). Avatars DiceBear → initiales. |
 | **Commandes (réponses du 8 oct.)** | Statuts : brouillon → envoyé → confirmé → **en cours** (gardé) → terminé, ou annulé. **Pas de « facturé »** : confirmer l'envoi vaut facturation. Module **taxi utilisé** (refonte complète). `.eml` sur mobile : non prioritaire. Modèles : personnels par défaut, partageables avec l'équipe (réponse « oui » à interpréter, à confirmer à l'étape 5). |
+| **Commandes (réponses du 8 oct., session 3)** | **Tout agent** qui écrit des commandes **confirme** (fournisseur au téléphone ou par mail), heure confirmée, plaque et chauffeur **facultatifs**. **Une B201 par jour** pour toute l'équipe, filtre district. Un **bus annulé** reste barré sur le bon mais **n'apparaît pas dans la B201**. **Modèles tous partagés**, modifiables par tout agent qui écrit des commandes. Retour d'un cran permis ; annuler après « en cours », rouvrir un terminé et rétablir une annulée : coordinateurs (moderator, admin). |
 | **Sauvegardes PocketBase** | Sauvegarde du volume par Coolify pour l'instant, Cloudflare R2 (S3) plus tard. |
 | **Bascule des données** | Migration **en une fois**, à une date de bascule : gel de BACO, export Supabase, import PocketBase, vérification. Pas de synchronisation entre les deux bases. |
 | **Mobile** | Obligatoire, pensé mobile d'abord dès la conception. |
@@ -132,5 +133,5 @@ Dans Coolify, deux ressources :
 | 2 | Design system : jetons, 5 thèmes, bibliothèque de composants, GSAP, page `/design` | ✅ 8 oct. — captures validées |
 | 3 | Shell : 6 entrées, onglets par module, ⌘K, menu utilisateur, mobile | ✅ 8 oct. — captures validées |
 | 4 | Données : schéma, règles d'accès, import depuis la sauvegarde | Données de test sur l'environnement de test |
-| 5 | Modules, dans l'ordre Commandes → PMR → Opérations → Référentiels → Équipe → Admin | Un module validé à la fois |
+| 5 | Modules, dans l'ordre Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 Commandes livré (session 3), captures soumises ; un module validé à la fois |
 | 6 | Déploiement sur test-csm.fs0ciety.org, CI, sauvegardes PocketBase | 🔄 8 oct. — ressources Coolify créées (`docs/DEPLOIEMENT-V2.md`) |

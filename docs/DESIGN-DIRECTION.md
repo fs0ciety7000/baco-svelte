@@ -150,3 +150,16 @@ de chaque paire texte/fond dans les 5 thèmes (AAA pour le texte du thème Contr
 - **Aceternity UI** : trop marketing et lourd (glows) pour une app métier. À éviter, sauf pour l'écran de connexion.
 - **React Bits** (variantes GSAP) : utile pour l'inspiration sur SplitText et les compteurs. La licence diffère selon les miroirs (MIT ou MIT + Commons Clause), à vérifier sur le dépôt officiel avant de copier.
 - **21st.dev** : un registre pour trouver des composants. Vérifier la licence et la date du dernier commit à chaque fois.
+
+## Module Commandes (session 3) — à valider
+
+- Formulaires de commande : colonne de 45 rem + aperçu du bon collant à droite (≥ 1024 px) ; sections numérotées
+  (`FormSection`) toujours ouvertes en desktop, accordéon avec résumé d'une ligne en mobile ; numéro vert = complet,
+  rouge = à compléter après « Préparer l'envoi ».
+- `Segmented` (choix de 2 à 3 options : type C3, omnibus / direct, aller / A-R, standard / PMR), `ToggleChip` (lignes,
+  arrêts), `AutosaveIndicator` en mono dans l'en-tête, `ActionBar` collante (au-dessus de la barre d'onglets mobile) avec
+  une seule action primaire, `Timeline` pour l'historique des statuts (pastille à la couleur du statut).
+- Suivi : vues enregistrées en puces avec compteur, table dense desktop, cartes mobiles, détail en panneau latéral
+  (bas de l'écran en mobile) ; une commande annulée est barrée.
+- B201 : trois colonnes de périodes en desktop (onglets en mobile), transports liés aux commandes (lien), saisie
+  manuelle en pointillés.

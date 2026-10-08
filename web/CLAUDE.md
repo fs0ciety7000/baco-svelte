@@ -58,6 +58,24 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   dans `users.preferences.dashboard` (Server Action avec le jeton de l'agent). Dates « du jour » en Europe/Brussels.
 - CSP avec nonce posée par `middleware.ts` (`connect-src 'self'`).
 
+## Module Commandes (étape 5)
+
+- Domaine partagé client / serveur dans `src/lib/orders/` : `status.ts` (miroir d'affichage des transitions, le hook
+  PocketBase fait foi), `schemas.ts` (brouillons zod bus / taxi, contrôles avant envoi), `time.ts` (Europe/Brussels :
+  `brusselsDay`, `brusselsToUtc`, périodes B201), `stops.ts` (lignes et arrêts entre deux gares), `mail.ts` + `eml.ts`
+  (e-mail et brouillon `.eml` X-Unsent, échappement HTML, en-têtes RFC 2047/2231), `use-autosave.ts`.
+- Convention de dates : `bus_orders.order_date` = jour de service à **minuit UTC** ; `taxi_orders.trip_at` = instant réel.
+- Données : `src/server/data/orders.ts` (fiches, liste unifiée, vues enregistrées, référentiels, modèles), `b201.ts`.
+  Écritures : `src/app/(app)/commandes/actions.ts` (Server Actions zod ; `ActionResult` ; verrou optimiste `expectedUpdated`).
+- PDF : `src/server/pdf/order-pdf.ts` (pdf-lib, Helvetica WinAnsi → `safe()`), routes `GET /api/commandes/{bus|taxi}/{id}/pdf`,
+  `/eml` et `/api/commandes/b201/{jour}/pdf` (401/404, `no-store`, `nosniff`). Le statut ne change **jamais** dans ces routes.
+- Composants : `src/components/orders/*` (formulaires, feuille d'envoi, transitions, suivi en panneau, B201) ;
+  `src/components/ui/form-kit.tsx` (Segmented, FormSection, ActionBar, AutosaveIndicator, Timeline, ToggleChip, dans `/design`).
+- Brouillon : créé au 1er enregistrement automatique, l'URL devient `/commandes/nouveau?id=…` (même route, voir le piège
+  dans `../CLAUDE.md` §7). Fiche : `/commandes/bus/[id]`, `/commandes/taxi/[id]` (rendu partagé `*-order-view.tsx`).
+- E2E `e2e/commandes.spec.ts` : crée ses sociétés de démo (superuser), parcours complet en desktop, captures
+  `test-results/commandes-<thème>-<écran>-<projet>.png` en Commandement et Ivoire.
+
 ## Conventions
 
 - **Le navigateur ne parle qu'au domaine CSM** : ni PocketBase, ni Supabase, ni WebSocket (test E2E dédié).

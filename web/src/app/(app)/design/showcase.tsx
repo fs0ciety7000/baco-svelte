@@ -23,6 +23,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
+import {
+  AutosaveIndicator,
+  FormSection,
+  Segmented,
+  Timeline,
+  ToggleChip,
+} from "@/components/ui/form-kit";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EmptyState, Kbd, PageHeader, Skeleton } from "@/components/ui/misc";
@@ -388,6 +395,10 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
         </Card>
       </Section>
 
+      <Section id="saisie" title="Saisie des commandes">
+        <FormKitDemo />
+      </Section>
+
       <Section id="statuts" title="Statuts et badges">
         <div className="flex flex-wrap gap-2">
           {(Object.keys(ORDER_STATUS) as OrderStatus[]).map((s) => (
@@ -624,6 +635,69 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
           <p className="text-body text-fg-muted">Liseré accent réservé aux zones temps réel.</p>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+/** Briques du formulaire de commande : contrôle segmenté, section repliable, puces, enregistrement, historique. */
+function FormKitDemo() {
+  const [type, setType] = useState<"2" | "1" | "3">("2");
+  const [lines, setLines] = useState(["96"]);
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <FormSection index={1} title="Incident" summary="Remplacement · 08/10" state="complete">
+        <Segmented
+          label="Type C3"
+          value={type}
+          onChange={setType}
+          options={[
+            { value: "2", label: "Remplacement" },
+            { value: "1", label: "Évacuation" },
+            { value: "3", label: "Modif. service planifié" },
+          ]}
+        />
+        <div className="flex flex-wrap gap-2">
+          {["96", "97", "118"].map((l) => (
+            <ToggleChip
+              key={l}
+              pressed={lines.includes(l)}
+              onPressedChange={(on) => setLines((x) => (on ? [...x, l] : x.filter((y) => y !== l)))}
+            >
+              L.{l}
+            </ToggleChip>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-4">
+          <AutosaveIndicator state="saving" />
+          <AutosaveIndicator state="saved" savedAt={new Date()} />
+          <AutosaveIndicator state="error" onRetry={() => toast("Nouvel essai")} />
+        </div>
+      </FormSection>
+      <FormSection index={2} title="Historique" state="error" summary="3 événements">
+        <Timeline
+          items={[
+            {
+              id: "1",
+              title: "Création · Brouillon",
+              meta: "Agent A · 08/10/2026 09:12",
+              color: statusColor("brouillon"),
+            },
+            {
+              id: "2",
+              title: "Brouillon → Envoyé",
+              meta: "Agent A · 09:20",
+              color: statusColor("envoye"),
+            },
+            {
+              id: "3",
+              title: "Envoyé → Annulé",
+              meta: "Coordinateur · 10:02",
+              note: "Trafic rétabli",
+              color: statusColor("annule"),
+            },
+          ]}
+        />
+      </FormSection>
     </div>
   );
 }

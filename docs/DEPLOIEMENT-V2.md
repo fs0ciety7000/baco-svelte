@@ -14,7 +14,7 @@ proxy Traefik). Source : GitHub App `breakable-bee-gkkc8wwg8sswo044`, dépôt `f
 | `csm-pocketbase` | `ttu45cm7qrgmqgo7dcespp3f` | `/pocketbase` · `/Dockerfile` | 8090 | `pb-test-csm.fs0ciety.org` | `csm-pocketbase` |
 | `csm-web` | `xzhygai7yapefgji83rkgile` | `/web` · `/Dockerfile` | 3000 | `test-csm.fs0ciety.org` (via Cloudflare) | aléatoire (pas besoin de nom fixe) |
 
-- **Branche déployée** : `claude/admiring-thompson-1lkun9` (branche de la session 2). À chaque nouvelle branche de
+- **Branche déployée** : `claude/csm-session-3-2lkadk` (session 3, changée par l'API au début de la session). À chaque nouvelle branche de
   travail, la changer dans Coolify (Application → Configuration → Git → Branch, ou `PATCH /applications/{uuid}`
   `git_branch`). Auto-déploiement au push, filtré par `watch_paths` (`web/**`, `pocketbase/**`).
 - **Health checks** : `/api/health` sur chaque application. Celui du web renvoie `{ ok, pocketbase }` : `pocketbase:
@@ -85,6 +85,10 @@ Import des données de BACO (méthode utilisée le 8 octobre, sans route HTTP d'
 3. sur l'instance de test, en superuser : `POST /api/backups/upload` (champ `file`), puis
    `POST /api/backups/<clé>/restore` (PocketBase redémarre tout seul) ;
 4. vérifier les comptages, un avatar et l'accès anonyme ; supprimer la copie locale.
+
+Variante « module seul » (session 3, comptes et mots de passe gardés, sans les empreintes) : télécharger une
+sauvegarde de l'instance de test, la restaurer en local, `CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase
+csm-import /home/user/csm-backup`, refaire un zip et le restaurer sur l'instance de test.
 
 La restauration **remplace** toute la base distante (y compris les superusers) : à réserver à une base vide ou à la
 répétition de la bascule. Le zip reste dans `/pb_data/backups` comme point de restauration.

@@ -35,7 +35,7 @@ gelée** (v1, branche `ccr-5dca0da8-4yg4i6`) : ne pas le modifier.
 | 2 | Design system + page `/design` (5 thèmes, GSAP) | ✅ 8 oct. — jetons + test AA (156 contrôles), 19 composants, `/design`, 17 E2E ; captures et écarts **validés** |
 | 3 | Shell (6 entrées, onglets, ⌘K, mobile 4 + Plus) + tableau de bord | ✅ 8 oct. — 24 E2E, CSP, gardes par page, captures validées |
 | 4 | Données : schéma PocketBase, règles d'accès, import | 🔄 données BACO du 8 oct. importées sur l'instance de test (5 collections) ; migration réelle **en une fois à la bascule** |
-| 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | ⏳ **session 3 : Commandes** (voir `docs/NOUVELLE-SESSION.md`) |
+| 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 **Commandes** livré en session 3 (schéma + 66 contrôles de règles, bus, taxi, envoi `.eml` + PDF, suivi, B201, E2E) : **captures soumises, en attente de validation** avant PMR |
 | 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | ✅ 8 oct. — https://test-csm.fs0ciety.org en ligne ; projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
 | — | Hotfix sécurité BACO (`supabase/migrations/20261008120000_security_hotfix.sql`) | ✅ appliqué par l'utilisateur (SQL Editor) le 8 oct., vérifié : 0 ERROR (36 avant). Suite **non appliquée** : `20261008130000_hotfix_followup.sql` (test NULL de `get_my_role()`), accord requis ; protection des mots de passe compromis encore désactivée |
 
@@ -188,6 +188,14 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   recopiés dans `auth.users.raw_user_meta_data.role` par trigger — **ne jamais se fier à
   `user_metadata` pour une décision de sécurité** (modifiable par l'utilisateur).
 
+- (v2) **Ne jamais changer de route par `history.replaceState` sous un formulaire en cours** : au rafraîchissement suivant
+  (Server Action, `router.refresh`), Next rend l'arbre de la nouvelle route et React remonte le formulaire (saisie et
+  dialogue perdus). Le brouillon créé garde sa route : `/commandes/nouveau?id=…`, rendu par la même structure
+  (`div > BusForm key="brouillon"`) que la fiche. Clé des formulaires = statut, jamais `updated`.
+- (v2) PocketBase : un champ nombre vide vaut 0 → index uniques partiels en `WHERE legacy_id > 0` (voir `pocketbase/CLAUDE.md`).
+- (v2) Playwright : un libellé avec astérisque requis (`Arrivée *`) ne répond pas à `getByLabel(…, { exact: true })` ;
+  passer par `getByRole(…, { name, exact: true })`.
+
 ## 8. Journal des décisions
 
 - 2026-10-08 — Audit initial réalisé (3 agents + inspection Supabase). Proposition rédigée.
@@ -254,6 +262,13 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   Reste : `admin_update_user_role` / `admin_set_presence` passent si l'appelant n'a pas de profil (NULL) → correctif
   `20261008130000_hotfix_followup.sql` préparé, non appliqué. Balise Cloudflare Web Analytics coupée (vérifié).
 - 2026-10-08 — Fin de session 2. Message de la session 3 (étape 5, module Commandes) dans `docs/NOUVELLE-SESSION.md`.
+- 2026-10-08 — **Session 3, module Commandes.** Réponses de l'utilisateur (AUDIT-UX-COMMANDES §6) : **tout agent confirme**,
+  heure confirmée facultative ; **une B201 par jour** pour l'équipe, filtre district à l'écran et au PDF ; **bus annulé masqué
+  de la B201** (gardé barré sur le bon) ; **modèles tous partagés**, modifiables par tout agent qui écrit des commandes.
+  Schéma `1760000200_commandes.js` (cycle de vie par hook, `order_events`, chauffeurs, contacts, lignes desservies, taxis,
+  clients PMR minimaux, gares par ligne, modèles, B201), 66 contrôles de règles. Écrans bus, taxi, suivi, B201 ; envoi par
+  `.eml` (X-Unsent, PDF `pdf-lib` joint, copie au bureau PACO du district). Suivi des agents Security auditor et Reviewer
+  avant push. `CSM_PB_*` toujours mal formées (une seule ligne) : rappelé à l'utilisateur.
 
 
 ---

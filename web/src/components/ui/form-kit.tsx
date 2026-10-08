@@ -69,7 +69,7 @@ function Segmented<T extends string | number>({
               }
             }}
             className={cn(
-              "h-control-sm min-w-0 flex-1 cursor-pointer px-3 text-small font-medium whitespace-nowrap transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none",
+              "h-control-sm min-w-0 flex-1 cursor-pointer truncate px-2 text-small font-medium whitespace-nowrap transition-colors sm:px-3 duration-150 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none",
               active
                 ? "bg-accent text-accent-fg"
                 : "text-fg-muted hover:bg-surface-2 hover:text-fg",
