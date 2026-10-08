@@ -94,7 +94,7 @@ export function ProcedureBoard({
       ) : (
         <ul className="grid gap-2 md:grid-cols-2" data-testid="procedures-grid">
           {procedures.map((p) => (
-            <li key={p.id}>
+            <li key={p.id} className="min-w-0">
               <button
                 type="button"
                 className="block w-full cursor-pointer text-left"

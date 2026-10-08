@@ -60,7 +60,7 @@ export default async function Page({
           </p>
           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="lines-grid">
             {shown.map((l) => (
-              <li key={l.line}>
+              <li key={l.line} className="min-w-0">
                 <Link href={`/referentiels/lignes?ligne=${encodeURIComponent(l.line)}`} className="block">
                   <ListCard
                     title={<span className="font-mono">{l.line}</span>}
