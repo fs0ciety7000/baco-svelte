@@ -27,7 +27,7 @@ gelée** (v1, branche `ccr-5dca0da8-4yg4i6`) : ne pas le modifier.
 
 | # | Étape | Statut |
 |---|---|---|
-| 0 | Sauvegarde Supabase complète | ✅ 8 oct. (restauration testée, archive `age` remise à l'utilisateur). Empreintes de mot de passe : export **autorisé**, à faire en session 2 |
+| 0 | Sauvegarde Supabase complète | ✅ 8 oct. (restauration testée, archive `age` remise à l'utilisateur). Session 2 : sauvegarde relancée (GET seuls) + 29 empreintes bcrypt exportées dans `/home/user/csm-backup` |
 | 1 | Prototype PocketBase vs Supabase + squelette Next | ⏳ session 2 — **PocketBase retenu par l'utilisateur**, prototype = chiffrage + validation de l'import des comptes |
 | 2 | Design system + page `/design` (5 thèmes, GSAP) | ⏳ plan validé — captures à faire valider |
 | 3 | Shell (6 entrées, onglets, ⌘K, mobile 4 + Plus) + tableau de bord | ⏳ plan validé — captures à faire valider |
@@ -144,6 +144,11 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 ## 7. Pièges connus
 
 - (v2) `PREPROD_PB_URL` n'est pas l'instance CSM (voir §2).
+- (v2) Dans l'environnement cloud, `fetch` de Node ignore le proxy sortant : lancer les scripts avec
+  `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt`. Un domaine absent de « Network access »
+  renvoie un 403 du proxy (`curl -sS "$HTTPS_PROXY/__agentproxy/status"`).
+- (v2) Lecture Supabase **autorisée sans redemander** (SELECT connecteur, GET clé de service) ; toute écriture
+  reste soumise à l'accord explicite de l'utilisateur.
 - (v2) Restauration Postgres : colonnes `GENERATED ALWAYS AS IDENTITY` → `overriding system value` ;
   `search_path` doit inclure `extensions` ; `"PUBLIC"` à déguillemeter dans `08_grants_roles.sql`.
 - (v2) Certaines fonctions Supabase sont stockées avec des fins de ligne CRLF.
@@ -180,6 +185,9 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - 2026-10-08 — Plan des étapes 1-3 **validé**. PocketBase retenu ; export des empreintes bcrypt autorisé
   (import PocketBase) ; instance PocketBase CSM **dédiée sur Coolify** avec l'app web ; migration des données
   **en une fois à une date de bascule**. Fichiers d'instructions à alimenter au fil de l'eau (§4.8).
+- 2026-10-08 — Session 2, étape 0 : sauvegarde relancée avec la nouvelle clé (GET seuls, inventaire Storage par
+  SELECT), comptes recoupés (51/51 tables), 29 empreintes `$2a$` exportées hors Git. Réseau de l'environnement
+  élargi par l'utilisateur (Supabase, Coolify, test-csm, iRail). Lectures Supabase autorisées sans redemander.
 
 
 ---

@@ -40,8 +40,12 @@ L'environnement n'autorise que le HTTPS sortant (pas de TCP 5432/6543), donc pas
 Relancer une sauvegarde :
 
 ```bash
-# Avec une clé de service valide (tout est exporté, comptes compris) :
-SUPABASE_URL=… SUPABASE_SECRET_KEY=… node scripts/supabase-backup.mjs /home/user/csm-backup
+# Avec une clé de service valide (tout est exporté, comptes compris), GET uniquement :
+# l'inventaire Storage vient d'un SELECT bucket_id, name, metadata->>'size' FROM storage.objects (connecteur),
+# ce qui évite le POST /storage/v1/object/list. Dans l'environnement cloud, fetch de Node n'emprunte
+# le proxy sortant qu'avec NODE_USE_ENV_PROXY=1 (sinon : « Ni clé de service valide »).
+NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt BACKUP_OBJECTS_FILE=/home/user/csm-backup/storage_inventory.json \
+  node scripts/supabase-backup.mjs /home/user/csm-backup
 # Sans clé de service (données limitées par RLS) :
 SUPABASE_URL=… SUPABASE_PUBLISHABLE_KEY=… BACKUP_LOGIN_EMAIL=… BACKUP_LOGIN_PASSWORD=… \
 BACKUP_TABLES="table1,table2,…" node scripts/supabase-backup.mjs /home/user/csm-backup
@@ -108,5 +112,14 @@ celui des fichiers. Les tables exportées par REST ont été recomptées en SQL 
 admin (`audit_log`, `procedure_versions`, `user_preferences`, `infractions`, `favoris`, `notifications`) ont été
 réexportées par le connecteur. `SHA256SUMS` couvre chaque fichier de l'archive.
 
-**Non sauvegardé** : les empreintes de mot de passe (`auth.users.encrypted_password`) et les jetons Auth,
+### Session 2 (8 octobre 2026, après rotation des clés)
+
+Sauvegarde relancée avec la clé de service, **GET uniquement** : 51 tables sur 51 aux comptes identiques au
+`count(*)` SQL (9 257 lignes ; la 52ᵉ entrée de l'OpenAPI est la vue `admin_audit_view`), 29 comptes,
+39 fichiers Storage (21 / 17 / 1 / 0) dont la taille est identique à `storage.objects`.
+Empreintes : `auth_password_hashes.json` (`id`, `encrypted_password`), 29 sur 29, toutes en bcrypt `$2a$`
+(coût 6 ou 10), MD5 de contrôle identique à celui calculé côté serveur. Le DDL (`schema/`) n'a pas été
+réextrait : il se relit à la demande par le connecteur.
+
+**Non sauvegardé** (session 1) : les empreintes de mot de passe (`auth.users.encrypted_password`) et les jetons Auth,
 les secrets du Vault, la configuration Auth du tableau de bord (fournisseurs, modèles d'e-mails, URL de redirection).

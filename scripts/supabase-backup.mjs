@@ -4,13 +4,14 @@
 //
 // Usage :
 //   SUPABASE_URL=… SUPABASE_SECRET_KEY=… node scripts/supabase-backup.mjs [dossier]
+//   BACKUP_OBJECTS_FILE=objets.json : inventaire Storage fourni (GET uniquement, pas de POST /object/list)
 // Repli sans clé de service (données limitées par les policies RLS) :
 //   SUPABASE_URL=… SUPABASE_PUBLISHABLE_KEY=… BACKUP_LOGIN_EMAIL=… BACKUP_LOGIN_PASSWORD=… node scripts/supabase-backup.mjs
 //
 // Le schéma (DDL, fonctions, triggers, policies, droits) n'est pas exposé par l'API REST :
 // il est extrait séparément par requêtes catalogue (voir docs/SAUVEGARDE-SUPABASE.md).
 
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 const url = process.env.SUPABASE_URL?.replace(/\/$/, '');
@@ -106,8 +107,15 @@ async function listObjects(auth, bucket, prefix = '') {
 	return out;
 }
 
+// Inventaire fourni par fichier (SELECT bucket_id, name FROM storage.objects via le connecteur) :
+// évite le POST /object/list, pour n'émettre que des GET avec la clé de service.
+const objectsFile = process.env.BACKUP_OBJECTS_FILE;
+const inventory = objectsFile ? JSON.parse(await readFile(objectsFile, 'utf8')) : null;
+
 async function dumpBucket(auth, bucket) {
-	const objects = await listObjects(auth, bucket);
+	const objects = inventory
+		? inventory.filter((o) => o.bucket_id === bucket).map((o) => ({ path: o.name }))
+		: await listObjects(auth, bucket);
 	let bytes = 0;
 	for (const o of objects) {
 		const res = await fetch(`${url}/storage/v1/object/authenticated/${bucket}/${o.path.split('/').map(encodeURIComponent).join('/')}`, {
@@ -148,7 +156,7 @@ try {
 	report.errors.push(String(e.message ?? e));
 }
 
-for (const bucket of (process.env.BACKUP_BUCKETS ?? 'avatars,documents,taxis,movements_pdf').split(',')) {
+for (const bucket of (process.env.BACKUP_BUCKETS ?? 'avatars,documents,taxis,movements_pdf').split(',').filter(Boolean)) {
 	try {
 		report.storage[bucket] = await dumpBucket(auth, bucket);
 	} catch (e) {

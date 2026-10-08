@@ -24,6 +24,8 @@ Niveau **Limited**, case « Allow package managers » cochée (npm, GitHub…), 
 | `linear.app`, `vercel.com`, `raycast.com`, `attio.com`, `gsap.com` | Recherche de références design (facultatif) |
 
 Le plus simple au début : niveau **Full** (comme « Default »), puis restreindre une fois la liste stabilisée.
+Vérifié en session 2 : sans ces domaines, le proxy répond 403 (`curl -sS "$HTTPS_PROXY/__agentproxy/status"`).
+Les scripts Node doivent tourner avec `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt`.
 Ne pas autoriser `test.fs0ciety.org` : l'instance PocketBase du jeu n'a rien à faire dans cet environnement.
 
 ## 3. Variables d'environnement / secrets
