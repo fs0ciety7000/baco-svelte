@@ -16,7 +16,7 @@ Niveau **Limited**, case « Allow package managers » cochée (npm, GitHub…), 
 |---|---|
 | `mgljaheyimizrydazrxh.supabase.co` | Sauvegarde / export BACO (lecture seule) |
 | `test-csm.fs0ciety.org` | Vérifier le déploiement CSM |
-| `pb-test-csm.fs0ciety.org` | Instance PocketBase CSM (si exposée pour l'admin) |
+| `pb-test-csm.fs0ciety.org` | Instance PocketBase CSM de test (**à ajouter** : absent en session 2, la vérification directe a été refusée) |
 | `<domaine de ton Coolify>` | API Coolify (déploiements), si tu fournis un jeton |
 | `api.irail.be` | Trains en direct (iRail) |
 | `fonts.googleapis.com`, `fonts.gstatic.com` | `next/font` télécharge Saira Condensed au build |
@@ -38,7 +38,7 @@ Ne pas autoriser `test.fs0ciety.org` : l'instance PocketBase du jeu n'a rien à 
 | `SUPABASE_SECRET_KEY` | Clé secrète **après rotation** |
 | `SUPABASE_PUBLISHABLE_KEY` | Clé publiable **après rotation** |
 | `CSM_TEST_ADMIN_EMAIL`, `CSM_TEST_ADMIN_PASSWORD` | Compte admin de test BACO/CSM |
-| `CSM_PB_URL`, `CSM_PB_ADMIN_EMAIL`, `CSM_PB_ADMIN_PASSWORD` | Instance PocketBase CSM, une fois déployée sur Coolify |
+| `CSM_PB_URL`, `CSM_PB_ADMIN_EMAIL`, `CSM_PB_ADMIN_PASSWORD` | `https://pb-test-csm.fs0ciety.org`, `admin@test-csm.fs0ciety.org` et le mot de passe de la variable `PB_ADMIN_PASSWORD` de `csm-pocketbase` dans Coolify |
 | `COOLIFY_API_URL` | Facultatif : adresse de **ton tableau de bord Coolify**, sans chemin (ex. `https://coolify.fs0ciety.org`). L'API est servie sous `/api/v1` |
 | `COOLIFY_API_TOKEN` | Facultatif : jeton créé dans Coolify → **Keys & Tokens → API tokens** (activer l'API dans **Settings** si besoin), droits `read` + `write` + `deploy`, **sans** `root` ni `read:sensitive` |
 

@@ -35,7 +35,7 @@ gelée** (v1, branche `ccr-5dca0da8-4yg4i6`) : ne pas le modifier.
 | 3 | Shell (6 entrées, onglets, ⌘K, mobile 4 + Plus) + tableau de bord | 🔄 session 2 — fait (24 E2E, CSP, gardes par page), **captures soumises, à valider** |
 | 4 | Données : schéma PocketBase, règles d'accès, import | ⏳ migration **en une fois à une date de bascule** (pas de synchro BACO ↔ CSM) |
 | 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | ⏳ |
-| 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | ⏳ `test-csm.fs0ciety.org` |
+| 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | 🔄 session 2 — projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
 | — | Hotfix sécurité BACO (`supabase/migrations/20261008120000_security_hotfix.sql`) | ⏳ **accord donné le 8 oct.**, mais le connecteur Supabase n'exécute pas les écritures (délai dépassé, rien appliqué) : à exécuter par l'utilisateur dans le SQL Editor, puis vérifier |
 
 **Ne pas commencer une étape sans validation de l'utilisateur.** Les captures desktop (1440×900) et
@@ -60,6 +60,10 @@ mobile (390×844) sont soumises avant de généraliser un design.
 Environnement dédié **CSM** : configuration de référence dans `docs/ENVIRONNEMENT-CLOUD.md` (à tenir à jour).
 - `SUPABASE_URL`, `SUPABASE_SECRET_KEY` (clé de service, lecture seule par discipline), `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_JWKS_URL`
 - `CSM_TEST_ADMIN_EMAIL`, `CSM_TEST_ADMIN_PASSWORD` — compte admin BACO/CSM de test
+- `COOLIFY_API_URL`, `COOLIFY_API_TOKEN` — API Coolify (`/api/v1`) : Claude crée et déploie les ressources du projet
+  **CSM** uniquement ; ne jamais toucher aux autres projets (« Main Stack » : jeu, agenda, PocketBase perso…)
+- `CSM_PB_URL`, `CSM_PB_ADMIN_EMAIL`, `CSM_PB_ADMIN_PASSWORD` — PocketBase CSM de test (`pb-test-csm.fs0ciety.org`),
+  à créer par l'utilisateur depuis les variables de `csm-pocketbase` dans Coolify
 - `PREPROD_PB_URL`, `PREPROD_PB_ADMIN_*`, `PREPROD_KEEP_EMAILS` — **PocketBase de test.fs0ciety.org (jeu
   Cosmic Empires), PAS une instance CSM : n'y rien écrire**
 - Sortie réseau : HTTPS uniquement (pas de TCP 5432 → pas de `pg_dump`). Le connecteur Supabase (MCP) exécute
@@ -159,6 +163,10 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - (v2) PocketBase : un champ JSON `null` dans une règle (`denies !~ …`) vaut faux en SQL → hook de normalisation
   (`pocketbase/pb_hooks/users.pb.js`). Trouvé par l'E2E, pas par le test des règles : tester aussi des comptes
   créés « à nu ».
+- (v2) Docker : le démon n'est pas lancé dans l'environnement cloud (`nohup dockerd &` suffit) ; les builds qui
+  téléchargent (wget, npm, polices) échouent derrière le proxy TLS → tester l'image avec le binaire local.
+- (v2) Coolify : `POST /deploy` (et non GET) ; variables créées par l'API = `is_buildtime: true` par défaut → forcer
+  `false` pour les secrets ; `custom_internal_name` donne un nom réseau stable (`csm-pocketbase`).
 - (v2) Avant de relancer le serveur web, vérifier que l'ancien `next-server` est arrêté (sinon EADDRINUSE et les
   tests tournent contre l'ancien build) : `ps -eo pid,args | grep "[n]ext-server"`.
 - (v2) Ne jamais faire `pkill -f "<motif>"` quand le motif figure dans la commande elle-même : le shell se tue
@@ -225,6 +233,10 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   toute écriture (apply_migration et execute_sql, 3 essais) sans rien appliquer : connecteur en lecture seule.
   Exécution confiée à l'utilisateur (SQL Editor), vérification ensuite par SELECT + advisors (référence avant :
   36 ERROR / 69 WARN).
+- 2026-10-08 — Étape 3 validée. **Étape 4** : projet Coolify CSM créé par l'API ; `csm-pocketbase` (volume `/pb_data`,
+  superuser par variables runtime, sauvegarde PocketBase 2 h + volume Coolify 2 h 30, 14 conservées ; R2 plus tard) et
+  `csm-web` (`PB_URL` interne). Branche déployée = branche de session (à changer dans Coolify à chaque session).
+  CI `csm-v2.yml` (web, règles PocketBase, E2E, images). Base de test vide : import des données à décider.
 
 
 ---

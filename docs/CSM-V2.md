@@ -129,7 +129,7 @@ Dans Coolify, deux ressources :
 | 0 | **Sauvegarde Supabase** (schéma, données, rôles, Storage, liste des comptes) | ✅ 8 oct. — `docs/SAUVEGARDE-SUPABASE.md`, restauration testée |
 | 1 | Prototype PocketBase ou Supabase + squelette Next (auth, 1 module) | 🔄 8 oct. — prototype fait, recommandation **`docs/BACKEND-DECISION.md`** soumise (PocketBase confirmé, ≈ 10,75 j de migration backend) |
 | 2 | Design system : jetons, 5 thèmes, bibliothèque de composants, GSAP, page `/design` | ✅ 8 oct. — captures validées |
-| 3 | Shell : 6 entrées, onglets par module, ⌘K, menu utilisateur, mobile | Captures validées |
+| 3 | Shell : 6 entrées, onglets par module, ⌘K, menu utilisateur, mobile | ✅ 8 oct. — captures validées |
 | 4 | Données : schéma, règles d'accès, import depuis la sauvegarde | Données de test sur l'environnement de test |
 | 5 | Modules, dans l'ordre Commandes → PMR → Opérations → Référentiels → Équipe → Admin | Un module validé à la fois |
-| 6 | Déploiement sur test-csm.fs0ciety.org, CI, sauvegardes PocketBase | URL de test |
+| 6 | Déploiement sur test-csm.fs0ciety.org, CI, sauvegardes PocketBase | 🔄 8 oct. — ressources Coolify créées (`docs/DEPLOIEMENT-V2.md`) |
