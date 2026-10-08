@@ -179,7 +179,7 @@ suivre.
 
 | # | Décision |
 |---|---|
-| 1 | `CSM_TEST_ADMIN_PASSWORD` mis à jour dans l'environnement : à revérifier en session 3 (variables lues au démarrage) |
+| 1 | `CSM_TEST_ADMIN_PASSWORD` mis à jour : correspond à l'empreinte BACO. **Connexion réelle réussie sur test-csm** avec ce mot de passe après import (8 oct.) |
 | 2 | Sauvegardes : **sauvegarde du volume par Coolify** pour l'instant, **Cloudflare R2** plus tard (réglage S3 de PocketBase) |
 | 3 | Liste des tables non migrées **confirmée** ; **`infractions` abandonnée** (ni migrée ni archivée dans l'app) |
 | 4 | Sociétés sans nom : à compléter, plus tard ; l'import garde « Société sans nom n°… » d'ici là |

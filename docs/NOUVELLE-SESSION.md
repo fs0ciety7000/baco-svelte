@@ -4,7 +4,7 @@
 > `claude/admiring-thompson-1lkun9` (`pocketbase/`, `web/`, `docs/BACKEND-DECISION.md`, `docs/DEPLOIEMENT-V2.md`).
 > Pour la session 3 : partir de cette branche, **changer la branche déployée dans Coolify** (`csm-web` et
 > `csm-pocketbase`, voir DEPLOIEMENT-V2 §5), relancer la sauvegarde seulement si `/home/user/csm-backup` est vide, puis
-> attaquer l'étape 5 (module Commandes, `docs/design/AUDIT-UX-COMMANDES.md`). Vérifier d'abord si l'utilisateur a
+> attaquer l'étape 5 (les données BACO du 8 oct. sont déjà importées sur l'instance de test) (module Commandes, `docs/design/AUDIT-UX-COMMANDES.md`). Vérifier d'abord si l'utilisateur a
 > appliqué le hotfix sécurité dans le SQL Editor (trigger `guard_profile_privileged_columns`, puis `get_advisors`).
 > Les scripts Node ont besoin de `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt`.
 > Les scripts Node ont besoin de `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt`.

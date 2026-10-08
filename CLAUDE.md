@@ -33,7 +33,7 @@ gelée** (v1, branche `ccr-5dca0da8-4yg4i6`) : ne pas le modifier.
 | 1 | Prototype PocketBase vs Supabase + squelette Next | 🔄 session 2 — `pocketbase/` : migrations, audit, import (29 comptes + empreintes, 295 BC bus), 24 contrôles de règles OK, sauvegarde/restauration OK ; `web/` : Next 15.5, connexion cookie httpOnly, `/commandes`, relais SSE, 6 E2E OK (1440 + 390). recommandation `docs/BACKEND-DECISION.md` soumise, questions tranchées |
 | 2 | Design system + page `/design` (5 thèmes, GSAP) | ✅ 8 oct. — jetons + test AA (156 contrôles), 19 composants, `/design`, 17 E2E ; captures et écarts **validés** |
 | 3 | Shell (6 entrées, onglets, ⌘K, mobile 4 + Plus) + tableau de bord | 🔄 session 2 — fait (24 E2E, CSP, gardes par page), **captures soumises, à valider** |
-| 4 | Données : schéma PocketBase, règles d'accès, import | ⏳ migration **en une fois à une date de bascule** (pas de synchro BACO ↔ CSM) |
+| 4 | Données : schéma PocketBase, règles d'accès, import | 🔄 données BACO du 8 oct. importées sur l'instance de test (5 collections) ; migration réelle **en une fois à la bascule** |
 | 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | ⏳ |
 | 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | 🔄 session 2 — projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
 | — | Hotfix sécurité BACO (`supabase/migrations/20261008120000_security_hotfix.sql`) | ⏳ **accord donné le 8 oct.**, mais le connecteur Supabase n'exécute pas les écritures (délai dépassé, rien appliqué) : à exécuter par l'utilisateur dans le SQL Editor, puis vérifier |
@@ -244,6 +244,10 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - 2026-10-08 — `https://test-csm.fs0ciety.org` **en ligne** (santé OK, PocketBase joint en interne, CSP/HSTS), CI verte
   au premier run. Trouvés au déploiement : sonde `localhost`/IPv6 (503), balise Cloudflare Web Analytics injectée
   (à couper côté Cloudflare), tailwind-merge qui retirait `text-accent-fg` (bouton primaire peu lisible) → corrigé.
+- 2026-10-08 — **Import des données BACO sur l'instance de test** (choix A de l'utilisateur) par sauvegarde PocketBase
+  construite en local puis envoyée et restaurée par l'API (DEPLOIEMENT-V2 §5). **Connexion réelle vérifiée** avec le
+  mot de passe BACO du compte admin de test (desktop + mobile, cookie httpOnly/Secure, SSE « En direct » via
+  Cloudflare). `CSM_TEST_ADMIN_PASSWORD` correspond désormais à l'empreinte BACO.
 
 
 ---

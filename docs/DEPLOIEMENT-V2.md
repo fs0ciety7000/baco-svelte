@@ -52,8 +52,10 @@ domaines autorisés.
 - **Restauration** : PocketBase → Settings → Backups → Restore (redémarre l'instance), ou arrêter `csm-pocketbase`,
   remplacer le contenu du volume par un zip décompressé, redémarrer. Testé en local le 8 octobre (comptages et fichiers
   identiques).
-- **Données de BACO** : l'import (`pocketbase csm-import`) se lance depuis le terminal Coolify du conteneur
-  `csm-pocketbase`, avec la sauvegarde copiée dans le volume. Pas de route HTTP d'import. Voir §5.
+- **Données de BACO importées le 8 octobre 2026** (décision de l'utilisateur, option A) : 29 comptes avec leur mot de
+  passe BACO, 29 sociétés, 295 commandes bus, 3 commandes taxi, 487 lignes d'audit historique, 6 avatars. Connexion
+  vérifiée sur le site avec un vrai mot de passe BACO. L'instance de test contient donc des **données personnelles
+  réelles** (dont PMR) : ne pas l'ouvrir à des tiers. Méthode : voir §5.
 
 ## 4. CI GitHub
 
@@ -76,12 +78,16 @@ curl -s -H "$H" "$C/deployments/<deployment_uuid>"                              
 curl -s -X PATCH -H "$H" -H 'content-type: application/json' "$C/applications/<uuid>" -d '{"git_branch":"<branche>"}'  # changer de branche
 ```
 
-Import des données de test (quand l'utilisateur l'a décidé) :
-1. copier `/home/user/csm-backup` (hors Git) dans le volume, par exemple via le terminal Coolify ou `docker cp` sur
-   le serveur ;
-2. `pocketbase csm-import /pb_data/import --dir=/pb_data --migrationsDir=/pb/pb_migrations --hooksDir=/pb/pb_hooks`
-   (ajouter `CSM_IMPORT_RESET=1` pour rejouer) ;
-3. supprimer la copie de la sauvegarde du volume.
+Import des données de BACO (méthode utilisée le 8 octobre, sans route HTTP d'import ni accès au serveur) :
+1. en local, dans un dossier vierge : `pocketbase migrate up`, `pocketbase superuser upsert <PB_ADMIN_EMAIL> <PB_ADMIN_PASSWORD>`
+   (mêmes valeurs que Coolify), `pocketbase csm-import /home/user/csm-backup` ;
+2. `pocketbase serve` local, puis `POST /api/backups` pour produire le zip ;
+3. sur l'instance de test, en superuser : `POST /api/backups/upload` (champ `file`), puis
+   `POST /api/backups/<clé>/restore` (PocketBase redémarre tout seul) ;
+4. vérifier les comptages, un avatar et l'accès anonyme ; supprimer la copie locale.
+
+La restauration **remplace** toute la base distante (y compris les superusers) : à réserver à une base vide ou à la
+répétition de la bascule. Le zip reste dans `/pb_data/backups` comme point de restauration.
 
 ## 6. Pièges
 
