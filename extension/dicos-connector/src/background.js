@@ -4,7 +4,8 @@
 
 async function config() {
   const v = await chrome.storage.local.get(["csmUrl", "token"]);
-  return { csmUrl: String(v.csmUrl || "").replace(/\/+$/, ""), token: String(v.token || "") };
+  const csmUrl = String(v.csmUrl || "https://test-csm.fs0ciety.org").replace(/\/+$/, "");
+  return { csmUrl, token: String(v.token || "") };
 }
 
 async function push(day, payload) {

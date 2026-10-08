@@ -1,3 +1,4 @@
+const DEFAULT_CSM_URL = "https://test-csm.fs0ciety.org";
 // Popup : réglages (URL CSM, jeton de connecteur, auto + période), choix du jour, bouton de synchro manuelle.
 // Il parle au content script de l'onglet DICOS actif (statut + synchro) ; l'envoi vers CSM passe par le service worker.
 const $ = (id) => document.getElementById(id);
@@ -81,7 +82,8 @@ async function refreshStatus() {
 
 async function load() {
   const v = await chrome.storage.local.get(["csmUrl", "token", "auto", "last"]);
-  $("csmUrl").value = v.csmUrl || "";
+  // Adresse CSM pré-remplie (le texte gris n'était qu'un exemple, le champ restait vide).
+  $("csmUrl").value = v.csmUrl || DEFAULT_CSM_URL;
   $("token").value = v.token || "";
   $("auto").checked = !!(v.auto && v.auto.enabled);
   $("minutes").value = (v.auto && v.auto.minutes) || 10;
