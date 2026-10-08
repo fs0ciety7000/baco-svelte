@@ -9,7 +9,8 @@ Tu reprends le projet **CSM — Client Solutions Management Tool**, successeur d
 **Contexte à lire en premier.** Tout est sur la branche `ccr-5dca0da8-4yg4i6` (v1 SvelteKit, gelée comme référence). Récupère-la avec `git fetch origin ccr-5dca0da8-4yg4i6`, puis lis :
 1. `docs/CSM-V2.md` : le cahier des charges de cette session (pivot, décisions, retours UX, stack, feuille de route) ;
 2. `CLAUDE.md` : contraintes non négociables, workflow, journal des décisions ;
-3. `docs/AUDIT.md` et `docs/PROPOSITION.md` : audit complet, nouveautés et parcours métier.
+3. `docs/DESIGN-DIRECTION.md` + `docs/references/*.jpg` : direction artistique « Tactical premium » (thèmes, polices, formes, composants, GSAP, références) ;
+4. `docs/AUDIT.md` et `docs/PROPOSITION.md` : audit complet, nouveautés et parcours métier.
 
 **Règles de base**
 - **BACO reste en production et on n'y touche pas** : pas de commit sur `main`, rien n'est modifié dans la base Supabase. Supabase est en **lecture seule**.
@@ -21,7 +22,7 @@ Tu reprends le projet **CSM — Client Solutions Management Tool**, successeur d
 **Ce que je veux dans cette session, dans l'ordre**
 0. **Sauvegarde complète de Supabase** avant toute autre chose : schéma, données des 51 tables, rôles et policies, fonctions, triggers, fichiers Storage (`avatars`, `documents`, `taxis`, `movements_pdf`) et liste des comptes. L'archive reste **hors Git** car elle contient des données personnelles. Documente la procédure de restauration. Utilise ce que l'environnement fournit (connecteur Supabase, variables d'environnement). S'il manque un accès, dis-moi lequel.
 1. **Stack** : Next.js (App Router) + React + TypeScript + Tailwind v4 + shadcn/ui personnalisé + **GSAP** (@gsap/react) + TanStack Query/Table + zod. **PocketBase** est probable comme backend, auto-hébergé sur Coolify ; une instance de préproduction est dans les variables `PREPROD_PB_*`. Fais un prototype rapide, PocketBase contre Supabase via le serveur Next, et donne-moi une recommandation chiffrée (import des comptes, règles d'accès, temps réel en SSE, sauvegardes, effort de migration) **avant** de migrer les données.
-2. **Design system** et **bibliothèque de composants réutilisables**, avec une page interne `/design` qui montre chaque composant dans chaque thème. Thèmes : les 5 de la v1 (Nocturne, Ivoire, Rail, Contraste élevé, Tactique), un mode automatique et la densité. Animations GSAP courtes et fluides, qui respectent `prefers-reduced-motion`.
+2. **Design system** et **bibliothèque de composants réutilisables**, avec une page interne `/design` qui montre chaque composant dans chaque thème. Suis `docs/DESIGN-DIRECTION.md` : 5 thèmes (Commandement par défaut, Ivoire, Rail, Contraste élevé, Nocturne bleu), mode automatique, densité. Animations GSAP courtes et fluides, qui respectent `prefers-reduced-motion`.
 3. **Shell** :
    - **6 entrées principales au maximum** (Accueil, Commandes, PMR, Opérations, Référentiels, Équipe), avec des onglets à l'intérieur des modules ;
    - l'administration dans le menu utilisateur ;
@@ -30,7 +31,7 @@ Tu reprends le projet **CSM — Client Solutions Management Tool**, successeur d
 4. **Tableau de bord** : widgets vraiment responsive (container queries) et réorganisables.
 5. **UI/UX** : nettement plus lisible et moderne que la v1. La v1 a été jugée trop chargée, peu lisible et pas assez moderne.
 
-   **Référence principale : https://test.fs0ciety.org/decisions.** Cette page est derrière une connexion : demande-moi des identifiants ou des captures. Étudie aussi Linear, Vercel, Attio et Raycast. Lance des agents UI/UX en parallèle pour la recherche de références et l'audit d'ergonomie. **Soumets-moi des captures desktop et mobile pour validation avant de généraliser.**
+   **Références : mes captures de test.fs0ciety.org (/game, /decisions) dans `docs/references/`**, et les références listées dans `DESIGN-DIRECTION.md` (Linear, Vercel Geist, Raycast, Attio…). Je veux un rendu premium. Lance des agents UI/UX en parallèle pour la recherche de références et l'audit d'ergonomie. **Soumets-moi des captures desktop et mobile pour validation avant de généraliser.**
 6. **Déploiement Docker sur Coolify** en **https://test-csm.fs0ciety.org** :
    - `web` en Next standalone ;
    - `pocketbase` avec volume et sauvegardes ;

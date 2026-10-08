@@ -78,12 +78,15 @@ L'environnement fournit une instance PocketBase de préproduction (`PREPROD_PB_U
 
 ## 4. Direction artistique
 
-- **Référence principale** : https://test.fs0ciety.org/decisions. **Elle demande une connexion** : la page publique ne montre que l'accueil du jeu Cosmic Empires. Il faut des identifiants ou des captures de l'utilisateur.
+**Document de référence : `docs/DESIGN-DIRECTION.md`** (« Tactical premium » : discipline HUD de fs0ciety + lisibilité SaaS ; 5 thèmes AA vérifiés, polices, formes, composants, recettes GSAP, références). Captures de l'utilisateur : `docs/references/`.
+
+
+- **Référence principale** : test.fs0ciety.org/game et /decisions — captures fournies dans `docs/references/` (fond noir chaud, titres condensés en capitales, libellés mono espacés, angles vifs, bande multicolore sur les cartes de stats, bordure gauche colorée par statut, bordures pointillées pour les états vides, accent ambre, barre d'onglets mobile à 5 entrées).
 - Jetons déjà extraits de test.fs0ciety.org (voir `docs/PROPOSITION.md` §2 et l'historique de la v1) :
   - **Thèmes** : `data-theme` posé sans flash ; panneaux en verre ; fond en dégradé radial ; liserés accentués.
   - **Polices** : Inter, Chakra Petch pour les titres, JetBrains Mono pour les chiffres.
   - **Accents** : cyan `#4BE8FF`, violet `#A78BFA`.
-- **Thèmes** : reprendre les 5 de la v1 (Nocturne, Ivoire, Rail, Contraste élevé, Tactique), mode automatique et densité, avec des jetons sémantiques identiques (voir `src/app.css` de la v1 pour les valeurs).
+- **Thèmes** : les 5 de `DESIGN-DIRECTION.md` (Commandement par défaut, Ivoire, Rail, Contraste élevé, Nocturne bleu), mode automatique et densité.
 - **Autres références à étudier et capturer** : Linear, Vercel Dashboard, Attio, Raycast, Plane, Supabase Studio, Stripe Dashboard. En extraire les codes pour un outil d'opérations dense mais lisible.
 
 ## 5. Ce qui se réutilise de la v1 (branche `ccr-5dca0da8-4yg4i6`)
