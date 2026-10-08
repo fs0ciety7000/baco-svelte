@@ -1,6 +1,5 @@
 "use client";
 
-import { Pencil } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
@@ -260,11 +259,6 @@ export function AssistBoard({
                   {t.label}
                 </Button>
               ))}
-              <Button asChild size="sm" variant="ghost" className="ml-auto">
-                <Link href={`/pmr/nouveau?id=${open.id}`}>
-                  <Pencil aria-hidden /> Modifier
-                </Link>
-              </Button>
             </div>
           ) : null
         }

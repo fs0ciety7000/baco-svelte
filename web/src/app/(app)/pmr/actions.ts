@@ -4,13 +4,7 @@ import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 
 import { can, isAdmin } from "@/lib/permissions";
-import {
-  ASSIST_STATUSES,
-  assistSchema,
-  clientSchema,
-  EQUIPMENT_STATES,
-  equipmentSchema,
-} from "@/lib/pmr/model";
+import { ASSIST_STATUSES, clientSchema, EQUIPMENT_STATES, equipmentSchema } from "@/lib/pmr/model";
 import { requireUser, type SessionUser } from "@/server/auth";
 import { pbForRequest } from "@/server/data/orders";
 import {
@@ -61,48 +55,6 @@ function coordinator(user: SessionUser) {
 
 // ---------------------------------------------------------------------------------------------------
 // Prestations
-
-/** Création d'une ou plusieurs prestations (« Coller depuis DICOS » peut en produire plusieurs). */
-export async function createAssists(input: unknown[]): Promise<Result<{ ids: string[] }>> {
-  try {
-    const user = await need("deplacements:write");
-    const items = z.array(assistSchema).min(1).max(20).parse(input);
-    // Sans pmr:read, pas de lien vers une fiche client (données de santé).
-    const canPmr = can(user, "pmr:read");
-    const pb = await pbForRequest();
-    const ids: string[] = [];
-    for (const a of items) {
-      const r = await pb.collection("pmr_assists").create({
-        ...a,
-        zone: a.zone || null,
-        client: canPmr && a.client ? a.client : null,
-        status: "prevue",
-        created_by: user.id,
-        updated_by: user.id,
-      });
-      ids.push(r.id);
-    }
-    return { ok: true, data: { ids } };
-  } catch (e) {
-    return fail(e);
-  }
-}
-
-export async function updateAssist(id: string, input: unknown): Promise<Result> {
-  try {
-    const user = await need("deplacements:write");
-    const a = assistSchema.parse(input);
-    const body: Record<string, unknown> = { ...a, zone: a.zone || null, updated_by: user.id };
-    // Sans pmr:read, le lien client n'est pas modifiable (le formulaire ne le connaît pas).
-    if (can(user, "pmr:read")) body.client = a.client || null;
-    else delete body.client;
-    const pb = await pbForRequest();
-    await pb.collection("pmr_assists").update(pbId.parse(id), body);
-    return { ok: true };
-  } catch (e) {
-    return fail(e);
-  }
-}
 
 export async function transitionAssist(input: {
   id: string;

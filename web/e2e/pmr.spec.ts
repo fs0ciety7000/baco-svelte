@@ -95,28 +95,15 @@ test.afterAll(async () => {
     await pb("DELETE", `/api/collections/${f.col}/records/${f.id}`);
 });
 
-test("prestation collée depuis DICOS : aller-retour, panneau, annulation avec motif", async ({
-  page,
-}, info) => {
+test("prestation : panneau, annulation avec motif, rétablissement", async ({ page }, info) => {
   test.skip(info.project.name !== "desktop", "parcours en desktop ; mobile en captures");
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await login(page, "/pmr/nouveau");
-  await page
-    .getByTestId("dicos-paste")
-    .fill("1234-56-78-9012 1 CRF OUT E2134 à 16h42 Nom Fictif IN E5678 à 19h05");
-  await expect(page.getByTestId("dicos-preview")).toContainText("1234-56-78-9012");
-  await page.getByTestId("dicos-apply").click();
-  // Deux prestations ; le nom collé n'est repris nulle part.
-  await expect(page.getByRole("heading", { name: "Assistance 2" })).toBeVisible();
-  await expect(page.locator("form")).not.toContainText("Nom Fictif");
-  for (const field of await page.getByLabel("Gare").all()) await field.fill(STATION);
-  await page.getByTestId("assist-save").click();
-  await expect(page).toHaveURL(new RegExp(`/pmr\\?du=${today}`));
-
-  const row = page.getByRole("button", { name: `Ouvrir la prestation de 16:42 à ${STATION}` });
+  // Plus de création manuelle (synchro DICOS) : on ouvre la prestation de démo créée en amont.
+  await login(page, "/pmr");
+  const row = page.getByRole("button", { name: `Ouvrir la prestation de 08:15 à ${STATION}` });
   await row.click();
-  await expect(page.getByTestId("assist-panel")).toContainText("1 × CRF");
+  await expect(page.getByTestId("assist-panel")).toContainText("1 × NV");
   await expect(page.getByTestId("assist-panel")).toContainText(`Z${suffix}`);
   await page.getByTestId("assist-annulee").click();
   await page.getByLabel("Motif").fill("Train supprimé (essai)");
@@ -180,8 +167,6 @@ for (const t of ["commandement", "ivoire"] as const) {
     await expect(page.getByTestId("assist-panel")).toBeVisible();
     await page.screenshot({ path: `test-results/pmr-${t}-prestation-panneau-${p}.png` });
     await page.keyboard.press("Escape");
-    await page.goto("/pmr/nouveau");
-    await snap(page, `${t}-nouvelle`, p);
     await page.goto("/pmr/materiel?vue=toutes");
     await snap(page, `${t}-materiel`, p);
     await page.goto("/pmr/clients");
