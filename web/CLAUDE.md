@@ -76,6 +76,19 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - E2E `e2e/commandes.spec.ts` : crée ses sociétés de démo (superuser), parcours complet en desktop, captures
   `test-results/commandes-<thème>-<écran>-<projet>.png` en Commandement et Ivoire.
 
+## Module PMR (étape 5, session 3)
+
+- Domaine : `src/lib/pmr/model.ts` (statuts des prestations, états du matériel, schémas zod, `expiry`, `dialable`),
+  `src/lib/pmr/dicos.ts` (`parseDicos`, même logique que `pocketbase/pb_hooks/lib/pmr.js`, testée).
+- Données : `src/server/data/pmr.ts` — le nom / téléphone d'un client n'est lu (expand) et rendu **que** si l'agent a
+  `pmr:read` ; `legacyText` (texte BACO, peut contenir un nom) idem. Écritures : `src/app/(app)/pmr/actions.ts`.
+- Écrans : `/pmr` (prestations par jour, panneau + transitions), `/pmr/nouveau` (collage DICOS, plusieurs
+  assistances ; `?id=` = modification), `/pmr/historique` (+ `GET /api/pmr/export` CSV **sans nom**, formules
+  neutralisées, BOM), `/pmr/clients` (`?id=` ouvre la fiche), `/pmr/materiel` (vues, état, zones). Composants
+  `src/components/pmr/*` ; `PmrClientPicker` (exporté de `components/orders/taxi-form.tsx`) est partagé.
+- Téléphone : `PhoneLink` (`etrali:` desktop, `tel:` mobile, deux liens alternés en CSS).
+- E2E `e2e/pmr.spec.ts` (fixtures superuser, captures `test-results/pmr-*`).
+
 ## Conventions
 
 - **Le navigateur ne parle qu'au domaine CSM** : ni PocketBase, ni Supabase, ni WebSocket (test E2E dédié).

@@ -163,3 +163,12 @@ de chaque paire texte/fond dans les 5 thèmes (AAA pour le texte du thème Contr
   (bas de l'écran en mobile) ; une commande annulée est barrée.
 - B201 : trois colonnes de périodes en desktop (onglets en mobile), transports liés aux commandes (lien), saisie
   manuelle en pointillés.
+
+## Module PMR (session 3) — à valider
+
+- Mêmes briques que Commandes : listes en table dense / cartes mobiles avec bordure de statut, détail en panneau
+  latéral, historique en `Timeline`, vues enregistrées en puces avec compteur (matériel).
+- Prestations groupées par jour (titre mono), statut : prévue (info), réalisée (ok), annulée (danger, barrée),
+  client absent (warn). Matériel : en service (ok), hors service (danger), en attente (warn) ; validité en badge
+  (dépassée = danger, < 60 jours = warn), clé à molette = réparation demandée.
+- « Coller depuis DICOS » : zone de texte + aperçu de ce qui est reconnu avant de remplir le formulaire.

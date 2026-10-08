@@ -17,7 +17,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
   const today = brusselsDay();
   const def = historyRange(today);
   const du = isValidDay(f.du) ? f.du : def.from;
-  const au = isValidDay(f.au) && f.au >= du ? f.au : isValidDay(f.du) ? du : def.to;
+  // Sans date de fin : jusqu'à hier (ou le jour de début s'il est postérieur).
+  const au = isValidDay(f.au) && f.au >= du ? f.au : def.to >= du ? def.to : du;
   const canPmr = can(user, "pmr:read");
   const [{ rows, total }, zones] = await Promise.all([
     listAssists(
