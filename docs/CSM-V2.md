@@ -18,7 +18,8 @@
 | **Bascule des données** | Migration **en une fois**, à une date de bascule : gel de BACO, export Supabase, import PocketBase, vérification. Pas de synchronisation entre les deux bases. |
 | **Mobile** | Obligatoire, pensé mobile d'abord dès la conception. |
 
-### Point de sécurité ouvert sur BACO (à rappeler à l'utilisateur)
+### Point de sécurité sur BACO — hotfix **appliqué le 8 octobre 2026** (0 alerte ERROR)
+Suite mineure préparée, non appliquée : `supabase/migrations/20261008130000_hotfix_followup.sql`. Historique :
 La base Supabase de production est toujours vulnérable, voir `docs/AUDIT.md` :
 - n'importe quel compte peut se donner le rôle admin ;
 - les déplacements PMR et les commandes taxi sont lisibles, modifiables et supprimables sans connexion.

@@ -36,7 +36,7 @@ gelée** (v1, branche `ccr-5dca0da8-4yg4i6`) : ne pas le modifier.
 | 4 | Données : schéma PocketBase, règles d'accès, import | 🔄 données BACO du 8 oct. importées sur l'instance de test (5 collections) ; migration réelle **en une fois à la bascule** |
 | 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | ⏳ |
 | 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | 🔄 session 2 — projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
-| — | Hotfix sécurité BACO (`supabase/migrations/20261008120000_security_hotfix.sql`) | ⏳ **accord donné le 8 oct.**, mais le connecteur Supabase n'exécute pas les écritures (délai dépassé, rien appliqué) : à exécuter par l'utilisateur dans le SQL Editor, puis vérifier |
+| — | Hotfix sécurité BACO (`supabase/migrations/20261008120000_security_hotfix.sql`) | ✅ appliqué par l'utilisateur (SQL Editor) le 8 oct., vérifié : 0 ERROR (36 avant). Suite **non appliquée** : `20261008130000_hotfix_followup.sql` (test NULL de `get_my_role()`), accord requis ; protection des mots de passe compromis encore désactivée |
 
 **Ne pas commencer une étape sans validation de l'utilisateur.** Les captures desktop (1440×900) et
 mobile (390×844) sont soumises avant de généraliser un design.
@@ -248,6 +248,10 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   construite en local puis envoyée et restaurée par l'API (DEPLOIEMENT-V2 §5). **Connexion réelle vérifiée** avec le
   mot de passe BACO du compte admin de test (desktop + mobile, cookie httpOnly/Secure, SSE « En direct » via
   Cloudflare). `CSM_TEST_ADMIN_PASSWORD` correspond désormais à l'empreinte BACO.
+- 2026-10-08 — **Hotfix sécurité appliqué par l'utilisateur** (SQL Editor) et vérifié en lecture : trigger de garde,
+  RLS partout, plus de policy `public … true`, vue d'audit en `security_invoker`, advisors **0 ERROR** (36 avant).
+  Reste : `admin_update_user_role` / `admin_set_presence` passent si l'appelant n'a pas de profil (NULL) → correctif
+  `20261008130000_hotfix_followup.sql` préparé, non appliqué. Balise Cloudflare Web Analytics coupée (vérifié).
 
 
 ---

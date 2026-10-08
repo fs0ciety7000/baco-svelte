@@ -96,7 +96,7 @@ répétition de la bascule. Le zip reste dans `/pb_data/backups` comme point de 
   « unhealthy », Traefik le retire (**503 « no available server »**) et Coolify annule le déploiement. Correctif :
   `health_check_host = 127.0.0.1` sur les deux applications. Ne pas passer Next en `HOSTNAME=::` (plante si IPv6 est
   désactivé).
-- **Cloudflare Web Analytics** injecte `static.cloudflareinsights.com/beacon.min.js` dans les pages : le navigateur
+- **Cloudflare Web Analytics** (coupé par l'utilisateur le 8 octobre, vérifié) injectait `static.cloudflareinsights.com/beacon.min.js` dans les pages : le navigateur
   sort alors du domaine CSM (et le pare-feu de l'entreprise peut le bloquer). À désactiver dans Cloudflare
   (Analytics & Logs → Web Analytics → `fs0ciety.org` → désactiver l'injection automatique, ou une règle qui l'exclut
   pour `test-csm`).
