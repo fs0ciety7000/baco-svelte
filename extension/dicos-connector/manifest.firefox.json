@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "CSM — Connecteur DICOS",
+  "version": "1.0.0",
+  "description": "Synchronise les missions PMR de DICOS vers CSM (Missions PMR), en réutilisant la session DICOS ouverte. Aucun mot de passe ni jeton SNCB stocké.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "dicos-connector@csm.fs0ciety.org",
+      "strict_min_version": "128.0"
+    }
+  },
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["https://dicos.intern-belgiantrain.be/*"],
+  "optional_host_permissions": ["https://*.fs0ciety.org/*"],
+  "background": {
+    "scripts": ["src/background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://dicos.intern-belgiantrain.be/*"],
+      "js": ["src/inject.js"],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": false
+    },
+    {
+      "matches": ["https://dicos.intern-belgiantrain.be/*"],
+      "js": ["src/content.js"],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "action": {
+    "default_title": "CSM — Connecteur DICOS",
+    "default_popup": "src/popup.html"
+  }
+}

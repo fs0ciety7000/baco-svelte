@@ -29,13 +29,32 @@ Le **mapping** DICOS → prestation CSM (type PMR, statut, n° de dossier `AAAA-
 fait **par le serveur CSM** (`web/src/lib/pmr/dicos-mission.ts`), source unique de vérité : l'extension reste
 volontairement « bête » et envoie la mission brute (liste + détail fusionnés).
 
+## Paquets prêts à charger
+
+Deux `.zip` sont générés dans **`extension/dist/`** (régénérés par `extension/build-zips.sh`) :
+
+| Navigateur | Paquet | Manifest |
+|---|---|---|
+| **Chrome / Edge** | `csm-dicos-connector-chrome-v1.0.0.zip` | `background.service_worker` |
+| **Firefox** (≥ 128) | `csm-dicos-connector-firefox-v1.0.0.zip` | `background.scripts` + `browser_specific_settings.gecko` |
+
+Les sources (`src/`) sont **communes** ; seul le manifest diffère. Le code utilise l'espace de noms `chrome.*`
+(aliasé par Firefox) et des content scripts en monde `MAIN` (Chrome 111+, Firefox 128+).
+
 ## Installation
 
-> Raccourci : un **`.zip` prêt à charger** est fourni à la racine du dossier `extension/` (`dicos-connector.zip`) —
-> télécharge-le, dézippe-le, et tu obtiens directement le dossier `dicos-connector/` à sélectionner à l'étape 2.
+### Chrome / Edge
+1. `chrome://extensions` (ou `edge://extensions`) → activer le **mode développeur**.
+2. Dézipper le paquet Chrome et **Charger l'extension non empaquetée** → sélectionner le dossier dézippé
+   (ou charger le dossier `extension/dicos-connector` directement).
 
-1. **Chrome/Edge** → `chrome://extensions` (ou `edge://extensions`) → activer le **mode développeur**.
-2. **Charger l'extension non empaquetée** → sélectionner ce dossier (`extension/dicos-connector`).
+### Firefox (≥ 128)
+1. `about:debugging#/runtime/this-firefox` → **Charger un module temporaire…**.
+2. Sélectionner le fichier **`manifest.json` à l'intérieur du paquet Firefox dézippé** (ou installer le `.xpi`
+   signé par AMO si tu passes par le magasin). Un module temporaire disparaît au redémarrage de Firefox : pour
+   un usage permanent, signer le paquet sur [addons.mozilla.org](https://addons.mozilla.org) (self-distribution).
+
+### Suite (commun aux deux)
 3. Ouvrir **DICOS**, se connecter, **naviguer une fois dans la liste des missions** (pour que l'extension relève
    la session et le périmètre de gares).
 4. Cliquer l'icône de l'extension → remplir :
