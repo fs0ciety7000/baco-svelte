@@ -1,75 +1,88 @@
-# Message de lancement — session CSM v2
+# Message de lancement — session CSM v2 n° 3
 
-> **État à la fin de la session 2 (8 oct.)** : étapes 0 à 3 faites et validées, étape 4 (Coolify) en place, sur
-> `claude/admiring-thompson-1lkun9` (`pocketbase/`, `web/`, `docs/BACKEND-DECISION.md`, `docs/DEPLOIEMENT-V2.md`).
-> Pour la session 3 : partir de cette branche, **changer la branche déployée dans Coolify** (`csm-web` et
-> `csm-pocketbase`, voir DEPLOIEMENT-V2 §5), relancer la sauvegarde seulement si `/home/user/csm-backup` est vide, puis
-> attaquer l'étape 5 (les données BACO du 8 oct. sont déjà importées sur l'instance de test) (module Commandes, `docs/design/AUDIT-UX-COMMANDES.md`). Le hotfix sécurité est appliqué
-> (0 ERROR) ; rappeler la suite `20261008130000_hotfix_followup.sql` (non appliquée) et la protection des mots de passe
-> compromis (Supabase → Authentication).
-> Les scripts Node ont besoin de `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt`.
-> Les scripts Node ont besoin de `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt`.
+À copier tel quel dans une nouvelle session Claude Code, sur le dépôt `fs0ciety7000/baco-svelte`, dans
+l'environnement cloud **CSM**.
 
-À copier tel quel dans une nouvelle session Claude Code, sur le dépôt `fs0ciety7000/baco-svelte`.
-
-**Avant de lancer** : crée l'environnement cloud **CSM** décrit dans `docs/ENVIRONNEMENT-CLOUD.md` (réseau, secrets
-après rotation des clés Supabase, script d'installation), et lance la session dans cet environnement. Facultatif : dans les réglages de l'environnement, ajoute `COOLIFY_API_URL`
-et `COOLIFY_API_TOKEN` si tu veux que Claude crée lui-même les ressources Coolify. Sinon, il préparera
-les fichiers et la procédure, et tu cliqueras dans Coolify.
+**Avant de lancer** (côté utilisateur) :
+- dans l'environnement CSM, une variable par ligne :
+  `CSM_PB_URL=https://pb-test-csm.fs0ciety.org`, `CSM_PB_ADMIN_EMAIL=admin@test-csm.fs0ciety.org`,
+  `CSM_PB_ADMIN_PASSWORD=` (valeur de `PB_ADMIN_PASSWORD` de `csm-pocketbase` dans Coolify) ;
+- domaines autorisés : ceux de `docs/ENVIRONNEMENT-CLOUD.md` (dont `pb-test-csm.fs0ciety.org`) ;
+- facultatif : appliquer `supabase/migrations/20261008130000_hotfix_followup.sql` dans le SQL Editor et activer
+  « Leaked password protection » (Supabase → Authentication).
 
 ---
 
-Tu reprends **CSM — Client Solutions Management Tool**, le successeur de BACO. C'est un outil métier ferroviaire SNCB de l'équipe Client Solutions : commandes de bus et de taxis de remplacement, assistance PMR, lignes, EBP, répertoire, trains en direct (iRail), planning, main courante, statistiques et administration.
+Tu reprends **CSM — Client Solutions Management Tool**, le successeur de BACO : outil métier ferroviaire SNCB de l'équipe
+Client Solutions (commandes de bus et de taxis de remplacement, assistance PMR, lignes, EBP, répertoire, trains en direct
+iRail, planning, main courante, statistiques, administration). Utilisé toute la journée par une trentaine d'opérateurs.
 
-**Point de départ.** La session précédente a travaillé sur la branche `claude/eloquent-cori-a9kk4x`. Elle contient les docs v2, les scripts de sauvegarde et le `CLAUDE.md` à jour. Récupère-la avec `git fetch origin claude/eloquent-cori-a9kk4x` et crée ta branche de session à partir d'elle. Lis ensuite, dans l'ordre :
-1. `CLAUDE.md` (§0 à §8), qui donne l'état du projet, les variables d'environnement, les contraintes et le journal ;
-2. `docs/CSM-V2.md`, le cahier des charges ;
-3. `docs/DESIGN-DIRECTION.md` et `docs/references/*.jpg` ;
-4. `docs/SAUVEGARDE-SUPABASE.md` ;
-5. `docs/AUDIT.md` et `docs/PROPOSITION.md` §3 à §6.
+**Point de départ.** La session 2 a travaillé sur `claude/admiring-thompson-1lkun9`. Récupère-la
+(`git fetch origin claude/admiring-thompson-1lkun9`) et crée ta branche de session à partir d'elle. Lis, dans l'ordre :
+1. `CLAUDE.md` (§0 à §8) : état, variables, contraintes, pièges, journal ;
+2. `web/CLAUDE.md` et `pocketbase/CLAUDE.md` : conventions du code v2 ;
+3. `docs/CSM-V2.md` (cahier des charges et décisions) et `docs/BACKEND-DECISION.md` ;
+4. `docs/DESIGN-DIRECTION.md` (validé, écarts compris) et `docs/design/REFERENCES-UI.md` ;
+5. `docs/design/AUDIT-UX-COMMANDES.md` : **base du module Commandes** ;
+6. `docs/DEPLOIEMENT-V2.md` : ressources Coolify, sauvegardes, méthode d'import, pièges.
 
-**Décisions déjà prises** (ne pas les rediscuter) :
-- Next.js et **PocketBase**, dans une instance PocketBase **dédiée à CSM sur Coolify**, déployée avec l'app web ;
-- migration des données **en une fois** à une date de bascule, sans synchronisation avec BACO ;
-- export des empreintes de mot de passe **autorisé**, pour les importer dans PocketBase ;
-- plan des étapes 1 à 3 validé.
+**Où on en est (fin de session 2, 8 octobre 2026)**
+- Étapes 0 à 4 faites et validées : sauvegarde Supabase, prototype PocketBase 0.40.4 + Next 15.5, design system (5 thèmes
+  AA, 19 composants, `/design`), shell (6 modules, onglets en routes, ⌘K, mobile 4 onglets + « Plus », tableau de bord
+  réorganisable), déploiement Coolify.
+- **https://test-csm.fs0ciety.org** en ligne (`csm-web` + `csm-pocketbase`, volume `/pb_data`, sauvegardes 2 h et 2 h 30),
+  CI GitHub `csm-v2.yml` verte. Les **données BACO du 8 octobre sont importées** sur l'instance de test (29 comptes avec
+  leur mot de passe BACO, 295 commandes bus, 3 taxi) : connexion réelle vérifiée.
+- Collections PocketBase existantes : `users`, `bus_companies`, `bus_orders`, `taxi_orders`, `audit_log`. Les autres
+  arrivent avec leur module.
+- Hotfix sécurité de BACO **appliqué** (0 alerte ERROR). Suite `20261008130000_hotfix_followup.sql` non appliquée.
+
+**Décisions déjà prises (ne pas les rediscuter)**
+- Next.js + PocketBase dédié sur Coolify ; navigateur → domaine CSM uniquement (pas de WebSocket, pas d'appel direct à
+  PocketBase) ; migration des données en une fois à la date de bascule, sans synchronisation.
+- Statuts des commandes : brouillon → envoyé → confirmé → en cours → terminé, ou annulé. **Pas de « facturé »** :
+  confirmer l'envoi vaut facturation.
+- Module taxi **utilisé** (refonte complète, pas un formulaire minimal).
+- Brouillon `.eml` (`X-Unsent: 1`) avec le PDF joint, sans SMTP ; ouverture sur mobile non prioritaire.
+- Modèles de commande : la réponse « oui » a été lue comme « personnels, partageables avec l'équipe » → **à confirmer
+  en début de session**.
+- Tables non migrées : `darts_games`, `temp_geo_data`, `profile_likes`, les 4 `remise_*`, `app_backups`, `infractions`.
+  Avatars DiceBear → initiales. Sauvegardes hors serveur (Cloudflare R2) plus tard.
 
 **Règles de base**
-- **BACO reste en production et on n'y touche pas.** Pas de commit sur `main`. Supabase est en **lecture seule** : uniquement des SELECT par le connecteur, et seulement des GET avec la clé de service.
-- Session lancée dans l'environnement cloud **CSM** (`docs/ENVIRONNEMENT-CLOUD.md`). Si des variables `PREPROD_PB_*` apparaissent quand même, c'est le PocketBase de mon jeu (test.fs0ciety.org), **pas** celui de CSM : n'y écris rien.
-- Le nouveau code va dans `/web` et `/pocketbase`. Le SvelteKit à la racine sert de référence métier, ne le modifie pas.
-- **Mobile obligatoire** : vérifie chaque écran en 390×844 avec Playwright (Chromium dans `/opt/pw-browsers`).
-- Le navigateur ne parle qu'au domaine CSM : ni `*.supabase.co`, ni WebSocket, ni appel direct à PocketBase.
-- Les données personnelles ne vont jamais dans Git ni dans un artefact publié.
-- Commits atomiques en français.
-- **Tiens à jour, dans le même commit que chaque changement, `CLAUDE.md` et tous les fichiers d'instructions** (§4.8) : `docs/CSM-V2.md`, `docs/DESIGN-DIRECTION.md`, `docs/DEPLOIEMENT-V2.md`, `docs/NOUVELLE-SESSION.md`, ainsi que `web/CLAUDE.md` et `pocketbase/CLAUDE.md` dès que ces dossiers existent.
+- **BACO reste en production et on n'y touche pas.** Pas de commit sur `main`. Supabase en **lecture seule** (SELECT par le
+  connecteur, GET avec la clé de service ; lectures autorisées sans redemander, toute écriture sur accord explicite).
+- Nouveau code dans `/web` et `/pocketbase` ; le SvelteKit à la racine est la référence métier, ne pas le modifier.
+- **Mobile obligatoire** : chaque écran vérifié en 1440×900 et 390×844 (Playwright, Chromium dans `/opt/pw-browsers`,
+  Playwright figé en 1.56.1), cibles ≥ 44 px, pas de défilement horizontal.
+- Garde de droits **dans chaque `page.tsx`** (pas seulement le layout) ; accès aux données par `src/server/data` avec le
+  jeton de l'agent ; écritures par Server Actions validées par zod.
+- Données personnelles jamais dans Git ni dans un artefact publié ; captures soumises sans données sensibles.
+- Coolify : ne toucher qu'au projet **CSM**. Au début de la session, **changer la branche déployée** de `csm-web` et
+  `csm-pocketbase` vers ta branche de session (API, voir `docs/DEPLOIEMENT-V2.md` §5).
+- Commits atomiques en français ; tenir à jour dans le même commit `CLAUDE.md`, `web/CLAUDE.md`, `pocketbase/CLAUDE.md`,
+  `docs/CSM-V2.md`, `docs/DESIGN-DIRECTION.md`, `docs/DEPLOIEMENT-V2.md`, `docs/ENVIRONNEMENT-CLOUD.md` et ce fichier.
+- Environnement : scripts Node avec `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt` ; PocketBase
+  0.40.4 à installer s'il manque (somme vérifiée, voir `docs/ENVIRONNEMENT-CLOUD.md` §4) ; `/home/user/csm-backup` est
+  vide dans un nouveau conteneur : relancer `scripts/supabase-backup.mjs` et l'export des empreintes seulement si besoin.
 
-**Ce que je veux dans cette session, dans l'ordre**
-0. **Données de travail.** Le conteneur de la session précédente a été effacé. Relance `scripts/supabase-backup.mjs` avec la nouvelle `SUPABASE_SECRET_KEY`, qui exporte aussi les comptes. Exporte ensuite par le connecteur, en SELECT, l'`id` et l'`encrypted_password` de `auth.users`. Recoupe les comptes de lignes avec `docs/SAUVEGARDE-SUPABASE.md` §5. Tout reste hors Git, dans `/home/user/csm-backup`.
-1. **Prototype et squelette.**
-   - Squelette `/web` : Next 15 standalone, TypeScript strict, Tailwind v4, shadcn, zod, TanStack Query.
-   - Couche d'accès aux données côté serveur.
-   - PocketBase **local** dans `/pocketbase` : migrations, hooks, script d'import depuis la sauvegarde.
-   - Teste l'import des comptes avec les empreintes bcrypt, la connexion par cookie httpOnly, les règles d'accès, le relais SSE et les sauvegardes.
-   - Écris une recommandation chiffrée dans `docs/BACKEND-DECISION.md` (effort de migration des 51 tables, de Storage et des triggers d'audit) et soumets-la-moi.
-2. **Design system** : jetons des 5 thèmes avec un test de contraste AA, mode automatique, densité, polices, composants dans `web/src/components/ui`, GSAP avec `matchMedia`, et la page `/design`. Lance en parallèle des agents UI (références) et UX (audit des parcours Commandes de la v1). **Soumets-moi des captures desktop et mobile avant de généraliser.**
-3. **Shell et tableau de bord** : 6 entrées, onglets en routes, ⌘K, menu utilisateur avec l'administration, mobile en 4 onglets plus « Plus », widgets en container queries réorganisables. Captures à faire valider.
-4. **Déploiement Coolify** sur https://test-csm.fs0ciety.org :
-   - `csm-web` (Next standalone) ;
-   - `csm-pocketbase` (volume `/pb_data`, sauvegardes planifiées) ;
-   - CI GitHub ;
-   - `docs/DEPLOIEMENT-V2.md`.
+**Ce que je veux dans cette session : étape 5, le module Commandes (bus C3 et taxi)**
+1. Confirme d'abord avec moi les questions encore ouvertes de `docs/design/AUDIT-UX-COMMANDES.md` §6 (qui confirme une
+   commande et comment, B201 par jour ou par district, annulation partielle d'un bus, modèles personnels ou partagés).
+2. Schéma PocketBase des commandes (migrations) : statut unifié avec **historique horodaté** (qui, quand, depuis quel
+   statut), sociétés, chauffeurs, contacts et lignes de bus, taxis, modèles ; règles d'accès et contrôles ajoutés à
+   `scripts/test-rules.mjs` ; import étendu (`csm-import`) et rejoué sur l'instance de test.
+3. Écrans, desktop et mobile :
+   - **Bus C3** : liste filtrable, création et édition en sections, valeurs par défaut (district de l'agent, date et heure
+     à Bruxelles), enregistrement automatique du brouillon, duplication (« refaire la commande d'hier »), modèles ;
+   - **Taxi** : même logique, fiche client PMR liée, clôture possible ;
+   - **Envoi** : PDF généré côté serveur + brouillon `.eml` avec le PDF joint et les bons destinataires, puis passage à
+     « envoyé » après confirmation de l'agent ;
+   - **Suivi commun** bus + taxi : vues enregistrées (« À confirmer », « Aujourd'hui »…), transitions de statut,
+     détail en panneau latéral, temps réel par le relais SSE ;
+   - **Remise B201** générée depuis les commandes du service.
+4. Lance en parallèle un agent *Security auditor* sur le module et un *Reviewer* sur le diff avant chaque push.
+5. Soumets-moi des captures desktop et mobile (thèmes Commandement et Ivoire) **avant de généraliser** à PMR.
 
-   Si `COOLIFY_API_*` est absent, prépare les fichiers et dis-moi exactement quoi créer. Une fois PocketBase déployé, je créerai `CSM_PB_URL`, `CSM_PB_ADMIN_EMAIL` et `CSM_PB_ADMIN_PASSWORD`.
-5. Ensuite seulement, les modules, en commençant par les **Commandes** (bus C3 et taxi) :
-   - statuts unifiés ;
-   - brouillon `.eml` avec le PDF joint (sans SMTP) ;
-   - modèles et duplication ;
-   - enregistrement automatique ;
-   - suivi commun.
-
-Commence par l'étape 0, puis enchaîne l'étape 1 et arrête-toi à la recommandation pour que je la valide.
-
-Rappels :
-- la migration de sécurité `20261008120000_security_hotfix.sql` est **appliquée** (8 oct.) ; la suite `20261008130000_hotfix_followup.sql` ne l'est pas : ne l'applique pas sans mon accord explicite, mais rappelle-la-moi ;
-- les clés Supabase collées dans la conversation précédente doivent avoir été tournées.
+Rappels à me faire en début de session : suite du hotfix (`20261008130000_hotfix_followup.sql`), protection des mots de
+passe compromis, variables `CSM_PB_*` si elles sont encore mal formées.

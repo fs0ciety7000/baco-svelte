@@ -11,7 +11,8 @@ périmé est un bug.
 
 ## 0. À lire d'abord (v2)
 
-0. `docs/BACKEND-DECISION.md` — recommandation backend de l'étape 1 (à valider).
+0. `docs/NOUVELLE-SESSION.md` — message de lancement de la session en cours (objectifs, règles, état).
+   `docs/BACKEND-DECISION.md` — recommandation backend de l'étape 1 (validée).
 
 1. `docs/CSM-V2.md` — cahier des charges v2 (pivot Next.js + PocketBase, retours UX, feuille de route).
 2. Ce fichier — contraintes (§6), workflow (§4), journal (§8).
@@ -30,12 +31,12 @@ gelée** (v1, branche `ccr-5dca0da8-4yg4i6`) : ne pas le modifier.
 | # | Étape | Statut |
 |---|---|---|
 | 0 | Sauvegarde Supabase complète | ✅ 8 oct. (restauration testée, archive `age` remise à l'utilisateur). Session 2 : sauvegarde relancée (GET seuls) + 29 empreintes bcrypt exportées dans `/home/user/csm-backup` |
-| 1 | Prototype PocketBase vs Supabase + squelette Next | 🔄 session 2 — `pocketbase/` : migrations, audit, import (29 comptes + empreintes, 295 BC bus), 24 contrôles de règles OK, sauvegarde/restauration OK ; `web/` : Next 15.5, connexion cookie httpOnly, `/commandes`, relais SSE, 6 E2E OK (1440 + 390). recommandation `docs/BACKEND-DECISION.md` soumise, questions tranchées |
+| 1 | Prototype PocketBase vs Supabase + squelette Next | ✅ 8 oct. — `pocketbase/` : migrations, audit, import (29 comptes + empreintes, 295 BC bus), 24 contrôles de règles OK, sauvegarde/restauration OK ; `web/` : Next 15.5, connexion cookie httpOnly, `/commandes`, relais SSE, 6 E2E OK (1440 + 390). recommandation `docs/BACKEND-DECISION.md` validée |
 | 2 | Design system + page `/design` (5 thèmes, GSAP) | ✅ 8 oct. — jetons + test AA (156 contrôles), 19 composants, `/design`, 17 E2E ; captures et écarts **validés** |
-| 3 | Shell (6 entrées, onglets, ⌘K, mobile 4 + Plus) + tableau de bord | 🔄 session 2 — fait (24 E2E, CSP, gardes par page), **captures soumises, à valider** |
+| 3 | Shell (6 entrées, onglets, ⌘K, mobile 4 + Plus) + tableau de bord | ✅ 8 oct. — 24 E2E, CSP, gardes par page, captures validées |
 | 4 | Données : schéma PocketBase, règles d'accès, import | 🔄 données BACO du 8 oct. importées sur l'instance de test (5 collections) ; migration réelle **en une fois à la bascule** |
-| 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | ⏳ |
-| 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | 🔄 session 2 — projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
+| 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | ⏳ **session 3 : Commandes** (voir `docs/NOUVELLE-SESSION.md`) |
+| 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | ✅ 8 oct. — https://test-csm.fs0ciety.org en ligne ; projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
 | — | Hotfix sécurité BACO (`supabase/migrations/20261008120000_security_hotfix.sql`) | ✅ appliqué par l'utilisateur (SQL Editor) le 8 oct., vérifié : 0 ERROR (36 avant). Suite **non appliquée** : `20261008130000_hotfix_followup.sql` (test NULL de `get_my_role()`), accord requis ; protection des mots de passe compromis encore désactivée |
 
 **Ne pas commencer une étape sans validation de l'utilisateur.** Les captures desktop (1440×900) et
@@ -252,6 +253,7 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   RLS partout, plus de policy `public … true`, vue d'audit en `security_invoker`, advisors **0 ERROR** (36 avant).
   Reste : `admin_update_user_role` / `admin_set_presence` passent si l'appelant n'a pas de profil (NULL) → correctif
   `20261008130000_hotfix_followup.sql` préparé, non appliqué. Balise Cloudflare Web Analytics coupée (vérifié).
+- 2026-10-08 — Fin de session 2. Message de la session 3 (étape 5, module Commandes) dans `docs/NOUVELLE-SESSION.md`.
 
 
 ---
