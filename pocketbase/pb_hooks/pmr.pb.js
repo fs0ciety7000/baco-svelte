@@ -116,6 +116,11 @@ cronAdd('pmr-retention', '15 3 * * *', () => {
 	q("DELETE FROM pmr_mission WHERE assist IN (SELECT id FROM pmr_assists WHERE anonymized = 1)");
 	q("UPDATE pmr_events SET note = '', \"from\" = CASE WHEN field IN ('status') THEN \"from\" ELSE '' END, \"to\" = CASE WHEN field IN ('status') THEN \"to\" ELSE '' END WHERE kind = 'assist' AND record IN (SELECT id FROM pmr_assists WHERE anonymized = 1)");
 	q("DELETE FROM audit_log WHERE collection = 'pmr_assists' AND record IN (SELECT id FROM pmr_assists WHERE anonymized = 1)");
+	// Missions de groupe (9 oct. 2026) : contact du groupe effacé après 12 mois (les comptages restent).
+	q(
+		"UPDATE group_missions SET contact_first = '', contact_last = '', contact_phone = '', contact_email = '', meeting_point = '' WHERE day < {:limit} AND (contact_first != '' OR contact_last != '' OR contact_phone != '' OR contact_email != '')",
+		{ limit: limit }
+	);
 	// Taxis PMR de plus de 12 mois : copie nominative et lien vers la fiche effacés.
 	q(
 		"UPDATE taxi_orders SET pmr_client = '', pmr_last_name = '', pmr_first_name = '', pmr_phone = '', pmr_file = '', pmr_reason = '', passenger_name = '' WHERE is_pmr = 1 AND trip_at != '' AND trip_at < {:at} AND (pmr_client != '' OR pmr_last_name != '' OR pmr_phone != '')",

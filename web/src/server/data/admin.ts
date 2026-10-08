@@ -3,7 +3,9 @@ import "server-only";
 import type { RecordModel } from "pocketbase";
 import { z } from "zod";
 
-import { pbForRequest } from "./orders";
+import { addDays, brusselsToUtc } from "@/lib/orders/time";
+
+import { pbForRequest, toPbInstant } from "./orders";
 
 // Administration (admin et sysop seulement : `requireAdmin()` dans chaque page ; règles PocketBase en appui).
 // Comptes, journal d'audit, lignes et arrêts, santé et mode maintenance (décisions du 9 oct. 2026).
@@ -103,25 +105,30 @@ export type AuditRow = {
 };
 
 export const auditListSchema = z.object({
+  // Chaque filtre invalide est ignoré seul (les autres restent appliqués : revue du 9 oct. 2026).
   collection: z
     .string()
     .trim()
+    .toLowerCase()
     .max(100)
     .regex(/^[a-z_]*$/)
-    .default(""),
+    .default("")
+    .catch(""),
   action: z.enum(["create", "update", "delete"]).optional().catch(undefined),
   user: z
     .string()
     .trim()
     .max(36)
     .regex(/^[a-z0-9-]*$/)
-    .default(""),
+    .default("")
+    .catch(""),
   record: z
     .string()
     .trim()
     .max(100)
     .regex(/^[A-Za-z0-9_-]*$/)
-    .default(""),
+    .default("")
+    .catch(""),
   du: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -132,7 +139,7 @@ export const auditListSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional()
     .catch(undefined),
-  page: z.coerce.number().int().min(1).max(500).default(1),
+  page: z.coerce.number().int().min(1).max(500).default(1).catch(1),
 });
 
 export function auditFilter(
@@ -144,8 +151,9 @@ export function auditFilter(
   if (p.action) parts.push(pb.filter("action = {:a}", { a: p.action }));
   if (p.user) parts.push(pb.filter("user = {:u}", { u: p.user }));
   if (p.record) parts.push(pb.filter("record = {:r}", { r: p.record }));
-  if (p.du) parts.push(pb.filter("at >= {:d}", { d: `${p.du} 00:00:00.000Z` }));
-  if (p.au) parts.push(pb.filter("at <= {:d}", { d: `${p.au} 23:59:59.999Z` }));
+  // Bornes en heure de Bruxelles (l'écran affiche Europe/Brussels), converties en UTC.
+  if (p.du) parts.push(pb.filter("at >= {:d}", { d: toPbInstant(brusselsToUtc(p.du)) }));
+  if (p.au) parts.push(pb.filter("at < {:d}", { d: toPbInstant(brusselsToUtc(addDays(p.au, 1))) }));
   return parts.join(" && ");
 }
 

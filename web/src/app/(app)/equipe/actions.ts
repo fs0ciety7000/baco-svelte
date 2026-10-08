@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 
@@ -15,6 +16,7 @@ type Result = { ok: true } | { ok: false; error: string };
 const pbId = z.string().regex(/^[a-z0-9]{15}$/);
 
 function fail(e: unknown): { ok: false; error: string } {
+  unstable_rethrow(e);
   if (e instanceof ClientResponseError) {
     if (e.status === 404) return { ok: false, error: "Fiche introuvable ou accès refusé." };
     const data = e.response?.data as Record<string, { message?: string }> | undefined;
@@ -67,15 +69,19 @@ export async function changeMyPassword(input: unknown): Promise<Result> {
       .refine((v) => v.next === v.confirm, "Les deux saisies diffèrent")
       .parse(input);
     const pb = await pbForRequest();
-    const r = await pb
+    // Vérification explicite du mot de passe actuel : pour un admin/sysop, PocketBase (manageRule) ne contrôle pas
+    // `oldPassword` (revue du 9 oct. 2026).
+    const me = await pb.collection("users").getOne(user.id, { fields: "email" });
+    const email = String(me.email ?? "");
+    try {
+      await createPb().collection("users").authWithPassword(email, p.current);
+    } catch {
+      throw new Error("DROIT:Mot de passe actuel incorrect.");
+    }
+    await pb
       .collection("users")
-      .update(
-        user.id,
-        { oldPassword: p.current, password: p.next, passwordConfirm: p.next },
-        { fields: "email" },
-      );
-    const fresh = createPb();
-    const auth = await fresh.collection("users").authWithPassword(String(r.email ?? ""), p.next);
+      .update(user.id, { oldPassword: p.current, password: p.next, passwordConfirm: p.next });
+    const auth = await createPb().collection("users").authWithPassword(email, p.next);
     await writeSessionToken(auth.token);
     return { ok: true };
   } catch (e) {

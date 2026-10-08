@@ -6,6 +6,7 @@ import { z } from "zod";
 import {
   isPmrMission,
   mapDossier,
+  mapGroupList,
   mapMissionList,
   type MappedMission,
 } from "@/lib/pmr/dicos-mission";
@@ -31,8 +32,10 @@ const bodySchema = z
     day: z.string().refine(isValidDay),
     missions: z.array(z.unknown()).max(1000).optional(),
     dossiers: z.array(z.unknown()).max(500).optional(),
+    /** Missions de groupe (réservations « Group », 9 oct. 2026). */
+    groups: z.array(z.unknown()).max(2000).optional(),
   })
-  .refine((b) => b.missions || b.dossiers, "missions ou dossiers requis");
+  .refine((b) => b.missions || b.dossiers || b.groups, "missions, dossiers ou groupes requis");
 
 function tokenOk(provided: string): boolean {
   const a = Buffer.from(provided);
@@ -233,8 +236,45 @@ export async function POST(request: Request) {
     await upsert(pb, svc.id, `j${dicos_id}`, base, mission, c);
   }
 
+  // Groupes : une ligne par trajet dans `group_missions` (dédup `j<journeyId>`), écrite par le compte de service.
+  const g = { received: 0, created: 0, updated: 0, unchanged: 0, skipped: 0 };
+  for (const raw of mapGroupList(body.groups ?? [])) {
+    g.received++;
+    // Heures inconnues côté DICOS (« 0001-01-01 ») : jour de la liste synchronisée.
+    const grp = { ...raw, day: raw.day || body.day };
+    if (!grp.dicos_id || !isValidDay(grp.day) || !dayClose(grp.day, body.day)) {
+      g.skipped++;
+      continue;
+    }
+    const { dicos_id, ...rest } = grp;
+    const base: Rec = {
+      ...rest,
+      district: grp.district || null,
+      arr_district: grp.arr_district || null,
+    };
+    const id = `j${dicos_id}`;
+    try {
+      const cur = await pb
+        .collection("group_missions")
+        .getFirstListItem(pb.filter("dicos_id = {:id}", { id }))
+        .catch(nullOn404);
+      if (cur) {
+        if (changed(base, cur as unknown as Rec)) {
+          await pb.collection("group_missions").update(cur.id, { ...base, updated_by: svc.id });
+          g.updated++;
+        } else g.unchanged++;
+      } else {
+        await pb.collection("group_missions").create({ ...base, dicos_id: id, updated_by: svc.id });
+        g.created++;
+      }
+    } catch {
+      g.skipped++;
+      if (c.errors.length < 5) c.errors.push(`${id} (groupe)`);
+    }
+  }
+
   return Response.json(
-    { day: body.day, received, ...c },
+    { day: body.day, received, ...c, groups: g },
     { headers: { "cache-control": "no-store" } },
   );
 }

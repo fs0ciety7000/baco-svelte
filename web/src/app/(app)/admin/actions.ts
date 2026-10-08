@@ -2,6 +2,7 @@
 
 import { randomInt } from "node:crypto";
 
+import { unstable_rethrow } from "next/navigation";
 import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 
@@ -21,6 +22,8 @@ const DISTRICTS = ["", "Sud-Ouest", "Sud-Est", "Centre"] as const;
 const KNOWN = new Set(PERMISSION_CATALOG.flatMap((g) => g.items.map((i) => i.key)));
 
 function fail(e: unknown): { ok: false; error: string } {
+  // Session expirée : laisser passer redirect() / notFound() de requireAdmin.
+  unstable_rethrow(e);
   if (e instanceof ClientResponseError) {
     const data = e.response?.data as Record<string, { message?: string }> | undefined;
     const field = data ? Object.entries(data)[0] : undefined;
@@ -37,6 +40,15 @@ function fail(e: unknown): { ok: false; error: string } {
   if (e instanceof Error && e.message.startsWith("DROIT:"))
     return { ok: false, error: e.message.slice(6) };
   return { ok: false, error: "Erreur inattendue, réessayez." };
+}
+
+/** Le compte de service DICOS (`connector`) ne se gère pas ici : sinon l'ingestion pourrait tourner en admin. */
+async function managed(pb: Awaited<ReturnType<typeof pbForRequest>>, uid: string) {
+  const cur = await pb
+    .collection("users")
+    .getOne(uid, { fields: "id,role,disabled_role,grants,denies" });
+  if (cur.role === "connector") throw new Error("DROIT:Compte de service : non modifiable ici.");
+  return cur;
 }
 
 /** Mot de passe provisoire lisible (sans caractères ambigus), 14 caractères, tirage cryptographique. */
@@ -93,6 +105,7 @@ export async function updateUser(id: string, input: unknown): Promise<Result> {
     if (uid === me.id && p.role !== me.role)
       throw new Error("DROIT:Vous ne pouvez pas changer votre propre rôle.");
     const pb = await pbForRequest();
+    await managed(pb, uid);
     await pb.collection("users").update(uid, { ...p, district: p.district || null });
     return { ok: true };
   } catch (e) {
@@ -109,10 +122,17 @@ export async function setPermissions(
     await requireAdmin();
     const uid = userId.parse(id);
     const list = z.array(z.string().refine((k) => KNOWN.has(k), "Droit inconnu")).max(100);
-    const grants = [...new Set(list.parse(input.grants))];
-    const denies = [...new Set(list.parse(input.denies))].filter((k) => !grants.includes(k));
+    const g = [...new Set(list.parse(input.grants))];
+    const d = [...new Set(list.parse(input.denies))].filter((k) => !g.includes(k));
     const pb = await pbForRequest();
-    await pb.collection("users").update(uid, { grants, denies });
+    const cur = await managed(pb, uid);
+    // Droits hors catalogue repris de BACO (ex. planning:read) : gardés tels quels, jamais effacés par la matrice.
+    const legacy = (v: unknown) =>
+      Array.isArray(v) ? v.filter((k) => typeof k === "string" && !KNOWN.has(k)) : [];
+    await pb.collection("users").update(uid, {
+      grants: [...legacy(cur.grants), ...g],
+      denies: [...legacy(cur.denies), ...d],
+    });
     return { ok: true };
   } catch (e) {
     return fail(e);
@@ -125,8 +145,10 @@ export async function setActive(id: string, active: boolean, role?: string): Pro
     const uid = userId.parse(id);
     if (uid === me.id) throw new Error("DROIT:Vous ne pouvez pas désactiver votre propre compte.");
     const pb = await pbForRequest();
-    const cur = await pb.collection("users").getOne(uid, { fields: "role,disabled_role" });
+    const cur = await managed(pb, uid);
     if (active) {
+      // Déjà réactivé (autre onglet) : ne pas réécrire le rôle.
+      if (cur.role !== "disabled") return { ok: true };
       const back = z
         .enum(ROLES)
         .catch("user")
@@ -151,6 +173,7 @@ export async function resetPassword(id: string): Promise<Result<{ password: stri
     if (uid === me.id) throw new Error("DROIT:Changez votre mot de passe depuis « Mon profil ».");
     const password = tempPassword();
     const pb = await pbForRequest();
+    await managed(pb, uid);
     await pb.collection("users").update(uid, { password, passwordConfirm: password });
     return { ok: true, data: { password } };
   } catch (e) {

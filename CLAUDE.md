@@ -426,7 +426,20 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   mot de passe provisoire affiché une fois, création de compte), journal d'audit (filtres liés, différentiel, export
   CSV neutralisé), lignes (ajout, district, ordre, retrait), santé (PocketBase, volumes 30 j) + **mode maintenance**
   (écran d'attente pour les agents dans `(app)/layout.tsx`, bandeau pour les admins). Agent Otto : onglet « Mon profil »
-  seulement. 186 contrôles de règles.
+  seulement. **Audit sécurité** (0 critique/élevé) + **revue** ; corrigés : un agent ne change plus son `username`
+  (identifiant de connexion), branche « soi-même » refusée aux comptes désactivés + **`tokenKey` régénérée à la
+  désactivation** (anciens jetons révoqués), compte `connector` non gérable depuis l'admin, `audit:read` retiré du
+  catalogue (nominatif PMR), export d'audit sans différentiel des collections nominatives, **catalogue des droits =
+  clés réellement testées** (`journal:*`, `deplacements:*`, `*:delete` ; test de couverture de la navigation), droits
+  hors catalogue repris de BACO **conservés**, maintenance appliquée dans **`requireUser`** (toutes pages et actions →
+  `/maintenance`) et pas seulement dans le layout, mot de passe actuel **vérifié par authWithPassword** (manageRule
+  dispense les admins d'`oldPassword`), bornes de dates de l'audit en heure de Bruxelles, filtres d'audit invalides
+  ignorés un par un, `unstable_rethrow` dans les actions. 195 contrôles de règles. Reste (infra) : `pb-test-csm` est
+  public → à restreindre (Cloudflare Access / IP) pour que les règles ne soient pas la seule barrière.
+- 2026-10-09 — **Groupes DICOS** (demande : onglet comme les PMR, « Export ALEA » de groupe) : collection
+  `group_missions` (`1760001500`, une ligne par trajet `j<journeyId>`, écrite par le connecteur, lue avec `pmr:read`,
+  contact purgé à 12 mois par `pmr-retention`), `mapGroupList` (réservations `Group`, comptages adultes / enfants /
+  seniors), ingestion `{ groups }`.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

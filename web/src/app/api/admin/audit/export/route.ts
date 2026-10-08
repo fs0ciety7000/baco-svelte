@@ -4,6 +4,9 @@ import { auditFilter, auditListSchema } from "@/server/data/admin";
 import { pbForRequest } from "@/server/data/orders";
 
 // Export CSV du journal d'audit filtré (admin/sysop). Formules neutralisées, BOM UTF-8, 5 000 lignes au plus.
+// Le différentiel des collections nominatives (PMR, groupes, comptes) n'est pas exporté : un fichier local échapperait
+// à la conservation de 12 mois (audit du 9 oct. 2026). Il reste consultable à l'écran.
+const PERSONAL = /^(pmr_|group_missions$|users$|taxi_orders$)/;
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,7 +32,15 @@ export async function GET(request: Request) {
   }
   const head = ["date", "action", "collection", "fiche", "auteur", "reprise_baco", "changements"];
   const lines = rows.map((r) =>
-    [r.at, r.action, r.collection, r.record, r.user, r.legacy ? "oui" : "", r.changes]
+    [
+      r.at,
+      r.action,
+      r.collection,
+      r.record,
+      r.user,
+      r.legacy ? "oui" : "",
+      PERSONAL.test(String(r.collection)) ? "(données personnelles non exportées)" : r.changes,
+    ]
       .map(cell)
       .join(";"),
   );

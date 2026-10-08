@@ -105,30 +105,36 @@ export function roleHas(role: Role, permission: string): boolean {
 
 /** Catalogue des droits affichés dans la fiche d'un compte (Admin › Utilisateurs), groupés par module. */
 export const PERMISSION_CATALOG: { group: string; items: { key: string; label: string }[] }[] = [
+  // Clés réellement testées par les règles PocketBase, la navigation et les pages (revue du 9 oct. 2026 ;
+  // `permissions.test.ts` vérifie que la navigation est couverte).
   {
     group: "Commandes",
     items: [
       { key: "otto:read", label: "Bus : lire" },
       { key: "otto:write", label: "Bus : écrire" },
+      { key: "otto:delete", label: "Bus : supprimer" },
       { key: "generate_taxi:read", label: "Taxi : lire" },
       { key: "generate_taxi:write", label: "Taxi : écrire" },
+      { key: "generate_taxi:delete", label: "Taxi : supprimer" },
       { key: "b201:read", label: "B201 : lire" },
-      { key: "b201:write", label: "B201 : écrire" },
+      { key: "b201:write", label: "B201 : écrire (sinon : selon le district)" },
     ],
   },
   {
     group: "PMR",
     items: [
-      { key: "pmr:read", label: "PMR (nominatif) : lire" },
-      { key: "pmr:write", label: "PMR : écrire" },
+      { key: "deplacements:read", label: "Missions PMR et groupes : écran" },
+      { key: "deplacements:write", label: "Missions PMR : écrire" },
+      { key: "pmr:read", label: "PMR et groupes (nominatif) : lire" },
+      { key: "pmr:write", label: "Clients PMR, matériel : écrire" },
     ],
   },
   {
     group: "Opérations",
     items: [
       { key: "live:read", label: "Trains en direct" },
-      { key: "ops:read", label: "Journal : lire" },
-      { key: "ops:write", label: "Journal : écrire" },
+      { key: "journal:read", label: "Journal : lire" },
+      { key: "journal:write", label: "Journal : écrire" },
       { key: "carte_pn:read", label: "Carte PN : lire" },
       { key: "carte_pn:write", label: "Carte PN : écrire" },
       { key: "stats:read", label: "Statistiques" },
@@ -145,12 +151,8 @@ export const PERMISSION_CATALOG: { group: string; items: { key: string; label: s
       { key: "ptcar:write", label: "PtCar : écrire" },
       { key: "ebp:read", label: "EBP : lire" },
       { key: "ebp:write", label: "EBP : écrire" },
-      { key: "lignes:read", label: "Lignes : lire" },
-      { key: "lignes:write", label: "Lignes : écrire" },
+      { key: "lignes:write", label: "Lignes et arrêts : écrire" },
     ],
   },
-  {
-    group: "Administration",
-    items: [{ key: "audit:read", label: "Journal d'audit : lire" }],
-  },
+  // « audit:read » volontairement absent : le journal contient du nominatif PMR (audit du 9 oct. 2026).
 ];

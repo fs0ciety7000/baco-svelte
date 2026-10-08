@@ -20,10 +20,13 @@ export function PmrFilterBar({
   action,
   filters,
   shortcuts,
+  statuses = ASSIST_STATUSES,
 }: {
   action: string;
   filters: PmrFilters;
   shortcuts: { label: string; du: string; au: string }[];
+  /** Statuts proposés (par défaut ceux des missions PMR). */
+  statuses?: readonly string[];
 }) {
   const keep = Object.fromEntries(
     Object.entries({ district: filters.district, q: filters.q, statut: filters.statut }).filter(
@@ -91,9 +94,9 @@ export function PmrFilterBar({
           <span className="text-small text-fg-muted">Statut</span>
           <Select name="statut" defaultValue={filters.statut ?? ""}>
             <option value="">Tous</option>
-            {ASSIST_STATUSES.map((s) => (
+            {statuses.map((s) => (
               <option key={s} value={s}>
-                {ASSIST_STATUS[s].label}
+                {ASSIST_STATUS[s as keyof typeof ASSIST_STATUS]?.label ?? s}
               </option>
             ))}
           </Select>

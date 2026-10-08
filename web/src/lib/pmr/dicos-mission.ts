@@ -566,3 +566,157 @@ export function mapMissionList(raws: unknown[]): { assist: MappedLeg; mission: M
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------------------------------
+// Missions de GROUPE (réservation « Group » : écoles, mouvements de jeunesse…), demande du 9 oct. 2026. Même
+// reconstruction par trajet que les missions PMR ; les comptages viennent de `traveler.adults/children/seniors`.
+
+const groupItem = z
+  .object({
+    reservationType: z.string().optional(),
+    missionType: z.string().optional(),
+    status: z.string().optional(),
+    reservationDisplayId: z.string().nullish(),
+    reservationId: z.string().nullish(),
+    traveler: z
+      .object({
+        adults: z.coerce.number().nullish(),
+        children: z.coerce.number().nullish(),
+        seniors: z.coerce.number().nullish(),
+      })
+      .partial()
+      .nullish(),
+    client: z
+      .object({
+        description: z.string().nullish(),
+        firstName: z.string().nullish(),
+        lastName: z.string().nullish(),
+        phoneNumber: z.string().nullish(),
+        email: z.string().nullish(),
+      })
+      .partial()
+      .nullish(),
+    meetingPoint: z
+      .array(z.object({ language: z.string().optional(), text: z.string().optional() }))
+      .nullish(),
+    journey: z
+      .object({
+        id: z.coerce.string().nullish(),
+        stationName: z.string().nullish(),
+        otherStationName: z.string().nullish(),
+        time: z.string().nullish(),
+        otherTime: z.string().nullish(),
+        withDepartureAssistance: z.boolean().nullish(),
+        withArrivalAssistance: z.boolean().nullish(),
+        isTrainCancelled: z.boolean().nullish(),
+        transportType: z.string().nullish(),
+        trainNumber: z.coerce.number().nullish(),
+        transportId: z.string().nullish(),
+        coachNumber: z.string().nullish(),
+      })
+      .passthrough()
+      .default({}),
+  })
+  .passthrough();
+
+export type MappedGroup = {
+  dicos_id: string;
+  day: string;
+  time: string;
+  station: string;
+  district: "DCE" | "DSE" | "DSO" | "";
+  other_station: string;
+  arr_time: string;
+  arr_district: "DCE" | "DSE" | "DSO" | "";
+  in_assist: boolean;
+  out_assist: boolean;
+  transport: "train" | "taxi";
+  train: string;
+  dicos_ref: string;
+  group_name: string;
+  adults: number;
+  children: number;
+  seniors: number;
+  status: "prevue" | "realisee" | "annulee";
+  coach: string;
+  meeting_point: string;
+  contact_first: string;
+  contact_last: string;
+  contact_phone: string;
+  contact_email: string;
+};
+
+/** Mission de groupe (et non PMR, ni « Stickering »). */
+export function isGroupMission(raw: unknown): boolean {
+  const p = groupItem.safeParse(raw);
+  if (!p.success) return false;
+  const mt = p.data.missionType ?? "";
+  return p.data.reservationType === "Group" && (mt === "Departure" || mt === "Arrival");
+}
+
+/** Liste de missions de groupe DICOS (détail fusionné si disponible) → une ligne par trajet. */
+export function mapGroupList(raws: unknown[]): MappedGroup[] {
+  type Part = z.infer<typeof groupItem>;
+  const groups = new Map<string, Part[]>();
+  for (const raw of raws) {
+    if (!isGroupMission(raw)) continue;
+    const p = groupItem.parse(raw);
+    const key = p.journey.id || "";
+    if (!key) continue;
+    groups.set(key, [...(groups.get(key) ?? []), p]);
+  }
+  const clamp = (v: unknown) => Math.max(0, Math.min(2000, Math.round(n(v))));
+  const firstStr = (xs: unknown[]) => str(xs.find((x) => typeof x === "string" && x.trim()));
+  const out: MappedGroup[] = [];
+  for (const [key, parts] of groups) {
+    const dep = parts.find((x) => x.missionType === "Departure");
+    const arr = parts.find((x) => x.missionType === "Arrival");
+    const depStation = frName(dep ? dep.journey.stationName : arr?.journey.otherStationName);
+    const arrStation = frName(arr ? arr.journey.stationName : dep?.journey.otherStationName);
+    const depW = dep ? wallOrEmpty(dep.journey.time) : wallOrEmpty(arr?.journey.otherTime);
+    const arrW = arr ? wallOrEmpty(arr.journey.time) : wallOrEmpty(dep?.journey.otherTime);
+    const j = (dep ?? arr ?? parts[0]!).journey;
+    const t = parts.find((x) => x.traveler)?.traveler ?? {};
+    const statuses = parts.map((x) => x.status ?? "");
+    const status: MappedGroup["status"] =
+      j.isTrainCancelled || statuses.every((s) => s === "Deleted" || s === "Suspended")
+        ? "annulee"
+        : statuses.every((s) => s === "Completed")
+          ? "realisee"
+          : "prevue";
+    const isTaxi = str(j.transportType).toLowerCase() === "taxi";
+    out.push({
+      dicos_id: key,
+      day: depW.day || arrW.day,
+      time: depW.time,
+      station: depStation,
+      district: districtForStation(depStation),
+      other_station: arrStation,
+      arr_time: arrW.time,
+      arr_district: districtForStation(arrStation),
+      in_assist: parts.some((x) => !!x.journey.withDepartureAssistance),
+      out_assist: parts.some((x) => !!x.journey.withArrivalAssistance),
+      transport: isTaxi ? "taxi" : "train",
+      train:
+        n(j.trainNumber) > 0
+          ? String(j.trainNumber)
+          : str(j.transportId).replace(/^0$/, "").slice(0, 20),
+      dicos_ref: firstStr(parts.flatMap((x) => [x.reservationDisplayId, x.reservationId])).slice(
+        0,
+        40,
+      ),
+      group_name: firstStr(parts.map((x) => x.client?.description)).slice(0, 300),
+      adults: clamp(t.adults),
+      children: clamp(t.children),
+      seniors: clamp(t.seniors),
+      status,
+      coach: str(j.coachNumber).slice(0, 20),
+      meeting_point: firstStr(parts.map((x) => frText(x.meetingPoint))).slice(0, 300),
+      contact_first: firstStr(parts.map((x) => x.client?.firstName)).slice(0, 200),
+      contact_last: firstStr(parts.map((x) => x.client?.lastName)).slice(0, 200),
+      contact_phone: firstStr(parts.map((x) => x.client?.phoneNumber)).slice(0, 100),
+      contact_email: firstStr(parts.map((x) => x.client?.email)).slice(0, 200),
+    });
+  }
+  return out;
+}

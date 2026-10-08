@@ -12,6 +12,8 @@ import { Input, Select } from "@/components/ui/input";
 import { Badge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";
 import { PERMISSION_CATALOG, roleHas, type Role } from "@/lib/permissions";
+
+const KNOWN = new Set(PERMISSION_CATALOG.flatMap((g) => g.items.map((i) => i.key)));
 import { ROLE_LABEL } from "@/lib/team";
 import type { AdminUser } from "@/server/data/admin";
 
@@ -32,8 +34,9 @@ export function UserEditor({ user, isSelf }: { user: AdminUser; isSelf: boolean 
   });
   const [perm, setPerm] = useState<Record<string, Tri>>(() => {
     const m: Record<string, Tri> = {};
-    for (const k of user.grants) m[k] = "accorde";
-    for (const k of user.denies) if (!m[k]) m[k] = "retire";
+    // Seules les clés du catalogue sont éditées ici ; les autres (reprises de BACO) sont gardées par le serveur.
+    for (const k of user.grants) if (KNOWN.has(k)) m[k] = "accorde";
+    for (const k of user.denies) if (KNOWN.has(k) && !m[k]) m[k] = "retire";
     return m;
   });
   const [pending, start] = useTransition();
@@ -85,13 +88,13 @@ export function UserEditor({ user, isSelf }: { user: AdminUser; isSelf: boolean 
               />
             </Field>
             <Field
-              label="Rôle"
+              label={disabled ? "Rôle à la réactivation" : "Rôle"}
               hint={isSelf ? "Vous ne pouvez pas changer votre propre rôle." : undefined}
             >
               <Select
                 value={f.role}
                 onChange={(e) => setF({ ...f, role: e.target.value })}
-                disabled={isSelf || disabled}
+                disabled={isSelf}
               >
                 {ROLE_CHOICES.map((r) => (
                   <option key={r} value={r}>

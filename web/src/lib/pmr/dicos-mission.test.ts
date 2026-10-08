@@ -5,6 +5,7 @@ import {
   frText,
   isPmrMission,
   mapDossier,
+  mapGroupList,
   mapMissionList,
   mapMission,
   mapStatus,
@@ -477,5 +478,84 @@ describe("mapMissionList (liste → une ligne par trajet)", () => {
     });
     expect(taxi?.mission.driver_name).toBe("Taxi fictif");
     expect(del?.assist).toMatchObject({ in_assist: true, out_assist: false, status: "annulee" });
+  });
+});
+
+describe("mapGroupList (missions de groupe)", () => {
+  const g = (
+    id: string,
+    journeyId: string,
+    missionType: string,
+    extra: Record<string, unknown> = {},
+  ) => ({
+    id,
+    missionType,
+    reservationType: "Group",
+    status: "New",
+    reservationDisplayId: "300000000001",
+    traveler: { disableds: 0, adults: 3, children: 50, seniors: 0 },
+    client: {
+      description: "École fictive",
+      firstName: "Prénom",
+      lastName: "Fictif",
+      email: "x@invalid.test",
+    },
+    journey: {
+      id: journeyId,
+      stationName: missionType === "Departure" ? "MONS / BERGEN" : "CAMBRON-CASTEAU",
+      time: missionType === "Departure" ? "2026-10-09T08:27:00+02:00" : "2026-10-09T08:45:00+02:00",
+      otherStationName: missionType === "Departure" ? "CAMBRON-CASTEAU" : "MONS / BERGEN",
+      otherTime:
+        missionType === "Departure" ? "2026-10-09T08:45:00+02:00" : "2026-10-09T08:27:00+02:00",
+      withDepartureAssistance: true,
+      withArrivalAssistance: true,
+      trainNumber: 4879,
+      transportId: "4879",
+      transportType: "Train",
+    },
+    ...extra,
+  });
+
+  it("une ligne par trajet, comptages et contact ; PMR et Stickering écartés", () => {
+    const rows = mapGroupList([
+      g("1", "700", "Departure"),
+      g("2", "700", "Arrival"),
+      g("3", "700", "Stickering"),
+      { ...g("4", "701", "Departure"), reservationType: "Disabled" },
+    ]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      dicos_id: "700",
+      day: "2026-10-09",
+      time: "08:27",
+      station: "MONS",
+      other_station: "CAMBRON-CASTEAU",
+      arr_time: "08:45",
+      train: "4879",
+      group_name: "École fictive",
+      adults: 3,
+      children: 50,
+      dicos_ref: "300000000001",
+      contact_last: "Fictif",
+      status: "prevue",
+    });
+  });
+
+  it("train 0 (non attribué) et dates « 0001 » : vides ; tout supprimé = annulé", () => {
+    const [row] = mapGroupList([
+      g("1", "702", "Departure", {
+        status: "Deleted",
+        journey: {
+          id: "702",
+          stationName: "BINCHE",
+          time: "0001-01-01T00:00:00+00:00",
+          otherStationName: "CHARLEROI-CENTRAL / CHARLEROI-CENTRAAL",
+          otherTime: "0001-01-01T00:00:00+00:00",
+          trainNumber: 0,
+          transportId: "0",
+        },
+      }),
+    ]);
+    expect(row).toMatchObject({ time: "", train: "", status: "annulee", day: "" });
   });
 });

@@ -4,30 +4,13 @@ import type { ReactNode } from "react";
 
 import { AppShell } from "@/components/shell/app-shell";
 import { parseUiCookie, UI_COOKIE } from "@/design/preferences";
-import { isAdmin } from "@/lib/permissions";
-import { requireUser } from "@/server/auth";
-import { getSetting } from "@/server/data/admin";
+import { maintenanceState, requireUser } from "@/server/auth";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
   const ui = parseUiCookie((await cookies()).get(UI_COOKIE)?.value);
-  // Mode maintenance (Admin › Santé) : écran d'attente pour les agents, accès gardé par les administrateurs.
-  const maintenance = await getSetting<{ on?: boolean; message?: string }>("maintenance");
-  const locked = !!maintenance?.value?.on;
-  if (locked && !isAdmin(user)) {
-    return (
-      <main className="grid min-h-dvh place-items-center bg-bg px-4">
-        <div className="flex max-w-md flex-col items-center gap-3 border border-border bg-surface p-6 text-center">
-          <Wrench aria-hidden className="size-8 text-warn" />
-          <h1 className="display text-h2">Maintenance en cours</h1>
-          <p className="text-body text-fg-muted whitespace-pre-line">
-            {maintenance?.value?.message ||
-              "CSM est momentanément indisponible. Réessayez dans quelques minutes."}
-          </p>
-        </div>
-      </main>
-    );
-  }
+  // Les agents sont redirigés vers /maintenance par requireUser ; ici, seulement le bandeau des administrateurs.
+  const locked = (await maintenanceState()).on;
   return (
     <AppShell
       ui={ui}

@@ -19,3 +19,12 @@ onRecordUpdate((e) => {
 	}
 	e.next();
 }, 'users');
+
+// Désactivation d'un compte : les jetons déjà émis sont révoqués (nouvelle `tokenKey`), sinon un ancien jeton resterait
+// valable jusqu'à son expiration (audit du 9 oct. 2026).
+onRecordUpdate((e) => {
+	if (e.record.getString('role') === 'disabled' && e.record.original().getString('role') !== 'disabled') {
+		e.record.refreshTokenKey();
+	}
+	e.next();
+}, 'users');

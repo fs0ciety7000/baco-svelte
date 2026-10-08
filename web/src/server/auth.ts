@@ -54,9 +54,30 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   }
 });
 
+/**
+ * Mode maintenance (Admin › Santé), lu une fois par requête. Écran d'attente pour les agents sur TOUTES les pages et
+ * Server Actions qui passent par `requireUser` (un contrôle dans le seul layout se contourne par la navigation côté
+ * client : revue du 9 oct. 2026). Ce n'est pas une barrière de sécurité, seulement un gel pendant la bascule.
+ */
+export const maintenanceState = cache(async (): Promise<{ on: boolean; message: string }> => {
+  const token = await readSessionToken();
+  if (!token) return { on: false, message: "" };
+  try {
+    const pb = createPb(token);
+    const r = await pb
+      .collection("app_settings")
+      .getFirstListItem('key = "maintenance"', { fields: "value" });
+    const v = (r.value ?? {}) as { on?: unknown; message?: unknown };
+    return { on: v.on === true, message: typeof v.message === "string" ? v.message : "" };
+  } catch {
+    return { on: false, message: "" };
+  }
+});
+
 export async function requireUser(): Promise<SessionUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/connexion");
+  if (!isAdmin(user) && (await maintenanceState()).on) redirect("/maintenance");
   return user;
 }
 

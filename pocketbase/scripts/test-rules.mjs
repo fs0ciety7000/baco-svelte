@@ -565,6 +565,16 @@ try {
 		check('connector ne lit PAS pmr_clients', cClients.status !== 200 || cClients.json.totalItems === 0, `HTTP ${cClients.status} ${cClients.json?.totalItems}`);
 		const cLegacy = await api('GET', '/api/collections/pmr_assist_legacy/records?perPage=1', { token: ctok });
 		check('connector ne lit PAS pmr_assist_legacy', cLegacy.status !== 200 || cLegacy.json.totalItems === 0, `HTTP ${cLegacy.status} ${cLegacy.json?.totalItems}`);
+		const cg = await api('POST', '/api/collections/group_missions/records', {
+			token: ctok,
+			body: { dicos_id: `jc-${suffix}`, day: '2026-10-09', status: 'prevue', group_name: 'Groupe connecteur', adults: 2, children: 10 }
+		});
+		check('connector crée une mission de groupe', cg.status === 200, `HTTP ${cg.status}`);
+		const cgUp = await api('PATCH', `/api/collections/group_missions/records/${cg.json?.id}`, { token: ctok, body: { children: 12 } });
+		check('connector met à jour une mission de groupe', cgUp.status === 200, `HTTP ${cgUp.status}`);
+		const cgId = await api('PATCH', `/api/collections/group_missions/records/${cg.json?.id}`, { token: ctok, body: { dicos_id: 'autre' } });
+		check('dicos_id d une mission de groupe figé', cgId.status >= 400, `HTTP ${cgId.status}`);
+		if (cg.json?.id) await api('DELETE', `/api/collections/group_missions/records/${cg.json.id}`, { token: root });
 	}
 	// Un agent reste soumis à la table des transitions sur une mission DICOS (réalisée → absent est interdit).
 	const dmTrans = await api('PATCH', `/api/collections/pmr_assists/records/${did}`, { token: u.token, body: { status: 'absent', cancel_reason: 'x', updated_by: u.id } });
@@ -631,10 +641,15 @@ try {
 	check('admin réinitialise le mot de passe sans l ancien', eaPw.status === 200, `HTTP ${eaPw.status}`);
 	const eaSelfDis = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: u.token, body: { disabled_role: 'admin' } });
 	check('agent ne pose pas disabled_role sur sa fiche', eaSelfDis.status >= 400, `HTTP ${eaSelfDis.status}`);
+	const eaTok = (await api('POST', '/api/collections/users/auth-with-password', { body: { identity: eaMail, password: 'Ea-reset-654321' } })).json?.token;
 	await api('PATCH', `/api/collections/users/records/${eaAcc.json?.id}`, {
 		token: roles.admin.token,
 		body: { role: 'disabled', disabled_role: 'user' }
 	});
+	const eaOld = await api('PATCH', `/api/collections/users/records/${eaAcc.json?.id}`, { token: eaTok, body: { name: 'Toujours là' } });
+	check('compte désactivé : ancien jeton révoqué', eaOld.status >= 400, `HTTP ${eaOld.status}`);
+	const eaUname = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: u.token, body: { username: `pris${suffix}` } });
+	check('agent ne change pas son identifiant de connexion', eaUname.status >= 400, `HTTP ${eaUname.status}`);
 	const eaLogin = await api('POST', '/api/collections/users/auth-with-password', { body: { identity: eaMail, password: 'Ea-reset-654321' } });
 	check('compte désactivé : connexion refusée', eaLogin.status >= 400, `HTTP ${eaLogin.status}`);
 
@@ -664,6 +679,19 @@ try {
 	const stRead = await api('GET', `/api/collections/app_settings/records/${stAdmin.json?.id}`, { token: roles.reader.token });
 	check('réglages lisibles par tout agent actif', stRead.status === 200, `HTTP ${stRead.status}`);
 	if (stAdmin.json?.id) await api('DELETE', `/api/collections/app_settings/records/${stAdmin.json.id}`, { token: root });
+
+	// --- Missions de groupe DICOS (1760001500) ---
+	const gmBody = { dicos_id: `jg-${suffix}`, day: '2026-10-09', status: 'prevue', group_name: 'École test', adults: 3, children: 20 };
+	const gmUser = await api('POST', '/api/collections/group_missions/records', { token: u.token, body: gmBody });
+	check('agent n écrit pas les missions de groupe', gmUser.status >= 400, `HTTP ${gmUser.status}`);
+	const gmAdminCreate = await api('POST', '/api/collections/group_missions/records', { token: roles.admin.token, body: gmBody });
+	check('même un admin n écrit pas les missions de groupe (connecteur seul)', gmAdminCreate.status >= 400, `HTTP ${gmAdminCreate.status}`);
+	const gm = await api('POST', '/api/collections/group_missions/records', { token: root, body: gmBody });
+	const gmRead = await api('GET', `/api/collections/group_missions/records/${gm.json?.id}`, { token: roles.reader.token });
+	check('missions de groupe lisibles avec pmr:read', gmRead.status === 200, `HTTP ${gmRead.status}`);
+	const gmOtto = await api('GET', `/api/collections/group_missions/records/${gm.json?.id}`, { token: roles.otto_agent.token });
+	check('otto_agent ne lit pas les missions de groupe', gmOtto.status === 404, `HTTP ${gmOtto.status}`);
+	if (gm.json?.id) await api('DELETE', `/api/collections/group_missions/records/${gm.json.id}`, { token: root });
 
 	// Admin : supprime.
 	const adel = await api('DELETE', `/api/collections/bus_orders/records/${order.json.id}`, { token: roles.admin.token });

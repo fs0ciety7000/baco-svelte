@@ -20,11 +20,14 @@ migrate(
 		users.authRule = 'role != "disabled"';
 		if (!users.fields.getByName('disabled_role'))
 			users.fields.add(new SelectField({ name: 'disabled_role', maxSelect: 1, values: ROLES }));
-		// L'agent ne modifie pas non plus `disabled_role` sur sa propre fiche.
-		users.updateRule = users.updateRule.replace(
-			'@request.body.email:isset = false',
-			'@request.body.email:isset = false && @request.body.disabled_role:isset = false'
-		);
+		// L'agent ne modifie ni `disabled_role` ni son identifiant de connexion (`username`, usurpation d'un collègue :
+		// audit du 9 oct.) ; un compte désactivé ne modifie plus rien avec un ancien jeton.
+		users.updateRule = users.updateRule
+			.replace(
+				'@request.body.email:isset = false',
+				'@request.body.email:isset = false && @request.body.disabled_role:isset = false && @request.body.username:isset = false'
+			)
+			.replace('(id = @request.auth.id', '(@request.auth.role != "disabled" && id = @request.auth.id');
 		app.save(users);
 
 		app.save(
@@ -78,7 +81,9 @@ migrate(
 		users.createRule = null;
 		users.manageRule = null;
 		users.authRule = '';
-		users.updateRule = users.updateRule.replace(' && @request.body.disabled_role:isset = false', '');
+		users.updateRule = users.updateRule
+			.replace(' && @request.body.disabled_role:isset = false && @request.body.username:isset = false', '')
+			.replace('(@request.auth.role != "disabled" && id = @request.auth.id', '(id = @request.auth.id');
 		users.fields.removeByName('disabled_role');
 		app.save(users);
 	}
