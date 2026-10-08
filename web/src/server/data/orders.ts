@@ -13,7 +13,14 @@ import {
   type TaxiDraft,
 } from "@/lib/orders/schemas";
 import { isStatus, type OrderKind, type Status } from "@/lib/orders/status";
-import { addDays, brusselsDay, brusselsTime, pbDate } from "@/lib/orders/time";
+import {
+  addDays,
+  brusselsDay,
+  brusselsTime,
+  brusselsToUtc,
+  isValidDay,
+  pbDate,
+} from "@/lib/orders/time";
 
 import { createPb } from "../pocketbase";
 import { readSessionToken } from "../session";
@@ -35,6 +42,11 @@ const str = (v: unknown) => (typeof v === "string" ? v : "");
 const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
 const arr = (v: unknown) => (Array.isArray(v) ? v : []);
 const strings = (v: unknown) => arr(v).filter((x): x is string => typeof x === "string");
+
+/** Instant ISO → format PocketBase (« 2026-10-08 22:00:00.000Z »). */
+export function toPbInstant(iso: string): string {
+  return iso.replace("T", " ");
+}
 
 export function dayToPb(day: string): string {
   return day ? `${day} 00:00:00.000Z` : "";
@@ -161,6 +173,8 @@ function splitInstant(v: unknown): { day: string; time: string } {
 
 export function taxiDraftFromRecord(r: RecordModel): TaxiDraft {
   const trip = splitInstant(r.trip_at);
+  // Heure non saisie : trip_at porte le jour à minuit, l'heure reste vide (jamais « 00:00 » par défaut).
+  if (r.time_pending) trip.time = "";
   const ret = splitInstant(r.return_at);
   return taxiDraftSchema.parse({
     trip_day: trip.day,
@@ -277,6 +291,8 @@ export type OrderRow = {
   sentAt: string;
   updated: string;
   reason: string;
+  /** Bus du bon (B201) ; vide pour un taxi. */
+  buses: { planned?: string; confirmed?: string; cancelled?: boolean }[];
 };
 
 function busRow(r: RecordModel): OrderRow {
@@ -303,6 +319,7 @@ function busRow(r: RecordModel): OrderRow {
     sentAt: str(r.sent_at),
     updated: str(r.updated),
     reason: str(r.reason),
+    buses,
   };
 }
 
@@ -329,6 +346,7 @@ function taxiRow(r: RecordModel): OrderRow {
     sentAt: str(r.sent_at),
     updated: str(r.updated),
     reason: str(r.is_pmr ? r.pmr_reason : r.reason),
+    buses: [],
   };
 }
 
@@ -343,16 +361,8 @@ export const listSchema = z.object({
     .string()
     .optional()
     .transform((s) => (isStatus(s) ? s : undefined)),
-  from: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional()
-    .catch(undefined),
-  to: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional()
-    .catch(undefined),
+  from: z.string().refine(isValidDay).optional().catch(undefined),
+  to: z.string().refine(isValidDay).optional().catch(undefined),
   district: z
     .string()
     .optional()
@@ -367,6 +377,7 @@ function buildFilter(
   kind: OrderKind,
   p: z.infer<typeof listSchema>,
   userId: string,
+  canPmr = false,
 ): string {
   const parts: string[] = [];
   const dateField = kind === "bus" ? "order_date" : "trip_at";
@@ -377,10 +388,10 @@ function buildFilter(
           a: dayToPb(from),
           b: dayToPb(addDays(to, 1)),
         })
-      : // Taxi : instant réel ; marge de 2 h pour couvrir le décalage Bruxelles / UTC.
+      : // Taxi : instant réel ; bornes = minuit à Bruxelles (heure d'été comme d'hiver).
         pb.filter(`${dateField} >= {:a} && ${dateField} < {:b}`, {
-          a: `${addDays(from, -1)} 22:00:00.000Z`,
-          b: `${to} 22:00:00.000Z`,
+          a: toPbInstant(brusselsToUtc(from)),
+          b: toPbInstant(brusselsToUtc(addDays(to, 1))),
         });
   switch (p.view) {
     case "a-confirmer":
@@ -407,7 +418,13 @@ function buildFilter(
     const fields =
       kind === "bus"
         ? ["origin", "destination", "relation", "reason", "company.name"]
-        : ["from_station", "to_station", "relation_number", "taxi_name", "pmr_last_name"];
+        : [
+            "from_station",
+            "to_station",
+            "relation_number",
+            "taxi_name",
+            ...(canPmr ? ["pmr_last_name"] : []),
+          ];
     const n = Number.parseInt(p.q, 10);
     const ors = fields.map((f) => pb.filter(`${f} ~ {:q}`, { q: p.q }));
     if (String(n) === p.q) ors.push(pb.filter("number = {:n}", { n }));
@@ -427,7 +444,7 @@ function sortFor(kind: OrderKind, view: View): string {
 /** Liste des commandes visibles par l'agent (bus et/ou taxi selon ses droits). */
 export async function listOrders(
   input: ListInput,
-  ctx: { userId: string; canBus: boolean; canTaxi: boolean },
+  ctx: { userId: string; canBus: boolean; canTaxi: boolean; canPmr?: boolean },
 ): Promise<{ rows: OrderRow[]; total: number }> {
   const p = listSchema.parse(input);
   const pb = await pbForRequest();
@@ -437,7 +454,7 @@ export async function listOrders(
   const results = await Promise.all(
     kinds.map(async (kind) => {
       const res = await pb.collection(COLLECTION[kind]).getList(1, p.limit, {
-        filter: buildFilter(pb, kind, p, ctx.userId),
+        filter: buildFilter(pb, kind, p, ctx.userId, ctx.canPmr),
         sort: sortFor(kind, p.view),
         expand: kind === "bus" ? "company,created_by" : "taxi_company,created_by",
         fields:
@@ -648,4 +665,17 @@ export async function recentOwnOrders(kind: OrderKind, userId: string, limit = 3
     expand: kind === "bus" ? "company,created_by" : "taxi_company,created_by",
   });
   return res.items.map(kind === "bus" ? busRow : taxiRow);
+}
+
+/**
+ * Agent sans `pmr:read` : les données PMR copiées sur la commande taxi (nom, téléphone, type, cause) ne sont
+ * ni affichées ni mises dans le PDF / l'e-mail (la règle PocketBase ne porte que sur `generate_taxi:read`).
+ */
+export function redactPmr<T extends TaxiOrderDetail>(o: T): T {
+  return {
+    ...o,
+    client: null,
+    draft: { ...o.draft, pmr_client: "", pmr_type: "", pmr_reason: "", passenger_name: "" },
+    snapshot: { ...o.snapshot, pmrLastName: "", pmrFirstName: "", pmrPhone: "", pmrFile: "" },
+  };
 }

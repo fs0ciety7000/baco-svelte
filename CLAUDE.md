@@ -191,7 +191,8 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - (v2) **Ne jamais changer de route par `history.replaceState` sous un formulaire en cours** : au rafraîchissement suivant
   (Server Action, `router.refresh`), Next rend l'arbre de la nouvelle route et React remonte le formulaire (saisie et
   dialogue perdus). Le brouillon créé garde sa route : `/commandes/nouveau?id=…`, rendu par la même structure
-  (`div > BusForm key="brouillon"`) que la fiche. Clé des formulaires = statut, jamais `updated`.
+  (`div > BusForm`, clé `nouveau-<k>-<statut>` où `k` est tiré à chaque visite et gardé dans l'URL) que la fiche.
+  Clé des formulaires = identité + statut, jamais `updated`.
 - (v2) PocketBase : un champ nombre vide vaut 0 → index uniques partiels en `WHERE legacy_id > 0` (voir `pocketbase/CLAUDE.md`).
 - (v2) Playwright : un libellé avec astérisque requis (`Arrivée *`) ne répond pas à `getByLabel(…, { exact: true })` ;
   passer par `getByRole(…, { name, exact: true })`.
@@ -269,6 +270,11 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   clients PMR minimaux, gares par ligne, modèles, B201), 66 contrôles de règles. Écrans bus, taxi, suivi, B201 ; envoi par
   `.eml` (X-Unsent, PDF `pdf-lib` joint, copie au bureau PACO du district). Suivi des agents Security auditor et Reviewer
   avant push. `CSM_PB_*` toujours mal formées (une seule ligne) : rappelé à l'utilisateur.
+  Audit sécurité : 0 critique / élevé ; corrigés : contournement de l'annulation (en cours → confirmé → annulé), données PMR
+  copiées sur le taxi masquées sans `pmr:read` (fiche, panneau, PDF, `.eml`, recherche), numéros de bon atomiques, champs
+  d'attribution non forgeables, modèles sans données personnelles. Revue : « Nouveau » reprenait le brouillon précédent
+  (clé par visite `?k=`), panne réseau / redéploiement qui faisait planter le formulaire (`safeCall`, autosave), bornes
+  taxi fausses en heure d'hiver, heure vide devenue 00:00 (`time_pending`), réponses du panneau dans le désordre.
 
 
 ---

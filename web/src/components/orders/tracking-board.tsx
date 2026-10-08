@@ -43,9 +43,20 @@ export function TrackingBoard({
   const [error, setError] = useState<string | null>(null);
   const rowRefs = useRef<(HTMLElement | null)[]>([]);
 
+  // Dernière commande demandée : une réponse arrivée en retard pour une autre ligne est ignorée (sinon
+  // « Confirmer » enverrait les bus d'une commande sur une autre).
+  const wanted = useRef<string | null>(null);
   const load = useCallback(async (r: OrderRow) => {
     setError(null);
-    const res = await loadOrderPanel({ kind: r.kind, id: r.id });
+    const key = `${r.kind}-${r.id}`;
+    wanted.current = key;
+    let res: Awaited<ReturnType<typeof loadOrderPanel>>;
+    try {
+      res = await loadOrderPanel({ kind: r.kind, id: r.id });
+    } catch {
+      res = { ok: false, error: "Serveur injoignable : réessayez." };
+    }
+    if (wanted.current !== key) return;
     if (res.ok) setPanel(res.data);
     else setError(res.error);
   }, []);
@@ -227,7 +238,7 @@ export function TrackingBoard({
                 buses={panel.buses}
                 drivers={panel.drivers}
                 companyId={panel.companyId}
-                exclude={["envoye"]}
+                hideSend
                 size="sm"
                 onDone={() => {
                   void load(open);

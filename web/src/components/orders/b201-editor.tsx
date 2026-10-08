@@ -2,15 +2,16 @@
 
 import { ArrowUpRight, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { saveB201 } from "@/app/(app)/commandes/actions";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import { AutosaveIndicator, type SaveState } from "@/components/ui/form-kit";
+import { AutosaveIndicator } from "@/components/ui/form-kit";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PERIODS, type Period } from "@/lib/orders/time";
+import { useAutosave } from "@/lib/orders/use-autosave";
 import { cn } from "@/lib/utils";
 import type { B201Entry, B201Notes, ManualEntry, Service } from "@/server/data/b201";
 
@@ -35,6 +36,7 @@ export function B201Editor({
   initialManual,
   initialNotes,
   updated,
+  reportId,
   canWrite,
 }: {
   day: string;
@@ -42,38 +44,45 @@ export function B201Editor({
   initialManual: ManualEntry[];
   initialNotes: B201Notes;
   updated: string | null;
+  reportId: string | null;
   canWrite: boolean;
 }) {
   const [notes, setNotes] = useState(initialNotes);
   const [manual, setManual] = useState(initialManual);
   const [tab, setTab] = useState<Period | "suivant">("matin");
-  const [state, setState] = useState<SaveState>(updated ? "saved" : "idle");
-  const [savedAt, setSavedAt] = useState<Date | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const version = useRef(updated);
-  const last = useRef(JSON.stringify({ notes: initialNotes, manual: initialManual }));
+  const value = useMemo(() => ({ notes, manual }), [notes, manual]);
+  // Même mécanique que les commandes : requêtes sérialisées, verrou optimiste, erreurs réseau rattrapées.
+  const save = useCallback(
+    async (
+      _id: string | null,
+      v: { notes: B201Notes; manual: ManualEntry[] },
+      expected?: string,
+    ) => {
+      const res = await saveB201({ day, ...v, expectedUpdated: expected ?? null });
+      return res.ok ? { ok: true as const, data: { ...res.data, number: 0 } } : res;
+    },
+    [day],
+  );
+  const autosave = useAutosave({
+    value,
+    enabled: canWrite,
+    initialId: reportId,
+    initialUpdated: updated,
+    save,
+  });
+  const { state, savedAt, error, rebase } = autosave;
 
+  // B201 enregistrée par un collègue (temps réel) : reprise de sa version si rien n'est en cours ici.
+  const saved = useRef(JSON.stringify(value));
+  if (autosave.state === "saved" || autosave.state === "idle")
+    saved.current = JSON.stringify(value);
   useEffect(() => {
-    if (!canWrite) return;
-    const json = JSON.stringify({ notes, manual });
-    if (json === last.current) return;
-    setState("dirty");
-    const t = setTimeout(async () => {
-      setState("saving");
-      const res = await saveB201({ day, notes, manual, expectedUpdated: version.current });
-      if (!res.ok) {
-        setState("error");
-        setError(res.error);
-        return;
-      }
-      version.current = res.data.updated;
-      last.current = json;
-      setError(null);
-      setSavedAt(new Date());
-      setState("saved");
-    }, 1200);
-    return () => clearTimeout(t);
-  }, [notes, manual, day, canWrite]);
+    if (!updated || JSON.stringify(value) !== saved.current) return;
+    rebase(updated, { notes: initialNotes, manual: initialManual });
+    setNotes(initialNotes);
+    setManual(initialManual);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [updated]);
 
   const groups = useMemo(() => {
     const all = [

@@ -42,13 +42,25 @@ export function useAutosave<T>({
   latest.current = value;
 
   const run = useCallback(async (): Promise<boolean> => {
-    if (inflight.current) await inflight.current;
+    // Une requête à la fois : on attend celle en cours, puis on recontrôle (le minuteur et `flush` peuvent
+    // attendre la même requête).
+    while (inflight.current) await inflight.current;
     const snapshot = latest.current;
     const json = JSON.stringify(snapshot);
     if (id.current && json === last.current) return true;
     const p = (async () => {
       setState(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "saving");
-      const res = await save(id.current, snapshot, updated.current);
+      let res: SaveResult;
+      try {
+        res = await save(id.current, snapshot, updated.current);
+      } catch {
+        // Réseau coupé ou serveur redéployé (« Failed to find Server Action ») : la saisie reste à l'écran.
+        setState(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "error");
+        setError(
+          "Enregistrement impossible (réseau ou mise à jour du serveur) : la saisie est gardée, réessayez.",
+        );
+        return false;
+      }
       if (!res.ok) {
         setState("error");
         setError(res.error);
@@ -72,6 +84,14 @@ export function useAutosave<T>({
       inflight.current = null;
     }
   }, [save, onCreated]);
+
+  // Retour du réseau : nouvel essai.
+  useEffect(() => {
+    if (!enabled) return;
+    const retry = () => void run();
+    window.addEventListener("online", retry);
+    return () => window.removeEventListener("online", retry);
+  }, [enabled, run]);
 
   useEffect(() => {
     if (!enabled) return;

@@ -36,6 +36,7 @@ import {
   PMR_TYPES,
   type TaxiDraft,
 } from "@/lib/orders/schemas";
+import { safeCall } from "@/lib/orders/safe-call";
 import { isEditable, type Status } from "@/lib/orders/status";
 import { useAutosave } from "@/lib/orders/use-autosave";
 
@@ -47,6 +48,8 @@ import { TransitionButtons } from "./transitions";
 type Client = { id: string; lastName: string; firstName: string; phone: string; type: string };
 
 export type TaxiFormProps = {
+  /** Identifiant de l'écran « nouveau » (clé React + URL), pour qu'un 2e « Nouveau » reparte de zéro. */
+  formKey?: string;
   orderId: string | null;
   number: number | null;
   status: Status;
@@ -83,9 +86,16 @@ export function TaxiForm(props: TaxiFormProps) {
     [],
   );
 
-  const onCreated = useCallback((id: string) => {
-    window.history.replaceState(null, "", `/commandes/taxi/nouveau?id=${id}`);
-  }, []);
+  const onCreated = useCallback(
+    (id: string) => {
+      window.history.replaceState(
+        null,
+        "",
+        `/commandes/taxi/nouveau?id=${id}${props.formKey ? `&k=${props.formKey}` : ""}`,
+      );
+    },
+    [props.formKey],
+  );
   const autosave = useAutosave({
     value: d,
     enabled: editable,
@@ -121,7 +131,7 @@ export function TaxiForm(props: TaxiFormProps) {
     start(async () => {
       if (!orderId) return;
       await autosave.flush();
-      const res = await duplicateOrder({ kind: "taxi", id: orderId });
+      const res = await safeCall(duplicateOrder({ kind: "taxi", id: orderId }));
       if (!res.ok) return void toast.error(res.error);
       toast.success("Copie créée (brouillon daté d'aujourd'hui).");
       router.push(`/commandes/taxi/${res.data.id}`);
@@ -308,7 +318,10 @@ export function TaxiForm(props: TaxiFormProps) {
                     setD((x) => ({
                       ...x,
                       pmr_client: c?.id ?? "",
-                      pmr_type: c?.type || x.pmr_type,
+                      // Type repris de la fiche seulement s'il est dans la liste (certaines fiches ont un texte libre).
+                      pmr_type:
+                        PMR_TYPES.find((t) => t.value === c?.type.toUpperCase())?.value ??
+                        x.pmr_type,
                     }));
                   }}
                 />
@@ -504,7 +517,7 @@ export function TaxiForm(props: TaxiFormProps) {
               statusBeforeCancel={props.statusBeforeCancel}
               coordinator={props.coordinator}
               before={autosave.flush}
-              exclude={["envoye"]}
+              hideSend
             />
           ) : null}
           <div className="relative ml-auto">
@@ -637,7 +650,7 @@ function PmrClientPicker({
     let cancelled = false;
     setLoading(true);
     const t = setTimeout(async () => {
-      const res = await findPmrClients(q);
+      const res = await safeCall(findPmrClients(q));
       if (!cancelled) {
         setResults(res.ok ? res.data : []);
         setLoading(false);
@@ -775,7 +788,7 @@ function NewClientDialog({
           onSubmit={(e) => {
             e.preventDefault();
             start(async () => {
-              const res = await createPmrClient(f);
+              const res = await safeCall(createPmrClient(f));
               if (!res.ok) return void toast.error(res.error);
               onCreated(res.data);
               onOpenChange(false);

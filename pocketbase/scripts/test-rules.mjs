@@ -181,6 +181,10 @@ try {
 	check('confirmé → en cours', t.status === 200 && !!t.json.started_at, `HTTP ${t.status}`);
 	t = await patch(u.token, { status: 'annule', cancel_reason: 'Test' });
 	check('annulation après « en cours » réservée au coordinateur', t.status === 403, `HTTP ${t.status}`);
+	t = await patch(u.token, { status: 'confirme' });
+	check('« en cours → confirmé » réservé au coordinateur (contournement de l\'annulation)', t.status === 403, `HTTP ${t.status}`);
+	t = await patch(u.token, { validated_by: u.id, sent_by_name: 'X' });
+	check('attribution reprise de BACO non modifiable', t.status >= 400, `HTTP ${t.status}`);
 	t = await patch(roles.admin.token, { status: 'annule' });
 	check('annulation sans motif refusée', t.status === 400, `HTTP ${t.status}`);
 	t = await patch(roles.admin.token, { status: 'annule', cancel_reason: 'Test annulation' });
@@ -191,6 +195,18 @@ try {
 	check('rétablir vers un autre statut que le précédent refusé', t.status === 400, `HTTP ${t.status}`);
 	t = await patch(roles.admin.token, { status: 'en_cours' });
 	check('coordinateur rétablit au statut précédent', t.status === 200 && !t.json.cancelled_at, `HTTP ${t.status}`);
+	// Numéros de bon : créations simultanées sans doublon.
+	const burst = await Promise.all(
+		Array.from({ length: 12 }, () =>
+			api('POST', '/api/collections/bus_orders/records', { token: u.token, body: { status: 'brouillon', created_by: u.id } })
+		)
+	);
+	const nums = burst.filter((r) => r.status === 200).map((r) => r.json.number);
+	check('12 créations simultanées, numéros uniques', nums.length === 12 && new Set(nums).size === 12, `${nums.length} OK`);
+	for (const r of burst) if (r.json?.id) {
+		await api('DELETE', `/api/collections/bus_orders/records/${r.json.id}`, { token: root });
+		auditIds.push(r.json.id);
+	}
 	const ev = await api('GET', `/api/collections/order_events/records?sort=at&perPage=50&filter=${encodeURIComponent(`order="${bid}"`)}`, {
 		token: roles.reader.token
 	});
@@ -222,10 +238,12 @@ try {
 		token: roles.otto_agent.token
 	});
 	check("otto_agent ne lit pas l'historique taxi", txe.json?.totalItems === 0, `${txe.json?.totalItems}`);
-	const pc = await api('POST', '/api/collections/pmr_clients/records', { token: u.token, body: { last_name: 'Test' } });
+	const pc = await api('POST', '/api/collections/pmr_clients/records', { token: u.token, body: { last_name: 'Test', updated_by: u.id } });
 	check('agent crée une fiche PMR', pc.status === 200, `HTTP ${pc.status}`);
 	const pd = await api('DELETE', `/api/collections/pmr_clients/records/${pc.json.id}`, { token: u.token });
 	check('agent ne supprime pas une fiche PMR', pd.status >= 400, `HTTP ${pd.status}`);
+	const pf = await api('POST', '/api/collections/pmr_clients/records', { token: u.token, body: { last_name: 'X', updated_by: roles.admin.id } });
+	check('fiche PMR : auteur de la modification non forgeable', pf.status >= 400, `HTTP ${pf.status}`);
 
 	// Modèles : tous partagés, modifiables par tout agent qui écrit des commandes.
 	const tp = await api('POST', '/api/collections/order_templates/records', {
@@ -252,13 +270,13 @@ try {
 	check('otto_agent ne crée pas de modèle taxi', tpt.status >= 400, `HTTP ${tpt.status}`);
 
 	// B201 : lecture par tous, écriture par les détenteurs de b201:write.
-	const b2 = await api('POST', '/api/collections/b201_reports/records', { token: roles.admin.token, body: { day: '2099-01-01', notes: {} } });
+	const b2 = await api('POST', '/api/collections/b201_reports/records', { token: roles.admin.token, body: { day: '2099-01-01', notes: {}, updated_by: roles.admin.id } });
 	check('admin crée la B201 du jour', b2.status === 200, `HTTP ${b2.status}`);
-	const b2d = await api('POST', '/api/collections/b201_reports/records', { token: roles.admin.token, body: { day: '2099-01-01' } });
+	const b2d = await api('POST', '/api/collections/b201_reports/records', { token: roles.admin.token, body: { day: '2099-01-01', updated_by: roles.admin.id } });
 	check('une seule B201 par jour', b2d.status >= 400, `HTTP ${b2d.status}`);
 	const b2r = await api('GET', `/api/collections/b201_reports/records/${b2.json.id}`, { token: roles.reader.token });
 	check('lecteur lit la B201', b2r.status === 200, `HTTP ${b2r.status}`);
-	const b2m = await api('PATCH', `/api/collections/b201_reports/records/${b2.json.id}`, { token: roles.admin.token, body: { day: '2099-01-02' } });
+	const b2m = await api('PATCH', `/api/collections/b201_reports/records/${b2.json.id}`, { token: roles.admin.token, body: { day: '2099-01-02', updated_by: roles.admin.id } });
 	check('jour de la B201 non modifiable (bug B1 de BACO)', b2m.status >= 400, `HTTP ${b2m.status}`);
 
 	for (const [c, id] of [

@@ -2,8 +2,10 @@
 // Cycle de vie des commandes : transitions contrôlées, horodatages et historique (`order_events`).
 // La logique est dans lib/orders.js (hooks isolés : require() dans chaque callback).
 
-// Numéro de bon attribué à la création (y compris à l'import, qui peut le fixer lui-même).
-onRecordCreate((e) => {
+// Numéro de bon attribué à la création (y compris à l'import, qui peut le fixer lui-même). Calculé dans
+// « Execute », c.-à-d. dans la transaction d'écriture (SQLite sérialise les écritures) : pas de doublon quand
+// deux agents créent en même temps.
+onRecordCreateExecute((e) => {
 	if (!e.record.getInt('number')) {
 		const orders = require(`${__hooks}/lib/orders.js`);
 		e.record.set('number', orders.nextNumber(e.app, e.record.collection().name));

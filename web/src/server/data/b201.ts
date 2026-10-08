@@ -119,15 +119,10 @@ export async function b201Data(day: string, district: string | undefined, user: 
       .getFirstListItem(pb.filter("day = {:day}", { day }))
       .catch(() => null),
   ]);
-  const busIds = rows.filter((r) => r.kind === "bus").map((r) => r.id);
-  const buses = new Map<string, BusLine[]>();
-  if (busIds.length) {
-    const recs = await pb.collection("bus_orders").getFullList({
-      filter: busIds.map((id) => pb.filter("id = {:id}", { id })).join(" || "),
-      fields: "id,buses",
-    });
-    for (const r of recs) buses.set(r.id, Array.isArray(r.buses) ? (r.buses as BusLine[]) : []);
-  }
+  // Les bus viennent de la liste (pas de 2e requête : un filtre « id = … || … » casse au-delà de ~130 ids).
+  const buses = new Map<string, BusLine[]>(
+    rows.filter((r) => r.kind === "bus").map((r) => [r.id, r.buses]),
+  );
   const all = entriesFromRows(rows, buses).filter((e) => {
     const orderDay = rows.find((r) => r.id === e.orderId)?.day;
     // Avant 6 h : fin de la nuit de la veille ; elle figure sur la B201 du jour précédent.

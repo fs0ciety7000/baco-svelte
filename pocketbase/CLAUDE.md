@@ -12,7 +12,7 @@ pocketbase migrate up $P                                   # appliquer les migra
 pocketbase superuser upsert <email> <mot de passe> $P      # compte superuser local
 pocketbase serve --http 127.0.0.1:8090 $P                  # serveur local
 CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P   # import de la sauvegarde Supabase (hors Git)
-PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (66 contrôles)
+PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (70 contrôles)
 CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # module Commandes seul, comptes gardés
 ```
 
@@ -41,7 +41,12 @@ CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # mo
   réservés aux coordinateurs moderator/admin/sysop ; motif d'annulation obligatoire ; envoi impossible sans e-mail
   fournisseur). Les horodatages `*_at` / `*_by`, `number` et `status_before_cancel` sont posés par le hook et
   **refusés dans le corps des requêtes** (règles). Chaque transition écrit `order_events` (lecture seule pour tous).
-  Création toujours en `brouillon`, au nom de l'agent. `number` = n° de bon (max + 1, = ancien id pour les bus importés).
+  Création toujours en `brouillon`, au nom de l'agent. `number` = n° de bon, attribué par une seule instruction
+  SQL atomique sur la table interne `_order_counters` (pas de doublon en création simultanée, testé à 12 requêtes) ;
+  = ancien id pour les bus importés. `en_cours → confirmé` est réservé aux coordinateurs (sinon contournement de
+  l'annulation). Rétablir une annulée ne réhorodate pas. `time_pending` (taxi) : heure de prise en charge non saisie.
+  `updated_by` de `pmr_clients` / `b201_reports` et l'attribution BACO des bus (`sent_by_name`, `validated_by`,
+  `legacy_id`) ne sont pas forgeables.
 - **Piège des index** : un champ nombre vide vaut **0**, pas NULL → un index unique `WHERE legacy_id IS NOT NULL`
   bloque la 2e fiche créée dans CSM. Toujours `WHERE legacy_id > 0`.
 - **Accès** : taxi, sociétés de taxi et clients PMR ne sont pas lisibles par `otto_agent` (comme la v1) ; modèles

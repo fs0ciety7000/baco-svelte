@@ -97,7 +97,7 @@ jobs:
           T=$(curl -sf -X POST $PB_URL/api/collections/_superusers/auth-with-password -H 'content-type: application/json' \
             -d "{\"identity\":\"$PB_SUPERUSER_EMAIL\",\"password\":\"$PB_SUPERUSER_PASSWORD\"}" | node -pe 'JSON.parse(require("fs").readFileSync(0)).token')
           curl -sf -X POST $PB_URL/api/collections/users/records -H "authorization: $T" -H 'content-type: application/json' \
-            -d "{\"email\":\"$E2E_IDENTITY\",\"password\":\"$E2E_PASSWORD\",\"passwordConfirm\":\"$E2E_PASSWORD\",\"name\":\"Agent E2E\",\"role\":\"user\",\"verified\":true}" > /dev/null
+            -d "{\"email\":\"$E2E_IDENTITY\",\"password\":\"$E2E_PASSWORD\",\"passwordConfirm\":\"$E2E_PASSWORD\",\"name\":\"Agent E2E\",\"role\":\"user\",\"district\":\"Sud-Ouest\",\"verified\":true}" > /dev/null
       - name: Build et démarrage du serveur standalone
         working-directory: web
         run: |

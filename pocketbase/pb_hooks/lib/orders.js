@@ -8,13 +8,14 @@ const TRANSITIONS = {
 	brouillon: ['envoye', 'annule'],
 	envoye: ['brouillon', 'confirme', 'annule'],
 	confirme: ['envoye', 'en_cours', 'termine', 'annule'],
-	en_cours: ['confirme', 'termine'],
+	en_cours: ['termine'],
 	termine: [],
 	annule: []
 };
 // Transitions réservées aux coordinateurs (moderator, admin, sysop).
+// « en cours → confirmé » aussi : sinon un agent contournerait l'annulation réservée (en cours → confirmé → annulé).
 const COORDINATOR = {
-	en_cours: ['annule'],
+	en_cours: ['confirme', 'annule'],
 	termine: ['en_cours']
 };
 
@@ -96,7 +97,8 @@ function recipient(app, record) {
 function stamp(record, from, to, auth) {
 	const by = auth && !auth.isSuperuser() ? auth.id : '';
 	const fields = STAMP[to];
-	if (fields) {
+	// Rétablir une commande annulée garde les horodatages d'origine (ex. heure réelle de l'envoi).
+	if (fields && from !== 'annule') {
 		record.set(fields[0], now());
 		record.set(fields[1], by);
 	}
@@ -130,10 +132,19 @@ function writeEvent(app, record, from, to, auth, note) {
 	app.save(ev);
 }
 
-/** Numéro lisible suivant (n° de bon) : max + 1, par type de commande. */
+/**
+ * Numéro lisible suivant (n° de bon), par type de commande. Une seule instruction SQL atomique sur le compteur
+ * (`_order_counters`, créé par migration) : pas de doublon quand deux agents créent en même temps. Le MAX garde
+ * le compteur au-dessus des numéros importés.
+ */
 function nextNumber(app, table) {
 	const row = new DynamicModel({ n: 0 });
-	app.db().newQuery(`SELECT COALESCE(MAX(number), 0) + 1 AS n FROM ${table}`).one(row);
+	app.db()
+		.newQuery(
+			`UPDATE _order_counters SET n = MAX(n, (SELECT COALESCE(MAX(number), 0) FROM ${table})) + 1 WHERE name = {:t} RETURNING n`
+		)
+		.bind({ t: table })
+		.one(row);
 	return row.n;
 }
 

@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import type { Metadata } from "next";
 
 import { TaxiOrderView } from "@/components/orders/taxi-order-view";
@@ -26,12 +28,14 @@ const DEFAULT_STATION: Record<string, string> = {
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ modele?: string; id?: string }>;
+  searchParams: Promise<{ modele?: string; id?: string; k?: string }>;
 }) {
   const user = await requirePermission("generate_taxi:write");
-  const { modele, id } = await searchParams;
+  const { modele, id, k } = await searchParams;
+  const formKey = k && /^[a-z0-9]{8}$/.test(k) ? k : undefined;
   // Brouillon déjà créé sur cette page (URL remplacée après le 1er enregistrement) : même route, même fiche.
-  if (id && /^[a-z0-9-]{15,36}$/.test(id)) return <TaxiOrderView id={id} user={user} />;
+  if (id && /^[a-z0-9-]{15,36}$/.test(id))
+    return <TaxiOrderView id={id} user={user} formKey={formKey} />;
   const [reference, templates, recent] = await Promise.all([
     taxiReference(),
     listTemplates("taxi"),
@@ -50,12 +54,15 @@ export default async function Page({
     // Un modèle ne lie pas de client PMR (données personnelles propres à chaque commande).
     pmr_client: "",
   };
-  // Même structure que la fiche (div > formulaire clé « brouillon ») : après le 1er enregistrement, le
+  // Nouvel écran à chaque visite sans ?id : un 2e « Nouveau » ne reprend pas le brouillon précédent.
+  const nonce = randomUUID().replace(/-/g, "").slice(0, 8);
+  // Même structure que la fiche (div > formulaire, même clé) : après le 1er enregistrement, le
   // rafraîchissement rend la fiche sans remonter le formulaire.
   return (
     <div className="flex flex-col gap-6">
       <TaxiForm
-        key="brouillon"
+        key={`nouveau-${nonce}-brouillon`}
+        formKey={nonce}
         orderId={null}
         number={null}
         status="brouillon"

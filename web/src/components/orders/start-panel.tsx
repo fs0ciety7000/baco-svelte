@@ -9,6 +9,7 @@ import { duplicateOrder } from "@/app/(app)/commandes/actions";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import type { OrderKind } from "@/lib/orders/status";
+import { safeCall } from "@/lib/orders/safe-call";
 
 export type StartPanelProps = {
   kind: OrderKind;
@@ -24,7 +25,7 @@ export function StartPanel({ kind, recent, templates }: StartPanelProps) {
   const base = kind === "bus" ? "/commandes/nouveau" : "/commandes/taxi/nouveau";
   const redo = (id: string) =>
     start(async () => {
-      const res = await duplicateOrder({ kind, id });
+      const res = await safeCall(duplicateOrder({ kind, id }));
       if (!res.ok) return void toast.error(res.error);
       toast.success("Commande recopiée en brouillon daté d'aujourd'hui.");
       router.push(

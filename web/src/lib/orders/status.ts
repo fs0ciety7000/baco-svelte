@@ -25,12 +25,12 @@ const TRANSITIONS: Record<Status, Status[]> = {
   brouillon: ["envoye", "annule"],
   envoye: ["brouillon", "confirme", "annule"],
   confirme: ["envoye", "en_cours", "termine", "annule"],
-  en_cours: ["confirme", "termine"],
+  en_cours: ["termine"],
   termine: [],
   annule: [],
 };
 const COORDINATOR: Partial<Record<Status, Status[]>> = {
-  en_cours: ["annule"],
+  en_cours: ["confirme", "annule"],
   termine: ["en_cours"],
 };
 

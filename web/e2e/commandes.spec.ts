@@ -46,11 +46,33 @@ test.beforeAll(async () => {
     places: ["Mons"],
   });
   fixtures.push({ col: "taxi_companies", id: taxi.id });
+  // Commande de démo propre au test (captures mobiles et panneau : la base de la CI est vide).
+  const agent = await pb(
+    "GET",
+    `/api/collections/users/records?filter=${encodeURIComponent(`email="${identity}"`)}`,
+  );
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(
+    new Date(),
+  );
+  await pb("POST", "/api/collections/bus_orders/records", {
+    status: "brouillon",
+    created_by: agent.items[0].id,
+    reason: "Commande de démonstration",
+    order_date: `${today} 00:00:00.000Z`,
+    origin: "Mons",
+    destination: "Soignies",
+    company: bus.id,
+    buses: [{ planned: "08:00" }],
+  });
   for (const [line, stations] of [
     ["96", ["Bruxelles-Midi", "Hal", "Braine-le-Comte", "Soignies", "Mons"]],
   ] as const) {
     for (const [i, station] of stations.entries()) {
-      const r = await pb("POST", "/api/collections/line_stations/records", { line: `${line}${suffix}`, station, position: i });
+      const r = await pb("POST", "/api/collections/line_stations/records", {
+        line: `${line}${suffix}`,
+        station,
+        position: i,
+      });
       fixtures.push({ col: "line_stations", id: r.id });
     }
   }
@@ -59,19 +81,32 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   // Commandes créées par le test (rattachées aux sociétés de démo), puis les fiches de démo.
   for (const f of fixtures.filter((x) => x.col === "bus_companies")) {
-    const list = await pb("GET", `/api/collections/bus_orders/records?perPage=200&filter=${encodeURIComponent(`company="${f.id}"`)}`);
-    for (const o of list?.items ?? []) await pb("DELETE", `/api/collections/bus_orders/records/${o.id}`);
+    const list = await pb(
+      "GET",
+      `/api/collections/bus_orders/records?perPage=200&filter=${encodeURIComponent(`company="${f.id}"`)}`,
+    );
+    for (const o of list?.items ?? [])
+      await pb("DELETE", `/api/collections/bus_orders/records/${o.id}`);
   }
   for (const f of fixtures.filter((x) => x.col === "taxi_companies")) {
-    const list = await pb("GET", `/api/collections/taxi_orders/records?perPage=200&filter=${encodeURIComponent(`taxi_company="${f.id}"`)}`);
-    for (const o of list?.items ?? []) await pb("DELETE", `/api/collections/taxi_orders/records/${o.id}`);
+    const list = await pb(
+      "GET",
+      `/api/collections/taxi_orders/records?perPage=200&filter=${encodeURIComponent(`taxi_company="${f.id}"`)}`,
+    );
+    for (const o of list?.items ?? [])
+      await pb("DELETE", `/api/collections/taxi_orders/records/${o.id}`);
   }
-  for (const f of fixtures.reverse()) await pb("DELETE", `/api/collections/${f.col}/records/${f.id}`);
+  for (const f of fixtures.reverse())
+    await pb("DELETE", `/api/collections/${f.col}/records/${f.id}`);
 });
 
 async function theme(page: Page, name: string) {
   await page.context().addCookies([
-    { name: "csm_ui", value: JSON.stringify({ theme: name, density: "confortable" }), url: "http://localhost:3000" },
+    {
+      name: "csm_ui",
+      value: JSON.stringify({ theme: name, density: "confortable" }),
+      url: "http://localhost:3000",
+    },
   ]);
 }
 
@@ -91,20 +126,39 @@ test("bus : création, enregistrement automatique, envoi, confirmation", async (
 
   await expect(page.getByTestId("autosave")).toHaveAttribute("data-state", "idle");
   // Valeurs par défaut : date du jour à Bruxelles, type « Remplacement ».
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date());
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(
+    new Date(),
+  );
   await expect(page.getByLabel("Date de circulation")).toHaveValue(today);
-  await expect(page.getByRole("radio", { name: "Remplacement" })).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByRole("radio", { name: "Remplacement" })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
 
   await page.getByLabel("Motif").fill("Dérangement de signalisation (essai)");
-  await expect(page.getByTestId("autosave")).toHaveAttribute("data-state", "saved", { timeout: 10_000 });
+  await expect(page.getByTestId("autosave")).toHaveAttribute("data-state", "saved", {
+    timeout: 10_000,
+  });
+  const number = /n° (\d+)/.exec((await page.getByTestId("order-number").textContent()) ?? "")?.[1];
   // Même route après création (pas de remontage du formulaire), l'identifiant passe dans ?id=.
-  await expect(page).toHaveURL(/\/commandes\/nouveau\?id=[a-z0-9]{15}$/);
+  await expect(page).toHaveURL(/\/commandes\/nouveau\?id=[a-z0-9]{15}&k=[a-z0-9]{8}$/);
   const id = new URL(page.url()).searchParams.get("id");
   busUrl = `/commandes/bus/${id}`;
 
+  // Un 2e « Nouveau » repart d'un formulaire vierge (ne reprend pas ce brouillon).
+  await page.goto("/commandes");
+  await page.getByRole("link", { name: "Nouveau bon" }).click();
+  await expect(page.getByTestId("order-number")).toHaveText("Nouveau bon");
+  await expect(page.getByLabel("Motif")).toHaveValue("");
+  await page.goto(busUrl);
+  await expect(page.getByLabel("Motif")).toHaveValue("Dérangement de signalisation (essai)");
+
   await page.getByLabel("Origine").fill("Hal");
   await page.getByLabel("Destination").fill("Mons");
-  await expect(page.getByRole("button", { name: "Soignies" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Soignies" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await page.getByLabel("Société").selectOption({ label: BUS_COMPANY });
   await page.getByLabel("Heure prévue").fill("14:30");
   await page.getByRole("button", { name: "Ajouter un bus" }).click();
@@ -132,26 +186,35 @@ test("bus : création, enregistrement automatique, envoi, confirmation", async (
 
   // Suivi « À confirmer » : panneau latéral puis confirmation (heure et plaque facultatives).
   await page.goto("/commandes/suivi?vue=a-confirmer");
-  await page.getByRole("button", { name: /Ouvrir la commande bus/ }).first().click();
+  // La commande créée par ce test (jamais une autre commande de la base).
+  await page.getByRole("button", { name: `Ouvrir la commande bus n° ${number}` }).click();
   await expect(page.getByTestId("order-panel")).toBeVisible();
   await page.getByTestId("transition-confirme").click();
   await page.getByLabel("Plaque").first().fill("1-ABC-123");
   await page.getByRole("dialog").getByRole("button", { name: "Confirmer" }).click();
-  await expect(page.getByTestId("order-panel").getByText("Confirmé", { exact: true }).first()).toBeVisible();
+  await expect(
+    page.getByTestId("order-panel").getByText("Confirmé", { exact: true }).first(),
+  ).toBeVisible();
   expect(errors).toEqual([]);
 });
 
 test("taxi : création liée à une société, aller-retour pré-inversé", async ({ page }, info) => {
   test.skip(info.project.name !== "desktop", "parcours en desktop");
   await login(page, "/commandes/taxi/nouveau");
+  // Départ rempli à la main : l'agent de la CI n'a pas de district (pas de gare par défaut).
+  await page.getByRole("combobox", { name: "Départ", exact: true }).fill("Mons");
   await page.getByRole("combobox", { name: "Arrivée", exact: true }).fill("Tournai");
-  await expect(page.getByTestId("autosave")).toHaveAttribute("data-state", "saved", { timeout: 10_000 });
+  await expect(page.getByTestId("autosave")).toHaveAttribute("data-state", "saved", {
+    timeout: 10_000,
+  });
   await page.getByRole("radio", { name: "Aller-retour" }).click();
   await expect(page.getByLabel("Départ du retour")).toHaveValue("Tournai");
   await page.getByLabel("Société de taxi").selectOption({ label: `${TAXI_COMPANY} — Mons` });
   await page.getByTestId("prepare-send").click();
   // Contrôle avant envoi : l'heure du retour manque.
-  await expect(page.getByRole("dialog").getByText("Date et heure du retour manquantes")).toBeVisible();
+  await expect(
+    page.getByRole("dialog").getByText("Date et heure du retour manquantes"),
+  ).toBeVisible();
   await page.keyboard.press("Escape");
   await page.getByLabel("Heure du retour").fill("23:30");
   await page.getByTestId("prepare-send").click();
@@ -171,9 +234,10 @@ for (const t of ["commandement", "ivoire"] as const) {
     await snap(page, `${t}-taxi-nouveau`, p);
     await page.goto("/commandes/suivi?vue=toutes");
     await snap(page, `${t}-suivi`, p);
-    await (p === "desktop"
-      ? page.getByRole("button", { name: /Ouvrir la commande/ }).first()
-      : page.getByTestId("tracking-cards").getByRole("button").first()
+    await (
+      p === "desktop"
+        ? page.getByRole("button", { name: /Ouvrir la commande/ }).first()
+        : page.getByTestId("tracking-cards").getByRole("button").first()
     ).click();
     await expect(page.getByTestId("order-panel")).toBeVisible();
     await page.screenshot({ path: `test-results/commandes-${t}-suivi-panneau-${p}.png` });

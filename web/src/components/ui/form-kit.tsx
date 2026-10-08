@@ -221,7 +221,7 @@ function AutosaveIndicator({
             <button
               type="button"
               onClick={onRetry}
-              className="cursor-pointer text-accent underline underline-offset-2"
+              className="inline-flex min-h-11 cursor-pointer items-center px-1 text-accent underline underline-offset-2 md:min-h-0"
             >
               Réessayer
             </button>

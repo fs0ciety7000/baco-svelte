@@ -7,7 +7,7 @@ import { B201Keys } from "@/components/orders/b201-keys";
 import { Button } from "@/components/ui/button";
 import { can } from "@/lib/permissions";
 import { DISTRICTS } from "@/lib/orders/schemas";
-import { addDays, brusselsDay, formatLongDay } from "@/lib/orders/time";
+import { addDays, brusselsDay, formatLongDay, isValidDay } from "@/lib/orders/time";
 import { cn } from "@/lib/utils";
 import { requirePermission } from "@/server/auth";
 import { b201Data } from "@/server/data/b201";
@@ -24,7 +24,7 @@ export default async function Page({
   const user = await requirePermission("b201:read");
   const sp = await searchParams;
   const today = brusselsDay();
-  const day = /^\d{4}-\d{2}-\d{2}$/.test(sp.jour ?? "") ? (sp.jour as string) : today;
+  const day = isValidDay(sp.jour) ? sp.jour : today;
   const district = (DISTRICTS as readonly string[]).includes(sp.district ?? "")
     ? sp.district
     : undefined;
@@ -114,6 +114,7 @@ export default async function Page({
         initialManual={data.manual}
         initialNotes={data.notes}
         updated={data.updated}
+        reportId={data.reportId}
         canWrite={can(user, "b201:write")}
       />
     </section>

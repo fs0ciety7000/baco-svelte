@@ -24,7 +24,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Lis
       to: filters.au,
       district: filters.district,
     },
-    { userId: user.id, canBus: false, canTaxi: true },
+    { userId: user.id, canBus: false, canTaxi: true, canPmr: can(user, "pmr:read") },
   );
   return (
     <section className="flex flex-col gap-4" aria-label="Commandes taxi">

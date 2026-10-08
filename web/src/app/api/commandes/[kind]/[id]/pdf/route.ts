@@ -5,7 +5,7 @@ import { contentDisposition } from "@/lib/orders/eml";
 import { busFilename, taxiFilename } from "@/lib/orders/mail";
 import { can } from "@/lib/permissions";
 import { getCurrentUser } from "@/server/auth";
-import { busReference, getBusOrder, getTaxiOrder } from "@/server/data/orders";
+import { busReference, getBusOrder, getTaxiOrder, redactPmr } from "@/server/data/orders";
 import { busOrderPdf, taxiOrderPdf } from "@/server/pdf/order-pdf";
 
 // Bon de commande PDF (affiché dans le navigateur). Lecture seule : le statut n'est jamais modifié ici.
@@ -46,7 +46,7 @@ export async function GET(
       pdf = await busOrderPdf(order, { agentName, drivers: ref.drivers });
       filename = busFilename(order.draft);
     } else {
-      const order = await getTaxiOrder(id);
+      const order = await getTaxiOrder(id).then((o) => (can(user, "pmr:read") ? o : redactPmr(o)));
       pdf = await taxiOrderPdf(order, { agentName });
       filename = taxiFilename(order.draft);
     }

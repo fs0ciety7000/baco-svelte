@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { contentDisposition } from "@/lib/orders/eml";
-import { PERIODS } from "@/lib/orders/time";
+import { isValidDay, PERIODS } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
 import { getCurrentUser } from "@/server/auth";
 import { b201Data, entriesByPeriod, SERVICE_LABEL } from "@/server/data/b201";
@@ -19,7 +19,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ day:
   if (!user) return new Response("Non connecté", { status: 401, headers: HEADERS });
   const day = z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .refine(isValidDay)
     .safeParse((await params).day);
   if (!day.success || !can(user, "b201:read"))
     return new Response("Introuvable", { status: 404, headers: HEADERS });

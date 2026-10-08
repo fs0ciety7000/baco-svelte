@@ -32,6 +32,7 @@ import {
   type BusDraft,
   type BusLine,
 } from "@/lib/orders/schemas";
+import { safeCall } from "@/lib/orders/safe-call";
 import { isEditable, type Status } from "@/lib/orders/status";
 import { stopsBetween, suggestLines, type LineInfo } from "@/lib/orders/stops";
 import { useAutosave } from "@/lib/orders/use-autosave";
@@ -41,6 +42,8 @@ import { StartPanel, type StartPanelProps } from "./start-panel";
 import { TransitionButtons } from "./transitions";
 
 export type BusFormProps = {
+  /** Identifiant de l'écran « nouveau » (clé React + URL), pour qu'un 2e « Nouveau » reparte de zéro. */
+  formKey?: string;
   orderId: string | null;
   number: number | null;
   status: Status;
@@ -77,11 +80,18 @@ export function BusForm(props: BusFormProps) {
     [],
   );
 
-  const onCreated = useCallback((id: string) => {
-    // Garde la même route (sinon Next remonterait le formulaire au prochain rafraîchissement) : ?id= permet
-    // de recharger la page sans perdre la commande.
-    window.history.replaceState(null, "", `/commandes/nouveau?id=${id}`);
-  }, []);
+  const onCreated = useCallback(
+    (id: string) => {
+      // Garde la même route (sinon Next remonterait le formulaire au prochain rafraîchissement) : ?id= permet
+      // de recharger la page sans perdre la commande.
+      window.history.replaceState(
+        null,
+        "",
+        `/commandes/nouveau?id=${id}${props.formKey ? `&k=${props.formKey}` : ""}`,
+      );
+    },
+    [props.formKey],
+  );
   const autosave = useAutosave({
     value: d,
     enabled: editable,
@@ -160,7 +170,7 @@ export function BusForm(props: BusFormProps) {
     start(async () => {
       if (!orderId) return;
       await autosave.flush();
-      const res = await duplicateOrder({ kind: "bus", id: orderId });
+      const res = await safeCall(duplicateOrder({ kind: "bus", id: orderId }));
       if (!res.ok) return void toast.error(res.error);
       toast.success("Copie créée (brouillon daté d'aujourd'hui).");
       router.push(`/commandes/bus/${res.data.id}`);
@@ -638,7 +648,7 @@ export function BusForm(props: BusFormProps) {
               drivers={reference.drivers}
               companyId={d.company}
               before={autosave.flush}
-              exclude={["envoye"]}
+              hideSend
             />
           ) : null}
           <div className="relative ml-auto">
@@ -798,7 +808,7 @@ function NewDriverButton({
             onSubmit={(e) => {
               e.preventDefault();
               start(async () => {
-                const res = await addDriver({ company: companyId, name, phone });
+                const res = await safeCall(addDriver({ company: companyId, name, phone }));
                 if (!res.ok) return void toast.error(res.error);
                 onAdded(res.data);
                 toast.success("Chauffeur ajouté.");
@@ -862,7 +872,7 @@ export function TemplateDialog({
           onSubmit={(e) => {
             e.preventDefault();
             start(async () => {
-              const res = await saveTemplate({ kind, name, data });
+              const res = await safeCall(saveTemplate({ kind, name, data }));
               if (!res.ok) return void toast.error(res.error);
               toast.success("Modèle enregistré.");
               onOpenChange(false);

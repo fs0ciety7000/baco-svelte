@@ -44,6 +44,8 @@ const LIFECYCLE = [
 	'status_before_cancel'
 ];
 const noLifecycle = LIFECYCLE.map((f) => `@request.body.${f}:isset = false`).join(' && ');
+// Bus : l'attribution reprise de BACO n'est jamais modifiable par l'API.
+const noBusLegacy = ['sent_by_name', 'validated_by', 'legacy_id'].map((f) => `@request.body.${f}:isset = false`).join(' && ');
 
 function lifecycleFields(usersId) {
 	return [
@@ -76,6 +78,10 @@ migrate(
 	(app) => {
 		const users = app.findCollectionByNameOrId('users');
 		const companies = app.findCollectionByNameOrId('bus_companies');
+
+		// District « Centre » (bureau PACO Bruxelles) : prévu par les commandes et la B201.
+		users.fields.getByName('district').values = DISTRICTS;
+		app.save(users);
 
 		// Un champ nombre vide vaut 0 (pas NULL) : l'index « legacy_id IS NOT NULL » interdisait une 2e fiche
 		// créée dans CSM. L'unicité ne porte plus que sur les anciens identifiants (> 0).
@@ -170,8 +176,8 @@ migrate(
 			name: 'pmr_clients',
 			listRule: can('pmr:read', READERS.filter((r) => r !== 'otto_agent')),
 			viewRule: can('pmr:read', READERS.filter((r) => r !== 'otto_agent')),
-			createRule: can('pmr:write', ['moderator', 'user']),
-			updateRule: can('pmr:write', ['moderator', 'user']),
+			createRule: `(${can('pmr:write', ['moderator', 'user'])}) && @request.body.updated_by = @request.auth.id`,
+			updateRule: `(${can('pmr:write', ['moderator', 'user'])}) && @request.body.updated_by = @request.auth.id`,
 			deleteRule: ADMIN,
 			fields: [
 				{ name: 'legacy_id', type: 'number', onlyInt: true },
@@ -194,8 +200,8 @@ migrate(
 		// --- Commandes bus : cycle de vie ---
 		const bus = app.findCollectionByNameOrId('bus_orders');
 		addFields(bus, lifecycleFields(users.id));
-		bus.createRule = `(${can('otto:write', WRITERS)}) && @request.body.created_by = @request.auth.id && @request.body.status = "brouillon" && ${noLifecycle}`;
-		bus.updateRule = `(${can('otto:write', WRITERS)}) && @request.body.created_by:changed = false && ${noLifecycle}`;
+		bus.createRule = `(${can('otto:write', WRITERS)}) && @request.body.created_by = @request.auth.id && @request.body.status = "brouillon" && ${noLifecycle} && ${noBusLegacy}`;
+		bus.updateRule = `(${can('otto:write', WRITERS)}) && @request.body.created_by:changed = false && ${noLifecycle} && ${noBusLegacy}`;
 		bus.addIndex('idx_bus_orders_number', true, 'number', 'number > 0');
 		bus.removeIndex('idx_bus_orders_legacy');
 		bus.addIndex('idx_bus_orders_legacy', true, 'legacy_id', 'legacy_id > 0');
@@ -208,6 +214,8 @@ migrate(
 			{ name: 'taxi_company', type: 'relation', collectionId: taxiCompanies.id, maxSelect: 1 },
 			{ name: 'pmr_client', type: 'relation', collectionId: pmrClients.id, maxSelect: 1 },
 			{ name: 'confirmed_time', type: 'text', max: 8, pattern: '^$|^\\d{2}:\\d{2}$' },
+			// Heure de prise en charge pas encore saisie (trip_at porte alors le jour à minuit).
+			{ name: 'time_pending', type: 'bool' },
 			{ name: 'sent_at', type: 'date' },
 			...lifecycleFields(users.id)
 		]);
@@ -268,6 +276,10 @@ migrate(
 			})
 		);
 
+		// --- Compteurs des numéros de bon (table SQL interne, hors API) ---
+		app.db().newQuery('CREATE TABLE IF NOT EXISTS _order_counters (name TEXT PRIMARY KEY, n INTEGER NOT NULL DEFAULT 0)').execute();
+		app.db().newQuery("INSERT OR IGNORE INTO _order_counters (name, n) VALUES ('bus_orders', 0), ('taxi_orders', 0)").execute();
+
 		// --- Remise de service B201 : une par jour (Europe/Brussels), transports lus depuis les commandes ---
 		app.save(
 			new Collection({
@@ -275,8 +287,8 @@ migrate(
 				name: 'b201_reports',
 				listRule: can('b201:read', READERS),
 				viewRule: can('b201:read', READERS),
-				createRule: can('b201:write', ['moderator']),
-				updateRule: `(${can('b201:write', ['moderator'])}) && @request.body.day:changed = false`,
+				createRule: `(${can('b201:write', ['moderator'])}) && @request.body.updated_by = @request.auth.id`,
+				updateRule: `(${can('b201:write', ['moderator'])}) && @request.body.day:changed = false && @request.body.updated_by = @request.auth.id`,
 				deleteRule: ADMIN,
 				fields: [
 					{ name: 'day', type: 'text', required: true, pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
@@ -294,6 +306,7 @@ migrate(
 		);
 	},
 	(app) => {
+		app.db().newQuery('DROP TABLE IF EXISTS _order_counters').execute();
 		for (const name of [
 			'b201_reports',
 			'order_templates',
@@ -313,7 +326,7 @@ migrate(
 		taxi.updateRule = can('generate_taxi:write', WRITERS);
 		taxi.removeIndex('idx_taxi_orders_number');
 		taxi.removeIndex('idx_taxi_orders_status');
-		for (const f of ['created_by', 'taxi_company', 'pmr_client', 'confirmed_time', 'sent_at', ...LIFECYCLE, 'district', 'cancel_reason', 'notes']) {
+		for (const f of ['created_by', 'taxi_company', 'pmr_client', 'confirmed_time', 'time_pending', 'sent_at', ...LIFECYCLE, 'district', 'cancel_reason', 'notes']) {
 			taxi.fields.removeByName(f);
 		}
 		app.save(taxi);
@@ -327,5 +340,8 @@ migrate(
 		app.save(bus);
 		app.delete(app.findCollectionByNameOrId('pmr_clients'));
 		app.delete(app.findCollectionByNameOrId('taxi_companies'));
+		const users = app.findCollectionByNameOrId('users');
+		users.fields.getByName('district').values = ['Sud-Ouest', 'Sud-Est'];
+		app.save(users);
 	}
 );

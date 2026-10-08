@@ -31,7 +31,7 @@ export function TransitionButtons({
   companyId,
   before,
   onDone,
-  exclude = [],
+  hideSend = false,
   size = "md",
 }: {
   kind: OrderKind;
@@ -45,21 +45,31 @@ export function TransitionButtons({
   /** Appelé avant la transition (ex. enregistrer le brouillon en cours). */
   before?: () => Promise<boolean>;
   onDone?: (to: Status) => void;
-  /** Transitions gérées ailleurs (ex. « Marquer envoyé » via la feuille d'envoi). */
-  exclude?: Status[];
+  /** « Marquer envoyé » passe par la feuille d'envoi (brouillon Outlook) : masqué ici. */
+  hideSend?: boolean;
   size?: "sm" | "md";
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [dialog, setDialog] = useState<Transition | null>(null);
   const list = transitionsFor(status, { coordinator, statusBeforeCancel }).filter(
-    (t) => !exclude.includes(t.to),
+    // Seul « brouillon → envoyé » est masqué (« Annuler la confirmation » vise aussi « envoyé »).
+    (t) => !(hideSend && status === "brouillon" && t.to === "envoye"),
   );
 
   const run = (t: Transition, extra: Extra) =>
     start(async () => {
-      if (before && !(await before())) return;
-      const res = await transitionOrder({ kind, id, to: t.to, ...extra });
+      let res: Awaited<ReturnType<typeof transitionOrder>>;
+      try {
+        if (before && !(await before())) {
+          toast.error("La saisie n'a pas pu être enregistrée : transition annulée.");
+          return;
+        }
+        res = await transitionOrder({ kind, id, to: t.to, ...extra });
+      } catch {
+        toast.error("Serveur injoignable (réseau ou mise à jour en cours) : réessayez.");
+        return;
+      }
       if (!res.ok) {
         toast.error(res.error);
         return;

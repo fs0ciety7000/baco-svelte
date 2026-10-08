@@ -115,7 +115,7 @@ export const taxiDraftSchema = z.object({
   taxi_email: text(500),
   is_pmr: z.boolean().default(false),
   pmr_client: id,
-  pmr_type: text(20),
+  pmr_type: text(100),
   pmr_count: count(50),
   passengers: count(100).default(1),
   vehicles: count(20).default(1),
@@ -175,9 +175,13 @@ export function checkTaxiForSend(d: TaxiDraft, opts: { companyEmail: string }): 
   return m;
 }
 
+export const EMAIL_ADDRESS =
+  /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+$/;
+
 /** Adresses e-mail d'un champ libre (« a@x.be; b@y.be ») ; ignore ce qui n'est pas une adresse. */
 export function parseEmails(raw: string | string[]): string[] {
   const list = (Array.isArray(raw) ? raw.join(";") : raw).split(/[;,\s]+/);
-  const ok = list.map((s) => s.trim()).filter((s) => /^[^@\s<>"]+@[^@\s<>"]+\.[a-z]{2,}$/i.test(s));
+  // Même grammaire que le brouillon .eml (eml.ts) : une adresse acceptée ici ne le fait jamais échouer.
+  const ok = list.map((s) => s.trim()).filter((s) => s.length <= 254 && EMAIL_ADDRESS.test(s));
   return [...new Set(ok)];
 }

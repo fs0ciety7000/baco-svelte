@@ -10,6 +10,7 @@ import {
   checkTaxiForSend,
   emptyBus,
   parseEmails,
+  PMR_TYPES,
   taxiDraftSchema,
   type BusDraft,
   type TaxiDraft,
@@ -27,6 +28,7 @@ import {
   getTaxiOrder,
   listEvents,
   pbForRequest,
+  redactPmr,
   searchPmrClients,
   taxiDraftFromRecord,
   type OrderEvent,
@@ -75,7 +77,8 @@ async function assertUnchanged(
   id: string,
   expectedUpdated?: string,
 ) {
-  if (!expectedUpdated) return;
+  // Une mise à jour sans version attendue est refusée (une Server Action est un POST public).
+  if (!expectedUpdated) throw new ConflictError();
   const current = await pb.collection(collection).getOne(id, { fields: "updated" });
   if (current.updated !== expectedUpdated) throw new ConflictError();
 }
@@ -118,7 +121,7 @@ export async function saveBusOrder(
 }
 
 /** Champs taxi : instants en UTC, copie figée de la société et du client PMR (bon lisible dans le temps). */
-async function taxiBody(draft: TaxiDraft, user: SessionUser) {
+async function taxiBody(draft: TaxiDraft, user: SessionUser, creating: boolean) {
   const pb = await pbForRequest();
   const body: Record<string, unknown> = {
     from_station: draft.from_station,
@@ -127,6 +130,7 @@ async function taxiBody(draft: TaxiDraft, user: SessionUser) {
     return_from: draft.round_trip ? draft.return_from : "",
     return_to: draft.round_trip ? draft.return_to : "",
     trip_at: draft.trip_day ? brusselsToUtc(draft.trip_day, draft.trip_time || "00:00") : "",
+    time_pending: !draft.trip_time,
     return_at:
       draft.round_trip && draft.return_day
         ? brusselsToUtc(draft.return_day, draft.return_time || "00:00")
@@ -148,8 +152,13 @@ async function taxiBody(draft: TaxiDraft, user: SessionUser) {
     confirmed_time: draft.confirmed_time,
     district: draft.district || userDistrict(user) || null,
     notes: draft.notes,
-    author: user.name || user.username,
+    // Copie PMR vidée si le transport n'est plus PMR ou n'a plus de client lié (remplie plus bas sinon).
+    pmr_last_name: "",
+    pmr_first_name: "",
+    pmr_phone: "",
   };
+  // Auteur affiché : posé à la création seulement (une commande reprise de BACO garde son rédacteur).
+  if (creating) body.author = user.name || user.username;
   if (draft.taxi_company) {
     const c = await pb.collection("taxi_companies").getOne(idSchema.parse(draft.taxi_company));
     body.taxi_name = c.name;
@@ -161,7 +170,8 @@ async function taxiBody(draft: TaxiDraft, user: SessionUser) {
     body.pmr_last_name = c.last_name;
     body.pmr_first_name = c.first_name;
     body.pmr_phone = c.phone;
-    if (!draft.pmr_type) body.pmr_type = c.type;
+    if (!draft.pmr_type && PMR_TYPES.some((t) => t.value === String(c.type).toUpperCase()))
+      body.pmr_type = String(c.type).toUpperCase();
   }
   return body;
 }
@@ -175,7 +185,7 @@ export async function saveTaxiOrder(
     const user = await writer("taxi");
     const draft = taxiDraftSchema.parse(input);
     const pb = await pbForRequest();
-    const body = await taxiBody(draft, user);
+    const body = await taxiBody(draft, user, !id);
     if (id) await assertUnchanged(pb, "taxi_orders", idSchema.parse(id), expectedUpdated);
     const r = id
       ? await pb.collection("taxi_orders").update(idSchema.parse(id), body)
@@ -263,16 +273,17 @@ export async function transitionOrder(
     // Confirmation / démobilisation : heures et plaques saisies dans la même requête.
     if (p.kind === "bus" && (p.details?.buses || p.details?.demob)) {
       const buses = busDraftFromRecord(current).buses;
+      // Le dialogue est pré-rempli avec les valeurs actuelles : ce qui est envoyé remplace (effacer est permis).
       for (const b of p.details.buses ?? []) {
         const bus = buses[b.index];
         if (!bus) continue;
-        bus.confirmed = b.confirmed || bus.confirmed;
-        bus.plate = b.plate || bus.plate;
-        bus.driver = b.driver || bus.driver;
+        bus.confirmed = b.confirmed;
+        bus.plate = b.plate;
+        bus.driver = b.driver;
       }
       for (const b of p.details.demob ?? []) {
         const bus = buses[b.index];
-        if (bus) bus.demob = b.demob || bus.demob;
+        if (bus) bus.demob = b.demob;
       }
       body.buses = buses;
     }
@@ -332,7 +343,7 @@ export async function duplicateOrder(input: {
     };
     const r = await pb
       .collection("taxi_orders")
-      .create({ ...(await taxiBody(draft, user)), status: "brouillon", created_by: user.id });
+      .create({ ...(await taxiBody(draft, user, true)), status: "brouillon", created_by: user.id });
     return { ok: true, data: { id: r.id } };
   } catch (e) {
     return fail(e);
@@ -359,6 +370,7 @@ export async function saveTemplate(
         ...d,
         order_date: "",
         call_time: "",
+        notes: "",
         buses: d.buses.map((b) => ({
           ...emptyBus(b.planned),
           specific_route: b.specific_route,
@@ -368,7 +380,18 @@ export async function saveTemplate(
       };
     } else {
       const d = taxiDraftSchema.parse(p.data);
-      data = { ...d, trip_day: "", return_day: "", confirmed_time: "" };
+      // Modèle partagé : aucune donnée personnelle (client PMR, passager, cause, notes, adresse saisie).
+      data = {
+        ...d,
+        trip_day: "",
+        return_day: "",
+        confirmed_time: "",
+        pmr_client: "",
+        passenger_name: "",
+        pmr_reason: "",
+        notes: "",
+        taxi_email: "",
+      };
     }
     const pb = await pbForRequest();
     const r = await pb
@@ -531,7 +554,8 @@ export async function loadOrderPanel(input: {
         },
       };
     }
-    const o = await getTaxiOrder(id);
+    const raw = await getTaxiOrder(id);
+    const o = can(user, "pmr:read") ? raw : redactPmr(raw);
     const d = o.draft;
     return {
       ok: true,
@@ -562,7 +586,7 @@ export async function loadOrderPanel(input: {
           {
             label: "Passager",
             value: d.is_pmr
-              ? `PMR (${d.pmr_count}) · ${d.pmr_reason || "cause ?"}`
+              ? `PMR (${d.pmr_count})${d.pmr_reason ? ` · ${d.pmr_reason}` : ""}`
               : `${d.passengers} passager(s)`,
           },
           { label: "Facturation", value: d.billing },

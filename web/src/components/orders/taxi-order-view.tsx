@@ -6,12 +6,22 @@ import { can } from "@/lib/permissions";
 import { officeFor } from "@/lib/orders/mail";
 import { isCoordinator } from "@/lib/orders/status";
 import type { SessionUser } from "@/server/auth";
-import { getTaxiOrder, listEvents, taxiReference } from "@/server/data/orders";
+import { getTaxiOrder, listEvents, redactPmr, taxiReference } from "@/server/data/orders";
 
 /** Fiche d'une commande taxi, partagée par /commandes/taxi/[id] et /commandes/taxi/nouveau?id=. */
-export async function TaxiOrderView({ id, user }: { id: string; user: SessionUser }) {
-  const order = await getTaxiOrder(id).catch(() => null);
-  if (!order) notFound();
+export async function TaxiOrderView({
+  id,
+  user,
+  formKey,
+}: {
+  id: string;
+  user: SessionUser;
+  formKey?: string;
+}) {
+  const raw = await getTaxiOrder(id).catch(() => null);
+  if (!raw) notFound();
+  // Sans pmr:read, les données PMR copiées sur la commande ne sont pas transmises au navigateur.
+  const order = can(user, "pmr:read") ? raw : redactPmr(raw);
   const [reference, events] = await Promise.all([taxiReference(), listEvents("taxi", id)]);
   const { meta } = order;
   // Commande reprise de BACO sans fiche liée : on montre la copie figée du client.
@@ -29,7 +39,8 @@ export async function TaxiOrderView({ id, user }: { id: string; user: SessionUse
   return (
     <div className="flex flex-col gap-6">
       <TaxiForm
-        key={meta.status}
+        key={`${formKey ? `nouveau-${formKey}` : meta.id}-${meta.status}`}
+        formKey={formKey}
         orderId={meta.id}
         number={meta.number}
         status={meta.status}

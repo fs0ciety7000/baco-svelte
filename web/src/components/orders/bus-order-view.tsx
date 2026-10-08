@@ -9,7 +9,15 @@ import type { SessionUser } from "@/server/auth";
 import { busReference, getBusOrder, listEvents } from "@/server/data/orders";
 
 /** Fiche d'une commande bus (formulaire + historique), partagée par /commandes/bus/[id] et /commandes/nouveau?id=. */
-export async function BusOrderView({ id, user }: { id: string; user: SessionUser }) {
+export async function BusOrderView({
+  id,
+  user,
+  formKey,
+}: {
+  id: string;
+  user: SessionUser;
+  formKey?: string;
+}) {
   const order = await getBusOrder(id).catch(() => null);
   if (!order) notFound();
   const [reference, events] = await Promise.all([busReference(), listEvents("bus", id)]);
@@ -19,7 +27,8 @@ export async function BusOrderView({ id, user }: { id: string; user: SessionUser
       <BusForm
         // Remonté après une transition (le statut change) : la saisie repart de la version serveur. Pas de clé
         // sur `updated`, sinon chaque rafraîchissement après un enregistrement automatique remonterait le formulaire.
-        key={meta.status}
+        key={`${formKey ? `nouveau-${formKey}` : meta.id}-${meta.status}`}
+        formKey={formKey}
         orderId={meta.id}
         number={meta.number}
         status={meta.status}

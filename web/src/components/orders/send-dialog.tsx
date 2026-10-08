@@ -66,7 +66,13 @@ export function SendDialog({
 
   const markSent = () =>
     start(async () => {
-      const res = await transitionOrder({ kind, id: id ?? "", to: "envoye" });
+      let res: Awaited<ReturnType<typeof transitionOrder>>;
+      try {
+        res = await transitionOrder({ kind, id: id ?? "", to: "envoye" });
+      } catch {
+        toast.error("Serveur injoignable : réessayez dans un instant.");
+        return;
+      }
       if (!res.ok) {
         toast.error(res.error);
         return;

@@ -30,6 +30,13 @@ export function brusselsTime(date: Date = new Date()): string {
   return `${p.hour}:${p.minute}`;
 }
 
+/** Jour « AAAA-MM-JJ » qui existe vraiment (2026-13-45 est refusé). */
+export function isValidDay(day: string | undefined | null): day is string {
+  if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
+  const d = new Date(`${day}T12:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === day;
+}
+
 /** Ajoute n jours à un jour « AAAA-MM-JJ » (calcul en UTC, sans effet de l'heure d'été). */
 export function addDays(day: string, n: number): string {
   const d = new Date(`${day}T12:00:00Z`);
