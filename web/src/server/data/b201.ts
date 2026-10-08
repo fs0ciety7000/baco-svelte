@@ -109,6 +109,7 @@ export async function b201Data(day: string, district: string | undefined, user: 
     userId: user.id,
     canBus: can(user, "otto:read"),
     canTaxi: can(user, "generate_taxi:read"),
+    canPmr: can(user, "pmr:read"),
   };
   const pb = await pbForRequest();
   // La nuit (21 h – 6 h) déborde sur le lendemain matin : on lit aussi le lendemain avant 6 h.

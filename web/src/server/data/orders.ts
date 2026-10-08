@@ -323,9 +323,13 @@ function busRow(r: RecordModel): OrderRow {
   };
 }
 
-function taxiRow(r: RecordModel): OrderRow {
+/** Ligne taxi ; sans `pmr:read`, la cause PMR n'est pas transmise (elle partirait au navigateur). */
+const taxiRowFor = (canPmr: boolean) => (r: RecordModel) => taxiRow(r, canPmr);
+
+function taxiRow(r: RecordModel, canPmr = false): OrderRow {
   const ex = (r.expand ?? {}) as Record<string, RecordModel | undefined>;
   const at = splitInstant(r.trip_at);
+  if (r.time_pending) at.time = "";
   return {
     kind: "taxi",
     id: r.id,
@@ -345,7 +349,7 @@ function taxiRow(r: RecordModel): OrderRow {
     district: str(r.district),
     sentAt: str(r.sent_at),
     updated: str(r.updated),
-    reason: str(r.is_pmr ? r.pmr_reason : r.reason),
+    reason: r.is_pmr ? (canPmr ? str(r.pmr_reason) : "") : str(r.reason),
     buses: [],
   };
 }
@@ -460,10 +464,10 @@ export async function listOrders(
         fields:
           kind === "bus"
             ? "id,number,status,order_date,call_time,origin,destination,relation,bus_count,buses,created_by,district,sent_at,updated,reason,expand.company.name,expand.created_by.name"
-            : "id,number,status,trip_at,from_station,to_station,relation_number,taxi_name,vehicles,is_pmr,created_by,author,district,sent_at,updated,reason,pmr_reason,expand.taxi_company.name,expand.created_by.name",
+            : "id,number,status,trip_at,from_station,to_station,relation_number,taxi_name,vehicles,is_pmr,time_pending,created_by,author,district,sent_at,updated,reason,pmr_reason,expand.taxi_company.name,expand.created_by.name",
       });
       return {
-        rows: res.items.map(kind === "bus" ? busRow : taxiRow),
+        rows: res.items.map(kind === "bus" ? busRow : taxiRowFor(!!ctx.canPmr)),
         total: res.totalItems,
       };
     }),
@@ -657,14 +661,14 @@ export async function getTemplateData(kind: OrderKind, id: string): Promise<unkn
 }
 
 /** Dernières commandes de l'agent (« Refaire la commande d'hier »). */
-export async function recentOwnOrders(kind: OrderKind, userId: string, limit = 3) {
+export async function recentOwnOrders(kind: OrderKind, userId: string, limit = 3, canPmr = false) {
   const pb = await pbForRequest();
   const res = await pb.collection(COLLECTION[kind]).getList(1, limit, {
     filter: pb.filter('created_by = {:me} && status != "brouillon"', { me: userId }),
     sort: "-created",
     expand: kind === "bus" ? "company,created_by" : "taxi_company,created_by",
   });
-  return res.items.map(kind === "bus" ? busRow : taxiRow);
+  return res.items.map(kind === "bus" ? busRow : taxiRowFor(canPmr));
 }
 
 /**

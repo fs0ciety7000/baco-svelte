@@ -152,11 +152,10 @@ async function taxiBody(draft: TaxiDraft, user: SessionUser, creating: boolean) 
     confirmed_time: draft.confirmed_time,
     district: draft.district || userDistrict(user) || null,
     notes: draft.notes,
-    // Copie PMR vidée si le transport n'est plus PMR ou n'a plus de client lié (remplie plus bas sinon).
-    pmr_last_name: "",
-    pmr_first_name: "",
-    pmr_phone: "",
   };
+  // Copie PMR : vidée si le transport n'est plus PMR ; gardée telle quelle si PMR sans fiche liée (commande reprise
+  // de BACO, qui n'a que cette copie) ; remplacée plus bas par la fiche liée sinon.
+  if (!draft.is_pmr) Object.assign(body, { pmr_last_name: "", pmr_first_name: "", pmr_phone: "" });
   // Auteur affiché : posé à la création seulement (une commande reprise de BACO garde son rédacteur).
   if (creating) body.author = user.name || user.username;
   if (draft.taxi_company) {
@@ -186,6 +185,12 @@ export async function saveTaxiOrder(
     const draft = taxiDraftSchema.parse(input);
     const pb = await pbForRequest();
     const body = await taxiBody(draft, user, !id);
+    // Agent sans pmr:read : son formulaire n'a reçu que des champs PMR masqués ; ne pas les réécrire (sinon le
+    // client serait délié et la cause effacée à la première modification).
+    if (id && !can(user, "pmr:read")) {
+      for (const k of Object.keys(body))
+        if (k.startsWith("pmr_") || k === "passenger_name") delete body[k];
+    }
     if (id) await assertUnchanged(pb, "taxi_orders", idSchema.parse(id), expectedUpdated);
     const r = id
       ? await pb.collection("taxi_orders").update(idSchema.parse(id), body)

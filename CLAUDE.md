@@ -281,6 +281,10 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   d'attribution non forgeables, modèles sans données personnelles. Revue : « Nouveau » reprenait le brouillon précédent
   (clé par visite `?k=`), panne réseau / redéploiement qui faisait planter le formulaire (`safeCall`, autosave), bornes
   taxi fausses en heure d'hiver, heure vide devenue 00:00 (`time_pending`), réponses du panneau dans le désordre.
+  2e revue (sur les corrections) : la copie PMR d'un taxi repris de BACO n'est plus effacée à la modification ; un agent
+  sans `pmr:read` ne réécrit plus les champs PMR masqués ; cause PMR retirée des listes sans ce droit ; « Préparer
+  l'envoi » d'un modèle non modifié crée bien la commande (`flush({ create: true })`) ; la B201 ne reprend la version
+  distante que sans saisie en cours (`isDirty()`).
 
 
 ---

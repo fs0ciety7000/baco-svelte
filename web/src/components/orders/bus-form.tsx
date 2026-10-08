@@ -162,7 +162,7 @@ export function BusForm(props: BusFormProps) {
 
   const prepareSend = async () => {
     setShowErrors(true);
-    await autosave.flush();
+    await autosave.flush({ create: true });
     setSendOpen(true);
   };
 

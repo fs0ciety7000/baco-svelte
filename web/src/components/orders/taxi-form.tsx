@@ -124,7 +124,7 @@ export function TaxiForm(props: TaxiFormProps) {
 
   const prepareSend = async () => {
     setShowErrors(true);
-    await autosave.flush();
+    await autosave.flush({ create: true });
     setSendOpen(true);
   };
   const duplicate = () =>

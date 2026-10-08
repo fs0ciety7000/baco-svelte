@@ -13,6 +13,7 @@ test.skip(!identity || !password || !suEmail, "E2E_IDENTITY / PB_SUPERUSER_* non
 test.describe.configure({ mode: "serial" });
 
 let root = "";
+let templateId = "";
 const fixtures: { col: string; id: string }[] = [];
 const suffix = Math.random().toString(36).slice(2, 7);
 const BUS_COMPANY = `Autocars Démo ${suffix}`;
@@ -46,6 +47,26 @@ test.beforeAll(async () => {
     places: ["Mons"],
   });
   fixtures.push({ col: "taxi_companies", id: taxi.id });
+  // Modèle complet (partagé) : « Préparer l'envoi » doit marcher sans rien modifier.
+  const tpl = await pb("POST", "/api/collections/order_templates/records", {
+    kind: "bus",
+    name: `Modèle démo ${suffix}`,
+    created_by: (
+      await pb(
+        "GET",
+        `/api/collections/users/records?filter=${encodeURIComponent(`email="${identity}"`)}`,
+      )
+    ).items[0].id,
+    data: {
+      reason: "Travaux",
+      origin: "Hal",
+      destination: "Mons",
+      company: bus.id,
+      buses: [{ planned: "09:00" }],
+    },
+  });
+  fixtures.push({ col: "order_templates", id: tpl.id });
+  templateId = tpl.id;
   // Commande de démo propre au test (captures mobiles et panneau : la base de la CI est vide).
   const agent = await pb(
     "GET",
@@ -196,6 +217,15 @@ test("bus : création, enregistrement automatique, envoi, confirmation", async (
     page.getByTestId("order-panel").getByText("Confirmé", { exact: true }).first(),
   ).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+test("modèle partagé : envoi possible sans modification", async ({ page }, info) => {
+  test.skip(info.project.name !== "desktop", "parcours en desktop");
+  await login(page, "/commandes/nouveau");
+  await page.goto(`/commandes/nouveau?modele=${templateId}`);
+  await expect(page.getByLabel("Motif")).toHaveValue("Travaux");
+  await page.getByTestId("prepare-send").click();
+  await expect(page.getByTestId("download-eml")).toBeEnabled();
 });
 
 test("taxi : création liée à une société, aller-retour pré-inversé", async ({ page }, info) => {

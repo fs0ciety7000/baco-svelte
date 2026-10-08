@@ -41,50 +41,53 @@ export function useAutosave<T>({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   latest.current = value;
 
-  const run = useCallback(async (): Promise<boolean> => {
-    // Une requête à la fois : on attend celle en cours, puis on recontrôle (le minuteur et `flush` peuvent
-    // attendre la même requête).
-    while (inflight.current) await inflight.current;
-    const snapshot = latest.current;
-    const json = JSON.stringify(snapshot);
-    // Rien de saisi : pas de requête (et pas de commande vide créée par « Préparer l'envoi » sur un formulaire vierge).
-    if (json === last.current) return true;
-    const p = (async () => {
-      setState(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "saving");
-      let res: SaveResult;
+  const run = useCallback(
+    async (create = false): Promise<boolean> => {
+      // Une requête à la fois : on attend celle en cours, puis on recontrôle (le minuteur et `flush` peuvent
+      // attendre la même requête).
+      while (inflight.current) await inflight.current;
+      const snapshot = latest.current;
+      const json = JSON.stringify(snapshot);
+      // Rien de saisi : pas de requête, sauf création demandée (« Préparer l'envoi » d'un modèle chargé tel quel).
+      if (json === last.current && (id.current || !create)) return true;
+      const p = (async () => {
+        setState(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "saving");
+        let res: SaveResult;
+        try {
+          res = await save(id.current, snapshot, updated.current);
+        } catch {
+          // Réseau coupé ou serveur redéployé (« Failed to find Server Action ») : la saisie reste à l'écran.
+          setState(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "error");
+          setError(
+            "Enregistrement impossible (réseau ou mise à jour du serveur) : la saisie est gardée, réessayez.",
+          );
+          return false;
+        }
+        if (!res.ok) {
+          setState("error");
+          setError(res.error);
+          return false;
+        }
+        const created = !id.current;
+        id.current = res.data.id;
+        updated.current = res.data.updated;
+        last.current = json;
+        setNumber(res.data.number);
+        setError(null);
+        setSavedAt(new Date());
+        setState(JSON.stringify(latest.current) === json ? "saved" : "dirty");
+        if (created) onCreated?.(res.data.id, res.data.number);
+        return true;
+      })();
+      inflight.current = p;
       try {
-        res = await save(id.current, snapshot, updated.current);
-      } catch {
-        // Réseau coupé ou serveur redéployé (« Failed to find Server Action ») : la saisie reste à l'écran.
-        setState(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "error");
-        setError(
-          "Enregistrement impossible (réseau ou mise à jour du serveur) : la saisie est gardée, réessayez.",
-        );
-        return false;
+        return await p;
+      } finally {
+        inflight.current = null;
       }
-      if (!res.ok) {
-        setState("error");
-        setError(res.error);
-        return false;
-      }
-      const created = !id.current;
-      id.current = res.data.id;
-      updated.current = res.data.updated;
-      last.current = json;
-      setNumber(res.data.number);
-      setError(null);
-      setSavedAt(new Date());
-      setState(JSON.stringify(latest.current) === json ? "saved" : "dirty");
-      if (created) onCreated?.(res.data.id, res.data.number);
-      return true;
-    })();
-    inflight.current = p;
-    try {
-      return await p;
-    } finally {
-      inflight.current = null;
-    }
-  }, [save, onCreated]);
+    },
+    [save, onCreated],
+  );
 
   // Retour du réseau : nouvel essai.
   useEffect(() => {
@@ -100,7 +103,10 @@ export function useAutosave<T>({
     if (json === last.current) return;
     setState("dirty");
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => void run(), delay);
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      void run();
+    }, delay);
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
@@ -115,11 +121,23 @@ export function useAutosave<T>({
     return () => window.removeEventListener("beforeunload", warn);
   }, [enabled]);
 
-  /** Enregistre tout de suite (avant l'envoi, la duplication…). */
-  const flush = useCallback(async () => {
-    if (timer.current) clearTimeout(timer.current);
-    return run();
-  }, [run]);
+  /** Enregistre tout de suite (avant l'envoi, la duplication…) ; `create` crée la commande même sans saisie. */
+  const flush = useCallback(
+    async (opts?: { create?: boolean }) => {
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = null;
+      return run(opts?.create ?? false);
+    },
+    [run],
+  );
+
+  /** Saisie locale non encore enregistrée (ou requête en cours / minuteur armé). */
+  const isDirty = useCallback(
+    () => JSON.stringify(latest.current) !== last.current || !!inflight.current || !!timer.current,
+    [],
+  );
+  /** Version serveur connue (`updated`). */
+  const version = useCallback(() => updated.current ?? null, []);
 
   /** Après une modification serveur (transition), reprend la nouvelle version comme référence. */
   const rebase = useCallback((nextUpdated: string, nextValue?: T) => {
@@ -127,5 +145,5 @@ export function useAutosave<T>({
     if (nextValue !== undefined) last.current = JSON.stringify(nextValue);
   }, []);
 
-  return { state, savedAt, error, flush, rebase, id: id.current, number };
+  return { state, savedAt, error, flush, rebase, isDirty, version, id: id.current, number };
 }

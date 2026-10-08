@@ -2,7 +2,7 @@
 
 import { ArrowUpRight, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { saveB201 } from "@/app/(app)/commandes/actions";
 import { Button } from "@/components/ui/button";
@@ -72,12 +72,10 @@ export function B201Editor({
   });
   const { state, savedAt, error, rebase } = autosave;
 
-  // B201 enregistrée par un collègue (temps réel) : reprise de sa version si rien n'est en cours ici.
-  const saved = useRef(JSON.stringify(value));
-  if (autosave.state === "saved" || autosave.state === "idle")
-    saved.current = JSON.stringify(value);
+  // B201 enregistrée ailleurs (temps réel) : reprise de la version distante seulement si rien n'est en cours ici.
+  const { isDirty, version } = autosave;
   useEffect(() => {
-    if (!updated || JSON.stringify(value) !== saved.current) return;
+    if (!updated || updated === version() || isDirty()) return;
     rebase(updated, { notes: initialNotes, manual: initialManual });
     setNotes(initialNotes);
     setManual(initialManual);
