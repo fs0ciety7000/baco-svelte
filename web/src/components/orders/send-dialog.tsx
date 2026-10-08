@@ -39,6 +39,8 @@ export function SendDialog({
   const [downloaded, setDownloaded] = useState(false);
   const [pending, start] = useTransition();
   const ready = !!id && missing.length === 0;
+  // Sans adresse e-mail (société sans adresse, rien saisi) : PDF seul, transmis autrement ; pas de brouillon .eml.
+  const noMail = !to.trim();
   const base = id ? `/api/commandes/${kind}/${id}` : "";
 
   useEffect(() => {
@@ -50,7 +52,16 @@ export function SendDialog({
       toast.error("Enregistrement impossible : corrigez la saisie avant l'envoi.");
       return;
     }
-    if (what === "eml") {
+    if (what === "pdf" && noMail) {
+      // Téléchargement du PDF à transmettre (la confirmation « envoyé » suit, comme pour l'e-mail).
+      const a = document.createElement("a");
+      a.href = `${base}/pdf?download=1`;
+      a.rel = "noopener";
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setDownloaded(true);
+    } else if (what === "eml") {
       // Téléchargement par lien : le fichier part avec le cookie de session (même domaine).
       const a = document.createElement("a");
       a.href = `${base}/eml`;
@@ -87,7 +98,11 @@ export function SendDialog({
       <DialogContent
         eyebrow="// Envoi au fournisseur"
         title="Préparer l'envoi"
-        description="Le brouillon s'ouvre dans Outlook avec le bon en PDF. Vérifiez l'expéditeur (boîte fonctionnelle), puis envoyez."
+        description={
+          noMail
+            ? "Aucune adresse e-mail pour ce fournisseur : téléchargez le bon en PDF et transmettez-le (téléphone, autre canal)."
+            : "Le brouillon s'ouvre dans Outlook avec le bon en PDF. Vérifiez l'expéditeur (boîte fonctionnelle), puis envoyez."
+        }
       >
         {missing.length ? (
           <div role="alert" className="flex flex-col gap-2 border border-danger/60 p-3">
@@ -104,7 +119,7 @@ export function SendDialog({
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-body">
             <dt className="label-mono pt-0.5 text-fg-muted">À</dt>
             <dd className="break-all text-fg" data-testid="send-to">
-              {to || "—"}
+              {to || "Aucune adresse (PDF seul)"}
             </dd>
             <dt className="label-mono pt-0.5 text-fg-muted">Copie</dt>
             <dd className="break-all text-fg">{cc || "—"}</dd>
@@ -120,7 +135,9 @@ export function SendDialog({
             className="mt-4 flex flex-col gap-2 border border-info/60 bg-[color-mix(in_oklab,var(--info)_8%,var(--surface))] p-3"
             data-testid="confirm-banner"
           >
-            <p className="text-body font-medium text-fg">Avez-vous envoyé l&apos;e-mail ?</p>
+            <p className="text-body font-medium text-fg">
+              {noMail ? "Avez-vous transmis le bon ?" : "Avez-vous envoyé l'e-mail ?"}
+            </p>
             <p className="text-small text-fg-muted">
               La commande passe à « Envoyé » seulement si vous le confirmez.
             </p>
@@ -145,6 +162,15 @@ export function SendDialog({
                 <Mail aria-hidden /> Oui, marquer envoyé
               </Button>
             </>
+          ) : noMail ? (
+            <Button
+              variant="primary"
+              onClick={() => download("pdf")}
+              disabled={!ready}
+              data-testid="download-pdf"
+            >
+              <Download aria-hidden /> Télécharger le PDF
+            </Button>
           ) : (
             <Button
               variant="primary"
@@ -158,5 +184,23 @@ export function SendDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Lien vers le PDF du bon dans l'encadré « Aperçu du bon » (disponible dès le premier enregistrement). */
+export function PdfLink({ href }: { href: string }) {
+  return href ? (
+    <a
+      className="inline-flex min-h-11 items-center gap-2 text-body text-accent underline-offset-2 hover:underline"
+      href={href}
+      target="_blank"
+      rel="noopener"
+    >
+      <FileText aria-hidden className="size-4" /> Ouvrir le PDF du bon
+    </a>
+  ) : (
+    <p className="text-hint text-fg-muted">
+      Le PDF sera disponible après le premier enregistrement.
+    </p>
   );
 }

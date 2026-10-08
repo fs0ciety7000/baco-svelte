@@ -29,6 +29,7 @@ import {
   C3_TYPES,
   checkBusForSend,
   emptyBus,
+  parseEmails,
   type BusDraft,
   type BusLine,
 } from "@/lib/orders/schemas";
@@ -37,7 +38,7 @@ import { isEditable, type Status } from "@/lib/orders/status";
 import { stopsBetween, suggestLines, type LineInfo } from "@/lib/orders/stops";
 import { useAutosave } from "@/lib/orders/use-autosave";
 
-import { SendDialog } from "./send-dialog";
+import { PdfLink, SendDialog } from "./send-dialog";
 import { StartPanel, type StartPanelProps } from "./start-panel";
 import { TransitionButtons } from "./transitions";
 
@@ -412,7 +413,8 @@ export function BusForm(props: BusFormProps) {
               error={err("company")}
               hint={
                 company
-                  ? company.email || "Pas d'adresse e-mail : à compléter dans les référentiels."
+                  ? company.email ||
+                    "Pas d'adresse e-mail enregistrée : saisissez-la ci-dessous (facultatif)."
                   : undefined
               }
             >
@@ -426,6 +428,21 @@ export function BusForm(props: BusFormProps) {
                 ))}
               </Select>
             </Field>
+            {company && !company.email ? (
+              <Field
+                label="E-mail de la société"
+                hint="Facultatif : sans adresse, le bon est généré en PDF (pas de brouillon e-mail)."
+              >
+                <Input
+                  type="email"
+                  inputMode="email"
+                  value={d.company_email}
+                  onChange={(e) => set("company_email", e.target.value)}
+                  maxLength={500}
+                  placeholder="commandes@societe.be"
+                />
+              </Field>
+            ) : null}
             {company?.phone ? (
               <p className="text-small text-fg-muted">
                 Tél.{" "}
@@ -477,6 +494,13 @@ export function BusForm(props: BusFormProps) {
                         type="time"
                         value={b.planned}
                         onChange={(e) => setBus(i, { planned: e.target.value })}
+                      />
+                    </Field>
+                    <Field label="Heure réelle">
+                      <Input
+                        type="time"
+                        value={b.actual}
+                        onChange={(e) => setBus(i, { actual: e.target.value })}
                       />
                     </Field>
                     {sentOrLater ? (
@@ -717,7 +741,7 @@ export function BusForm(props: BusFormProps) {
         className="hidden flex-col gap-3 lg:sticky lg:top-20 lg:flex"
         aria-label="Aperçu du bon"
       >
-        <BusPreview draft={d} companyName={company?.name ?? ""} number={number} />
+        <BusPreview draft={d} companyName={company?.name ?? ""} number={number} orderId={orderId} />
       </aside>
 
       <SendDialog
@@ -726,7 +750,7 @@ export function BusForm(props: BusFormProps) {
         open={sendOpen}
         onOpenChange={setSendOpen}
         missing={missing}
-        to={company?.email ?? ""}
+        to={parseEmails([company?.email ?? "", d.company_email]).join("; ")}
         cc={props.officeEmail}
         flush={autosave.flush}
       />
@@ -739,10 +763,12 @@ function BusPreview({
   draft: d,
   companyName,
   number,
+  orderId,
 }: {
   draft: BusDraft;
   companyName: string;
   number: number | null;
+  orderId: string | null;
 }) {
   const active = d.buses.filter((b) => !b.cancelled);
   const stops = d.direct
@@ -777,6 +803,7 @@ function BusPreview({
       {stops.length ? (
         <p className="text-small text-fg-muted">Arrêts : {stops.join(" · ")}</p>
       ) : null}
+      <PdfLink href={orderId ? `/api/commandes/bus/${orderId}/pdf` : ""} />
       <p className="text-hint text-fg-muted">
         Raccourci : <kbd className="font-mono">Ctrl</kbd> + <kbd className="font-mono">Entrée</kbd>{" "}
         pour préparer l&apos;envoi.

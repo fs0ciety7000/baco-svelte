@@ -226,14 +226,12 @@ export async function listPtcar(input: z.input<typeof refTableSchema>) {
     : "";
   const res = await pb.collection("ptcar").getList(p.page, 20, { filter, sort: "abbr" });
   return {
-    rows: res.items.map(
-      (r): PtcarRow => ({
-        id: r.id,
-        abbr: str(r.abbr),
-        nameFr: str(r.name_fr),
-        nameNl: str(r.name_nl),
-      }),
-    ),
+    rows: res.items.map((r): PtcarRow => ({
+      id: r.id,
+      abbr: str(r.abbr),
+      nameFr: str(r.name_fr),
+      nameNl: str(r.name_nl),
+    })),
     total: res.totalItems,
     page: res.page,
     totalPages: res.totalPages,
@@ -263,15 +261,13 @@ export async function listEbp(input: z.input<typeof refTableSchema>) {
     sort: "ebp_view,abbr",
   });
   return {
-    rows: res.items.map(
-      (r): EbpRow => ({
-        id: r.id,
-        line: str(r.line),
-        ptcar: str(r.ptcar),
-        abbr: str(r.abbr),
-        ebpView: str(r.ebp_view),
-      }),
-    ),
+    rows: res.items.map((r): EbpRow => ({
+      id: r.id,
+      line: str(r.line),
+      ptcar: str(r.ptcar),
+      abbr: str(r.abbr),
+      ebpView: str(r.ebp_view),
+    })),
     total: res.totalItems,
     page: res.page,
     totalPages: res.totalPages,
@@ -326,8 +322,18 @@ function procedure(r: RecordModel): Procedure {
 }
 
 export async function listProcedures(input: { q?: string; category?: string }) {
-  const q = z.string().trim().max(60).default("").parse(input.q ?? "");
-  const category = z.string().trim().max(60).optional().parse(input.category || undefined);
+  const q = z
+    .string()
+    .trim()
+    .max(60)
+    .default("")
+    .parse(input.q ?? "");
+  const category = z
+    .string()
+    .trim()
+    .max(60)
+    .optional()
+    .parse(input.category || undefined);
   const pb = await pbForRequest();
   const parts: string[] = [];
   if (category) parts.push(pb.filter("category = {:c}", { c: category }));
@@ -389,8 +395,18 @@ export async function getProcedure(
 }
 
 export async function listDocuments(input: { q?: string; category?: string }) {
-  const q = z.string().trim().max(60).default("").parse(input.q ?? "");
-  const category = z.string().trim().max(60).optional().parse(input.category || undefined);
+  const q = z
+    .string()
+    .trim()
+    .max(60)
+    .default("")
+    .parse(input.q ?? "");
+  const category = z
+    .string()
+    .trim()
+    .max(60)
+    .optional()
+    .parse(input.category || undefined);
   const pb = await pbForRequest();
   const parts: string[] = [];
   if (category) parts.push(pb.filter("category = {:c}", { c: category }));

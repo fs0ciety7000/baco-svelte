@@ -26,7 +26,7 @@ const plain = (body: string, status: number) =>
   });
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ kind: string; id: string }> },
 ) {
   const user = await getCurrentUser();
@@ -54,7 +54,11 @@ export async function GET(
       headers: {
         ...HEADERS,
         "Content-Type": "application/pdf",
-        "Content-Disposition": contentDisposition("inline", filename),
+        // `?download=1` : téléchargement (envoi sans e-mail) ; sinon aperçu dans le navigateur.
+        "Content-Disposition": contentDisposition(
+          new URL(request.url).searchParams.get("download") === "1" ? "attachment" : "inline",
+          filename,
+        ),
       },
     });
   } catch (e) {

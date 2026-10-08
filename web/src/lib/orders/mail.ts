@@ -175,7 +175,7 @@ export function busFilename(d: BusDraft): string {
 export function busMail(detail: BusMailDetail, opts: MailOptions): OrderMail {
   const d = detail.draft;
   const office = officeFor(d.district);
-  const to = parseEmails(detail.company?.email ?? "");
+  const to = parseEmails([detail.company?.email ?? "", d.company_email]);
   const relation = d.relation ? ` – relation ${d.relation}` : "";
   const subject = `Réquisitoire bus C3 n° ${detail.meta.number} – ${formatShortDay(d.order_date)} – ${d.origin || "?"} → ${d.destination || "?"}${relation}`;
 

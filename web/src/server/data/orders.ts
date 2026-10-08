@@ -121,6 +121,7 @@ export function busDraftFromRecord(r: RecordModel): BusDraft {
     stops_mode: r.stops_mode === "manuel" ? "manuel" : "auto",
     stops_manual: str(r.stops_manual),
     company: str(r.company),
+    company_email: str(r.company_email),
     bus_capacity: num(r.bus_capacity),
     passengers: num(r.passengers),
     pmr_count: num(r.pmr_count),

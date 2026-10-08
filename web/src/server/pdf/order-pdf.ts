@@ -352,7 +352,7 @@ function busTable(l: Layout, d: BusDraft, drivers: PdfContext["drivers"]) {
     const cells: string[][] = [
       [`Bus ${i + 1}`],
       [b.planned || "—"],
-      [b.confirmed || "—"],
+      [b.confirmed || "—", ...(b.actual ? [`réelle ${b.actual}`] : [])],
       [b.plate || "—"],
       driver ? [driver.name, driver.phone].filter(Boolean) : ["—"],
       [b.demob || "—"],

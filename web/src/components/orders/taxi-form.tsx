@@ -41,7 +41,7 @@ import { isEditable, type Status } from "@/lib/orders/status";
 import { useAutosave } from "@/lib/orders/use-autosave";
 
 import { TemplateDialog } from "./bus-form";
-import { SendDialog } from "./send-dialog";
+import { PdfLink, SendDialog } from "./send-dialog";
 import { StartPanel, type StartPanelProps } from "./start-panel";
 import { TransitionButtons } from "./transitions";
 
@@ -614,6 +614,7 @@ export function TaxiForm(props: TaxiFormProps) {
           <dt className="text-fg-muted">Facturation</dt>
           <dd>{d.billing}</dd>
         </dl>
+        <PdfLink href={orderId ? `/api/commandes/taxi/${orderId}/pdf` : ""} />
       </aside>
 
       <SendDialog

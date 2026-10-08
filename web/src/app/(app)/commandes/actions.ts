@@ -550,6 +550,7 @@ export async function loadOrderPanel(input: {
                 : [
                     b.planned && `prévu ${b.planned}`,
                     b.confirmed && `confirmé ${b.confirmed}`,
+                    b.actual && `réelle ${b.actual}`,
                     b.plate,
                     driver(b.driver),
                     b.demob && `démob. ${b.demob}`,

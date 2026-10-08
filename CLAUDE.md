@@ -174,8 +174,8 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   `text-body` : voir `web/CLAUDE.md`.
 - (v2) Avant de relancer le serveur web, vérifier que l'ancien `next-server` est arrêté (sinon EADDRINUSE et les
   tests tournent contre l'ancien build) : `ps -eo pid,args | grep "[n]ext-server"`.
-- (v2) Ne jamais faire `pkill -f "<motif>"` quand le motif figure dans la commande elle-même : le shell se tue
-  (code 144). Passer par un fichier pid ; `npm run start:standalone` laisse un `next-server` enfant : l'arrêter par
+- (v2) Ne jamais faire `pkill -f "<motif>"` (ni `ps | grep "[m]otif" | xargs kill`) quand le motif figure dans la
+  commande elle-même : le shell se tue (code 144) ; utiliser `pgrep -x pocketbase`. Passer par un fichier pid ; `npm run start:standalone` laisse un `next-server` enfant : l'arrêter par
   `fuser -k 3000/tcp` (sinon EADDRINUSE et l'ancien serveur sert un build remplacé → « Application error »).
 - (v2) Lecture Supabase **autorisée sans redemander** (SELECT connecteur, GET clé de service) ; toute écriture
   reste soumise à l'accord explicite de l'utilisateur.
@@ -399,6 +399,11 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   depuis le détail par mission. Dates DICOS « 0001-01-01 » = vide. Gare assistée **toujours surlignée** (IN → départ,
   OUT → arrivée ; avec filtre district, seulement celles du district). Extension **1.4.0** : ne lit que les missions
   PMR, trip-details seulement si un gabarit a été relevé.
+- 2026-10-09 — **Commandes (retours utilisateur)** : lien « Ouvrir le PDF du bon » dans l'encadré « Aperçu du bon » (bus et
+  taxi) ; **heure réelle** par bus dès la création (`buses[].actual`, JSON, aussi au PDF et au suivi) ; société **sans
+  adresse e-mail** → champ libre « E-mail de la société » (`bus_orders.company_email`, migration `1760001300` ; le taxi avait
+  déjà `taxi_email`) ; l'adresse n'est **plus bloquante** : sans adresse, la feuille d'envoi propose « Télécharger le PDF »
+  (`/pdf?download=1`) puis la même confirmation « marquer envoyé », pas de brouillon .eml.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

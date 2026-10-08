@@ -31,6 +31,8 @@ export const busSchema = z.object({
   plate: text(40),
   planned: time,
   confirmed: time,
+  /** Heure réelle d'arrivée du bus (saisie dès la création, retour utilisateur du 9 oct. 2026). */
+  actual: time,
   demob: time,
   /** Bus annulé (ex-« démob. annulation ») : masqué de la B201. */
   cancelled: z.boolean().default(false),
@@ -58,6 +60,8 @@ export const busDraftSchema = z.object({
   stops_mode: z.enum(["auto", "manuel"]).default("auto"),
   stops_manual: text(5000),
   company: id,
+  /** Adresse saisie à la main si la société n'en a pas (facultative : sans adresse, PDF seul, pas d'e-mail). */
+  company_email: text(500),
   bus_capacity: count(500).default(80),
   passengers: count(100000),
   pmr_count: count(1000),
@@ -142,8 +146,8 @@ export function checkBusForSend(d: BusDraft, opts: { companyEmail: string }): Mi
   if (d.origin && d.origin.toLowerCase() === d.destination.toLowerCase())
     m.push({ field: "destination", message: "Destination identique à l'origine" });
   if (!d.company) m.push({ field: "company", message: "Société manquante" });
-  else if (!opts.companyEmail)
-    m.push({ field: "company", message: "La société n'a pas d'adresse e-mail" });
+  // Sans adresse e-mail : plus bloquant (PDF seul, transmis autrement) — `opts.companyEmail` ne sert qu'à l'affichage.
+  void opts;
   if (d.buses.filter((b) => !b.cancelled).length === 0)
     m.push({ field: "buses", message: "Aucun bus actif" });
   return m;
@@ -159,8 +163,8 @@ export function checkTaxiForSend(d: TaxiDraft, opts: { companyEmail: string }): 
     m.push({ field: "to_station", message: "Arrivée identique au départ" });
   if (!d.taxi_company && !d.taxi_email)
     m.push({ field: "taxi_company", message: "Société manquante" });
-  else if (!opts.companyEmail && !d.taxi_email)
-    m.push({ field: "taxi_email", message: "Aucune adresse e-mail pour le taxi" });
+  // Sans adresse e-mail : plus bloquant (PDF seul, transmis autrement).
+  void opts;
   if (d.round_trip) {
     if (!d.return_day || !d.return_time)
       m.push({ field: "return", message: "Date et heure du retour manquantes" });
