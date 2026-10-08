@@ -1,0 +1,40 @@
+# Publication automatique du Connecteur DICOS : sur un tag `dicos-connector-v*`, construit les deux paquets
+# (Chrome/Edge + Firefox) et crée la Release GitHub avec les .zip en pièces jointes.
+# Déclenchement manuel possible aussi (workflow_dispatch) : construit les zips sans créer de Release.
+name: Connecteur DICOS — release
+
+on:
+  push:
+    tags: ["dicos-connector-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Construire les paquets Chrome et Firefox
+        run: bash extension/build-zips.sh
+      - name: Lister les paquets
+        run: ls -l extension/dist
+      - name: Créer la Release et joindre les .zip
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#dicos-connector-v}"
+          gh release create "$GITHUB_REF_NAME" extension/dist/*.zip \
+            --title "Connecteur DICOS v$version" \
+            --notes "Extension de synchro DICOS → CSM (Missions PMR). Paquets Chrome/Edge et Firefox (≥ 128). Installation : voir extension/dicos-connector/README.md."
+      - name: Publier les paquets (artefacts) sur un déclenchement manuel
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: dicos-connector-zips
+          path: extension/dist/*.zip
