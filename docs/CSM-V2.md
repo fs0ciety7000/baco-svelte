@@ -133,5 +133,5 @@ Dans Coolify, deux ressources :
 | 2 | Design system : jetons, 5 thèmes, bibliothèque de composants, GSAP, page `/design` | ✅ 8 oct. — captures validées |
 | 3 | Shell : 6 entrées, onglets par module, ⌘K, menu utilisateur, mobile | ✅ 8 oct. — captures validées |
 | 4 | Données : schéma, règles d'accès, import depuis la sauvegarde | Données de test sur l'environnement de test |
-| 5 | Modules, dans l'ordre Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 Commandes livré (session 3), captures soumises ; un module validé à la fois |
+| 5 | Modules, dans l'ordre Commandes → PMR → Opérations → Référentiels → Équipe → Admin | ✅ Commandes validé (session 3) · 🔄 PMR ; un module validé à la fois |
 | 6 | Déploiement sur test-csm.fs0ciety.org, CI, sauvegardes PocketBase | 🔄 8 oct. — ressources Coolify créées (`docs/DEPLOIEMENT-V2.md`) |

@@ -151,7 +151,7 @@ de chaque paire texte/fond dans les 5 thèmes (AAA pour le texte du thème Contr
 - **React Bits** (variantes GSAP) : utile pour l'inspiration sur SplitText et les compteurs. La licence diffère selon les miroirs (MIT ou MIT + Commons Clause), à vérifier sur le dépôt officiel avant de copier.
 - **21st.dev** : un registre pour trouver des composants. Vérifier la licence et la date du dernier commit à chaque fois.
 
-## Module Commandes (session 3) — à valider
+## Module Commandes (session 3) — **validé le 8 octobre 2026**
 
 - Formulaires de commande : colonne de 45 rem + aperçu du bon collant à droite (≥ 1024 px) ; sections numérotées
   (`FormSection`) toujours ouvertes en desktop, accordéon avec résumé d'une ligne en mobile ; numéro vert = complet,
