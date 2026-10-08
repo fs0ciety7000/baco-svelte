@@ -31,7 +31,15 @@ function Sheet({
 }) {
   const desktop = useMediaQuery("(min-width: 768px)");
   return (
-    <Drawer.Root open={open} onOpenChange={onOpenChange} direction={desktop ? "right" : "bottom"}>
+    // handleOnly : seule la poignée (mobile) fait glisser le panneau. Sans cela, sélectionner du texte (clic +
+    // glisser) déplaçait le panneau → copier-coller impossible (retour utilisateur du 8 oct. 2026). Sur desktop il n'y
+    // a pas de poignée : fermeture par Échap, clic sur le fond ou le bouton de la page.
+    <Drawer.Root
+      open={open}
+      onOpenChange={onOpenChange}
+      direction={desktop ? "right" : "bottom"}
+      handleOnly
+    >
       {trigger ? <Drawer.Trigger asChild>{trigger}</Drawer.Trigger> : null}
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-50 bg-[color-mix(in_oklab,var(--bg)_65%,transparent)]" />
@@ -44,7 +52,7 @@ function Sheet({
           )}
         >
           {!desktop ? (
-            <div aria-hidden className="mx-auto mt-2 h-1 w-10 shrink-0 bg-border-strong" />
+            <Drawer.Handle className="mx-auto mt-2 h-1.5 w-12 shrink-0 bg-border-strong" />
           ) : null}
           <div className="flex flex-col gap-1 border-b border-border px-5 py-4">
             {eyebrow ? <p className="label-mono text-fg-muted">{eyebrow}</p> : null}

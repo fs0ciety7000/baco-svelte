@@ -64,6 +64,13 @@ export type Assist = {
   station: string;
   otherStation: string;
   district: string;
+  /** Heure d'arrivée et district de la gare d'arrivée (trajet DICOS v3). */
+  arrTime: string;
+  arrDistrict: string;
+  /** Assistance à l'embarquement (gare de départ) / au débarquement (gare d'arrivée). */
+  inAssist: boolean;
+  outAssist: boolean;
+  transport: string;
   zone: string;
   zoneCode: string;
   dicosRef: string;
@@ -91,11 +98,9 @@ function assist(r: RecordModel, canPmr: boolean): Assist {
   const client = canPmr ? e.client : undefined;
   // Back-relation pmr_mission (détail nominatif DICOS) : tableau, on prend la première.
   const m = canPmr
-    ? (
-        (r.expand as Record<string, RecordModel[] | undefined> | undefined)?.[
-          "pmr_mission_via_assist"
-        ] ?? []
-      )[0]
+    ? ((r.expand as Record<string, RecordModel[] | undefined> | undefined)?.[
+        "pmr_mission_via_assist"
+      ] ?? [])[0]
     : undefined;
   const nameFromMission = m ? `${str(m.client_last)} ${str(m.client_first)}`.trim() : "";
   const nameFromClient = client ? `${str(client.last_name)} ${str(client.first_name)}`.trim() : "";
@@ -109,6 +114,11 @@ function assist(r: RecordModel, canPmr: boolean): Assist {
     station: str(r.station),
     otherStation: str(r.other_station),
     district: str(r.district),
+    arrTime: str(r.arr_time),
+    arrDistrict: str(r.arr_district),
+    inAssist: !!r.in_assist,
+    outAssist: !!r.out_assist,
+    transport: str(r.transport),
     zone: str(r.zone),
     zoneCode: str(e.zone?.code),
     dicosRef: str(r.dicos_ref),
@@ -171,12 +181,15 @@ export async function listAssists(
   const parts = [
     pb.filter("day >= {:a} && day <= {:b}", { a: p.from ?? today, b: p.to ?? p.from ?? today }),
   ];
-  if (p.district) parts.push(pb.filter("district = {:d}", { d: p.district }));
+  // Un trajet concerne un district si sa gare de départ OU d'arrivée y est.
+  if (p.district)
+    parts.push(pb.filter("(district = {:d} || arr_district = {:d})", { d: p.district }));
   if (p.status) parts.push(pb.filter("status = {:s}", { s: p.status }));
   if (p.q) {
     const ors = ["station ~ {:q}", "other_station ~ {:q}", "train ~ {:q}", "dicos_ref ~ {:q}"];
     // Nom du voyageur : BACO (client lié) et DICOS (détail nominatif), avec `pmr:read` seulement.
-    if (ctx.canPmr) ors.push("client.last_name ~ {:q}", "pmr_mission_via_assist.client_last ~ {:q}");
+    if (ctx.canPmr)
+      ors.push("client.last_name ~ {:q}", "pmr_mission_via_assist.client_last ~ {:q}");
     parts.push(pb.filter(`(${ors.join(" || ")})`, { q: p.q }));
   }
   const options = {

@@ -26,6 +26,7 @@ export const DICOS_TYPE: Record<string, PmrType> = {
   "pmr-mw": "CRF", // manual-wheelchair
   "pmr-fw": "CRP", // folding-wheelchair
   "pmr-rm": "MR", // reduced-mobility
+  "pmr-lm": "MR", // reduced-mobility (trip-details, assistance « Light »)
 };
 
 /** Statut DICOS → statut CSM. `clientStatus = Absent` l'emporte (voir mapMission). */
@@ -61,7 +62,8 @@ const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
 // Garde défensive : si DICOS renvoyait un jour un offset UTC (`Z`/`+00:00`), on convertit en Europe/Brussels pour ne
 // pas décaler d'un jour/heure les missions de fin de soirée.
 export function wall(iso: unknown): { day: string; time: string } {
-  if (typeof iso !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(iso)) return { day: "", time: "" };
+  if (typeof iso !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(iso))
+    return { day: "", time: "" };
   if (!/(Z|[+-]00:00)$/.test(iso)) return { day: iso.slice(0, 10), time: iso.slice(11, 16) };
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return { day: iso.slice(0, 10), time: iso.slice(11, 16) };
@@ -78,7 +80,10 @@ export function wall(iso: unknown): { day: string; time: string } {
       .formatToParts(d)
       .map((p) => [p.type, p.value]),
   );
-  return { day: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}` };
+  return {
+    day: `${parts.year}-${parts.month}-${parts.day}`,
+    time: `${parts.hour}:${parts.minute}`,
+  };
 }
 
 // Schéma d'entrée tolérant : on ne valide que ce qu'on lit, le reste est ignoré.
@@ -263,4 +268,177 @@ export function mapMission(raw: unknown): { assist: MappedAssist; mission: Mappe
 export function missionDay(raw: unknown): string {
   const m = missionSchema.safeParse(raw);
   return m.success ? wall(m.data.journey.time).day : "";
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Missions PMR v3 : dossier complet DICOS (`GET /trip-details/{dossier}/{type}`) → une ligne par TRAJET (leg).
+// Chaque trajet porte la gare + l'heure de départ ET d'arrivée, l'assistance à l'embarquement (IN) et/ou au
+// débarquement (OUT), le transport (train / taxi). Le client et la description sont communs au dossier.
+
+const journeySchema = z
+  .object({
+    id: z.coerce.string(),
+    departureTime: z.string().nullish(),
+    departureName: z.string().nullish(),
+    arrivalTime: z.string().nullish(),
+    arrivalName: z.string().nullish(),
+    withDepartureAssistance: z.boolean().nullish(),
+    withArrivalAssistance: z.boolean().nullish(),
+    isTrainCancelled: z.boolean().nullish(),
+    isDepartureCancelled: z.boolean().nullish(),
+    isArrivalCancelled: z.boolean().nullish(),
+    trainNumber: z.coerce.number().nullish(),
+    transportId: z.string().nullish(),
+    transportType: z.string().nullish(),
+    coachNumber: z.string().nullish(),
+    doorNumber: z.string().nullish(),
+  })
+  .passthrough();
+
+const dossierSchema = z
+  .object({
+    id: z.string().nullish(),
+    displayId: z.string().nullish(),
+    type: z.string().nullish(),
+    status: z.string().nullish(),
+    missions: z
+      .array(
+        z
+          .object({
+            journeyId: z.coerce.string().nullish(),
+            missionType: z.string().nullish(),
+            status: z.string().nullish(),
+            owner: z.object({ name: z.string().nullish() }).nullish(),
+          })
+          .passthrough(),
+      )
+      .default([]),
+    travels: z
+      .array(
+        z
+          .object({
+            journeys: z.array(journeySchema).default([]),
+            meetingPoint: z
+              .array(z.object({ language: z.string().optional(), text: z.string().optional() }))
+              .nullish(),
+            travelDate: z.string().nullish(),
+            traveler: z
+              .object({
+                quantity: z.coerce.number().nullish(),
+                disableds: z.array(disabled).nullish(),
+              })
+              .partial()
+              .nullish(),
+          })
+          .passthrough(),
+      )
+      .default([]),
+    description: z.object({ fr: z.string().nullish(), nl: z.string().nullish() }).nullish(),
+    client: z
+      .object({
+        firstName: z.string().nullish(),
+        lastName: z.string().nullish(),
+        phoneNumber: z.string().nullish(),
+        email: z.string().nullish(),
+        language: z.string().nullish(),
+        description: z.string().nullish(),
+      })
+      .nullish(),
+  })
+  .passthrough();
+
+export type MappedLeg = {
+  dicos_id: string; // id du trajet (journey) : clé de dédup
+  day: string;
+  time: string; // départ
+  station: string; // gare de départ
+  district: "DCE" | "DSE" | "DSO" | "";
+  other_station: string; // gare d'arrivée
+  arr_time: string;
+  arr_district: "DCE" | "DSE" | "DSO" | "";
+  in_assist: boolean; // assistance à l'embarquement (gare de départ)
+  out_assist: boolean; // assistance au débarquement (gare d'arrivée)
+  transport: "train" | "taxi";
+  train: string;
+  dicos_ref: string;
+  pax: number;
+  pmr_type: PmrType | "";
+  status: "prevue" | "realisee" | "annulee" | "absent";
+  source: "dicos";
+};
+
+/** Statut d'un trajet d'après les missions DICOS qui le concernent et les annulations du trajet. */
+function legStatus(j: z.infer<typeof journeySchema>, statuses: string[]): MappedLeg["status"] {
+  if (j.isTrainCancelled || statuses.some((s) => s === "Deleted" || s === "Suspended"))
+    return "annulee";
+  if (statuses.length && statuses.every((s) => s === "Completed")) return "realisee";
+  return "prevue";
+}
+
+/** Dossier DICOS complet → une ligne (leg) par trajet + détail nominatif commun. */
+export function mapDossier(raw: unknown): {
+  legs: { assist: MappedLeg; mission: MappedMission }[];
+} {
+  const d = dossierSchema.parse(raw);
+  const ref = d.displayId || d.id || "";
+  const dossierRef = /^\d{4}-\d{2}-\d{2}-\d{4}$/.test(ref) ? ref : "";
+  const owner = d.missions.map((m) => m.owner?.name).find(Boolean) ?? "";
+  const legs: { assist: MappedLeg; mission: MappedMission }[] = [];
+  for (const t of d.travels) {
+    const disableds = t.traveler?.disableds ?? [];
+    const { type } = travelerSummary({ disableds });
+    const pax = clampPax(
+      n(t.traveler?.quantity) || disableds.reduce((s, x) => s + (n(x.quantity) || 1), 0),
+    );
+    const meeting = frText(t.meetingPoint).slice(0, 300);
+    for (const j of t.journeys) {
+      const dep = wall(j.departureTime);
+      const arr = wall(j.arrivalTime);
+      const station = frName(j.departureName);
+      const other = frName(j.arrivalName);
+      const statuses = d.missions.filter((m) => m.journeyId === j.id).map((m) => str(m.status));
+      const isTaxi = str(j.transportType).toLowerCase() === "taxi";
+      legs.push({
+        assist: {
+          dicos_id: j.id,
+          day: dep.day || (t.travelDate ?? "").slice(0, 10),
+          time: dep.time,
+          station,
+          district: districtForStation(station),
+          other_station: other,
+          arr_time: arr.time,
+          arr_district: districtForStation(other),
+          in_assist: !!j.withDepartureAssistance,
+          out_assist: !!j.withArrivalAssistance,
+          transport: isTaxi ? "taxi" : "train",
+          train: n(j.trainNumber) > 0 ? String(j.trainNumber) : str(j.transportId).slice(0, 20),
+          dicos_ref: dossierRef,
+          pax,
+          pmr_type: type,
+          status: legStatus(j, statuses),
+          source: "dicos",
+        },
+        mission: {
+          reservation_type: str(d.type),
+          raw_status: str(d.status),
+          client_first: str(d.client?.firstName).slice(0, 200),
+          client_last: str(d.client?.lastName).slice(0, 200),
+          client_phone: str(d.client?.phoneNumber).slice(0, 100),
+          client_email: str(d.client?.email).slice(0, 200),
+          client_lang: str(d.client?.language).slice(0, 40),
+          // Description complète du dossier (composition + trajets), utile à l'agent ; nominative → pmr:read.
+          client_desc: str(d.description?.fr || d.client?.description).slice(0, 500),
+          train_manager_name: "",
+          train_manager_phone: "",
+          driver_name: isTaxi ? str(j.transportId).slice(0, 200) : "",
+          driver_phone: "",
+          meeting_point: meeting,
+          coach: str(j.coachNumber).slice(0, 20),
+          door: str(j.doorNumber).slice(0, 20),
+          owner_name: str(owner).slice(0, 200),
+        },
+      });
+    }
+  }
+  return { legs };
 }

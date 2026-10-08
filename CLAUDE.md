@@ -364,6 +364,16 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   accord genre/nombre, `assistCopyText`). Migration `1760000800` (`other_station`, `district`). **Type PMR encore à
   fiabiliser** : sur 139 missions, 69 sans type + 29 « AUTRE » (le détail DICOS n'est pas toujours récupéré / codes
   d'assistance inconnus) → échantillon brut à demander à l'utilisateur.
+- 2026-10-08 — **Missions PMR v3** (retours : filtres automatiques, plage de dates, heure d'arrivée absente, type « 2 × autre »
+  pour une chaise fixe, copier-coller impossible dans le panneau, trajets en correspondance). Source = **dossier complet
+  DICOS** `trip-details/{n°}/{type}` (`mapDossier`, test fictif) → **une ligne par trajet** (choix de l'utilisateur) : gare +
+  heure de départ ET d'arrivée, IN (`withDepartureAssistance`) et OUT (`withArrivalAssistance`) sur la même ligne, district
+  des deux gares, **taxis affichés** (`transport`), type PMR depuis `travelers.disableds` (`pmr-lm` = MR). Migration
+  `1760001100` (`arr_time`, `arr_district`, `in_assist`, `out_assist`, `transport`) ; `dicos_id` = `j<journeyId>`. Filtre
+  district = départ **ou** arrivée, gare assistée du district **surlignée** (IN → départ, OUT → arrivée). Filtres soumis au
+  changement (`FormAutoSubmit`). Panneau : `Sheet` en `handleOnly` (le glisser de Vaul empêchait la sélection de texte).
+  Extension **1.1.0** : liste du jour → dossiers distincts → trip-details (gabarit de chemin relevé sur la SPA par
+  `inject.js`), repli sur le format v1.0. Les anciennes lignes v2 (`dicos_id` sans `j`) sont supprimées sur le test.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

@@ -2,11 +2,18 @@ import { Search } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Input, Select } from "@/components/ui/input";
 import { DISTRICT_LABEL, DISTRICTS } from "@/lib/pmr/districts";
 import { ASSIST_STATUS, ASSIST_STATUSES } from "@/lib/pmr/model";
 
-export type PmrFilters = { du?: string; au?: string; district?: string; q?: string; statut?: string };
+export type PmrFilters = {
+  du?: string;
+  au?: string;
+  district?: string;
+  q?: string;
+  statut?: string;
+};
 
 /** Filtres des missions PMR en GET (URL partageable, sans JS) + raccourcis de dates. */
 export function PmrFilterBar({
@@ -52,6 +59,7 @@ export function PmrFilterBar({
         role="search"
         className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
       >
+        <FormAutoSubmit />
         <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-60">
           <span className="text-small text-fg-muted">Recherche</span>
           <span className="relative">

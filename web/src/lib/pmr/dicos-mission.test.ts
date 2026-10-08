@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   frName,
   frText,
+  mapDossier,
   mapMission,
   mapStatus,
   missionDay,
@@ -166,5 +167,144 @@ describe("mapping DICOS", () => {
     expect(assist.direction).toBe("");
     expect(assist.mission_type).toBe("Stickering");
     expect(assist.dicos_ref).toBe("");
+  });
+});
+
+// Dossier DICOS fictif (trip-details) : aller en train Gembloux → Namur → Liège le 10/10, retour en taxi le 14/10.
+const dossier = {
+  id: "x",
+  displayId: "2026-10-02-0001",
+  type: "Disabled",
+  status: "Confirmed",
+  description: { fr: "1 chaise roulante fixe\nAller-retour" },
+  client: {
+    firstName: "Exemple",
+    lastName: "Fictif",
+    email: "exemple@invalid.test",
+    language: "French",
+  },
+  missions: [
+    { journeyId: "11", status: "Completed", owner: { name: "Agent fictif" } },
+    { journeyId: "12", status: "Planned" },
+    { journeyId: "21", status: "Deleted" },
+  ],
+  travels: [
+    {
+      travelDate: "2026-10-10T00:00:00",
+      meetingPoint: [{ language: "French", text: "Guichet" }],
+      traveler: {
+        quantity: 1,
+        disableds: [{ typeId: "pmr-wc", symbol: "fixed-wheelchair", quantity: 1 }],
+      },
+      journeys: [
+        {
+          id: 11,
+          departureName: "GEMBLOUX / GEMBLOERS",
+          departureTime: "2026-10-10T08:01:00",
+          arrivalName: "NAMUR / NAMEN",
+          arrivalTime: "2026-10-10T08:15:00",
+          withDepartureAssistance: true,
+          withArrivalAssistance: false,
+          trainNumber: 2112,
+          transportType: "Train",
+          coachNumber: "3",
+        },
+        {
+          id: 12,
+          departureName: "NAMUR / NAMEN",
+          departureTime: "2026-10-10T08:30:00",
+          arrivalName: "LIÈGE-GUILLEMINS / LUIK-GUILLEMINS",
+          arrivalTime: "2026-10-10T09:20:00",
+          withDepartureAssistance: false,
+          withArrivalAssistance: true,
+          trainNumber: 2312,
+        },
+      ],
+    },
+    {
+      travelDate: "2026-10-14T00:00:00",
+      traveler: {
+        quantity: 1,
+        disableds: [{ typeId: "pmr-wc", symbol: "fixed-wheelchair", quantity: 1 }],
+      },
+      journeys: [
+        {
+          id: 21,
+          departureName: "LIÈGE-GUILLEMINS / LUIK-GUILLEMINS",
+          departureTime: "2026-10-14T17:00:00",
+          arrivalName: "GEMBLOUX / GEMBLOERS",
+          arrivalTime: "2026-10-14T18:10:00",
+          withDepartureAssistance: true,
+          withArrivalAssistance: true,
+          transportType: "Taxi",
+          transportId: "TAXI-1",
+          trainNumber: 0,
+        },
+      ],
+    },
+  ],
+};
+
+describe("mapDossier (trip-details, une ligne par trajet)", () => {
+  it("un trajet = une ligne avec départ ET arrivée, IN/OUT, districts", () => {
+    const { legs } = mapDossier(dossier);
+    expect(legs).toHaveLength(3);
+    const [a, b] = legs.map((l) => l.assist);
+    expect(a).toMatchObject({
+      dicos_id: "11",
+      day: "2026-10-10",
+      time: "08:01",
+      station: "GEMBLOUX",
+      district: "DSE",
+      other_station: "NAMUR",
+      arr_time: "08:15",
+      arr_district: "DSE",
+      in_assist: true,
+      out_assist: false,
+      transport: "train",
+      train: "2112",
+      dicos_ref: "2026-10-02-0001",
+      pax: 1,
+      pmr_type: "CRF",
+      status: "realisee",
+    });
+    expect(b).toMatchObject({
+      dicos_id: "12",
+      in_assist: false,
+      out_assist: true,
+      status: "prevue",
+    });
+    expect(b?.other_station).toBe("LIÈGE-GUILLEMINS");
+  });
+
+  it("retour en taxi sur un autre jour, annulé", () => {
+    const leg = mapDossier(dossier).legs[2];
+    expect(leg?.assist).toMatchObject({
+      day: "2026-10-14",
+      transport: "taxi",
+      train: "TAXI-1",
+      in_assist: true,
+      out_assist: true,
+      status: "annulee",
+    });
+    expect(leg?.mission.driver_name).toBe("TAXI-1");
+  });
+
+  it("détail nominatif commun au dossier", () => {
+    const { mission } = mapDossier(dossier).legs[0]!;
+    expect(mission).toMatchObject({
+      reservation_type: "Disabled",
+      client_last: "Fictif",
+      client_email: "exemple@invalid.test",
+      meeting_point: "Guichet",
+      coach: "3",
+      owner_name: "Agent fictif",
+    });
+    expect(mission.client_desc).toContain("chaise roulante fixe");
+  });
+
+  it("dossier vide ou invalide", () => {
+    expect(mapDossier({}).legs).toEqual([]);
+    expect(() => mapDossier("x")).toThrow();
   });
 });

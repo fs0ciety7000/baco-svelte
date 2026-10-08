@@ -26,9 +26,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
   );
   const exportQuery = new URLSearchParams(
     Object.fromEntries(
-      Object.entries({ du, au, district: f.district ?? "", statut: f.statut ?? "", q: f.q ?? "" }).filter(
-        ([, v]) => v,
-      ),
+      Object.entries({
+        du,
+        au,
+        district: f.district ?? "",
+        statut: f.statut ?? "",
+        q: f.q ?? "",
+      }).filter(([, v]) => v),
     ),
   );
   return (
@@ -53,7 +57,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
           { label: "Depuis janvier", du: `${today.slice(0, 4)}-01-01`, au: today },
         ]}
       />
-      <AssistBoard rows={rows} canPmr={canPmr} groupByDay={false} />
+      <AssistBoard rows={rows} canPmr={canPmr} groupByDay={false} district={f.district ?? ""} />
     </section>
   );
 }

@@ -1,7 +1,9 @@
 // Content script DICOS (monde isolé, même origine que la SPA). Il :
 //  1. reçoit du capteur `inject.js` (déclaré en monde MAIN, voir manifest) le Bearer et les stationIds que la SPA émet ;
-//  2. appelle l'API DICOS /api/missions (liste) et /api/missions/{id} (détail) EN MÊME ORIGINE, avec ce Bearer ;
-//  3. fusionne liste + détail et envoie les missions BRUTES au service worker, qui les pousse vers CSM
+//  2. appelle l'API DICOS /api/missions (liste du jour) EN MÊME ORIGINE, avec ce Bearer, en déduit les dossiers
+//     (n° AAAA-MM-JJ-NNNN + type) puis lit chaque dossier COMPLET (trip-details : tous les trajets, départ ET arrivée,
+//     client, type PMR) — v1.1 ; repli sur /api/missions/{id} (détail par mission, format v1.0) si trip-details échoue ;
+//  3. envoie les données BRUTES au service worker, qui les pousse vers CSM
 //     (le mapping et la validation sont faits par le serveur CSM : source unique de vérité).
 // Aucun jeton n'est persisté ; les stationIds (périmètre de gares, non personnels) sont mémorisés pour confort.
 (() => {
@@ -12,6 +14,9 @@
   let bearer = ""; // en mémoire uniquement
   let stationIds = [];
   const detailCache = new Map(); // id -> { sig, mission }
+  const dossierCache = new Map(); // "n°/type" -> dossier brut (purgé à la synchro manuelle)
+  let tripPath = ""; // gabarit relevé sur la SPA (« /api/…/trip-details/{id}/{type} »)
+  let tripPathOk = ""; // gabarit qui a répondu un dossier
   let auto = { enabled: false, minutes: 10 };
   let timer = null;
   let syncing = false;
@@ -22,6 +27,11 @@
     if (e.source !== window || e.origin !== location.origin || !e.data || e.data.source !== TAG) return;
     if (e.data.kind === "auth" && typeof e.data.token === "string") {
       bearer = e.data.token; // « Bearer … »
+    } else if (e.data.kind === "tripPath" && typeof e.data.path === "string" && e.data.path.startsWith("/")) {
+      tripPath = e.data.path.slice(0, 200);
+      try {
+        chrome.storage.local.set({ tripPath });
+      } catch (_) {}
     } else if (e.data.kind === "filter" && Array.isArray(e.data.stationIds)) {
       stationIds = e.data.stationIds;
       try {
@@ -32,8 +42,9 @@
 
   // Reprise des stationIds mémorisés.
   try {
-    chrome.storage.local.get(["stationIds", "auto"], (v) => {
+    chrome.storage.local.get(["stationIds", "auto", "tripPath"], (v) => {
       if (Array.isArray(v.stationIds) && !stationIds.length) stationIds = v.stationIds;
+      if (typeof v.tripPath === "string" && v.tripPath.startsWith("/") && !tripPath) tripPath = v.tripPath;
       if (v.auto) auto = { enabled: !!v.auto.enabled, minutes: Number(v.auto.minutes) || 10 };
       scheduleAuto();
     });
@@ -127,6 +138,76 @@
     return out;
   }
 
+  const DOSSIER_RE = /^\d{4}-\d{2}-\d{2}-\d{4}$/;
+  const dossierOf = (m) => {
+    const ref = [m.reservationDisplayId, m.reservationId, m.reservation && m.reservation.displayId].find(
+      (x) => typeof x === "string" && DOSSIER_RE.test(x),
+    );
+    const type = String(m.reservationType || (m.reservation && m.reservation.type) || "Disabled");
+    return ref ? { ref, type } : null;
+  };
+
+  // Lit un dossier complet. Gabarits essayés : celui relevé sur la SPA, puis les chemins connus. Le premier qui
+  // renvoie un objet avec `travels` est retenu pour la suite. null si aucun ne répond (repli v1.0).
+  async function fetchDossier(ref, type) {
+    const key = `${ref}/${type}`;
+    if (dossierCache.has(key)) return dossierCache.get(key);
+    const paths = [...new Set([tripPathOk, tripPath, "/api/trip-details/{id}/{type}", "/api/reservations/trip-details/{id}/{type}"].filter(Boolean))];
+    for (const p of paths) {
+      await gate();
+      const url = location.origin + p.replace("{id}", encodeURIComponent(ref)).replace("{type}", encodeURIComponent(type));
+      try {
+        const d = await dicos(url);
+        if (d && typeof d === "object" && Array.isArray(d.travels)) {
+          tripPathOk = p;
+          dossierCache.set(key, d);
+          return d;
+        }
+      } catch (err) {
+        if (err && err.code === "expired") throw err;
+      }
+      if (tripPathOk) break; // gabarit connu : inutile d'essayer les autres
+    }
+    return null;
+  }
+
+  // Dossiers distincts des missions du jour (détail par mission seulement si la liste ne porte pas le n°).
+  async function fetchDossiers(items) {
+    const seen = new Map();
+    const missing = [];
+    for (const m of items) {
+      const d = dossierOf(m);
+      if (d) seen.set(`${d.ref}/${d.type}`, d);
+      else missing.push(m);
+    }
+    if (missing.length) {
+      for (const m of await fetchDetails(missing)) {
+        const d = dossierOf(m);
+        if (d) seen.set(`${d.ref}/${d.type}`, d);
+      }
+    }
+    const dossiers = [];
+    let failed = 0;
+    for (const { ref, type } of seen.values()) {
+      const d = await fetchDossier(ref, type);
+      if (d) dossiers.push(d);
+      else failed++;
+      if (!tripPathOk && failed >= 3) return null; // trip-details indisponible : repli v1.0
+    }
+    return dossiers;
+  }
+
+  async function pushAll(day, payloadKey, list) {
+    const total = { received: 0, created: 0, updated: 0, unchanged: 0, skipped: 0, detailErrors: 0 };
+    for (let i = 0; i < list.length || i === 0; i += 100) {
+      const res = await chrome.runtime.sendMessage({ cmd: "push", day, [payloadKey]: list.slice(i, i + 100) });
+      if (!res || !res.ok) return { error: (res && res.error) || "Échec de l'envoi vers CSM." };
+      for (const k of Object.keys(total)) total[k] += Number(res.result && res.result[k]) || 0;
+      if (!list.length) break;
+    }
+    return total;
+  }
+
   // `fresh` (bouton de synchro manuelle) = rafraîchir vraiment : on purge le cache de détail pour reprendre
   // toute mission même si son statut n'a pas changé (le cache ne capte pas les corrections de point de rencontre, etc.).
   async function doSync(day, { fresh = false } = {}) {
@@ -135,7 +216,10 @@
       return { error: "Périmètre de gares inconnu : ouvre une fois la liste des missions dans DICOS." };
     if (!bearer)
       return { error: "Session DICOS non détectée : recharge l'onglet DICOS et navigue dans les missions." };
-    if (fresh) detailCache.clear();
+    if (fresh) {
+      detailCache.clear();
+      dossierCache.clear();
+    }
     syncing = true;
     try {
       const list = await dicos(API, { method: "POST", body: JSON.stringify({ stationIds, date: day }) });
@@ -145,9 +229,11 @@
         setLast(r);
         return r;
       }
-      const missions = await fetchDetails(items);
-      const res = await chrome.runtime.sendMessage({ cmd: "push", day, missions });
-      const r = res && res.ok ? { day, found: items.length, ...res.result } : { error: (res && res.error) || "Échec de l'envoi vers CSM." };
+      const dossiers = await fetchDossiers(items);
+      const sent = dossiers
+        ? await pushAll(day, "dossiers", dossiers)
+        : await pushAll(day, "missions", await fetchDetails(items));
+      const r = sent.error ? sent : { day, found: items.length, dossiers: dossiers ? dossiers.length : 0, ...sent };
       setLast(r);
       return r;
     } catch (err) {

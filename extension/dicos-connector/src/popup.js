@@ -39,7 +39,7 @@ function fmtResult(r) {
   const num = (v) => Number(v) || 0;
   const when = r.at ? ` · ${new Date(r.at).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" })}` : "";
   const found = num(r.found ?? r.received);
-  return `<span class="ok">✓ ${escapeHtml(String(r.day || ""))}${escapeHtml(when)}</span><br>${found} mission(s) · <b>${num(r.created)}</b> créée(s), <b>${num(r.updated)}</b> maj, ${num(r.skipped)} ignorée(s)`;
+  return `<span class="ok">✓ ${escapeHtml(String(r.day || ""))}${escapeHtml(when)}</span><br>${found} mission(s)${r.dossiers ? ` · ${num(r.dossiers)} dossier(s), ${num(r.received)} trajet(s)` : ""} · <b>${num(r.created)}</b> créée(s), <b>${num(r.updated)}</b> maj, ${num(r.skipped)} ignorée(s)`;
 }
 function escapeHtml(s) {
   return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);

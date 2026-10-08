@@ -50,7 +50,10 @@ export const DIRECTION_LABEL: Record<string, string> = { arrivee: "Arrivée", de
 
 // IN / OUT (convention SNCB) : un DÉPART est un embarquement (le voyageur monte → IN), une ARRIVÉE un débarquement
 // (le voyageur descend → OUT). Source : retour utilisateur du 8 octobre 2026.
-export const DIRECTION_IO: Record<string, { io: "IN" | "OUT"; label: string; tone: "info" | "ok" }> = {
+export const DIRECTION_IO: Record<
+  string,
+  { io: "IN" | "OUT"; label: string; tone: "info" | "ok" }
+> = {
   depart: { io: "IN", label: "Embarquement", tone: "info" },
   arrivee: { io: "OUT", label: "Débarquement", tone: "ok" },
 };
@@ -58,10 +61,33 @@ export const DIRECTION_IO: Record<string, { io: "IN" | "OUT"; label: string; ton
 // --- Libellé « à copier » d'une mission (retour utilisateur du 8 oct. 2026) ------------------------
 // Ex. « Embarquement d'une chaise roulante », « Débarquement de trois non-voyants ».
 const FR_UNITS = [
-  "zéro", "un", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf", "dix",
-  "onze", "douze", "treize", "quatorze", "quinze", "seize", "dix-sept", "dix-huit", "dix-neuf",
+  "zéro",
+  "un",
+  "deux",
+  "trois",
+  "quatre",
+  "cinq",
+  "six",
+  "sept",
+  "huit",
+  "neuf",
+  "dix",
+  "onze",
+  "douze",
+  "treize",
+  "quatorze",
+  "quinze",
+  "seize",
+  "dix-sept",
+  "dix-huit",
+  "dix-neuf",
 ];
-const FR_TENS: Record<number, string> = { 20: "vingt", 30: "trente", 40: "quarante", 50: "cinquante" };
+const FR_TENS: Record<number, string> = {
+  20: "vingt",
+  30: "trente",
+  40: "quarante",
+  50: "cinquante",
+};
 
 /** Nombre en toutes lettres (1 à 50 ; `fem` pour « une », « vingt et une »). */
 export function numberFr(n: number, fem = false): string {

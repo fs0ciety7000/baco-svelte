@@ -94,6 +94,10 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `pmr:read`) et un bouton **Copier** (`assistCopyText` : « Embarquement d'une chaise roulante »…). Le panneau montre
   en plus le détail nominatif DICOS (e-mail, langue, point de rencontre, voiture/porte, accompagnateur, conducteur,
   affectée à) via l'expand `pmr_mission_via_assist` (back-relation), avec `pmr:read` seulement.
+- **v3 (une ligne par trajet)** : `mapDossier` (dossier `trip-details`) → `arr_time`, `arr_district`, `in_assist`,
+  `out_assist`, `transport` ; `assist-board.tsx` (`legOf`, `IoBadges`, `RouteText` qui surligne la gare assistée du
+  district filtré, `copyTextOf`). L'ingestion accepte `{ day, dossiers }` (v3) et `{ day, missions }` (v2).
+  `FormAutoSubmit` (dans un `<form method="get">`) soumet au changement ; `Sheet` mobile en `handleOnly`.
 - **District** : `src/lib/pmr/districts.ts` (généré depuis Supabase `ligne_data`, `scratchpad/gen-districts.mjs`) →
   `districtForStation(gare)`. Posé à l'ingestion sur `pmr_assists.district` ; filtre de l'écran = district (plus zone).
 - **Ingestion DICOS** (`src/lib/pmr/dicos-mission.ts`, pur et testé + `app/api/pmr/missions/ingest/route.ts`) : mapping

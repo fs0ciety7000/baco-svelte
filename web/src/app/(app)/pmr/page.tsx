@@ -41,7 +41,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
           { label: "7 prochains jours", du: today, au: addDays(today, 6) },
         ]}
       />
-      <AssistBoard rows={rows} canPmr={canPmr} groupByDay />
+      <AssistBoard rows={rows} canPmr={canPmr} groupByDay district={f.district ?? ""} />
     </section>
   );
 }

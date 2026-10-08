@@ -1,7 +1,9 @@
 // Injecté dans le CONTEXTE DE LA PAGE DICOS (world "MAIN") par le content script, au plus tôt.
 // Seul rôle : observer les requêtes que la SPA DICOS émet déjà vers /api/* pour en relever, EN VOL :
 //   - le jeton d'accès (en-tête Authorization: Bearer …) — jamais stocké, jamais persisté ;
-//   - le corps du POST /api/missions (stationIds = périmètre de gares de l'agent).
+//   - le corps du POST /api/missions (stationIds = périmètre de gares de l'agent) ;
+//   - le GABARIT du chemin de la requête « détail de dossier » (trip-details), n° de dossier et type remplacés par
+//     {id} / {type} : l'extension rejoue ainsi exactement l'appel de la SPA (v1.1).
 // Ces valeurs sont transmises au content script par window.postMessage. Aucun appel réseau n'est émis ici,
 // aucune donnée personnelle n'est lue : on ne regarde que l'en-tête d'autorisation et la liste des gares.
 (() => {
@@ -12,6 +14,16 @@
   function sendAuth(value) {
     if (typeof value !== "string" || !/^Bearer\s+\S+/i.test(value)) return;
     window.postMessage({ source: TAG, kind: "auth", token: value }, window.location.origin);
+  }
+  // « …/trip-details/2026-10-02-0116/Disabled?… » → « …/trip-details/{id}/{type} » (chemin seul, même origine).
+  function sendTripPath(url) {
+    try {
+      const u = new URL(url, window.location.href);
+      if (u.origin !== window.location.origin || !/trip-details/i.test(u.pathname)) return;
+      const m = u.pathname.match(/^(.*\/)\d{4}-\d{2}-\d{2}-\d{4}\/([^/]+)\/?$/);
+      if (!m) return;
+      window.postMessage({ source: TAG, kind: "tripPath", path: m[1] + "{id}/{type}" }, window.location.origin);
+    } catch (_) {}
   }
   function sendFilter(body) {
     try {
@@ -35,6 +47,7 @@
         const headers = new Headers((init && init.headers) || (input && input.headers) || {});
         const auth = headers.get("authorization");
         if (auth) sendAuth(auth);
+        if (url) sendTripPath(String(url));
         if (isApi(url) && init && typeof init.method === "string" && init.method.toUpperCase() === "POST")
           sendFilter(init.body);
       } catch (_) {
@@ -52,6 +65,9 @@
     const send = XHR.prototype.send;
     XHR.prototype.open = function (method, url) {
       this.__csm = { method: String(method || "").toUpperCase(), url: String(url || "") };
+      try {
+        sendTripPath(this.__csm.url);
+      } catch (_) {}
       return open.apply(this, arguments);
     };
     XHR.prototype.setRequestHeader = function (name, value) {

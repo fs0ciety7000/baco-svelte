@@ -22,7 +22,7 @@ extension, dont le service worker a la permission d'hôte CSM.
 | Fichier | Monde | Rôle |
 |---|---|---|
 | `src/inject.js` | page DICOS (`world: MAIN`, déclaré dans le manifest à `document_start`) | observe `fetch`/`XHR` de la SPA, relève **en vol** l'en-tête `Authorization: Bearer …` et le corps de `POST /api/missions` (`stationIds` = périmètre de gares) et les transmet au content script par `postMessage` (même origine). Aucune requête émise, aucune donnée personnelle lue. |
-| `src/content.js` | isolé, même origine | appelle **en même origine** `POST /api/missions` (liste) puis `GET /api/missions/{id}?reservationType=…` (détail, ~4 req/s, 3 en vol), fusionne, et transmet les missions **brutes** au service worker. Modes bouton **et** automatique (pause si l'onglet est caché). |
+| `src/content.js` | isolé, même origine | appelle **en même origine** `POST /api/missions` (liste du jour), en déduit les **dossiers** (n° `AAAA-MM-JJ-NNNN` + type) puis lit chaque dossier complet `GET …/trip-details/{n°}/{type}` (gabarit relevé sur la SPA par `inject.js`, ~4 req/s) et transmet les dossiers **bruts** au service worker (v1.1). Repli sur `GET /api/missions/{id}` (format v1.0) si trip-details ne répond pas. Modes bouton **et** automatique (pause si l'onglet est caché). |
 | `src/background.js` | service worker | seul à faire l'appel **cross-origin** vers CSM : `POST {csmUrl}/api/pmr/missions/ingest` avec l'en-tête `x-dicos-token`. Ne voit jamais le Bearer DICOS. |
 
 Le **mapping** DICOS → prestation CSM (type PMR, statut, n° de dossier `AAAA-MM-JJ-NNNN`, détail nominatif) est
@@ -35,8 +35,8 @@ Deux `.zip` sont générés dans **`extension/dist/`** (régénérés par `exten
 
 | Navigateur | Paquet | Manifest |
 |---|---|---|
-| **Chrome / Edge** | `csm-dicos-connector-chrome-v1.0.0.zip` | `background.service_worker` |
-| **Firefox** (≥ 128) | `csm-dicos-connector-firefox-v1.0.0.zip` | `background.scripts` + `browser_specific_settings.gecko` |
+| **Chrome / Edge** | `csm-dicos-connector-chrome-v1.1.0.zip` | `background.service_worker` |
+| **Firefox** (≥ 128) | `csm-dicos-connector-firefox-v1.1.0.zip` | `background.scripts` + `browser_specific_settings.gecko` |
 
 Les sources (`src/`) sont **communes** ; seul le manifest diffère. Le code utilise l'espace de noms `chrome.*`
 (aliasé par Firefox) et des content scripts en monde `MAIN` (Chrome 111+, Firefox 128+).

@@ -38,12 +38,63 @@ export function AssistBadge({ status }: { status: AssistStatus }) {
   return <Badge tone={s.tone}>{s.label}</Badge>;
 }
 
-/** Trajet d'une mission : gare de départ → gare d'arrivée. La gare d'assistance (avec l'heure) dépend du sens :
- *  départ (embarquement/IN) = on assiste au départ ; arrivée (débarquement/OUT) = on assiste à l'arrivée. */
-function routeOf(a: Assist): { dep: string; arr: string; here: "dep" | "arr" } {
+/** Un trajet DICOS v3 porte ses deux bouts (gare + heure + district, assistance IN au départ / OUT à l'arrivée).
+ *  Une ancienne ligne (v2, BACO) n'a qu'une gare d'assistance + un sens : on la ramène au même modèle. */
+type Leg = {
+  dep: string;
+  depTime: string;
+  depDistrict: string;
+  arr: string;
+  arrTime: string;
+  arrDistrict: string;
+  inA: boolean;
+  outA: boolean;
+};
+function legOf(a: Assist): Leg {
+  if (a.inAssist || a.outAssist || a.arrTime || a.transport)
+    return {
+      dep: a.station || "?",
+      depTime: a.time,
+      depDistrict: a.district,
+      arr: a.otherStation || "?",
+      arrTime: a.arrTime,
+      arrDistrict: a.arrDistrict,
+      inA: a.inAssist,
+      outA: a.outAssist,
+    };
   if (a.direction === "arrivee")
-    return { dep: a.otherStation || "?", arr: a.station || "?", here: "arr" };
-  return { dep: a.station || "?", arr: a.otherStation || "?", here: "dep" };
+    return {
+      dep: a.otherStation || "?",
+      depTime: "",
+      depDistrict: "",
+      arr: a.station || "?",
+      arrTime: a.time,
+      arrDistrict: a.district,
+      inA: false,
+      outA: true,
+    };
+  return {
+    dep: a.station || "?",
+    depTime: a.time,
+    depDistrict: a.district,
+    arr: a.otherStation || "?",
+    arrTime: "",
+    arrDistrict: "",
+    inA: a.direction === "depart",
+    outA: false,
+  };
+}
+
+/** Bouts d'assistance retenus : ceux du district filtré s'il y en a un, sinon tous. */
+function assistedEnds(l: Leg, district: string): ("depart" | "arrivee")[] {
+  const all: ("depart" | "arrivee")[] = [];
+  if (l.inA) all.push("depart");
+  if (l.outA) all.push("arrivee");
+  if (!district) return all;
+  const inDistrict = all.filter(
+    (e) => (e === "depart" ? l.depDistrict : l.arrDistrict) === district,
+  );
+  return inDistrict.length ? inDistrict : all;
 }
 
 /** « IN · Embarquement » / « OUT · Débarquement », ou « » si sens inconnu. */
@@ -52,36 +103,59 @@ function ioLabel(direction: string): string {
   return io ? `${io.io} · ${io.label}` : "";
 }
 
-/** Badge IN/OUT (embarquement / débarquement). */
-function IoBadge({ direction }: { direction: string }) {
-  const io = DIRECTION_IO[direction];
-  if (!io) return <span className="text-fg-muted">—</span>;
+/** Badges IN / OUT d'un trajet (les deux si assistance aux deux bouts). */
+function IoBadges({ leg, district }: { leg: Leg; district: string }) {
+  if (!leg.inA && !leg.outA) return <span className="text-fg-muted">—</span>;
+  const dim = (d: string) => (district && d !== district ? "opacity-40" : "");
   return (
-    <Badge tone={io.tone} title={io.label}>
-      {io.io}
-    </Badge>
-  );
-}
-
-/** Trajet affiché : départ → arrivée, la gare d'assistance soulignée. */
-function RouteText({ a, barred }: { a: Assist; barred?: boolean }) {
-  const r = routeOf(a);
-  const mark = (s: string, is: boolean) =>
-    is ? (
-      <span className="font-medium text-fg underline decoration-dotted underline-offset-2">{s}</span>
-    ) : (
-      <span>{s}</span>
-    );
-  return (
-    <span className={barred ? "line-through" : ""}>
-      {mark(r.dep, r.here === "dep")} <span className="text-fg-muted">→</span>{" "}
-      {mark(r.arr, r.here === "arr")}
+    <span className="inline-flex gap-1">
+      {leg.inA ? (
+        <Badge tone="info" title="Embarquement (gare de départ)" className={dim(leg.depDistrict)}>
+          IN
+        </Badge>
+      ) : null}
+      {leg.outA ? (
+        <Badge tone="ok" title="Débarquement (gare d'arrivée)" className={dim(leg.arrDistrict)}>
+          OUT
+        </Badge>
+      ) : null}
     </span>
   );
 }
 
-async function copyLabel(a: Assist) {
-  const text = assistCopyText(a);
+const HIGHLIGHT = "bg-[color-mix(in_oklab,var(--accent)_22%,transparent)] px-1 text-fg";
+
+/** Trajet : « 06:02 GARE A → 06:55 GARE B ». Gare d'assistance soulignée ; gare du district filtré surlignée. */
+function RouteText({ a, district, barred }: { a: Assist; district: string; barred?: boolean }) {
+  const l = legOf(a);
+  const end = (name: string, time: string, assisted: boolean, d: string) => (
+    <span className={district && d === district && assisted ? HIGHLIGHT : ""}>
+      {time ? <span className="font-mono tabular text-fg-muted">{time} </span> : null}
+      <span
+        className={
+          assisted ? "font-medium text-fg underline decoration-dotted underline-offset-2" : ""
+        }
+      >
+        {name}
+      </span>
+    </span>
+  );
+  return (
+    <span className={barred ? "line-through" : ""}>
+      {end(l.dep, l.depTime, l.inA, l.depDistrict)} <span className="text-fg-muted">→</span>{" "}
+      {end(l.arr, l.arrTime, l.outA, l.arrDistrict)}
+    </span>
+  );
+}
+
+/** Libellé à copier d'un trajet : une phrase par bout d'assistance retenu (« Embarquement d'une chaise roulante »). */
+function copyTextOf(a: Assist, district: string): string {
+  const ends = assistedEnds(legOf(a), district);
+  if (!ends.length) return assistCopyText(a);
+  return ends.map((direction) => assistCopyText({ ...a, direction })).join(" / ");
+}
+
+async function copyLabel(text: string) {
   try {
     await navigator.clipboard.writeText(text);
     toast.success(`Copié : ${text}`);
@@ -91,17 +165,17 @@ async function copyLabel(a: Assist) {
 }
 
 /** Bouton « copier le libellé » (ex. « Embarquement d'une chaise roulante »). */
-function CopyButton({ a, label }: { a: Assist; label?: boolean }) {
+function CopyButton({ text, label }: { text: string; label?: boolean }) {
   return (
     <Button
       size="sm"
       variant="ghost"
       className="border border-border"
-      aria-label={`Copier le libellé : ${assistCopyText(a)}`}
-      title={assistCopyText(a)}
+      aria-label={`Copier le libellé : ${text}`}
+      title={text}
       onClick={(e) => {
         e.stopPropagation();
-        void copyLabel(a);
+        void copyLabel(text);
       }}
     >
       <Copy aria-hidden className="size-4" />
@@ -141,10 +215,13 @@ export function AssistBoard({
   rows,
   canPmr,
   groupByDay,
+  district = "",
 }: {
   rows: Assist[];
   canPmr: boolean;
   groupByDay: boolean;
+  /** District filtré : ses gares sont surlignées, ses bouts d'assistance retenus pour le libellé à copier. */
+  district?: string;
 }) {
   const [open, setOpen] = useState<Assist | null>(null);
   const [panel, setPanel] = useState<{ assist: Assist; events: PmrEvent[] } | null>(null);
@@ -173,8 +250,14 @@ export function AssistBoard({
 
   const days = groupByDay ? [...new Set(rows.map((r) => r.day))] : [""];
   const routeLabel = (a: Assist) => {
-    const r = routeOf(a);
-    return `${r.dep} → ${r.arr}`;
+    const l = legOf(a);
+    return `${l.dep}${l.arrTime ? "" : ""} → ${l.arrTime ? `${l.arrTime} ` : ""}${l.arr}`;
+  };
+  const districtsOf = (a: Assist) => {
+    const l = legOf(a);
+    if (!l.arrDistrict || l.arrDistrict === l.depDistrict)
+      return l.depDistrict || l.arrDistrict || "";
+    return `${l.depDistrict || "?"} → ${l.arrDistrict}`;
   };
 
   return (
@@ -233,15 +316,21 @@ export function AssistBoard({
                         </button>
                       </Td>
                       <Td className="max-w-72">
-                        <RouteText a={a} barred={a.status === "annulee"} />
+                        <RouteText a={a} district={district} barred={a.status === "annulee"} />
                       </Td>
-                      <Td className="font-mono text-fg-muted" title={DISTRICT_LABEL[a.district] ?? ""}>
-                        {a.district || "—"}
+                      <Td className="font-mono whitespace-nowrap text-fg-muted">
+                        {districtsOf(a) || "—"}
                       </Td>
                       <Td>
-                        <IoBadge direction={a.direction} />
+                        <IoBadges leg={legOf(a)} district={district} />
                       </Td>
-                      <Td className="font-mono">{a.train || "—"}</Td>
+                      <Td className="font-mono">
+                        {a.transport === "taxi" ? (
+                          <span title={a.train}>Taxi</span>
+                        ) : (
+                          a.train || "—"
+                        )}
+                      </Td>
                       <Td className="max-w-56 truncate">
                         {a.pax} × {a.pmrType || "?"}
                         {canPmr && a.clientName ? (
@@ -253,7 +342,7 @@ export function AssistBoard({
                         <AssistBadge status={a.status} />
                       </Td>
                       <Td>
-                        <CopyButton a={a} />
+                        <CopyButton text={copyTextOf(a, district)} />
                       </Td>
                     </Tr>
                   ))}
@@ -278,11 +367,11 @@ export function AssistBoard({
                           </span>
                         </span>
                       }
-                      meta={`${!groupByDay ? `${formatDay(a.day)} · ` : ""}${DIRECTION_IO[a.direction]?.io ?? ""}${a.train ? ` · ${a.train}` : ""} · ${a.pax} × ${a.pmrType || "?"}${a.district ? ` · ${a.district}` : ""}${canPmr && a.clientName ? ` · ${a.clientName}` : ""}`}
+                      meta={`${!groupByDay ? `${formatDay(a.day)} · ` : ""}${[legOf(a).inA ? "IN" : "", legOf(a).outA ? "OUT" : ""].filter(Boolean).join("+") || "—"}${a.transport === "taxi" ? " · Taxi" : a.train ? ` · ${a.train}` : ""} · ${a.pax} × ${a.pmrType || "?"}${districtsOf(a) ? ` · ${districtsOf(a)}` : ""}${canPmr && a.clientName ? ` · ${a.clientName}` : ""}`}
                       aside={<AssistBadge status={a.status} />}
                     />
                   </button>
-                  <CopyButton a={a} />
+                  <CopyButton text={copyTextOf(a, district)} />
                 </li>
               ))}
             </ul>
@@ -300,10 +389,12 @@ export function AssistBoard({
           }
         }}
         eyebrow={open ? `// Mission PMR · ${formatDay(open.day)}` : undefined}
-        title={open ? `${open.time || "--:--"} · ${open.station || "?"}` : "Mission PMR"}
+        title={
+          open ? `${open.time || "--:--"} · ${legOf(open).dep} → ${legOf(open).arr}` : "Mission PMR"
+        }
         description={
           open
-            ? `${ioLabel(open.direction) || "Sens ?"}${open.train ? ` · train ${open.train}` : ""}`
+            ? `${[legOf(open).inA ? "IN" : "", legOf(open).outA ? "OUT" : ""].filter(Boolean).join(" + ") || ioLabel(open.direction) || "Sens ?"}${open.transport === "taxi" ? ` · taxi ${open.train}` : open.train ? ` · train ${open.train}` : ""}`
             : undefined
         }
       >
@@ -319,8 +410,8 @@ export function AssistBoard({
               <Button
                 size="sm"
                 variant="secondary"
-                onClick={() => void copyLabel(panel.assist)}
-                aria-label={`Copier le libellé : ${assistCopyText(panel.assist)}`}
+                onClick={() => void copyLabel(copyTextOf(panel.assist, district))}
+                aria-label={`Copier le libellé : ${copyTextOf(panel.assist, district)}`}
               >
                 <Copy aria-hidden className="size-4" /> Copier le libellé
               </Button>
@@ -328,26 +419,35 @@ export function AssistBoard({
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-body">
               <dt className="text-small text-fg-muted">Trajet</dt>
               <dd>
-                <RouteText a={panel.assist} />
-                {panel.assist.time ? (
-                  <span className="text-fg-muted">
-                    {" "}
-                    · {DIRECTION_IO[panel.assist.direction]?.io === "OUT" ? "arrivée" : "départ"}{" "}
-                    {panel.assist.time}
-                  </span>
-                ) : null}
+                <RouteText a={panel.assist} district={district} />
               </dd>
-              <dt className="text-small text-fg-muted">Sens</dt>
-              <dd>
-                {ioLabel(panel.assist.direction)
-                  ? `${ioLabel(panel.assist.direction)} (${DIRECTION_LABEL[panel.assist.direction]})`
-                  : "—"}
+              <dt className="text-small text-fg-muted">Assistance</dt>
+              <dd className="flex flex-col">
+                {legOf(panel.assist).inA ? (
+                  <span>IN · embarquement à {legOf(panel.assist).dep}</span>
+                ) : null}
+                {legOf(panel.assist).outA ? (
+                  <span>OUT · débarquement à {legOf(panel.assist).arr}</span>
+                ) : null}
+                {!legOf(panel.assist).inA && !legOf(panel.assist).outA
+                  ? ioLabel(panel.assist.direction)
+                    ? `${ioLabel(panel.assist.direction)} (${DIRECTION_LABEL[panel.assist.direction]})`
+                    : "—"
+                  : null}
               </dd>
               <dt className="text-small text-fg-muted">District</dt>
               <dd>
-                {panel.assist.district
-                  ? `${panel.assist.district} · ${DISTRICT_LABEL[panel.assist.district] ?? ""}`
-                  : "—"}
+                {[legOf(panel.assist).depDistrict, legOf(panel.assist).arrDistrict]
+                  .filter(Boolean)
+                  .map((d) => `${d} · ${DISTRICT_LABEL[d] ?? ""}`)
+                  .filter((v, i, arr) => arr.indexOf(v) === i)
+                  .join(" → ") || "—"}
+              </dd>
+              <dt className="text-small text-fg-muted">Transport</dt>
+              <dd>
+                {panel.assist.transport === "taxi"
+                  ? `Taxi · ${panel.assist.train || "—"}`
+                  : `Train ${panel.assist.train || "—"}`}
               </dd>
               <dt className="text-small text-fg-muted">Voyageur</dt>
               <dd>
@@ -372,7 +472,9 @@ export function AssistBoard({
                     ) : (
                       <span>{panel.assist.clientName}</span>
                     )}
-                    {panel.assist.clientPhone ? <PhoneLink phone={panel.assist.clientPhone} /> : null}
+                    {panel.assist.clientPhone ? (
+                      <PhoneLink phone={panel.assist.clientPhone} />
+                    ) : null}
                   </span>
                 ) : panel.assist.clientId || panel.assist.clientName ? (
                   "Voyageur enregistré (droit PMR requis pour le voir)"
@@ -397,7 +499,7 @@ export function AssistBoard({
                   {panel.assist.mission.clientDesc ? (
                     <>
                       <dt className="text-small text-fg-muted">Précisions</dt>
-                      <dd>{panel.assist.mission.clientDesc}</dd>
+                      <dd className="whitespace-pre-line">{panel.assist.mission.clientDesc}</dd>
                     </>
                   ) : null}
                   {panel.assist.mission.meetingPoint ? (

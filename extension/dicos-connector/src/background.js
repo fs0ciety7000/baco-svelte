@@ -1,5 +1,5 @@
 // Service worker : seul composant autorisé à faire l'appel CROSS-ORIGIN vers CSM (host_permissions accordées).
-// Il reçoit les missions brutes du content script et les POSTe à l'endpoint d'ingestion CSM, avec le jeton de
+// Il reçoit les dossiers (v1.1) ou missions bruts du content script et les POSTe à l'endpoint d'ingestion CSM, avec le jeton de
 // connecteur (en-tête x-dicos-token). Il ne voit jamais le Bearer DICOS. Aucune donnée n'est conservée ici.
 
 async function config() {
@@ -7,7 +7,7 @@ async function config() {
   return { csmUrl: String(v.csmUrl || "").replace(/\/+$/, ""), token: String(v.token || "") };
 }
 
-async function push(day, missions) {
+async function push(day, payload) {
   const { csmUrl, token } = await config();
   if (!csmUrl || !token) return { ok: false, error: "Configure l'URL CSM et le jeton de connecteur." };
   let res;
@@ -15,7 +15,7 @@ async function push(day, missions) {
     res = await fetch(`${csmUrl}/api/pmr/missions/ingest`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-dicos-token": token },
-      body: JSON.stringify({ day, missions }),
+      body: JSON.stringify({ day, ...payload }),
     });
   } catch (_) {
     return { ok: false, error: "CSM injoignable (URL ou réseau)." };
@@ -34,7 +34,10 @@ async function push(day, missions) {
 
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (msg && msg.cmd === "push") {
-    push(msg.day, Array.isArray(msg.missions) ? msg.missions : []).then(reply);
+    const payload = Array.isArray(msg.dossiers)
+      ? { dossiers: msg.dossiers }
+      : { missions: Array.isArray(msg.missions) ? msg.missions : [] };
+    push(msg.day, payload).then(reply);
     return true; // réponse asynchrone
   }
 });
