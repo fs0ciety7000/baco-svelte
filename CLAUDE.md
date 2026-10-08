@@ -331,6 +331,17 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   le bac à sable.
 
 
+- 2026-10-08 — **Intégration DICOS (Missions PMR)** cadrée (`docs/design/CADRAGE-DICOS.md`). Contrainte : DICOS
+  derrière Entra ID/IdHub, **pas de client credentials** (refus IT) ni de `refresh_token` (pas de scope
+  `offline_access`) → aucun flux serveur non interactif. **Solution retenue : extension de navigateur** greffée sur
+  l'onglet DICOS connecté (réutilise la session, aucun secret SNCB stocké), qui lit `POST /api/missions` (jour) +
+  `GET /api/missions/{id}?reservationType=…` (n° de dossier `reservationId`, format AAAA-MM-JJ-NNNN), filtre et
+  **pousse vers un endpoint d'ingestion CSM** (jeton de connecteur révocable, dédup sur `dicos_id`). Décisions de
+  l'utilisateur : **garder tous les champs** (e-mail, téléphone, accompagnateur, conducteur compris) derrière
+  `pmr:read`, anonymisés à 12 mois, jamais en Git/capture (à confirmer DPO) ; **deux modes de synchro** (bouton +
+  auto onglet visible) ; **renommer Prestations → Missions PMR** + sélecteur de jour. Jeton DICOS collé dans la
+  conversation = à régénérer (secret exposé). Suivant : audit UX Référentiels (en cours) puis implémentation.
+
 ---
 
 ## Annexe — stack v1 SvelteKit (référence gelée)
