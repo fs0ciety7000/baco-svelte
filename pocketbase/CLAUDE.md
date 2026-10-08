@@ -12,8 +12,9 @@ pocketbase migrate up $P                                   # appliquer les migra
 pocketbase superuser upsert <email> <mot de passe> $P      # compte superuser local
 pocketbase serve --http 127.0.0.1:8090 $P                  # serveur local
 CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P   # import de la sauvegarde Supabase (hors Git)
-PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (77 contrôles)
-CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # module Commandes seul, comptes gardés
+PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (100 contrôles)
+CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # Commandes + PMR, comptes gardés
+CSM_IMPORT_SCOPE=pmr CSM_IMPORT_RESET=1 pocketbase csm-import … $P        # PMR seul (zones, matériel, prestations)
 ```
 
 ## Conventions
@@ -52,5 +53,13 @@ CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # mo
 - **Accès** : taxi, sociétés de taxi et clients PMR ne sont pas lisibles par `otto_agent` (comme la v1) ; modèles
   `order_templates` tous partagés (décision du 8 oct.) ; `b201_reports` une fiche par `day`, non modifiable, écrite par
   les agents (user, otto_agent) rattachés à un district et les moderators (`1760000300`) ; `users.district` réservé à l'admin.
+- **Module PMR** (`1760000400_pmr.js`, `pmr.pb.js`, `lib/pmr.js`) : pas de « journée » (abandonnée) ; `pmr_assists`
+  = une prestation par assistance (créée « prévue » au nom de l'agent, période et zone déduites par hook, transitions
+  prévue ⇄ réalisée / annulée / absent avec motif), `pmr_equipment` (création / suppression coordinateurs, état par
+  `pmr:write`), `pmr_zones` (coordinateurs, district), `pmr_events` (hooks seulement ; un lien client est tracé « lié »,
+  jamais le nom). Cron `pmr-retention` (3 h 15) : prestations > 12 mois anonymisées (client, remarque, texte BACO,
+  motif), fiches sans prestation depuis 24 mois archivées. Import : texte DICOS analysé (`parseDicos`, 373/375 lignes),
+  texte d'origine gardé dans `legacy_text` jusqu'à l'anonymisation. Les callbacks étant isolés, toute fonction
+  partagée (ex. `event`) vit dans `lib/`.
 - **Sauvegardes** : réglées par migration (`0 2 * * *`, 14 conservées dans `pb_data/backups`).
 - `PREPROD_PB_*` désigne une autre instance (jeu) : **n'y jamais écrire**, ne pas y lancer `test-rules.mjs`.

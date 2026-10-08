@@ -18,7 +18,7 @@ $app.rootCmd.addCommand(
 			if (!dir) throw new Error('usage : csm-import <dossier-sauvegarde>');
 			const reset = $os.getenv('CSM_IMPORT_RESET') === '1';
 			const scope = $os.getenv('CSM_IMPORT_SCOPE') || 'all';
-			if (scope !== 'all' && scope !== 'commandes') throw new Error('CSM_IMPORT_SCOPE : all ou commandes');
+			if (['all', 'commandes', 'pmr'].indexOf(scope) === -1) throw new Error('CSM_IMPORT_SCOPE : all, commandes ou pmr');
 			const report = require(`${__hooks}/lib/import.js`).run($app, dir, reset, scope);
 			console.log(JSON.stringify(report, null, 2));
 		}

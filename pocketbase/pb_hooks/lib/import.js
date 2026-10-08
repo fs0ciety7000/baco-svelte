@@ -213,7 +213,14 @@ function importPmrClients(app, dir, userIds, report) {
 		r.set('last_name', c.nom || '');
 		r.set('first_name', c.prenom || '');
 		r.set('phone', c.telephone || '');
-		r.set('type', c.type || '');
+		// Type normalisé (NV, CRF…) ; un libellé libre devient AUTRE + détail.
+		const t = String(c.type || '').trim();
+		const code = t.replace(/^\d+\s*/, '').toUpperCase();
+		if (['NV', 'CRF', 'CRE', 'CRP', 'MR'].indexOf(code) !== -1) r.set('type', code);
+		else if (t) {
+			r.set('type', 'AUTRE');
+			r.set('type_detail', t.slice(0, 200));
+		}
 		r.set('notes', c.remarques || '');
 		if (c.updated_by && userIds[c.updated_by]) r.set('updated_by', c.updated_by);
 		app.save(r);
@@ -235,6 +242,108 @@ function importLineStations(app, dir, report) {
 		if (DISTRICT_CODES[l.district]) r.set('district', DISTRICT_CODES[l.district]);
 		app.save(r);
 		report.line_stations++;
+	}
+}
+
+// --- Module PMR : zones (graine), matériel (pmr_data), prestations (movement_interventions analysées) ---
+const ZONES = [
+	{ code: 'FMS', label: 'Mons', district: 'Sud-Ouest' },
+	{ code: 'FTY', label: 'Tournai', district: 'Sud-Ouest' },
+	{ code: 'FCR', label: 'Charleroi', district: 'Sud-Ouest' }
+];
+
+function importPmr(app, dir, report) {
+	const pmr = require(`${__hooks}/lib/pmr.js`);
+	const data = readJson(`${dir}/data/pmr_data.json`);
+	const moves = readJson(`${dir}/data/daily_movements.json`);
+	const inter = readJson(`${dir}/data/movement_interventions.json`);
+	// Gares de chaque zone, telles que la v1 les utilisait (matériel + interventions).
+	const stations = {};
+	for (const z of ZONES) stations[z.code] = {};
+	for (const d of data) if (stations[d.zone] && d.gare) stations[d.zone][pmr.norm(d.gare)] = true;
+	for (const i of inter) if (stations[i.zone] && i.station) stations[i.zone][pmr.norm(i.station)] = true;
+	const zoneIds = {};
+	const zcol = app.findCollectionByNameOrId('pmr_zones');
+	for (const z of ZONES) {
+		const r = new Record(zcol);
+		r.set('code', z.code);
+		r.set('label', z.label);
+		r.set('district', z.district);
+		r.set('stations', Object.keys(stations[z.code]).sort());
+		app.save(r);
+		zoneIds[z.code] = r.id;
+	}
+	report.pmr_zones = ZONES.length;
+
+	const ecol = app.findCollectionByNameOrId('pmr_equipment');
+	const MONTHS = { janv: 1, jan: 1, fevr: 2, fev: 2, feb: 2, mars: 3, mar: 3, avr: 4, apr: 4, mai: 5, may: 5, juin: 6, jun: 6, juil: 7, jul: 7, aout: 8, aug: 8, sept: 9, sep: 9, oct: 10, nov: 11, dec: 12 };
+	const validUntil = (v) => {
+		const m = /^([a-zéû]+)\.?-(\d{2}|\d{4})$/i.exec(String(v || '').trim());
+		if (!m) return '';
+		const mo = MONTHS[pmr.norm(m[1]).toLowerCase()];
+		if (!mo) return '';
+		const y = m[2].length === 2 ? 2000 + parseInt(m[2], 10) : parseInt(m[2], 10);
+		const last = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+		return `${y}-${String(mo).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
+	};
+	const STATE = { OK: 'ok', HS: 'hs', 'En attente': 'en_attente' };
+	report.pmr_equipment = 0;
+	report.pmr_equipment_validity_unread = 0;
+	for (const d of data) {
+		const r = new Record(ecol);
+		r.set('legacy_id', d.id);
+		r.set('station', String(d.gare || '?').trim().toUpperCase());
+		r.set('platform', d.quai && d.quai !== 'N/A' ? String(d.quai) : '');
+		if (zoneIds[d.zone]) r.set('zone', zoneIds[d.zone]);
+		const a = String(d.type_assistance || '').toLowerCase();
+		if (['3h', 'full', 'light', 'taxi'].indexOf(a) !== -1) r.set('assistance', a);
+		r.set('ramp_type', d.type_rampe && d.type_rampe !== 'N/A' ? d.type_rampe : '');
+		r.set('ramp_id', d.rampe_id && d.rampe_id !== '000' && d.rampe_id !== 'N/A' ? String(d.rampe_id) : '');
+		r.set('state', STATE[d.etat_rampe] || 'ok');
+		r.set('repair_requested', !!d.reparation_demandee);
+		r.set('padlock', d.cadenas && d.cadenas !== 'N/A' ? String(d.cadenas) : '');
+		const v = validUntil(d.validite);
+		r.set('valid_until', v);
+		if (!v && d.validite && d.validite !== '000') report.pmr_equipment_validity_unread++;
+		r.set('ramp_note', d.remarque_rampe || '');
+		r.set('station_restrictions', d.restrictions_gare || '');
+		r.set('station_info', d.remarque_gare || '');
+		app.save(r);
+		keepCreated(app, 'pmr_equipment', r.id, d.created_at);
+		report.pmr_equipment++;
+	}
+
+	// Prestations : une par segment IN / OUT du texte DICOS ; sans segment lisible, une prestation « à vérifier ».
+	const days = {};
+	for (const m of moves) days[m.id] = String(m.date).slice(0, 10);
+	const acol = app.findCollectionByNameOrId('pmr_assists');
+	report.pmr_assists = 0;
+	report.pmr_interventions_unparsed = 0;
+	for (const i of inter) {
+		const day = days[i.movement_id];
+		if (!day) continue;
+		const p = pmr.parseDicos(i.pmr_details);
+		const segs = p.segments.length ? p.segments : [{ direction: '', train: '', time: '' }];
+		if (!p.segments.length) report.pmr_interventions_unparsed++;
+		for (const seg of segs) {
+			const r = new Record(acol);
+			r.set('day', day);
+			r.set('time', seg.time);
+			r.set('period', seg.time ? pmr.periodOf(seg.time) : i.period === 'afternoon' ? 'apres_midi' : 'matin');
+			r.set('direction', seg.direction);
+			r.set('train', seg.train);
+			r.set('station', String(i.station || '').trim().toUpperCase());
+			if (zoneIds[i.zone]) r.set('zone', zoneIds[i.zone]);
+			r.set('dicos_ref', p.ref);
+			r.set('pax', p.pax);
+			if (p.type) r.set('pmr_type', p.type);
+			r.set('status', day < new Date().toISOString().slice(0, 10) ? 'realisee' : 'prevue');
+			r.set('legacy_text', String(i.pmr_details || '').slice(0, 2000));
+			r.set('legacy_id', String(i.id));
+			app.save(r);
+			keepCreated(app, 'pmr_assists', r.id, i.created_at);
+			report.pmr_assists++;
+		}
 	}
 }
 
@@ -369,6 +478,7 @@ function importAudit(app, dir, report) {
 }
 
 // Collections du module Commandes, dans l'ordre de purge (dépendances d'abord).
+const PMR_COLLECTIONS = ['pmr_events', 'pmr_assists', 'pmr_equipment', 'pmr_zones'];
 const ORDER_COLLECTIONS = [
 	'order_events',
 	'order_templates',
@@ -385,7 +495,8 @@ const ORDER_COLLECTIONS = [
 ];
 
 /**
- * scope = 'all' : tout (comptes compris) ; scope = 'commandes' : seulement le module Commandes, les comptes
+ * scope = 'all' : tout (comptes compris) ; scope = 'pmr' : zones, matériel, prestations (fiches clients gardées) ;
+ * scope = 'commandes' : Commandes + PMR (les prestations pointent vers les fiches clients réimportées), les comptes
  * existants sont gardés (rejouer l'import sur une base qui a déjà ses comptes, sans les empreintes).
  */
 function run(app, dir, reset, scope) {
@@ -396,7 +507,9 @@ function run(app, dir, reset, scope) {
 	// (mêmes identifiants, donc mêmes dossiers).
 	if (reset) {
 		app.runInTransaction((tx) => {
-			const names = scope === 'commandes' ? ORDER_COLLECTIONS : ['audit_log', ...ORDER_COLLECTIONS];
+			// Les prestations PMR pointent vers pmr_clients : purgées avec le module Commandes (qui réimporte les fiches).
+			const names =
+				scope === 'pmr' ? PMR_COLLECTIONS : scope === 'commandes' ? [...PMR_COLLECTIONS, ...ORDER_COLLECTIONS] : ['audit_log', ...PMR_COLLECTIONS, ...ORDER_COLLECTIONS];
 			for (const name of names) {
 				// SQL direct : pas de hooks (historique, audit) ni de cascade à rejouer pendant la purge.
 				tx.db().newQuery(`DELETE FROM ${name}`).execute();
@@ -406,6 +519,10 @@ function run(app, dir, reset, scope) {
 		});
 	}
 	app.runInTransaction((tx) => {
+		if (scope === 'pmr') {
+			importPmr(tx, dir, report);
+			return;
+		}
 		if (scope === 'all') importUsers(tx, dir, report);
 		const userIds = {};
 		const users = {};
@@ -424,6 +541,7 @@ function run(app, dir, reset, scope) {
 		importBusOrders(tx, dir, companies, drivers, users, report);
 		importTaxiOrders(tx, dir, taxiByName, usersByName, report);
 		importB201(tx, dir, userIds, report);
+		importPmr(tx, dir, report);
 		if (scope === 'all') importAudit(tx, dir, report);
 	});
 	return report;

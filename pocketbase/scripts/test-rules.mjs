@@ -322,6 +322,63 @@ try {
 	const evLeft = await api('GET', `/api/collections/order_events/records?filter=${encodeURIComponent(`order="${bid}"`)}`, { token: root });
 	check('historique supprimé avec la commande', evLeft.json?.totalItems === 0, `${evLeft.json?.totalItems}`);
 
+	// ---------- Module PMR (session 3) ----------
+	for (const c of ['pmr_assists', 'pmr_equipment', 'pmr_events', 'pmr_zones']) {
+		const r = await api('GET', `/api/collections/${c}/records?perPage=1`);
+		check(`anonyme ne lit pas ${c}`, r.status !== 200 || r.json.totalItems === 0, `HTTP ${r.status}`);
+	}
+	const zone = await api('POST', '/api/collections/pmr_zones/records', { token: roles.admin.token, body: { code: `Z${suffix.toUpperCase().slice(0, 4)}`, district: 'Sud-Ouest', stations: ['XTEST'] } });
+	check('coordinateur crée une zone', zone.status === 200, `HTTP ${zone.status}`);
+	const zu = await api('POST', '/api/collections/pmr_zones/records', { token: u.token, body: { code: 'ZZZ' } });
+	check('agent ne crée pas de zone', zu.status >= 400, `HTTP ${zu.status}`);
+	const as = await api('POST', '/api/collections/pmr_assists/records', {
+		token: u.token,
+		body: { day: '2099-03-01', time: '14:30', station: 'xtest', status: 'prevue', created_by: u.id, updated_by: u.id, pax: 1 }
+	});
+	check('agent crée une prestation, période et zone déduites', as.status === 200 && as.json.period === 'apres_midi' && as.json.zone === zone.json?.id, `HTTP ${as.status} ${as.json?.period}`);
+	const aid = as.json?.id;
+	const asNo = await api('POST', '/api/collections/pmr_assists/records', { token: u.token, body: { day: '2099-03-01', status: 'realisee', created_by: u.id, updated_by: u.id } });
+	check('prestation créée directement « réalisée » refusée', asNo.status >= 400, `HTTP ${asNo.status}`);
+	const asR = await api('POST', '/api/collections/pmr_assists/records', { token: roles.reader.token, body: { day: '2099-03-01', status: 'prevue', created_by: roles.reader.id, updated_by: roles.reader.id } });
+	check('lecteur ne crée pas de prestation', asR.status >= 400, `HTTP ${asR.status}`);
+	const asO = await api('GET', '/api/collections/pmr_assists/records?perPage=1', { token: roles.otto_agent.token });
+	check('otto_agent ne lit pas les prestations', asO.status !== 200 || asO.json.totalItems === 0, `HTTP ${asO.status}`);
+	const ap = (body, token = u.token) => api('PATCH', `/api/collections/pmr_assists/records/${aid}`, { token, body: { updated_by: u.id, ...body } });
+	let pr = await ap({ updated_by: roles.admin.id });
+	check('updated_by non forgeable', pr.status >= 400, `HTTP ${pr.status}`);
+	pr = await ap({ anonymized: true });
+	check('anonymisation non déclenchable par la requête', pr.status >= 400, `HTTP ${pr.status}`);
+	pr = await ap({ status: 'annulee' });
+	check('annulation sans motif refusée', pr.status === 400, `HTTP ${pr.status}`);
+	pr = await ap({ status: 'annulee', cancel_reason: 'Train supprimé' });
+	check('prestation annulée avec motif', pr.status === 200, `HTTP ${pr.status}`);
+	pr = await ap({ status: 'realisee' });
+	check('annulée → réalisée refusé', pr.status === 400, `HTTP ${pr.status}`);
+	pr = await ap({ status: 'prevue', time: '15:10' });
+	check('rétablie en prévue, motif effacé', pr.status === 200 && pr.json.cancel_reason === '', `HTTP ${pr.status}`);
+	const pev = await api('GET', `/api/collections/pmr_events/records?sort=at&perPage=50&filter=${encodeURIComponent(`record="${aid}"`)}`, { token: roles.reader.token });
+	const pchain = (pev.json?.items ?? []).map((i) => `${i.field}:${i.to}`).join(',');
+	check('historique de la prestation', pchain === 'status:prevue,status:annulee,status:prevue,time:15:10', pchain);
+	const pew = await api('POST', '/api/collections/pmr_events/records', { token: roles.admin.token, body: { kind: 'assist', record: aid, to: 'x', at: new Date().toISOString() } });
+	check("personne n'écrit l'historique PMR à la main", pew.status >= 400, `HTTP ${pew.status}`);
+
+	// Matériel : création par les coordinateurs, état par tout agent pmr:write.
+	const eq = await api('POST', '/api/collections/pmr_equipment/records', { token: u.token, body: { station: 'XTEST', state: 'ok', updated_by: u.id } });
+	check('agent ne crée pas de matériel', eq.status >= 400, `HTTP ${eq.status}`);
+	const eqa = await api('POST', '/api/collections/pmr_equipment/records', { token: roles.admin.token, body: { station: 'XTEST', state: 'ok', updated_by: roles.admin.id } });
+	check('coordinateur crée une rampe', eqa.status === 200, `HTTP ${eqa.status}`);
+	const equ = await api('PATCH', `/api/collections/pmr_equipment/records/${eqa.json?.id}`, { token: u.token, body: { state: 'hs', state_note: 'Charnière cassée', updated_by: u.id } });
+	check('agent passe une rampe hors service', equ.status === 200 && equ.json.state === 'hs', `HTTP ${equ.status}`);
+	const eqd = await api('DELETE', `/api/collections/pmr_equipment/records/${eqa.json?.id}`, { token: u.token });
+	check('agent ne supprime pas une rampe', eqd.status >= 400, `HTTP ${eqd.status}`);
+	const eqo = await api('GET', '/api/collections/pmr_equipment/records?perPage=1', { token: roles.otto_agent.token });
+	check('otto_agent ne lit pas le matériel', eqo.status !== 200 || eqo.json.totalItems === 0, `HTTP ${eqo.status}`);
+	for (const [c, id] of [['pmr_assists', aid], ['pmr_equipment', eqa.json?.id], ['pmr_zones', zone.json?.id]]) {
+		if (!id) continue;
+		await api('DELETE', `/api/collections/${c}/records/${id}`, { token: root });
+		auditIds.push(id);
+	}
+
 	// Admin : supprime.
 	const adel = await api('DELETE', `/api/collections/bus_orders/records/${order.json.id}`, { token: roles.admin.token });
 	check('admin supprime', adel.status === 204, `HTTP ${adel.status}`);
