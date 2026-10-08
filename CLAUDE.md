@@ -410,6 +410,10 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   gauche (`server/pdf/sncb-logo.ts`, PNG 16 couleurs en base64), plus de ligne « Statut » (seul « ANNULÉ » reste).
   Widget « À confirmer » : chaque bon est un lien. Nouveaux widgets **Perturbations** et **Travaux** (messages iRail,
   `DisturbanceWidget`). Module « Référentiels » renommé **« Annuaire et données »** (libellés ; routes inchangées).
+- 2026-10-09 — **Export ALEA** (Missions PMR) : bouton + modale ; par jour + train + gare, PMR additionnées par sens
+  (IN = embarquement à la gare de départ, OUT = débarquement à l'arrivée) et **type précis** (« chaise roulante fixe »,
+  « mobilité réduite »), une ligne par combinaison, copie par bloc ou « Tout copier » ; annulées exclues ; avec un filtre
+  district, seulement ses gares (`aleaGroups`, testé).
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

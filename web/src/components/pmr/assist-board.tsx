@@ -1,11 +1,12 @@
 "use client";
 
-import { Copy } from "lucide-react";
+import { ClipboardList, Copy } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { loadAssistPanel } from "@/app/(app)/pmr/actions";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Timeline } from "@/components/ui/form-kit";
 import { EmptyState, Skeleton } from "@/components/ui/misc";
 import { Sheet } from "@/components/ui/sheet";
@@ -16,11 +17,14 @@ import { safeCall } from "@/lib/orders/safe-call";
 import { formatDay, pbDate } from "@/lib/orders/time";
 import { DISTRICT_LABEL } from "@/lib/pmr/districts";
 import {
+  aleaGroups,
   ASSIST_STATUS,
   assistCopyText,
   DIRECTION_IO,
   DIRECTION_LABEL,
   PMR_TYPE_LABEL,
+  type AleaEnd,
+  type AleaGroup,
   type AssistStatus,
 } from "@/lib/pmr/model";
 import type { Assist, PmrEvent } from "@/server/data/pmr";
@@ -265,6 +269,9 @@ export function AssistBoard({
 
   return (
     <>
+      <div className="flex justify-end">
+        <AleaExport rows={rows} district={district} />
+      </div>
       {days.map((d) => {
         const list = d ? rows.filter((r) => r.day === d) : rows;
         return (
@@ -614,6 +621,96 @@ export function AssistBoard({
           </div>
         )}
       </Sheet>
+    </>
+  );
+}
+
+/** Bouts d'assistance des trajets affichés (annulés exclus ; avec un filtre district, ses gares seulement). */
+function aleaEnds(rows: Assist[], district: string): AleaEnd[] {
+  const ends: AleaEnd[] = [];
+  for (const a of rows) {
+    if (a.status === "annulee") continue;
+    const l = legOf(a);
+    const train = a.transport === "taxi" ? `Taxi${a.train ? ` ${a.train}` : ""}` : a.train || "—";
+    const base = { day: a.day, train, pax: a.pax, pmrType: a.pmrType };
+    if (l.inA && (!district || l.depDistrict === district))
+      ends.push({ ...base, station: l.dep, time: l.depTime, io: "IN" });
+    if (l.outA && (!district || l.arrDistrict === district))
+      ends.push({ ...base, station: l.arr, time: l.arrTime, io: "OUT" });
+  }
+  return ends;
+}
+
+/**
+ * « Export ALEA » (demande du 9 oct. 2026) : par train et par gare, les PMR additionnées par sens et type précis,
+ * une ligne par combinaison (« Embarquement de trois non-voyants »), à copier bloc par bloc ou en entier.
+ */
+function AleaExport({ rows, district }: { rows: Assist[]; district: string }) {
+  const [open, setOpen] = useState(false);
+  const groups = open ? aleaGroups(aleaEnds(rows, district)) : [];
+  const blockText = (g: AleaGroup) =>
+    [
+      `${formatDay(g.day)} · ${g.train} · ${g.station}${g.time ? ` (${g.time})` : ""}`,
+      ...g.lines,
+    ].join("\n");
+  return (
+    <>
+      <Button variant="secondary" onClick={() => setOpen(true)} disabled={!rows.length}>
+        <ClipboardList aria-hidden /> Export ALEA
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent
+          eyebrow="// Missions PMR"
+          title="Export ALEA"
+          description={`Par train et par gare, PMR additionnées par sens et par type${district ? ` (district ${district})` : ""}. Missions annulées exclues.`}
+        >
+          {groups.length === 0 ? (
+            <EmptyState
+              title="Rien à exporter"
+              description="Aucune assistance prévue dans la liste affichée."
+            />
+          ) : (
+            <ul
+              className="flex max-h-[60vh] flex-col gap-3 overflow-y-auto"
+              data-testid="alea-groups"
+            >
+              {groups.map((g) => (
+                <li
+                  key={g.key}
+                  className="flex flex-col gap-1 border border-border bg-surface px-3 py-2"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-small text-fg-muted">
+                      <span className="first-letter:uppercase">{formatDay(g.day)}</span> ·{" "}
+                      <span className="font-mono text-fg">{g.train}</span> ·{" "}
+                      <span className="font-medium text-fg">{g.station}</span>
+                      {g.time ? <span className="font-mono"> ({g.time})</span> : null}
+                    </p>
+                    <CopyButton text={g.lines.join("\n")} />
+                  </div>
+                  {g.lines.map((line) => (
+                    <p key={line} className="text-body text-fg select-text">
+                      {line}
+                    </p>
+                  ))}
+                </li>
+              ))}
+            </ul>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setOpen(false)}>
+              Fermer
+            </Button>
+            <Button
+              variant="primary"
+              disabled={!groups.length}
+              onClick={() => void copyLabel(groups.map(blockText).join("\n\n"))}
+            >
+              <Copy aria-hidden /> Tout copier
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { assistCopyText, numberFr } from "./model";
+import { aleaGroups, assistCopyText, numberFr } from "./model";
 
 describe("libellé à copier", () => {
   it("nombre en toutes lettres (genré)", () => {
@@ -26,5 +26,25 @@ describe("libellé à copier", () => {
     expect(assistCopyText({ direction: "depart", pax: 1, pmrType: "DCO" })).toBe(
       "Embarquement d'une personne avec des difficultés d'orientation",
     );
+  });
+});
+
+describe("export ALEA", () => {
+  it("additionne par train, gare, sens et type précis", () => {
+    const base = { day: "2026-10-09", train: "3804", time: "08:00" };
+    const groups = aleaGroups([
+      { ...base, station: "MONS", io: "IN", pax: 1, pmrType: "NV" },
+      { ...base, station: "MONS", io: "IN", pax: 2, pmrType: "NV" },
+      { ...base, station: "MONS", io: "OUT", pax: 1, pmrType: "CRF" },
+      { ...base, station: "LA LOUVIÈRE-SUD", time: "08:20", io: "OUT", pax: 3, pmrType: "NV" },
+      { ...base, station: "LA LOUVIÈRE-SUD", time: "08:20", io: "IN", pax: 1, pmrType: "MR" },
+    ]);
+    expect(groups.map((g) => [g.station, g.lines])).toEqual([
+      ["MONS", ["Embarquement de trois non-voyants", "Débarquement d'une chaise roulante fixe"]],
+      [
+        "LA LOUVIÈRE-SUD",
+        ["Embarquement d'une mobilité réduite", "Débarquement de trois non-voyants"],
+      ],
+    ]);
   });
 });

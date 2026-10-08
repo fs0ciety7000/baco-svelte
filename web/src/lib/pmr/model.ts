@@ -237,3 +237,93 @@ export type EquipmentInput = z.infer<typeof equipmentSchema>;
 export function dialable(phone: string): string {
   return phone.replace(/[^\d+]/g, "");
 }
+
+// ---------------------------------------------------------------------------------------------------
+// Export ALEA (demande du 9 oct. 2026) : toutes les PMR d'un même train à une même gare, additionnées par sens et
+// par type précis (« Embarquement de trois non-voyants », « Débarquement d'une chaise roulante fixe »).
+
+/** Nom précis pour l'ALEA (le type de chaise est détaillé). */
+function aleaNoun(type: string, plural: boolean): { fem: boolean; word: string } {
+  const chair = (adj: string, adjs: string) => ({
+    fem: true,
+    word: plural ? `chaises roulantes ${adjs}` : `chaise roulante ${adj}`,
+  });
+  switch (type) {
+    case "CRF":
+      return chair("fixe", "fixes");
+    case "CRE":
+      return chair("électrique", "électriques");
+    case "CRP":
+      return chair("pliable", "pliables");
+    case "MR":
+      return { fem: true, word: plural ? "mobilités réduites" : "mobilité réduite" };
+    default:
+      return pmrNoun(type, plural);
+  }
+}
+
+export function aleaLine(verb: "Embarquement" | "Débarquement", pax: number, type: string): string {
+  const n = Math.max(1, pax || 1);
+  const { fem, word } = aleaNoun(type, n > 1);
+  const count = numberFr(n, fem);
+  const de = /^(une?|onze)$/.test(count) ? "d'" : "de ";
+  return `${verb} ${de}${count} ${word}`;
+}
+
+/** Un bout d'assistance : gare, heure, sens (IN embarquement / OUT débarquement). */
+export type AleaEnd = {
+  day: string;
+  train: string;
+  station: string;
+  time: string;
+  io: "IN" | "OUT";
+  pax: number;
+  pmrType: string;
+};
+export type AleaGroup = {
+  key: string;
+  day: string;
+  train: string;
+  station: string;
+  time: string;
+  lines: string[];
+};
+
+/** Regroupe par jour + train + gare, additionne par sens et type ; tri par heure. */
+export function aleaGroups(ends: AleaEnd[]): AleaGroup[] {
+  const groups = new Map<string, { g: AleaGroup; sums: Map<string, number> }>();
+  for (const e of ends) {
+    const key = `${e.day}|${e.train}|${e.station}`;
+    let entry = groups.get(key);
+    if (!entry) {
+      entry = {
+        g: { key, day: e.day, train: e.train, station: e.station, time: e.time, lines: [] },
+        sums: new Map(),
+      };
+      groups.set(key, entry);
+    }
+    if (e.time && (!entry.g.time || e.time < entry.g.time)) entry.g.time = e.time;
+    const k = `${e.io}|${e.pmrType}`;
+    entry.sums.set(k, (entry.sums.get(k) ?? 0) + Math.max(1, e.pax || 1));
+  }
+  const ORDER = ["IN", "OUT"];
+  return [...groups.values()]
+    .map(({ g, sums }) => ({
+      ...g,
+      lines: [...sums.entries()]
+        .sort(
+          ([a], [b]) =>
+            ORDER.indexOf(a.split("|")[0]!) - ORDER.indexOf(b.split("|")[0]!) || a.localeCompare(b),
+        )
+        .map(([k, n]) => {
+          const [io, type] = k.split("|") as [string, string];
+          return aleaLine(io === "IN" ? "Embarquement" : "Débarquement", n, type);
+        }),
+    }))
+    .sort(
+      (a, b) =>
+        a.day.localeCompare(b.day) ||
+        (a.time || "99").localeCompare(b.time || "99") ||
+        a.station.localeCompare(b.station),
+    );
+}
