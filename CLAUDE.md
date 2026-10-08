@@ -69,9 +69,19 @@ npm run lint         # prettier --check
 - Les droits se vérifient **côté serveur et en RLS** ; le masquage UI n'est que du confort.
 - Couleurs / rayons / ombres / durées : **tokens CSS** (`var(--…)`) uniquement, jamais de hex en dur.
 - Imports lourds (jspdf, exceljs, gridstack, maplibre, chart.js) en `await import()`.
-- Polling : utiliser `src/lib/utils/poller.js` (pause onglet caché) ou Supabase Realtime.
+- Polling : utiliser `src/lib/utils/poller.js` (pause onglet caché) ou le flux SSE serveur (`/api/events`). **Jamais** de client Supabase Realtime/WebSocket côté navigateur : bloqué par le pare-feu de l’entreprise.
 
-## 6. Pièges connus
+## 6. Contraintes métier / infra (non négociables)
+
+- **Réseau entreprise** : WebSocket (et probablement HTTPS) vers `*.supabase.co` bloqués, l'IT n'ouvrira rien.
+  → Le navigateur ne parle **qu'à `csm.fs0ciety.org`** ; données via load/actions serveur, temps réel via SSE relayé par le serveur.
+- **E-mail** : pas de jeton Outlook/Graph ; l'envoi est **manuel** depuis la **boîte fonctionnelle**.
+  → Générer un brouillon `.eml` (`X-Unsent: 1`) avec le PDF joint, jamais d'envoi SMTP automatique.
+- **Coexistence** : BACO (Vercel, branche `main`) reste en production sur **la même base**.
+  → Migrations **rétrocompatibles** uniquement (additives) ; si un hotfix casse BACO, corriger `main` aussi.
+- Gamification (classement, badges, likes, jauge de confiance, fléchettes, Konami) : **à supprimer** (validé).
+
+## 7. Pièges connus
 
 - `.gitignore` liste `vite.config.js` et `src/lib/supabase.js` alors qu'ils sont suivis : les modifs
   passent quand même (fichiers déjà trackés) mais un nouveau clone sans eux casserait — à nettoyer.
@@ -80,7 +90,10 @@ npm run lint         # prettier --check
   recopiés dans `auth.users.raw_user_meta_data.role` par trigger — **ne jamais se fier à
   `user_metadata` pour une décision de sécurité** (modifiable par l'utilisateur).
 
-## 7. Journal des décisions
+## 8. Journal des décisions
 
 - 2026-10-08 — Audit initial réalisé (3 agents + inspection Supabase). Proposition rédigée.
   Renommage BACO → CSM acté par l'utilisateur.
+- 2026-10-08 — Retours utilisateur : pas de Realtime WS (pare-feu) → relais SSE serveur ; PocketBase
+  étudié et écarté (migration lourde, coexistence BACO) ; Next.js écarté (pas de gain perf, réécriture) ;
+  e-mail = brouillon .eml + PDF depuis boîte fonctionnelle ; gamification supprimée ; BACO reste actif.
