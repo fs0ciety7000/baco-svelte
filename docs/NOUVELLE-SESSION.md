@@ -4,8 +4,9 @@
 > `claude/admiring-thompson-1lkun9` (`pocketbase/`, `web/`, `docs/BACKEND-DECISION.md`, `docs/DEPLOIEMENT-V2.md`).
 > Pour la session 3 : partir de cette branche, **changer la branche déployée dans Coolify** (`csm-web` et
 > `csm-pocketbase`, voir DEPLOIEMENT-V2 §5), relancer la sauvegarde seulement si `/home/user/csm-backup` est vide, puis
-> attaquer l'étape 5 (les données BACO du 8 oct. sont déjà importées sur l'instance de test) (module Commandes, `docs/design/AUDIT-UX-COMMANDES.md`). Vérifier d'abord si l'utilisateur a
-> appliqué le hotfix sécurité dans le SQL Editor (trigger `guard_profile_privileged_columns`, puis `get_advisors`).
+> attaquer l'étape 5 (les données BACO du 8 oct. sont déjà importées sur l'instance de test) (module Commandes, `docs/design/AUDIT-UX-COMMANDES.md`). Le hotfix sécurité est appliqué
+> (0 ERROR) ; rappeler la suite `20261008130000_hotfix_followup.sql` (non appliquée) et la protection des mots de passe
+> compromis (Supabase → Authentication).
 > Les scripts Node ont besoin de `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt`.
 > Les scripts Node ont besoin de `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt`.
 
@@ -70,5 +71,5 @@ Tu reprends **CSM — Client Solutions Management Tool**, le successeur de BACO.
 Commence par l'étape 0, puis enchaîne l'étape 1 et arrête-toi à la recommandation pour que je la valide.
 
 Rappels :
-- la migration de sécurité `supabase/migrations/20261008120000_security_hotfix.sql` n'est **pas appliquée** (escalade admin, données PMR lisibles sans connexion, 11 tables sans RLS, 30 fonctions exécutables par `anon`) : ne l'applique pas sans mon accord explicite, mais rappelle-la-moi ;
+- la migration de sécurité `20261008120000_security_hotfix.sql` est **appliquée** (8 oct.) ; la suite `20261008130000_hotfix_followup.sql` ne l'est pas : ne l'applique pas sans mon accord explicite, mais rappelle-la-moi ;
 - les clés Supabase collées dans la conversation précédente doivent avoir été tournées.
