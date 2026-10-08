@@ -31,6 +31,9 @@ volontairement « bête » et envoie la mission brute (liste + détail fusionné
 
 ## Installation
 
+> Raccourci : un **`.zip` prêt à charger** est fourni à la racine du dossier `extension/` (`dicos-connector.zip`) —
+> télécharge-le, dézippe-le, et tu obtiens directement le dossier `dicos-connector/` à sélectionner à l'étape 2.
+
 1. **Chrome/Edge** → `chrome://extensions` (ou `edge://extensions`) → activer le **mode développeur**.
 2. **Charger l'extension non empaquetée** → sélectionner ce dossier (`extension/dicos-connector`).
 3. Ouvrir **DICOS**, se connecter, **naviguer une fois dans la liste des missions** (pour que l'extension relève
