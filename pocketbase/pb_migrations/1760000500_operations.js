@@ -95,7 +95,7 @@ migrate(
 				{ name: 'zone', type: 'text', max: 10, pattern: '^$|^[A-Z0-9]{2,10}$' },
 				{ name: 'notes', type: 'text', max: 1000 },
 				{ name: 'active', type: 'bool' },
-				{ name: 'source', type: 'select', maxSelect: 1, values: ['baco', 'positions', 'csm'] },
+				{ name: 'source', type: 'select', maxSelect: 1, values: ['baco', 'csm'] },
 				{ name: 'legacy_id', type: 'number', onlyInt: true, min: 0 },
 				{ name: 'updated_by', type: 'relation', collectionId: users.id, maxSelect: 1 },
 				{ name: 'created', type: 'autodate', onCreate: true },

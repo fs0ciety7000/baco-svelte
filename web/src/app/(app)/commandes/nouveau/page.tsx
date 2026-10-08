@@ -20,10 +20,18 @@ export const metadata: Metadata = { title: "Nouveau bon de commande bus · CSM" 
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ modele?: string; id?: string; k?: string }>;
+  searchParams: Promise<{
+    modele?: string;
+    id?: string;
+    k?: string;
+    origine?: string;
+    destination?: string;
+    relation?: string;
+    motif?: string;
+  }>;
 }) {
   const user = await requirePermission("otto:write");
-  const { modele, id, k } = await searchParams;
+  const { modele, id, k, origine, destination, relation, motif } = await searchParams;
   const formKey = k && /^[a-z0-9]{8}$/.test(k) ? k : undefined;
   // Brouillon déjà créé sur cette page (URL remplacée après le 1er enregistrement) : même route, même fiche.
   if (id && /^[a-z0-9-]{15,36}$/.test(id))
@@ -42,6 +50,18 @@ export default async function Page({
     call_time: brusselsTime(),
     district: busDraftSchema.shape.district.catch("").parse(user.district),
   };
+  // Pré-remplissage depuis les trains en direct (« Commander un bus de substitution »).
+  const pre = (v: string | undefined, max: number) =>
+    typeof v === "string"
+      ? v
+          .replace(/[\u0000-\u001f\u007f]/g, " ")
+          .trim()
+          .slice(0, max)
+      : "";
+  if (pre(origine, 200)) initial.origin = pre(origine, 200);
+  if (pre(destination, 200)) initial.destination = pre(destination, 200);
+  if (pre(relation, 200)) initial.relation = pre(relation, 200);
+  if (pre(motif, 2000)) initial.reason = pre(motif, 2000);
   // Nouvel écran à chaque visite sans ?id : un 2e « Nouveau » ne reprend pas le brouillon précédent.
   const nonce = randomUUID().replace(/-/g, "").slice(0, 8);
   // Même structure que la fiche (div > formulaire, même clé) : après le 1er enregistrement, le

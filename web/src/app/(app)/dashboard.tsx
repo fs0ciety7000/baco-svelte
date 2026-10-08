@@ -24,15 +24,14 @@ import {
   Eye,
   EyeOff,
   GripVertical,
-  MessageSquareText,
   SlidersHorizontal,
-  Train,
   Users,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition, type ReactNode } from "react";
 
+import { LogWidget, TrainsWidget, type LogDigest } from "@/components/ops/dashboard-widgets";
 import { useShell } from "@/components/shell/shell-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -44,6 +43,7 @@ import { toast } from "@/components/ui/toast";
 import { move, type DashboardLayout, type WidgetId } from "@/design/dashboard-layout";
 import { useStaggerIn } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import type { FavoriteStation } from "@/lib/ops/irail";
 import type { DashboardStats } from "@/server/data/dashboard";
 
 import { saveDashboardLayout } from "../dashboard-actions";
@@ -65,7 +65,17 @@ const dateLabel = new Intl.DateTimeFormat("fr-BE", {
   timeZone: "Europe/Brussels",
 });
 
-function WidgetBody({ id, stats }: { id: WidgetId; stats: DashboardStats | null }) {
+export type OpsDigest = { log: LogDigest[] | null; favorites: FavoriteStation[] | null };
+
+function WidgetBody({
+  id,
+  stats,
+  ops,
+}: {
+  id: WidgetId;
+  stats: DashboardStats | null;
+  ops: OpsDigest;
+}) {
   const { actions } = useShell();
   const router = useRouter();
   switch (id) {
@@ -139,21 +149,9 @@ function WidgetBody({ id, stats }: { id: WidgetId; stats: DashboardStats | null 
         </div>
       );
     case "trains":
-      return (
-        <EmptyState
-          icon={<Train className="size-6" />}
-          title="Bientôt"
-          description="Retards et suppressions des gares suivies (iRail), avec le module Opérations."
-        />
-      );
+      return <TrainsWidget favorites={ops.favorites} />;
     case "main-courante":
-      return (
-        <EmptyState
-          icon={<MessageSquareText className="size-6" />}
-          title="Bientôt"
-          description="Dernières entrées de la main courante, en direct."
-        />
-      );
+      return <LogWidget entries={ops.log} />;
     case "equipe":
       return (
         <EmptyState
@@ -277,10 +275,12 @@ function Widget({
 export function Dashboard({
   firstName,
   stats,
+  ops,
   initialLayout,
 }: {
   firstName: string;
   stats: DashboardStats | null;
+  ops: OpsDigest;
   initialLayout: DashboardLayout;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -368,7 +368,7 @@ export function Dashboard({
                 layout={layout}
                 onLayout={setLayout}
               >
-                <WidgetBody id={id} stats={stats} />
+                <WidgetBody id={id} stats={stats} ops={ops} />
               </Widget>
             ))}
           </div>

@@ -437,6 +437,10 @@ Réutilisés tels quels : `PageHeader`, `StatCard`, `StatusBadge`, `Table` + `Li
 
 ## 6. Questions ouvertes (décisions)
 
+> **Réponses de l'utilisateur (8 oct. 2026)** : toutes les recommandations sont validées, sauf **Q9 → option B**
+> (proxy de tuiles raster par le serveur Next, avec cache). **Q6 révisée** : pas de PN « position seule » (`temp_geo_data`
+> non reprise) ; seuls les PN de BACO, avec leur adresse, sont importés.
+
 1. **La main courante est-elle encore utile ?** 33 entrées, 2 par mois depuis mars, 64 % par un seul agent, 48
    suppressions. Recommandation : la garder, recentrée en **main courante d'exploitation** (catégorie, heure de
    l'événement, liens vers commande / prestation / train / PN, consignes épinglées, export du service) et la livrer

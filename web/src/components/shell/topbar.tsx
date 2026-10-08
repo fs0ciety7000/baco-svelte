@@ -10,6 +10,7 @@ import { Kbd } from "@/components/ui/misc";
 import { activeModule, activeTab } from "@/navigation";
 
 import { useShell } from "./shell-context";
+import { NotificationBell } from "./notification-bell";
 import { UserMenu } from "./user-menu";
 
 /**
@@ -84,6 +85,7 @@ export function Topbar() {
             </Menu.Portal>
           </Menu.Root>
         ) : null}
+        <NotificationBell />
         <UserMenu />
       </div>
     </header>

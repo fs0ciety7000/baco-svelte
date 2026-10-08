@@ -139,13 +139,6 @@ function latLon(v) {
 	if (lat < 49 || lat > 52 || lon < 2 || lon > 7) return null;
 	return { lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6 };
 }
-// « L-94-12 », « L-75A-3BIS », « L-90C-7 » → { line: 'L.94', number: '12' } ; autres formes ignorées.
-function denomination(v) {
-	const m = /^L-([0-9]{1,3}[A-Z]?)-([0-9]{1,4})\s*(BIS|TER)?$/i.exec(String(v || '').trim());
-	if (!m) return null;
-	return { line: `L.${m[1].toUpperCase()}`, number: m[3] ? `${parseInt(m[2], 10)} ${m[3].toLowerCase()}` : String(parseInt(m[2], 10)) };
-}
-
 module.exports = {
 	MAX_WATCHES,
 	isCoord,
@@ -158,6 +151,5 @@ module.exports = {
 	event,
 	pnNumber,
 	bkValue,
-	latLon,
-	denomination
+	latLon
 };

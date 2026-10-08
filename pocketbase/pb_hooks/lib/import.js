@@ -489,21 +489,8 @@ function importAudit(app, dir, report) {
 }
 
 // --- Module Opérations : main courante (+ « Lu » depuis les réactions), passages à niveau ---
-// Polygones de zone de la v1 (pn.service.js), seulement pour les PN connus par leur position (zone à valider).
-const PN_POLYGONS = {
-	FTY: [[3.171566, 50.762703], [3.259986, 50.703089], [3.42234, 50.54589], [3.60959, 50.519025], [3.666147, 50.505289], [4.17826, 50.713701], [3.849421, 50.746417], [3.633609, 50.715668]],
-	FMS: [[3.907979, 50.329412], [4.255675, 50.431412], [4.228154, 50.721537], [3.666565, 50.505424], [3.684118, 50.409855]],
-	FCR: [[4.378195, 50.73055], [4.235961, 50.505222], [4.248338, 50.457706], [4.223177, 50.210008], [4.4918, 50.055506], [4.543671, 50.086156], [4.564718, 50.206071], [4.53854, 50.39926], [4.685786, 50.465597], [4.56453, 50.517162], [4.536164, 50.537715]]
-};
-function inPolygon(lon, lat, poly) {
-	let inside = false;
-	for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-		const xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1];
-		if (yi > lat !== yj > lat && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
-	}
-	return inside;
-}
-
+// PN : seulement ceux de BACO (pn_data, avec leur adresse) ; les positions seules de temp_geo_data ne sont pas reprises
+// (décision du 8 octobre 2026, Q6 révisée).
 function importOperations(app, dir, report) {
 	const ops = require(`${__hooks}/lib/operations.js`);
 	const districtOf = {};
@@ -552,7 +539,7 @@ function importOperations(app, dir, report) {
 		report.ops_log_reads++;
 	}
 
-	// Passages à niveau : pn_data (zone reprise telle quelle) puis positions seules de temp_geo_data.
+	// Passages à niveau : pn_data (adresse et zone reprises telles quelles).
 	const pcol = app.findCollectionByNameOrId('level_crossings');
 	const keys = {};
 	const points = [];
@@ -588,33 +575,6 @@ function importOperations(app, dir, report) {
 		app.save(r);
 		keepCreated(app, 'level_crossings', r.id, p.created_at);
 		report.level_crossings++;
-	}
-	report.level_crossings_positions = 0;
-	const tempPath = `${dir}/data/temp_geo_data.json`;
-	if (exists(tempPath)) {
-		for (const t of readJson(tempPath)) {
-			const d = ops.denomination(t.denomination);
-			const pos = ops.latLon(t.position);
-			if (!d || !pos || keys[`${d.line}|${d.number}`]) continue;
-			// Même PN déjà connu à moins de 200 m (numérotation différente) : ignoré.
-			const near = points.some((q) => Math.abs(q.lat - pos.lat) < 0.0018 && Math.abs(q.lon - pos.lon) < 0.0028);
-			if (near) continue;
-			keys[`${d.line}|${d.number}`] = true;
-			const r = new Record(pcol);
-			r.set('line', d.line);
-			r.set('number', d.number);
-			r.set('lat', pos.lat);
-			r.set('lon', pos.lon);
-			let zone = '';
-			for (const code of Object.keys(PN_POLYGONS)) if (inPolygon(pos.lon, pos.lat, PN_POLYGONS[code])) zone = code;
-			r.set('zone', zone);
-			r.set('notes', 'Position seule (reprise BACO) : adresse, BK et zone à vérifier.');
-			r.set('active', true);
-			r.set('source', 'positions');
-			app.save(r);
-			points.push(pos);
-			report.level_crossings_positions++;
-		}
 	}
 }
 

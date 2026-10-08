@@ -20,6 +20,10 @@ const TOPICS = new Set([
   "pmr_assists",
   "pmr_equipment",
   "pmr_clients",
+  "ops_log",
+  "ops_log_reads",
+  "notifications",
+  "level_crossings",
 ]);
 const HEARTBEAT_MS = 25_000;
 

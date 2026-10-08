@@ -275,3 +275,24 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Carte PN : le fond OpenStreetMap (clair) est assombri dans les thèmes sombres ; la carte suit les jetons. */
+.pn-map.leaflet-container {
+  background: var(--surface-2);
+  font-family: inherit;
+}
+[data-scheme="dark"] .pn-map .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9);
+}
+@media (prefers-color-scheme: dark) {
+  html:not([data-scheme]) .pn-map .leaflet-tile-pane {
+    filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9);
+  }
+}
+.pn-map .leaflet-control-attribution {
+  background: color-mix(in oklab, var(--surface) 85%, transparent);
+  color: var(--fg-muted);
+}
+.pn-map .leaflet-control-attribution a {
+  color: var(--fg);
+}
