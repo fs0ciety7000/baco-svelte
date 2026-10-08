@@ -47,6 +47,8 @@ SUPABASE_URL=… SUPABASE_PUBLISHABLE_KEY=… BACKUP_LOGIN_EMAIL=… BACKUP_LOGI
 BACKUP_TABLES="table1,table2,…" node scripts/supabase-backup.mjs /home/user/csm-backup
 ```
 
+La clé de service permet d'exporter aussi les lignes masquées par RLS et les comptes, sans passer par le connecteur.
+
 Le plus fiable reste un `pg_dump` depuis une machine qui atteint le port 5432 :
 
 ```bash
@@ -57,8 +59,9 @@ pg_dump "postgresql://postgres:<mot de passe>@db.mgljaheyimizrydazrxh.supabase.c
 ## 3. Chiffrement
 
 ```bash
-tar -C /home/user -czf - csm-backup | age -p -o csm-backup-2026-10-08.tar.gz.age   # chiffrer (phrase de passe)
-age -d csm-backup-2026-10-08.tar.gz.age | tar -xzf -                              # déchiffrer
+tar -C /home/user -czf - csm-backup | age -r <clé publique age> -o csm-backup-AAAA-MM-JJ.tar.gz.age  # chiffrer
+age -d -i csm-backup-AAAA-MM-JJ.key csm-backup-2026-10-08.tar.gz.age | tar -xzf -                       # déchiffrer
+cd csm-backup && sha256sum -c SHA256SUMS                                                                # contrôle d'intégrité
 ```
 
 ## 4. Restauration
@@ -66,14 +69,17 @@ age -d csm-backup-2026-10-08.tar.gz.age | tar -xzf -                            
 **Jamais vers la production BACO.** La cible est un nouveau projet Supabase, un Supabase local
 (`supabase start`) ou un Postgres de test. Les rôles Supabase (`anon`, `authenticated`, `service_role`)
 et les schémas `auth` / `storage` doivent exister : c'est le cas sur un projet Supabase.
+Sur un Postgres nu, `search_path` doit inclure `extensions` (`alter database … set search_path = public, extensions`).
 
 1. **Schéma, sans les FK** : exécuter `01_extensions_types.sql`, puis `02_tables.sql` **jusqu'à la section FK**.
 2. **Données** : `DATABASE_URL=… scripts/supabase-restore-data.sh csm-backup`
    (import par `json_populate_recordset`, triggers suspendus via `session_replication_role = replica`,
    séquences réalignées).
 3. **FK, index, vues, fonctions, triggers, policies, droits** : section FK de `02_tables.sql`, puis
-   `03` → `08`, puis `10`.
-4. **Comptes** : recréer chaque compte avec le **même UUID** via l'API admin
+   `03` → `08`, puis `10`. Dans `08`, remplacer `"PUBLIC"` par `PUBLIC`. Les policies du schéma `cron`
+   et les triggers de `storage` sont gérés par Supabase : les erreurs à leur sujet sont attendues.
+4. **Comptes** : `auth_users.json` se réinjecte tel quel dans `auth.users` (`json_populate_recordset`),
+   mais sans empreinte de mot de passe : chaque agent devra réinitialiser le sien. Variante : recréer chaque compte avec le **même UUID** via l'API admin
    (`POST /auth/v1/admin/users` avec `id`, `email`, `email_confirm: true`, `user_metadata`), puis envoyer
    un lien de réinitialisation : les empreintes de mot de passe ne sont pas dans l'archive.
 5. **Storage** : créer les buckets (`09_storage.sql`), puis téléverser `storage/<bucket>/<chemin>` au même
@@ -83,3 +89,24 @@ et les schémas `auth` / `storage` doivent exister : c'est le cas sur un projet 
 Un test de restauration complet (schéma + données) sur un Postgres 16 local est consigné en §5.
 
 ## 5. Vérification
+
+Test réalisé le 8 octobre 2026 sur un Postgres 16 local, avec un socle imitant Supabase (rôles, `auth.users`,
+`auth.uid()`, `storage.*`), en suivant la procédure du §4 :
+
+| Contrôle | Production | Restauré |
+|---|---|---|
+| Tables `public` et nombre de lignes de chacune | 51 | 51, toutes identiques |
+| Comptes `auth.users` | 29 | 29 |
+| Clés étrangères | 49 | 49 |
+| Fonctions `public` | 30 | 30 |
+| Triggers `public` + `auth` | 26 | 26 |
+| Policies | 168 | 166 (les 2 de `cron` appartiennent à Supabase) |
+| Fichiers Storage (avatars / documents / taxis / movements_pdf) | 21 / 17 / 1 / 0 | octets identiques à `storage.objects` |
+
+Contrôles d'extraction : MD5 calculé côté serveur pour chaque bloc de DDL et chaque lot de lignes, comparé à
+celui des fichiers. Les tables exportées par REST ont été recomptées en SQL ; celles que RLS masquait au compte
+admin (`audit_log`, `procedure_versions`, `user_preferences`, `infractions`, `favoris`, `notifications`) ont été
+réexportées par le connecteur. `SHA256SUMS` couvre chaque fichier de l'archive.
+
+**Non sauvegardé** : les empreintes de mot de passe (`auth.users.encrypted_password`) et les jetons Auth,
+les secrets du Vault, la configuration Auth du tableau de bord (fournisseurs, modèles d'e-mails, URL de redirection).

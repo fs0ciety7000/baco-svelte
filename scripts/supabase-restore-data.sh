@@ -22,7 +22,7 @@ for f in "$BACKUP"/data/*.json; do
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q <<SQL
 \\set data \`cat '$f'\`
 set session_replication_role = replica;
-insert into public."$t" select * from json_populate_recordset(null::public."$t", :'data'::json);
+insert into public."$t" overriding system value select * from json_populate_recordset(null::public."$t", :'data'::json);
 SQL
   echo "  $t : $n lignes"
 done
