@@ -12,7 +12,7 @@ import { isExpired } from "@/server/token";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const TOPICS = new Set(["bus_orders", "taxi_orders", "bus_companies"]);
+const TOPICS = new Set(["bus_orders", "taxi_orders", "bus_companies", "b201_reports"]);
 const HEARTBEAT_MS = 25_000;
 
 export async function GET(request: NextRequest) {
