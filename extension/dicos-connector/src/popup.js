@@ -39,7 +39,16 @@ function fmtResult(r) {
   const num = (v) => Number(v) || 0;
   const when = r.at ? ` · ${new Date(r.at).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" })}` : "";
   const found = num(r.found ?? r.received);
-  return `<span class="ok">✓ ${escapeHtml(String(r.day || ""))}${escapeHtml(when)}</span><br>${found} mission(s)${r.dossiers ? ` · ${num(r.dossiers)} dossier(s), ${num(r.received)} trajet(s)` : ""} · <b>${num(r.created)}</b> créée(s), <b>${num(r.updated)}</b> maj, ${num(r.skipped)} ignorée(s)`;
+  return `<span class="ok">✓ ${escapeHtml(String(r.day || ""))}${escapeHtml(when)}</span><br>${found} mission(s)${r.dossiers ? ` · ${num(r.dossiers)} dossier(s), ${num(r.received)} trajet(s)` : ""} · <b>${num(r.created)}</b> créée(s), <b>${num(r.updated)}</b> maj, ${num(r.skipped)} ignorée(s)${fmtMode(r)}`;
+}
+// Mode de lecture : dossiers complets (trip-details) ou repli sur l'ancien format, avec les chemins essayés.
+function fmtMode(r) {
+  if (r.mode !== "missions") return "";
+  const tries = Array.isArray(r.tripDiag) ? r.tripDiag.slice(0, 6) : [];
+  const list = tries
+    .map((t) => `${escapeHtml(String((t && t.path) || ""))} → ${escapeHtml(String((t && t.why) || ""))}`)
+    .join("<br>");
+  return `<br><span class="err">⚠ Dossiers complets indisponibles : ancien format utilisé.</span>${list ? `<br><small>${list}</small>` : ""}`;
 }
 function escapeHtml(s) {
   return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -134,3 +143,8 @@ $("sync").addEventListener("click", async () => {
 });
 
 load();
+
+// Version installée (pour vérifier que la mise à jour a bien été chargée).
+try {
+  document.getElementById("ver").textContent = "v" + chrome.runtime.getManifest().version;
+} catch (_) {}

@@ -36,13 +36,14 @@ export function assistTransitions(status: AssistStatus) {
   }));
 }
 
-export const PMR_TYPE_CODES = ["NV", "CRF", "CRE", "CRP", "MR", "AUTRE"] as const;
+export const PMR_TYPE_CODES = ["NV", "CRF", "CRE", "CRP", "MR", "DCO", "AUTRE"] as const;
 export const PMR_TYPE_LABEL: Record<string, string> = {
   NV: "Non-voyant",
   CRF: "Chaise roulante fixe",
   CRE: "Chaise électrique",
   CRP: "Chaise pliable",
   MR: "Marche difficile",
+  DCO: "Difficultés de compréhension/orientation",
   AUTRE: "Autre",
 };
 
@@ -115,6 +116,13 @@ function pmrNoun(type: string, plural: boolean): { fem: boolean; word: string } 
       return {
         fem: true,
         word: plural ? "personnes à mobilité réduite" : "personne à mobilité réduite",
+      };
+    case "DCO":
+      return {
+        fem: true,
+        word: plural
+          ? "personnes avec des difficultés d'orientation"
+          : "personne avec des difficultés d'orientation",
       };
     default:
       return { fem: false, word: plural ? "voyageurs PMR" : "voyageur PMR" };

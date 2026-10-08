@@ -23,5 +23,8 @@ describe("libellé à copier", () => {
     expect(assistCopyText({ direction: "arrivee", pax: 3, pmrType: "NV" })).toBe(
       "Débarquement de trois non-voyants",
     );
+    expect(assistCopyText({ direction: "depart", pax: 1, pmrType: "DCO" })).toBe(
+      "Embarquement d'une personne avec des difficultés d'orientation",
+    );
   });
 });

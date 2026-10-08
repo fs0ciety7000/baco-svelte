@@ -18,6 +18,7 @@ export const DICOS_SYMBOL: Record<string, PmrType> = {
   "manual-wheelchair": "CRF",
   "folding-wheelchair": "CRP",
   "reduced-mobility": "MR",
+  "orientation-problems": "DCO",
 };
 export const DICOS_TYPE: Record<string, PmrType> = {
   "pmr-bp": "NV", // blind-person
@@ -27,6 +28,7 @@ export const DICOS_TYPE: Record<string, PmrType> = {
   "pmr-fw": "CRP", // folding-wheelchair
   "pmr-rm": "MR", // reduced-mobility
   "pmr-lm": "MR", // reduced-mobility (trip-details, assistance « Light »)
+  "pmr-to": "DCO", // orientation-problems : difficultés de compréhension/orientation
 };
 
 /** Statut DICOS → statut CSM. `clientStatus = Absent` l'emporte (voir mapMission). */
@@ -158,17 +160,22 @@ export function travelerSummary(traveler: MissionInput["traveler"]): {
   const full = n(traveler.fullAssistances);
   const light = n(traveler.lightAssistances);
   if (Array.isArray(d)) {
-    let pax = full + light;
+    // Les compteurs full/light et la liste `disableds` décrivent les MÊMES personnes (une PMR « Light » figure dans
+    // les deux) : on prend le plus grand des deux, jamais la somme (bug « 2 × MR » pour une voyageuse seule).
+    let listed = 0;
     let best: { type: PmrType; q: number } | null = null;
     for (const item of d) {
       const q = n(item.quantity) || 1;
-      pax += q;
+      listed += q;
       const type = DICOS_SYMBOL[str(item.symbol)] ?? DICOS_TYPE[str(item.typeId)] ?? "AUTRE";
       if (!best || q > best.q) best = { type, q };
     }
-    return { type: best?.type ?? (full + light > 0 ? "MR" : ""), pax: clampPax(pax) };
+    return {
+      type: best?.type ?? (full + light > 0 ? "MR" : ""),
+      pax: clampPax(Math.max(listed, full + light)),
+    };
   }
-  const count = n(d) + full + light;
+  const count = Math.max(n(d), full + light);
   // Liste sans détail : pas de code de type, seulement le nombre.
   return { type: full + light > 0 && n(d) === 0 ? "MR" : "", pax: clampPax(count) };
 }

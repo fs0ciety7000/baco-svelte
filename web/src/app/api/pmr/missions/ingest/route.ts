@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { mapDossier, mapMission, missionDay, type MappedMission } from "@/lib/pmr/dicos-mission";
 import { isValidDay } from "@/lib/orders/time";
+import { districtForStation } from "@/lib/pmr/districts";
 import { createPb } from "@/server/pocketbase";
 import { env } from "@/server/env";
 import { allow } from "@/server/rate-limit";
@@ -226,6 +227,8 @@ export async function POST(request: Request) {
       station: assist.station,
       other_station: assist.other_station,
       district: assist.district || null,
+      // v2 : district de la gare d'arrivée aussi (sinon « ? » dans la liste).
+      arr_district: districtForStation(assist.other_station) || null,
       direction: assist.direction || null,
       mission_type: assist.mission_type,
       train: assist.train,

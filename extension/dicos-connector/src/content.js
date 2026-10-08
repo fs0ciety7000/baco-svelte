@@ -17,6 +17,7 @@
   const dossierCache = new Map(); // "n°/type" -> dossier brut (purgé à la synchro manuelle)
   let tripPath = ""; // gabarit relevé sur la SPA (« /api/…/trip-details/{id}/{type} »)
   let tripPathOk = ""; // gabarit qui a répondu un dossier
+  let tripDiag = []; // derniers essais trip-details en échec (chemin + code), affichés dans le popup
   let auto = { enabled: false, minutes: 10 };
   let timer = null;
   let syncing = false;
@@ -149,10 +150,23 @@
 
   // Lit un dossier complet. Gabarits essayés : celui relevé sur la SPA, puis les chemins connus. Le premier qui
   // renvoie un objet avec `travels` est retenu pour la suite. null si aucun ne répond (repli v1.0).
+  function note(path, why) {
+    if (tripDiag.length < 6 && !tripDiag.some((x) => x.path === path)) tripDiag.push({ path, why });
+  }
   async function fetchDossier(ref, type) {
     const key = `${ref}/${type}`;
     if (dossierCache.has(key)) return dossierCache.get(key);
-    const paths = [...new Set([tripPathOk, tripPath, "/api/trip-details/{id}/{type}", "/api/reservations/trip-details/{id}/{type}"].filter(Boolean))];
+    const paths = [
+      ...new Set(
+        [
+          tripPathOk,
+          tripPath,
+          "/api/trip-details/{id}/{type}",
+          "/trip-details/{id}/{type}",
+          "/api/reservations/trip-details/{id}/{type}",
+        ].filter(Boolean),
+      ),
+    ];
     for (const p of paths) {
       await gate();
       const url = location.origin + p.replace("{id}", encodeURIComponent(ref)).replace("{type}", encodeURIComponent(type));
@@ -160,11 +174,14 @@
         const d = await dicos(url);
         if (d && typeof d === "object" && Array.isArray(d.travels)) {
           tripPathOk = p;
+          tripDiag = [];
           dossierCache.set(key, d);
           return d;
         }
+        note(p, "réponse sans trajets");
       } catch (err) {
-        if (err && err.code === "expired") throw err;
+        // 401/403 sur un chemin candidat ≠ session expirée (la liste vient de répondre) : on essaie le suivant.
+        note(p, err && err.status ? `HTTP ${err.status}` : err && err.code === "expired" ? "HTTP 401/403" : "pas du JSON");
       }
       if (tripPathOk) break; // gabarit connu : inutile d'essayer les autres
     }
@@ -233,7 +250,16 @@
       const sent = dossiers
         ? await pushAll(day, "dossiers", dossiers)
         : await pushAll(day, "missions", await fetchDetails(items));
-      const r = sent.error ? sent : { day, found: items.length, dossiers: dossiers ? dossiers.length : 0, ...sent };
+      const r = sent.error
+        ? sent
+        : {
+            day,
+            found: items.length,
+            mode: dossiers ? "dossiers" : "missions",
+            dossiers: dossiers ? dossiers.length : 0,
+            tripDiag: dossiers ? [] : tripDiag.slice(0, 6),
+            ...sent,
+          };
       setLast(r);
       return r;
     } catch (err) {

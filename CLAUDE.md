@@ -374,6 +374,14 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   changement (`FormAutoSubmit`). Panneau : `Sheet` en `handleOnly` (le glisser de Vaul empêchait la sélection de texte).
   Extension **1.1.0** : liste du jour → dossiers distincts → trip-details (gabarit de chemin relevé sur la SPA par
   `inject.js`), repli sur le format v1.0. Les anciennes lignes v2 (`dicos_id` sans `j`) sont supprimées sur le test.
+- 2026-10-08 — **Missions PMR v3, correctifs** (1re synchro après v3 : **0 ligne au format trajet**, l'extension était
+  retombée sur l'ancien format → « 2 × MR », « ? », types vides). Nombre de voyageurs : les compteurs DICOS
+  full/light et `disableds` décrivent les **mêmes personnes** → max, jamais la somme (dossier réel 2026-10-02-0119).
+  Nouveau type **DCO** (`pmr-to` / `orientation-problems`, « difficultés de compréhension/orientation », migration
+  `1760001200`). District de la gare d'arrivée aussi en v2 ; gare hors des 3 districts affichée « hors » (Flandre,
+  étranger : normal). Panneau : lignes Téléphone et E-mail (mailto) séparées. Extension **1.2.0** : chemin
+  `/trip-details/{n°}/{type}` ajouté aux candidats, 401/403 sur un candidat ≠ session expirée, **diagnostic dans le
+  popup** (mode dossiers / repli + chemins essayés et codes) et version affichée.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

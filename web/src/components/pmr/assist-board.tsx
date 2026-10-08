@@ -53,10 +53,10 @@ type Leg = {
 function legOf(a: Assist): Leg {
   if (a.inAssist || a.outAssist || a.arrTime || a.transport)
     return {
-      dep: a.station || "?",
+      dep: a.station || "—",
       depTime: a.time,
       depDistrict: a.district,
-      arr: a.otherStation || "?",
+      arr: a.otherStation || "—",
       arrTime: a.arrTime,
       arrDistrict: a.arrDistrict,
       inA: a.inAssist,
@@ -64,20 +64,20 @@ function legOf(a: Assist): Leg {
     };
   if (a.direction === "arrivee")
     return {
-      dep: a.otherStation || "?",
+      dep: a.otherStation || "—",
       depTime: "",
       depDistrict: "",
-      arr: a.station || "?",
+      arr: a.station || "—",
       arrTime: a.time,
       arrDistrict: a.district,
       inA: false,
       outA: true,
     };
   return {
-    dep: a.station || "?",
+    dep: a.station || "—",
     depTime: a.time,
     depDistrict: a.district,
-    arr: a.otherStation || "?",
+    arr: a.otherStation || "—",
     arrTime: "",
     arrDistrict: "",
     inA: a.direction === "depart",
@@ -257,7 +257,8 @@ export function AssistBoard({
     const l = legOf(a);
     if (!l.arrDistrict || l.arrDistrict === l.depDistrict)
       return l.depDistrict || l.arrDistrict || "";
-    return `${l.depDistrict || "?"} → ${l.arrDistrict}`;
+    // Gare hors des 3 districts (Flandre, étranger) : « hors » plutôt qu'un « ? » ambigu.
+    return `${l.depDistrict || "hors"} → ${l.arrDistrict}`;
   };
 
   return (
@@ -332,7 +333,7 @@ export function AssistBoard({
                         )}
                       </Td>
                       <Td className="max-w-56 truncate">
-                        {a.pax} × {a.pmrType || "?"}
+                        {a.pax} × {a.pmrType || "type ?"}
                         {canPmr && a.clientName ? (
                           <span className="text-fg-muted"> · {a.clientName}</span>
                         ) : null}
@@ -367,7 +368,7 @@ export function AssistBoard({
                           </span>
                         </span>
                       }
-                      meta={`${!groupByDay ? `${formatDay(a.day)} · ` : ""}${[legOf(a).inA ? "IN" : "", legOf(a).outA ? "OUT" : ""].filter(Boolean).join("+") || "—"}${a.transport === "taxi" ? " · Taxi" : a.train ? ` · ${a.train}` : ""} · ${a.pax} × ${a.pmrType || "?"}${districtsOf(a) ? ` · ${districtsOf(a)}` : ""}${canPmr && a.clientName ? ` · ${a.clientName}` : ""}`}
+                      meta={`${!groupByDay ? `${formatDay(a.day)} · ` : ""}${[legOf(a).inA ? "IN" : "", legOf(a).outA ? "OUT" : ""].filter(Boolean).join("+") || "—"}${a.transport === "taxi" ? " · Taxi" : a.train ? ` · ${a.train}` : ""} · ${a.pax} × ${a.pmrType || "type ?"}${districtsOf(a) ? ` · ${districtsOf(a)}` : ""}${canPmr && a.clientName ? ` · ${a.clientName}` : ""}`}
                       aside={<AssistBadge status={a.status} />}
                     />
                   </button>
@@ -472,9 +473,6 @@ export function AssistBoard({
                     ) : (
                       <span>{panel.assist.clientName}</span>
                     )}
-                    {panel.assist.clientPhone ? (
-                      <PhoneLink phone={panel.assist.clientPhone} />
-                    ) : null}
                   </span>
                 ) : panel.assist.clientId || panel.assist.clientName ? (
                   "Voyageur enregistré (droit PMR requis pour le voir)"
@@ -482,14 +480,29 @@ export function AssistBoard({
                   "—"
                 )}
               </dd>
+              {canPmr && panel.assist.clientPhone ? (
+                <>
+                  <dt className="text-small text-fg-muted">Téléphone</dt>
+                  <dd>
+                    <PhoneLink phone={panel.assist.clientPhone} />
+                  </dd>
+                </>
+              ) : null}
+              {canPmr && panel.assist.mission?.clientEmail ? (
+                <>
+                  <dt className="text-small text-fg-muted">E-mail</dt>
+                  <dd className="break-all">
+                    <a
+                      className="text-accent underline-offset-2 hover:underline"
+                      href={`mailto:${panel.assist.mission.clientEmail}`}
+                    >
+                      {panel.assist.mission.clientEmail}
+                    </a>
+                  </dd>
+                </>
+              ) : null}
               {canPmr && panel.assist.mission ? (
                 <>
-                  {panel.assist.mission.clientEmail ? (
-                    <>
-                      <dt className="text-small text-fg-muted">E-mail</dt>
-                      <dd className="break-all">{panel.assist.mission.clientEmail}</dd>
-                    </>
-                  ) : null}
                   {panel.assist.mission.clientLang ? (
                     <>
                       <dt className="text-small text-fg-muted">Langue</dt>

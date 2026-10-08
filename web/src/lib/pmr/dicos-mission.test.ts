@@ -59,14 +59,14 @@ describe("mapping DICOS", () => {
   });
 
   it("type et nombre depuis le détail (disableds typés)", () => {
-    expect(travelerSummary(detail.traveler)).toEqual({ type: "NV", pax: 4 });
+    expect(travelerSummary(detail.traveler)).toEqual({ type: "NV", pax: 2 });
     expect(
       travelerSummary({
         disableds: [{ typeId: "pmr-ew", quantity: 1 }],
         fullAssistances: 1,
         lightAssistances: 0,
       }),
-    ).toEqual({ type: "CRE", pax: 2 });
+    ).toEqual({ type: "CRE", pax: 1 });
     expect(travelerSummary({ disableds: [{ typeId: "pmr-inconnu", quantity: 1 }] })).toEqual({
       type: "AUTRE",
       pax: 1,
@@ -77,13 +77,13 @@ describe("mapping DICOS", () => {
         disableds: [{ typeId: "pmr-wc", quantity: 3, symbol: "fixed-wheelchair" }],
         fullAssistances: 3,
       }),
-    ).toEqual({ type: "CRF", pax: 6 });
+    ).toEqual({ type: "CRF", pax: 3 });
     expect(
       travelerSummary({
         disableds: [{ typeId: "pmr-fw", quantity: 1, symbol: "folding-wheelchair" }],
         fullAssistances: 1,
       }),
-    ).toEqual({ type: "CRP", pax: 2 });
+    ).toEqual({ type: "CRP", pax: 1 });
     // Symbole inconnu mais typeId connu → repli sur typeId.
     expect(
       travelerSummary({ disableds: [{ typeId: "pmr-bp", symbol: "x", quantity: 1 }] }),
@@ -94,9 +94,10 @@ describe("mapping DICOS", () => {
   });
 
   it("type et nombre depuis la liste (compteurs seuls)", () => {
+    // Compteurs = mêmes personnes (dossier réel 2026-10-02-0119 : 1 PMR « Light » → 1, pas 2).
     expect(travelerSummary({ disableds: 1, fullAssistances: 0, lightAssistances: 1 })).toEqual({
       type: "",
-      pax: 2,
+      pax: 1,
     });
     expect(travelerSummary({ disableds: 0, fullAssistances: 0, lightAssistances: 2 })).toEqual({
       type: "MR",
@@ -145,7 +146,7 @@ describe("mapping DICOS", () => {
       direction: "depart",
       train: "429",
       dicos_ref: "2026-10-07-0999",
-      pax: 4,
+      pax: 2,
       pmr_type: "NV",
       status: "realisee",
       source: "dicos",
@@ -301,6 +302,15 @@ describe("mapDossier (trip-details, une ligne par trajet)", () => {
       owner_name: "Agent fictif",
     });
     expect(mission.client_desc).toContain("chaise roulante fixe");
+  });
+
+  it("difficultés d'orientation (pmr-to) et voyageur seul compté une fois", () => {
+    expect(
+      travelerSummary({
+        disableds: [{ typeId: "pmr-to", symbol: "orientation-problems", quantity: 1 }],
+        lightAssistances: 1,
+      }),
+    ).toEqual({ type: "DCO", pax: 1 });
   });
 
   it("dossier vide ou invalide", () => {
