@@ -37,7 +37,8 @@ Ne pas autoriser `test.fs0ciety.org` : l'instance PocketBase du jeu n'a rien à 
 | `SUPABASE_PUBLISHABLE_KEY` | Clé publiable **après rotation** |
 | `CSM_TEST_ADMIN_EMAIL`, `CSM_TEST_ADMIN_PASSWORD` | Compte admin de test BACO/CSM |
 | `CSM_PB_URL`, `CSM_PB_ADMIN_EMAIL`, `CSM_PB_ADMIN_PASSWORD` | Instance PocketBase CSM, une fois déployée sur Coolify |
-| `COOLIFY_API_URL`, `COOLIFY_API_TOKEN` | Facultatif : déploiement piloté par Claude (jeton limité au projet CSM) |
+| `COOLIFY_API_URL` | Facultatif : adresse de **ton tableau de bord Coolify**, sans chemin (ex. `https://coolify.fs0ciety.org`). L'API est servie sous `/api/v1` |
+| `COOLIFY_API_TOKEN` | Facultatif : jeton créé dans Coolify → **Keys & Tokens → API tokens** (activer l'API dans **Settings** si besoin), droits `read` + `write` + `deploy`, **sans** `root` ni `read:sensitive` |
 
 **Ne pas reprendre** `PREPROD_PB_*` ni `PREPROD_KEEP_EMAILS` (instance du jeu). `OPENAI_API_KEY` n'est pas utile à CSM.
 
