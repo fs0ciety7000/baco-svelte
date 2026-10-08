@@ -39,6 +39,7 @@ function fmtResult(r) {
   const num = (v) => Number(v) || 0;
   const when = r.at ? ` · ${new Date(r.at).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" })}` : "";
   const found = num(r.found ?? r.received);
+  // r.days > 1 : synchro de plusieurs jours (totaux cumulés).
   return `<span class="ok">✓ ${escapeHtml(String(r.day || ""))}${escapeHtml(when)}</span><br>${found} mission(s)${r.dossiers ? ` · ${num(r.dossiers)} dossier(s), ${num(r.received)} trajet(s)` : ""} · <b>${num(r.created)}</b> créée(s), <b>${num(r.updated)}</b> maj, ${num(r.skipped)} ignorée(s)${fmtMode(r)}`;
 }
 // Mode de lecture : dossiers complets (trip-details) ou repli sur l'ancien format, avec les chemins essayés.
@@ -132,7 +133,11 @@ $("sync").addEventListener("click", async () => {
   $("sync").disabled = true;
   setStatus("Synchronisation en cours…");
   try {
-    const r = await chrome.tabs.sendMessage(tab.id, { cmd: "sync", day: $("day").value || today() });
+    const r = await chrome.tabs.sendMessage(tab.id, {
+      cmd: "sync",
+      day: $("day").value || today(),
+      days: Number($("days").value) || 1,
+    });
     if (r && r.busy) {
       // Une synchro (manuelle ou automatique) tourne déjà : on affiche son avancement plutôt qu'une erreur.
       const v = await chrome.storage.local.get(["progress"]);

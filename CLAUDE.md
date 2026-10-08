@@ -388,7 +388,8 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   sens ni type → lignes « type ? ») ignorées à l'ingestion. Extension **1.3.0** : gabarit du dossier appris sur
   **toute requête portant un n° de dossier** (pas seulement « trip-details »), jusqu'à 8 gabarits essayés ;
   **avancement en direct** dans le popup (phase, x / y, secondes) ; « déjà en cours » affiche l'avancement ;
-  garde-fou 4 min ; erreur interne détaillée (recharger l'onglet DICOS après mise à jour de l'extension).
+  garde-fou 4 min ; erreur interne détaillée (recharger l'onglet DICOS après mise à jour de l'extension) ;
+  **synchro de plusieurs jours** (1, 2, 3 ou 7, un jour après l'autre, cache de dossiers partagé, totaux cumulés).
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

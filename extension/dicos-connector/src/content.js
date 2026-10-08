@@ -311,10 +311,13 @@
     if (!force && now - progAt < 250 && done < total) return;
     progAt = now;
     try {
-      chrome.storage.local.set({ progress: { phase, done, total, day: currentDay, at: now, startedAt: syncAt } });
+      chrome.storage.local.set({
+        progress: { phase: rangeLabel + phase, done, total, day: currentDay, at: now, startedAt: syncAt },
+      });
     } catch (_) {}
   }
   let currentDay = "";
+  let rangeLabel = ""; // « Jour 2/3 · » pendant une synchro de plusieurs jours
 
   function setLast(result) {
     try {
@@ -337,6 +340,30 @@
     }, ms);
   }
 
+  // Plusieurs jours d'affilée (1 à 7) : un jour après l'autre ; le cache de dossiers est gardé d'un jour à l'autre
+  // (un dossier aller-retour n'est lu qu'une fois), purgé seulement au début.
+  const addDays = (day, n) => new Date(Date.parse(day + "T12:00:00Z") + n * 86_400_000).toISOString().slice(0, 10);
+  async function doSyncRange(start, days, { fresh = true } = {}) {
+    const n = Math.max(1, Math.min(7, Number(days) || 1));
+    if (n === 1) return doSync(start, { fresh });
+    const total = { day: `${start} → ${addDays(start, n - 1)}`, days: n, found: 0, dossiers: 0, received: 0, created: 0, updated: 0, unchanged: 0, skipped: 0 };
+    try {
+      for (let i = 0; i < n; i++) {
+        rangeLabel = `Jour ${i + 1}/${n} · `;
+        const r = await doSync(addDays(start, i), { fresh: fresh && i === 0 });
+        if (r && r.busy) return r;
+        if (r && r.error) return { ...r, error: `${addDays(start, i)} : ${r.error}` };
+        for (const k of ["found", "dossiers", "received", "created", "updated", "unchanged", "skipped"])
+          total[k] += Number(r && r[k]) || 0;
+        if (r && r.mode === "missions") Object.assign(total, { mode: "missions", tripDiag: r.tripDiag });
+      }
+    } finally {
+      rangeLabel = "";
+    }
+    setLast(total);
+    return total;
+  }
+
   chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     if (!msg || typeof msg.cmd !== "string") return;
     if (msg.cmd === "status") {
@@ -344,7 +371,7 @@
       return;
     }
     if (msg.cmd === "sync") {
-      doSync(msg.day || localDay(), { fresh: msg.fresh !== false }).then(reply);
+      doSyncRange(msg.day || localDay(), msg.days, { fresh: msg.fresh !== false }).then(reply);
       return true; // réponse asynchrone
     }
   });
