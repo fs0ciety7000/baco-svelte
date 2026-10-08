@@ -12,7 +12,7 @@ proxy Traefik). Source : GitHub App `breakable-bee-gkkc8wwg8sswo044`, dépôt `f
 | Ressource | UUID | Dossier / Dockerfile | Port | Domaine | Nom interne |
 |---|---|---|---|---|---|
 | `csm-pocketbase` | `ttu45cm7qrgmqgo7dcespp3f` | `/pocketbase` · `/Dockerfile` | 8090 | `pb-test-csm.fs0ciety.org` | `csm-pocketbase` |
-| `csm-web` | `xzhygai7yapefgji83rkgile` | `/web` · `/Dockerfile` | 3000 | `test-csm.fs0ciety.org` (via Cloudflare) | `csm-web` |
+| `csm-web` | `xzhygai7yapefgji83rkgile` | `/web` · `/Dockerfile` | 3000 | `test-csm.fs0ciety.org` (via Cloudflare) | aléatoire (pas besoin de nom fixe) |
 
 - **Branche déployée** : `claude/admiring-thompson-1lkun9` (branche de la session 2). À chaque nouvelle branche de
   travail, la changer dans Coolify (Application → Configuration → Git → Branch, ou `PATCH /applications/{uuid}`
@@ -84,6 +84,16 @@ Import des données de test (quand l'utilisateur l'a décidé) :
 3. supprimer la copie de la sauvegarde du volume.
 
 ## 6. Pièges
+
+- **Sonde de santé Coolify** : elle interroge `http://localhost:<port>` avec curl puis wget. Dans les images Alpine,
+  `localhost` se résout d'abord en `::1` alors que Next écoute en IPv4 (`HOSTNAME=0.0.0.0`) → refus, conteneur
+  « unhealthy », Traefik le retire (**503 « no available server »**) et Coolify annule le déploiement. Correctif :
+  `health_check_host = 127.0.0.1` sur les deux applications. Ne pas passer Next en `HOSTNAME=::` (plante si IPv6 est
+  désactivé).
+- **Cloudflare Web Analytics** injecte `static.cloudflareinsights.com/beacon.min.js` dans les pages : le navigateur
+  sort alors du domaine CSM (et le pare-feu de l'entreprise peut le bloquer). À désactiver dans Cloudflare
+  (Analytics & Logs → Web Analytics → `fs0ciety.org` → désactiver l'injection automatique, ou une règle qui l'exclut
+  pour `test-csm`).
 
 - Le domaine `test-csm.fs0ciety.org` passe par **Cloudflare** (proxy) : SSE compatible (battement toutes les 25 s,
   `X-Accel-Buffering: no`), mais garder le mode SSL **Full (strict)** pour que Traefik serve son certificat.

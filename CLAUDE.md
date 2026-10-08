@@ -166,7 +166,11 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - (v2) Docker : le démon n'est pas lancé dans l'environnement cloud (`nohup dockerd &` suffit) ; les builds qui
   téléchargent (wget, npm, polices) échouent derrière le proxy TLS → tester l'image avec le binaire local.
 - (v2) Coolify : `POST /deploy` (et non GET) ; variables créées par l'API = `is_buildtime: true` par défaut → forcer
-  `false` pour les secrets ; `custom_internal_name` donne un nom réseau stable (`csm-pocketbase`).
+  `false` pour les secrets ; `custom_internal_name` donne un nom réseau stable (`csm-pocketbase`) ; sonde de santé à
+  régler sur `127.0.0.1` (`localhost` = `::1` dans Alpine → 503). Logs de déploiement : droit `read:sensitive` absent
+  (voulu) → diagnostic par tâches planifiées exécutées une fois (le statut reflète le code de retour), puis supprimées.
+- (v2) `cn()` = tailwind-merge **étendu** (tailles et couleurs sémantiques), sinon il supprime `text-accent-fg` ou
+  `text-body` : voir `web/CLAUDE.md`.
 - (v2) Avant de relancer le serveur web, vérifier que l'ancien `next-server` est arrêté (sinon EADDRINUSE et les
   tests tournent contre l'ancien build) : `ps -eo pid,args | grep "[n]ext-server"`.
 - (v2) Ne jamais faire `pkill -f "<motif>"` quand le motif figure dans la commande elle-même : le shell se tue
@@ -237,6 +241,9 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   superuser par variables runtime, sauvegarde PocketBase 2 h + volume Coolify 2 h 30, 14 conservées ; R2 plus tard) et
   `csm-web` (`PB_URL` interne). Branche déployée = branche de session (à changer dans Coolify à chaque session).
   CI `csm-v2.yml` (web, règles PocketBase, E2E, images). Base de test vide : import des données à décider.
+- 2026-10-08 — `https://test-csm.fs0ciety.org` **en ligne** (santé OK, PocketBase joint en interne, CSP/HSTS), CI verte
+  au premier run. Trouvés au déploiement : sonde `localhost`/IPv6 (503), balise Cloudflare Web Analytics injectée
+  (à couper côté Cloudflare), tailwind-merge qui retirait `text-accent-fg` (bouton primaire peu lisible) → corrigé.
 
 
 ---

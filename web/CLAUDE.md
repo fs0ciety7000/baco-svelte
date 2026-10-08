@@ -42,6 +42,9 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   d'une page part dans le flux RSC même si le layout appelle `notFound()`. Chaque `page.tsx` appelle
   `requirePermission(perm)`, `requireRoute(href)` (règles de la navigation) ou `requireAdmin()`. Test E2E dédié.
 - `Button asChild` : Radix `Slot` exige un seul enfant (pas de spinner dans ce cas).
+- `cn()` (tailwind-merge) est **étendu** avec nos tailles (`text-body`…) et nos couleurs (`text-fg`…) : sans cela il
+  supprimait l'une des deux (bouton primaire sans `text-accent-fg`, contraste 1,6:1). Tout nouveau jeton de taille ou de
+  couleur doit être ajouté dans `src/lib/utils.ts`. L'E2E `/design` vérifie la couleur calculée du bouton primaire.
 
 ## Shell (étape 3)
 

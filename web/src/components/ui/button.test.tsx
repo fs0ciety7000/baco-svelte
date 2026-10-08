@@ -20,3 +20,12 @@ describe("Button", () => {
     expect(b).toHaveAttribute("aria-busy", "true");
   });
 });
+
+describe("Button primaire", () => {
+  it("garde la couleur de texte accent-fg avec la taille (contraste AA)", () => {
+    render(<Button variant="primary">Envoyer</Button>);
+    const cls = screen.getByRole("button", { name: "Envoyer" }).className;
+    expect(cls).toContain("text-accent-fg");
+    expect(cls).toContain("text-body");
+  });
+});

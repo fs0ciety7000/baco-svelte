@@ -40,6 +40,20 @@ for (const theme of THEMES) {
     );
     expect(overflow, "défilement horizontal de page").toBeLessThanOrEqual(0);
 
+    // Couleur réellement appliquée au bouton primaire = accent-fg du thème (contraste testé dans tokens.test.ts).
+    const colors = await page
+      .getByRole("button", { name: "Nouveau BC" })
+      .first()
+      .evaluate((el) => {
+        const probe = document.createElement("span");
+        probe.style.color = "var(--accent-fg)";
+        el.appendChild(probe);
+        const expected = getComputedStyle(probe).color;
+        probe.remove();
+        return { actual: getComputedStyle(el).color, expected };
+      });
+    expect(colors.actual, "texte du bouton primaire").toBe(colors.expected);
+
     await page.screenshot({
       path: `test-results/design-${theme}-${testInfo.project.name}.png`,
       fullPage: true,
