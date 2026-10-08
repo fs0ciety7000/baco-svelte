@@ -9,10 +9,16 @@ describe("disposition du tableau de bord", () => {
   });
 
   it("complète les widgets manquants et dédoublonne", () => {
-    const l = normalizeLayout({ order: ["trains", "trains", "commandes"], hidden: ["equipe"] });
+    const l = normalizeLayout({ order: ["trains", "trains", "commandes"], hidden: ["travaux"] });
     expect(l.order.slice(0, 2)).toEqual(["trains", "commandes"]);
     expect(l.order).toHaveLength(DEFAULT_LAYOUT.order.length);
-    expect(l.hidden).toEqual(["equipe"]);
+    expect(l.hidden).toEqual(["travaux"]);
+  });
+
+  it("ignore un widget retiré (« equipe ») sans perdre la disposition", () => {
+    const l = normalizeLayout({ order: ["equipe", "trains"], hidden: ["equipe", "travaux"] });
+    expect(l.order[0]).toBe("trains");
+    expect(l.hidden).toEqual(["travaux"]);
   });
 
   it("déplace d'un cran, sans sortir des bornes", () => {

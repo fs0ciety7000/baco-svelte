@@ -143,8 +143,14 @@ export const MODULES: NavModule[] = [
     label: "Équipe",
     icon: Users,
     tabs: [
-      { href: "/equipe", label: "Planning et congés", permission: "planning:read" },
-      { href: "/equipe/annuaire", label: "Annuaire de l'équipe", hideFor: ["otto_agent"] },
+      // Planning et congés : pas pour l'instant (décision du 9 oct. 2026).
+      {
+        href: "/equipe",
+        label: "Annuaire de l'équipe",
+        hideFor: ["otto_agent"],
+        keywords: ["collègues"],
+      },
+      { href: "/equipe/profil", label: "Mon profil", keywords: ["mot de passe", "compte"] },
       {
         href: "/equipe/nouveautes",
         label: "Nouveautés",
@@ -163,7 +169,6 @@ export const ADMIN: NavModule = {
   tabs: [
     { href: "/admin", label: "Utilisateurs" },
     { href: "/admin/lignes", label: "Lignes et arrêts" },
-    { href: "/admin/gares", label: "Gares" },
     { href: "/admin/audit", label: "Journal d'audit" },
     { href: "/admin/sante", label: "Santé" },
   ],

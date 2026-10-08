@@ -96,3 +96,61 @@ export function canWriteB201(
 export function isAdmin(user: PermissionSubject | null | undefined): boolean {
   return user?.role === "admin" || user?.role === "sysop";
 }
+
+/** Droit accordé par le seul rôle (sans grants / denies) : sert à la matrice « défaut du rôle » de l'admin. */
+export function roleHas(role: Role, permission: string): boolean {
+  if (role === "admin" || role === "sysop") return true;
+  return (ROLE_DEFAULTS[role] ?? []).includes(permission);
+}
+
+/** Catalogue des droits affichés dans la fiche d'un compte (Admin › Utilisateurs), groupés par module. */
+export const PERMISSION_CATALOG: { group: string; items: { key: string; label: string }[] }[] = [
+  {
+    group: "Commandes",
+    items: [
+      { key: "otto:read", label: "Bus : lire" },
+      { key: "otto:write", label: "Bus : écrire" },
+      { key: "generate_taxi:read", label: "Taxi : lire" },
+      { key: "generate_taxi:write", label: "Taxi : écrire" },
+      { key: "b201:read", label: "B201 : lire" },
+      { key: "b201:write", label: "B201 : écrire" },
+    ],
+  },
+  {
+    group: "PMR",
+    items: [
+      { key: "pmr:read", label: "PMR (nominatif) : lire" },
+      { key: "pmr:write", label: "PMR : écrire" },
+    ],
+  },
+  {
+    group: "Opérations",
+    items: [
+      { key: "live:read", label: "Trains en direct" },
+      { key: "ops:read", label: "Journal : lire" },
+      { key: "ops:write", label: "Journal : écrire" },
+      { key: "carte_pn:read", label: "Carte PN : lire" },
+      { key: "carte_pn:write", label: "Carte PN : écrire" },
+      { key: "stats:read", label: "Statistiques" },
+    ],
+  },
+  {
+    group: "Annuaire et données",
+    items: [
+      { key: "repertoire:read", label: "Annuaire : lire" },
+      { key: "repertoire:write", label: "Annuaire : écrire" },
+      { key: "documents:read", label: "Procédures et documents : lire" },
+      { key: "documents:write", label: "Procédures et documents : écrire" },
+      { key: "ptcar:read", label: "PtCar : lire" },
+      { key: "ptcar:write", label: "PtCar : écrire" },
+      { key: "ebp:read", label: "EBP : lire" },
+      { key: "ebp:write", label: "EBP : écrire" },
+      { key: "lignes:read", label: "Lignes : lire" },
+      { key: "lignes:write", label: "Lignes : écrire" },
+    ],
+  },
+  {
+    group: "Administration",
+    items: [{ key: "audit:read", label: "Journal d'audit : lire" }],
+  },
+];

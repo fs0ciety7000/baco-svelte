@@ -17,7 +17,9 @@ describe("navigation", () => {
 
   it("filtre selon les permissions : l'agent C3 voit les commandes bus, la B201 et les stats", () => {
     const mods = visibleModules({ role: "otto_agent" });
-    expect(mods.map((m) => m.id)).toEqual(["accueil", "commandes", "operations"]);
+    // « Équipe » : seulement « Mon profil » (changer son mot de passe) pour l'agent Otto.
+    expect(mods.map((m) => m.id)).toEqual(["accueil", "commandes", "operations", "equipe"]);
+    expect(mods.find((m) => m.id === "equipe")?.href).toBe("/equipe/profil");
     expect(mods.find((m) => m.id === "commandes")?.tabs.map((t) => t.label)).toEqual([
       "Bus",
       "Suivi",

@@ -605,6 +605,66 @@ try {
 	check('document détaché supprimable', rfDelFree.status === 204, `HTTP ${rfDelFree.status}`);
 	for (const [c, id] of [['procedures', rfPid], ['ptcar', rfPc.json?.id], ['directory_contacts', rfCt.json?.id]]) if (id) { await api('DELETE', `/api/collections/${c}/records/${id}`, { token: root }); auditIds.push(id); }
 
+	// --- Équipe et Admin (1760001400) : comptes gérés par admin/sysop seuls, Nouveautés, réglages ---
+	const eaMail = `ea-${suffix}@csm.invalid`;
+	const eaPass = 'Ea-test-123456';
+	const eaUserCreate = await api('POST', '/api/collections/users/records', {
+		token: u.token,
+		body: { email: eaMail, password: eaPass, passwordConfirm: eaPass, role: 'user' }
+	});
+	check('agent ne crée pas de compte', eaUserCreate.status >= 400, `HTTP ${eaUserCreate.status}`);
+	const eaModCreate = await api('POST', '/api/collections/users/records', {
+		token: roles.moderator.token,
+		body: { email: eaMail, password: eaPass, passwordConfirm: eaPass, role: 'user' }
+	});
+	check('moderator ne crée pas de compte', eaModCreate.status >= 400, `HTTP ${eaModCreate.status}`);
+	const eaAcc = await api('POST', '/api/collections/users/records', {
+		token: roles.admin.token,
+		body: { email: eaMail, password: eaPass, passwordConfirm: eaPass, role: 'user', name: 'Compte test', verified: true }
+	});
+	check('admin crée un compte', eaAcc.status === 200, `HTTP ${eaAcc.status}`);
+	if (eaAcc.json?.id) created.push(eaAcc.json.id);
+	const eaPw = await api('PATCH', `/api/collections/users/records/${eaAcc.json?.id}`, {
+		token: roles.admin.token,
+		body: { password: 'Ea-reset-654321', passwordConfirm: 'Ea-reset-654321' }
+	});
+	check('admin réinitialise le mot de passe sans l ancien', eaPw.status === 200, `HTTP ${eaPw.status}`);
+	const eaSelfDis = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: u.token, body: { disabled_role: 'admin' } });
+	check('agent ne pose pas disabled_role sur sa fiche', eaSelfDis.status >= 400, `HTTP ${eaSelfDis.status}`);
+	await api('PATCH', `/api/collections/users/records/${eaAcc.json?.id}`, {
+		token: roles.admin.token,
+		body: { role: 'disabled', disabled_role: 'user' }
+	});
+	const eaLogin = await api('POST', '/api/collections/users/auth-with-password', { body: { identity: eaMail, password: 'Ea-reset-654321' } });
+	check('compte désactivé : connexion refusée', eaLogin.status >= 400, `HTTP ${eaLogin.status}`);
+
+	const clUser = await api('POST', '/api/collections/changelog/records', { token: u.token, body: { title: 't', type: 'nouveau', author: u.id } });
+	check('agent n écrit pas les Nouveautés', clUser.status >= 400, `HTTP ${clUser.status}`);
+	const clForge = await api('POST', '/api/collections/changelog/records', {
+		token: roles.moderator.token,
+		body: { title: 't', type: 'nouveau', author: u.id }
+	});
+	check('Nouveautés : auteur non forgeable', clForge.status >= 400, `HTTP ${clForge.status}`);
+	const clMod = await api('POST', '/api/collections/changelog/records', {
+		token: roles.moderator.token,
+		body: { title: 'Nouveauté test', type: 'ameliore', content: '**ok**', author: roles.moderator.id }
+	});
+	check('moderator publie une nouveauté', clMod.status === 200, `HTTP ${clMod.status}`);
+	const clRead = await api('GET', `/api/collections/changelog/records/${clMod.json?.id}`, { token: roles.reader.token });
+	check('Nouveautés lisibles par un lecteur', clRead.status === 200, `HTTP ${clRead.status}`);
+	if (clMod.json?.id) await api('DELETE', `/api/collections/changelog/records/${clMod.json.id}`, { token: root });
+
+	const stUser = await api('POST', '/api/collections/app_settings/records', { token: u.token, body: { key: `t_${suffix}`, value: true, updated_by: u.id } });
+	check('agent ne modifie pas les réglages', stUser.status >= 400, `HTTP ${stUser.status}`);
+	const stAdmin = await api('POST', '/api/collections/app_settings/records', {
+		token: roles.admin.token,
+		body: { key: `t_${suffix}`, value: true, updated_by: roles.admin.id }
+	});
+	check('admin écrit un réglage', stAdmin.status === 200, `HTTP ${stAdmin.status}`);
+	const stRead = await api('GET', `/api/collections/app_settings/records/${stAdmin.json?.id}`, { token: roles.reader.token });
+	check('réglages lisibles par tout agent actif', stRead.status === 200, `HTTP ${stRead.status}`);
+	if (stAdmin.json?.id) await api('DELETE', `/api/collections/app_settings/records/${stAdmin.json.id}`, { token: root });
+
 	// Admin : supprime.
 	const adel = await api('DELETE', `/api/collections/bus_orders/records/${order.json.id}`, { token: roles.admin.token });
 	check('admin supprime', adel.status === 204, `HTTP ${adel.status}`);

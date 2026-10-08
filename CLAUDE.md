@@ -35,7 +35,7 @@ gelée** (v1, branche `ccr-5dca0da8-4yg4i6`) : ne pas le modifier.
 | 2 | Design system + page `/design` (5 thèmes, GSAP) | ✅ 8 oct. — jetons + test AA (156 contrôles), 19 composants, `/design`, 17 E2E ; captures et écarts **validés** |
 | 3 | Shell (6 entrées, onglets, ⌘K, mobile 4 + Plus) + tableau de bord | ✅ 8 oct. — 24 E2E, CSP, gardes par page, captures validées |
 | 4 | Données : schéma PocketBase, règles d'accès, import | 🔄 données BACO du 8 oct. importées sur l'instance de test (5 collections) ; migration réelle **en une fois à la bascule** |
-| 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 **Commandes** livré en session 3 (schéma + 66 contrôles de règles, bus, taxi, envoi `.eml` + PDF, suivi, B201, E2E) : **validé le 8 oct.** ; **PMR validé le 8 oct.** (schéma + 105 contrôles de règles, prestations, collage DICOS, clients, matériel, E2E) ; **Opérations validé le 8 oct.** (trains en direct iRail, main courante, carte PN, statistiques, cloche ; 149 contrôles de règles, 46 E2E) ; **DICOS / Missions PMR validé** (extension + ingestion, lecture seule, trajet/IN-OUT/district/copier) ; **Annuaire et données (ex-Référentiels) livré** (annuaire, lignes, PtCar, EBP, procédures + documents ; 7 collections ; 173 contrôles de règles ; audit + revue passés ; données v1 importées sur l'instance de test) ; suivant : Équipe, Admin |
+| 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 **Commandes** livré en session 3 (schéma + 66 contrôles de règles, bus, taxi, envoi `.eml` + PDF, suivi, B201, E2E) : **validé le 8 oct.** ; **PMR validé le 8 oct.** (schéma + 105 contrôles de règles, prestations, collage DICOS, clients, matériel, E2E) ; **Opérations validé le 8 oct.** (trains en direct iRail, main courante, carte PN, statistiques, cloche ; 149 contrôles de règles, 46 E2E) ; **DICOS / Missions PMR validé** (extension + ingestion, lecture seule, trajet/IN-OUT/district/copier) ; **Annuaire et données (ex-Référentiels) livré** (annuaire, lignes, PtCar, EBP, procédures + documents ; 7 collections ; 173 contrôles de règles ; audit + revue passés ; données v1 importées sur l'instance de test) ; **Équipe et Admin livrés, à valider** |
 | 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | ✅ 8 oct. — https://test-csm.fs0ciety.org en ligne ; projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
 | — | Hotfix sécurité BACO (`supabase/migrations/20261008120000_security_hotfix.sql`) | ✅ appliqué par l'utilisateur (SQL Editor) le 8 oct., vérifié : 0 ERROR (36 avant). Suite **non appliquée** : `20261008130000_hotfix_followup.sql` (test NULL de `get_my_role()`) et `20261008140000_pn_data_update_fix.sql` (XSS stocké carte PN), accord requis ; protection des mots de passe compromis encore désactivée |
 
@@ -414,6 +414,19 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   (IN = embarquement à la gare de départ, OUT = débarquement à l'arrivée) et **type précis** (« chaise roulante fixe »,
   « mobilité réduite »), une ligne par combinaison, copie par bloc ou « Tout copier » ; annulées exclues ; avec un filtre
   district, seulement ses gares (`aleaGroups`, testé).
+- 2026-10-09 — **Modules Équipe et Admin** (réponses : widget « Présents » **retiré** ; comptes gérés par **admin/sysop
+  seuls** ; partie sociale **abandonnée** ; Admin = Utilisateurs, Journal d'audit, **Lignes et arrêts**, **Santé +
+  maintenance** ; Gares abandonné ; pas de planning ni de congés). Migration `1760001400` : `users.createRule`/`manageRule`
+  = admin (mot de passe réinitialisé sans l'ancien), **`authRule` `role != "disabled"`** (connexion refusée),
+  `disabled_role` (rôle rendu à la réactivation, non modifiable par l'agent) ; `changelog` (Nouveautés : admin, sysop,
+  moderator ; auteur non forgeable) ; `app_settings` (clé unique, `maintenance`). Audit étendu à ces deux collections.
+  Équipe : `/equipe` annuaire léger (`fields` restreints : rôle/droits jamais renvoyés), `/equipe/profil` (nom,
+  fonction, mot de passe → reconnexion automatique, PocketBase invalidant les jetons), `/equipe/nouveautes` (Markdown
+  sûr). Admin : liste + fiche (identité, rôle, district, **droits à 3 états** `PERMISSION_CATALOG`, désactivation,
+  mot de passe provisoire affiché une fois, création de compte), journal d'audit (filtres liés, différentiel, export
+  CSV neutralisé), lignes (ajout, district, ordre, retrait), santé (PocketBase, volumes 30 j) + **mode maintenance**
+  (écran d'attente pour les agents dans `(app)/layout.tsx`, bandeau pour les admins). Agent Otto : onglet « Mon profil »
+  seulement. 186 contrôles de règles.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

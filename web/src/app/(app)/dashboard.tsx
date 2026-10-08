@@ -25,7 +25,6 @@ import {
   EyeOff,
   GripVertical,
   SlidersHorizontal,
-  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -62,7 +61,6 @@ const TITLES: Record<WidgetId, { eyebrow: string; title: string; wide?: boolean 
   "main-courante": { eyebrow: "Opérations", title: "Main courante" },
   perturbations: { eyebrow: "Opérations", title: "Perturbations" },
   travaux: { eyebrow: "Opérations", title: "Travaux" },
-  equipe: { eyebrow: "Équipe", title: "Présents aujourd'hui" },
 };
 
 const dateLabel = new Intl.DateTimeFormat("fr-BE", {
@@ -170,14 +168,6 @@ function WidgetBody({
       return <DisturbanceWidget kind="incident" allowed={ops.favorites !== null} />;
     case "travaux":
       return <DisturbanceWidget kind="travaux" allowed={ops.favorites !== null} />;
-    case "equipe":
-      return (
-        <EmptyState
-          icon={<Users className="size-6" />}
-          title="Bientôt"
-          description="Qui est en service aujourd'hui."
-        />
-      );
   }
 }
 
