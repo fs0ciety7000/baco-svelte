@@ -76,7 +76,7 @@ export function expiry(validUntil: string, today: string): "expired" | "soon" | 
 
 const time = z
   .string()
-  .regex(/^$|^\d{2}:\d{2}$/, "Heure au format HH:MM")
+  .regex(/^$|^([01]\d|2[0-3]):[0-5]\d$/, "Heure au format HH:MM")
   .default("");
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date invalide");
 const id = z
@@ -84,12 +84,20 @@ const id = z
   .regex(/^$|^[a-z0-9-]{15,36}$/)
   .default("");
 
+// Texte sur une ligne : caractères de contrôle retirés (CSV, affichage).
+const line = (max: number) =>
+  z
+    .string()
+    .transform((s) => s.replace(/[\u0000-\u001f\u007f]/g, " ").trim())
+    .pipe(z.string().max(max))
+    .default("");
+
 export const assistSchema = z.object({
   day,
   time,
   direction: z.enum(["arrivee", "depart", ""]).default(""),
-  train: z.string().trim().max(20).default(""),
-  station: z.string().trim().max(100).default(""),
+  train: line(20),
+  station: line(100).pipe(z.string().min(1, "Gare manquante")),
   zone: id,
   dicos_ref: z
     .string()
@@ -99,7 +107,7 @@ export const assistSchema = z.object({
   pax: z.coerce.number().int().min(1).max(50).default(1),
   pmr_type: z.enum(PMR_TYPE_CODES).or(z.literal("")).default(""),
   client: id,
-  note: z.string().trim().max(1000).default(""),
+  note: line(1000),
 });
 export type AssistInput = z.infer<typeof assistSchema>;
 

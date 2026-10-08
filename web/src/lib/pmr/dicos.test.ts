@@ -26,5 +26,6 @@ describe("parseDicos", () => {
   it("CR devient AUTRE ; texte sans heure : aucun segment", () => {
     expect(parseDicos("1234-56-78-9012 1 CR OUT").type).toBe("AUTRE");
     expect(parseDicos("texte libre").segments).toEqual([]);
+    expect(parseDicos("1234-56-78-9012 1 NV OUT E12 à 25h99").segments).toEqual([]);
   });
 });

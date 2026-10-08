@@ -56,6 +56,7 @@ function parseDicos(text) {
 	const re = /\b(IN|OUT)\s*(E\s*)?(\d{2,5})\s*(?:à|a|\))\s*(\d{1,2})\s*h\s*(\d{2})/gi;
 	let m;
 	while ((m = re.exec(t))) {
+		if (parseInt(m[4], 10) > 23 || parseInt(m[5], 10) > 59) continue;
 		segs.push({
 			direction: m[1].toUpperCase() === 'IN' ? 'arrivee' : 'depart',
 			train: (m[2] ? 'E' : '') + m[3],
@@ -65,7 +66,7 @@ function parseDicos(text) {
 	// Repli (train avant le sens, ou sans IN / OUT) : premier train, premier sens, première heure.
 	if (segs.length === 0) {
 		const time = /(\d{1,2})\s*h\s*(\d{2})/.exec(t);
-		if (time) {
+		if (time && parseInt(time[1], 10) < 24 && parseInt(time[2], 10) < 60) {
 			const dir = /\b(IN|OUT)\b/i.exec(t);
 			const train = /\bE\s*(\d{2,5})\b/.exec(t);
 			segs.push({

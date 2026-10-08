@@ -616,7 +616,13 @@ export async function searchPmrClients(q: string): Promise<PmrClient[]> {
   const query = z.string().trim().min(2).max(60).parse(q);
   const pb = await pbForRequest();
   const res = await pb.collection("pmr_clients").getList(1, 12, {
-    filter: pb.filter("last_name ~ {:q} || first_name ~ {:q} || phone ~ {:q}", { q: query }),
+    // Fiches archivées exclues (une fiche archivée se réactive depuis le module PMR).
+    filter: pb.filter(
+      "archived = false && (last_name ~ {:q} || first_name ~ {:q} || phone ~ {:q})",
+      {
+        q: query,
+      },
+    ),
     sort: "last_name,first_name",
   });
   return res.items.map(pmrClient);

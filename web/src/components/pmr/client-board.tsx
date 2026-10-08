@@ -59,6 +59,10 @@ export function ClientBoard({
 }) {
   const router = useRouter();
   const [openRow, setOpenRow] = useState<string | null>(openId ?? null);
+  // ?id= changé sans remonter la page (lien de doublon, fiche liée) : on ouvre la fiche demandée.
+  useEffect(() => {
+    if (openId) setOpenRow(openId);
+  }, [openId]);
   const [detail, setDetail] = useState<ClientDetail | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const wanted = useRef<string | null>(null);
@@ -256,6 +260,10 @@ export function ClientBoard({
           <ClientEditor
             id={null}
             initial={toInput(null)}
+            onOpen={(id) => {
+              setCreateOpen(false);
+              setOpenRow(id);
+            }}
             onSaved={(id) => {
               setCreateOpen(false);
               setOpenRow(id);
@@ -272,10 +280,13 @@ function ClientEditor({
   id,
   initial,
   onSaved,
+  onOpen,
 }: {
   id: string | null;
   initial: ClientInput;
   onSaved: (id: string) => void;
+  /** Ouvrir une fiche existante (doublon signalé). */
+  onOpen?: (id: string) => void;
 }) {
   const [f, setF] = useState(initial);
   const [dupes, setDupes] = useState<{ id: string; name: string }[]>([]);
@@ -368,12 +379,13 @@ function ClientEditor({
           <ul className="list-inside list-disc">
             {dupes.map((d) => (
               <li key={d.id}>
-                <Link
-                  className="text-accent underline-offset-2 hover:underline"
-                  href={`/pmr/clients?id=${d.id}`}
+                <button
+                  type="button"
+                  className="min-h-11 cursor-pointer text-accent underline-offset-2 hover:underline md:min-h-0"
+                  onClick={() => onOpen?.(d.id)}
                 >
                   {d.name}
-                </Link>
+                </button>
               </li>
             ))}
           </ul>

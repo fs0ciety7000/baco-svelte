@@ -30,6 +30,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-body text-fg-muted" data-testid="assists-count">
           <span className="font-mono text-fg tabular">{total}</span> prestation(s)
+          {total > rows.length ? ` · ${rows.length} affichées : réduisez la période` : ""}
         </p>
         <div className="flex items-center gap-3">
           <LiveRefresh topics={["pmr_assists"]} />

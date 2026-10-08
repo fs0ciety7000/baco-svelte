@@ -338,9 +338,13 @@ function importPmr(app, dir, report) {
 			r.set('pax', p.pax);
 			if (p.type) r.set('pmr_type', p.type);
 			r.set('status', day < new Date().toISOString().slice(0, 10) ? 'realisee' : 'prevue');
-			r.set('legacy_text', String(i.pmr_details || '').slice(0, 2000));
 			r.set('legacy_id', String(i.id));
 			app.save(r);
+			// Texte d'origine (peut contenir un nom) : collection à part, lisible avec pmr:read seulement.
+			const lg = new Record(app.findCollectionByNameOrId('pmr_assist_legacy'));
+			lg.set('assist', r.id);
+			lg.set('text', String(i.pmr_details || '').slice(0, 2000));
+			app.save(lg);
 			keepCreated(app, 'pmr_assists', r.id, i.created_at);
 			report.pmr_assists++;
 		}
@@ -478,7 +482,7 @@ function importAudit(app, dir, report) {
 }
 
 // Collections du module Commandes, dans l'ordre de purge (dépendances d'abord).
-const PMR_COLLECTIONS = ['pmr_events', 'pmr_assists', 'pmr_equipment', 'pmr_zones'];
+const PMR_COLLECTIONS = ['pmr_events', 'pmr_assist_legacy', 'pmr_assists', 'pmr_equipment', 'pmr_zones'];
 const ORDER_COLLECTIONS = [
 	'order_events',
 	'order_templates',
@@ -542,6 +546,8 @@ function run(app, dir, reset, scope) {
 		importTaxiOrders(tx, dir, taxiByName, usersByName, report);
 		importB201(tx, dir, userIds, report);
 		importPmr(tx, dir, report);
+		// Dernière activité des fiches : leur dernière mise à jour connue (aucun lien n'est repris de BACO).
+		tx.db().newQuery("UPDATE pmr_clients SET last_activity = updated WHERE last_activity = '' OR last_activity IS NULL").execute();
 		if (scope === 'all') importAudit(tx, dir, report);
 	});
 	return report;

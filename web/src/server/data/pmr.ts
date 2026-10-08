@@ -92,7 +92,7 @@ function assist(r: RecordModel, canPmr: boolean): Assist {
     cancelReason: str(r.cancel_reason),
     author: str(e.created_by?.name),
     legacy: !!str(r.legacy_id),
-    legacyText: canPmr ? str(r.legacy_text) : "",
+    legacyText: "",
     anonymized: !!r.anonymized,
     updated: str(r.updated),
   };
@@ -111,7 +111,7 @@ export const assistListSchema = z.object({
     .string()
     .optional()
     .transform((v) => ASSIST_STATUSES.find((x) => x === v)),
-  limit: z.coerce.number().int().min(1).max(1000).default(300),
+  limit: z.coerce.number().int().min(1).max(5000).default(300),
 });
 
 export async function listAssists(
@@ -141,16 +141,23 @@ export async function listAssists(
 
 export async function getAssist(id: string, canPmr: boolean) {
   const pb = await pbForRequest();
-  const r = await pb.collection("pmr_assists").getOne(
-    z
-      .string()
-      .regex(/^[a-z0-9]{15}$/)
-      .parse(id),
-    {
-      expand: canPmr ? "zone,client,created_by" : "zone,created_by",
-    },
-  );
-  return assist(r, canPmr);
+  const aid = z
+    .string()
+    .regex(/^[a-z0-9]{15}$/)
+    .parse(id);
+  const r = await pb.collection("pmr_assists").getOne(aid, {
+    expand: canPmr ? "zone,client,created_by" : "zone,created_by",
+  });
+  const a = assist(r, canPmr);
+  // Texte d'origine de BACO : collection à part, lisible avec pmr:read seulement (règle PocketBase).
+  if (canPmr && a.legacy) {
+    const lg = await pb
+      .collection("pmr_assist_legacy")
+      .getFirstListItem(pb.filter("assist = {:a}", { a: aid }))
+      .catch(() => null);
+    a.legacyText = str(lg?.text);
+  }
+  return a;
 }
 
 export type PmrEvent = {

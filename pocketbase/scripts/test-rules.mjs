@@ -240,12 +240,14 @@ try {
 		token: roles.otto_agent.token
 	});
 	check("otto_agent ne lit pas l'historique taxi", txe.json?.totalItems === 0, `${txe.json?.totalItems}`);
-	const pc = await api('POST', '/api/collections/pmr_clients/records', { token: u.token, body: { last_name: 'Test', updated_by: u.id } });
+	const pc = await api('POST', '/api/collections/pmr_clients/records', { token: u.token, body: { last_name: 'Test', updated_by: u.id, created_by: u.id } });
 	check('agent crée une fiche PMR', pc.status === 200, `HTTP ${pc.status}`);
 	const pd = await api('DELETE', `/api/collections/pmr_clients/records/${pc.json.id}`, { token: u.token });
 	check('agent ne supprime pas une fiche PMR', pd.status >= 400, `HTTP ${pd.status}`);
-	const pf = await api('POST', '/api/collections/pmr_clients/records', { token: u.token, body: { last_name: 'X', updated_by: roles.admin.id } });
+	const pf = await api('POST', '/api/collections/pmr_clients/records', { token: u.token, body: { last_name: 'X', updated_by: roles.admin.id, created_by: u.id } });
 	check('fiche PMR : auteur de la modification non forgeable', pf.status >= 400, `HTTP ${pf.status}`);
+	const pc2 = await api('POST', '/api/collections/pmr_clients/records', { token: u.token, body: { last_name: 'X', updated_by: u.id, created_by: roles.admin.id } });
+	check('fiche PMR : créateur non forgeable', pc2.status >= 400, `HTTP ${pc2.status}`);
 
 	// Modèles : tous partagés, modifiables par tout agent qui écrit des commandes.
 	const tp = await api('POST', '/api/collections/order_templates/records', {
@@ -339,10 +341,28 @@ try {
 	const aid = as.json?.id;
 	const asNo = await api('POST', '/api/collections/pmr_assists/records', { token: u.token, body: { day: '2099-03-01', status: 'realisee', created_by: u.id, updated_by: u.id } });
 	check('prestation créée directement « réalisée » refusée', asNo.status >= 400, `HTTP ${asNo.status}`);
+	await api('PATCH', `/api/collections/users/records/${roles.denied.id}`, { token: root, body: { denies: ['otto:write', 'b201:write', 'pmr:read'] } });
+	const cl = await api('POST', '/api/collections/pmr_clients/records', { token: root, body: { last_name: 'Lien test' } });
+	const asC = await api('POST', '/api/collections/pmr_assists/records', {
+		token: roles.denied.token,
+		body: { day: '2099-03-01', status: 'prevue', created_by: roles.denied.id, updated_by: roles.denied.id, client: cl.json?.id }
+	});
+	check('sans pmr:read, pas de lien vers une fiche client', asC.status >= 400, `HTTP ${asC.status}`);
+	if (cl.json?.id) {
+		await api('DELETE', `/api/collections/pmr_clients/records/${cl.json.id}`, { token: root });
+		auditIds.push(cl.json.id);
+	}
 	const asR = await api('POST', '/api/collections/pmr_assists/records', { token: roles.reader.token, body: { day: '2099-03-01', status: 'prevue', created_by: roles.reader.id, updated_by: roles.reader.id } });
 	check('lecteur ne crée pas de prestation', asR.status >= 400, `HTTP ${asR.status}`);
 	const asO = await api('GET', '/api/collections/pmr_assists/records?perPage=1', { token: roles.otto_agent.token });
 	check('otto_agent ne lit pas les prestations', asO.status !== 200 || asO.json.totalItems === 0, `HTTP ${asO.status}`);
+	const asL = await api('POST', '/api/collections/pmr_assists/records', {
+		token: u.token,
+		body: { day: '2099-03-01', status: 'prevue', created_by: u.id, updated_by: u.id, legacy_id: 'x' }
+	});
+	check('identifiant de reprise BACO non forgeable', asL.status >= 400, `HTTP ${asL.status}`);
+	const lgw = await api('POST', '/api/collections/pmr_assist_legacy/records', { token: roles.admin.token, body: { assist: aid, text: 'x' } });
+	check("personne n'écrit le texte BACO", lgw.status >= 400, `HTTP ${lgw.status}`);
 	const ap = (body, token = u.token) => api('PATCH', `/api/collections/pmr_assists/records/${aid}`, { token, body: { updated_by: u.id, ...body } });
 	let pr = await ap({ updated_by: roles.admin.id });
 	check('updated_by non forgeable', pr.status >= 400, `HTTP ${pr.status}`);
@@ -369,6 +389,8 @@ try {
 	check('coordinateur crée une rampe', eqa.status === 200, `HTTP ${eqa.status}`);
 	const equ = await api('PATCH', `/api/collections/pmr_equipment/records/${eqa.json?.id}`, { token: u.token, body: { state: 'hs', state_note: 'Charnière cassée', updated_by: u.id } });
 	check('agent passe une rampe hors service', equ.status === 200 && equ.json.state === 'hs', `HTTP ${equ.status}`);
+	const eqs = await api('PATCH', `/api/collections/pmr_equipment/records/${eqa.json?.id}`, { token: u.token, body: { station: 'AUTRE', updated_by: u.id } });
+	check('agent ne modifie pas la gare d\'une rampe (coordinateurs)', eqs.status >= 400, `HTTP ${eqs.status}`);
 	const eqd = await api('DELETE', `/api/collections/pmr_equipment/records/${eqa.json?.id}`, { token: u.token });
 	check('agent ne supprime pas une rampe', eqd.status >= 400, `HTTP ${eqd.status}`);
 	const eqo = await api('GET', '/api/collections/pmr_equipment/records?perPage=1', { token: roles.otto_agent.token });

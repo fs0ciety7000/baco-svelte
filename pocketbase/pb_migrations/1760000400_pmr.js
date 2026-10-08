@@ -2,7 +2,7 @@
 // Module PMR (session 3). Décisions du 8 octobre 2026 (docs/CSM-V2.md, docs/design/AUDIT-UX-PMR.md) :
 // - saisie de la « journée » abandonnée (inutilisée depuis le 3 mai 2026) : plus de pmr_days ni de diffusion ;
 // - prestation STRUCTURÉE par assistance (liste simple), collée depuis DICOS, réf. DICOS + client facultatif,
-//   aucun nom en texte libre (le texte v1 est gardé dans `legacy_text`, effacé à l'anonymisation) ;
+//   aucun nom en texte libre (le texte v1 est gardé à part dans `pmr_assist_legacy`, lisible avec pmr:read, effacé à l'anonymisation) ;
 // - données de santé anonymisées après 12 mois, fiches sans prestation depuis 24 mois archivées (hook cron) ;
 // - matériel : tout agent `pmr:write` change l'état et demande une réparation ; création / suppression par les
 //   coordinateurs ; zones modifiables par les coordinateurs, rattachées à un district.
@@ -61,9 +61,15 @@ migrate(
 		addFields(clients, [
 			{ name: 'type_detail', type: 'text', max: 200 },
 			{ name: 'archived', type: 'bool' },
-			{ name: 'created_by', type: 'relation', collectionId: users.id, maxSelect: 1 }
+			{ name: 'created_by', type: 'relation', collectionId: users.id, maxSelect: 1 },
+			// Dernière prestation ou commande taxi liée (posée par hook) : base de l'archivage à 24 mois, qui ne
+			// dépend pas des liens effacés par l'anonymisation à 12 mois.
+			{ name: 'last_activity', type: 'date' }
 		]);
 		clients.addIndex('idx_pmr_clients_phone', false, 'phone', '');
+		const clientBase = `(${can('pmr:write', WRITERS)}) && @request.body.updated_by = @request.auth.id && @request.body.legacy_id:isset = false && @request.body.last_activity:isset = false`;
+		clients.createRule = `${clientBase} && @request.body.created_by = @request.auth.id`;
+		clients.updateRule = `${clientBase} && @request.body.created_by:changed = false`;
 		app.save(clients);
 
 		// --- Prestations (une par assistance) ---
@@ -72,12 +78,15 @@ migrate(
 			name: 'pmr_assists',
 			listRule: can('deplacements:read', READERS),
 			viewRule: can('deplacements:read', READERS),
+			// Lien client (données de santé) : seulement avec pmr:read ; champs de reprise BACO jamais écrits par l'API.
 			createRule:
 				`(${can('deplacements:write', WRITERS)}) && @request.body.created_by = @request.auth.id && ` +
-				'@request.body.updated_by = @request.auth.id && @request.body.status = "prevue" && @request.body.anonymized:isset = false',
+				'@request.body.updated_by = @request.auth.id && @request.body.status = "prevue" && @request.body.anonymized:isset = false && ' +
+				`@request.body.legacy_id:isset = false && (@request.body.client:isset = false || @request.body.client = "" || (${can('pmr:read', READERS)}))`,
 			updateRule:
 				`(${can('deplacements:write', WRITERS)}) && @request.body.created_by:changed = false && ` +
-				'@request.body.updated_by = @request.auth.id && @request.body.anonymized:isset = false && @request.body.legacy_text:isset = false',
+				'@request.body.updated_by = @request.auth.id && @request.body.anonymized:isset = false && @request.body.legacy_id:isset = false && ' +
+				`(@request.body.client:isset = false || (${can('pmr:read', READERS)}))`,
 			deleteRule: COORD,
 			fields: [
 				{ name: 'day', type: 'text', required: true, pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
@@ -96,8 +105,6 @@ migrate(
 				{ name: 'cancel_reason', type: 'text', max: 500 },
 				{ name: 'created_by', type: 'relation', collectionId: users.id, maxSelect: 1 },
 				{ name: 'updated_by', type: 'relation', collectionId: users.id, maxSelect: 1 },
-				// Texte d'origine de BACO (peut contenir un nom) : effacé à l'anonymisation.
-				{ name: 'legacy_text', type: 'text', max: 2000 },
 				{ name: 'legacy_id', type: 'text', max: 40 },
 				{ name: 'anonymized', type: 'bool' },
 				{ name: 'created', type: 'autodate', onCreate: true },
@@ -111,6 +118,25 @@ migrate(
 		});
 		app.save(assists);
 
+		// Texte d'origine de BACO (peut contenir un nom) : à part, lisible seulement avec pmr:read, jamais écrit par
+		// l'API, effacé à l'anonymisation (une règle PocketBase ne masque pas un champ, d'où la collection séparée).
+		app.save(
+			new Collection({
+				type: 'base',
+				name: 'pmr_assist_legacy',
+				listRule: can('pmr:read', READERS),
+				viewRule: can('pmr:read', READERS),
+				createRule: null,
+				updateRule: null,
+				deleteRule: null,
+				fields: [
+					{ name: 'assist', type: 'relation', collectionId: assists.id, maxSelect: 1, required: true, cascadeDelete: true },
+					{ name: 'text', type: 'text', max: 2000 }
+				],
+				indexes: ['CREATE UNIQUE INDEX idx_pmr_assist_legacy ON pmr_assist_legacy (assist)']
+			})
+		);
+
 		// --- Matériel (rampes) : état par tout agent pmr:write, création par les coordinateurs ---
 		const equipment = new Collection({
 			type: 'base',
@@ -118,7 +144,13 @@ migrate(
 			listRule: can('pmr:read', READERS),
 			viewRule: can('pmr:read', READERS),
 			createRule: `(${COORD}) && @request.body.updated_by = @request.auth.id`,
-			updateRule: `(${can('pmr:write', WRITERS)}) && @request.body.updated_by = @request.auth.id`,
+			// Hors coordinateurs : seulement l'état, sa précision et la demande de réparation.
+			updateRule:
+				`(${can('pmr:write', WRITERS)}) && @request.body.updated_by = @request.auth.id && ((${COORD}) || (` +
+				['station', 'platform', 'zone', 'assistance', 'ramp_type', 'ramp_id', 'padlock', 'valid_until', 'ramp_note', 'station_restrictions', 'station_info', 'legacy_id']
+					.map((f) => `@request.body.${f}:isset = false`)
+					.join(' && ') +
+				'))',
 			deleteRule: COORD,
 			fields: [
 				{ name: 'station', type: 'text', required: true, max: 100 },
@@ -176,10 +208,13 @@ migrate(
 		);
 	},
 	(app) => {
-		for (const name of ['pmr_events', 'pmr_equipment', 'pmr_assists']) app.delete(app.findCollectionByNameOrId(name));
+		for (const name of ['pmr_events', 'pmr_equipment', 'pmr_assist_legacy', 'pmr_assists']) app.delete(app.findCollectionByNameOrId(name));
 		const clients = app.findCollectionByNameOrId('pmr_clients');
 		clients.removeIndex('idx_pmr_clients_phone');
-		for (const f of ['type_detail', 'archived', 'created_by']) clients.fields.removeByName(f);
+		const old = `(${can('pmr:write', WRITERS)}) && @request.body.updated_by = @request.auth.id`;
+		clients.createRule = old;
+		clients.updateRule = old;
+		for (const f of ['type_detail', 'archived', 'created_by', 'last_activity']) clients.fields.removeByName(f);
 		app.save(clients);
 		app.delete(app.findCollectionByNameOrId('pmr_zones'));
 	}

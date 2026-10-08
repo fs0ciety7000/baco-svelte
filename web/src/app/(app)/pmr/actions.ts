@@ -187,7 +187,9 @@ export async function findDuplicates(input: {
     const pb = await pbForRequest();
     const ors: string[] = [];
     if (p.last_name.length >= 2) ors.push(pb.filter("last_name ~ {:n}", { n: p.last_name }));
-    if (digits.length >= 6) ors.push(pb.filter("phone ~ {:d}", { d: digits.slice(-6) }));
+    // Téléphones saisis avec espaces ou points : chiffres en motif « %1%2%3%4%5%6% ».
+    if (digits.length >= 6)
+      ors.push(pb.filter("phone ~ {:d}", { d: `%${digits.slice(-6).split("").join("%")}%` }));
     const res = await pb.collection("pmr_clients").getList(1, 5, { filter: ors.join(" || ") });
     return {
       ok: true,
@@ -202,7 +204,9 @@ export async function setClientArchived(id: string, archived: boolean): Promise<
   try {
     const user = await need("pmr:write");
     const pb = await pbForRequest();
-    await pb.collection("pmr_clients").update(pbId.parse(id), { archived, updated_by: user.id });
+    await pb
+      .collection("pmr_clients")
+      .update(pbId.parse(id), { archived: z.boolean().parse(archived), updated_by: user.id });
     return { ok: true };
   } catch (e) {
     return fail(e);
@@ -246,7 +250,7 @@ export async function setEquipmentState(input: {
     const pb = await pbForRequest();
     await pb.collection("pmr_equipment").update(p.id, {
       state: p.state,
-      state_note: p.note ?? "",
+      ...(p.note === undefined ? {} : { state_note: p.note }),
       ...(p.repair === undefined ? {} : { repair_requested: p.repair }),
       updated_by: user.id,
     });

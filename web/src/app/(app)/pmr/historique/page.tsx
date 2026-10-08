@@ -29,7 +29,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
   ]);
   const exportQuery = new URLSearchParams(
     Object.fromEntries(
-      Object.entries({ du, au, zone: f.zone ?? "", statut: f.statut ?? "" }).filter(([, v]) => v),
+      Object.entries({ du, au, zone: f.zone ?? "", statut: f.statut ?? "", q: f.q ?? "" }).filter(
+        ([, v]) => v,
+      ),
     ),
   );
   return (

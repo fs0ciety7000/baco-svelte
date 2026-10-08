@@ -355,8 +355,9 @@ function StateDialog({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const [state, setState] = useState<EquipmentState>(item.state === "ok" ? "hs" : "ok");
-  const [note, setNote] = useState("");
+  // Part de l'état et de la précision actuels (cocher seulement « réparation » ne change pas l'état).
+  const [state, setState] = useState<EquipmentState>(item.state);
+  const [note, setNote] = useState(item.stateNote);
   const [repair, setRepair] = useState(item.repairRequested);
   const [pending, start] = useTransition();
   return (

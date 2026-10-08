@@ -296,7 +296,12 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   **saisie de la journée abandonnée** (plus utilisée depuis le 3 mai 2026 : livrer Clients et Matériel, historique
   archivé en lecture) ; prestation **structurée** par assistance avec « Coller depuis DICOS » ; **réf. DICOS, client
   facultatif**, aucun nom en texte libre ; données de santé **anonymisées après 12 mois** (fiches sans prestation
-  archivées après 24 mois, exports sans nom), à valider avec le DPO.
+  archivées après 24 mois, exports sans nom), à valider avec le DPO. Matériel : état par `pmr:write`, création et
+  modification complète par les coordinateurs ; zones modifiables (district) ; téléphone etrali: desktop / tel: mobile.
+  Audit sécurité PMR : aucune fuite de nom sans `pmr:read` ; corrigé : anonymisation incomplète (historique, audit,
+  taxis, réf. DICOS), texte BACO déplacé dans `pmr_assist_legacy`, règles resserrées. Revue : période / zone non
+  recalculées, « Et une autre » sans contrôle, téléphone en double sur mobile (`inline-flex` l'emportait sur `hidden`),
+  doublons par téléphone, dialogue d'état qui changeait l'état.
 
 
 ---

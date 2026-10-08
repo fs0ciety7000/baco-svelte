@@ -135,6 +135,7 @@ test("matériel : validité dépassée signalée, changement d'état tracé", as
   await page.getByRole("button", { name: new RegExp(`Ouvrir la rampe ${STATION}`) }).click();
   await expect(page.getByTestId("equipment-panel")).toContainText("Dépassée");
   await page.getByTestId("equipment-state").click();
+  await page.getByRole("radio", { name: "Hors service" }).click();
   await page.getByLabel("Motif / précision").fill("Charnière cassée (essai)");
   await page.getByRole("dialog").getByRole("button", { name: "Enregistrer" }).click();
   await expect(page.getByTestId("equipment-panel")).toContainText("En service → Hors service");

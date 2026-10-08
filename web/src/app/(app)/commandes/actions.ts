@@ -472,7 +472,9 @@ export async function createPmrClient(
     const user = await requireUser();
     if (!can(user, "pmr:write")) return { ok: false, error: "Droit PMR manquant." };
     const pb = await pbForRequest();
-    const r = await pb.collection("pmr_clients").create({ ...p, updated_by: user.id });
+    const r = await pb
+      .collection("pmr_clients")
+      .create({ ...p, updated_by: user.id, created_by: user.id });
     return {
       ok: true,
       data: {

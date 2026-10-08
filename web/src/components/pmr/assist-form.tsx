@@ -2,7 +2,7 @@
 
 import { ClipboardPaste, Plus, Save, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 
 import { createAssists, updateAssist } from "@/app/(app)/pmr/actions";
 import { PmrClientPicker, type Client } from "@/components/orders/taxi-form";
@@ -51,6 +51,7 @@ export function AssistForm({
   const [client, setClient] = useState<Client | null>(initialClient);
   const [paste, setPaste] = useState("");
   const [pending, start] = useTransition();
+  const formRef = useRef<HTMLFormElement>(null);
   const blank = (): AssistInput => ({
     day: rows[0]?.day ?? defaultDay,
     time: "",
@@ -72,7 +73,9 @@ export function AssistForm({
       r.map((x, j) => {
         if (j !== i) return x;
         const next = { ...x, ...patch };
-        if (patch.station !== undefined && !patch.zone) next.zone = zoneOf(patch.station) || x.zone;
+        // Gare changée : zone déduite du référentiel, vide si la gare n'y figure pas (jamais l'ancienne zone).
+        if (patch.station !== undefined && patch.zone === undefined)
+          next.zone = zoneOf(patch.station);
         return next;
       }),
     );
@@ -103,7 +106,9 @@ export function AssistForm({
     );
   };
 
-  const save = (another: boolean) =>
+  const save = (another: boolean) => {
+    // « Et une autre » et Ctrl+Entrée passent aussi par les contrôles du formulaire (gare obligatoire…).
+    if (formRef.current && !formRef.current.reportValidity()) return;
     start(async () => {
       const items = rows.map((r) => ({ ...r, client: client?.id ?? "" }));
       const res = await safeCall(
@@ -116,14 +121,17 @@ export function AssistForm({
           : `${items.length} prestation(s) enregistrée(s).`,
       );
       if (another) {
-        setRows([blank()]);
+        // Autre voyageur : on ne garde que la date (pas la réf. DICOS, le type ni le nombre du précédent).
+        setRows([{ ...blank(), station: "", zone: "", dicos_ref: "", pax: 1, pmr_type: "" }]);
         setClient(null);
         router.refresh();
       } else router.push(`/pmr?du=${items[0]?.day ?? defaultDay}`);
     });
+  };
 
   return (
     <form
+      ref={formRef}
       className="flex max-w-[45rem] flex-col gap-3"
       aria-label={mode === "edit" ? "Modifier la prestation" : "Nouvelle prestation PMR"}
       onSubmit={(e) => {

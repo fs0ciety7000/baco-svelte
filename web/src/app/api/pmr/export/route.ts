@@ -15,7 +15,7 @@ const cell = (v: string | number) => {
   const s = String(v);
   // Neutralise les formules (=, +, -, @) à l'ouverture dans un tableur.
   const safe = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
-  return /[";\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+  return /[";\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 };
 
 export async function GET(request: Request) {
@@ -32,7 +32,8 @@ export async function GET(request: Request) {
       to: au.data,
       zone: sp.get("zone") ?? undefined,
       status: sp.get("statut") ?? undefined,
-      limit: 1000,
+      q: sp.get("q") ?? undefined,
+      limit: 5000,
     },
     { canPmr: false, order: "asc" },
   );
@@ -67,7 +68,7 @@ export async function GET(request: Request) {
       .join(";"),
   );
   // BOM UTF-8 : accents corrects à l'ouverture dans Excel.
-  const body = `﻿${[head.join(";"), ...lines].join("\r\n")}\r\n`;
+  const body = `\uFEFF${[head.join(";"), ...lines].join("\r\n")}\r\n`;
   return new Response(body, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
