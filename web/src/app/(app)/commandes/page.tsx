@@ -34,7 +34,7 @@ export default async function CommandesPage({
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-6">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <p className="font-mono text-xs tracking-widest text-neutral-500 uppercase">
+          <p className="font-mono text-xs tracking-widest text-fg-muted uppercase">
             Commandes · {orders.totalItems} bus
           </p>
           <h1 className="text-2xl font-bold">Commandes bus</h1>
@@ -52,13 +52,13 @@ export default async function CommandesPage({
             </span>
             <span className="min-w-0 flex-1 truncate">
               {o.origin || "?"} → {o.destination || "?"}
-              {o.relation ? <span className="text-neutral-500"> · {o.relation}</span> : null}
+              {o.relation ? <span className="text-fg-muted"> · {o.relation}</span> : null}
             </span>
             <span className="font-mono text-xs uppercase">{STATUS_LABEL[o.status]}</span>
           </li>
         ))}
       </ul>
-      <p className="text-sm text-neutral-500">
+      <p className="text-sm text-fg-muted">
         Page {orders.page} sur {orders.totalPages}
       </p>
     </main>

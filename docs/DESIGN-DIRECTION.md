@@ -121,7 +121,25 @@ GSAP est **100 % gratuit depuis 2025**, plugins compris (SplitText, Flip, Custom
 - https://webflow.com/blog/gsap-becomes-free et https://gsap.com/blog/3-13/ : GSAP et ses plugins gratuits, SplitText réécrit et accessible.
 - https://gsap.com/resources/a11y/ : `matchMedia` combiné à `prefers-reduced-motion`.
 
-## Bibliothèques recommandées
+## Mise en œuvre (étape 2) et écarts proposés — en attente de validation
+
+Implémentation : `web/src/design/tokens.ts` (source unique des couleurs, `npm run tokens` → `web/src/app/themes.css`),
+`web/src/app/globals.css`, `web/src/components/ui/*`, page interne `/design`. Un test vérifie le contraste AA
+de chaque paire texte/fond dans les 5 thèmes (AAA pour le texte du thème Contraste élevé). Sources des écarts :
+`docs/design/REFERENCES-UI.md` (agent UI) et `docs/design/AUDIT-UX-COMMANDES.md` (agent UX).
+
+| Écart | Raison |
+|---|---|
+| Jeton `border-strong` (bordure des champs, ≥ 3:1) | `border` n'atteint que 1,4:1 : un champ doit rester repérable (WCAG 1.4.11) |
+| Jeton `accent-fg` = fond du thème (texte sur l'accent) | 5,6:1 à 14:1 selon le thème |
+| Contrôles 36 px (confortable), 32 px (compact), **44 px au tactile** quelle que soit la densité | Références Linear / Vercel ; mobile obligatoire |
+| Palier de texte **13/18** pour aides, erreurs, toasts | Plus lisible que 12 px pour des messages à lire |
+| Mono minimum 11 px ; capitales mono réservées aux eyebrows, en-têtes de tableau, badges, labels de StatCard | Retour v1 : trop de petits libellés en capitales |
+| Chanfrein dessiné par `::before`/`::after` (élément non clippé) | `clip-path` coupait l'anneau de focus |
+| Skeleton statique (pas de boucle) ; seule exception animée : la pastille « live » et le spinner de chargement d'un bouton | Budget motion |
+| Mode **Automatique** = Commandement (sombre) / Ivoire (clair) selon le système, par CSS (pas de script, pas de flash) | — |
+
+
 
 - **shadcn/ui** (MIT) : la base, avec le thème surchargé (radius 0, tokens ci-dessus). Les **blocks** servent de point de départ pour le dashboard et la sidebar.
 - **Origin UI / coss.com** (MIT) : variantes de contrôles « produit » (inputs, selects, steppers, command). C'est la plus conforme à shadcn : **priorité 1**.

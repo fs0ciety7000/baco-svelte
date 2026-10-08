@@ -35,10 +35,10 @@ export function LoginForm({ next }: { next?: string }) {
           className="h-11 text-base"
         />
       </div>
-      <p role="alert" aria-live="polite" className="min-h-5 text-sm text-red-600">
+      <p role="alert" aria-live="polite" className="min-h-5 text-sm text-danger">
         {state.error}
       </p>
-      <Button type="submit" disabled={pending} className="h-11">
+      <Button type="submit" variant="primary" loading={pending} className="h-11">
         {pending ? "Connexion…" : "Se connecter"}
       </Button>
     </form>

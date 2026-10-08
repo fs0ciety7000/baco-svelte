@@ -45,4 +45,19 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - Redirections après connexion : chemins internes uniquement (`safeNext`).
 - Messages d'erreur de connexion identiques que le compte existe ou non.
 - Mobile : chaque écran vérifié en 390×844 (pas de défilement horizontal, cibles ≥ 44 px, champs ≥ 16 px).
-- Le style actuel est provisoire (shadcn neutre) : le design system arrive à l'étape 2 (`DESIGN-DIRECTION.md`).
+- **Design system** (`../docs/DESIGN-DIRECTION.md`) :
+  - couleurs **uniquement** par jetons (`bg`, `surface`, `surface-2`, `border`, `border-strong`, `fg`, `fg-muted`,
+    `accent`, `accent-fg`, `ok`, `warn`, `danger`, `info`) ; la palette Tailwind par défaut est désactivée ;
+  - jetons dans `src/design/tokens.ts` → `npm run tokens` régénère `src/app/themes.css` (ne pas l'éditer à la main) ;
+    `src/design/tokens.test.ts` échoue si le CSS n'est pas à jour ou si un contraste passe sous AA ;
+  - thème et densité : cookie `csm_ui` lu par le layout racine (`data-theme`, `data-scheme`, `data-density`, aucun
+    flash) ; `auto` suit `prefers-color-scheme` en CSS ; sélecteur `src/components/theme-switcher.tsx` ;
+  - polices `next/font/google` (Geist, Geist Mono, Saira Condensed), auto-hébergées au build ;
+  - utilitaires : `label-mono`, `display`, `tabular`, `chamfer` (+ `--frame`, `--fill`), `h-control`, `h-row`,
+    `text-label|small|hint|body|body-lg|h3|h2|h1|stat`, `ease-hud`, `animate-fade-in|pop-in` ;
+  - composants dans `src/components/ui` (Button, Input/Select/Textarea, Field, Checkbox/Switch, Card, StatCard,
+    Badge/StatusBadge, Tabs, Dialog, Sheet, Toast, EmptyState, PageHeader, Kbd, Skeleton, Tooltip, Table/ListCard,
+    Command) : **aucun style ad hoc dans les pages** ; tout nouveau composant est ajouté à `/design` ;
+  - motion : `src/lib/motion.ts` (GSAP + `gsap.matchMedia()`, ease `hud`, `useStaggerIn`) ; budgets de DESIGN-DIRECTION.
+- E2E `e2e/design.spec.ts` : `/design` dans les 5 thèmes × 2 formats (captures `test-results/design-*.png`, pas de
+  défilement horizontal, pas d'erreur console, cibles ≥ 44 px sur mobile).
