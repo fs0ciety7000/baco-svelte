@@ -44,7 +44,7 @@ function fmtResult(r) {
 // Mode de lecture : dossiers complets (trip-details) ou repli sur l'ancien format, avec les chemins essayés.
 function fmtMode(r) {
   if (r.mode !== "missions") return "";
-  const tries = Array.isArray(r.tripDiag) ? r.tripDiag.slice(0, 6) : [];
+  const tries = Array.isArray(r.tripDiag) ? r.tripDiag.slice(0, 12) : [];
   const list = tries
     .map((t) => `${escapeHtml(String((t && t.path) || ""))} → ${escapeHtml(String((t && t.why) || ""))}`)
     .join("<br>");
@@ -133,7 +133,11 @@ $("sync").addEventListener("click", async () => {
   setStatus("Synchronisation en cours…");
   try {
     const r = await chrome.tabs.sendMessage(tab.id, { cmd: "sync", day: $("day").value || today() });
-    setStatus(fmtResult(r), r && r.error ? "" : "");
+    if (r && r.busy) {
+      // Une synchro (manuelle ou automatique) tourne déjà : on affiche son avancement plutôt qu'une erreur.
+      const v = await chrome.storage.local.get(["progress"]);
+      setStatus(v.progress ? fmtProgress(v.progress) : "Synchronisation déjà en cours…");
+    } else setStatus(fmtResult(r), r && r.error ? "" : "");
   } catch (_) {
     setStatus('<span class="err">Content script indisponible : recharge l\'onglet DICOS.</span>');
   } finally {
@@ -147,4 +151,24 @@ load();
 // Version installée (pour vérifier que la mise à jour a bien été chargée).
 try {
   document.getElementById("ver").textContent = "v" + chrome.runtime.getManifest().version;
+} catch (_) {}
+
+// Avancement en direct de la synchro (écrit par le content script).
+function fmtProgress(p) {
+  const n = (v) => Number(v) || 0;
+  const secs = p.startedAt ? Math.max(0, Math.round((Date.now() - n(p.startedAt)) / 1000)) : 0;
+  const count = n(p.total) ? ` : <b>${n(p.done)}</b> / ${n(p.total)}` : "…";
+  const pct = n(p.total) ? Math.round((100 * n(p.done)) / n(p.total)) : 0;
+  return `⏳ ${escapeHtml(String(p.day || ""))} · ${escapeHtml(String(p.phase || ""))}${count}${secs ? ` · ${secs} s` : ""}` +
+    (n(p.total) ? `<br><progress max="100" value="${pct}" style="width:100%"></progress>` : "");
+}
+try {
+  chrome.storage.local.get(["progress"]).then((v) => {
+    if (v.progress) setStatus(fmtProgress(v.progress));
+  });
+  chrome.storage.onChanged.addListener((ch, area) => {
+    if (area !== "local") return;
+    if (ch.progress && ch.progress.newValue) setStatus(fmtProgress(ch.progress.newValue));
+    else if (ch.last && ch.last.newValue) setStatus(fmtResult(ch.last.newValue));
+  });
 } catch (_) {}

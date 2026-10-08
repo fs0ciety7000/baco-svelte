@@ -217,6 +217,12 @@ export async function POST(request: Request) {
       continue;
     }
     const { assist, mission } = mapped;
+    // « Stickering » = tâche interne DICOS (pose d'autocollant) qui double la mission de départ, sans sens ni type :
+    // ce n'est pas une assistance à afficher.
+    if (assist.mission_type === "Stickering") {
+      c.skipped++;
+      continue;
+    }
     if (!assist.dicos_id || !assist.day) {
       c.skipped++;
       continue;

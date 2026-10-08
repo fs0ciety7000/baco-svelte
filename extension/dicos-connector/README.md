@@ -35,8 +35,8 @@ Deux `.zip` sont générés dans **`extension/dist/`** (régénérés par `exten
 
 | Navigateur | Paquet | Manifest |
 |---|---|---|
-| **Chrome / Edge** | `csm-dicos-connector-chrome-v1.2.0.zip` | `background.service_worker` |
-| **Firefox** (≥ 128) | `csm-dicos-connector-firefox-v1.2.0.zip` | `background.scripts` + `browser_specific_settings.gecko` |
+| **Chrome / Edge** | `csm-dicos-connector-chrome-v1.3.0.zip` | `background.service_worker` |
+| **Firefox** (≥ 128) | `csm-dicos-connector-firefox-v1.3.0.zip` | `background.scripts` + `browser_specific_settings.gecko` |
 
 Les sources (`src/`) sont **communes** ; seul le manifest diffère. Le code utilise l'espace de noms `chrome.*`
 (aliasé par Firefox) et des content scripts en monde `MAIN` (Chrome 111+, Firefox 128+).

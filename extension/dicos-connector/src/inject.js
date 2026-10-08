@@ -15,14 +15,22 @@
     if (typeof value !== "string" || !/^Bearer\s+\S+/i.test(value)) return;
     window.postMessage({ source: TAG, kind: "auth", token: value }, window.location.origin);
   }
-  // « …/trip-details/2026-10-02-0116/Disabled?… » → « …/trip-details/{id}/{type} » (chemin seul, même origine).
+  // Gabarit de la requête « dossier » : toute requête même origine dont le CHEMIN porte un n° de dossier
+  // (AAAA-MM-JJ-NNNN). Le n° devient {id} ; le segment qui le suit (type : Disabled…) et tout paramètre *type*
+  // deviennent {type}. Ex. « /api/xxx/2026-10-02-0116/Disabled » → « /api/xxx/{id}/{type} ». Seul le chemin est
+  // relevé (aucune donnée de la réponse) ; le content script ne l'utilise que si la réponse contient des trajets.
   function sendTripPath(url) {
     try {
       const u = new URL(url, window.location.href);
-      if (u.origin !== window.location.origin || !/trip-details/i.test(u.pathname)) return;
-      const m = u.pathname.match(/^(.*\/)\d{4}-\d{2}-\d{2}-\d{4}\/([^/]+)\/?$/);
-      if (!m) return;
-      window.postMessage({ source: TAG, kind: "tripPath", path: m[1] + "{id}/{type}" }, window.location.origin);
+      if (u.origin !== window.location.origin) return;
+      const re = /\d{4}-\d{2}-\d{2}-\d{4}/;
+      if (!re.test(u.pathname)) return;
+      let path = u.pathname.replace(re, "{id}").replace(/\{id\}\/([A-Za-z][\w-]*)/, "{id}/{type}");
+      const q = new URLSearchParams(u.search);
+      for (const k of [...q.keys()]) if (/type/i.test(k)) q.set(k, "__TYPE__");
+      const qs = q.toString().replace(/__TYPE__/g, "{type}");
+      path = (path + (qs ? "?" + qs : "")).slice(0, 200);
+      window.postMessage({ source: TAG, kind: "tripPath", path }, window.location.origin);
     } catch (_) {}
   }
   function sendFilter(body) {

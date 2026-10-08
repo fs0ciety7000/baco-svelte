@@ -97,11 +97,14 @@ function assist(r: RecordModel, canPmr: boolean): Assist {
   const e = exp(r);
   const client = canPmr ? e.client : undefined;
   // Back-relation pmr_mission (détail nominatif DICOS) : tableau, on prend la première.
-  const m = canPmr
-    ? ((r.expand as Record<string, RecordModel[] | undefined> | undefined)?.[
+  // Back-relation : PocketBase renvoie un OBJET (et non une liste) quand `pmr_mission.assist` a un index unique —
+  // c'est le cas ; on accepte les deux formes (sinon nom, téléphone et e-mail du client n'apparaissaient jamais).
+  const via = canPmr
+    ? (r.expand as Record<string, RecordModel | RecordModel[] | undefined> | undefined)?.[
         "pmr_mission_via_assist"
-      ] ?? [])[0]
+      ]
     : undefined;
+  const m = Array.isArray(via) ? via[0] : via;
   const nameFromMission = m ? `${str(m.client_last)} ${str(m.client_first)}`.trim() : "";
   const nameFromClient = client ? `${str(client.last_name)} ${str(client.first_name)}`.trim() : "";
   return {

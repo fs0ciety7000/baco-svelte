@@ -382,6 +382,13 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   étranger : normal). Panneau : lignes Téléphone et E-mail (mailto) séparées. Extension **1.2.0** : chemin
   `/trip-details/{n°}/{type}` ajouté aux candidats, 401/403 sur un candidat ≠ session expirée, **diagnostic dans le
   popup** (mode dossiers / repli + chemins essayés et codes) et version affichée.
+- 2026-10-08 — **Nom / téléphone / e-mail du client jamais affichés** : PocketBase renvoie la back-relation
+  `pmr_mission_via_assist` sous forme d'**objet** (index unique sur `assist`), le code attendait une liste → corrigé
+  (`server/data/pmr.ts` accepte les deux). Missions **« Stickering »** (tâche interne DICOS qui double le départ, sans
+  sens ni type → lignes « type ? ») ignorées à l'ingestion. Extension **1.3.0** : gabarit du dossier appris sur
+  **toute requête portant un n° de dossier** (pas seulement « trip-details »), jusqu'à 8 gabarits essayés ;
+  **avancement en direct** dans le popup (phase, x / y, secondes) ; « déjà en cours » affiche l'avancement ;
+  garde-fou 4 min ; erreur interne détaillée (recharger l'onglet DICOS après mise à jour de l'extension).
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans
