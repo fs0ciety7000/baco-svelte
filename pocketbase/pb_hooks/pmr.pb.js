@@ -2,17 +2,14 @@
 // Module PMR : déductions à l'enregistrement (période, zone), transitions des prestations, historique
 // (`pmr_events`, via lib/pmr.js : les callbacks sont isolés) et conservation des données de santé (anonymisation à 12 mois, archivage des fiches à 24 mois).
 
-// Période toujours déduite de l'heure ; zone déduite de la gare quand elle est absente, ou quand la gare change
-// sans que la zone soit choisie dans la même requête (sinon l'ancienne zone resterait).
+// Période toujours déduite de l'heure ; zone déduite de la gare seulement si elle est vide (création, import).
 onRecordValidate((e) => {
 	const pmr = require(`${__hooks}/lib/pmr.js`);
 	const time = e.record.getString('time');
 	if (time) e.record.set('period', pmr.periodOf(time));
-	const orig = e.record.isNew() ? null : e.record.original();
-	const stationChanged = orig && orig.getString('station') !== e.record.getString('station');
-	const zoneChanged = orig && orig.getString('zone') !== e.record.getString('zone');
-	if ((!e.record.getString('zone') || (stationChanged && !zoneChanged)) && e.record.getString('station')) {
-		e.record.set('zone', pmr.zoneFor(e.app, e.record.getString('station')));
+	if (!e.record.getString('zone') && e.record.getString('station')) {
+		const z = pmr.zoneFor(e.app, e.record.getString('station'));
+		if (z) e.record.set('zone', z);
 	}
 	e.next();
 }, 'pmr_assists');
@@ -25,6 +22,12 @@ onRecordCreateRequest((e) => {
 onRecordUpdateRequest((e) => {
 	const pmr = require(`${__hooks}/lib/pmr.js`);
 	const before = e.record.original();
+	// Gare changée sans zone dans la requête : zone recalculée (vide si la gare n'est pas au référentiel). Une zone
+	// envoyée avec la gare (formulaire web) est respectée, même si elle diffère du référentiel.
+	const body = e.requestInfo().body || {};
+	if (body.station !== undefined && body.zone === undefined && before.getString('station') !== e.record.getString('station')) {
+		e.record.set('zone', pmr.zoneFor(e.app, e.record.getString('station')));
+	}
 	const from = before.getString('status');
 	const to = e.record.getString('status');
 	if (before.getBool('anonymized')) throw new BadRequestError('Prestation anonymisée : elle ne se modifie plus.');
@@ -121,5 +124,5 @@ cronAdd('pmr-retention', '15 3 * * *', () => {
 		"UPDATE pmr_clients SET archived = 1 WHERE archived = 0 AND ((last_activity != '' AND last_activity < {:old}) OR (last_activity = '' AND created < {:old}))",
 		{ old: old }
 	);
-	q("DELETE FROM audit_log WHERE collection = 'pmr_clients' AND at < {:old}", { old: old });
+	q("DELETE FROM audit_log WHERE collection = 'pmr_clients' AND at < {:old} AND record IN (SELECT id FROM pmr_clients WHERE archived = 1)", { old: old });
 });

@@ -546,8 +546,9 @@ function run(app, dir, reset, scope) {
 		importTaxiOrders(tx, dir, taxiByName, usersByName, report);
 		importB201(tx, dir, userIds, report);
 		importPmr(tx, dir, report);
-		// Dernière activité des fiches : leur dernière mise à jour connue (aucun lien n'est repris de BACO).
-		tx.db().newQuery("UPDATE pmr_clients SET last_activity = updated WHERE last_activity = '' OR last_activity IS NULL").execute();
+		// Dernière activité des fiches : leur date de création BACO (`updated` vaut la date de l'import ; aucun lien
+		// n'est repris de BACO).
+		tx.db().newQuery("UPDATE pmr_clients SET last_activity = created WHERE last_activity = '' OR last_activity IS NULL").execute();
 		if (scope === 'all') importAudit(tx, dir, report);
 	});
 	return report;

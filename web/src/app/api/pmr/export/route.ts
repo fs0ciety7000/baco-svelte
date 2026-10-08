@@ -33,9 +33,9 @@ export async function GET(request: Request) {
       zone: sp.get("zone") ?? undefined,
       status: sp.get("statut") ?? undefined,
       q: sp.get("q") ?? undefined,
-      limit: 5000,
     },
-    { canPmr: false, order: "asc" },
+    // Droit réel pour la recherche (même résultat que l'historique) ; le CSV ne contient jamais de nom.
+    { canPmr: can(user, "pmr:read"), order: "asc", all: true },
   );
   const head = [
     "Date",

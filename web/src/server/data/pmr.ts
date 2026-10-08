@@ -116,7 +116,7 @@ export const assistListSchema = z.object({
 
 export async function listAssists(
   input: z.input<typeof assistListSchema>,
-  ctx: { canPmr: boolean; order?: "asc" | "desc" },
+  ctx: { canPmr: boolean; order?: "asc" | "desc"; all?: boolean },
 ) {
   const p = assistListSchema.parse(input);
   const pb = await pbForRequest();
@@ -131,11 +131,17 @@ export async function listAssists(
     if (ctx.canPmr) ors.push("client.last_name ~ {:q}");
     parts.push(pb.filter(`(${ors.join(" || ")})`, { q: p.q }));
   }
-  const res = await pb.collection("pmr_assists").getList(1, p.limit, {
+  const options = {
     filter: parts.join(" && "),
     sort: ctx.order === "desc" ? "-day,-time" : "day,time",
     expand: ctx.canPmr ? "zone,client,created_by" : "zone,created_by",
-  });
+  };
+  // Export : toutes les lignes (PocketBase plafonne une page à 1000).
+  if (ctx.all) {
+    const items = await pb.collection("pmr_assists").getFullList({ ...options, batch: 1000 });
+    return { rows: items.map((r) => assist(r, ctx.canPmr)), total: items.length };
+  }
+  const res = await pb.collection("pmr_assists").getList(1, p.limit, options);
   return { rows: res.items.map((r) => assist(r, ctx.canPmr)), total: res.totalItems };
 }
 

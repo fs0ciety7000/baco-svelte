@@ -381,7 +381,12 @@ function StateDialog({
           <Segmented
             label="État"
             value={state}
-            onChange={setState}
+            onChange={(v: EquipmentState) => {
+              setState(v);
+              // Nouvel état : la précision de l'ancien ne suit pas (sauf si l'agent l'a déjà réécrite).
+              if (v !== item.state && note === item.stateNote) setNote("");
+              if (v === item.state && !note) setNote(item.stateNote);
+            }}
             options={EQUIPMENT_STATES.map((s) => ({ value: s, label: EQUIPMENT_STATE[s].label }))}
           />
           <Field label="Motif / précision" hint="Facultatif">
