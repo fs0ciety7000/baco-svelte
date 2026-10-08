@@ -202,12 +202,17 @@ function importAudit(app, dir, report) {
 
 function run(app, dir, reset) {
 	const report = { users: 0, password_hashes: 0, avatars: 0, bus_companies: 0, bus_orders: 0, taxi_orders: 0, audit_legacy: 0, anomalies: [] };
-	app.runInTransaction((tx) => {
-		if (reset) {
+	// Purge dans une transaction séparée : PocketBase efface les fichiers des fiches supprimées APRÈS la
+	// validation. Dans la même transaction que l'import, il effacerait les avatars tout juste réimportés
+	// (mêmes identifiants, donc mêmes dossiers).
+	if (reset) {
+		app.runInTransaction((tx) => {
 			for (const name of ['audit_log', 'taxi_orders', 'bus_orders', 'bus_companies', 'users']) {
 				for (const r of tx.findAllRecords(name)) tx.delete(r);
 			}
-		}
+		});
+	}
+	app.runInTransaction((tx) => {
 		importUsers(tx, dir, report);
 		const userIds = {};
 		for (const u of tx.findAllRecords('users')) userIds[u.id] = true;

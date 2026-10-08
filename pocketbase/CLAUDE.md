@@ -31,5 +31,8 @@ PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # 
   utilisé dans une règle doit avoir une valeur par défaut posée par hook.
 - **Import** : CLI uniquement (aucune route HTTP), en une transaction ; les empreintes bcrypt `$2a$` de Supabase sont
   recopiées telles quelles dans `users.password` (connexion testée, coûts 6 et 10).
+- **Piège des fichiers** : PocketBase efface les fichiers d'une fiche supprimée *après* la validation de la
+  transaction. Purger puis réimporter des fiches de même identifiant dans une seule transaction perd les fichiers
+  → purge et import dans deux transactions (`lib/import.js`).
 - **Sauvegardes** : réglées par migration (`0 2 * * *`, 14 conservées dans `pb_data/backups`).
 - `PREPROD_PB_*` désigne une autre instance (jeu) : **n'y jamais écrire**, ne pas y lancer `test-rules.mjs`.
