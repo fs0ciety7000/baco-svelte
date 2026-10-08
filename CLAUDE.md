@@ -11,6 +11,8 @@ périmé est un bug.
 
 ## 0. À lire d'abord (v2)
 
+0. `docs/BACKEND-DECISION.md` — recommandation backend de l'étape 1 (à valider).
+
 1. `docs/CSM-V2.md` — cahier des charges v2 (pivot Next.js + PocketBase, retours UX, feuille de route).
 2. Ce fichier — contraintes (§6), workflow (§4), journal (§8).
 3. `docs/DESIGN-DIRECTION.md` + `docs/references/*.jpg` — direction « Tactical premium ».
@@ -47,7 +49,7 @@ mobile (390×844) sont soumises avant de généraliser un design.
 | UI | Tailwind v4 + shadcn/ui (Radix) personnalisé, lucide-react, cmdk, Vaul, Sonner |
 | Motion | GSAP 3 + `@gsap/react` (`useGSAP`, `gsap.matchMedia()` + `prefers-reduced-motion`) |
 | Données client | TanStack Query + TanStack Table ; formulaires react-hook-form + zod |
-| Backend | **PocketBase** auto-hébergé (Coolify), SDK `pocketbase` **côté serveur Next uniquement** |
+| Backend | **PocketBase 0.40.4** auto-hébergé (Coolify), SDK `pocketbase` **côté serveur Next uniquement** — `docs/BACKEND-DECISION.md` |
 | Auth | Auth PocketBase, jeton en cookie httpOnly posé par Next ; le navigateur ne parle qu'au domaine CSM |
 | Temps réel | SSE PocketBase relayé par Next (`/api/events`), jamais de WebSocket |
 | Tests | Vitest + Testing Library ; Playwright (dont 390×844 sur chaque écran) |
@@ -200,6 +202,11 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - 2026-10-08 — Session 2, étape 0 : sauvegarde relancée avec la nouvelle clé (GET seuls, inventaire Storage par
   SELECT), comptes recoupés (51/51 tables), 29 empreintes `$2a$` exportées hors Git. Réseau de l'environnement
   élargi par l'utilisateur (Supabase, Coolify, test-csm, iRail). Lectures Supabase autorisées sans redemander.
+- 2026-10-08 — Session 2, étape 1 : prototype PocketBase 0.40.4 + squelette Next 15.5. Empreintes `$2a$` reprises
+  telles quelles (pas de réinitialisation), UUID Supabase conservés, 24 contrôles de règles, relais SSE et
+  sauvegarde/restauration validés. Recommandation chiffrée **soumise** (`docs/BACKEND-DECISION.md`, ≈ 10,75 j de
+  backend, collections créées avec chaque module). `CSM_TEST_ADMIN_PASSWORD` ne correspond pas à l'empreinte BACO
+  du compte (question posée). Arrêt demandé par l'utilisateur à cette recommandation.
 
 
 ---

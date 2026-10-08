@@ -62,7 +62,7 @@ La correction est prête et testée dans `supabase/migrations/20261008120000_sec
 | Animations | GSAP 3 + @gsap/react ; View Transitions si utile |
 | Données côté client | TanStack Query (cache, invalidation) + TanStack Table (listes denses) |
 | Formulaires | react-hook-form + zod (schémas partagés client/serveur) |
-| Backend | **PocketBase** (Docker sur Coolify, volume persistant, sauvegardes planifiées), via le SDK `pocketbase` côté serveur Next et en SSE pour le temps réel. Plan B : rester sur Supabase via le serveur Next uniquement. |
+| Backend | **PocketBase 0.40.4** (Docker sur Coolify, volume persistant, sauvegardes planifiées), via le SDK `pocketbase` côté serveur Next et en SSE pour le temps réel. Plan B : rester sur Supabase via le serveur Next uniquement. Prototype et chiffrage : `docs/BACKEND-DECISION.md`. |
 | Auth | Authentification PocketBase, jeton stocké dans un cookie httpOnly posé par Next. Le navigateur ne parle qu'au domaine CSM. |
 | PDF / Excel | `@react-pdf/renderer` ou jspdf ; exceljs ; brouillon `.eml` avec PDF joint (pas de SMTP) |
 | Tests | Vitest + Testing Library ; Playwright, y compris un passage à 390×844 sur chaque écran |
@@ -124,7 +124,7 @@ Dans Coolify, deux ressources :
 | # | Étape | Livrable |
 |---|---|---|
 | 0 | **Sauvegarde Supabase** (schéma, données, rôles, Storage, liste des comptes) | ✅ 8 oct. — `docs/SAUVEGARDE-SUPABASE.md`, restauration testée |
-| 1 | Prototype PocketBase ou Supabase + squelette Next (auth, 1 module) | Recommandation à l'utilisateur |
+| 1 | Prototype PocketBase ou Supabase + squelette Next (auth, 1 module) | 🔄 8 oct. — prototype fait, recommandation **`docs/BACKEND-DECISION.md`** soumise (PocketBase confirmé, ≈ 10,75 j de migration backend) |
 | 2 | Design system : jetons, 5 thèmes, bibliothèque de composants, GSAP, page `/design` | Captures desktop et mobile validées par l'utilisateur |
 | 3 | Shell : 6 entrées, onglets par module, ⌘K, menu utilisateur, mobile | Captures validées |
 | 4 | Données : schéma, règles d'accès, import depuis la sauvegarde | Données de test sur l'environnement de test |

@@ -1,4 +1,10 @@
-# Message de lancement — session CSM v2 n° 2
+# Message de lancement — session CSM v2
+
+> **État à la fin de la session 2 (8 oct.)** : étapes 0 et 1 faites sur `claude/admiring-thompson-1lkun9`
+> (`pocketbase/`, `web/`, `docs/BACKEND-DECISION.md`). Pour la session 3, partir de cette branche, considérer les
+> points 0 et 1 ci-dessous comme faits (relancer seulement la sauvegarde si `/home/user/csm-backup` est vide), lire
+> `docs/BACKEND-DECISION.md` et les réponses de l'utilisateur aux questions du §5, puis commencer à l'étape 2.
+> Les scripts Node ont besoin de `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt`.
 
 À copier tel quel dans une nouvelle session Claude Code, sur le dépôt `fs0ciety7000/baco-svelte`.
 

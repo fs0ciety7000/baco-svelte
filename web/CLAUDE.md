@@ -11,8 +11,7 @@ ui.shadcn.com), zod 4, TanStack Query 5, SDK `pocketbase` **côté serveur uniqu
 npm ci
 npm run dev                      # http://localhost:3000 (PB_URL=http://127.0.0.1:8090, CSM_COOKIE_SECURE=false)
 npm run typecheck && npm run lint && npm run format && npm run test:run && npm run build   # avant chaque push
-# Standalone local : cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/
-#   puis PB_URL=… CSM_COOKIE_SECURE=false node .next/standalone/server.js
+PB_URL=… CSM_COOKIE_SECURE=false npm run start:standalone   # serveur de production local (copie static + public)
 # E2E (serveur + PocketBase local importé lancés à part ; desktop 1440×900 et mobile 390×844) :
 E2E_IDENTITY=… E2E_PASSWORD=… PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… npm run e2e
 ```
@@ -32,6 +31,12 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   le serveur s'abonne au SSE PocketBase avec le jeton de l'agent et ne renvoie que `{ collection, action, id }`
   (liste blanche de sujets). Côté client : `router.refresh()` ou invalidation TanStack Query.
 - `middleware.ts` : redirige vers `/connexion` sans jeton valide ; rafraîchit le jeton à moins de 24 h d'expiration.
+
+## Pièges
+
+- Relancer `npm run build` pendant qu'un serveur standalone tourne remplace `.next/standalone` **sans** les
+  fichiers statiques : le JS client répond 404, la page s'affiche mais rien n'est interactif (le formulaire de
+  connexion marche quand même, il fonctionne sans JS). Toujours redémarrer par `npm run start:standalone`.
 
 ## Conventions
 

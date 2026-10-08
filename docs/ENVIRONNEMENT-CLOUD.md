@@ -50,14 +50,19 @@ Ne pas autoriser `test.fs0ciety.org` : l'instance PocketBase du jeu n'a rien à 
 #!/usr/bin/env bash
 set -euo pipefail
 # PocketBase (prototype local) — figer la dernière version stable (voir github.com/pocketbase/pocketbase/releases)
-PB_VERSION=0.30.0
+PB_VERSION=0.40.4   # version figée de CSM (pocketbase/Dockerfile)
 if ! command -v pocketbase >/dev/null; then
-  curl -fsSL -o /tmp/pb.zip "https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_linux_amd64.zip"
-  unzip -o -q /tmp/pb.zip pocketbase -d /usr/local/bin && rm /tmp/pb.zip
+  cd /tmp && Z="pocketbase_${PB_VERSION}_linux_amd64.zip"
+  curl -fsSL -o "$Z" "https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/$Z"
+  curl -fsSL "https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/checksums.txt" | grep "$Z" | sha256sum -c -
+  unzip -o -q "$Z" pocketbase -d /usr/local/bin && rm "$Z"
 fi
 # age (archives chiffrées) — déjà présent sur l'image par défaut, sinon :
 command -v age >/dev/null || (apt-get update -qq && apt-get install -y -qq age)
 ```
+
+Constaté en session 2 : `pocketbase` n'était pas installé au démarrage (script absent ou non exécuté) ; il a été
+installé à la main. Vérifier que ce script est bien collé dans les réglages de l'environnement.
 
 Les dépendances `npm` de `/web` s'installent dans la session (`cd web && npm ci`), le dossier n'existant pas
 encore. Une fois `/web` créé, ajouter un hook SessionStart dans le dépôt plutôt que d'alourdir ce script.
