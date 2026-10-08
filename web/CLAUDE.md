@@ -38,6 +38,23 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   fichiers statiques : le JS client répond 404, la page s'affiche mais rien n'est interactif (le formulaire de
   connexion marche quand même, il fonctionne sans JS). Toujours redémarrer par `npm run start:standalone`.
 
+- **Garde dans chaque page, pas seulement dans le layout** : Next rend layout et page en parallèle, et le contenu
+  d'une page part dans le flux RSC même si le layout appelle `notFound()`. Chaque `page.tsx` appelle
+  `requirePermission(perm)`, `requireRoute(href)` (règles de la navigation) ou `requireAdmin()`. Test E2E dédié.
+- `Button asChild` : Radix `Slot` exige un seul enfant (pas de spinner dans ce cas).
+
+## Shell (étape 3)
+
+- Navigation : **source unique** `src/navigation.ts` (6 modules, onglets en routes, `hideFor`, actions rapides,
+  administration). Barre latérale (rail 96 px dès 768 px, 232 px dès 1280 px), barre du haut (fil, ⌘K, + Nouveau,
+  menu utilisateur), mobile : 4 onglets + « Plus » (Sheet). Composants dans `src/components/shell/`.
+- Les icônes ne traversent pas la frontière serveur → client : la navigation est calculée côté client
+  (`ShellProvider`) à partir de l'agent, avec les mêmes fonctions que les gardes serveur.
+- Palette ⌘K / Ctrl+K uniquement (jamais un « K » seul). Groupes Créer, Aller à, Administration, Affichage.
+- Tableau de bord : widgets en `@container`, grille dense, réorganisables (dnd-kit + flèches + masquer), disposition
+  dans `users.preferences.dashboard` (Server Action avec le jeton de l'agent). Dates « du jour » en Europe/Brussels.
+- CSP avec nonce posée par `middleware.ts` (`connect-src 'self'`).
+
 ## Conventions
 
 - **Le navigateur ne parle qu'au domaine CSM** : ni PocketBase, ni Supabase, ni WebSocket (test E2E dédié).

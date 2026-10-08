@@ -53,7 +53,7 @@ test("connexion par cookie httpOnly, données et temps réel via le seul domaine
   await page.getByLabel("Mot de passe").fill(password);
   await page.getByRole("button", { name: "Se connecter" }).click();
   await expect(page).toHaveURL(/\/commandes$/);
-  await expect(page.getByTestId("current-user")).toContainText("user");
+  await expect(page.getByRole("button", { name: /Menu de Agent E2E/ })).toBeVisible();
 
   const cookie = (await context.cookies()).find((c) => c.name === "csm_session");
   expect(cookie?.httpOnly).toBe(true);
@@ -61,10 +61,9 @@ test("connexion par cookie httpOnly, données et temps réel via le seul domaine
   expect(await page.evaluate(() => document.cookie)).not.toContain("csm_session");
 
   // Relais SSE : un changement côté serveur rafraîchit la liste.
-  await expect(page.getByTestId("live-state")).toHaveText("● En direct");
-  const before = await page.getByTestId("bus-orders").locator("li").count();
-  const eyebrow = page.locator("p", { hasText: /Commandes · \d+ bus/ });
-  const total = Number((await eyebrow.textContent())?.match(/(\d+) bus/)?.[1]);
+  await expect(page.getByTestId("live-state")).toHaveText("En direct");
+  const counter = page.getByTestId("orders-count");
+  const before = (await counter.textContent()) ?? "";
 
   const token = await superuserToken();
   const created = await fetch(`${pbUrl}/api/collections/bus_orders/records`, {
@@ -80,10 +79,8 @@ test("connexion par cookie httpOnly, données et temps réel via le seul domaine
   });
   const { id } = (await created.json()) as { id: string };
   try {
-    await expect(eyebrow).not.toHaveText(`Commandes · ${total} bus`);
-    expect(await page.getByTestId("bus-orders").locator("li").count()).toBeGreaterThanOrEqual(
-      before,
-    );
+    // Le compteur change sans rechargement (les deux projets créent une commande en parallèle).
+    await expect(counter).not.toHaveText(before);
     await page.screenshot({
       path: `test-results/commandes-${testInfo.project.name}.png`,
       fullPage: true,
@@ -103,7 +100,8 @@ test("connexion par cookie httpOnly, données et temps réel via le seul domaine
 
   expect(foreign, "le navigateur ne doit appeler que le domaine CSM").toEqual([]);
 
-  await page.getByRole("button", { name: "Déconnexion" }).click();
+  await page.getByRole("button", { name: /Menu de Agent E2E/ }).click();
+  await page.getByRole("menuitem", { name: "Déconnexion" }).click();
   await expect(page).toHaveURL(/\/connexion$/);
   expect((await context.cookies()).find((c) => c.name === "csm_session")).toBeUndefined();
 });

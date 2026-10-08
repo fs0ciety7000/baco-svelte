@@ -35,7 +35,7 @@ export function LoginForm({ next }: { next?: string }) {
           className="h-11 text-base"
         />
       </div>
-      <p role="alert" aria-live="polite" className="min-h-5 text-sm text-danger">
+      <p role="alert" aria-live="polite" className="min-h-5 text-hint text-danger">
         {state.error}
       </p>
       <Button type="submit" variant="primary" loading={pending} className="h-11">

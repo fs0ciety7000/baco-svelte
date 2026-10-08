@@ -10,8 +10,33 @@ const SESSION_COOKIE = "csm_session";
 const PUBLIC = ["/connexion"];
 const REFRESH_MARGIN_S = 24 * 3600;
 
+/**
+ * Content-Security-Policy avec nonce par requête (Next l'applique à ses propres scripts) :
+ * le navigateur ne charge et n'appelle que le domaine CSM (connect-src 'self' : ni PocketBase, ni Supabase).
+ * style-src 'unsafe-inline' : styles posés par GSAP, Radix et Sonner.
+ */
+export function contentSecurityPolicy(
+  nonce: string,
+  dev = process.env.NODE_ENV !== "production",
+): string {
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self'",
+    `connect-src 'self'${dev ? " ws:" : ""}`,
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+  ].join("; ");
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+  const nonce = btoa(crypto.randomUUID());
+  const csp = contentSecurityPolicy(nonce);
   const token = request.cookies.get(SESSION_COOKIE)?.value;
   const valid = !!token && !isExpired(token);
   const isPublic = PUBLIC.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -26,7 +51,11 @@ export async function middleware(request: NextRequest) {
     return res;
   }
 
-  const res = NextResponse.next();
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("content-security-policy", csp);
+  const res = NextResponse.next({ request: { headers: requestHeaders } });
+  res.headers.set("content-security-policy", csp);
   if (valid && isExpired(token, Date.now(), REFRESH_MARGIN_S)) {
     try {
       const pbUrl = process.env.PB_URL ?? "http://127.0.0.1:8090";

@@ -26,8 +26,16 @@ export function LiveRefresh({ topics }: { topics: string[] }) {
   }, [key, router]);
 
   return (
-    <span className="font-mono text-xs uppercase" data-testid="live-state" aria-live="polite">
-      {state === "direct" ? "● En direct" : state === "connexion" ? "Connexion…" : "Hors ligne"}
+    <span
+      className="label-mono inline-flex items-center gap-2 text-fg-muted"
+      data-testid="live-state"
+      aria-live="polite"
+    >
+      <span
+        aria-hidden
+        className={state === "direct" ? "size-1.5 animate-pulse-dot bg-ok" : "size-1.5 bg-fg-muted"}
+      />
+      {state === "direct" ? "En direct" : state === "connexion" ? "Connexion…" : "Hors ligne"}
     </span>
   );
 }

@@ -1,29 +1,26 @@
+import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
-import { Button } from "@/components/ui/button";
+import { AppShell } from "@/components/shell/app-shell";
+import { parseUiCookie, UI_COOKIE } from "@/design/preferences";
 import { requireUser } from "@/server/auth";
 
-import { logout } from "../connexion/actions";
-
-// Coque provisoire de l'étape 1 (le shell à 6 entrées arrive à l'étape 3).
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
+  const ui = parseUiCookie((await cookies()).get(UI_COOKIE)?.value);
   return (
-    <div className="min-h-dvh">
-      <header className="flex items-center justify-between gap-4 border-b px-4 py-2">
-        <span className="font-mono text-sm tracking-widest uppercase">CSM</span>
-        <div className="flex items-center gap-3 text-sm">
-          <span data-testid="current-user">
-            {user.name || user.email} · {user.role}
-          </span>
-          <form action={logout}>
-            <Button type="submit" variant="secondary" className="h-11 md:h-9">
-              Déconnexion
-            </Button>
-          </form>
-        </div>
-      </header>
+    <AppShell
+      ui={ui}
+      user={{
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        grants: user.grants ?? [],
+        denies: user.denies ?? [],
+      }}
+    >
       {children}
-    </div>
+    </AppShell>
   );
 }

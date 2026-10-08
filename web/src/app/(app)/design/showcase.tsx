@@ -369,11 +369,11 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
             <Field label="Remarques" className="md:col-span-2">
               <Textarea placeholder="Informations utiles au transporteur" />
             </Field>
-            <div className="flex items-center gap-3">
+            <div className="flex min-h-11 items-center gap-3 md:min-h-0">
               <Checkbox id="ar" defaultChecked />
               <Label htmlFor="ar">Aller-retour</Label>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex min-h-11 items-center gap-3 md:min-h-0">
               <Switch id="pmr" />
               <Label htmlFor="pmr">Voyageurs PMR à bord</Label>
             </div>

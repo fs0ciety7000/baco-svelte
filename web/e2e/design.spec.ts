@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { login as loginAs } from "./helpers";
+
 // Page /design dans chaque thème : pas de défilement horizontal, pas d'erreur console, captures
 // (test-results/design-<thème>-<projet>.png) pour validation visuelle.
 
@@ -10,11 +12,7 @@ test.skip(!identity || !password, "E2E_IDENTITY / E2E_PASSWORD non définis");
 const THEMES = ["commandement", "ivoire", "rail", "contraste", "nocturne"] as const;
 
 async function login(page: Page) {
-  await page.goto("/connexion?suite=%2Fdesign");
-  await page.getByLabel("E-mail ou identifiant").fill(identity);
-  await page.getByLabel("Mot de passe").fill(password);
-  await page.getByRole("button", { name: "Se connecter" }).click();
-  await expect(page).toHaveURL(/\/design$/);
+  await loginAs(page, "/design");
 }
 
 for (const theme of THEMES) {
@@ -54,13 +52,15 @@ test("les cibles tactiles font au moins 44 px sur mobile", async ({ page }, test
   test.skip(testInfo.project.name !== "mobile", "mobile uniquement");
   await login(page);
   const small = await page.evaluate(() =>
-    [
-      ...document.querySelectorAll<HTMLElement>(
-        "main button, main [role=radio], main input, main select",
-      ),
-    ]
+    [...document.querySelectorAll<HTMLElement>("button, [role=radio], input, select")]
       .filter((el) => el.offsetParent !== null)
-      .map((el) => ({ el: el.outerHTML.slice(0, 80), h: el.getBoundingClientRect().height }))
+      // Case à cocher / interrupteur : la cible est la ligne entière (contrôle + libellé cliquable).
+      .map((el) => {
+        const target = /^(checkbox|switch)$/.test(el.getAttribute("role") ?? "")
+          ? el.parentElement!
+          : el;
+        return { el: el.outerHTML.slice(0, 80), h: target.getBoundingClientRect().height };
+      })
       .filter((x) => x.h < 43.5),
   );
   expect(small).toEqual([]);

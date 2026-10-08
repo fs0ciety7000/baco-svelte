@@ -1,8 +1,11 @@
 import "server-only";
 
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { z } from "zod";
+
+import { can } from "@/lib/permissions";
+import { visibleModules } from "@/navigation";
 
 import { createPb } from "./pocketbase";
 import { readSessionToken } from "./session";
@@ -28,6 +31,7 @@ const userSchema = z.object({
   denies: z.array(z.string()).nullable().default([]),
   district: z.string().default(""),
   avatar: z.string().default(""),
+  preferences: z.unknown().optional(),
 });
 
 export type SessionUser = z.infer<typeof userSchema>;
@@ -58,4 +62,25 @@ export async function requireUser(): Promise<SessionUser> {
 
 export function isAdmin(user: SessionUser): boolean {
   return user.role === "admin" || user.role === "sysop";
+}
+
+/** Garde de page : 404 si l'agent n'a pas la permission (on ne révèle pas l'existence de l'écran). */
+export async function requirePermission(permission: string): Promise<SessionUser> {
+  const user = await requireUser();
+  if (!can(user, permission)) notFound();
+  return user;
+}
+
+export async function requireAdmin(): Promise<SessionUser> {
+  const user = await requireUser();
+  if (!isAdmin(user)) notFound();
+  return user;
+}
+
+/** Garde d'un onglet de navigation : mêmes règles que les menus (permission + rôles masqués). */
+export async function requireRoute(href: string): Promise<SessionUser> {
+  const user = await requireUser();
+  const allowed = visibleModules(user).some((m) => m.tabs.some((t) => t.href === href));
+  if (!allowed) notFound();
+  return user;
 }
