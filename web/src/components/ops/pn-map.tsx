@@ -91,6 +91,12 @@ export function PnMap({
       const name = v.slice(4, -1);
       return css.getPropertyValue(name).trim() || "#888";
     };
+    // Texte du survol posé en textContent (jamais de chaîne HTML dans Leaflet).
+    const tip = (text: string) => {
+      const span = document.createElement("span");
+      span.textContent = text;
+      return span;
+    };
     const pts: [number, number][] = [];
     for (const c of crossings) {
       if (!c.lat || !c.lon) continue;
@@ -103,7 +109,7 @@ export function PnMap({
         fillColor: color(c.zone),
         fillOpacity: 0.85,
       })
-        .bindTooltip(`PN ${c.number} · ${c.line}`, { direction: "top" })
+        .bindTooltip(tip(`PN ${c.number} · ${c.line}`), { direction: "top" })
         .on("click", () => onSelectRef.current(c.id))
         .addTo(group);
     }

@@ -42,16 +42,37 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const origin = request.headers.get("origin");
   if (origin && new URL(origin).host !== request.headers.get("host"))
     return Response.json({ error: "Origine refusée" }, { status: 403 });
-  if (Number(request.headers.get("content-length") ?? 0) > 3 * ATTACHMENT_MAX + 64 * 1024)
+  const LIMIT = 3 * ATTACHMENT_MAX + 64 * 1024;
+  if (Number(request.headers.get("content-length") ?? 0) > LIMIT)
     return Response.json(
       { error: "Fichiers trop lourds (5 Mo chacun au maximum)." },
       { status: 413 },
     );
   const { id } = await params;
   if (!/^[a-z0-9]{15}$/.test(id)) return Response.json({ error: "Introuvable" }, { status: 404 });
+  // Lecture bornée du corps (un envoi sans longueur annoncée, ou qui ment, est coupé à la limite).
   let form: FormData;
   try {
-    form = await request.formData();
+    const reader = request.body?.getReader();
+    if (!reader) return Response.json({ error: "Envoi vide." }, { status: 400 });
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > LIMIT) {
+        await reader.cancel();
+        return Response.json(
+          { error: "Fichiers trop lourds (5 Mo chacun au maximum)." },
+          { status: 413 },
+        );
+      }
+      chunks.push(value);
+    }
+    form = await new Response(new Blob(chunks as BlobPart[]), {
+      headers: { "content-type": request.headers.get("content-type") ?? "" },
+    }).formData();
   } catch {
     return Response.json({ error: "Envoi illisible." }, { status: 400 });
   }

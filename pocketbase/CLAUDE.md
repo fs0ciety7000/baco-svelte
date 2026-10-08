@@ -12,9 +12,10 @@ pocketbase migrate up $P                                   # appliquer les migra
 pocketbase superuser upsert <email> <mot de passe> $P      # compte superuser local
 pocketbase serve --http 127.0.0.1:8090 $P                  # serveur local
 CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P   # import de la sauvegarde Supabase (hors Git)
-PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (105 contrôles)
+PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (149 contrôles)
 CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # Commandes + PMR, comptes gardés
 CSM_IMPORT_SCOPE=pmr CSM_IMPORT_RESET=1 pocketbase csm-import … $P        # PMR seul (zones, matériel, prestations)
+CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # main courante + 211 PN de BACO
 ```
 
 ## Conventions
@@ -66,5 +67,12 @@ CSM_IMPORT_SCOPE=pmr CSM_IMPORT_RESET=1 pocketbase csm-import … $P        # PM
   entier par les coordinateurs seulement (les autres : état, précision, réparation). Période toujours recalculée
   depuis l'heure ; zone recalculée quand la gare change. Les callbacks étant isolés, toute fonction
   partagée (ex. `event`) vit dans `lib/`.
+- **Module Opérations** (`1760000500_operations.js`, `operations.pb.js`, `lib/operations.js`) : `ops_log` (auteur forcé,
+  statut / heure / district / mentions posés par hook, `notified` = agents déjà notifiés, retrait avec motif par l'auteur
+  15 min puis coordinateurs, rétablissement coordinateurs, suppression admin), `ops_log_reads` et `ops_log_events`
+  visibles comme l'entrée, `notifications` (écrites par les hooks seulement, le destinataire lit / marque lu / supprime ;
+  supprimées au retrait de l'entrée ; purge 30 j lues / 90 j), `level_crossings` (zone = code texte, coordinateurs),
+  `train_watches` (10 par agent, aujourd'hui ou demain ; cron `train-watches` toutes les 2 min, 40 trains et 90 s au
+  plus, 350 ms entre appels iRail via `sleep`). Dépôts (`depot_*`) sur `pmr_zones`, zone FNR créée.
 - **Sauvegardes** : réglées par migration (`0 2 * * *`, 14 conservées dans `pb_data/backups`).
 - `PREPROD_PB_*` désigne une autre instance (jeu) : **n'y jamais écrire**, ne pas y lancer `test-rules.mjs`.

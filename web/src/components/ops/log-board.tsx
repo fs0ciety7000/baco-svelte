@@ -107,6 +107,16 @@ export function LogBoard({
   useEffect(() => {
     if (openId) void load(openId);
   }, [openId, load]);
+  // Lien de notification vers la page déjà ouverte (navigation douce) : ouvre l'entrée demandée.
+  const wantedEntry = params.get("entree");
+  useEffect(() => {
+    if (wantedEntry && wantedEntry !== openId) {
+      setPanel(null);
+      setEditing(false);
+      setOpenId(wantedEntry);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantedEntry]);
   const openUpdated = openId
     ? [...rows, ...pinned].find((r) => r.id === openId)?.updated
     : undefined;
@@ -121,7 +131,7 @@ export function LogBoard({
     setOpenId(id);
     const sp = new URLSearchParams(params.toString());
     sp.set("entree", id);
-    router.replace(`${pathname}?${sp}`, { scroll: false });
+    window.history.replaceState(null, "", `${pathname}?${sp}`);
   };
   const close = () => {
     setOpenId(null);
@@ -130,7 +140,7 @@ export function LogBoard({
     wanted.current = null;
     const sp = new URLSearchParams(params.toString());
     sp.delete("entree");
-    router.replace(sp.size ? `${pathname}?${sp}` : pathname, { scroll: false });
+    window.history.replaceState(null, "", sp.size ? `${pathname}?${sp}` : pathname);
   };
 
   const toggleRead = (e: LogEntry) =>
@@ -277,10 +287,11 @@ export function LogBoard({
           </div>
         ) : editing ? (
           <LogComposer
-            key={`${e.id}-${e.updated}`}
+            key={e.id}
             agents={agents}
             linkKinds={linkKinds}
             entry={e}
+            onChanged={() => void load(e.id)}
             onDone={() => {
               setEditing(false);
               void load(e.id);

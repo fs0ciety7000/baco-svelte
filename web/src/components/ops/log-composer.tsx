@@ -50,6 +50,7 @@ export function LogComposer({
   entry,
   preset,
   onDone,
+  onChanged,
   autoFocus,
 }: {
   agents: Agent[];
@@ -58,6 +59,8 @@ export function LogComposer({
   entry?: LogEntry;
   preset?: ComposerPreset;
   onDone?: (id: string) => void;
+  /** Appelé après la suppression d'une pièce jointe (l'entrée a changé : relire sa version). */
+  onChanged?: () => void;
   autoFocus?: boolean;
 }) {
   const router = useRouter();
@@ -446,7 +449,10 @@ export function LogComposer({
                   if (!entry) return;
                   const res = await safeCall(removeAttachment({ id: entry.id, name }));
                   if (!res.ok) toast.error(res.error);
-                  else router.refresh();
+                  else {
+                    router.refresh();
+                    onChanged?.();
+                  }
                 }}
               >
                 <X className="size-3.5" />

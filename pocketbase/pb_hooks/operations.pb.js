@@ -10,9 +10,11 @@ onRecordCreateRequest((e) => {
 	if (!r.getString('district') && e.auth && !e.auth.isSuperuser()) r.set('district', e.auth.getString('district'));
 	const mentions = ops.mentionsFrom(e.app, r.getString('body'), r.getString('author'));
 	r.set('mentions', mentions);
+	r.set('notified', []);
+	const plan = ops.planNotifications(e.app, r, mentions, r.getBool('urgent'));
 	e.next();
 	ops.event(e.app, r.id, 'create', '', '', '', e.auth, '');
-	ops.notifyEntry(e.app, r, e.auth, mentions, r.getBool('urgent'));
+	ops.sendPlanned(e.app, r, e.auth, plan);
 }, 'ops_log');
 
 onRecordUpdateRequest((e) => {
@@ -41,20 +43,20 @@ onRecordUpdateRequest((e) => {
 	const changes = watched.filter((f) => before.getString(f) !== r.getString(f)).map((f) => [f, before.getString(f), r.getString(f)]);
 	const filesBefore = ops.ids(before, 'attachments').join(',');
 	const filesAfter = ops.ids(r, 'attachments').join(',');
-	if (filesBefore !== filesAfter) changes.push(['attachments', String(ops.ids(before, 'attachments').length), String(ops.ids(r, 'attachments').length)]);
-	let added = [];
-	if (before.getString('body') !== r.getString('body')) {
-		const was = ops.ids(before, 'mentions');
-		const now = ops.mentionsFrom(e.app, r.getString('body'), r.getString('author'));
-		r.set('mentions', now);
-		added = now.filter((u) => was.indexOf(u) === -1);
-	}
+	// Pièces jointes envoyées juste après la publication (2e requête du formulaire) : pas une modification.
+	const age = Date.now() - new Date(before.getString('created').replace(' ', 'T')).getTime();
+	const initialUpload = changes.length === 0 && age < 2 * 60000 && !!e.auth && e.auth.id === r.getString('author') && ops.ids(before, 'attachments').length === 0;
+	if (filesBefore !== filesAfter && !initialUpload) changes.push(['attachments', String(ops.ids(before, 'attachments').length), String(ops.ids(r, 'attachments').length)]);
+	if (before.getString('body') !== r.getString('body')) r.set('mentions', ops.mentionsFrom(e.app, r.getString('body'), r.getString('author')));
 	if (changes.length) r.set('edited_at', ops.now());
-	const urgentNow = !before.getBool('urgent') && r.getBool('urgent');
+	// Notifications : nouvelles mentions et passage en urgent, une fois par agent et par entrée (champ `notified`).
+	const plan = to === 'active' ? ops.planNotifications(e.app, r, ops.ids(r, 'mentions'), r.getBool('urgent')) : { mention: [], urgent: [] };
 	e.next();
 	if (from !== to) ops.event(e.app, r.id, to === 'retiree' ? 'retire' : 'restore', 'status', from, to, e.auth, r.getString('retired_reason'));
 	for (const c of changes) ops.event(e.app, r.id, 'edit', c[0], c[1], c[2], e.auth, '');
-	if (to === 'active') ops.notifyEntry(e.app, r, e.auth, added, urgentNow);
+	// Entrée retirée : ses notifications (qui reprennent le texte) disparaissent des cloches.
+	if (to === 'retiree') e.app.db().newQuery("DELETE FROM notifications WHERE source = 'ops_log' AND source_id = {:id}").bind({ id: r.id }).execute();
+	ops.sendPlanned(e.app, r, e.auth, plan);
 }, 'ops_log');
 
 onRecordAfterDeleteSuccess((e) => {
@@ -87,7 +89,14 @@ cronAdd('train-watches', '*/2 * * * *', () => {
 	const byTrain = {};
 	for (const w of watches) (byTrain[w.getString('train')] = byTrain[w.getString('train')] || []).push(w);
 	const ddmmyy = `${today.slice(8, 10)}${today.slice(5, 7)}${today.slice(2, 4)}`;
-	for (const train of Object.keys(byTrain)) {
+	// Budget : 40 trains et 90 s par passage (le cron tourne toutes les 2 min), 350 ms entre deux appels iRail
+	// (règle d'usage : 3 requêtes par seconde au plus).
+	const started = Date.now();
+	const trains = Object.keys(byTrain).slice(0, 40);
+	for (let k = 0; k < trains.length; k++) {
+		const train = trains[k];
+		if (Date.now() - started > 90000) break;
+		if (k > 0) sleep(350);
 		let state;
 		try {
 			const res = $http.send({
@@ -124,7 +133,7 @@ cronAdd('train-watches', '*/2 * * * *', () => {
 			if (state.cancelled && !last.cancelled) msg = `${label} : suppression signalée`;
 			else if (state.delay >= threshold && state.delay >= notified + (notified ? 10 : 0)) msg = `${label} : +${state.delay} min`;
 			if (msg) ops.notify($app, w.getString('user'), 'train', msg, 'Train suivi (iRail)', link, 'train_watches', w.id);
-			w.set('last_state', { delay: state.delay, cancelled: state.cancelled, notifiedDelay: msg && !state.cancelled ? state.delay : notified, at: ops.now() });
+			w.set('last_state', { delay: state.delay, cancelled: state.cancelled, notifiedDelay: msg && msg.indexOf('+') !== -1 ? state.delay : notified, at: ops.now() });
 			$app.save(w);
 		}
 	}

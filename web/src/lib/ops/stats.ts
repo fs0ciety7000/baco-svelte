@@ -106,7 +106,10 @@ export function aggregate(
     .map(([name, list]) => ({
       name,
       orders: list.length,
-      buses: list.reduce((n, o) => n + (o.kind === "bus" ? o.buses : 0), 0),
+      buses: list.reduce(
+        (n, o) => n + (o.kind === "bus" && o.status !== "annule" ? o.buses : 0),
+        0,
+      ),
       cancelled: list.filter((o) => o.status === "annule").length,
       medianConfirm: median(list.map(confirmMinutes).filter((x): x is number => x !== null)),
     }))
@@ -117,7 +120,7 @@ export function aggregate(
     granularity: g,
     totals: {
       bus: bus.length,
-      buses: bus.reduce((n, o) => n + o.buses, 0),
+      buses: bus.reduce((n, o) => n + (o.status === "annule" ? 0 : o.buses), 0),
       taxi: taxi.length,
       cancelled: live.filter((o) => o.status === "annule").length,
       cancelRate: live.length ? live.filter((o) => o.status === "annule").length / live.length : 0,

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { LOG_CATEGORIES, type LogCategory } from "@/lib/ops/log";
 import { can } from "@/lib/permissions";
 import { requirePermission } from "@/server/auth";
 import { listMentionable, type LinkedObject } from "@/server/data/ops";
@@ -27,14 +28,17 @@ export default async function Page({
     .filter(([, p]) => can(user, p))
     .map(([k]) => k as LinkedObject["kind"]);
   const train = typeof sp.train === "string" ? sp.train.slice(0, 20) : "";
+  const category: LogCategory | undefined = (LOG_CATEGORIES as readonly string[]).includes(
+    sp.categorie ?? "",
+  )
+    ? (sp.categorie as LogCategory)
+    : train
+      ? "incident"
+      : undefined;
   return (
     <section className="flex max-w-3xl flex-col gap-4" aria-label="Nouvelle entrée">
       <h2 className="text-h3 font-semibold">Nouvelle entrée</h2>
-      <NewEntryForm
-        agents={agents}
-        linkKinds={linkKinds}
-        preset={{ train, category: train ? "incident" : undefined }}
-      />
+      <NewEntryForm agents={agents} linkKinds={linkKinds} preset={{ train, category }} />
     </section>
   );
 }

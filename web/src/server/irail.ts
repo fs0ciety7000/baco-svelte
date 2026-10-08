@@ -34,7 +34,20 @@ let slots: number[] = [];
 
 export class IrailError extends Error {}
 
+let waiting = 0;
+
 async function throttle() {
+  // File d'attente bornée : au-delà, refus immédiat plutôt que de faire attendre tout le monde.
+  if (waiting >= 20) throw new IrailError("occupé");
+  waiting++;
+  try {
+    await take();
+  } finally {
+    waiting--;
+  }
+}
+
+async function take() {
   for (;;) {
     const now = Date.now();
     slots = slots.filter((t) => now - t < 1000);

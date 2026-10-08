@@ -115,6 +115,22 @@ export function LiveBoard({
   const [trainId, setTrainId] = useState<string | null>(
     params.get("train") ? normalizeTrain(params.get("train") ?? "") || null : null,
   );
+  // Jour de circulation du train ouvert (Europe/Brussels) : celui du tableau en mode « autre heure ».
+  const [trainDay, setTrainDay] = useState<string>(
+    /^\d{4}-\d{2}-\d{2}$/.test(params.get("jour") ?? "")
+      ? (params.get("jour") as string)
+      : brusselsDay(),
+  );
+  // Lien de notification vers la page déjà ouverte (navigation douce) : ouvre le train demandé.
+  const wantedTrain = params.get("train");
+  useEffect(() => {
+    const t = wantedTrain ? normalizeTrain(wantedTrain) : "";
+    if (t && t !== trainId) {
+      setTrainId(t);
+      setTrainDay(brusselsDay());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantedTrain]);
   const [pending, start] = useTransition();
   const abort = useRef<AbortController | null>(null);
 
@@ -175,6 +191,7 @@ export function LiveBoard({
   const syncUrl = (next: {
     gare?: FavoriteStation | null;
     train?: string | null;
+    jour?: string | null;
     sens?: string;
   }) => {
     const sp = new URLSearchParams(params.toString());
@@ -191,8 +208,12 @@ export function LiveBoard({
       if (next.train) sp.set("train", next.train);
       else sp.delete("train");
     }
+    if (next.jour !== undefined) {
+      if (next.jour) sp.set("jour", next.jour);
+      else sp.delete("jour");
+    }
     if (next.sens) sp.set("sens", next.sens);
-    router.replace(sp.size ? `${pathname}?${sp}` : pathname, { scroll: false });
+    window.history.replaceState(null, "", sp.size ? `${pathname}?${sp}` : pathname);
   };
 
   const suggestions = useMemo(() => {
@@ -216,8 +237,7 @@ export function LiveBoard({
     if (looksLikeTrain(query)) {
       const t = normalizeTrain(query);
       if (t) {
-        setTrainId(t);
-        syncUrl({ train: t });
+        openTrain(t);
         setQuery("");
         return;
       }
@@ -237,9 +257,10 @@ export function LiveBoard({
       router.refresh();
     });
 
-  const openTrain = (t: string) => {
+  const openTrain = (t: string, onDay = now ? brusselsDay() : day) => {
     setTrainId(t);
-    syncUrl({ train: t });
+    setTrainDay(onDay);
+    syncUrl({ train: t, jour: onDay === brusselsDay() ? null : onDay });
   };
 
   return (
@@ -540,7 +561,7 @@ export function LiveBoard({
                   <button
                     type="button"
                     className="block w-full cursor-pointer text-left"
-                    onClick={() => openTrain(w.train)}
+                    onClick={() => openTrain(w.train, w.day)}
                   >
                     <ListCard
                       statusColor={
@@ -568,11 +589,12 @@ export function LiveBoard({
 
       <TrainPanel
         trainId={trainId}
+        day={trainDay}
         onClose={() => {
           setTrainId(null);
-          syncUrl({ train: null });
+          syncUrl({ train: null, jour: null });
         }}
-        watch={watches.find((w) => w.train === trainId && w.day === brusselsDay()) ?? null}
+        watch={watches.find((w) => w.train === trainId && w.day === trainDay) ?? null}
         canOrderBus={canOrderBus}
         canWriteLog={canWriteLog}
       />
@@ -657,12 +679,14 @@ function DisturbanceList({ districtStations }: { districtStations: string[] }) {
 
 function TrainPanel({
   trainId,
+  day,
   onClose,
   watch,
   canOrderBus,
   canWriteLog,
 }: {
   trainId: string | null;
+  day: string;
   onClose: () => void;
   watch: Watch | null;
   canOrderBus: boolean;
@@ -681,7 +705,7 @@ function TrainPanel({
     const ctrl = new AbortController();
     const run = async () => {
       const r = await getJson<{ train: Train }>(
-        `/api/operations/irail/train?train=${encodeURIComponent(trainId)}`,
+        `/api/operations/irail/train?train=${encodeURIComponent(trainId)}&jour=${day}`,
         ctrl.signal,
       );
       if (ctrl.signal.aborted) return;
@@ -698,7 +722,7 @@ function TrainPanel({
       ctrl.abort();
       clearInterval(t);
     };
-  }, [trainId]);
+  }, [trainId, day]);
 
   const stops = train?.stops ?? [];
   const first = stops[0];
@@ -731,7 +755,7 @@ function TrainPanel({
                   const res = watch
                     ? await safeCall(unwatchTrain(watch.id))
                     : await safeCall(
-                        watchTrain({ train: trainId, label: train?.label ?? trainId }),
+                        watchTrain({ train: trainId, day, label: train?.label ?? trainId }),
                       );
                   if (!res.ok) return void toast.error(res.error);
                   toast.success(

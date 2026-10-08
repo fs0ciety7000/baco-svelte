@@ -4,6 +4,7 @@ import { stationId, trainId } from "@/lib/ops/irail";
 import { brusselsDay, brusselsTime, isValidDay } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
 import { getCurrentUser } from "@/server/auth";
+import { allow } from "@/server/rate-limit";
 import { board, composition, disturbances, IrailError, stations, train } from "@/server/irail";
 
 // Relais iRail (trains en direct) : le navigateur n'appelle que le domaine CSM. Droit `live:read` vérifié ici ;
@@ -26,6 +27,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ op: 
   const user = await getCurrentUser();
   if (!user) return json({ error: "Non connecté" }, 401);
   if (!can(user, "live:read")) return json({ error: "Introuvable" }, 404);
+  // 60 requêtes par minute et par agent (un écran ouvert en consomme 2 à 4).
+  if (!allow(`irail:${user.id}`, 60, 60_000))
+    return json({ error: "Trop de requêtes : réessayez dans un instant." }, 429);
   const { op } = await params;
   const sp = new URL(request.url).searchParams;
   try {
@@ -75,6 +79,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ op: 
   } catch (e) {
     if (e instanceof IrailError && e.message === "introuvable")
       return json({ error: "Aucune donnée iRail pour cette recherche." }, 404);
+    if (e instanceof IrailError && e.message === "occupé")
+      return json({ error: "iRail est très sollicité : réessayez dans un instant." }, 503);
     return json({ error: "iRail ne répond pas. Réessayez dans un instant." }, 502);
   }
 }

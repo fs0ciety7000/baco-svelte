@@ -21,7 +21,7 @@ export default async function Page() {
         crossings={crossings}
         depots={depots}
         canEdit={can(user, "carte_pn:write")}
-        canWriteLog={can(user, "journal:read")}
+        canReadLog={can(user, "journal:read")}
       />
     </section>
   );

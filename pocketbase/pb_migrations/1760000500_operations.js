@@ -109,7 +109,7 @@ migrate(
 		// Entrée retirée : visible de son auteur et des coordinateurs seulement.
 		const readLog = `(${can('journal:read', READERS)}) && (status = "active" || author = @request.auth.id || ${COORD_ROLE})`;
 		// Champs posés par les hooks, jamais par la requête.
-		const hookOnly = ['mentions', 'edited_at', 'legacy_id'].map((f) => `@request.body.${f}:isset = false`).join(' && ');
+		const hookOnly = ['mentions', 'edited_at', 'legacy_id', 'notified'].map((f) => `@request.body.${f}:isset = false`).join(' && ');
 		const log = new Collection({
 			type: 'base',
 			name: 'ops_log',
@@ -148,6 +148,8 @@ migrate(
 				{ name: 'retired_reason', type: 'text', max: 500 },
 				{ name: 'author', type: 'relation', collectionId: users.id, maxSelect: 1, required: true },
 				{ name: 'edited_at', type: 'date' },
+				// Destinataires déjà notifiés (et « *urgent ») : une notification par agent et par entrée au plus.
+				{ name: 'notified', type: 'json', maxSize: 20000 },
 				{ name: 'legacy_id', type: 'number', onlyInt: true, min: 0 },
 				{ name: 'created', type: 'autodate', onCreate: true },
 				{ name: 'updated', type: 'autodate', onCreate: true, onUpdate: true }
@@ -161,14 +163,17 @@ migrate(
 		});
 		app.save(log);
 
+		// Accusés de lecture et historique : visibles comme l'entrée (une entrée retirée reste masquée).
+		const entryVisible = `(entry.status = "active" || entry.author = @request.auth.id || ${COORD_ROLE})`;
+
 		// --- Accusés de lecture (« Lu ») ---
 		app.save(
 			new Collection({
 				type: 'base',
 				name: 'ops_log_reads',
-				listRule: can('journal:read', READERS),
-				viewRule: can('journal:read', READERS),
-				createRule: `(${can('journal:read', READERS)}) && @request.body.user = @request.auth.id`,
+				listRule: `(${can('journal:read', READERS)}) && ${entryVisible}`,
+				viewRule: `(${can('journal:read', READERS)}) && ${entryVisible}`,
+				createRule: `(${can('journal:read', READERS)}) && @request.body.user = @request.auth.id && @request.body.entry.status = "active"`,
 				updateRule: null,
 				deleteRule: `${ACTIVE} && user = @request.auth.id`,
 				fields: [
@@ -185,8 +190,8 @@ migrate(
 			new Collection({
 				type: 'base',
 				name: 'ops_log_events',
-				listRule: can('journal:read', READERS),
-				viewRule: can('journal:read', READERS),
+				listRule: `(${can('journal:read', READERS)}) && ${entryVisible}`,
+				viewRule: `(${can('journal:read', READERS)}) && ${entryVisible}`,
 				createRule: null,
 				updateRule: null,
 				deleteRule: null,
@@ -222,7 +227,7 @@ migrate(
 					{ name: 'title', type: 'text', required: true, max: 200 },
 					{ name: 'body', type: 'text', max: 500 },
 					// Chemin interne seulement (jamais d'URL externe dans la cloche).
-					{ name: 'link', type: 'text', max: 300, pattern: '^$|^/[A-Za-z0-9/_?=&.%-]*$' },
+					{ name: 'link', type: 'text', max: 300, pattern: '^$|^/[A-Za-z0-9_][A-Za-z0-9/_?=&.%-]*$' },
 					{ name: 'source', type: 'text', max: 40 },
 					{ name: 'source_id', type: 'text', max: 40 },
 					{ name: 'read_at', type: 'date' },

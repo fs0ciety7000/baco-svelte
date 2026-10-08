@@ -33,8 +33,8 @@ export function matchCrossing(c: LevelCrossing, q: string): boolean {
     .replace(/\bpn\b/g, " ")
     .trim();
   if (!t) return true;
-  const line = /l\.?\s*(\d{1,3}[a-z]?)/.exec(t);
-  const rest = t.replace(/l\.?\s*\d{1,3}[a-z]?/, " ").trim();
+  const line = /\bl\.?\s*(\d{1,3}[a-z]?)\b/.exec(t);
+  const rest = t.replace(/\bl\.?\s*\d{1,3}[a-z]?\b/, " ").trim();
   if (line && norm(c.line) !== `l.${line[1]}`) return false;
   if (!rest) return true;
   if (/^\d{1,4}( ?(bis|ter))?$/.test(rest))
@@ -46,14 +46,13 @@ export function PnBoard({
   crossings,
   depots,
   canEdit,
-  canWriteLog,
+  canReadLog,
 }: {
   crossings: LevelCrossing[];
   depots: Depot[];
   canEdit: boolean;
-  canWriteLog: boolean;
+  canReadLog: boolean;
 }) {
-  const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
   const desktop = useMediaQuery("(min-width: 1024px)");
@@ -85,7 +84,7 @@ export function PnBoard({
       if (v) sp.set(k, v);
       else sp.delete(k);
     }
-    router.replace(sp.size ? `${pathname}?${sp}` : pathname, { scroll: false });
+    window.history.replaceState(null, "", sp.size ? `${pathname}?${sp}` : pathname);
   };
   const select = (id: string | null) => {
     setSelected(id);
@@ -275,7 +274,7 @@ export function PnBoard({
                   </Button>
                 </>
               ) : null}
-              {canWriteLog ? (
+              {canReadLog ? (
                 <Button asChild size="sm" variant="ghost" className="border border-border">
                   <Link href={`/operations/main-courante?pn=${sel.id}`}>
                     <NotebookPen aria-hidden /> Entrées liées

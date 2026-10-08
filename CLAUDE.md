@@ -35,7 +35,7 @@ gelée** (v1, branche `ccr-5dca0da8-4yg4i6`) : ne pas le modifier.
 | 2 | Design system + page `/design` (5 thèmes, GSAP) | ✅ 8 oct. — jetons + test AA (156 contrôles), 19 composants, `/design`, 17 E2E ; captures et écarts **validés** |
 | 3 | Shell (6 entrées, onglets, ⌘K, mobile 4 + Plus) + tableau de bord | ✅ 8 oct. — 24 E2E, CSP, gardes par page, captures validées |
 | 4 | Données : schéma PocketBase, règles d'accès, import | 🔄 données BACO du 8 oct. importées sur l'instance de test (5 collections) ; migration réelle **en une fois à la bascule** |
-| 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 **Commandes** livré en session 3 (schéma + 66 contrôles de règles, bus, taxi, envoi `.eml` + PDF, suivi, B201, E2E) : **validé le 8 oct.** ; **PMR validé le 8 oct.** (schéma + 105 contrôles de règles, prestations, collage DICOS, clients, matériel, E2E) ; suivant : Opérations |
+| 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 **Commandes** livré en session 3 (schéma + 66 contrôles de règles, bus, taxi, envoi `.eml` + PDF, suivi, B201, E2E) : **validé le 8 oct.** ; **PMR validé le 8 oct.** (schéma + 105 contrôles de règles, prestations, collage DICOS, clients, matériel, E2E) ; **Opérations livré, à valider** (trains en direct iRail, main courante, carte PN, statistiques, cloche ; 149 contrôles de règles, 46 E2E) |
 | 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | ✅ 8 oct. — https://test-csm.fs0ciety.org en ligne ; projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
 | — | Hotfix sécurité BACO (`supabase/migrations/20261008120000_security_hotfix.sql`) | ✅ appliqué par l'utilisateur (SQL Editor) le 8 oct., vérifié : 0 ERROR (36 avant). Suite **non appliquée** : `20261008130000_hotfix_followup.sql` (test NULL de `get_my_role()`) et `20261008140000_pn_data_update_fix.sql` (XSS stocké carte PN), accord requis ; protection des mots de passe compromis encore désactivée |
 
@@ -200,6 +200,12 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - (v2) Grille / flex : tout conteneur de champ doit avoir `min-w-0` (`Field` l'a) ; un `<select>` impose sinon la
   largeur de sa plus longue option (débordement horizontal en 390 px).
 - (v2) PocketBase : un champ nombre vide vaut 0 → index uniques partiels en `WHERE legacy_id > 0` (voir `pocketbase/CLAUDE.md`).
+- (v2) **Paramètre d'URL d'un panneau** (`?entree=`, `?train=`, `?pn=`) : le synchroniser par `window.history.replaceState`
+  (même chemin), jamais par `router.replace` : ce dernier relance le rendu serveur pendant la Server Action qui charge
+  le panneau, et le panneau restait vide (trouvé par l'E2E). Un `useEffect` sur le paramètre gère les liens de la cloche
+  vers la page déjà ouverte.
+- (v2) Le relais iRail et les tuiles passent par `fetch` de Node : dans l'environnement cloud, lancer le serveur avec
+  `NODE_USE_ENV_PROXY=1` ; les serveurs de tuiles sont bloqués ici → E2E et captures avec `web/e2e/mock-services.mjs`.
 - (v2) Playwright : un libellé avec astérisque requis (`Arrivée *`) ne répond pas à `getByLabel(…, { exact: true })` ;
   passer par `getByRole(…, { name, exact: true })`.
 
@@ -310,6 +316,19 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   **XSS stocké de la carte PN dans BACO** (`pn_data` modifiable par tout compte connecté, popup `setHTML` sans
   échappement) → correctif `supabase/migrations/20261008140000_pn_data_update_fix.sql` préparé, **non appliqué**
   (aucun code de BACO `main` n'écrit `pn_data`). `/operationnel`, `/lignes`, `/ptcar` → Référentiels ; `/planning` → Équipe.
+- 2026-10-08 — **Réponses Opérations** : toutes les recommandations de l'audit validées, **fonds de carte option B**
+  (tuiles raster OpenStreetMap relayées par le serveur, Leaflet ≈ 42 Ko gzip chargé sur la seule carte, sans changement de
+  CSP) ; **PN : seulement ceux de BACO avec leur adresse** (211/211, `temp_geo_data` non reprise — Q6 révisée par
+  l'utilisateur). Livré : schéma `1760000500_operations.js` (`ops_log`, `ops_log_reads`, `ops_log_events`,
+  `notifications`, `level_crossings`, `train_watches`, dépôts sur `pmr_zones`), hooks (mentions, urgence diffusée une
+  fois par agent et par entrée, retrait 15 min / coordinateurs, historique, cron des trains suivis), import (33 entrées,
+  22 « Lu », 211 PN), écrans des 4 onglets, cloche, widgets d'accueil, bus de substitution pré-rempli. Audit sécurité :
+  0 critique / élevé ; corrigés : historique et « Lu » d'une entrée retirée visibles, notifications répétables, envoi de
+  fichier non borné en mémoire, recherches de mentions sans limite, débit des relais iRail / tuiles, survol de carte
+  en HTML, lien de notification. Revue : alerte de retard répétée toutes les 2 min, liens de la cloche sans effet sur la
+  page ouverte, entrée « modifiée » dès l'envoi d'une pièce jointe, enregistrement refusé après suppression d'une pièce
+  jointe, train ouvert au mauvais jour, bus des commandes annulées comptés, PMR hors filtre de district, PDF bloqué par
+  le bac à sable.
 
 
 ---

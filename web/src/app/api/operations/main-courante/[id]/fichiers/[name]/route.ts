@@ -46,7 +46,8 @@ export async function GET(
     return new Response(res.body, {
       headers: {
         "content-type": type,
-        "content-disposition": `${type === "application/pdf" || type.startsWith("image/") ? "inline" : "attachment"}; filename="${name}"`,
+        // PDF téléchargé (il peut contenir du script ; le visionneur de Chrome ne s'ouvre pas dans un document « sandbox »).
+        "content-disposition": `${type.startsWith("image/") ? "inline" : "attachment"}; filename="${name}"`,
         "cache-control": "private, no-store",
         "x-content-type-options": "nosniff",
         "content-security-policy":

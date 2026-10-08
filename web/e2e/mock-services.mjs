@@ -30,7 +30,8 @@ const info = (s) => ({
 // Tableau fictif : départs toutes les 7 min à partir de l'heure demandée, quelques retards, une suppression.
 function board(stationId, arrdep, time) {
   const base = new Date();
-  if (time) base.setHours(Number(time.slice(0, 2)), Number(time.slice(2, 4)), 0, 0);
+  // Heure demandée ignorée (le serveur envoie l'heure de Bruxelles) : départs à partir de maintenant.
+  void time;
   const others = STATIONS.filter((s) => `BE.NMBS.${s[0]}` !== stationId);
   const rows = Array.from({ length: 12 }, (_, i) => {
     const t = Math.floor(base.getTime() / 1000) + 180 + i * 420;

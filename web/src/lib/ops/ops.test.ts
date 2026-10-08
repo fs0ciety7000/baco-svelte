@@ -136,7 +136,7 @@ describe("statistiques", () => {
     );
     expect(s.totals.bus).toBe(2);
     expect(s.totals.taxi).toBe(1);
-    expect(s.totals.buses).toBe(4);
+    expect(s.totals.buses).toBe(2);
     expect(s.totals.medianConfirm).toBe(20);
     expect(s.totals.cancelled).toBe(1);
     expect(s.series).toHaveLength(7);

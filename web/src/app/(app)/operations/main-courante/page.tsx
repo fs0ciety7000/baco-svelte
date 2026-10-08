@@ -99,11 +99,13 @@ export default async function Page({
         )}
         <div className="flex flex-wrap items-center gap-3">
           <LiveRefresh topics={["ops_log", "ops_log_reads"]} />
-          <Button asChild size="sm" variant="ghost" className="border border-border">
-            <a href={`/api/operations/main-courante/export?du=${day}&au=${day}`} download>
-              <Download aria-hidden /> CSV du jour
-            </a>
-          </Button>
+          {!search ? (
+            <Button asChild size="sm" variant="ghost" className="border border-border">
+              <a href={`/api/operations/main-courante/export?du=${day}&au=${day}`} download>
+                <Download aria-hidden /> CSV du jour
+              </a>
+            </Button>
+          ) : null}
         </div>
       </div>
 

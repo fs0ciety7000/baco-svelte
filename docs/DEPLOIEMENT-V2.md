@@ -30,6 +30,7 @@ proxy Traefik). Source : GitHub App `breakable-bee-gkkc8wwg8sswo044`, dépôt `f
 | `csm-pocketbase` | `PB_ADMIN_PASSWORD` | regénéré en session 3 (32 caractères), **visible seulement dans Coolify** (Environment Variables), littéral |
 | `csm-web` | `PB_URL` | `http://csm-pocketbase:8090` |
 | `csm-web` | `CSM_COOKIE_SECURE` | `true` |
+| `csm-web` | `IRAIL_URL`, `TILES_URL`, `CSM_USER_AGENT` | facultatives : défauts `https://api.irail.be/v1`, `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, User-Agent CSM (le serveur doit pouvoir sortir vers ces deux domaines) |
 
 Le point d'entrée de l'image PocketBase applique les migrations puis crée ou met à jour ce superuser à chaque
 démarrage (`pocketbase/docker-entrypoint.sh`). Changer le mot de passe = modifier la variable puis redémarrer.

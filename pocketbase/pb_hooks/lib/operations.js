@@ -51,7 +51,9 @@ function mentionsFrom(app, body, authorId) {
 	const re = /(^|[^A-Za-z0-9_.-])@([A-Za-z0-9_.-]{2,40})/g;
 	let m;
 	const seen = {};
-	while ((m = re.exec(String(body || ''))) !== null) {
+	let tokens = 0;
+	// 40 « @ » examinés au plus (une requête par nom) : un texte rempli de « @ » ne coûte rien de plus.
+	while ((m = re.exec(String(body || ''))) !== null && tokens++ < 40) {
 		const name = m[2].replace(/[.-]+$/, '').toLowerCase();
 		if (seen[name]) continue;
 		seen[name] = true;
@@ -106,18 +108,37 @@ function authorName(auth) {
 	return auth.getString('name') || auth.getString('username') || 'Un agent';
 }
 
-// Notifications d'une entrée : mentions (nouvelles) et urgence.
-function notifyEntry(app, record, auth, newMentions, urgentNow) {
+function jsonList(record, field) {
+	try {
+		const v = JSON.parse(record.getString(field) || '[]');
+		return Array.isArray(v) ? v.map(String) : [];
+	} catch (_) {
+		return [];
+	}
+}
+
+// Notifications d'une entrée, préparées AVANT l'enregistrement : chaque agent est notifié une fois au plus par entrée
+// (mention ou urgence), l'urgence n'est diffusée qu'une fois (« *urgent »). La liste est gardée dans `notified`.
+function planNotifications(app, record, mentions, urgent) {
+	const already = jsonList(record, 'notified');
+	const mention = mentions.filter((u) => already.indexOf(u) === -1);
+	let urgentTo = [];
+	if (urgent && already.indexOf('*urgent') === -1) {
+		const exclude = already.concat(mention, [record.getString('author')]);
+		urgentTo = urgentRecipients(app, record.getString('district'), exclude);
+	}
+	const next = already.concat(mention, urgentTo);
+	if (urgentTo.length || (urgent && already.indexOf('*urgent') === -1)) next.push('*urgent');
+	record.set('notified', next);
+	return { mention: mention, urgent: urgentTo };
+}
+
+function sendPlanned(app, record, auth, plan) {
 	const link = `/operations/main-courante?entree=${record.id}`;
 	const who = authorName(auth);
 	const excerpt = record.getString('body');
-	for (const u of newMentions) notify(app, u, 'mention', `${who} vous mentionne dans la main courante`, excerpt, link, 'ops_log', record.id);
-	if (urgentNow) {
-		const exclude = newMentions.concat([record.getString('author')]);
-		for (const u of urgentRecipients(app, record.getString('district'), exclude)) {
-			notify(app, u, 'urgent', `Entrée urgente de ${who}`, excerpt, link, 'ops_log', record.id);
-		}
-	}
+	for (const u of plan.mention) notify(app, u, 'mention', `${who} vous mentionne dans la main courante`, excerpt, link, 'ops_log', record.id);
+	for (const u of plan.urgent) notify(app, u, 'urgent', `Entrée urgente de ${who}`, excerpt, link, 'ops_log', record.id);
 }
 
 // --- Passages à niveau (import) ---
@@ -147,7 +168,9 @@ module.exports = {
 	ids,
 	mentionsFrom,
 	notify,
-	notifyEntry,
+	planNotifications,
+	sendPlanned,
+	jsonList,
 	event,
 	pnNumber,
 	bkValue,

@@ -620,6 +620,8 @@ function run(app, dir, reset, scope) {
 						: scope === 'commandes'
 							? [...OPS_COLLECTIONS, ...PMR_COLLECTIONS, ...ORDER_COLLECTIONS]
 							: ['audit_log', ...OPS_COLLECTIONS, ...PMR_COLLECTIONS, ...ORDER_COLLECTIONS];
+			// Main courante gardée (scope pmr) : ses liens vers des prestations purgées sont vidés.
+			if (scope === 'pmr') tx.db().newQuery("UPDATE ops_log SET pmr_assist = ''").execute();
 			for (const name of names) {
 				// SQL direct : pas de hooks (historique, audit) ni de cascade à rejouer pendant la purge.
 				tx.db().newQuery(`DELETE FROM ${name}`).execute();

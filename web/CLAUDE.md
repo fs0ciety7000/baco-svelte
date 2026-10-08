@@ -89,6 +89,24 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - Téléphone : `PhoneLink` (`etrali:` desktop, `tel:` mobile, deux liens alternés en CSS).
 - E2E `e2e/pmr.spec.ts` (fixtures superuser, captures `test-results/pmr-*`).
 
+## Module Opérations (étape 5, session 3)
+
+- Domaine : `src/lib/ops/` → `irail.ts` (types, `normalizeTrain`, seuils de retard, gares favorites), `log.ts`
+  (catégories, schéma zod d'une entrée, `segments` : texte / mention / lien http(s), jamais de HTML), `stats.ts`
+  (agrégats purs), `tiles.ts` (tuiles relayées : Belgique, zoom 7–18). Tests : `ops.test.ts`.
+- Serveur : `src/server/irail.ts` (User-Agent, cache, requêtes en vol regroupées, 3 req/s vers iRail, file bornée),
+  `src/server/rate-limit.ts`, données `src/server/data/ops.ts` (main courante, notifications, PN, trains suivis) et
+  `stats.ts`. Écritures : `src/app/(app)/operations/actions.ts`.
+- Routes : `/api/operations/irail/{gares|tableau|train|composition|perturbations}` (`live:read`, 60/min par agent),
+  `/api/operations/tuiles/{z}/{x}/{y}` (`carte_pn:read`, cache), pièces jointes
+  `/api/operations/main-courante/[id]/fichiers` (POST multipart borné, type vérifié sur les octets) et `/[nom]` (GET,
+  jeton de fichier côté serveur), exports CSV main courante et statistiques.
+- Écrans : `/operations` (trains en direct, `?gare=&nom=&train=&jour=`), `/operations/main-courante` (`?jour=`,
+  `?entree=`, `?pn=`), `/nouveau` (mobile, `?train=&categorie=`), `/operations/carte-pn` (Leaflet chargé à la demande,
+  `?pn=&q=`), `/operations/statistiques`. Cloche `components/shell/notification-bell.tsx` (SSE `notifications`).
+- Variables : `IRAIL_URL`, `TILES_URL`, `CSM_USER_AGENT` (facultatives). E2E : `e2e/operations.spec.ts` avec
+  `node e2e/mock-services.mjs 8094` et `IRAIL_URL=http://127.0.0.1:8094/v1 TILES_URL=http://127.0.0.1:8094/tiles/{z}/{x}/{y}.png`.
+
 ## Conventions
 
 - **Le navigateur ne parle qu'au domaine CSM** : ni PocketBase, ni Supabase, ni WebSocket (test E2E dédié).

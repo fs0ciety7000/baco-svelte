@@ -2,6 +2,7 @@ import { inBelgium } from "@/lib/ops/tiles";
 import { can } from "@/lib/permissions";
 import { getCurrentUser } from "@/server/auth";
 import { env } from "@/server/env";
+import { allow } from "@/server/rate-limit";
 
 // Fonds de carte de la carte PN (option B du 8 octobre 2026) : tuiles raster relayées par le serveur CSM
 // (le navigateur ne parle qu'au domaine CSM). Réservé à `carte_pn:read`, limité à la Belgique et aux zooms utiles
@@ -37,6 +38,9 @@ export async function GET(
   const hit = tiles.get(key);
   if (hit && Date.now() - hit.at < TTL)
     return new Response(hit.body, { headers: { ...headers, "content-type": hit.type } });
+  // Tuiles non mises en cache : 300 par minute et par agent, 20 par seconde pour le serveur (règles d'usage d'OSM).
+  if (!allow(`tuiles:${user.id}`, 300, 60_000) || !allow("tuiles:serveur", 20, 1000))
+    return new Response("Trop de requêtes", { status: 429, headers: { "retry-after": "2" } });
   try {
     const url = env.TILES_URL.replace("{z}", String(z))
       .replace("{x}", String(x))

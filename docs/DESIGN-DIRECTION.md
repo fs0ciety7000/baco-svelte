@@ -164,6 +164,18 @@ de chaque paire texte/fond dans les 5 thèmes (AAA pour le texte du thème Contr
 - B201 : trois colonnes de périodes en desktop (onglets en mobile), transports liés aux commandes (lien), saisie
   manuelle en pointillés.
 
+## Module Opérations (session 3) — à valider
+
+- Trains en direct : recherche unique gare ou n° de train, gares favorites en puces, tableau dense (cartes en mobile)
+  avec bordure de retard (ok / warn ≥ 5 min / danger ≥ 15 min ou supprimé), panneau train (arrêts, composition, section
+  PMR), actions Suivre / Bus de substitution / Noter. Source affichée (« iRail, données SNCB ») et heure de mise à jour.
+- Main courante : cartes d'entrée avec bordure de catégorie, badges Urgent / Épinglée, liens vers les objets métier en
+  puces, « Lu par n », panneau (historique `Timeline`, modification, retrait avec motif). Jamais de HTML saisi.
+- Carte PN : liste + carte côte à côte en desktop, bascule Liste / Carte en mobile ; fond OpenStreetMap assombri par
+  filtre dans les thèmes sombres ; points colorés par zone, fiche dans le panneau (pas de bulle HTML).
+- Statistiques : `StatCard`, barres empilées et barres horizontales en SVG aux couleurs des jetons, tableau équivalent
+  pour les lecteurs d'écran.
+
 ## Module PMR (session 3) — **validé le 8 octobre 2026**
 
 - Mêmes briques que Commandes : listes en table dense / cartes mobiles avec bordure de statut, détail en panneau

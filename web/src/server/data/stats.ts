@@ -113,7 +113,11 @@ export async function loadStats(input: StatsFilters, ctx: { canTaxi: boolean; ca
   let assists: StatAssist[] | null = null;
   if (ctx.canPmr) {
     const items = await pb.collection("pmr_assists").getFullList({
-      filter: pb.filter("day >= {:a} && day <= {:b}", { a: from, b: to }),
+      // District : celui de la zone de la prestation.
+      filter: pb.filter(
+        `day >= {:a} && day <= {:b}${f.district ? " && zone.district = {:d}" : ""}`,
+        { a: from, b: to, d: f.district ?? "" },
+      ),
       fields: "day,station,pmr_type,status,pax",
       batch: 1000,
     });

@@ -9,7 +9,7 @@ import type { Agent, LinkedObject } from "@/server/data/ops";
 
 import { LogComposer } from "./log-composer";
 
-/** « Nouvelle entrée » : compositeur dépliable en desktop (N), page dédiée en mobile. */
+/** « Nouvelle entrée » : compositeur dépliable en desktop, page dédiée en mobile. */
 export function ComposerToggle({
   agents,
   linkKinds,
