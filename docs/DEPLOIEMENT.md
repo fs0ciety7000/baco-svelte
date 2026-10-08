@@ -51,6 +51,18 @@ Dans Supabase, allez dans **Authentication › URL Configuration**.
 - **Site URL** : `https://csm.fs0ciety.org`. Tant que BACO tourne, vous pouvez garder l'URL Vercel ici.
 - **Redirect URLs** : ajoutez `https://csm.fs0ciety.org/auth/callback` et gardez celles de BACO.
 
+Les liens envoyés par e-mail ne doivent pas pointer vers `supabase.co`, qui est bloqué sur le réseau de l'entreprise. Dans **Authentication › Email Templates › Reset Password**, remplacez le lien par :
+
+```html
+<a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=recovery&next=/profil">Réinitialiser mon mot de passe</a>
+```
+
+Faites de même pour *Invite user* et *Magic Link* s'ils sont utilisés (`type=invite`, `type=magiclink`).
+
+Dans **Storage**, réglez *Allowed MIME types* sur chaque bucket :
+- `avatars` : `image/png, image/jpeg, image/webp, image/gif` ;
+- `documents` et `movements_pdf` : les types réellement utilisés, par exemple `application/pdf`.
+
 Toujours dans Authentication, à faire une fois :
 - activer **Leaked password protection** (Settings › Password security) ;
 - vérifier que les inscriptions publiques sont **désactivées** (*Allow new users to sign up* = off). Les comptes sont créés par un admin.

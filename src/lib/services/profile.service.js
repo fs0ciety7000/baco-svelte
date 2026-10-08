@@ -53,12 +53,15 @@ export const ProfileService = {
     },
 
     async uploadAvatar(userId, file) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${userId}/${Math.random()}.${fileExt}`; // Dossier par UserID
+        // Images matricielles uniquement : un SVG/HTML pourrait exécuter du script.
+        const EXT_BY_TYPE = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' };
+        const fileExt = EXT_BY_TYPE[file.type];
+        if (!fileExt) throw new Error('Format non pris en charge (PNG, JPEG, WebP ou GIF).');
+        const fileName = `${userId}/${crypto.randomUUID()}.${fileExt}`; // Dossier par UserID
 
         const { error: uploadError } = await supabase.storage
             .from('avatars')
-            .upload(fileName, file, { upsert: true });
+            .upload(fileName, file, { upsert: true, contentType: file.type });
 
         if (uploadError) throw uploadError;
 

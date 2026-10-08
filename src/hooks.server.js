@@ -10,16 +10,34 @@ import { isPublicRoute, canAccessRoute, isAdminLike } from '$lib/server/guards';
 const SETTINGS_TTL = 30_000;
 let settingsCache = { maintenance: false, at: 0 };
 
-/** Chemins qui ne passent ni par l'auth ni par les gardes (assets, santé, proxy). */
-function isBypassed(path) {
-	return (
-		path.startsWith('/_app/') ||
-		path === '/healthz' ||
-		path === '/sw.js' ||
-		path.startsWith('/workbox-') ||
-		path === '/manifest.webmanifest' ||
-		/\.[a-z0-9]{2,5}$/i.test(path)
-	);
+/** @param {App.Locals['supabase']} supabase */
+async function isMaintenance(supabase) {
+	if (Date.now() - settingsCache.at > SETTINGS_TTL) {
+		const { data } = await supabase
+			.from('app_settings')
+			.select('value')
+			.eq('key', 'maintenance_mode')
+			.maybeSingle();
+		settingsCache = { maintenance: data?.value === 'true' || data?.value === true, at: Date.now() };
+	}
+	return settingsCache.maintenance;
+}
+
+/**
+ * Statut (banni / rôle) par jeton d'accès, mis en cache 30 s pour ne pas
+ * interroger Supabase à chaque requête relayée par le proxy.
+ * @type {Map<string, { banned: boolean, adminLike: boolean, at: number }>}
+ */
+const accessCache = new Map();
+
+/** Chemin de route normalisé (décodé, groupes `(…)` retirés) servant aux gardes. */
+function guardPathOf(event) {
+	if (event.route.id) return event.route.id.replace(/\/\([^)]+\)/g, '') || '/';
+	try {
+		return decodeURIComponent(event.url.pathname);
+	} catch {
+		return event.url.pathname;
+	}
 }
 
 /** 1. Client Supabase serveur (cookies) + helpers de session. */
@@ -79,42 +97,57 @@ const supabaseHandle = async ({ event, resolve }) => {
 
 /** 2. Mode maintenance + authentification + autorisation par route. */
 const guardHandle = async ({ event, resolve }) => {
-	const path = event.url.pathname;
+	const rawPath = event.url.pathname;
 
-	if (isBypassed(path) || path.startsWith(SUPABASE_PROXY_PATH)) {
+	if (rawPath === '/') {
+		const user = await event.locals.getUser();
+		redirect(303, user ? '/accueil' : '/login');
+	}
+
+	// Assets du build, sonde de santé (sans appel réseau), URL sans route (404, fichiers statiques).
+	if (rawPath.startsWith('/_app/') || rawPath === '/healthz' || event.route.id === null) {
+		return resolve(event);
+	}
+
+	const path = guardPathOf(event);
+
+	// Proxy Supabase : bannissement et maintenance appliqués aussi aux appels de données.
+	if (path.startsWith(SUPABASE_PROXY_PATH)) {
+		const token = event.request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+		if (token && token !== env.PUBLIC_SUPABASE_ANON_KEY) {
+			let info = accessCache.get(token);
+			if (!info || Date.now() - info.at > SETTINGS_TTL) {
+				const profile = await event.locals.getProfile();
+				info = {
+					banned: !!profile?.banned_until && new Date(profile.banned_until) > new Date(),
+					adminLike: isAdminLike(profile),
+					at: Date.now()
+				};
+				accessCache.set(token, info);
+				if (accessCache.size > 500) accessCache.delete(accessCache.keys().next().value);
+			}
+			if (info.banned) error(403, 'Compte suspendu');
+			if (!info.adminLike && (await isMaintenance(event.locals.supabase))) {
+				error(503, 'Maintenance en cours');
+			}
+		}
 		return resolve(event);
 	}
 
 	const isApi = path.startsWith('/api/');
-
-	// Maintenance (lecture anon autorisée par RLS sur app_settings)
-	if (Date.now() - settingsCache.at > SETTINGS_TTL) {
-		const { data } = await event.locals.supabase
-			.from('app_settings')
-			.select('value')
-			.eq('key', 'maintenance_mode')
-			.maybeSingle();
-		settingsCache = { maintenance: data?.value === 'true' || data?.value === true, at: Date.now() };
-	}
-
+	const maintenance = await isMaintenance(event.locals.supabase);
 	const user = await event.locals.getUser();
 	event.locals.user = user;
 
-	if (path === '/') {
-		redirect(303, user ? '/accueil' : '/login');
-	}
-
 	if (isPublicRoute(path)) {
 		if (path === '/login' && user) redirect(303, '/accueil');
-		if (path === '/maintenance' && !settingsCache.maintenance)
-			redirect(303, user ? '/accueil' : '/login');
+		if (path === '/maintenance' && !maintenance) redirect(303, user ? '/accueil' : '/login');
 		return resolve(event);
 	}
 
 	if (!user) {
 		if (isApi) error(401, 'Non authentifié');
-		const redirectTo = path + event.url.search;
-		redirect(303, `/login?redirectTo=${encodeURIComponent(redirectTo)}`);
+		redirect(303, `/login?redirectTo=${encodeURIComponent(rawPath + event.url.search)}`);
 	}
 
 	const profile = await event.locals.getProfile();
@@ -125,7 +158,7 @@ const guardHandle = async ({ event, resolve }) => {
 		redirect(303, '/login?banned=1');
 	}
 
-	if (settingsCache.maintenance && !isAdminLike(profile)) {
+	if (maintenance && !isAdminLike(profile)) {
 		if (isApi) error(503, 'Maintenance en cours');
 		redirect(303, '/maintenance');
 	}

@@ -1,5 +1,6 @@
 import { error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/public';
+import { resolveProxyTarget, hardenStorageHeaders } from '$lib/server/proxy';
 
 /**
  * Proxy same-origin vers Supabase.
@@ -12,11 +13,6 @@ import { env } from '$env/dynamic/public';
  *
  * La sécurité des données repose sur la RLS : le JWT de l'utilisateur est relayé tel quel.
  */
-
-const ALLOWED_PREFIXES = ['rest/v1/', 'storage/v1/', 'auth/v1/'];
-
-/** Endpoints Auth autorisés depuis le navigateur. */
-const ALLOWED_AUTH = new Set(['auth/v1/user', 'auth/v1/logout', 'auth/v1/token']);
 
 const FORWARD_REQUEST_HEADERS = [
 	'accept',
@@ -40,25 +36,10 @@ const DROP_RESPONSE_HEADERS = [
 	'set-cookie'
 ];
 
-/** @param {string} path @param {URL} url */
-function isAllowed(path, url) {
-	if (path.includes('..')) return false;
-	if (!ALLOWED_PREFIXES.some((p) => path.startsWith(p))) return false;
-	if (path.startsWith('auth/v1/')) {
-		if (!ALLOWED_AUTH.has(path)) return false;
-		// Seul le rafraîchissement de jeton est permis via le proxy.
-		if (path === 'auth/v1/token' && url.searchParams.get('grant_type') !== 'refresh_token')
-			return false;
-	}
-	return true;
-}
-
 /** @type {import('./$types').RequestHandler} */
 async function proxy({ request, params, url, getClientAddress }) {
-	const path = params.path ?? '';
-	if (!isAllowed(path, url)) error(403, 'Chemin non autorisé');
-
-	const target = `${env.PUBLIC_SUPABASE_URL.replace(/\/$/, '')}/${path}${url.search}`;
+	const target = resolveProxyTarget(env.PUBLIC_SUPABASE_URL, params.path ?? '', url.search);
+	if (!target) error(403, 'Chemin non autorisé');
 
 	const headers = new Headers();
 	for (const name of FORWARD_REQUEST_HEADERS) {
@@ -87,6 +68,7 @@ async function proxy({ request, params, url, getClientAddress }) {
 	const responseHeaders = new Headers(upstream.headers);
 	for (const name of DROP_RESPONSE_HEADERS) responseHeaders.delete(name);
 	responseHeaders.set('cache-control', 'no-store');
+	if (target.pathname.startsWith('/storage/v1/')) hardenStorageHeaders(responseHeaders);
 
 	return new Response(upstream.body, {
 		status: upstream.status,

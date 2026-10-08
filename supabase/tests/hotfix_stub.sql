@@ -47,6 +47,10 @@ create function public.admin_pardon_infraction(p_infraction_id uuid) returns voi
 create function public.admin_add_infraction(target_user_id uuid, p_card_type text, p_reason text, duration_months_if_yellow integer default 6) returns json language plpgsql security definer as $$ begin return null; end $$;
 create function public.get_all_users() returns table(user_id uuid, email text, role text, full_name text, avatar_url text, last_sign_in_at timestamptz, banned_until timestamptz, active_yellow_cards bigint, active_red_cards bigint) language plpgsql security definer as $$ begin end $$;
 create function public.global_search(search_term text) returns setof int language sql as $$ select 1 $$;
+create function public.admin_get_user_email(p_user_id uuid) returns text language sql as $$ select '' $$;
+create function public.admin_reset_user_password(user_id_to_reset uuid, new_password text) returns void language sql as $$ select $$;
+create function public.upsert_societe_bus(societe_id_to_update bigint, new_nom text, new_lignes text[], new_contacts jsonb, new_chauffeurs jsonb) returns void language sql as $$ select $$;
+create function public.delete_societe_bus(societe_id_to_delete bigint) returns void language sql as $$ select $$;
 grant select, insert, update, delete on all tables in schema public to anon, authenticated;
 grant select, insert, update, delete on all tables in schema storage to anon, authenticated;
 grant usage on all sequences in schema public, storage to anon, authenticated;

@@ -9,6 +9,7 @@
 
 	const banned = $derived(page.url.searchParams.get('banned') === '1');
 	const linkError = $derived(page.url.searchParams.get('error') === 'lien');
+	const redirectTo = $derived(page.url.searchParams.get('redirectTo') ?? '');
 
 	/** @type {import('@sveltejs/kit').SubmitFunction} */
 	const submit = () => {
@@ -53,6 +54,7 @@
 		{/if}
 
 		<form method="POST" action="?/login" use:enhance={submit} class="space-y-4">
+			<input type="hidden" name="redirectTo" value={redirectTo} />
 			<label class="block">
 				<span class="mb-1 block text-xs font-medium opacity-70">Email</span>
 				<span class="relative block">

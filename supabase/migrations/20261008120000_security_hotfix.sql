@@ -444,6 +444,14 @@ begin
   end loop;
 end $$;
 
+-- …et les RPC appelées par BACO/CSM restent explicitement accessibles aux connectés
+-- (déjà le cas en base au 08/10/2026, rendu explicite par sécurité).
+grant execute on function public.global_search(text)                                   to authenticated;
+grant execute on function public.admin_get_user_email(uuid)                           to authenticated;
+grant execute on function public.admin_reset_user_password(uuid, text)                to authenticated;
+grant execute on function public.upsert_societe_bus(bigint, text, text[], jsonb, jsonb) to authenticated;
+grant execute on function public.delete_societe_bus(bigint)                           to authenticated;
+
 -- 7b. Fonctions de trigger : jamais appelables via /rest/v1/rpc.
 revoke execute on function public.archive_procedure()               from authenticated;
 revoke execute on function public.handle_new_mention_notification() from authenticated;
