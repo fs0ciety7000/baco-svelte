@@ -31,3 +31,7 @@ vite.config.ts.timestamp-*
 
 # PWA dev
 dev-dist
+
+# Sauvegardes Supabase (données personnelles) : jamais dans Git
+/csm-backup*
+*.tar.gz.age
