@@ -175,7 +175,8 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - (v2) Avant de relancer le serveur web, vérifier que l'ancien `next-server` est arrêté (sinon EADDRINUSE et les
   tests tournent contre l'ancien build) : `ps -eo pid,args | grep "[n]ext-server"`.
 - (v2) Ne jamais faire `pkill -f "<motif>"` quand le motif figure dans la commande elle-même : le shell se tue
-  (code 144). Passer par un fichier pid.
+  (code 144). Passer par un fichier pid ; `npm run start:standalone` laisse un `next-server` enfant : l'arrêter par
+  `fuser -k 3000/tcp` (sinon EADDRINUSE et l'ancien serveur sert un build remplacé → « Application error »).
 - (v2) Lecture Supabase **autorisée sans redemander** (SELECT connecteur, GET clé de service) ; toute écriture
   reste soumise à l'accord explicite de l'utilisateur.
 - (v2) Restauration Postgres : colonnes `GENERATED ALWAYS AS IDENTITY` → `overriding system value` ;

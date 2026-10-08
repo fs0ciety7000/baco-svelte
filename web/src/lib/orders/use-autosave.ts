@@ -47,7 +47,8 @@ export function useAutosave<T>({
     while (inflight.current) await inflight.current;
     const snapshot = latest.current;
     const json = JSON.stringify(snapshot);
-    if (id.current && json === last.current) return true;
+    // Rien de saisi : pas de requête (et pas de commande vide créée par « Préparer l'envoi » sur un formulaire vierge).
+    if (json === last.current) return true;
     const p = (async () => {
       setState(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "saving");
       let res: SaveResult;
