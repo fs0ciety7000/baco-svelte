@@ -3,7 +3,7 @@
 -- -----------------------------------------------------------------------------
 -- Corrige :
 --   S1  escalade de privilèges via UPDATE profiles.role / permissions / banned_until
---   S2  11 tables sans RLS
+--   S2  11 tables sans RLS + 6 tables métier ouvertes à anon via des policies `public … true`
 --   S3  policies et fonctions qui font confiance à user_metadata (modifiable par l'utilisateur)
 --   S6  fonctions SECURITY DEFINER exécutables par anon, sans contrôle de l'appelant,
 --       search_path non fixé, vue SECURITY DEFINER
@@ -232,6 +232,16 @@ create policy "b201_reports_authenticated" on public.b201_reports
 -- 4f. Tables mortes : RLS sans policy = accès refusé (sauf service_role).
 alter table public.darts_games   enable row level security;
 alter table public.temp_geo_data enable row level security;
+
+-- 4h. Policies ouvertes à `public` (donc anon, sans connexion) sur des données métier
+--     sensibles : déplacements PMR, interventions, commandes taxi/bus, présences.
+--     Même règle qu'avant, mais réservée aux utilisateurs connectés.
+alter policy "Public access" on public.daily_movements to authenticated;
+alter policy "Public access" on public.movement_interventions to authenticated;
+alter policy "Enable all access for authenticated users" on public.taxi_commands to authenticated;
+alter policy "Tout le monde peut voir" on public.otto_commandes to authenticated;
+alter policy "Lecture publique" on public.pmr_data to authenticated;
+alter policy "Tout le monde voit les presences" on public.user_presence to authenticated;
 
 -- 4g. Vue d'audit : respecter la RLS de l'appelant.
 alter view public.admin_audit_view set (security_invoker = true);

@@ -14,22 +14,25 @@ ou un piège nouveau apparaît (section « Journal des décisions » en bas).
 
 | Phase | Statut |
 |---|---|
-| 0. Audit (sécurité, UX, design, perf) | ✅ fait — voir `docs/AUDIT.md` |
-| 1. Proposition stack / design / roadmap | ✅ rédigée — `docs/PROPOSITION.md`, **en attente de validation utilisateur** |
-| 2. Hotfix sécurité base (RLS, RPC) | ⏳ en attente d'accord explicite (touche la prod) |
-| 3. Socle : auth cookies, design system, shell, Docker | ⏳ |
-| 4. Migration module par module | ⏳ |
+| 0. Audit (sécurité, UX, design, perf) | ✅ `docs/AUDIT.md` |
+| 1. Proposition stack / design / roadmap | ✅ validée (`docs/PROPOSITION.md`) |
+| 0bis. Hotfix sécurité base | ✅ migration écrite + testée hors ligne (`supabase/migrations/20261008120000_security_hotfix.sql`) — **⏳ à appliquer par l'utilisateur** |
+| 0ter. XSS (DOMPurify) | ✅ commit isolé, à reporter sur `main` (BACO) |
+| 2. Socle : session cookie, gardes serveur, proxy verrouillé, Docker, CI, nettoyage | ✅ |
+| 3. Design system + shell (5 thèmes, sidebar, topbar, ⌘K, mobile) | ✅ shell ; modules encore en style historique (remappé sur les thèmes) |
+| 4. Refonte module par module (Commandes → PMR → Opérations → Référentiels → Équipe → Admin) | ⏳ nécessite identifiants de test |
 
 **Ne pas commencer une phase sans validation de l'utilisateur.**
 
-## 2. Stack actuelle (constat)
+## 2. Stack
 
-- SvelteKit 2 + **Svelte 5** (runes majoritaires, restes Svelte 4 : `export let`, `on:click`, `$:`)
-- Tailwind CSS 4 (`@tailwindcss/vite`), JavaScript (pas TypeScript), JSDoc partiel
-- Supabase (projet `mgljaheyimizrydazrxh`) : Postgres + Auth + Storage, accès **direct depuis le navigateur**
-- Session en `localStorage` → le SSR ne voit pas l'utilisateur ; gardes de route uniquement côté client
-- Déploiement actuel : Vercel (`adapter-auto`) ; cible : **Docker sur Coolify** (`adapter-node`), domaine `csm.fs0ciety.org`
-- Tests : Vitest (1 seul fichier de tests)
+- SvelteKit 2 + **Svelte 5 runes**, Tailwind CSS 4, JavaScript + JSDoc (TypeScript progressif)
+- Supabase (projet `mgljaheyimizrydazrxh`) — **même base que BACO** (Vercel, branche `main`)
+- Session Supabase en **cookie `csm-auth`** ; navigateur → `/api-proxy/*` (liste blanche) ; login par form action
+- Gardes de route serveur : `src/lib/server/guards.js` + `hooks.server.js` + `+layout.server.js` (relancé à chaque navigation)
+- UI : `bits-ui` (primitives accessibles), `lucide-svelte`, polices `@fontsource-variable` (Inter, Space Grotesk, JetBrains Mono)
+- Exports : `exceljs` (`$lib/utils/excel.js`), `jspdf` ; HTML : `$lib/utils/sanitize.js`
+- Déploiement : Docker (adapter-node) sur Coolify, `csm.fs0ciety.org` — voir `docs/DEPLOIEMENT.md`
 
 ## 3. Commandes
 
@@ -67,7 +70,15 @@ npm run lint         # prettier --check
   — jamais `supabase.from()` dans un composant de page.
 - Tout HTML rendu via `{@html}` passe par `sanitize()` (DOMPurify). Aucune exception.
 - Les droits se vérifient **côté serveur et en RLS** ; le masquage UI n'est que du confort.
-- Couleurs / rayons / ombres / durées : **tokens CSS** (`var(--…)`) uniquement, jamais de hex en dur.
+- Couleurs : utilitaires sémantiques (`bg-canvas`, `bg-surface`, `bg-surface-2`, `border-line`, `text-fg`,
+  `text-muted`, `text-subtle`, `bg-accent`/`text-accent-fg`, `text-ok|warn|danger|info`) — jamais de hex en dur.
+  La palette Tailwind historique (`gray`, `blue`, `white`…) est **remappée sur le thème** dans `app.css` pour
+  que les anciennes pages suivent les 5 thèmes : ne pas l'utiliser dans le nouveau code.
+- Thèmes : `<html data-theme="nocturne|ivoire|rail|contraste|tactique" data-scheme data-density>` ;
+  store `$lib/stores/theme.js` ; script anti-flash dans `app.html` (nonce CSP).
+- Motion : jetons `--d-*` / `--ease-*`, popovers via `.csm-pop` (data-state), transitions de page = View
+  Transitions ; aucune boucle infinie sauf `.live-dot` ; `prefers-reduced-motion` respecté globalement.
+- Navigation : **une seule source** `src/lib/navigation.js` (sidebar, ⌘K, onglets mobiles, raccourcis).
 - Imports lourds (jspdf, exceljs, gridstack, maplibre, chart.js) en `await import()`.
 - Polling : utiliser `src/lib/utils/poller.js` (pause onglet caché) ou le flux SSE serveur (`/api/events`). **Jamais** de client Supabase Realtime/WebSocket côté navigateur : bloqué par le pare-feu de l’entreprise.
 
@@ -79,7 +90,10 @@ npm run lint         # prettier --check
   → Générer un brouillon `.eml` (`X-Unsent: 1`) avec le PDF joint, jamais d'envoi SMTP automatique.
 - **Coexistence** : BACO (Vercel, branche `main`) reste en production sur **la même base**.
   → Migrations **rétrocompatibles** uniquement (additives) ; si un hotfix casse BACO, corriger `main` aussi.
-- Gamification (classement, badges, likes, jauge de confiance, fléchettes, Konami) : **à supprimer** (validé).
+- Gamification (classement, badges, likes, jauge de confiance, fléchettes, Konami) : **supprimée** (validé).
+- **Mobile obligatoire** : toute page doit être utilisable à 360 px de large (pas de scroll horizontal de page,
+  cibles tactiles ≥ 44 px, champs ≥ 16 px, safe-areas). Shell : tiroir + barre d'onglets en bas (< md).
+  Vérifier chaque écran en 390×844 (Playwright) avant de livrer.
 
 ## 7. Pièges connus
 
@@ -97,3 +111,7 @@ npm run lint         # prettier --check
 - 2026-10-08 — Retours utilisateur : pas de Realtime WS (pare-feu) → relais SSE serveur ; PocketBase
   étudié et écarté (migration lourde, coexistence BACO) ; Next.js écarté (pas de gain perf, réécriture) ;
   e-mail = brouillon .eml + PDF depuis boîte fonctionnelle ; gamification supprimée ; BACO reste actif.
+- 2026-10-08 — Phases 0→3 livrées sur la branche : migration sécurité (non appliquée), XSS, socle serveur,
+  Docker/CI, gamification retirée, design system 5 thèmes + shell (sidebar, topbar, ⌘K, tiroir/onglets mobiles).
+  Découverte : 6 tables métier (déplacements PMR, interventions, commandes taxi/bus, présences) ouvertes à anon
+  → ajoutées à la migration (4h). Exigence utilisateur : app **totalement compatible mobile**.

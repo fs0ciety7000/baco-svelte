@@ -14,7 +14,7 @@
     import { toast } from '$lib/stores/toast';
     import { openConfirmModal } from '$lib/stores/modal.js';
     import { supabase } from '$lib/supabase';
-    import { currentThemeId, themesConfig, applyTheme } from '$lib/stores/theme';
+    import { currentThemeId, themesConfig, applyTheme, isKnownTheme } from '$lib/stores/theme';
     import { ProfileService } from '$lib/services/profile.service.js';
     import { SocialService, QUICK_EMOJIS } from '$lib/services/social.service.js';
 
@@ -90,7 +90,7 @@
         myFullName = myProfile?.full_name || 'Un collègue';
 
         // Initialisation Theme
-        if (myProfile?.theme) {
+        if (isKnownTheme(myProfile?.theme)) {
             currentThemeId.set(myProfile.theme);
             applyTheme(myProfile.theme);
         }

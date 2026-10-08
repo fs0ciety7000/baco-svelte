@@ -24,6 +24,15 @@ create table public.infractions (id uuid default gen_random_uuid() primary key, 
 do $$ declare t text; begin foreach t in array array['chauffeurs_bus','contacts_bus','contacts_repertoire','ligne_data','lignes_bus','pn_data','societes_bus','spi_data','taxis','changelog','pmr_clients','pmr_data','procedures','ebp','app_settings','b201_reports','darts_games','temp_geo_data','liaisons_contenu','remise_bus','remise_taxi','remise_intervention','remise_pmr'] loop
  execute format('create table public.%I (id serial primary key, key text unique, value text, updated_at timestamptz)', t); end loop; end $$;
 create table public.main_courante (id serial, user_id uuid);
+do $$ declare t text; begin foreach t in array array['daily_movements','movement_interventions','taxi_commands','otto_commandes','user_presence'] loop
+ execute format('create table public.%I (id serial primary key, info text)', t); execute format('alter table public.%I enable row level security', t); end loop; end $$;
+create policy "Public access" on public.daily_movements for all using (true);
+create policy "Public access" on public.movement_interventions for all using (true);
+create policy "Enable all access for authenticated users" on public.taxi_commands for all using (true);
+create policy "Tout le monde peut voir" on public.otto_commandes for select using (true);
+create policy "Tout le monde voit les presences" on public.user_presence for select using (true);
+alter table public.pmr_data enable row level security;
+create policy "Lecture publique" on public.pmr_data for select using (true);
 create table public.audit_logs (id serial, "timestamp" timestamptz, action_type text, table_name text, record_id text, changes text, user_id uuid);
 create view public.admin_audit_view as select a.id, p.full_name from audit_logs a left join profiles p on a.user_id=p.id;
 do $$ declare t text; begin foreach t in array array['archive_procedure','handle_new_mention_notification','handle_procedure_update','handle_updated_at','handle_updated_at_with_user','log_audit_action','log_audit_diff'] loop
@@ -45,3 +54,4 @@ grant execute on all functions in schema public to anon, authenticated;
 insert into auth.users(id,email) values ('00000000-0000-0000-0000-00000000000a','admin@x'),('00000000-0000-0000-0000-00000000000b','user@x');
 update public.profiles set role='admin' where id='00000000-0000-0000-0000-00000000000a';
 insert into public.app_settings(key,value) values ('maintenance_mode','false');
+insert into public.daily_movements(info) values ('PMR Dupont');

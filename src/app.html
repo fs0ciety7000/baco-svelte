@@ -1,17 +1,39 @@
-<!DOCTYPE html>
-<html lang="fr" class="dark"> <head>
+<!doctype html>
+<html lang="fr" data-theme="nocturne" data-scheme="dark">
+	<head>
 		<meta charset="utf-8" />
-		<link rel="icon" href="%sveltekit.assets%/favicon.ico" />
-        
-        <link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
-        <meta name="theme-color" content="#0B0E14" />
-        <meta name="apple-mobile-web-app-capable" content="yes">
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-        
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<meta name="theme-color" content="#0b0e14" />
+		<meta name="color-scheme" content="dark light" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+		<meta name="description" content="CSM — Client Solutions Management Tool" />
+		<link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
+		<link rel="icon" href="%sveltekit.assets%/favicon.ico" sizes="any" />
+		<link rel="apple-touch-icon" href="%sveltekit.assets%/apple-touch-icon.png" />
+		<script nonce="%sveltekit.nonce%">
+			// Thème et densité appliqués avant le premier rendu (aucun flash).
+			(function () {
+				var d = document.documentElement;
+				var light = { ivoire: 1 };
+				var ids = { nocturne: 1, ivoire: 1, rail: 1, contraste: 1, tactique: 1 };
+				var t = 'auto';
+				var density = 'comfortable';
+				try {
+					t = localStorage.getItem('csm-theme') || 'auto';
+					density = localStorage.getItem('csm-density') || 'comfortable';
+				} catch (e) {}
+				if (!ids[t]) {
+					t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'ivoire' : 'nocturne';
+				}
+				d.dataset.theme = t;
+				d.dataset.scheme = light[t] ? 'light' : 'dark';
+				d.dataset.density = density;
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
-	<body data-sveltekit-preload-data="hover" class="bg-[#0f1115] text-white">
+	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
 </html>

@@ -1,128 +1,80 @@
 <script>
-  import '../app.css';
-  import { onMount } from 'svelte';
-  import { page } from '$app/stores';
-  import { supabase } from '$lib/supabase';
-  import { goto } from '$app/navigation';
-  import PwaReload from '$lib/components/PwaReload.svelte';
-  import Nav from '$lib/components/Nav.svelte';
-  import Footer from '$lib/components/Footer.svelte';
-  import GlobalSearch from '$lib/components/GlobalSearch.svelte';
-  import ToastContainer from '$lib/components/ToastContainer.svelte';
-  import ConfirmModal from '$lib/components/ConfirmModal.svelte';
-  
-  import DashboardSkeleton from '$lib/components/DashboardSkeleton.svelte';
-  import { zenMode } from '$lib/stores/zen';
-  import { toast } from '$lib/stores/toast.js'; 
-  import { Minimize } from 'lucide-svelte';
-  import { fly, fade } from 'svelte/transition';
-  import { cubicIn, cubicOut } from 'svelte/easing';
-  // Import du store de présence
-  import { presenceState } from '$lib/stores/presence.svelte.js';
+	import '../app.css';
+	import { onMount } from 'svelte';
+	import { page } from '$app/state';
+	import { goto, onNavigate } from '$app/navigation';
+	import { fade } from 'svelte/transition';
+	import { Minimize } from 'lucide-svelte';
+	import { supabase } from '$lib/supabase';
+	import AppShell from '$lib/components/shell/AppShell.svelte';
+	import PwaReload from '$lib/components/PwaReload.svelte';
+	import ToastContainer from '$lib/components/ToastContainer.svelte';
+	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
+	import { zenMode } from '$lib/stores/zen';
+	import { toast } from '$lib/stores/toast.js';
+	import { presenceState } from '$lib/stores/presence.svelte.js';
 
-  // --- VARIABLES (MIGRATION RUNES) ---
-  // On remplace "let x = y" par "let x = $state(y)" pour la réactivité
-  let user = $state(null);
-  let loading = $state(true);
+	let { data, children } = $props();
 
-  // On remplace "$: x = ..." par "$derived(...)"
-  let isLoginPage = $derived($page.url.pathname === '/login' || $page.url.pathname === '/maintenance');
+	const bare = $derived(
+		!data.user || page.url.pathname === '/login' || page.url.pathname === '/maintenance'
+	);
 
-  function handleKeydown(event) {
-    if (event.key === 'Escape' && $zenMode) {
-        zenMode.set(false);
-    }
-  }
+	// Transitions de page fluides (View Transitions API, si disponible)
+	onNavigate((navigation) => {
+		if (
+			!document.startViewTransition ||
+			navigation.from?.url.pathname === navigation.to?.url.pathname
+		)
+			return;
+		return new Promise((resolve) => {
+			document.startViewTransition(async () => {
+				resolve();
+				await navigation.complete;
+			});
+		});
+	});
 
-  // Initialisation de la présence (C'est ceci qui a activé le mode Runes)
-  $effect(() => {
-    if (user) {
-        presenceState.init(user);
-    }
-  });
+	$effect(() => {
+		if (data.user) presenceState.init(data.user);
+	});
 
-  onMount(async () => {
-    // --- 2. AUTHENTICATION ---
-    const { data: { session } } = await supabase.auth.getSession();
-    user = session?.user;
+	$effect(() => {
+		if (page.url.searchParams.get('denied') === '1') {
+			toast.error("Vous n'avez pas accès à ce module.");
+		}
+	});
 
-    
-    loading = false;
-
-    // Écouter les changements d'authentification
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Ignorer les événements de refresh de token (évite les redirections intempestives)
-      if (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
-        user = session?.user;
-        return;
-      }
-
-      // Mettre à jour l'utilisateur pour SIGNED_IN
-      if (event === 'SIGNED_IN') {
-        user = session?.user;
-        return;
-      }
-
-      // Rediriger uniquement sur déconnexion explicite
-      if (event === 'SIGNED_OUT') {
-        user = null;
-        goto('/login');
-      }
-    });
-
-    // --- 3. NETTOYAGE ---
-    return () => {
-      subscription.unsubscribe();
-    };
-  });
+	onMount(() => {
+		const {
+			data: { subscription }
+		} = supabase.auth.onAuthStateChange((event) => {
+			if (event === 'SIGNED_OUT') goto('/login');
+		});
+		return () => subscription.unsubscribe();
+	});
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
+<svelte:window onkeydown={(e) => e.key === 'Escape' && $zenMode && zenMode.set(false)} />
 
-{#if loading && !isLoginPage}
-  <DashboardSkeleton />
+{#if bare}
+	{@render children()}
+{:else if $zenMode}
+	<main class="h-dvh overflow-hidden">{@render children()}</main>
+	<button
+		onclick={() => zenMode.set(false)}
+		transition:fade
+		aria-label="Quitter le mode plein écran"
+		class="fixed right-6 bottom-6 z-50 grid size-11 place-items-center rounded-full border border-line bg-surface/80 text-muted shadow-e3 backdrop-blur-md hover:text-fg"
+	>
+		<Minimize class="size-5" />
+	</button>
 {:else}
-  <div class="min-h-screen flex flex-col bg-deep-space text-gray-900 dark:text-gray-100 transition-all duration-300 relative">
-    {#if !isLoginPage && !$zenMode}
-      <div transition:fade={{ duration: 200 }}>
-          <Nav {user} />
-          <GlobalSearch />
-      </div>
-    {/if}
-
-    <main class="flex-grow grid grid-cols-1 grid-rows-1 {isLoginPage ? '' : ($zenMode ? 'h-screen overflow-hidden' : 'container mx-auto px-4 py-8')}">
-      {#key $page.url.pathname}
-        <div 
-          class="col-start-1 row-start-1 w-full h-full"
-          in:fly={{ y: 20, duration: 300, delay: 300, easing: cubicOut }} 
-          out:fly={{ y: -20, duration: 300, easing: cubicIn }}
-        >
-          <slot />
-        </div>
-      {/key}
-    </main>
-
-    {#if !isLoginPage && !$zenMode}
-      <div transition:fade={{ duration: 200 }}>
-          <Footer />
-      </div> 
-    {/if}
-
-    {#if $zenMode}
-      <button 
-          onclick={() => zenMode.set(false)}
-          transition:fade
-          class="fixed bottom-6 right-6 z-50 p-3 rounded-full bg-white/10 hover:bg-red-500/20 text-white/50 hover:text-white border border-white/5 backdrop-blur-md shadow-2xl transition-all hover:scale-110 group"
-      >
-          <Minimize class="w-6 h-6" />
-      </button>
-    {/if}
-
-    <ToastContainer />
-    <PwaReload />
-    <ConfirmModal />
-  </div>
+	<AppShell user={data.user} profile={data.profile}>
+		{@render children()}
+	</AppShell>
 {/if}
 
-<style>
-</style>
+<ToastContainer />
+<PwaReload />
+<ConfirmModal />

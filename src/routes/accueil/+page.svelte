@@ -6,7 +6,7 @@
   import { toast } from '$lib/stores/toast';
   import { invalidate } from '$app/navigation';
   // --- STORES & THÈMES ---
-  import { themesConfig, currentThemeId, applyTheme } from '$lib/stores/theme';
+  import { themesConfig, currentThemeId, applyTheme, isKnownTheme } from '$lib/stores/theme';
 
   // --- IMPORTS WIDGETS ---
   import WidgetWeather from '$lib/components/widgets/WidgetWeather.svelte';
@@ -91,7 +91,7 @@
         console.log("État Session Supabase:", session ? "Connecté" : "Non connecté (null)");
 
         // Application du thème sauvegardé
-        if (data.savedTheme) {
+        if (isKnownTheme(data.savedTheme)) {
             selectTheme(data.savedTheme, false);
         }
 
@@ -170,9 +170,11 @@
               cellHeight: 280,
               margin: 10,
               float: false,
-              disableOneColumnMode: true,
-              oneColumnSize: 0,
-              minWidth: 768,
+              // Responsive : 1 colonne sur mobile, 2 sur tablette, 4 sur desktop
+              columnOpts: {
+                breakpointForWindow: true,
+                breakpoints: [{ w: 640, c: 1 }, { w: 1100, c: 2 }]
+              },
               animate: true,
               disableDrag: true,
               disableResize: true,
@@ -392,7 +394,7 @@
     class="space-y-6 relative pb-20 transition-all duration-300 ease-in-out"
     class:mr-96={isDrawerOpen}
 >
-    <div class="flex justify-between items-center bg-white/5 border border-white/10 p-4 rounded-xl backdrop-blur-md shadow-lg">
+    <div class="flex flex-wrap justify-between items-center gap-3 bg-white/5 border border-white/10 p-4 rounded-xl backdrop-blur-md shadow-lg">
     <div class="flex items-center gap-3">
         <div class="p-2 bg-blue-500/10 rounded-lg">
             <LayoutGrid class="text-blue-400 w-6 h-6" />
@@ -417,7 +419,7 @@
                 : 'bg-white/5 border-white/10 hover:bg-white/10 text-gray-300 hover:text-white'}"
         >
             <Settings2 class="w-4 h-4" />
-            <span>{isDrawerOpen ? 'Fermer' : 'Personnaliser'}</span>
+            <span class="hidden sm:inline">{isDrawerOpen ? 'Fermer' : 'Personnaliser'}</span>
         </button>
     </div>
   </div>

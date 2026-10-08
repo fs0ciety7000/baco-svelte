@@ -38,5 +38,8 @@ await as('authenticated',U,`select global_search('x')`,'user -> global_search');
 await as('anon',null,`select global_search('x')`,'anon -> global_search',true);
 await as('authenticated',U,`insert into ebp(key) values ('x')`,'user -> écrit ebp',true);
 await as('anon',null,`select count(*) from ebp`,'anon -> lit ebp');
+await as('anon',null,`select count(*)::int n from daily_movements`,'anon -> daily_movements (0 attendu)');
+await as('anon',null,`delete from daily_movements returning id`,'anon -> supprime daily_movements (0 attendu)');
+await as('authenticated',U,`select count(*)::int n from daily_movements`,'user -> daily_movements (1 attendu)');
 const r = await db.query(`select p.role, u.raw_user_meta_data->>'role' meta from profiles p join auth.users u on u.id=p.id where u.email='new@b'`);
 console.log('créé via RPC:', JSON.stringify(r.rows));
