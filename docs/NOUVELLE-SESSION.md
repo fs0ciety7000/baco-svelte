@@ -2,7 +2,8 @@
 
 À copier tel quel dans une nouvelle session Claude Code, sur le dépôt `fs0ciety7000/baco-svelte`.
 
-**Avant de lancer** (facultatif mais utile) : dans les réglages de l'environnement, ajoute `COOLIFY_API_URL`
+**Avant de lancer** : crée l'environnement cloud **CSM** décrit dans `docs/ENVIRONNEMENT-CLOUD.md` (réseau, secrets
+après rotation des clés Supabase, script d'installation), et lance la session dans cet environnement. Facultatif : dans les réglages de l'environnement, ajoute `COOLIFY_API_URL`
 et `COOLIFY_API_TOKEN` si tu veux que Claude crée lui-même les ressources Coolify. Sinon, il préparera
 les fichiers et la procédure, et tu cliqueras dans Coolify.
 
@@ -25,7 +26,7 @@ Tu reprends **CSM — Client Solutions Management Tool**, le successeur de BACO.
 
 **Règles de base**
 - **BACO reste en production et on n'y touche pas.** Pas de commit sur `main`. Supabase est en **lecture seule** : uniquement des SELECT par le connecteur, et seulement des GET avec la clé de service.
-- `PREPROD_PB_*` est le PocketBase de mon jeu (test.fs0ciety.org), **pas** celui de CSM : n'y écris rien.
+- Session lancée dans l'environnement cloud **CSM** (`docs/ENVIRONNEMENT-CLOUD.md`). Si des variables `PREPROD_PB_*` apparaissent quand même, c'est le PocketBase de mon jeu (test.fs0ciety.org), **pas** celui de CSM : n'y écris rien.
 - Le nouveau code va dans `/web` et `/pocketbase`. Le SvelteKit à la racine sert de référence métier, ne le modifie pas.
 - **Mobile obligatoire** : vérifie chaque écran en 390×844 avec Playwright (Chromium dans `/opt/pw-browsers`).
 - Le navigateur ne parle qu'au domaine CSM : ni `*.supabase.co`, ni WebSocket, ni appel direct à PocketBase.
