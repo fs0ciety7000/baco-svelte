@@ -3,7 +3,7 @@
   import { supabase } from '$lib/supabase';
   import { goto } from '$app/navigation'; // Nécessaire pour la redirection
   import EasyEditor from '$lib/components/EasyEditor.svelte';
-  import { marked } from 'marked';
+  import { renderMarkdown } from '$lib/utils/sanitize.js';
   import { fly, fade, slide } from 'svelte/transition';
   
   // Import des icônes
@@ -482,7 +482,7 @@ function openModal(proc = null) {
                   
                   <div class="p-6">
                     <div class="prose prose-invert max-w-none prose-p:text-gray-300 prose-headings:text-white prose-a:text-blue-400 prose-strong:text-white">
-                      {@html marked(proc.contenu || '')}
+                      {@html renderMarkdown(proc.contenu)}
                     </div>
                   </div>
 

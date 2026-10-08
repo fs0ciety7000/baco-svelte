@@ -5,7 +5,7 @@
     import { toast } from '$lib/stores/toast.js'; 
     import { openConfirmModal } from '$lib/stores/modal.js';
     import { fly, fade, slide } from 'svelte/transition';
-    import { marked } from 'marked'; 
+    import { renderMarkdown } from '$lib/utils/sanitize.js';
     
     // Icons
     import { 
@@ -23,11 +23,6 @@
     import EmojiPicker from '$lib/components/EmojiPicker.svelte';
     import MarkdownToolbar from '$lib/components/MarkdownToolbar.svelte';
 
-    // Config Marked (Markdown Renderer)
-    marked.use({ 
-        breaks: true, // <br> pour les sauts de ligne
-        gfm: true     // GitHub Flavored Markdown
-    });
 
     // --- ÉTAT (RUNES) ---
     let currentUser = $state(null);
@@ -487,7 +482,7 @@
                 </div>
 
                 <div class="markdown-content text-gray-300 text-sm leading-relaxed mb-4 pl-[3.25rem]">
-                    {@html marked.parse(log.message_content || '')}
+                    {@html renderMarkdown(log.message_content)}
                 </div>
 
                 {#if log.attachment_path}

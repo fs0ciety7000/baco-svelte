@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { fade, fly } from 'svelte/transition';
+  import { sanitize } from '$lib/utils/sanitize.js';
   import { 
     Bus, FileText, LayoutDashboard, Edit3, Route, Send, 
     Info, ArrowRight, Mail, Lock, X, School
@@ -159,7 +160,7 @@
         <h4 class="text-orange-400 font-bold text-sm uppercase mb-1 flex items-center gap-2">
             <Info size={16} /> {showTooltipData.title}
         </h4>
-        <p class="text-gray-300 text-xs leading-relaxed">{@html showTooltipData.desc}</p>
+        <p class="text-gray-300 text-xs leading-relaxed">{@html sanitize(showTooltipData.desc)}</p>
         <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-[#1f2937] border-r border-b border-orange-500/30 transform rotate-45"></div>
       </div>
     {/if}

@@ -2,6 +2,7 @@
   import { onMount, tick } from 'svelte';
   import { supabase } from '$lib/supabase';
   import { goto } from '$app/navigation';
+  import { sanitizeHighlight } from '$lib/utils/sanitize.js';
   import { fade, fly } from 'svelte/transition';
   import { 
     Search, Loader2, FileText, Users, Tag, Car, Bus, 
@@ -218,10 +219,10 @@
                 
                 <div class="overflow-hidden">
                   <p class="text-sm font-bold text-gray-200 truncate group-hover:text-white transition-colors">
-                    {@html result.title} 
+                    {@html sanitizeHighlight(result.title)} 
                   </p>
                   <p class="text-xs text-gray-500 truncate mt-0.5 group-hover:text-gray-400 transition-colors">
-                    {@html result.snippet}
+                    {@html sanitizeHighlight(result.snippet)}
                   </p>
                 </div>
               </div>

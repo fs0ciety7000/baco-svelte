@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabase';
-  import { marked } from 'marked';
+  import { renderMarkdown } from '$lib/utils/sanitize.js';
   import MarkdownToolbar from '$lib/components/MarkdownToolbar.svelte'; //
   import { fly, fade } from 'svelte/transition';
   import { 
@@ -266,7 +266,7 @@
               </div>
 
               <div class="p-6 prose prose-invert prose-sm max-w-none text-gray-300 prose-headings:text-gray-100 prose-a:text-blue-400">
-                {@html marked.parse(entry.content || '')}
+                {@html renderMarkdown(entry.content)}
               </div>
             </div>
           </div>
