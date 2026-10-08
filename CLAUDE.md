@@ -31,8 +31,8 @@ gelée** (v1, branche `ccr-5dca0da8-4yg4i6`) : ne pas le modifier.
 |---|---|---|
 | 0 | Sauvegarde Supabase complète | ✅ 8 oct. (restauration testée, archive `age` remise à l'utilisateur). Session 2 : sauvegarde relancée (GET seuls) + 29 empreintes bcrypt exportées dans `/home/user/csm-backup` |
 | 1 | Prototype PocketBase vs Supabase + squelette Next | 🔄 session 2 — `pocketbase/` : migrations, audit, import (29 comptes + empreintes, 295 BC bus), 24 contrôles de règles OK, sauvegarde/restauration OK ; `web/` : Next 15.5, connexion cookie httpOnly, `/commandes`, relais SSE, 6 E2E OK (1440 + 390). recommandation `docs/BACKEND-DECISION.md` soumise, questions tranchées |
-| 2 | Design system + page `/design` (5 thèmes, GSAP) | 🔄 session 2 — jetons + test AA (156 contrôles), 19 composants, `/design`, 17 E2E ; **captures soumises, à valider** ; écarts proposés dans DESIGN-DIRECTION.md |
-| 3 | Shell (6 entrées, onglets, ⌘K, mobile 4 + Plus) + tableau de bord | ⏳ plan validé — captures à faire valider |
+| 2 | Design system + page `/design` (5 thèmes, GSAP) | ✅ 8 oct. — jetons + test AA (156 contrôles), 19 composants, `/design`, 17 E2E ; captures et écarts **validés** |
+| 3 | Shell (6 entrées, onglets, ⌘K, mobile 4 + Plus) + tableau de bord | 🔄 session 2 — en cours, captures à faire valider |
 | 4 | Données : schéma PocketBase, règles d'accès, import | ⏳ migration **en une fois à une date de bascule** (pas de synchro BACO ↔ CSM) |
 | 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | ⏳ |
 | 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | ⏳ `test-csm.fs0ciety.org` |
@@ -215,6 +215,9 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - 2026-10-08 — Étape 2 lancée. Agents UI (`docs/design/REFERENCES-UI.md`) et UX (`docs/design/AUDIT-UX-COMMANDES.md`).
   L'audit UX révèle un **bug de la B201 de BACO** (changer la date puis enregistrer écrase le rapport du jour précédent)
   et un e-mail taxi sans destinataire : signalés à l'utilisateur, BACO non modifié. Captures soumises avant de généraliser.
+- 2026-10-08 — Design **validé**. Réponses métier : taxi utilisé ; `.eml` sur mobile non prioritaire ; **statut « facturé »
+  supprimé** (confirmer l'envoi = facturé, migration `1760000100`) ; « en cours » gardé ; modèles « oui » (lu comme
+  personnels + partageables, à confirmer). Étape 3 lancée.
 
 
 ---

@@ -148,7 +148,7 @@ function importTaxiOrders(app, dir, report) {
 	const col = app.findCollectionByNameOrId('taxi_orders');
 	for (const t of readJson(`${dir}/data/taxi_commands.json`)) {
 		const r = new Record(col);
-		r.set('status', ['brouillon', 'envoye', 'confirme', 'termine', 'annule'].indexOf(t.status) !== -1 ? t.status : 'brouillon');
+		r.set('status', ['brouillon', 'envoye', 'confirme', 'en_cours', 'termine', 'annule'].indexOf(t.status) !== -1 ? t.status : 'brouillon');
 		r.set('author', t.redacteur || '');
 		r.set('trip_at', toDate(t.date_trajet));
 		r.set('return_at', toDate(t.date_retour));

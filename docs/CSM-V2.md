@@ -13,6 +13,7 @@
 | **Framework** | **Next.js (App Router) + React + TypeScript**, choisi par l'utilisateur. |
 | **Backend** | **PocketBase**, retenu par l'utilisateur le 8 octobre 2026, auto-hébergé sur Coolify dans une instance **dédiée à CSM**, déployée avec l'app web. Son temps réel en SSE passe le pare-feu de l'entreprise. Le prototype de l'étape 1 sert au chiffrage et à valider l'import des comptes (§3). |
 | **Données non migrées** | `darts_games`, `temp_geo_data`, `profile_likes`, `remise_*` (4), `app_backups`, **`infractions`** (abandonnée). Avatars DiceBear → initiales. |
+| **Commandes (réponses du 8 oct.)** | Statuts : brouillon → envoyé → confirmé → **en cours** (gardé) → terminé, ou annulé. **Pas de « facturé »** : confirmer l'envoi vaut facturation. Module **taxi utilisé** (refonte complète). `.eml` sur mobile : non prioritaire. Modèles : personnels par défaut, partageables avec l'équipe (réponse « oui » à interpréter, à confirmer à l'étape 5). |
 | **Sauvegardes PocketBase** | Sauvegarde du volume par Coolify pour l'instant, Cloudflare R2 (S3) plus tard. |
 | **Bascule des données** | Migration **en une fois**, à une date de bascule : gel de BACO, export Supabase, import PocketBase, vérification. Pas de synchronisation entre les deux bases. |
 | **Mobile** | Obligatoire, pensé mobile d'abord dès la conception. |
@@ -127,7 +128,7 @@ Dans Coolify, deux ressources :
 |---|---|---|
 | 0 | **Sauvegarde Supabase** (schéma, données, rôles, Storage, liste des comptes) | ✅ 8 oct. — `docs/SAUVEGARDE-SUPABASE.md`, restauration testée |
 | 1 | Prototype PocketBase ou Supabase + squelette Next (auth, 1 module) | 🔄 8 oct. — prototype fait, recommandation **`docs/BACKEND-DECISION.md`** soumise (PocketBase confirmé, ≈ 10,75 j de migration backend) |
-| 2 | Design system : jetons, 5 thèmes, bibliothèque de composants, GSAP, page `/design` | Captures desktop et mobile validées par l'utilisateur |
+| 2 | Design system : jetons, 5 thèmes, bibliothèque de composants, GSAP, page `/design` | ✅ 8 oct. — captures validées |
 | 3 | Shell : 6 entrées, onglets par module, ⌘K, menu utilisateur, mobile | Captures validées |
 | 4 | Données : schéma, règles d'accès, import depuis la sauvegarde | Données de test sur l'environnement de test |
 | 5 | Modules, dans l'ordre Commandes → PMR → Opérations → Référentiels → Équipe → Admin | Un module validé à la fois |

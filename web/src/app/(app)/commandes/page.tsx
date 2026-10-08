@@ -12,7 +12,6 @@ const STATUS_LABEL: Record<(typeof ORDER_STATUSES)[number], string> = {
   confirme: "Confirmé",
   en_cours: "En cours",
   termine: "Terminé",
-  facture: "Facturé",
   annule: "Annulé",
 };
 

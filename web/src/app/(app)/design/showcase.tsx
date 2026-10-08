@@ -96,7 +96,7 @@ const ORDERS: {
     date: "07/10 18:30",
     route: "Tournai → Mouscron",
     ref: "TC_0000409",
-    status: "facture",
+    status: "termine",
     buses: 2,
   },
   {

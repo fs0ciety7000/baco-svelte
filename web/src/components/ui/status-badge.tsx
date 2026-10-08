@@ -13,14 +13,14 @@ const toneVar: Record<Tone, string> = {
   info: "var(--info)",
 };
 
-// Statut unifié des commandes bus et taxi (docs/PROPOSITION.md §5).
+// Statut unifié des commandes bus et taxi. Pas de « facturé » : une commande dont l'envoi est confirmé est
+// facturée d'office (décision utilisateur du 8 octobre 2026).
 export const ORDER_STATUS = {
   brouillon: { label: "Brouillon", tone: "neutral" },
   envoye: { label: "Envoyé", tone: "info" },
   confirme: { label: "Confirmé", tone: "accent" },
   en_cours: { label: "En cours", tone: "warn" },
   termine: { label: "Terminé", tone: "ok" },
-  facture: { label: "Facturé", tone: "ok" },
   annule: { label: "Annulé", tone: "danger" },
 } as const satisfies Record<string, { label: string; tone: Tone }>;
 

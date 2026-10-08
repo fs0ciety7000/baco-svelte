@@ -13,7 +13,6 @@ export const ORDER_STATUSES = [
   "confirme",
   "en_cours",
   "termine",
-  "facture",
   "annule",
 ] as const;
 

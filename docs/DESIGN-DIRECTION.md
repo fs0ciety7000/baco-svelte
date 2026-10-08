@@ -69,7 +69,7 @@ Contraste vérifié (WCAG AA ≥ 4,5:1) pour `fg-muted`, `accent` et les 4 coule
 - **PageHeader** : eyebrow mono (`// COMMANDES · 12 ACTIVES`) en `fg-muted`, H1 display, actions à droite, onglets en dessous.
 - **StatCard** : bande colorée de 2 px en haut, label mono 11 px, valeur display tabulaire, delta en mono vert ou rouge, sparkline Tremor facultative. L'ensemble est chanfreiné. La carte est cliquable et sert de filtre.
 - **Tabs pills** : segmented control carré. L'onglet actif a un fond `surface-2`, un trait ambre de 2 px en bas et un compteur en chip mono. L'indicateur glisse via GSAP Flip.
-- **Status badge** : MAJUSCULES mono 10–11 px, pastille carrée de 6 px, fond du statut à 12 % d'opacité, bordure à 40 %. Statuts BC : BROUILLON, ENVOYÉ, CONFIRMÉ, EN COURS, CLÔTURÉ, ANNULÉ.
+- **Status badge** : MAJUSCULES mono 10–11 px, pastille carrée de 6 px, fond du statut à 12 % d'opacité, bordure à 40 %. Statuts BC : BROUILLON, ENVOYÉ, CONFIRMÉ, EN COURS, TERMINÉ, ANNULÉ (pas de FACTURÉ : décision du 8 oct.).
 - **DataTable** (TanStack Table + shadcn) : en-têtes mono en majuscules, lignes de 40 px (32 px en mode compact), bordure gauche de statut, en-tête sticky, sélection en ambre, nombres alignés à droite. Sur mobile, les lignes deviennent des cartes.
 - **Command palette** (cmdk) : ⌘K, groupes « Aller à », « Créer », « Rechercher un BC ou une gare ». Le résultat actif a un fond `surface-2` et un trait ambre à gauche.
 - **Bottom tab bar** (mobile) : 5 entrées (Accueil, Commandes, PMR, Départs, Plus), label mono 10 px, badge numérique en `danger`. L'onglet actif a un trait ambre en haut. La barre respecte `safe-area-inset-bottom`.
@@ -121,7 +121,7 @@ GSAP est **100 % gratuit depuis 2025**, plugins compris (SplitText, Flip, Custom
 - https://webflow.com/blog/gsap-becomes-free et https://gsap.com/blog/3-13/ : GSAP et ses plugins gratuits, SplitText réécrit et accessible.
 - https://gsap.com/resources/a11y/ : `matchMedia` combiné à `prefers-reduced-motion`.
 
-## Mise en œuvre (étape 2) et écarts proposés — en attente de validation
+## Mise en œuvre (étape 2) et écarts — **validés le 8 octobre 2026**
 
 Implémentation : `web/src/design/tokens.ts` (source unique des couleurs, `npm run tokens` → `web/src/app/themes.css`),
 `web/src/app/globals.css`, `web/src/components/ui/*`, page interne `/design`. Un test vérifie le contraste AA
