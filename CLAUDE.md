@@ -28,7 +28,7 @@ gelée** (v1, branche `ccr-5dca0da8-4yg4i6`) : ne pas le modifier.
 | # | Étape | Statut |
 |---|---|---|
 | 0 | Sauvegarde Supabase complète | ✅ 8 oct. (restauration testée, archive `age` remise à l'utilisateur). Session 2 : sauvegarde relancée (GET seuls) + 29 empreintes bcrypt exportées dans `/home/user/csm-backup` |
-| 1 | Prototype PocketBase vs Supabase + squelette Next | ⏳ session 2 — **PocketBase retenu par l'utilisateur**, prototype = chiffrage + validation de l'import des comptes |
+| 1 | Prototype PocketBase vs Supabase + squelette Next | 🔄 session 2 — `pocketbase/` : migrations, audit, import (29 comptes + empreintes, 295 BC bus), 24 contrôles de règles OK, sauvegarde/restauration OK |
 | 2 | Design system + page `/design` (5 thèmes, GSAP) | ⏳ plan validé — captures à faire valider |
 | 3 | Shell (6 entrées, onglets, ⌘K, mobile 4 + Plus) + tableau de bord | ⏳ plan validé — captures à faire valider |
 | 4 | Données : schéma PocketBase, règles d'accès, import | ⏳ migration **en une fois à une date de bascule** (pas de synchro BACO ↔ CSM) |
@@ -68,7 +68,12 @@ Environnement dédié **CSM** : configuration de référence dans `docs/ENVIRONN
 ## 3. Commandes
 
 ```bash
-# v2 (à compléter dès que /web et /pocketbase existent)
+# v2 — PocketBase local (détails : pocketbase/CLAUDE.md), binaire 0.40.4 dans /usr/local/bin
+cd pocketbase && P="--dir pb_data --migrationsDir pb_migrations --hooksDir pb_hooks"
+pocketbase migrate up $P && CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P
+pocketbase serve --http 127.0.0.1:8090 $P
+node scripts/test-rules.mjs            # PB_SUPERUSER_EMAIL / PB_SUPERUSER_PASSWORD
+# v2 — web (détails : web/CLAUDE.md)
 cd web && npm install && npm run dev
 # Sauvegarde Supabase (lecture seule) : voir docs/SAUVEGARDE-SUPABASE.md
 node scripts/supabase-backup.mjs /home/user/csm-backup
@@ -147,6 +152,10 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - (v2) Dans l'environnement cloud, `fetch` de Node ignore le proxy sortant : lancer les scripts avec
   `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt`. Un domaine absent de « Network access »
   renvoie un 403 du proxy (`curl -sS "$HTTPS_PROXY/__agentproxy/status"`).
+- (v2) PocketBase : le champ `autodate` `created` est forcé à l'enregistrement → l'import rétablit la date
+  d'origine par SQL. Les empreintes bcrypt s'écrivent aussi par SQL (`setPassword` rehacherait).
+- (v2) Ne jamais faire `pkill -f "<motif>"` quand le motif figure dans la commande elle-même : le shell se tue
+  (code 144). Passer par un fichier pid.
 - (v2) Lecture Supabase **autorisée sans redemander** (SELECT connecteur, GET clé de service) ; toute écriture
   reste soumise à l'accord explicite de l'utilisateur.
 - (v2) Restauration Postgres : colonnes `GENERATED ALWAYS AS IDENTITY` → `overriding system value` ;
