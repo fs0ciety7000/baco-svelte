@@ -24,7 +24,11 @@ PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # 
 - **Identifiants** : les UUID Supabase sont conservés (`users.id` accepte 15 à 36 caractères `[a-z0-9-]`) ;
   les tables à clé numérique gardent l'ancienne clé dans `legacy_id`.
 - **Hooks** (`pb_hooks/*.pb.js`) : isolés, la logique partagée est dans `pb_hooks/lib/` chargée par `require()`.
-  `audit.pb.js` trace les écritures faites par l'API (auteur + différentiel), `import.pb.js` ajoute `csm-import`.
+  `audit.pb.js` trace les écritures faites par l'API (auteur + différentiel), `import.pb.js` ajoute `csm-import`,
+  `users.pb.js` force `grants` / `denies` en tableau. Piège : dans un hook, `record.get()` d'un champ JSON renvoie
+  du JSON brut (pas un tableau JS) → tester `record.getString(champ)`.
+- **Piège des règles** : un champ JSON `null` rend `x !~ '…'` faux (NULL SQL) et coupe l'accès ; tout champ JSON
+  utilisé dans une règle doit avoir une valeur par défaut posée par hook.
 - **Import** : CLI uniquement (aucune route HTTP), en une transaction ; les empreintes bcrypt `$2a$` de Supabase sont
   recopiées telles quelles dans `users.password` (connexion testée, coûts 6 et 10).
 - **Sauvegardes** : réglées par migration (`0 2 * * *`, 14 conservées dans `pb_data/backups`).

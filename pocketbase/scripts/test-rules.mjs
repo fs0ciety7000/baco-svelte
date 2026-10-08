@@ -51,7 +51,8 @@ try {
 				passwordConfirm: password,
 				name: `Test ${role}`,
 				role: role === 'denied' ? 'user' : role,
-				denies: role === 'denied' ? ['otto:write'] : [],
+				// Comptes créés sans grants/denies (comme par l'interface admin) : le hook doit les normaliser.
+				...(role === 'denied' ? { denies: ['otto:write'] } : {}),
 				verified: true
 			}
 		});
@@ -103,7 +104,7 @@ try {
 
 	// Lecteur : lit, n'écrit pas.
 	const rl = await api('GET', '/api/collections/bus_orders/records?perPage=1', { token: roles.reader.token });
-	check('lecteur lit les commandes bus', rl.status === 200, `HTTP ${rl.status}`);
+	check('lecteur lit les commandes bus', rl.status === 200 && rl.json.totalItems > 0, `${rl.json?.totalItems} lignes`);
 	const rc = await api('POST', '/api/collections/bus_orders/records', {
 		token: roles.reader.token,
 		body: { status: 'brouillon', created_by: roles.reader.id }

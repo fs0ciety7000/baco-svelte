@@ -154,6 +154,9 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   renvoie un 403 du proxy (`curl -sS "$HTTPS_PROXY/__agentproxy/status"`).
 - (v2) PocketBase : le champ `autodate` `created` est forcé à l'enregistrement → l'import rétablit la date
   d'origine par SQL. Les empreintes bcrypt s'écrivent aussi par SQL (`setPassword` rehacherait).
+- (v2) PocketBase : un champ JSON `null` dans une règle (`denies !~ …`) vaut faux en SQL → hook de normalisation
+  (`pocketbase/pb_hooks/users.pb.js`). Trouvé par l'E2E, pas par le test des règles : tester aussi des comptes
+  créés « à nu ».
 - (v2) Ne jamais faire `pkill -f "<motif>"` quand le motif figure dans la commande elle-même : le shell se tue
   (code 144). Passer par un fichier pid.
 - (v2) Lecture Supabase **autorisée sans redemander** (SELECT connecteur, GET clé de service) ; toute écriture
