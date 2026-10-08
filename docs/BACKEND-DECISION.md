@@ -1,7 +1,7 @@
 # Backend de CSM v2 — recommandation chiffrée (étape 1)
 
 > Session 2, 8 octobre 2026. Prototype réalisé en local sur une copie de la base BACO, sauvegardée en lecture
-> seule. **À valider par l'utilisateur avant l'étape 2.**
+> seule. Réponses de l'utilisateur au §5 reçues le 8 octobre.
 > PocketBase a été retenu le 8 octobre (`docs/CSM-V2.md` §1). Ce document vérifie que ce choix tient,
 > chiffre la migration et liste les points à trancher.
 
@@ -17,7 +17,7 @@ Les quatre risques à vérifier sont levés par le prototype :
 | Temps réel à travers le pare-feu | ✅ SSE PocketBase relayé par Next (`/api/events`), testé dans Chromium en 1440×900 et 390×844 : aucune requête hors du domaine CSM, aucun WebSocket |
 | Sauvegarde et restauration | ✅ Le zip restauré dans une autre instance redonne les mêmes comptages et le même avatar à l'octet près. Les sauvegardes sont planifiées chaque nuit à 2 h, 14 conservées. |
 
-L'effort restant pour migrer le backend est d'environ **10 jours de développement** (détail §4). Il s'ajoute au
+L'effort restant pour migrer le backend est d'environ **10,5 jours de développement** (détail §4). Il s'ajoute au
 design (étapes 2-3) et aux modules (étape 5).
 
 ## 2. Ce que le prototype a validé
@@ -132,9 +132,9 @@ modules.
 | PMR | `daily_movements`, `movement_interventions`, `pmr_clients`, `pmr_data` : données de santé, règles plus strictes, PDF protégés | 1,5 j |
 | Référentiels | `ebp`, `ligne_data`, `ptcar_abbreviations` (1 148 lignes), `gare_coordinates`, `pn_data`, `spi_data`, `contacts_repertoire`, `liaisons_contenu` | 1 j |
 | Opérations et connaissances | `main_courante` (+ pièces jointes, mentions), `log_reactions`, `custom_emojis`, `procedures` (+ `procedure_versions`), `document_metadata` (+ fichiers), `changelog` | 1,5 j |
-| Équipe | `planning`, `leave_requests`, `presences`, `user_presence`, `team_board`, `favoris`, `notifications`, `user_preferences`, `profile_comments`, `infractions` | 1,5 j |
+| Équipe | `planning`, `leave_requests`, `presences`, `user_presence`, `team_board`, `favoris`, `notifications`, `user_preferences`, `profile_comments` (`infractions` abandonnée) | 1,25 j |
 | Admin / technique | `app_settings` (maintenance), `app_error_logs`, `audit_log` (3 931 lignes sans différentiel : archivées en `legacy`) | 0,5 j |
-| **À ne pas migrer** (à confirmer, §5 question 3) | `darts_games`, `temp_geo_data`, `profile_likes` (gamification retirée), `remise_bus` / `remise_taxi` / `remise_intervention` / `remise_pmr` (0 ou 1 ligne chacune, remplacées par `remises`), `app_backups` (remplacée par les sauvegardes PocketBase) | — |
+| **À ne pas migrer** (à confirmer, §5 question 3) | `darts_games`, `temp_geo_data`, `profile_likes` (gamification retirée), `remise_bus` / `remise_taxi` / `remise_intervention` / `remise_pmr` (0 ou 1 ligne chacune, remplacées par `remises`), `app_backups` (remplacée par les sauvegardes PocketBase) — **confirmé** ; `infractions` — **abandonnée** | — |
 
 Environ **41 collections** à créer (5 sont faites). Chacune suit le même schéma : migration, règles via
 `can(perm, rôles)`, fonction d'import, comptage dans le rapport, contrôles ajoutés à `test-rules.mjs`.
@@ -156,11 +156,11 @@ Environ **41 collections** à créer (5 sont faites). Chacune suit le même sch�
 
 | Poste | Jours |
 |---|---|
-| Tables restantes | 7 |
+| Tables restantes | 6,75 |
 | Fonctions et triggers | 2,75 |
 | Storage | 0,5 |
 | Répétition de la bascule | 0,5 |
-| **Total backend** | **≈ 10,75 j** (fourchette 9 à 12 j) |
+| **Total backend** | **≈ 10,5 j** (fourchette 9 à 12 j) |
 
 Ces lots ne se font pas d'un bloc : chaque collection est créée **avec son module** à l'étape 5, dans
 l'ordre Commandes → PMR → Opérations → Référentiels → Équipe → Admin. Le prototype a fixé le modèle à
@@ -175,7 +175,17 @@ suivre.
 4. Faire tester deux agents (connexion avec leur mot de passe habituel), puis ouvrir CSM.
 5. BACO reste consultable en lecture.
 
-## 5. Points à trancher
+## 5. Points à trancher — réponses de l'utilisateur (8 oct.)
+
+| # | Décision |
+|---|---|
+| 1 | `CSM_TEST_ADMIN_PASSWORD` mis à jour dans l'environnement : à revérifier en session 3 (variables lues au démarrage) |
+| 2 | Sauvegardes : **sauvegarde du volume par Coolify** pour l'instant, **Cloudflare R2** plus tard (réglage S3 de PocketBase) |
+| 3 | Liste des tables non migrées **confirmée** ; **`infractions` abandonnée** (ni migrée ni archivée dans l'app) |
+| 4 | Sociétés sans nom : à compléter, plus tard ; l'import garde « Société sans nom n°… » d'ici là |
+| 5 | Avatars DiceBear remplacés par des **initiales** |
+
+Questions d'origine :
 
 1. **Mot de passe du compte de test** : `CSM_TEST_ADMIN_PASSWORD` ne correspond pas à l'empreinte BACO de
    ce compte. Est-ce volontaire (mot de passe différent pour CSM), ou la variable est-elle périmée ? Le plus

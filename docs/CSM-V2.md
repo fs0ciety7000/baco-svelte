@@ -12,6 +12,8 @@
 | **CSM v2** | Nouvelle branche dédiée, déployée sur **https://test-csm.fs0ciety.org** (Coolify, Docker). |
 | **Framework** | **Next.js (App Router) + React + TypeScript**, choisi par l'utilisateur. |
 | **Backend** | **PocketBase**, retenu par l'utilisateur le 8 octobre 2026, auto-hébergé sur Coolify dans une instance **dédiée à CSM**, déployée avec l'app web. Son temps réel en SSE passe le pare-feu de l'entreprise. Le prototype de l'étape 1 sert au chiffrage et à valider l'import des comptes (§3). |
+| **Données non migrées** | `darts_games`, `temp_geo_data`, `profile_likes`, `remise_*` (4), `app_backups`, **`infractions`** (abandonnée). Avatars DiceBear → initiales. |
+| **Sauvegardes PocketBase** | Sauvegarde du volume par Coolify pour l'instant, Cloudflare R2 (S3) plus tard. |
 | **Bascule des données** | Migration **en une fois**, à une date de bascule : gel de BACO, export Supabase, import PocketBase, vérification. Pas de synchronisation entre les deux bases. |
 | **Mobile** | Obligatoire, pensé mobile d'abord dès la conception. |
 

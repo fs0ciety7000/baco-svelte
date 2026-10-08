@@ -30,7 +30,7 @@ gelée** (v1, branche `ccr-5dca0da8-4yg4i6`) : ne pas le modifier.
 | # | Étape | Statut |
 |---|---|---|
 | 0 | Sauvegarde Supabase complète | ✅ 8 oct. (restauration testée, archive `age` remise à l'utilisateur). Session 2 : sauvegarde relancée (GET seuls) + 29 empreintes bcrypt exportées dans `/home/user/csm-backup` |
-| 1 | Prototype PocketBase vs Supabase + squelette Next | 🔄 session 2 — `pocketbase/` : migrations, audit, import (29 comptes + empreintes, 295 BC bus), 24 contrôles de règles OK, sauvegarde/restauration OK ; `web/` : Next 15.5, connexion cookie httpOnly, `/commandes`, relais SSE, 6 E2E OK (1440 + 390). **Recommandation `docs/BACKEND-DECISION.md` à valider** |
+| 1 | Prototype PocketBase vs Supabase + squelette Next | 🔄 session 2 — `pocketbase/` : migrations, audit, import (29 comptes + empreintes, 295 BC bus), 24 contrôles de règles OK, sauvegarde/restauration OK ; `web/` : Next 15.5, connexion cookie httpOnly, `/commandes`, relais SSE, 6 E2E OK (1440 + 390). recommandation `docs/BACKEND-DECISION.md` soumise, questions tranchées |
 | 2 | Design system + page `/design` (5 thèmes, GSAP) | ⏳ plan validé — captures à faire valider |
 | 3 | Shell (6 entrées, onglets, ⌘K, mobile 4 + Plus) + tableau de bord | ⏳ plan validé — captures à faire valider |
 | 4 | Données : schéma PocketBase, règles d'accès, import | ⏳ migration **en une fois à une date de bascule** (pas de synchro BACO ↔ CSM) |
@@ -207,6 +207,9 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   sauvegarde/restauration validés. Recommandation chiffrée **soumise** (`docs/BACKEND-DECISION.md`, ≈ 10,75 j de
   backend, collections créées avec chaque module). `CSM_TEST_ADMIN_PASSWORD` ne correspond pas à l'empreinte BACO
   du compte (question posée). Arrêt demandé par l'utilisateur à cette recommandation.
+- 2026-10-08 — Réponses de l'utilisateur : sauvegardes = volume Coolify (R2 plus tard) ; 8 tables non migrées
+  confirmées, **`infractions` abandonnée** ; sociétés sans nom à compléter plus tard ; avatars DiceBear → initiales ;
+  `CSM_TEST_ADMIN_PASSWORD` mis à jour (à revérifier en session 3 : variables lues au démarrage).
 
 
 ---
