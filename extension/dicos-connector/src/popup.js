@@ -81,9 +81,16 @@ async function load() {
 }
 
 $("save").addEventListener("click", async () => {
-  const csmUrl = $("csmUrl").value.trim().replace(/\/+$/, "");
+  let csmUrl = $("csmUrl").value.trim().replace(/\/+$/, "");
+  // Tolérant : si l'URL est saisie sans schéma (ex. « test-csm.fs0ciety.org »), on préfixe https:// .
+  if (csmUrl && !/^https?:\/\//i.test(csmUrl)) csmUrl = "https://" + csmUrl;
+  $("csmUrl").value = csmUrl;
   const token = $("token").value.trim();
   const auto = { enabled: $("auto").checked, minutes: Math.max(2, Math.min(120, Number($("minutes").value) || 10)) };
+  if (!csmUrl || !token) {
+    setHint("Renseigne l'URL CSM ET le jeton avant d'enregistrer.", "err");
+    return;
+  }
   if (csmUrl) {
     let origin;
     try {
@@ -107,6 +114,12 @@ $("save").addEventListener("click", async () => {
 $("sync").addEventListener("click", async () => {
   const tab = await activeDicosTab();
   if (!tab) return;
+  // Pré-contrôle : sans URL + jeton enregistrés, l'envoi vers CSM échouera → message clair plutôt que « Configure… ».
+  const cfg = await chrome.storage.local.get(["csmUrl", "token"]);
+  if (!cfg.csmUrl || !cfg.token) {
+    setStatus('<span class="err">Enregistre d\'abord l\'URL CSM et le jeton (bouton « Enregistrer les réglages »).</span>');
+    return;
+  }
   $("sync").disabled = true;
   setStatus("Synchronisation en cours…");
   try {
