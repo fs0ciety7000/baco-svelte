@@ -8,6 +8,14 @@
 Ce fichier est maintenu par Claude. **Mets-le à jour** dès qu'une décision, une convention
 ou un piège nouveau apparaît (section « Journal des décisions » en bas).
 
+> ## ⚠️ PIVOT (8 oct. 2026) — lire d'abord `docs/CSM-V2.md`
+> La v1 SvelteKit (cette branche, `ccr-5dca0da8-4yg4i6`) est **gelée comme référence**.
+> La suite se fait en **Next.js + React + TypeScript** (± **PocketBase**) dans `/web` (et `/pocketbase`)
+> sur une **nouvelle branche**, déployée sur **test-csm.fs0ciety.org**.
+> **BACO (`main`, Vercel, base Supabase) : on n'y touche pas** — Supabase en lecture seule, sauvegarde d'abord.
+> Les sections ci-dessous décrivant la stack SvelteKit concernent la v1 ; les **contraintes (§6)**,
+> le **workflow (§4)** et le **journal (§8)** restent valables pour la v2.
+
 ---
 
 ## 1. État du projet
@@ -115,3 +123,8 @@ npm run lint         # prettier --check
   Docker/CI, gamification retirée, design system 5 thèmes + shell (sidebar, topbar, ⌘K, tiroir/onglets mobiles).
   Découverte : 6 tables métier (déplacements PMR, interventions, commandes taxi/bus, présences) ouvertes à anon
   → ajoutées à la migration (4h). Exigence utilisateur : app **totalement compatible mobile**.
+- 2026-10-08 — **Pivot v2** demandé par l'utilisateur : Next.js/React (+ PocketBase probable), nouvelle branche,
+  environnement de test `test-csm.fs0ciety.org`, BACO intouché, sauvegarde Supabase. Retours UX sur la v1 :
+  sidebar trop chargée (→ 6 entrées + onglets internes), widgets non responsive (→ container queries),
+  lisibilité insuffisante, design pas assez moderne, besoin de composants réutilisables et de motion GSAP.
+  Référence design : test.fs0ciety.org/decisions (derrière connexion). Cahier des charges : `docs/CSM-V2.md`.
