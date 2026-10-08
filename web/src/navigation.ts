@@ -73,9 +73,9 @@ export const MODULES: NavModule[] = [
     tabs: [
       {
         href: "/pmr",
-        label: "Prestations du jour",
+        label: "Prestations",
         permission: "deplacements:read",
-        keywords: ["déplacements"],
+        keywords: ["déplacements", "DICOS", "assistance"],
       },
       { href: "/pmr/historique", label: "Historique", permission: "deplacements:read" },
       { href: "/pmr/clients", label: "Clients", permission: "pmr:read" },

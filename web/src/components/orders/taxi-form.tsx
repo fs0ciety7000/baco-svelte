@@ -45,7 +45,13 @@ import { SendDialog } from "./send-dialog";
 import { StartPanel, type StartPanelProps } from "./start-panel";
 import { TransitionButtons } from "./transitions";
 
-type Client = { id: string; lastName: string; firstName: string; phone: string; type: string };
+export type Client = {
+  id: string;
+  lastName: string;
+  firstName: string;
+  phone: string;
+  type: string;
+};
 
 export type TaxiFormProps = {
   /** Identifiant de l'écran « nouveau » (clé React + URL), pour qu'un 2e « Nouveau » reparte de zéro. */
@@ -626,16 +632,18 @@ export function TaxiForm(props: TaxiFormProps) {
 }
 
 /** Recherche liée à la fiche client PMR (pas de copie libre du nom, audit G2). */
-function PmrClientPicker({
+export function PmrClientPicker({
   client,
   canPmr,
   error,
   onChange,
+  required = true,
 }: {
   client: Client | null;
   canPmr: boolean;
   error?: string;
   onChange: (c: Client | null) => void;
+  required?: boolean;
 }) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Client[]>([]);
@@ -678,7 +686,7 @@ function PmrClientPicker({
               .join(" · ") || "—"}
           </span>
           <Link
-            href="/pmr/clients"
+            href={client.id ? `/pmr/clients?id=${client.id}` : "/pmr/clients"}
             className="inline-flex items-center gap-1 text-small text-accent underline-offset-2 hover:underline"
           >
             Ouvrir la fiche <ExternalLink aria-hidden className="size-3" />
@@ -704,7 +712,7 @@ function PmrClientPicker({
     <div className="flex flex-col gap-2">
       <Field
         label="Client PMR"
-        required
+        required={required}
         error={error}
         hint="Nom, prénom ou téléphone (2 caractères minimum)"
       >

@@ -1,11 +1,63 @@
+import { Plus } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 
-import { ComingSoon } from "@/components/shell/coming-soon";
+import { AssistBoard } from "@/components/pmr/assist-board";
+import { PmrFilterBar, type PmrFilters } from "@/components/pmr/filter-bar";
+import { Button } from "@/components/ui/button";
+import { can } from "@/lib/permissions";
+import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
 import { requirePermission } from "@/server/auth";
+import { listAssists, listZones } from "@/server/data/pmr";
 
-export const metadata: Metadata = { title: "Prestations du jour · CSM" };
+import { LiveRefresh } from "../commandes/live-refresh";
 
-export default async function Page() {
-  await requirePermission("deplacements:read");
-  return <ComingSoon title="Prestations du jour" />;
+export const metadata: Metadata = { title: "Prestations PMR · CSM" };
+
+export default async function Page({ searchParams }: { searchParams: Promise<PmrFilters> }) {
+  const user = await requirePermission("deplacements:read");
+  const f = await searchParams;
+  const today = brusselsDay();
+  const du = isValidDay(f.du) ? f.du : today;
+  const au = isValidDay(f.au) && f.au >= du ? f.au : du;
+  const canPmr = can(user, "pmr:read");
+  const [{ rows, total }, zones] = await Promise.all([
+    listAssists({ from: du, to: au, zone: f.zone, q: f.q, status: f.statut }, { canPmr }),
+    listZones(),
+  ]);
+  return (
+    <section className="flex flex-col gap-4" aria-label="Prestations PMR">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-body text-fg-muted" data-testid="assists-count">
+          <span className="font-mono text-fg tabular">{total}</span> prestation(s)
+        </p>
+        <div className="flex items-center gap-3">
+          <LiveRefresh topics={["pmr_assists"]} />
+          {can(user, "deplacements:write") ? (
+            <Button asChild variant="primary">
+              <Link href={`/pmr/nouveau?jour=${du}`}>
+                <Plus aria-hidden /> Nouvelle prestation
+              </Link>
+            </Button>
+          ) : null}
+        </div>
+      </div>
+      <PmrFilterBar
+        action="/pmr"
+        filters={{ ...f, du, au }}
+        zones={zones}
+        shortcuts={[
+          { label: "Aujourd'hui", du: today, au: today },
+          { label: "Demain", du: addDays(today, 1), au: addDays(today, 1) },
+          { label: "7 prochains jours", du: today, au: addDays(today, 6) },
+        ]}
+      />
+      <AssistBoard
+        rows={rows}
+        canWrite={can(user, "deplacements:write")}
+        canPmr={canPmr}
+        groupByDay
+      />
+    </section>
+  );
 }

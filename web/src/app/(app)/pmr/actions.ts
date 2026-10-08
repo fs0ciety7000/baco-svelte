@@ -1,0 +1,323 @@
+"use server";
+
+import { ClientResponseError } from "pocketbase";
+import { z } from "zod";
+
+import { can, isAdmin } from "@/lib/permissions";
+import {
+  ASSIST_STATUSES,
+  assistSchema,
+  clientSchema,
+  EQUIPMENT_STATES,
+  equipmentSchema,
+} from "@/lib/pmr/model";
+import { requireUser, type SessionUser } from "@/server/auth";
+import { pbForRequest } from "@/server/data/orders";
+import {
+  getAssist,
+  getClientDetail,
+  listPmrEvents,
+  type Assist,
+  type ClientDetail,
+  type PmrEvent,
+} from "@/server/data/pmr";
+
+// Écritures du module PMR : Server Actions validées par zod, jeton de l'agent ; règles et hooks PocketBase
+// revérifient (droits, transitions, auteur, historique).
+
+type Result<T = undefined> =
+  ({ ok: true } & (T extends undefined ? object : { data: T })) | { ok: false; error: string };
+
+const pbId = z.string().regex(/^[a-z0-9]{15}$/);
+
+function fail(e: unknown): { ok: false; error: string } {
+  if (e instanceof ClientResponseError) {
+    const data = e.response?.data as Record<string, { message?: string }> | undefined;
+    const field = data ? Object.entries(data)[0] : undefined;
+    if (e.status === 404) return { ok: false, error: "Fiche introuvable ou accès refusé." };
+    return {
+      ok: false,
+      error: field
+        ? `${field[0]} : ${field[1]?.message ?? "invalide"}`
+        : e.response?.message || "Refusé.",
+    };
+  }
+  if (e instanceof z.ZodError)
+    return { ok: false, error: e.issues[0]?.message ?? "Saisie invalide." };
+  if (e instanceof Error && e.message.startsWith("DROIT:"))
+    return { ok: false, error: e.message.slice(6) };
+  return { ok: false, error: "Erreur inattendue, réessayez." };
+}
+
+async function need(perm: string): Promise<SessionUser> {
+  const user = await requireUser();
+  if (!can(user, perm)) throw new Error("DROIT:Droit manquant pour cette action.");
+  return user;
+}
+
+function coordinator(user: SessionUser) {
+  return isAdmin(user) || user.role === "moderator";
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Prestations
+
+/** Création d'une ou plusieurs prestations (« Coller depuis DICOS » peut en produire plusieurs). */
+export async function createAssists(input: unknown[]): Promise<Result<{ ids: string[] }>> {
+  try {
+    const user = await need("deplacements:write");
+    const items = z.array(assistSchema).min(1).max(20).parse(input);
+    // Sans pmr:read, pas de lien vers une fiche client (données de santé).
+    const canPmr = can(user, "pmr:read");
+    const pb = await pbForRequest();
+    const ids: string[] = [];
+    for (const a of items) {
+      const r = await pb.collection("pmr_assists").create({
+        ...a,
+        zone: a.zone || null,
+        client: canPmr && a.client ? a.client : null,
+        status: "prevue",
+        created_by: user.id,
+        updated_by: user.id,
+      });
+      ids.push(r.id);
+    }
+    return { ok: true, data: { ids } };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function updateAssist(id: string, input: unknown): Promise<Result> {
+  try {
+    const user = await need("deplacements:write");
+    const a = assistSchema.parse(input);
+    const body: Record<string, unknown> = { ...a, zone: a.zone || null, updated_by: user.id };
+    // Sans pmr:read, le lien client n'est pas modifiable (le formulaire ne le connaît pas).
+    if (can(user, "pmr:read")) body.client = a.client || null;
+    else delete body.client;
+    const pb = await pbForRequest();
+    await pb.collection("pmr_assists").update(pbId.parse(id), body);
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function transitionAssist(input: {
+  id: string;
+  to: string;
+  reason?: string;
+}): Promise<Result> {
+  try {
+    const user = await need("deplacements:write");
+    const p = z
+      .object({
+        id: pbId,
+        to: z.enum(ASSIST_STATUSES),
+        reason: z.string().trim().max(500).optional(),
+      })
+      .parse(input);
+    const pb = await pbForRequest();
+    await pb.collection("pmr_assists").update(p.id, {
+      status: p.to,
+      cancel_reason: p.reason ?? "",
+      updated_by: user.id,
+    });
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function loadAssistPanel(
+  id: string,
+): Promise<Result<{ assist: Assist; events: PmrEvent[] }>> {
+  try {
+    const user = await need("deplacements:read");
+    const [assist, events] = await Promise.all([
+      getAssist(id, can(user, "pmr:read")),
+      listPmrEvents("assist", pbId.parse(id)),
+    ]);
+    return { ok: true, data: { assist, events } };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Clients
+
+export async function saveClient(
+  id: string | null,
+  input: unknown,
+): Promise<Result<{ id: string; duplicates?: { id: string; name: string }[] }>> {
+  try {
+    const user = await need("pmr:write");
+    const c = clientSchema.parse(input);
+    const pb = await pbForRequest();
+    const body = {
+      ...c,
+      type_detail: c.type === "AUTRE" ? c.type_detail : "",
+      updated_by: user.id,
+    };
+    if (id) {
+      await pb.collection("pmr_clients").update(pbId.parse(id), body);
+      return { ok: true, data: { id } };
+    }
+    const r = await pb.collection("pmr_clients").create({ ...body, created_by: user.id });
+    return { ok: true, data: { id: r.id } };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Fiches proches (même nom, ou même téléphone) proposées avant de créer un doublon. */
+export async function findDuplicates(input: {
+  last_name: string;
+  phone: string;
+}): Promise<Result<{ id: string; name: string }[]>> {
+  try {
+    await need("pmr:read");
+    const p = z
+      .object({ last_name: z.string().trim().max(200), phone: z.string().trim().max(100) })
+      .parse(input);
+    const digits = p.phone.replace(/\D/g, "");
+    if (p.last_name.length < 2 && digits.length < 6) return { ok: true, data: [] };
+    const pb = await pbForRequest();
+    const ors: string[] = [];
+    if (p.last_name.length >= 2) ors.push(pb.filter("last_name ~ {:n}", { n: p.last_name }));
+    if (digits.length >= 6) ors.push(pb.filter("phone ~ {:d}", { d: digits.slice(-6) }));
+    const res = await pb.collection("pmr_clients").getList(1, 5, { filter: ors.join(" || ") });
+    return {
+      ok: true,
+      data: res.items.map((r) => ({ id: r.id, name: `${r.last_name} ${r.first_name}`.trim() })),
+    };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function setClientArchived(id: string, archived: boolean): Promise<Result> {
+  try {
+    const user = await need("pmr:write");
+    const pb = await pbForRequest();
+    await pb.collection("pmr_clients").update(pbId.parse(id), { archived, updated_by: user.id });
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function loadClientPanel(id: string): Promise<Result<ClientDetail>> {
+  try {
+    const user = await need("pmr:read");
+    return {
+      ok: true,
+      data: await getClientDetail(id, {
+        canAssists: can(user, "deplacements:read"),
+        canTaxi: can(user, "generate_taxi:read"),
+      }),
+    };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Matériel
+
+export async function setEquipmentState(input: {
+  id: string;
+  state: string;
+  note?: string;
+  repair?: boolean;
+}): Promise<Result> {
+  try {
+    const user = await need("pmr:write");
+    const p = z
+      .object({
+        id: pbId,
+        state: z.enum(EQUIPMENT_STATES),
+        note: z.string().trim().max(500).optional(),
+        repair: z.boolean().optional(),
+      })
+      .parse(input);
+    const pb = await pbForRequest();
+    await pb.collection("pmr_equipment").update(p.id, {
+      state: p.state,
+      state_note: p.note ?? "",
+      ...(p.repair === undefined ? {} : { repair_requested: p.repair }),
+      updated_by: user.id,
+    });
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Création et modification complète : coordinateurs (décision du 8 octobre 2026). */
+export async function saveEquipment(
+  id: string | null,
+  input: unknown,
+): Promise<Result<{ id: string }>> {
+  try {
+    const user = await need("pmr:write");
+    if (!coordinator(user)) throw new Error("DROIT:Réservé aux coordinateurs.");
+    const eq = equipmentSchema.parse(input);
+    const pb = await pbForRequest();
+    const body = { ...eq, zone: eq.zone || null, updated_by: user.id };
+    const r = id
+      ? await pb.collection("pmr_equipment").update(pbId.parse(id), body)
+      : await pb.collection("pmr_equipment").create(body);
+    return { ok: true, data: { id: r.id } };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function loadEquipmentEvents(id: string): Promise<Result<PmrEvent[]>> {
+  try {
+    await need("pmr:read");
+    return { ok: true, data: await listPmrEvents("equipment", pbId.parse(id)) };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function saveZone(
+  id: string | null,
+  input: { code: string; label: string; district: string; stations: string },
+): Promise<Result> {
+  try {
+    const user = await requireUser();
+    if (!coordinator(user)) throw new Error("DROIT:Réservé aux coordinateurs.");
+    const p = z
+      .object({
+        code: z
+          .string()
+          .trim()
+          .toUpperCase()
+          .regex(/^[A-Z0-9]{2,10}$/, "Code de 2 à 10 lettres ou chiffres"),
+        label: z.string().trim().max(100),
+        district: z.enum(["Sud-Ouest", "Sud-Est", "Centre", ""]),
+        stations: z.string().max(5000),
+      })
+      .parse(input);
+    const stations = [
+      ...new Set(
+        p.stations
+          .split(/[,;\n]+/)
+          .map((s) => s.trim().toUpperCase())
+          .filter(Boolean),
+      ),
+    ];
+    const body = { code: p.code, label: p.label, district: p.district || null, stations };
+    const pb = await pbForRequest();
+    if (id) await pb.collection("pmr_zones").update(pbId.parse(id), body);
+    else await pb.collection("pmr_zones").create(body);
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
