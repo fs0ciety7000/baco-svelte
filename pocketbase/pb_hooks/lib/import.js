@@ -30,10 +30,52 @@ function keepCreated(app, table, id, value) {
 }
 
 // Statut unifié des commandes (docs/PROPOSITION.md §5) depuis statut + colonne kanban de la v1.
-function busStatus(row) {
+// Règles de AUDIT-UX-COMMANDES §4 : envoyé + heure confirmée → confirmé ; kanban en route → en cours ;
+// kanban terminé, ou date passée avec démobilisation saisie → terminé. `is_mail_sent` est abandonné.
+function busStatus(row, today) {
 	if (row.status === 'brouillon') return 'brouillon';
+	const buses = row.bus_data || [];
 	if (row.kanban_status === 'termine') return 'termine';
-	return 'envoye';
+	const demob = buses.some((b) => b && b.heure_demob) || !!row.heure_demob;
+	if (row.date_commande && row.date_commande < today && demob) return 'termine';
+	if (row.kanban_status === 'en_approche' || row.kanban_status === 'sur_place') return 'en_cours';
+	const confirmed = buses.some((b) => b && b.heure_confirmee) || !!row.heure_confirmee;
+	return confirmed ? 'confirme' : 'envoye';
+}
+
+const DISTRICT_CODES = { DSO: 'Sud-Ouest', DSE: 'Sud-Est', DCE: 'Centre' };
+const DISTRICTS = ['Sud-Ouest', 'Sud-Est', 'Centre'];
+
+function hhmm(v) {
+	return typeof v === 'string' && /^\d{2}:\d{2}/.test(v) ? v.slice(0, 5) : '';
+}
+
+// bus_data v1 → buses v2 : { plate, planned, confirmed, demob, cancelled, driver, specific_route, origin, destination }.
+function mapBuses(list, drivers) {
+	return (list || []).filter(Boolean).map((b) => ({
+		plate: b.plaque || '',
+		planned: hhmm(b.heure_prevue),
+		confirmed: hhmm(b.heure_confirmee),
+		demob: hhmm(b.heure_demob),
+		cancelled: b.demob_type === 'annulation',
+		driver: (b.chauffeur_id && drivers[b.chauffeur_id]) || '',
+		specific_route: !!b.is_specific_route,
+		origin: b.origine_specifique || '',
+		destination: b.destination_specifique || ''
+	}));
+}
+
+function legacyEvent(app, kind, id, from, to, at, by) {
+	const col = app.findCollectionByNameOrId('order_events');
+	const ev = new Record(col);
+	ev.set('kind', kind);
+	ev.set('order', id);
+	ev.set('from', from);
+	ev.set('to', to);
+	if (by) ev.set('by', by);
+	ev.set('legacy', true);
+	ev.set('at', at || toDate(new Date().toISOString()));
+	app.save(ev);
 }
 
 const ROLES = ['admin', 'sysop', 'moderator', 'otto_agent', 'user', 'reader'];
@@ -41,7 +83,12 @@ const ROLES = ['admin', 'sysop', 'moderator', 'otto_agent', 'user', 'reader'];
 function importUsers(app, dir, report) {
 	const users = readJson(`${dir}/auth_users.json`);
 	const hashes = {};
-	for (const h of readJson(`${dir}/auth_password_hashes.json`)) hashes[h.id] = h.encrypted_password;
+	// Empreintes exportées à part (hors Git). Sans elles, les comptes reçoivent un mot de passe aléatoire.
+	if (exists(`${dir}/auth_password_hashes.json`)) {
+		for (const h of readJson(`${dir}/auth_password_hashes.json`)) hashes[h.id] = h.encrypted_password;
+	} else {
+		report.anomalies.push('auth_password_hashes.json absent : mots de passe non repris');
+	}
 	const profiles = {};
 	for (const p of readJson(`${dir}/data/profiles.json`)) profiles[p.id] = p;
 
@@ -108,12 +155,114 @@ function importCompanies(app, dir, report) {
 	return map;
 }
 
-function importBusOrders(app, dir, companies, userIds, report) {
+function importCompanyChildren(app, dir, companies, report) {
+	const drivers = {};
+	const specs = [
+		['bus_drivers', 'chauffeurs_bus', (r, x) => { r.set('name', (x.nom || '').trim() || '?'); r.set('phone', x.tel || ''); }],
+		['bus_contacts', 'contacts_bus', (r, x) => { r.set('name', (x.nom || '').trim() || '?'); r.set('phone', x.tel || ''); }],
+		['bus_company_lines', 'lignes_bus', (r, x) => r.set('line', String(x.ligne || '').trim() || '?')]
+	];
+	for (const [name, table, fill] of specs) {
+		const col = app.findCollectionByNameOrId(name);
+		report[name] = 0;
+		for (const x of readJson(`${dir}/data/${table}.json`)) {
+			if (!companies[x.societe_id]) {
+				report.anomalies.push(`${table} ${x.id} : société ${x.societe_id} inconnue`);
+				continue;
+			}
+			const r = new Record(col);
+			r.set('legacy_id', x.id);
+			r.set('company', companies[x.societe_id]);
+			fill(r, x);
+			app.save(r);
+			if (name === 'bus_drivers') drivers[x.id] = r.id;
+			report[name]++;
+		}
+	}
+	return drivers;
+}
+
+function importTaxiCompanies(app, dir, report) {
+	const col = app.findCollectionByNameOrId('taxi_companies');
+	const byName = {};
+	report.taxi_companies = 0;
+	const arr = (v) => (Array.isArray(v) ? v.map((x) => String(x).trim()).filter(Boolean) : []);
+	for (const t of readJson(`${dir}/data/taxis.json`)) {
+		const r = new Record(col);
+		r.set('legacy_id', t.id);
+		r.set('name', (t.nom || '').trim() || `Taxi sans nom n°${t.id}`);
+		r.set('places', arr(t.lieux));
+		r.set('phones', arr(t.contacts));
+		r.set('emails', arr(t.mail));
+		r.set('addresses', arr(t.adresse));
+		r.set('notes', arr(t.remarques));
+		app.save(r);
+		keepCreated(app, 'taxi_companies', r.id, t.created_at);
+		byName[(t.nom || '').trim().toLowerCase()] = r.id;
+		report.taxi_companies++;
+	}
+	return byName;
+}
+
+function importPmrClients(app, dir, userIds, report) {
+	const col = app.findCollectionByNameOrId('pmr_clients');
+	report.pmr_clients = 0;
+	for (const c of readJson(`${dir}/data/pmr_clients.json`)) {
+		const r = new Record(col);
+		r.set('legacy_id', c.id);
+		r.set('last_name', c.nom || '');
+		r.set('first_name', c.prenom || '');
+		r.set('phone', c.telephone || '');
+		r.set('type', c.type || '');
+		r.set('notes', c.remarques || '');
+		if (c.updated_by && userIds[c.updated_by]) r.set('updated_by', c.updated_by);
+		app.save(r);
+		keepCreated(app, 'pmr_clients', r.id, c.created_at);
+		report.pmr_clients++;
+	}
+}
+
+function importLineStations(app, dir, report) {
+	const col = app.findCollectionByNameOrId('line_stations');
+	report.line_stations = 0;
+	for (const l of readJson(`${dir}/data/ligne_data.json`)) {
+		if (!l.ligne_nom || !l.gare) continue;
+		const r = new Record(col);
+		r.set('legacy_id', l.id);
+		r.set('line', String(l.ligne_nom).trim());
+		r.set('station', String(l.gare).trim());
+		r.set('position', l.ordre || 0);
+		if (DISTRICT_CODES[l.district]) r.set('district', DISTRICT_CODES[l.district]);
+		app.save(r);
+		report.line_stations++;
+	}
+}
+
+function importB201(app, dir, userIds, report) {
+	const col = app.findCollectionByNameOrId('b201_reports');
+	report.b201_reports = 0;
+	for (const b of readJson(`${dir}/data/b201_reports.json`)) {
+		const r = new Record(col);
+		r.set('day', String(b.report_date).slice(0, 10));
+		r.set('notes', {});
+		r.set('manual', []);
+		r.set('legacy', b.report_data || {});
+		if (b.created_by && userIds[b.created_by]) r.set('updated_by', b.created_by);
+		app.save(r);
+		keepCreated(app, 'b201_reports', r.id, b.created_at);
+		report.b201_reports++;
+	}
+}
+
+function importBusOrders(app, dir, companies, drivers, users, report) {
 	const col = app.findCollectionByNameOrId('bus_orders');
+	const today = new Date().toISOString().slice(0, 10);
 	for (const o of readJson(`${dir}/data/otto_commandes.json`)) {
 		const r = new Record(col);
+		const status = busStatus(o, today);
 		r.set('legacy_id', o.id);
-		r.set('status', busStatus(o));
+		r.set('number', o.id);
+		r.set('status', status);
 		r.set('c3_type', o.c3_type);
 		r.set('reason', o.motif || '');
 		r.set('order_date', toDate(o.date_commande));
@@ -132,22 +281,40 @@ function importBusOrders(app, dir, companies, userIds, report) {
 		r.set('passengers', o.nombre_voyageurs || 0);
 		r.set('pmr_count', o.nombre_pmr || 0);
 		// Les anciennes colonnes à plat (plaque, heures, plaques[]) sont déjà reprises dans bus_data.
-		r.set('buses', o.bus_data || []);
+		r.set('buses', mapBuses(o.bus_data, drivers));
 		if (o.societe_id && companies[o.societe_id]) r.set('company', companies[o.societe_id]);
-		if (o.user_id && userIds[o.user_id]) r.set('created_by', o.user_id);
-		if (o.validated_by && userIds[o.validated_by]) r.set('validated_by', o.validated_by);
-		r.set('sent_at', toDate(o.sent_at));
+		const author = o.user_id && users[o.user_id];
+		if (author) {
+			r.set('created_by', o.user_id);
+			if (DISTRICTS.indexOf(author.district) !== -1) r.set('district', author.district);
+		}
+		if (o.validated_by && users[o.validated_by]) r.set('validated_by', o.validated_by);
+		const sentAt = toDate(o.sent_at) || (status !== 'brouillon' ? toDate(o.created_at) : '');
+		r.set('sent_at', status !== 'brouillon' ? sentAt : '');
+		if (status !== 'brouillon' && o.validated_by && users[o.validated_by]) r.set('sent_by', o.validated_by);
 		r.set('sent_by_name', o.sent_by_name || '');
 		app.save(r);
 		keepCreated(app, 'bus_orders', r.id, o.created_at);
+		legacyEvent(app, 'bus', r.id, '', 'brouillon', toDate(o.created_at), author ? o.user_id : '');
+		if (status !== 'brouillon') legacyEvent(app, 'bus', r.id, 'brouillon', status, sentAt, '');
 		report.bus_orders++;
 	}
 }
 
-function importTaxiOrders(app, dir, report) {
+function importTaxiOrders(app, dir, taxiByName, usersByName, report) {
 	const col = app.findCollectionByNameOrId('taxi_orders');
-	for (const t of readJson(`${dir}/data/taxi_commands.json`)) {
+	const rows = readJson(`${dir}/data/taxi_commands.json`).sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+	let n = 0;
+	for (const t of rows) {
 		const r = new Record(col);
+		r.set('number', ++n);
+		const company = taxiByName[(t.taxi_nom || '').trim().toLowerCase()];
+		if (company) r.set('taxi_company', company);
+		const author = usersByName[(t.redacteur || '').trim().toLowerCase()];
+		if (author) {
+			r.set('created_by', author.id);
+			if (DISTRICTS.indexOf(author.district) !== -1) r.set('district', author.district);
+		}
 		r.set('status', ['brouillon', 'envoye', 'confirme', 'en_cours', 'termine', 'annule'].indexOf(t.status) !== -1 ? t.status : 'brouillon');
 		r.set('author', t.redacteur || '');
 		r.set('trip_at', toDate(t.date_trajet));
@@ -178,6 +345,7 @@ function importTaxiOrders(app, dir, report) {
 		r.set('vehicles', t.nombre_vehicules || 0);
 		app.save(r);
 		keepCreated(app, 'taxi_orders', r.id, t.created_at);
+		legacyEvent(app, 'taxi', r.id, '', r.getString('status'), toDate(t.created_at), author ? author.id : '');
 		report.taxi_orders++;
 	}
 }
@@ -200,28 +368,65 @@ function importAudit(app, dir, report) {
 	}
 }
 
-function run(app, dir, reset) {
-	const report = { users: 0, password_hashes: 0, avatars: 0, bus_companies: 0, bus_orders: 0, taxi_orders: 0, audit_legacy: 0, anomalies: [] };
+// Collections du module Commandes, dans l'ordre de purge (dépendances d'abord).
+const ORDER_COLLECTIONS = [
+	'order_events',
+	'order_templates',
+	'b201_reports',
+	'taxi_orders',
+	'bus_orders',
+	'bus_drivers',
+	'bus_contacts',
+	'bus_company_lines',
+	'bus_companies',
+	'taxi_companies',
+	'pmr_clients',
+	'line_stations'
+];
+
+/**
+ * scope = 'all' : tout (comptes compris) ; scope = 'commandes' : seulement le module Commandes, les comptes
+ * existants sont gardés (rejouer l'import sur une base qui a déjà ses comptes, sans les empreintes).
+ */
+function run(app, dir, reset, scope) {
+	scope = scope || 'all';
+	const report = { scope: scope, users: 0, password_hashes: 0, avatars: 0, bus_companies: 0, bus_orders: 0, taxi_orders: 0, audit_legacy: 0, anomalies: [] };
 	// Purge dans une transaction séparée : PocketBase efface les fichiers des fiches supprimées APRÈS la
 	// validation. Dans la même transaction que l'import, il effacerait les avatars tout juste réimportés
 	// (mêmes identifiants, donc mêmes dossiers).
 	if (reset) {
 		app.runInTransaction((tx) => {
-			for (const name of ['audit_log', 'taxi_orders', 'bus_orders', 'bus_companies', 'users']) {
-				for (const r of tx.findAllRecords(name)) tx.delete(r);
+			const names = scope === 'commandes' ? ORDER_COLLECTIONS : ['audit_log', ...ORDER_COLLECTIONS];
+			for (const name of names) {
+				// SQL direct : pas de hooks (historique, audit) ni de cascade à rejouer pendant la purge.
+				tx.db().newQuery(`DELETE FROM ${name}`).execute();
 			}
+			// Comptes : suppression par l'API pour effacer aussi leurs avatars.
+			if (scope === 'all') for (const r of tx.findAllRecords('users')) tx.delete(r);
 		});
 	}
 	app.runInTransaction((tx) => {
-		importUsers(tx, dir, report);
+		if (scope === 'all') importUsers(tx, dir, report);
 		const userIds = {};
-		for (const u of tx.findAllRecords('users')) userIds[u.id] = true;
+		const users = {};
+		const usersByName = {};
+		for (const u of tx.findAllRecords('users')) {
+			userIds[u.id] = true;
+			users[u.id] = { id: u.id, district: u.getString('district') };
+			const name = u.getString('name').trim().toLowerCase();
+			if (name) usersByName[name] = users[u.id];
+		}
 		const companies = importCompanies(tx, dir, report);
-		importBusOrders(tx, dir, companies, userIds, report);
-		importTaxiOrders(tx, dir, report);
-		importAudit(tx, dir, report);
+		const drivers = importCompanyChildren(tx, dir, companies, report);
+		const taxiByName = importTaxiCompanies(tx, dir, report);
+		importPmrClients(tx, dir, userIds, report);
+		importLineStations(tx, dir, report);
+		importBusOrders(tx, dir, companies, drivers, users, report);
+		importTaxiOrders(tx, dir, taxiByName, usersByName, report);
+		importB201(tx, dir, userIds, report);
+		if (scope === 'all') importAudit(tx, dir, report);
 	});
 	return report;
 }
 
-module.exports = { run, toDate, busStatus };
+module.exports = { run, toDate, busStatus, mapBuses };

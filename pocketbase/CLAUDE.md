@@ -12,7 +12,8 @@ pocketbase migrate up $P                                   # appliquer les migra
 pocketbase superuser upsert <email> <mot de passe> $P      # compte superuser local
 pocketbase serve --http 127.0.0.1:8090 $P                  # serveur local
 CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P   # import de la sauvegarde Supabase (hors Git)
-PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (24 contrôles)
+PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (66 contrôles)
+CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # module Commandes seul, comptes gardés
 ```
 
 ## Conventions
@@ -34,5 +35,16 @@ PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # 
 - **Piège des fichiers** : PocketBase efface les fichiers d'une fiche supprimée *après* la validation de la
   transaction. Purger puis réimporter des fiches de même identifiant dans une seule transaction perd les fichiers
   → purge et import dans deux transactions (`lib/import.js`).
+- **Module Commandes** (`1760000200_commandes.js`, `orders.pb.js`, `lib/orders.js`) : statut unifié
+  `brouillon → envoye → confirme → en_cours → termine`, ou `annule`. Les transitions sont contrôlées par hook
+  (table dans `lib/orders.js` ; retour d'un cran permis ; `en_cours → annule`, `termine → en_cours` et « rétablir »
+  réservés aux coordinateurs moderator/admin/sysop ; motif d'annulation obligatoire ; envoi impossible sans e-mail
+  fournisseur). Les horodatages `*_at` / `*_by`, `number` et `status_before_cancel` sont posés par le hook et
+  **refusés dans le corps des requêtes** (règles). Chaque transition écrit `order_events` (lecture seule pour tous).
+  Création toujours en `brouillon`, au nom de l'agent. `number` = n° de bon (max + 1, = ancien id pour les bus importés).
+- **Piège des index** : un champ nombre vide vaut **0**, pas NULL → un index unique `WHERE legacy_id IS NOT NULL`
+  bloque la 2e fiche créée dans CSM. Toujours `WHERE legacy_id > 0`.
+- **Accès** : taxi, sociétés de taxi et clients PMR ne sont pas lisibles par `otto_agent` (comme la v1) ; modèles
+  `order_templates` tous partagés (décision du 8 oct.) ; `b201_reports` une fiche par `day`, non modifiable.
 - **Sauvegardes** : réglées par migration (`0 2 * * *`, 14 conservées dans `pb_data/backups`).
 - `PREPROD_PB_*` désigne une autre instance (jeu) : **n'y jamais écrire**, ne pas y lancer `test-rules.mjs`.

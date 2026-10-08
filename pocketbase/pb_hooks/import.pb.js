@@ -3,6 +3,7 @@
 //
 //   [CSM_IMPORT_RESET=1] pocketbase csm-import /home/user/csm-backup --dir pb_data
 // CSM_IMPORT_RESET=1 vide d'abord les collections importées (répétition de la bascule).
+// CSM_IMPORT_SCOPE=commandes : seulement le module Commandes, comptes existants conservés.
 //
 // Lit, dans le dossier de sauvegarde : auth_users.json, auth_password_hashes.json, data/*.json, storage/avatars.
 // Les empreintes bcrypt ($2a$) sont recopiées telles quelles : les agents gardent leur mot de passe.
@@ -16,7 +17,9 @@ $app.rootCmd.addCommand(
 			const dir = args[0];
 			if (!dir) throw new Error('usage : csm-import <dossier-sauvegarde>');
 			const reset = $os.getenv('CSM_IMPORT_RESET') === '1';
-			const report = require(`${__hooks}/lib/import.js`).run($app, dir, reset);
+			const scope = $os.getenv('CSM_IMPORT_SCOPE') || 'all';
+			if (scope !== 'all' && scope !== 'commandes') throw new Error('CSM_IMPORT_SCOPE : all ou commandes');
+			const report = require(`${__hooks}/lib/import.js`).run($app, dir, reset, scope);
 			console.log(JSON.stringify(report, null, 2));
 		}
 	})
