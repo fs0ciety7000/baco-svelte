@@ -39,7 +39,7 @@ export default async function Page({
         role="search"
         className="flex flex-wrap items-end gap-2"
       >
-        <label className="flex min-w-0 flex-1 flex-col gap-1 md:max-w-80">
+        <label className="flex min-w-0 basis-full flex-col gap-1 md:max-w-80 md:flex-1 md:basis-auto">
           <span className="text-small text-fg-muted">Recherche</span>
           <span className="relative">
             <Search
