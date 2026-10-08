@@ -3,7 +3,7 @@
 import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 
-import { can } from "@/lib/permissions";
+import { can, canWriteB201 } from "@/lib/permissions";
 import {
   busDraftSchema,
   checkBusForSend,
@@ -619,7 +619,8 @@ export async function saveB201(
   try {
     const p = b201Schema.parse(input);
     const user = await requireUser();
-    if (!can(user, "b201:write")) return { ok: false, error: "Droit d'écriture B201 manquant." };
+    if (!canWriteB201(user))
+      return { ok: false, error: "Remise B201 : réservée aux agents rattachés à un district." };
     const pb = await pbForRequest();
     const current = await pb
       .collection("b201_reports")

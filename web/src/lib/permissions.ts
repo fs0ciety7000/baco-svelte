@@ -26,7 +26,8 @@ const READ_ALL = [
 const ROLE_DEFAULTS: Record<Role, string[]> = {
   admin: ["*"],
   sysop: ["*"],
-  otto_agent: ["otto:read", "otto:write", "stats:read"],
+  // b201:read : la remise B201 est écrite par tous les agents du district (décision du 8 octobre 2026).
+  otto_agent: ["otto:read", "otto:write", "stats:read", "b201:read"],
   moderator: [
     ...READ_ALL,
     "users:manage",
@@ -38,7 +39,7 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
     "taxi:write",
     "otto:write",
     "ptcar:write",
-    "b201:write",
+    "b201:write", // B201 : la règle réelle est canWriteB201 (agents rattachés à un district)
     "ebp:write",
     "ops:write",
     "carte_pn:write",
@@ -73,6 +74,23 @@ export function can(user: PermissionSubject | null | undefined, permission: stri
   if (user.grants?.includes(permission)) return true;
   if (user.denies?.includes(permission)) return false;
   return ROLE_DEFAULTS[user.role].includes(permission);
+}
+
+/**
+ * Remise B201 (décision du 8 octobre 2026) : écrite par tout agent (user) rattaché à un district, par les moderators,
+ * par un admin, ou sur permission accordée. Miroir de la règle PocketBase `1760000300`.
+ */
+export function canWriteB201(
+  user: (PermissionSubject & { district?: string | null }) | null | undefined,
+): boolean {
+  if (!user || user.role === "disabled") return false;
+  if (user.role === "admin" || user.role === "sysop") return true;
+  if (user.grants?.includes("b201:write")) return true;
+  if (user.denies?.includes("b201:write")) return false;
+  return (
+    user.role === "moderator" ||
+    ((user.role === "user" || user.role === "otto_agent") && !!user.district)
+  );
 }
 
 export function isAdmin(user: PermissionSubject | null | undefined): boolean {

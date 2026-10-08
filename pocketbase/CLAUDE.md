@@ -12,7 +12,7 @@ pocketbase migrate up $P                                   # appliquer les migra
 pocketbase superuser upsert <email> <mot de passe> $P      # compte superuser local
 pocketbase serve --http 127.0.0.1:8090 $P                  # serveur local
 CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P   # import de la sauvegarde Supabase (hors Git)
-PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (70 contrôles)
+PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (77 contrôles)
 CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # module Commandes seul, comptes gardés
 ```
 
@@ -50,6 +50,7 @@ CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # mo
 - **Piège des index** : un champ nombre vide vaut **0**, pas NULL → un index unique `WHERE legacy_id IS NOT NULL`
   bloque la 2e fiche créée dans CSM. Toujours `WHERE legacy_id > 0`.
 - **Accès** : taxi, sociétés de taxi et clients PMR ne sont pas lisibles par `otto_agent` (comme la v1) ; modèles
-  `order_templates` tous partagés (décision du 8 oct.) ; `b201_reports` une fiche par `day`, non modifiable.
+  `order_templates` tous partagés (décision du 8 oct.) ; `b201_reports` une fiche par `day`, non modifiable, écrite par
+  les agents (user, otto_agent) rattachés à un district et les moderators (`1760000300`) ; `users.district` réservé à l'admin.
 - **Sauvegardes** : réglées par migration (`0 2 * * *`, 14 conservées dans `pb_data/backups`).
 - `PREPROD_PB_*` désigne une autre instance (jeu) : **n'y jamais écrire**, ne pas y lancer `test-rules.mjs`.

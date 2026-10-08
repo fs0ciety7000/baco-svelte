@@ -288,6 +288,15 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - 2026-10-08 — **Module Commandes validé** par l'utilisateur (« ok la suite »). Questions restées sans réponse, défauts gardés :
   B201 écrite par les moderators (comme BACO), cause PMR gardée sur le bon taxi, PO et références comptables de la v1,
   B201 sans liste de diffusion (PDF seul). Étape suivante : module PMR.
+- 2026-10-08 — **B201 écrite par tous les agents du district** (user et otto_agent rattachés à un district, moderators
+  comme avant ; migration `1760000300`). Le district donnant un droit, l'agent ne peut plus le modifier lui-même.
+  `otto_agent` reçoit `b201:read` (sa B201 ne montre que les bus). Cause PMR gardée sur le bon taxi, PO et références
+  comptables de la v1 gardés, B201 en PDF seul.
+- 2026-10-08 — **Module PMR** : audit `docs/design/AUDIT-UX-PMR.md` (10 bugs v1 signalés, v1 non modifiée). Décisions :
+  **saisie de la journée abandonnée** (plus utilisée depuis le 3 mai 2026 : livrer Clients et Matériel, historique
+  archivé en lecture) ; prestation **structurée** par assistance avec « Coller depuis DICOS » ; **réf. DICOS, client
+  facultatif**, aucun nom en texte libre ; données de santé **anonymisées après 12 mois** (fiches sans prestation
+  archivées après 24 mois, exports sans nom), à valider avec le DPO.
 
 
 ---

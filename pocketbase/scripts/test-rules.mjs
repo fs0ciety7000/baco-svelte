@@ -99,6 +99,8 @@ try {
 		const r = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: u.token, body: field });
 		check(`agent ne modifie pas son ${Object.keys(field)[0]}`, r.status >= 400, `HTTP ${r.status}`);
 	}
+	const selfDistrict = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: u.token, body: { district: 'Centre' } });
+	check("agent ne s'attribue pas un district (droit B201)", selfDistrict.status >= 400, `HTTP ${selfDistrict.status}`);
 	const me = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: u.token, body: { fonction: 'Opérateur' } });
 	check('agent modifie sa fonction', me.status === 200, `HTTP ${me.status}`);
 	const other = await api('PATCH', `/api/collections/users/records/${roles.reader.id}`, { token: u.token, body: { name: 'X' } });
@@ -269,7 +271,33 @@ try {
 	});
 	check('otto_agent ne crée pas de modèle taxi', tpt.status >= 400, `HTTP ${tpt.status}`);
 
-	// B201 : lecture par tous, écriture par les détenteurs de b201:write.
+	// B201 : lecture par tous ; écriture par les agents rattachés à un district (décision du 8 octobre 2026).
+	const b2n = await api('POST', '/api/collections/b201_reports/records', { token: u.token, body: { day: '2099-02-01', updated_by: u.id } });
+	check('agent sans district ne crée pas la B201', b2n.status >= 400, `HTTP ${b2n.status}`);
+	await api('PATCH', `/api/collections/users/records/${u.id}`, { token: root, body: { district: 'Centre' } });
+	const b2a = await api('POST', '/api/collections/b201_reports/records', { token: u.token, body: { day: '2099-02-01', updated_by: u.id } });
+	check('agent du district Centre écrit la B201', b2a.status === 200, `HTTP ${b2a.status}`);
+	// otto_agent : refusé sans district, accepté avec ; lecteur refusé même avec un district ; retrait explicite.
+	const ox = await api('POST', '/api/collections/b201_reports/records', { token: roles.otto_agent.token, body: { day: '2099-02-02', updated_by: roles.otto_agent.id } });
+	check("otto_agent sans district n'écrit pas la B201", ox.status >= 400, `HTTP ${ox.status}`);
+	for (const r of ['otto_agent', 'reader']) {
+		await api('PATCH', `/api/collections/users/records/${roles[r].id}`, { token: root, body: { district: 'Sud-Est' } });
+	}
+	const oy = await api('POST', '/api/collections/b201_reports/records', { token: roles.otto_agent.token, body: { day: '2099-02-02', updated_by: roles.otto_agent.id } });
+	check('otto_agent du district écrit la B201', oy.status === 200, `HTTP ${oy.status}`);
+	if (oy.json?.id) {
+		await api('DELETE', `/api/collections/b201_reports/records/${oy.json.id}`, { token: root });
+		auditIds.push(oy.json.id);
+	}
+	const rx = await api('POST', '/api/collections/b201_reports/records', { token: roles.reader.token, body: { day: '2099-02-04', updated_by: roles.reader.id } });
+	check("lecteur avec district n'écrit pas la B201", rx.status >= 400, `HTTP ${rx.status}`);
+	await api('PATCH', `/api/collections/users/records/${roles.denied.id}`, { token: root, body: { district: 'Sud-Est', denies: ['otto:write', 'b201:write'] } });
+	const xd = await api('POST', '/api/collections/b201_reports/records', { token: roles.denied.token, body: { day: '2099-02-03', updated_by: roles.denied.id } });
+	check('b201:write retiré → pas d\'écriture malgré le district', xd.status >= 400, `HTTP ${xd.status}`);
+	if (b2a.json?.id) {
+		await api('DELETE', `/api/collections/b201_reports/records/${b2a.json.id}`, { token: root });
+		auditIds.push(b2a.json.id);
+	}
 	const b2 = await api('POST', '/api/collections/b201_reports/records', { token: roles.admin.token, body: { day: '2099-01-01', notes: {}, updated_by: roles.admin.id } });
 	check('admin crée la B201 du jour', b2.status === 200, `HTTP ${b2.status}`);
 	const b2d = await api('POST', '/api/collections/b201_reports/records', { token: roles.admin.token, body: { day: '2099-01-01', updated_by: roles.admin.id } });

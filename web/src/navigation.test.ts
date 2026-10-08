@@ -15,12 +15,13 @@ describe("navigation", () => {
     expect(MODULES.filter((m) => m.mobile).length).toBe(4);
   });
 
-  it("filtre selon les permissions : l'agent C3 ne voit que les commandes bus et les stats", () => {
+  it("filtre selon les permissions : l'agent C3 voit les commandes bus, la B201 et les stats", () => {
     const mods = visibleModules({ role: "otto_agent" });
     expect(mods.map((m) => m.id)).toEqual(["accueil", "commandes", "operations"]);
     expect(mods.find((m) => m.id === "commandes")?.tabs.map((t) => t.label)).toEqual([
       "Bus",
       "Suivi",
+      "Remise B201",
     ]);
     // Le module pointe vers le premier onglet autorisé.
     expect(mods.find((m) => m.id === "operations")?.href).toBe("/operations/statistiques");

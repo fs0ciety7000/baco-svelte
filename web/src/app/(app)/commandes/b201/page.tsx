@@ -5,7 +5,7 @@ import Link from "next/link";
 import { B201Editor } from "@/components/orders/b201-editor";
 import { B201Keys } from "@/components/orders/b201-keys";
 import { Button } from "@/components/ui/button";
-import { can } from "@/lib/permissions";
+import { canWriteB201 } from "@/lib/permissions";
 import { DISTRICTS } from "@/lib/orders/schemas";
 import { addDays, brusselsDay, formatLongDay, isValidDay } from "@/lib/orders/time";
 import { cn } from "@/lib/utils";
@@ -115,7 +115,7 @@ export default async function Page({
         initialNotes={data.notes}
         updated={data.updated}
         reportId={data.reportId}
-        canWrite={can(user, "b201:write")}
+        canWrite={canWriteB201(user)}
       />
     </section>
   );
