@@ -28,7 +28,7 @@ gelée** (v1, branche `ccr-5dca0da8-4yg4i6`) : ne pas le modifier.
 | # | Étape | Statut |
 |---|---|---|
 | 0 | Sauvegarde Supabase complète | ✅ 8 oct. (restauration testée, archive `age` remise à l'utilisateur). Session 2 : sauvegarde relancée (GET seuls) + 29 empreintes bcrypt exportées dans `/home/user/csm-backup` |
-| 1 | Prototype PocketBase vs Supabase + squelette Next | 🔄 session 2 — `pocketbase/` : migrations, audit, import (29 comptes + empreintes, 295 BC bus), 24 contrôles de règles OK, sauvegarde/restauration OK |
+| 1 | Prototype PocketBase vs Supabase + squelette Next | 🔄 session 2 — `pocketbase/` : migrations, audit, import (29 comptes + empreintes, 295 BC bus), 24 contrôles de règles OK, sauvegarde/restauration OK ; `web/` : Next 15.5, connexion cookie httpOnly, `/commandes`, relais SSE, 6 E2E OK (1440 + 390). **Recommandation `docs/BACKEND-DECISION.md` à valider** |
 | 2 | Design system + page `/design` (5 thèmes, GSAP) | ⏳ plan validé — captures à faire valider |
 | 3 | Shell (6 entrées, onglets, ⌘K, mobile 4 + Plus) + tableau de bord | ⏳ plan validé — captures à faire valider |
 | 4 | Données : schéma PocketBase, règles d'accès, import | ⏳ migration **en une fois à une date de bascule** (pas de synchro BACO ↔ CSM) |
@@ -108,8 +108,8 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 
 ## 5. Conventions de code
 
-> Les conventions ci-dessous sont celles de la v1 SvelteKit. Les conventions v2 (React/Next) sont à écrire
-> dans `web/CLAUDE.md` dès la création du squelette ; les principes restent : accès données côté serveur
+> Les conventions ci-dessous sont celles de la v1 SvelteKit. Les conventions v2 (React/Next) sont dans
+> **`web/CLAUDE.md`** et **`pocketbase/CLAUDE.md`** ; les principes restent : accès données côté serveur
 > uniquement, couleurs par jetons sémantiques, navigation à source unique, imports lourds dynamiques,
 > pas de WebSocket navigateur, `prefers-reduced-motion` respecté.
 
