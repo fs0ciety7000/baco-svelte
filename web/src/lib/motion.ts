@@ -12,7 +12,14 @@ import { type RefObject, useRef } from "react";
 gsap.registerPlugin(useGSAP, CustomEase, Flip);
 CustomEase.create("hud", "0.2, 0, 0, 1");
 
-export const MOTION = { micro: 0.15, enter: 0.24, panel: 0.22, exit: 0.16, counter: 0.6 } as const;
+export const MOTION = {
+  micro: 0.15,
+  enter: 0.24,
+  panel: 0.22,
+  exit: 0.16,
+  counter: 0.6,
+  highlight: 1.2,
+} as const;
 export const NO_MOTION = "(prefers-reduced-motion: reduce)";
 export const MOTION_OK = "(prefers-reduced-motion: no-preference)";
 
@@ -89,6 +96,41 @@ export function useSlideIndicator(
       };
     },
     { scope: list, dependencies: deps },
+  );
+}
+
+function rgba(hex: string, alpha: number): string {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i.exec(hex.trim());
+  if (!m) return `rgba(127, 127, 127, ${alpha})`;
+  const [r, g, b] = [m[1], m[2], m[3]].map((h) => parseInt(h ?? "0", 16));
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/**
+ * Primitive `highlight` : une donnée arrivée ou modifiée en direct est signalée par un fond `info` qui s'estompe en
+ * 1,2 s (DESIGN-DIRECTION § Motion). En mouvement réduit : fond fixe 1,2 s, sans transition.
+ */
+export function highlightElements(els: HTMLElement[]) {
+  if (!els.length) return;
+  const info = getComputedStyle(document.documentElement).getPropertyValue("--info");
+  const from = rgba(info, 0.22);
+  if (window.matchMedia(NO_MOTION).matches) {
+    for (const el of els) el.style.backgroundColor = from;
+    window.setTimeout(() => {
+      for (const el of els) el.style.backgroundColor = "";
+    }, MOTION.highlight * 1000);
+    return;
+  }
+  gsap.fromTo(
+    els,
+    { backgroundColor: from },
+    {
+      backgroundColor: rgba(info, 0),
+      duration: MOTION.highlight,
+      ease: "power1.out",
+      clearProps: "backgroundColor",
+      overwrite: true,
+    },
   );
 }
 

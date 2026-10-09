@@ -48,7 +48,12 @@ export default async function CommandesBusPage({
         </div>
       </div>
       <FilterBar action="/commandes" filters={filters} />
-      <OrderList rows={rows} total={total} emptyText="Aucune commande bus pour ces filtres." />
+      <OrderList
+        rows={rows}
+        total={total}
+        context={JSON.stringify(filters)}
+        emptyText="Aucune commande bus pour ces filtres."
+      />
     </section>
   );
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { pl } from "@/lib/utils";
+import { LiveHighlight } from "@/components/ui/live-highlight";
 import { Sheet } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/status-badge";
 import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
@@ -81,6 +82,13 @@ export function GroupBoard({ rows, district = "" }: { rows: GroupMission[]; dist
   const days = [...new Set(rows.map((r) => r.day))];
   return (
     <>
+      <LiveHighlight
+        scope="groups"
+        context={`${district}|${days[0] ?? ""}|${days.at(-1) ?? ""}`}
+        sigs={Object.fromEntries(
+          rows.map((r) => [r.id, `${r.status}|${r.time}|${r.arrTime}|${total(r)}`]),
+        )}
+      />
       <div className="flex justify-end">
         <AleaButton
           disabled={!rows.length}
@@ -111,9 +119,15 @@ export function GroupBoard({ rows, district = "" }: { rows: GroupMission[]; dist
                     <Th>Statut</Th>
                   </tr>
                 </THead>
-                <tbody data-testid="groups-table">
+                <tbody data-testid="groups-table" data-hl-scope="groups">
                   {list.map((g) => (
-                    <Tr key={g.id} className="cursor-pointer" onClick={() => setOpen(g)}>
+                    <Tr
+                      key={g.id}
+                      data-hl={g.id}
+                      selected={open?.id === g.id}
+                      className="cursor-pointer"
+                      onClick={() => setOpen(g)}
+                    >
                       <Td>
                         <TrainChip train={g.train} taxi={g.transport === "taxi"} />
                       </Td>
@@ -147,7 +161,7 @@ export function GroupBoard({ rows, district = "" }: { rows: GroupMission[]; dist
                 </tbody>
               </Table>
             </div>
-            <ul className="flex flex-col gap-2 md:hidden">
+            <ul className="flex flex-col gap-2 md:hidden" data-hl-scope="groups">
               {list.map((g) => (
                 <li key={g.id} className="min-w-0">
                   <button
@@ -156,6 +170,7 @@ export function GroupBoard({ rows, district = "" }: { rows: GroupMission[]; dist
                     onClick={() => setOpen(g)}
                   >
                     <ListCard
+                      data-hl={g.id}
                       title={
                         <span className="inline-flex flex-wrap items-center gap-2">
                           <TrainChip train={g.train} taxi={g.transport === "taxi"} />

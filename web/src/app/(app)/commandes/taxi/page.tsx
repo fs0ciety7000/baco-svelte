@@ -44,7 +44,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<Lis
         </div>
       </div>
       <FilterBar action="/commandes/taxi" filters={filters} />
-      <OrderList rows={rows} total={total} emptyText="Aucune commande taxi pour ces filtres." />
+      <OrderList
+        rows={rows}
+        total={total}
+        context={JSON.stringify(filters)}
+        emptyText="Aucune commande taxi pour ces filtres."
+      />
     </section>
   );
 }

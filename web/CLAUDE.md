@@ -208,5 +208,8 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - Lot 3 : `SyncStatus` (`components/pmr/sync-status.tsx`) + `dicosSyncState()` ; ⌘K `paletteSearch()`
   (`app/search-actions.ts`, 5 résultats par type, droits de l'agent) ; `PageShortcuts` (« / », « N » via
   `data-shortcut="new"`) ; Journal `markAllRead`. E2E `e2e/ux.spec.ts`.
+- Lot 4 : `<LiveHighlight scope sigs context />` + `data-hl-scope` sur le conteneur et `data-hl` sur l'élément visible
+  (la carte, pas un `<li>` transparent) ; `useCopy()` / `CopyButton` / `CopyIcon` (`components/pmr/copy.tsx`) pour
+  toute copie ; ligne active via `Tr selected`.
 - E2E `e2e/motion.spec.ts` : palette sans glissement, aucune animation infinie (hors `animate-pulse-dot` /
   `animate-spin`), accueil sans flash, filtre sans rechargement.

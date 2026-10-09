@@ -133,6 +133,12 @@
   --control-h: 2.25rem;
   --control-h-sm: 2rem;
   --row-h: 2.5rem;
+  /* Durées du mouvement (miroir de MOTION dans src/lib/motion.ts). */
+  --d-micro: 150ms;
+  --d-enter: 240ms;
+  --d-panel: 260ms;
+  --d-exit: 160ms;
+  --d-highlight: 1200ms;
   --fs-body: 0.9375rem;
   --lh-body: 1.375rem;
   --focus: var(--accent);
@@ -306,8 +312,8 @@
 
 /* Panneau latéral (Vaul) : 500 ms par défaut, ramené au budget des panneaux (≤ 300 ms). */
 [data-vaul-drawer] {
-  transition-duration: 260ms !important;
-  animation-duration: 260ms !important;
+  transition-duration: var(--d-panel) !important;
+  animation-duration: var(--d-panel) !important;
 }
 
 /* Mouvement réduit : aucune animation CSS (GSAP gère le sien via matchMedia). */

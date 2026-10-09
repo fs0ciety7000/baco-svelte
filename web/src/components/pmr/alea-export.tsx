@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardList, Copy, Loader2 } from "lucide-react";
+import { ClipboardList, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { aleaDwell } from "@/app/(app)/pmr/actions";
@@ -13,7 +13,7 @@ import { formatDay } from "@/lib/orders/time";
 import { aleaDecision, type AleaDecision, type AleaDwell, type AleaGroup } from "@/lib/pmr/model";
 import { cn } from "@/lib/utils";
 
-import { CopyButton, copyLabel } from "./copy";
+import { CopyButton, CopyIcon, useCopy } from "./copy";
 
 const DECISION: Record<AleaDecision["status"], { label: string; tone: "danger" | "ok" | "warn" }> =
   {
@@ -57,6 +57,8 @@ export function AleaButton({
 }) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<Filter>("tous");
+  const copyMandatory = useCopy();
+  const copyAll = useCopy();
   const [dwell, setDwell] = useState<Record<string, AleaDwell> | null>(null);
   const [dwellError, setDwellError] = useState<string | null>(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -238,7 +240,7 @@ export function AleaButton({
               variant="secondary"
               disabled={!count("obligatoire")}
               onClick={() =>
-                void copyLabel(
+                void copyMandatory.copy(
                   decided
                     .filter((x) => x.d.status === "obligatoire")
                     .map((x) => blockText(x.g))
@@ -246,14 +248,16 @@ export function AleaButton({
                 )
               }
             >
-              <Copy aria-hidden /> Copier les obligatoires
+              <CopyIcon copied={copyMandatory.copied} />
+              {copyMandatory.copied ? "Copié" : "Copier les obligatoires"}
             </Button>
             <Button
               variant="primary"
               disabled={!groups.length}
-              onClick={() => void copyLabel(groups.map(blockText).join("\n\n"))}
+              onClick={() => void copyAll.copy(groups.map(blockText).join("\n\n"))}
             >
-              <Copy aria-hidden /> Tout copier
+              <CopyIcon copied={copyAll.copied} />
+              {copyAll.copied ? "Copié" : "Tout copier"}
             </Button>
           </DialogFooter>
         </DialogContent>

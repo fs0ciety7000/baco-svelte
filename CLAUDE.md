@@ -525,6 +525,13 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   **« / »** (recherche de la page) et **« N »** (nouveau, `data-shortcut="new"`). 211 contrôles de règles. Questions
   UX encore ouvertes (iRail dans les non-lus, ALEA commun PMR + groupes, clôture des bons jamais confirmés, Annuaire
   dans la barre mobile, tu / vous).
+- 2026-10-09 — **Lot 4 livré (mouvement)** : primitive **`highlight`** (`highlightElements` dans `lib/motion.ts`,
+  composant `LiveHighlight`) : une ligne arrivée ou modifiée en direct (SSE) s'allume en `info` puis s'estompe en
+  1,2 s, sur Missions PMR, Groupes, Commandes bus et taxi (jamais au premier rendu, ni après un changement de filtre :
+  `context`) ; vérifié en local par une modification PocketBase pendant que la page est ouverte. **« Copié » sur place**
+  (`useCopy`, icône → coche verte, annonce `aria-live`, toast seulement en cas d'échec) dans les listes, le panneau et
+  l'export ALEA ; ligne ouverte marquée (`selected` → `bg-accent-soft`) ; durées en jetons CSS `--d-*` (miroir de
+  `MOTION`). Continuité Flip ligne → panneau non faite (jugée facultative par l'audit).
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ChipRow, CollapsibleFilters, FilterChip } from "@/components/ui/filters";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Input, Select } from "@/components/ui/input";
+import { LiveHighlight } from "@/components/ui/live-highlight";
 import { EmptyState } from "@/components/ui/misc";
 import { StatusBadge, statusColor } from "@/components/ui/status-badge";
 import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
@@ -134,14 +135,24 @@ export function OrderList({
   rows,
   total,
   emptyText,
+  context = "",
 }: {
   rows: OrderRow[];
   total: number;
   emptyText: string;
+  /** Filtres affichés (signal des changements en direct seulement à filtres égaux). */
+  context?: string;
 }) {
   if (rows.length === 0) return <EmptyState title="Aucune commande" description={emptyText} />;
   return (
     <>
+      <LiveHighlight
+        scope="orders"
+        context={context}
+        sigs={Object.fromEntries(
+          rows.map((r) => [`${r.kind}-${r.id}`, `${r.status}|${r.updated}`]),
+        )}
+      />
       <div className="hidden md:block">
         <Table>
           <THead>
@@ -156,10 +167,11 @@ export function OrderList({
               <Th>Statut</Th>
             </tr>
           </THead>
-          <tbody data-testid="orders-table">
+          <tbody data-testid="orders-table" data-hl-scope="orders">
             {rows.map((r) => (
               <Tr
                 key={`${r.kind}-${r.id}`}
+                data-hl={`${r.kind}-${r.id}`}
                 statusColor={statusColor(r.status)}
                 className="relative"
               >
@@ -191,7 +203,11 @@ export function OrderList({
           </tbody>
         </Table>
       </div>
-      <ul className="flex flex-col gap-2 md:hidden" data-testid="orders-cards">
+      <ul
+        className="flex flex-col gap-2 md:hidden"
+        data-testid="orders-cards"
+        data-hl-scope="orders"
+      >
         {rows.map((r) => (
           <li key={`${r.kind}-${r.id}`}>
             <Link
@@ -199,6 +215,7 @@ export function OrderList({
               className="block focus-visible:outline-1 focus-visible:outline-accent"
             >
               <ListCard
+                data-hl={`${r.kind}-${r.id}`}
                 statusColor={statusColor(r.status)}
                 title={
                   <span className="inline-flex items-center gap-2">

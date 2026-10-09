@@ -1,13 +1,12 @@
 "use client";
 
-import { Copy } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { cn, pl } from "@/lib/utils";
 import { loadAssistPanel } from "@/app/(app)/pmr/actions";
-import { Button } from "@/components/ui/button";
 import { Timeline } from "@/components/ui/form-kit";
+import { LiveHighlight } from "@/components/ui/live-highlight";
 import { EmptyState, Skeleton } from "@/components/ui/misc";
 import { Sheet } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/status-badge";
@@ -30,7 +29,7 @@ import {
 import type { Assist, PmrEvent } from "@/server/data/pmr";
 
 import { AleaButton } from "./alea-export";
-import { CopyButton, copyLabel } from "./copy";
+import { CopyButton } from "./copy";
 import { PhoneLink } from "./phone-link";
 import { TrainChip } from "./train-chip";
 
@@ -263,6 +262,11 @@ export function AssistBoard({
 
   return (
     <>
+      <LiveHighlight
+        scope="assists"
+        context={`${district}|${rows[0]?.day ?? ""}|${rows.at(-1)?.day ?? ""}`}
+        sigs={Object.fromEntries(rows.map((r) => [r.id, `${r.status}|${r.updated}`]))}
+      />
       <div className="flex justify-end">
         <AleaExport rows={rows} district={district} />
       </div>
@@ -295,10 +299,12 @@ export function AssistBoard({
                     <Th>Copier</Th>
                   </tr>
                 </THead>
-                <tbody data-testid="assists-table">
+                <tbody data-testid="assists-table" data-hl-scope="assists">
                   {list.map((a) => (
                     <Tr
                       key={a.id}
+                      data-hl={a.id}
+                      selected={open?.id === a.id}
                       statusColor={toneVar[ASSIST_STATUS[a.status].tone]}
                       className="cursor-pointer"
                       onClick={() => show(a)}
@@ -349,13 +355,18 @@ export function AssistBoard({
                 </tbody>
               </Table>
             </div>
-            <ul className="flex flex-col gap-2 md:hidden" data-testid="assists-cards">
+            <ul
+              className="flex flex-col gap-2 md:hidden"
+              data-testid="assists-cards"
+              data-hl-scope="assists"
+            >
               {list.map((a) => (
                 // Carte mobile (audit UI du 9 oct. 2026) : train + heure + statut, trajet en entier sur sa ligne,
                 // détails, bouton Copier dans la carte (en bas à droite).
                 <li key={a.id} className="relative min-w-0">
                   <button
                     type="button"
+                    data-hl={a.id}
                     style={
                       { "--status": toneVar[ASSIST_STATUS[a.status].tone] } as React.CSSProperties
                     }
@@ -419,14 +430,11 @@ export function AssistBoard({
           <div className="flex flex-col gap-5" data-testid="assist-panel">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <AssistBadge status={panel.assist.status} />
-              <Button
-                size="sm"
+              <CopyButton
+                text={copyTextOf(panel.assist, district)}
+                label="Copier le libellé"
                 variant="secondary"
-                onClick={() => void copyLabel(copyTextOf(panel.assist, district))}
-                aria-label={`Copier le libellé : ${copyTextOf(panel.assist, district)}`}
-              >
-                <Copy aria-hidden className="size-4" /> Copier le libellé
-              </Button>
+              />
             </div>
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-body">
               <dt className="text-small text-fg-muted">Trajet</dt>
