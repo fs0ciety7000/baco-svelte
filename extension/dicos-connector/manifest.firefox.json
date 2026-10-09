@@ -1,12 +1,19 @@
 {
   "manifest_version": 3,
   "name": "CSM — Connecteur DICOS",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "description": "Synchronise les missions PMR et groupes de DICOS vers CSM, avec les temps d'arrêt ATMS, en réutilisant les sessions ouvertes. Aucun mot de passe ni jeton SNCB stocké.",
   "browser_specific_settings": {
     "gecko": {
       "id": "dicos-connector@csm.fs0ciety.org",
-      "strict_min_version": "128.0"
+      "strict_min_version": "128.0",
+      "data_collection_permissions": {
+        "required": [
+          "personallyIdentifyingInfo",
+          "healthInfo",
+          "websiteContent"
+        ]
+      }
     }
   },
   "permissions": [
@@ -54,6 +61,17 @@
       ],
       "js": [
         "src/atms.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://test-csm.fs0ciety.org/pmr/extension*",
+        "https://csm.fs0ciety.org/pmr/extension*"
+      ],
+      "js": [
+        "src/csm-link.js"
       ],
       "run_at": "document_idle",
       "all_frames": false

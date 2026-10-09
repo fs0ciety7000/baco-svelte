@@ -174,6 +174,8 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   appeler `POST /deploy` en plus : deux déploiements simultanés ont laissé `csm-pocketbase` arrêté (`exited:unhealthy`,
   9 oct.) ; rétabli par un nouveau push. Journal de démarrage dans `/pb_data/startup.log` ; `PB_DEBUG_HOLD=1` (variable
   runtime, à retirer ensuite) garde le conteneur en vie après un échec pour l'examiner par tâche planifiée.
+- (v2) Le job CI `sign-firefox` (si les secrets AMO existent) **commite le .xpi signé sur la branche de session** une fois
+  par version, ~10 min après le push : faire `git pull` avant de pousser, sinon le push est refusé (non fast-forward).
 - (v2) `cn()` = tailwind-merge **étendu** (tailles et couleurs sémantiques), sinon il supprime `text-accent-fg` ou
   `text-body` : voir `web/CLAUDE.md`.
 - (v2) Avant de relancer le serveur web, vérifier que l'ancien `next-server` est arrêté (sinon EADDRINUSE et les
@@ -568,6 +570,24 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   (+ `release.json` : version, tailles, SHA-256 ; inclus dans l'image par `outputFileTracingIncludes`) au lieu
   d'`extension/dist/`. Un test vérifie manifests = paquets = nouveautés. Lien « Extension DICOS » sous la date de
   synchro quand elle est périmée.
+- 2026-10-09 — **Jetons de connecteur personnels + extension 1.7.0** (demande : « en générer un pour chaque compte,
+  pré-remplir l'extension »). Collection `connector_tokens` (`1760002000` : empreinte SHA-256 seule, pour soi avec
+  `deplacements:write` (un lecteur ne peut pas écrire de missions par l'extension), lue par le propriétaire / admins / connecteur, usage noté par le connecteur seul, 10 au plus,
+  supprimés à la désactivation du compte) ; l'ingestion accepte le jeton personnel `csmc_…` (cache 60 s, droits du propriétaire relus à chaque
+  recherche, recherches de jetons inconnus bornées à 120/min) **ou** le secret partagé `CSM_DICOS_TOKEN`, devenu facultatif. Page `/pmr/extension` : **« Connecter l'extension à mon
+  compte »** (le script `csm-link.js` de l'extension, actif seulement sur `/pmr/extension` de `test-csm` et
+  `csm.fs0ciety.org`, reçoit le jeton par `postMessage` même origine et annonce sa version), repli « jeton à coller »,
+  liste « Mes appareils connectés » (dernière synchro, version, révocation). Extension : bouton **« Autoriser CSM »**,
+  en-tête `x-csm-extension`, bandeau **« Nouvelle version disponible »** (version publiée renvoyée par l'ingestion).
+  **Synchro incomplète** : dernier lot de chaque jour en `final: true`, `dicos_syncs.complete` / `version` /
+  `synced_by` ; « Synchro DICOS en cours… / incomplète (arrêtée il y a X) » et « par <agent> » ; jour sans mission
+  envoyé vide (compte comme synchronisé). **Firefox signé** : job CI `sign-firefox` (secrets `AMO_JWT_ISSUER` /
+  `AMO_JWT_SECRET`, canal non listé, `.xpi` commité puis proposé par CSM), `data_collection_permissions` au manifest.
+  **Note DPO** `docs/DPO-CONSERVATION.md` (données, durées appliquées, questions). Audit sécurité + revue : 0
+  critique ; corrigés : droit d'écriture exigé, droits du propriétaire relus, débit des jetons inconnus, ancien jeton
+  révoqué à la reconnexion, état de synchro calculé jour par jour (plusieurs agents), job de signature en
+  `concurrency` + attente de 10 min avant le push (Coolify), `web-ext` figé. 226 contrôles de règles ; parcours
+  vérifié avec la vraie extension chargée dans Chromium (détection, connexion, envoi, 401 sur mauvais jeton).
 - 2026-10-08 — **Module Référentiels** (audit `docs/design/AUDIT-UX-REFERENTIELS.md`, tout validé). 7 collections
   (`1760000900` : `directory_contacts`, `spi_points`, `ptcar` [abbr unique], `ebp_views`, `documents` [fichier
   protégé], `procedures`, `procedure_versions` hook-only) ; écriture annuaire/SPI/PtCar/EBP = coordinateurs,

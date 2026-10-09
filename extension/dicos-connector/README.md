@@ -61,20 +61,27 @@ Les sources (`src/`) sont **communes** ; seul le manifest diffère. Le code util
 ### Suite (commun aux deux)
 3. Ouvrir **DICOS**, se connecter, **naviguer une fois dans la liste des missions** (pour que l'extension relève
    la session et le périmètre de gares).
-4. Cliquer l'icône de l'extension → remplir :
-   - **URL CSM** : `https://test-csm.fs0ciety.org` (production le jour venu) ;
-   - **Jeton de connecteur** : la valeur de `CSM_DICOS_TOKEN` (fournie par l'admin CSM — **jamais** le Bearer
-     DICOS) ;
-   - éventuellement **synchro automatique** + période.
-5. **Enregistrer les réglages** (accorde la permission d'hôte vers l'URL CSM), choisir le **jour**, puis
-   **Synchroniser ce jour**.
+4. **Connexion (1.7.0)** : dans CSM, ouvrir **PMR › Extension DICOS** et cliquer **Connecter l'extension à mon
+   compte**. La page crée le **jeton personnel** de l'agent (`csmc_…`, collection `connector_tokens`, seule l'empreinte
+   SHA-256 est stockée) et le transmet à l'extension par `postMessage` ; le script `src/csm-link.js`, actif seulement
+   sur `/pmr/extension` des domaines CSM du manifest (`test-csm` et `csm.fs0ciety.org`), l'enregistre avec l'adresse
+   de la page comme URL CSM. Repli : « Générer un jeton à coller à la main ».
+5. Dans l'extension, cliquer **Autoriser CSM** (permission d'hôte, geste de l'agent), choisir le **jour**, puis
+   **Synchroniser ce jour** (ou la synchro automatique).
+
+L'extension envoie sa version (`x-csm-extension`) ; la réponse donne la dernière version publiée sur CSM, et le popup
+propose la mise à jour. Le dernier lot de chaque jour porte `final: true` : CSM n'affiche « synchronisé » qu'à sa
+réception (synchro interrompue = « incomplète »). **Nouveau domaine de production : l'ajouter aux `matches` de
+`csm-link.js` et à `optional_host_permissions` des deux manifests.**
 
 ## Côté CSM (serveur)
 
 L'endpoint d'ingestion `POST /api/pmr/missions/ingest` (voir `web/src/app/api/pmr/missions/ingest/route.ts`) :
 
 - est **désactivé (503)** tant que les variables ne sont pas posées ;
-- exige l'en-tête **`x-dicos-token`** = `CSM_DICOS_TOKEN` (comparaison à temps constant) ;
+- exige l'en-tête **`x-dicos-token`** : jeton **personnel** de l'agent (`csmc_…`, retrouvé par son empreinte, 60 s de
+  cache, révocable depuis la page ou supprimé à la désactivation du compte) ou, pour les installations antérieures à
+  1.7.0, le secret partagé `CSM_DICOS_TOKEN` (facultatif, comparaison à temps constant) ;
 - écrit avec un **compte de service** PocketBase (`CSM_DICOS_PB_EMAIL` / `CSM_DICOS_PB_PASSWORD`, rôle `connector`
   + droit `dicos:write`) : les règles et hooks PocketBase s'appliquent ;
 - est **idempotent** (dédup sur `dicos_id`), ne touche pas les prestations **anonymisées**, et range le détail
@@ -93,10 +100,18 @@ L'endpoint d'ingestion `POST /api/pmr/missions/ingest` (voir `web/src/app/api/pm
 Variables à définir côté `csm-web` (Coolify), **en secrets** :
 
 ```
-CSM_DICOS_TOKEN=<jeton de connecteur>
+CSM_DICOS_TOKEN=<secret partagé, facultatif : extensions < 1.7.0 seulement>
 CSM_DICOS_PB_EMAIL=<compte de service>
 CSM_DICOS_PB_PASSWORD=<mot de passe du compte de service>
 ```
+
+## Firefox signé (installation durable)
+
+Le job CI « sign-firefox » (`.github/workflows/dicos-extension-release.yml`) signe le paquet Firefox sur
+addons.mozilla.org (canal **non listé**, pas de fiche publique) et commite le `.xpi` dans
+`web/downloads/dicos-connector/` ; CSM propose alors « Installer dans Firefox ». Il ne tourne que si les secrets
+GitHub **`AMO_JWT_ISSUER`** et **`AMO_JWT_SECRET`** sont définis (compte développeur addons.mozilla.org → *Gérer les
+clés d'API*), une fois par version. Le manifest Firefox déclare `data_collection_permissions` (exigé par AMO).
 
 ## Sécurité & vie privée
 

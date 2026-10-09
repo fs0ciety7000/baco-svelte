@@ -193,3 +193,56 @@ try {
     else if (ch.last && ch.last.newValue) setStatus(fmtResult(ch.last.newValue));
   });
 } catch (_) {}
+
+// --- 1.7.0 : connexion depuis CSM, autorisation d'envoi, mise à jour disponible ---
+const VERSION = chrome.runtime.getManifest().version;
+function newer(a, b) {
+  const pa = String(a).split(".").map(Number);
+  const pb = String(b).split(".").map(Number);
+  for (let i = 0; i < 3; i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) > (pb[i] || 0);
+  return false;
+}
+async function csmOrigin() {
+  const v = await chrome.storage.local.get(["csmUrl"]);
+  try {
+    return new URL(v.csmUrl || DEFAULT_CSM_URL).origin;
+  } catch (_) {
+    return new URL(DEFAULT_CSM_URL).origin;
+  }
+}
+async function openExtensionPage() {
+  chrome.tabs.create({ url: (await csmOrigin()) + "/pmr/extension" });
+}
+async function refreshNotices() {
+  const v = await chrome.storage.local.get(["csmUrl", "token", "latest"]);
+  const origin = await csmOrigin();
+  let allowed = false;
+  try {
+    allowed = await chrome.permissions.contains({ origins: [origin + "/*"] });
+  } catch (_) {}
+  $("connectBox").hidden = Boolean(v.token);
+  $("allowBox").hidden = !v.token || allowed;
+  const latest = typeof v.latest === "string" ? v.latest : "";
+  $("update").hidden = !(latest && newer(latest, VERSION));
+  $("updateText").textContent = `Nouvelle version ${latest} disponible (installée : ${VERSION}).`;
+}
+$("allow").addEventListener("click", async () => {
+  try {
+    const ok = await chrome.permissions.request({ origins: [(await csmOrigin()) + "/*"] });
+    setHint(ok ? "Envoi vers CSM autorisé." : "Autorisation refusée : la synchro ne pourra pas envoyer.", ok ? "ok" : "err");
+  } catch (_) {
+    setHint("Autorisation impossible : vérifie l'URL CSM.", "err");
+  }
+  refreshNotices();
+});
+$("openCsm").addEventListener("click", openExtensionPage);
+$("openCsm2").addEventListener("click", openExtensionPage);
+refreshNotices();
+try {
+  chrome.storage.onChanged.addListener((ch, area) => {
+    if (area === "local" && (ch.token || ch.csmUrl || ch.latest)) {
+      refreshNotices();
+      if (ch.token || ch.csmUrl) load();
+    }
+  });
+} catch (_) {}

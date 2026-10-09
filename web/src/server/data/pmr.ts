@@ -473,8 +473,12 @@ export function historyRange(today = brusselsDay()) {
 export type DicosSync = {
   /** Dernière synchro reçue (tous jours confondus), ISO, ou null. */
   lastAt: string | null;
-  /** Au moins une synchro pour un jour de la période affichée. */
+  /** Au moins une synchro COMPLÈTE pour un jour de la période affichée. */
   covered: boolean;
+  /** Dernier envoi de la période sans son dernier lot (synchro en cours ou interrompue), ISO, ou null. */
+  partialAt: string | null;
+  /** Agent dont l'extension a fait le dernier envoi de la période (jeton personnel), ou null. */
+  by: string | null;
 };
 
 /**
@@ -494,19 +498,50 @@ export async function dicosSyncState(
       kind === "groups"
         ? '(kind = "groups" || kind = "missions")'
         : pb.filter("kind = {:k}", { k: kind });
+    const range = `${kindFilter} && ${pb.filter("day >= {:a} && day <= {:b}", { a: from, b: to })}`;
     const [last, inRange] = await Promise.all([
       pb
         .collection("dicos_syncs")
         .getList(1, 1, { filter: kindFilter, sort: "-created", fields: "created" }),
-      pb.collection("dicos_syncs").getList(1, 1, {
-        filter: `${kindFilter} && ${pb.filter("day >= {:a} && day <= {:b}", { a: from, b: to })}`,
-        fields: "id",
+      pb.collection("dicos_syncs").getList(1, 200, {
+        filter: range,
+        sort: "-created",
+        expand: "synced_by",
+        fields: "day,kind,created,complete,expand.synced_by.name",
         skipTotal: true,
       }),
     ]);
+    type Row = {
+      day: string;
+      kind: string;
+      created: string;
+      complete: boolean;
+      expand?: { synced_by?: { name?: string } };
+    };
+    const rows = inRange.items as unknown as Row[];
+    // Jour par jour (plusieurs agents synchronisent, chacun ses jours) : le dernier envoi du jour décide « en cours /
+    // interrompu » ; un jour est couvert s'il a reçu un dernier lot. Groupes : les fiches « groups » du jour si elles
+    // existent, sinon celles des missions (jours sans groupe).
+    const byDay = new Map<string, Row[]>();
+    for (const r of rows) byDay.set(r.day, [...(byDay.get(r.day) ?? []), r]);
+    let covered = false;
+    let partialAt: string | null = null;
+    for (const list of byDay.values()) {
+      const own =
+        kind === "groups" && list.some((r) => r.kind === "groups")
+          ? list.filter((r) => r.kind === "groups")
+          : list.filter((r) => r.kind === "missions");
+      if (!own.length) continue;
+      if (own.some((r) => r.complete)) covered = true;
+      const latest = own[0]; // trié du plus récent au plus ancien
+      if (latest && !latest.complete && (!partialAt || latest.created > partialAt))
+        partialAt = latest.created;
+    }
     return {
       lastAt: (last.items[0]?.created as string | undefined) ?? null,
-      covered: inRange.items.length > 0,
+      covered,
+      partialAt,
+      by: rows[0]?.expand?.synced_by?.name || null,
     };
   } catch {
     return null;

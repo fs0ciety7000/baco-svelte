@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { EXTENSION_NOTES } from "./extension-releases";
+import { EXTENSION_NOTES, isNewer } from "./extension-releases";
 
 const root = path.join(__dirname, "../../../..");
 const json = (p: string) =>
@@ -22,5 +22,15 @@ describe("Connecteur DICOS : paquets à jour", () => {
 
   it("les nouveautés commencent par la version du manifest", () => {
     expect(EXTENSION_NOTES[0]?.version).toBe(manifest);
+  });
+});
+
+describe("isNewer", () => {
+  it("compare les versions champ par champ", () => {
+    expect(isNewer("1.7.0", "1.6.1")).toBe(true);
+    expect(isNewer("1.10.0", "1.9.9")).toBe(true);
+    expect(isNewer("1.6.1", "1.6.1")).toBe(false);
+    expect(isNewer("1.6.0", "1.6.1")).toBe(false);
+    expect(isNewer("2.0.0", "1.99.99")).toBe(true);
   });
 });

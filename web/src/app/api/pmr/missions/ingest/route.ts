@@ -9,9 +9,16 @@ import {
   type MappedMission,
 } from "@/lib/pmr/dicos-mission";
 import { isValidDay } from "@/lib/orders/time";
-import { nullOn404, serviceAuth, tokenOk } from "@/server/dicos-service";
+import {
+  ConnectorRateLimited,
+  authenticateConnector,
+  extensionVersion,
+  ingestConfigured,
+  nullOn404,
+  serviceAuth,
+} from "@/server/dicos-service";
+import { readExtensionRelease } from "@/server/extension";
 import { createPb } from "@/server/pocketbase";
-import { env } from "@/server/env";
 import { allow } from "@/server/rate-limit";
 
 // Ingestion DICOS (Missions PMR). Authentifiée par un **secret partagé** (en-tête `x-dicos-token`) présenté par
@@ -33,6 +40,8 @@ const bodySchema = z
     dossiers: z.array(z.unknown()).max(500).optional(),
     /** Missions de groupe (réservations « Group », 9 oct. 2026). */
     groups: z.array(z.unknown()).max(2000).optional(),
+    /** Dernier lot du jour (extension ≥ 1.7.0) ; absent = ancienne extension, lot considéré complet. */
+    final: z.boolean().optional(),
   })
   .refine((b) => b.missions || b.dossiers || b.groups, "missions, dossiers ou groupes requis");
 
@@ -112,12 +121,20 @@ async function upsert(
 }
 
 export async function POST(request: Request) {
-  if (!env.CSM_DICOS_TOKEN || !env.CSM_DICOS_PB_EMAIL)
+  if (!ingestConfigured())
     return Response.json({ error: "Ingestion DICOS non configurée." }, { status: 503 });
-  const provided = request.headers.get("x-dicos-token") ?? "";
-  if (!provided || !tokenOk(provided))
-    return Response.json({ error: "Jeton de connecteur invalide." }, { status: 401 });
-  if (!allow("dicos-ingest", 30, 60_000))
+  const version = extensionVersion(request);
+  let who: Awaited<ReturnType<typeof authenticateConnector>>;
+  try {
+    who = await authenticateConnector(request.headers.get("x-dicos-token") ?? "", version);
+  } catch (e) {
+    if (e instanceof ConnectorRateLimited)
+      return Response.json({ error: "Trop de requêtes, réessaie plus tard." }, { status: 429 });
+    return Response.json({ error: "Compte de service DICOS indisponible." }, { status: 502 });
+  }
+  if (!who) return Response.json({ error: "Jeton de connecteur invalide." }, { status: 401 });
+  const key = who.kind === "personal" ? who.tokenId : "shared";
+  if (!allow(`dicos-ingest:${key}`, 30, 60_000))
     return Response.json({ error: "Trop de requêtes, réessaie plus tard." }, { status: 429 });
   const len = Number(request.headers.get("content-length") ?? "0");
   if (Number.isFinite(len) && len > MAX_BODY)
@@ -262,13 +279,17 @@ export async function POST(request: Request) {
         received: n.received,
         created_count: n.created,
         updated_count: n.updated,
+        complete: body.final !== false,
+        version,
+        synced_by: who.kind === "personal" ? who.userId : "",
       })
       .catch(() => null);
   if (body.dossiers || body.missions) await log("missions", { received, ...c });
   if (body.groups) await log("groups", g);
 
+  const release = await readExtensionRelease();
   return Response.json(
-    { day: body.day, received, ...c, groups: g },
+    { day: body.day, received, ...c, groups: g, extension: { latest: release?.version ?? null } },
     { headers: { "cache-control": "no-store" } },
   );
 }

@@ -15,10 +15,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ fil
   const { file } = await params;
   const body = await readExtensionFile(file);
   if (!body) return new Response("Introuvable", { status: 404 });
+  // .xpi signé : servi en application/x-xpinstall, sans pièce jointe, pour que Firefox propose l'installation.
+  const xpi = file.endsWith(".xpi");
   return new Response(new Uint8Array(body), {
     headers: {
-      "Content-Type": "application/zip",
-      "Content-Disposition": `attachment; filename="${file}"`,
+      "Content-Type": xpi ? "application/x-xpinstall" : "application/zip",
+      ...(xpi ? {} : { "Content-Disposition": `attachment; filename="${file}"` }),
       "Content-Length": String(body.length),
       "Cache-Control": "private, no-store",
       "X-Content-Type-Options": "nosniff",

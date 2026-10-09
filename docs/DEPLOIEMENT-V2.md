@@ -30,6 +30,8 @@ proxy Traefik). Source : GitHub App `breakable-bee-gkkc8wwg8sswo044`, dépôt `f
 | `csm-pocketbase` | `PB_ADMIN_PASSWORD` | regénéré en session 3 (32 caractères), **visible seulement dans Coolify** (Environment Variables), littéral |
 | `csm-web` | `PB_URL` | `http://csm-pocketbase:8090` |
 | `csm-web` | `CSM_COOKIE_SECURE` | `true` |
+| `csm-web` | `CSM_DICOS_PB_EMAIL`, `CSM_DICOS_PB_PASSWORD` | compte de service PocketBase (rôle `connector`, droit `dicos:write`) de l'ingestion DICOS / ATMS ; secrets |
+| `csm-web` | `CSM_DICOS_TOKEN` | **facultatif** depuis l'extension 1.7.0 (jetons personnels des agents) : secret partagé des extensions antérieures, à retirer quand toutes sont à jour |
 | `csm-web` | `IRAIL_URL`, `TILES_URL`, `CSM_USER_AGENT` | facultatives : défauts `https://api.irail.be/v1`, `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, User-Agent CSM (le serveur doit pouvoir sortir vers ces deux domaines) |
 
 Le point d'entrée de l'image PocketBase applique les migrations puis crée ou met à jour ce superuser à chaque
@@ -119,3 +121,9 @@ répétition de la bascule. Le zip reste dans `/pb_data/backups` comme point de 
   l'environnement cloud Claude, où l'image a été testée avec le binaire local).
 - Variables Coolify créées par l'API : forcer `is_buildtime: false` pour les secrets, sinon elles sont aussi passées
   au build.
+
+## Secrets GitHub (CI)
+
+| Secret | Rôle |
+|---|---|
+| `AMO_JWT_ISSUER`, `AMO_JWT_SECRET` | facultatifs : clés d'API addons.mozilla.org pour signer l'extension Firefox (job `sign-firefox` de `dicos-extension-release.yml`, canal non listé). Sans eux, le job est ignoré. |

@@ -222,3 +222,8 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `release.json` validé par zod), servis par `api/pmr/extension/[file]` ; `next.config.ts` → `outputFileTracingIncludes`
   (sinon absents du standalone). Nouvelle version de l'extension : manifests + `lib/pmr/extension-releases.ts` +
   `../extension/build-zips.sh` (test `extension-releases.test.ts`).
+- **Jetons de connecteur** : `server/dicos-service.ts` → `authenticateConnector(jeton, version)` (personnel `csmc_…` ou
+  partagé), `ingestConfigured()`, `extensionVersion()` ; actions `pmr/extension/actions.ts` (`createConnectorToken`,
+  `revokeConnectorToken`, jeton en clair renvoyé une fois) ; `components/pmr/extension-connect.tsx` (dialogue
+  `postMessage` avec `csm-link.js` : `ping` / `hello` / `configure` / `configured`). `SyncStatus` reçoit `partialAt`
+  et `by` de `dicosSyncState()`. `isNewer()` dans `lib/pmr/extension-releases.ts`.

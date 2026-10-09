@@ -112,6 +112,12 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
 - **Synchros DICOS** (`1760001900_dicos_syncs.js`) : `dicos_syncs` (jour, `kind` missions / groups / schedules,
   compteurs), une fiche par envoi de l'extension, écrite par le connecteur, lue avec `pmr:read`, jamais modifiable,
   purgée après 60 jours. Sert à « synchronisé il y a X min ».
+  Depuis `1760002000` : `complete` (dernier lot du jour reçu ; fiches antérieures mises à vrai), `version` (extension),
+  `synced_by` (propriétaire du jeton personnel).
+- **Jetons de connecteur** (`1760002000_connector_tokens.js`) : `connector_tokens` (user, label, `token_hash` SHA-256
+  unique, prefix, last_used, last_version). Création pour soi avec `deplacements:read` (dates d'usage non forgeables),
+  lecture propriétaire / admin / connecteur, mise à jour par le connecteur seul (usage), suppression propriétaire ou
+  admin ; 10 au plus par agent et suppression à la désactivation du compte (`users.pb.js`).
 - **Horaires ATMS** (`1760001800_train_schedules.js`) : `train_schedules` (jour + train uniques, `stops` JSON : abréviation
   PtCar, nom ATMS, arrivée, départ, temps d'arrêt, position), écrits par le connecteur (`dicos:write`, jour et train
   figés), lus avec `pmr:read` (pas `otto_agent`), purgés après 60 jours par `pmr-retention`. Données d'exploitation.

@@ -5,6 +5,16 @@ export type ExtensionNote = { version: string; date: string; notes: string[] };
 
 export const EXTENSION_NOTES: ExtensionNote[] = [
   {
+    version: "1.7.0",
+    date: "2026-10-09",
+    notes: [
+      "Connexion en un clic depuis CSM (PMR › Extension DICOS) avec ton jeton personnel : plus de jeton à demander.",
+      "Bouton « Autoriser CSM » dans l'extension tant que l'envoi n'est pas autorisé.",
+      "L'extension annonce sa version : CSM et l'extension signalent quand une mise à jour est disponible.",
+      "Une synchro interrompue en cours de route s'affiche « incomplète » dans CSM ; un jour sans mission compte comme synchronisé.",
+    ],
+  },
+  {
     version: "1.6.1",
     date: "2026-10-09",
     notes: [
@@ -41,3 +51,15 @@ export const EXTENSION_NOTES: ExtensionNote[] = [
     ],
   },
 ];
+
+/** `a` plus récente que `b` (versions « x.y.z »). */
+export function isNewer(a: string, b: string): boolean {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    const x = pa[i] || 0;
+    const y = pb[i] || 0;
+    if (x !== y) return x > y;
+  }
+  return false;
+}

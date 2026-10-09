@@ -227,7 +227,12 @@
     const total = { received: 0, created: 0, updated: 0, unchanged: 0, skipped: 0, detailErrors: 0 };
     for (let i = 0; i < list.length || i === 0; i += 100) {
       progress("Envoi vers CSM", Math.min(i, list.length), list.length, true);
-      const res = await chrome.runtime.sendMessage({ cmd: "push", day, [payloadKey]: list.slice(i, i + 100) });
+      const res = await chrome.runtime.sendMessage({
+        cmd: "push",
+        day,
+        [payloadKey]: list.slice(i, i + 100),
+        final: i + 100 >= list.length,
+      });
       if (!res || !res.ok) return { error: (res && res.error) || "Échec de l'envoi vers CSM." };
       for (const k of Object.keys(total)) total[k] += Number(res.result && res.result[k]) || 0;
       if (!list.length) break;
@@ -249,7 +254,12 @@
     const total = { received: 0, created: 0, updated: 0, unchanged: 0, skipped: 0 };
     for (let i = 0; i < list.length; i += 300) {
       progress("Groupes : envoi vers CSM", i, list.length, true);
-      const res = await chrome.runtime.sendMessage({ cmd: "push", day, groups: list.slice(i, i + 300) });
+      const res = await chrome.runtime.sendMessage({
+        cmd: "push",
+        day,
+        groups: list.slice(i, i + 300),
+        final: i + 300 >= list.length,
+      });
       if (!res || !res.ok) return { error: (res && res.error) || "Échec de l'envoi des groupes vers CSM." };
       const g = (res.result && res.result.groups) || {};
       for (const k of Object.keys(total)) total[k] += Number(g[k]) || 0;
@@ -328,6 +338,12 @@
         return groupStats;
       }
       if (!items.length) {
+        // Jour sans mission PMR : un envoi vide marque quand même le jour comme synchronisé dans CSM.
+        const empty = await pushAll(day, "missions", []);
+        if (empty.error) {
+          setLast(empty);
+          return empty;
+        }
         const atms = await syncAtms(day, groupItems);
         const r = { day, found: 0, received: 0, created: 0, updated: 0, skipped: 0, groups: groupStats, atms };
         setLast(r);

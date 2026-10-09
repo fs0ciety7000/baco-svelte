@@ -3,17 +3,22 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import type { ReactNode } from "react";
 
-import { CopyButton } from "@/components/pmr/copy";
+import { ExtensionConnect } from "@/components/pmr/extension-connect";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/misc";
+import { can } from "@/lib/permissions";
 import { EXTENSION_NOTES } from "@/lib/pmr/extension-releases";
 import { requirePermission } from "@/server/auth";
-import { readExtensionRelease } from "@/server/extension";
+import { listMyConnectorTokens, readExtensionRelease } from "@/server/extension";
 
 export const metadata: Metadata = { title: "Extension DICOS · CSM" };
 
-const BROWSER = { chrome: "Chrome / Edge", firefox: "Firefox (≥ 128)" } as const;
+const BROWSER = {
+  chrome: "Chrome / Edge",
+  firefox: "Firefox (module temporaire)",
+  "firefox-signed": "Firefox (signée, installation durable)",
+} as const;
 
 const dateFmt = new Intl.DateTimeFormat("fr-BE", {
   day: "numeric",
@@ -35,13 +40,18 @@ function Code({ children }: { children: ReactNode }) {
 }
 
 export default async function Page() {
-  await requirePermission("deplacements:read");
-  const [release, h] = await Promise.all([readExtensionRelease(), headers()]);
+  const user = await requirePermission("deplacements:read");
+  const [release, h, tokens] = await Promise.all([
+    readExtensionRelease(),
+    headers(),
+    listMyConnectorTokens(user.id),
+  ]);
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
   const proto =
     h.get("x-forwarded-proto") ??
     (host.startsWith("127.") || host.startsWith("localhost") ? "http" : "https");
   const origin = host ? `${proto}://${host}` : "";
+  const signed = release?.files.some((f) => f.browser === "firefox-signed") ?? false;
 
   return (
     <section className="flex max-w-4xl flex-col gap-4" aria-label="Extension DICOS">
@@ -65,14 +75,22 @@ export default async function Page() {
                     className="flex min-w-0 flex-col gap-2 rounded-box border border-border p-3"
                   >
                     <p className="text-body font-semibold">{BROWSER[f.browser]}</p>
-                    <Button asChild variant={f.browser === "chrome" ? "primary" : "secondary"}>
-                      <a
-                        href={`/api/pmr/extension/${encodeURIComponent(f.name)}`}
-                        download={f.name}
-                      >
-                        <Download aria-hidden />
-                        Télécharger ({Math.round(f.bytes / 1024)} Ko)
-                      </a>
+                    <Button asChild variant={f.browser === "firefox" ? "secondary" : "primary"}>
+                      {f.browser === "firefox-signed" ? (
+                        // Firefox propose l'installation en ouvrant le .xpi signé (pas de téléchargement).
+                        <a href={`/api/pmr/extension/${encodeURIComponent(f.name)}`}>
+                          <Download aria-hidden />
+                          Installer dans Firefox ({Math.round(f.bytes / 1024)} Ko)
+                        </a>
+                      ) : (
+                        <a
+                          href={`/api/pmr/extension/${encodeURIComponent(f.name)}`}
+                          download={f.name}
+                        >
+                          <Download aria-hidden />
+                          Télécharger ({Math.round(f.bytes / 1024)} Ko)
+                        </a>
+                      )}
                     </Button>
                     <p className="truncate font-mono text-small text-fg-subtle" title={f.name}>
                       {f.name}
@@ -101,12 +119,12 @@ export default async function Page() {
         <CardHeader eyebrow="Avant de commencer" title="Ce qu'il te faut" />
         <CardContent>
           <ul className="flex list-disc flex-col gap-2 pl-5 text-body">
-            <li>
-              Le <strong>jeton de connecteur</strong>, fourni par un administrateur CSM. C&apos;est
-              le seul code à saisir : jamais ton mot de passe ni un jeton DICOS.
-            </li>
             <li>Un accès DICOS (et ATMS pour les temps d&apos;arrêt) dans ce même navigateur.</li>
             <li>Chrome ou Edge récent, ou Firefox 128 ou plus.</li>
+            <li>
+              Aucun code à demander : ton <strong>jeton de connecteur</strong> personnel se crée sur
+              cette page, à l&apos;étape « Relier l&apos;extension à ton compte ».
+            </li>
           </ul>
         </CardContent>
       </Card>
@@ -135,47 +153,58 @@ export default async function Page() {
         <Card>
           <CardHeader eyebrow="Installation" title="Firefox" />
           <CardContent className="flex flex-col gap-3">
-            <Steps>
-              <li>Télécharge le paquet Firefox et dézippe-le.</li>
-              <li>
-                Ouvre <Code>about:debugging#/runtime/this-firefox</Code>.
-              </li>
-              <li>
-                Clique <strong>Charger un module complémentaire temporaire…</strong> et choisis le
-                fichier <Code>manifest.json</Code> du dossier dézippé.
-              </li>
-            </Steps>
-            <p className="text-small text-warn">
-              Firefox retire un module temporaire à chaque redémarrage : recommence l&apos;étape 3
-              après avoir relancé Firefox.
-            </p>
+            {signed ? (
+              <Steps>
+                <li>
+                  Ouvre cette page dans Firefox et clique <strong>Installer dans Firefox</strong>.
+                </li>
+                <li>
+                  Autorise le site à proposer l&apos;installation, puis clique{" "}
+                  <strong>Ajouter</strong>.
+                </li>
+                <li>L&apos;extension reste installée après un redémarrage.</li>
+              </Steps>
+            ) : (
+              <>
+                <Steps>
+                  <li>Télécharge le paquet Firefox et dézippe-le.</li>
+                  <li>
+                    Ouvre <Code>about:debugging#/runtime/this-firefox</Code>.
+                  </li>
+                  <li>
+                    Clique <strong>Charger un module complémentaire temporaire…</strong> et choisis
+                    le fichier <Code>manifest.json</Code> du dossier dézippé.
+                  </li>
+                </Steps>
+                <p className="text-small text-warn">
+                  Firefox retire un module temporaire à chaque redémarrage : recommence l&apos;étape
+                  3 après avoir relancé Firefox. Une version signée, installée durablement, arrivera
+                  ici dès que la signature sur addons.mozilla.org sera configurée.
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
 
       <Card>
-        <CardHeader eyebrow="Configuration (une fois)" title="Relier l'extension à CSM" />
-        <CardContent>
-          <Steps>
-            <li>
-              Clique l&apos;icône de l&apos;extension. Dans <strong>URL CSM</strong>, colle
-              l&apos;adresse de CSM :
-              {origin ? (
-                <span className="mt-1 flex flex-wrap items-center gap-2">
-                  <Code>{origin}</Code>
-                  <CopyButton text={origin} label="Copier" />
-                </span>
-              ) : null}
-            </li>
-            <li>
-              Dans <strong>Jeton de connecteur</strong>, colle le jeton reçu de
-              l&apos;administrateur.
-            </li>
-            <li>
-              Clique <strong>Enregistrer les réglages</strong> et accepte l&apos;autorisation
-              demandée pour le site CSM.
-            </li>
-          </Steps>
+        <CardHeader
+          eyebrow="Connexion (une fois par navigateur)"
+          title="Relier l'extension à ton compte"
+        />
+        <CardContent className="flex flex-col gap-3">
+          <p className="text-body text-fg-muted">
+            Chaque agent a son propre jeton, créé ici : rien à demander à un administrateur. Après
+            l&apos;installation, recharge cette page puis clique « Connecter l&apos;extension à mon
+            compte » : l&apos;extension reçoit l&apos;adresse de CSM et ton jeton. Il reste à ouvrir
+            l&apos;extension et à cliquer « Autoriser CSM ».
+          </p>
+          <ExtensionConnect
+            canConnect={can(user, "deplacements:write")}
+            latest={release?.version ?? null}
+            origin={origin}
+            tokens={tokens}
+          />
         </CardContent>
       </Card>
 
@@ -262,8 +291,9 @@ export default async function Page() {
 
       <p className="flex items-center gap-2 text-small text-fg-muted">
         <ShieldCheck aria-hidden className="size-4 shrink-0" />
-        Le jeton de connecteur ne donne aucun accès à DICOS. S&apos;il a fuité, demande à un
-        administrateur de le changer.
+        Ton jeton de connecteur ne donne aucun accès à DICOS ni à ton compte CSM : il permet
+        seulement d&apos;envoyer des missions. S&apos;il a fuité, révoque-le ci-dessus et reconnecte
+        l&apos;extension.
       </p>
     </section>
   );
@@ -272,12 +302,13 @@ export default async function Page() {
 const TROUBLE: [string, string][] = [
   [
     "« Configure l'URL CSM et le jeton de connecteur »",
-    "Fais l'étape « Relier l'extension à CSM ».",
+    "Fais l'étape « Relier l'extension à ton compte ».",
   ],
   [
     "« Jeton de connecteur refusé par CSM »",
-    "Le jeton est faux ou a été changé : redemande-le à un administrateur.",
+    "Le jeton a été révoqué ou est faux : reconnecte l'extension depuis cette page.",
   ],
+  ["« Envoi vers CSM pas encore autorisé »", "Ouvre l'extension et clique « Autoriser CSM »."],
   [
     "« Ingestion DICOS désactivée côté CSM »",
     "Le connecteur n'est pas configuré sur le serveur : préviens un administrateur.",

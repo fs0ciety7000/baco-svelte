@@ -8,14 +8,28 @@ async function config() {
   return { csmUrl, token: String(v.token || "") };
 }
 
+const VERSION = chrome.runtime.getManifest().version;
+const headers = (token) => ({ "content-type": "application/json", "x-dicos-token": token, "x-csm-extension": VERSION });
+
+// Permission d'hôte vers CSM : accordée par le bouton « Autoriser CSM » du popup (geste de l'agent).
+async function hasPermission(csmUrl) {
+  try {
+    return await chrome.permissions.contains({ origins: [new URL(csmUrl).origin + "/*"] });
+  } catch (_) {
+    return false;
+  }
+}
+const NO_PERMISSION = "Envoi vers CSM pas encore autorisé : ouvre l'extension et clique « Autoriser CSM ».";
+
 async function push(day, payload) {
   const { csmUrl, token } = await config();
   if (!csmUrl || !token) return { ok: false, error: "Configure l'URL CSM et le jeton de connecteur." };
+  if (!(await hasPermission(csmUrl))) return { ok: false, error: NO_PERMISSION };
   let res;
   try {
     res = await fetch(`${csmUrl}/api/pmr/missions/ingest`, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-dicos-token": token },
+      headers: headers(token),
       body: JSON.stringify({ day, ...payload }),
     });
   } catch (_) {
@@ -29,6 +43,13 @@ async function push(day, payload) {
     result = await res.json();
   } catch (_) {
     return { ok: false, error: "Réponse CSM illisible." };
+  }
+  // Dernière version publiée sur CSM : le popup propose la mise à jour (1.7.0).
+  const latest = result && result.extension && result.extension.latest;
+  if (typeof latest === "string" && /^\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(latest)) {
+    try {
+      await chrome.storage.local.set({ latest });
+    } catch (_) {}
   }
   return { ok: true, result };
 }
@@ -113,6 +134,7 @@ async function syncAtms(trains) {
   if (!list.length) return out;
   const { csmUrl, token } = await config();
   if (!csmUrl || !token) return { ...out, error: "Configure l'URL CSM et le jeton de connecteur." };
+  if (!(await hasPermission(csmUrl))) return { ...out, error: NO_PERMISSION };
   const tab = await atmsTab();
   let viaTab = tab ? await reachTab(tab) : false;
   out.via = viaTab ? "onglet" : "direct";
@@ -152,7 +174,7 @@ async function syncAtms(trains) {
     try {
       const res = await fetch(`${csmUrl}/api/pmr/schedules/ingest`, {
         method: "POST",
-        headers: { "content-type": "application/json", "x-dicos-token": token },
+        headers: headers(token),
         body: JSON.stringify({ schedules: schedules.slice(i, i + 20) }),
       });
       if (!res.ok) return { ...out, error: `CSM a refusé les horaires (HTTP ${res.status}).` };
@@ -166,6 +188,10 @@ async function syncAtms(trains) {
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
+  if (msg && msg.cmd === "csm-permission") {
+    hasPermission(String(msg.origin || "")).then(reply);
+    return true;
+  }
   if (msg && msg.cmd === "atms") {
     syncAtms(msg.trains).then(reply, (e) => reply({ error: String((e && e.message) || e).slice(0, 160) }));
     return true;
@@ -176,7 +202,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
       : Array.isArray(msg.dossiers)
         ? { dossiers: msg.dossiers }
         : { missions: Array.isArray(msg.missions) ? msg.missions : [] };
-    push(msg.day, payload).then(reply);
+    // Dernier lot du jour : CSM n'affiche « synchronisé » qu'une fois ce lot reçu (synchro interrompue = incomplète).
+    push(msg.day, { ...payload, final: msg.final !== false }).then(reply);
     return true; // réponse asynchrone
   }
 });

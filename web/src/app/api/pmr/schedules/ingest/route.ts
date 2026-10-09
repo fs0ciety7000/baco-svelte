@@ -2,8 +2,14 @@ import { z } from "zod";
 
 import { isValidDay } from "@/lib/orders/time";
 import { mapAtmsTrain } from "@/lib/pmr/atms";
-import { nullOn404, serviceAuth, tokenOk } from "@/server/dicos-service";
-import { env } from "@/server/env";
+import {
+  ConnectorRateLimited,
+  authenticateConnector,
+  extensionVersion,
+  ingestConfigured,
+  nullOn404,
+  serviceAuth,
+} from "@/server/dicos-service";
 import { createPb } from "@/server/pocketbase";
 import { allow } from "@/server/rate-limit";
 
@@ -30,12 +36,21 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
-  if (!env.CSM_DICOS_TOKEN || !env.CSM_DICOS_PB_EMAIL)
+  if (!ingestConfigured())
     return Response.json({ error: "Ingestion non configurée." }, { status: 503 });
-  const provided = request.headers.get("x-dicos-token") ?? "";
-  if (!provided || !tokenOk(provided))
-    return Response.json({ error: "Jeton de connecteur invalide." }, { status: 401 });
-  if (!allow("atms-ingest", 30, 60_000))
+  let who: Awaited<ReturnType<typeof authenticateConnector>>;
+  try {
+    who = await authenticateConnector(
+      request.headers.get("x-dicos-token") ?? "",
+      extensionVersion(request),
+    );
+  } catch (e) {
+    if (e instanceof ConnectorRateLimited)
+      return Response.json({ error: "Trop de requêtes, réessaie plus tard." }, { status: 429 });
+    return Response.json({ error: "Compte de service indisponible." }, { status: 502 });
+  }
+  if (!who) return Response.json({ error: "Jeton de connecteur invalide." }, { status: 401 });
+  if (!allow(`atms-ingest:${who.kind === "personal" ? who.tokenId : "shared"}`, 30, 60_000))
     return Response.json({ error: "Trop de requêtes, réessaie plus tard." }, { status: 429 });
   const len = Number(request.headers.get("content-length") ?? "0");
   if (Number.isFinite(len) && len > MAX_BODY)

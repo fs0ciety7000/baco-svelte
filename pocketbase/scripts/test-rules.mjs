@@ -625,6 +625,44 @@ try {
 		const dsEdit = await api('PATCH', `/api/collections/dicos_syncs/records/${ds.json?.id}`, { token: ctok, body: { received: 99 } });
 		check('synchro DICOS non modifiable', dsEdit.status >= 400, `HTTP ${dsEdit.status}`);
 		if (ds.json?.id) await api('DELETE', `/api/collections/dicos_syncs/records/${ds.json.id}`, { token: root });
+		// Jetons de connecteur personnels (1760002000) : pour soi, avec deplacements:read ; lus par le propriétaire,
+		// les admins et le connecteur ; usage mis à jour par le connecteur seul ; supprimés à la désactivation.
+		const hash = (c) => c.repeat(64);
+		const tk = await api('POST', '/api/collections/connector_tokens/records', { token: u.token, body: { user: u.id, label: 'Chrome', token_hash: hash('a'), prefix: 'csmc_aaaa' } });
+		check('agent crée son jeton de connecteur', tk.status === 200, `HTTP ${tk.status} ${JSON.stringify(tk.json).slice(0, 80)}`);
+		const tkOther = await api('POST', '/api/collections/connector_tokens/records', { token: u.token, body: { user: roles.reader.id, token_hash: hash('b') } });
+		check('jeton de connecteur jamais pour un autre agent', tkOther.status >= 400, `HTTP ${tkOther.status}`);
+		const tkForged = await api('POST', '/api/collections/connector_tokens/records', { token: u.token, body: { user: u.id, token_hash: hash('c'), last_used: '2026-10-09 10:00:00.000Z' } });
+		check('date d usage d un jeton non forgeable', tkForged.status >= 400, `HTTP ${tkForged.status}`);
+		const tkOtto = await api('POST', '/api/collections/connector_tokens/records', { token: roles.otto_agent.token, body: { user: roles.otto_agent.id, token_hash: hash('d') } });
+		check('otto_agent ne crée pas de jeton de connecteur', tkOtto.status >= 400, `HTTP ${tkOtto.status}`);
+		const tkReader = await api('POST', '/api/collections/connector_tokens/records', { token: roles.reader.token, body: { user: roles.reader.id, token_hash: hash('9') } });
+		check('lecteur (sans écriture des missions) ne crée pas de jeton', tkReader.status >= 400, `HTTP ${tkReader.status}`);
+		const tkPeek = await api('GET', `/api/collections/connector_tokens/records/${tk.json?.id}`, { token: roles.moderator.token });
+		check('un agent ne voit pas le jeton d un autre', tkPeek.status === 404, `HTTP ${tkPeek.status}`);
+		const tkAdmin = await api('GET', `/api/collections/connector_tokens/records/${tk.json?.id}`, { token: roles.admin.token });
+		check('admin voit les jetons de connecteur', tkAdmin.status === 200, `HTTP ${tkAdmin.status}`);
+		const tkFind = await api('GET', `/api/collections/connector_tokens/records?filter=${encodeURIComponent(`token_hash="${hash('a')}"`)}`, { token: ctok });
+		check('connector retrouve un jeton par son empreinte', tkFind.status === 200 && tkFind.json?.totalItems === 1, `HTTP ${tkFind.status}`);
+		const tkUse = await api('PATCH', `/api/collections/connector_tokens/records/${tk.json?.id}`, { token: ctok, body: { last_used: '2026-10-09 10:00:00.000Z', last_version: '1.7.0' } });
+		check('connector note l usage d un jeton', tkUse.status === 200, `HTTP ${tkUse.status}`);
+		const tkSteal = await api('PATCH', `/api/collections/connector_tokens/records/${tk.json?.id}`, { token: ctok, body: { user: roles.reader.id } });
+		check('connector ne réattribue pas un jeton', tkSteal.status >= 400, `HTTP ${tkSteal.status}`);
+		const tkSelfEdit = await api('PATCH', `/api/collections/connector_tokens/records/${tk.json?.id}`, { token: u.token, body: { token_hash: hash('e') } });
+		check('agent ne modifie pas l empreinte de son jeton', tkSelfEdit.status >= 400, `HTTP ${tkSelfEdit.status}`);
+		const tkDelOther = await api('DELETE', `/api/collections/connector_tokens/records/${tk.json?.id}`, { token: roles.reader.token });
+		check('un agent ne révoque pas le jeton d un autre', tkDelOther.status === 404, `HTTP ${tkDelOther.status}`);
+		const tkDel = await api('DELETE', `/api/collections/connector_tokens/records/${tk.json?.id}`, { token: u.token });
+		check('agent révoque son jeton', tkDel.status === 204, `HTTP ${tkDel.status}`);
+		// Désactivation du compte : ses jetons disparaissent.
+		const dpass = `Test-${suffix}-tokdis`;
+		const du = await api('POST', '/api/collections/users/records', { token: root, body: { email: `test-tokdis-${suffix}@csm.invalid`, password: dpass, passwordConfirm: dpass, name: 'Test tokdis', username: `ttokdis${suffix}`, role: 'user', verified: true } });
+		if (du.json?.id) created.push(du.json.id);
+		const dtok = (await api('POST', '/api/collections/users/auth-with-password', { body: { identity: du.json?.email, password: dpass } })).json?.token;
+		const dk = await api('POST', '/api/collections/connector_tokens/records', { token: dtok, body: { user: du.json?.id, token_hash: hash('f') } });
+		await api('PATCH', `/api/collections/users/records/${du.json?.id}`, { token: root, body: { role: 'disabled', disabled_role: 'user' } });
+		const dkAfter = await api('GET', `/api/collections/connector_tokens/records/${dk.json?.id}`, { token: root });
+		check('jetons supprimés à la désactivation du compte', dk.status === 200 && dkAfter.status === 404, `HTTP ${dk.status}/${dkAfter.status}`);
 	}
 	// Un agent reste soumis à la table des transitions sur une mission DICOS (réalisée → absent est interdit).
 	const dmTrans = await api('PATCH', `/api/collections/pmr_assists/records/${did}`, { token: u.token, body: { status: 'absent', cancel_reason: 'x', updated_by: u.id } });

@@ -28,3 +28,25 @@ onRecordUpdate((e) => {
 	}
 	e.next();
 }, 'users');
+
+// Jetons de connecteur personnels (extension DICOS) supprimés à la désactivation du compte.
+onRecordAfterUpdateSuccess((e) => {
+	if (e.record.getString('role') === 'disabled') {
+		try {
+			for (const t of $app.findRecordsByFilter('connector_tokens', 'user = {:u}', '', 0, 0, { u: e.record.id })) {
+				$app.delete(t);
+			}
+		} catch (err) {
+			console.log('connector_tokens: suppression impossible', err);
+		}
+	}
+	e.next();
+}, 'users');
+
+// Au plus 10 jetons par agent (un par poste / navigateur suffit).
+onRecordCreateRequest((e) => {
+	const user = e.record.getString('user');
+	const n = $app.countRecords('connector_tokens', $dbx.hashExp({ user: user }));
+	if (n >= 10) throw new BadRequestError('10 jetons au plus : révoque un ancien appareil.');
+	e.next();
+}, 'connector_tokens');

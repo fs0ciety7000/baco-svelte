@@ -43,3 +43,60 @@ jobs:
           name: dicos-connector-zips
           path: web/downloads/dicos-connector/*.zip
           retention-days: 90
+
+  # Signature Firefox (installation durable, hors magasin) : seulement si les secrets AMO_JWT_ISSUER / AMO_JWT_SECRET
+  # (clés d'API addons.mozilla.org, « Clés d'API » du compte développeur) sont définis, et une fois par version. Le .xpi
+  # signé (canal « unlisted ») est commité dans web/downloads/dicos-connector/ : CSM le propose alors au téléchargement.
+  sign-firefox:
+    needs: release
+    if: github.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    # Une signature à la fois par branche (AMO refuse de signer deux fois la même version).
+    concurrency:
+      group: sign-firefox-${{ github.ref }}
+      cancel-in-progress: false
+    env:
+      AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+      AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Vérifier la configuration
+        id: check
+        run: |
+          v="$(node -p "require('./extension/dicos-connector/manifest.json').version")"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if [ -z "$AMO_JWT_ISSUER" ] || [ -z "$AMO_JWT_SECRET" ]; then
+            echo "::notice::Signature Firefox non configurée (secrets AMO_JWT_ISSUER / AMO_JWT_SECRET absents)."
+            echo "skip=1" >> "$GITHUB_OUTPUT"
+          elif [ -f "web/downloads/dicos-connector/csm-dicos-connector-firefox-v$v.xpi" ]; then
+            echo "::notice::Paquet Firefox signé v$v déjà présent."
+            echo "skip=1" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.skip != '1'
+        with:
+          node-version: 22
+      - name: Signer sur addons.mozilla.org (canal non listé)
+        if: steps.check.outputs.skip != '1'
+        run: |
+          mkdir -p /tmp/ff /tmp/signed
+          cp -r extension/dicos-connector/. /tmp/ff/
+          mv /tmp/ff/manifest.firefox.json /tmp/ff/manifest.json
+          npx --yes web-ext@8.10.0 sign --source-dir /tmp/ff --channel unlisted \
+            --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET" --artifacts-dir /tmp/signed
+      - name: Commiter le .xpi signé
+        if: steps.check.outputs.skip != '1'
+        env:
+          V: ${{ steps.check.outputs.version }}
+        run: |
+          cp /tmp/signed/*.xpi "web/downloads/dicos-connector/csm-dicos-connector-firefox-v$V.xpi"
+          node extension/release-json.mjs web/downloads/dicos-connector "$V"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web/downloads/dicos-connector
+          git commit -m "chore(extension): paquet Firefox signé v$V [skip ci]"
+          # Coolify redéploie à chaque push : on laisse finir le déploiement déclenché par le push d'origine (deux
+          # déploiements simultanés ont déjà laissé csm-pocketbase arrêté, CLAUDE.md §7).
+          sleep 600
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push origin "HEAD:$GITHUB_REF_NAME"

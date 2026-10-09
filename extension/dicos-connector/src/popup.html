@@ -49,10 +49,25 @@
       .hint { color: var(--muted); font-size: 11px; margin-top: 6px; }
       .err { color: var(--danger); }
       .ok { color: var(--ok); }
+      .notice { margin: 0 0 10px; padding: 8px; border: 1px solid var(--accent); border-radius: 7px; background: var(--surface); font-size: 12px; }
+      .notice button { margin-top: 8px; }
+      [hidden] { display: none !important; }
     </style>
   </head>
   <body>
     <h1><span class="dot" id="dot"></span> Connecteur DICOS → CSM <small id="ver"></small></h1>
+    <div class="notice" id="update" hidden>
+      <span id="updateText"></span>
+      <button class="secondary" id="openCsm">Ouvrir la page de l'extension dans CSM</button>
+    </div>
+    <div class="notice" id="allowBox" hidden>
+      Dernière étape : autorise l'extension à envoyer les missions à CSM.
+      <button id="allow">Autoriser CSM</button>
+    </div>
+    <div class="notice" id="connectBox" hidden>
+      Pas encore connectée : dans CSM, ouvre <b>PMR › Extension DICOS</b> et clique <b>Connecter l'extension</b>.
+      <button class="secondary" id="openCsm2">Ouvrir CSM</button>
+    </div>
 
     <label for="csmUrl">URL CSM</label>
     <input type="text" id="csmUrl" placeholder="https://test-csm.fs0ciety.org" autocomplete="off" />
