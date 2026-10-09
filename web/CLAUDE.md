@@ -235,3 +235,6 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - « Masquer les annulées » mémorisé : `resolveCancelledPref(user, param)` (`server/pmr-prefs.ts`) lit / enregistre
   `users.preferences.pmr.cancelled` ; logique pure dans `lib/pmr/cancelled-pref.ts` ; la barre de filtres envoie
   toujours la valeur explicite.
+- Firefox signé : le job CI `sign-firefox` commite `downloads/dicos-connector/csm-dicos-connector-firefox-v<version>.xpi`
+  (+ `release.json`) ; la page propose alors « Installer dans Firefox ». Premier `.xpi` signé : v1.7.0 (9 oct. 2026).
+  Jamais de « [skip ci] » dans ce commit : Coolify ne redéploierait pas `csm-web`.
