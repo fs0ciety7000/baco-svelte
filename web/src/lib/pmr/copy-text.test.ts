@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { aleaGroups, assistCopyText, numberFr } from "./model";
+import { aleaGroupBlocks, aleaGroupLine, aleaGroups, assistCopyText, numberFr } from "./model";
 
 describe("libellé à copier", () => {
   it("nombre en toutes lettres (genré)", () => {
@@ -45,6 +45,36 @@ describe("export ALEA", () => {
         "LA LOUVIÈRE-SUD",
         ["Embarquement d'une mobilité réduite", "Débarquement de trois non-voyants"],
       ],
+    ]);
+  });
+});
+
+describe("export ALEA des groupes", () => {
+  it("formule avec et sans enfants", () => {
+    expect(aleaGroupLine("Embarquement", 53, 50)).toBe(
+      "Embarquement d'un groupe de 53 personnes dont 50 enfants",
+    );
+    expect(aleaGroupLine("Débarquement", 22, 0)).toBe("Débarquement d'un groupe de 22 personnes");
+    expect(aleaGroupLine("Embarquement", 2, 1)).toBe(
+      "Embarquement d'un groupe de 2 personnes dont 1 enfant",
+    );
+  });
+  it("une ligne par groupe, regroupées par train et gare", () => {
+    const base = { day: "2026-10-09", train: "4879", time: "08:27" };
+    const blocks = aleaGroupBlocks([
+      { ...base, station: "MONS", io: "IN", total: 27, children: 22 },
+      { ...base, station: "MONS", io: "IN", total: 25, children: 0 },
+      { ...base, station: "CAMBRON-CASTEAU", time: "08:45", io: "OUT", total: 27, children: 22 },
+    ]);
+    expect(blocks.map((b) => [b.station, b.lines])).toEqual([
+      [
+        "MONS",
+        [
+          "Embarquement d'un groupe de 27 personnes dont 22 enfants",
+          "Embarquement d'un groupe de 25 personnes",
+        ],
+      ],
+      ["CAMBRON-CASTEAU", ["Débarquement d'un groupe de 27 personnes dont 22 enfants"]],
     ]);
   });
 });

@@ -35,8 +35,8 @@ Deux `.zip` sont générés dans **`extension/dist/`** (régénérés par `exten
 
 | Navigateur | Paquet | Manifest |
 |---|---|---|
-| **Chrome / Edge** | `csm-dicos-connector-chrome-v1.4.0.zip` | `background.service_worker` |
-| **Firefox** (≥ 128) | `csm-dicos-connector-firefox-v1.4.0.zip` | `background.scripts` + `browser_specific_settings.gecko` |
+| **Chrome / Edge** | `csm-dicos-connector-chrome-v1.5.0.zip` | `background.service_worker` |
+| **Firefox** (≥ 128) | `csm-dicos-connector-firefox-v1.5.0.zip` | `background.scripts` + `browser_specific_settings.gecko` |
 
 Les sources (`src/`) sont **communes** ; seul le manifest diffère. Le code utilise l'espace de noms `chrome.*`
 (aliasé par Firefox) et des content scripts en monde `MAIN` (Chrome 111+, Firefox 128+).
@@ -71,10 +71,12 @@ L'endpoint d'ingestion `POST /api/pmr/missions/ingest` (voir `web/src/app/api/pm
 
 - est **désactivé (503)** tant que les variables ne sont pas posées ;
 - exige l'en-tête **`x-dicos-token`** = `CSM_DICOS_TOKEN` (comparaison à temps constant) ;
-- écrit avec un **compte de service** PocketBase (`CSM_DICOS_PB_EMAIL` / `CSM_DICOS_PB_PASSWORD`, rôle `reader`
+- écrit avec un **compte de service** PocketBase (`CSM_DICOS_PB_EMAIL` / `CSM_DICOS_PB_PASSWORD`, rôle `connector`
   + droit `dicos:write`) : les règles et hooks PocketBase s'appliquent ;
 - est **idempotent** (dédup sur `dicos_id`), ne touche pas les prestations **anonymisées**, et range le détail
-  nominatif dans `pmr_mission` (lisible avec `pmr:read` seulement).
+  nominatif dans `pmr_mission` (lisible avec `pmr:read` seulement) ;
+- reçoit aussi les **groupes** (`{ day, groups }`, depuis 1.5.0) : missions `reservationType` « Group » sans
+  voyageur PMR (`disabled = 0`), rangées dans `group_missions` (onglet **PMR › Groupes**, export ALEA).
 
 Variables à définir côté `csm-web` (Coolify), **en secrets** :
 

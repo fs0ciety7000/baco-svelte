@@ -235,6 +235,28 @@
     return total;
   }
 
+  async function syncGroups(day, groupItems) {
+    const seen = new Set();
+    const firsts = groupItems.filter((m) => {
+      const k = String((m.journey && m.journey.id) || m.id || "");
+      if (!k || seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+    const detailed = await fetchDetails(firsts, (d, t) => progress("Groupes : détail", d, t));
+    const others = groupItems.filter((m) => !firsts.includes(m));
+    const list = [...detailed, ...others];
+    const total = { received: 0, created: 0, updated: 0, unchanged: 0, skipped: 0 };
+    for (let i = 0; i < list.length; i += 300) {
+      progress("Groupes : envoi vers CSM", i, list.length, true);
+      const res = await chrome.runtime.sendMessage({ cmd: "push", day, groups: list.slice(i, i + 300) });
+      if (!res || !res.ok) return { error: (res && res.error) || "Échec de l'envoi des groupes vers CSM." };
+      const g = (res.result && res.result.groups) || {};
+      for (const k of Object.keys(total)) total[k] += Number(g[k]) || 0;
+    }
+    return total;
+  }
+
   // `fresh` (bouton de synchro manuelle) = rafraîchir vraiment : on purge le cache de détail pour reprendre
   // toute mission même si son statut n'a pas changé (le cache ne capte pas les corrections de point de rencontre, etc.).
   async function doSync(day, { fresh = false } = {}) {
@@ -262,8 +284,18 @@
           (m.reservationType === "Disabled" || !m.reservationType) &&
           (m.missionType === "Departure" || m.missionType === "Arrival"),
       );
+      // Groupes (réservations « Group », 9 oct. 2026) : une mission par trajet suffit pour le détail (contact,
+      // n° de dossier) ; le serveur regroupe départ et arrivée par trajet.
+      const groupItems = all.filter(
+        (m) => m && m.reservationType === "Group" && (m.missionType === "Departure" || m.missionType === "Arrival"),
+      );
+      const groupStats = groupItems.length ? await syncGroups(day, groupItems) : null;
+      if (groupStats && groupStats.error) {
+        setLast(groupStats);
+        return groupStats;
+      }
       if (!items.length) {
-        const r = { day, found: 0, received: 0, created: 0, updated: 0, skipped: 0 };
+        const r = { day, found: 0, received: 0, created: 0, updated: 0, skipped: 0, groups: groupStats };
         setLast(r);
         return r;
       }
@@ -286,6 +318,7 @@
             dossiers: dossiers ? dossiers.length : 0,
             tripDiag: dossiers ? [] : tripDiag.slice(0, 12),
             ...sent,
+            groups: groupStats,
           };
       setLast(r);
       return r;
@@ -356,7 +389,7 @@
   async function doSyncRange(start, days, { fresh = true } = {}) {
     const n = Math.max(1, Math.min(7, Number(days) || 1));
     if (n === 1) return doSync(start, { fresh });
-    const total = { day: `${start} → ${addDays(start, n - 1)}`, days: n, found: 0, dossiers: 0, received: 0, created: 0, updated: 0, unchanged: 0, skipped: 0 };
+    const total = { day: `${start} → ${addDays(start, n - 1)}`, days: n, found: 0, dossiers: 0, received: 0, created: 0, updated: 0, unchanged: 0, skipped: 0, groups: { received: 0, created: 0, updated: 0, unchanged: 0, skipped: 0 } };
     try {
       for (let i = 0; i < n; i++) {
         rangeLabel = `Jour ${i + 1}/${n} · `;
@@ -365,6 +398,8 @@
         if (r && r.error) return { ...r, error: `${addDays(start, i)} : ${r.error}` };
         for (const k of ["found", "dossiers", "received", "created", "updated", "unchanged", "skipped"])
           total[k] += Number(r && r[k]) || 0;
+        for (const k of Object.keys(total.groups))
+          total.groups[k] += Number(r && r.groups && r.groups[k]) || 0;
         if (r && r.mode === "missions") Object.assign(total, { mode: "missions", tripDiag: r.tripDiag });
       }
     } finally {

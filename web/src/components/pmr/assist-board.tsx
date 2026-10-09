@@ -44,7 +44,7 @@ export function AssistBadge({ status }: { status: AssistStatus }) {
 
 /** Un trajet DICOS v3 porte ses deux bouts (gare + heure + district, assistance IN au départ / OUT à l'arrivée).
  *  Une ancienne ligne (v2, BACO) n'a qu'une gare d'assistance + un sens : on la ramène au même modèle. */
-type Leg = {
+export type Leg = {
   dep: string;
   depTime: string;
   depDistrict: string;
@@ -108,7 +108,7 @@ function ioLabel(direction: string): string {
 }
 
 /** Badges IN / OUT d'un trajet (les deux si assistance aux deux bouts). */
-function IoBadges({ leg, district }: { leg: Leg; district: string }) {
+export function IoBadges({ leg, district }: { leg: Leg; district: string }) {
   if (!leg.inA && !leg.outA) return <span className="text-fg-muted">—</span>;
   const dim = (d: string) => (district && d !== district ? "opacity-40" : "");
   return (
@@ -127,7 +127,7 @@ function IoBadges({ leg, district }: { leg: Leg; district: string }) {
   );
 }
 
-const HIGHLIGHT = "bg-[color-mix(in_oklab,var(--accent)_22%,transparent)] px-1 text-fg";
+export const HIGHLIGHT = "bg-[color-mix(in_oklab,var(--accent)_22%,transparent)] px-1 text-fg";
 
 /** Trajet : « 06:02 GARE A → 06:55 GARE B ». Gare d'assistance soulignée ; gare du district filtré surlignée. */
 function RouteText({ a, district, barred }: { a: Assist; district: string; barred?: boolean }) {
@@ -161,7 +161,7 @@ function copyTextOf(a: Assist, district: string): string {
   return ends.map((direction) => assistCopyText({ ...a, direction })).join(" / ");
 }
 
-async function copyLabel(text: string) {
+export async function copyLabel(text: string) {
   try {
     await navigator.clipboard.writeText(text);
     toast.success(`Copié : ${text}`);
@@ -171,7 +171,7 @@ async function copyLabel(text: string) {
 }
 
 /** Bouton « copier le libellé » (ex. « Embarquement d'une chaise roulante »). */
-function CopyButton({ text, label }: { text: string; label?: boolean }) {
+export function CopyButton({ text, label }: { text: string; label?: boolean }) {
   return (
     <Button
       size="sm"
@@ -646,8 +646,30 @@ function aleaEnds(rows: Assist[], district: string): AleaEnd[] {
  * une ligne par combinaison (« Embarquement de trois non-voyants »), à copier bloc par bloc ou en entier.
  */
 function AleaExport({ rows, district }: { rows: Assist[]; district: string }) {
+  return (
+    <AleaButton
+      disabled={!rows.length}
+      eyebrow="// Missions PMR"
+      description={`Par train et par gare, PMR additionnées par sens et par type${district ? ` (district ${district})` : ""}. Missions annulées exclues.`}
+      compute={() => aleaGroups(aleaEnds(rows, district))}
+    />
+  );
+}
+
+/** Bouton « Export ALEA » + modale (blocs jour · train · gare, copie par bloc ou « Tout copier »). Partagé PMR / groupes. */
+export function AleaButton({
+  disabled,
+  eyebrow,
+  description,
+  compute,
+}: {
+  disabled: boolean;
+  eyebrow: string;
+  description: string;
+  compute: () => AleaGroup[];
+}) {
   const [open, setOpen] = useState(false);
-  const groups = open ? aleaGroups(aleaEnds(rows, district)) : [];
+  const groups = open ? compute() : [];
   const blockText = (g: AleaGroup) =>
     [
       `${formatDay(g.day)} · ${g.train} · ${g.station}${g.time ? ` (${g.time})` : ""}`,
@@ -655,15 +677,11 @@ function AleaExport({ rows, district }: { rows: Assist[]; district: string }) {
     ].join("\n");
   return (
     <>
-      <Button variant="secondary" onClick={() => setOpen(true)} disabled={!rows.length}>
+      <Button variant="secondary" onClick={() => setOpen(true)} disabled={disabled}>
         <ClipboardList aria-hidden /> Export ALEA
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent
-          eyebrow="// Missions PMR"
-          title="Export ALEA"
-          description={`Par train et par gare, PMR additionnées par sens et par type${district ? ` (district ${district})` : ""}. Missions annulées exclues.`}
-        >
+        <DialogContent eyebrow={eyebrow} title="Export ALEA" description={description}>
           {groups.length === 0 ? (
             <EmptyState
               title="Rien à exporter"
@@ -688,8 +706,8 @@ function AleaExport({ rows, district }: { rows: Assist[]; district: string }) {
                     </p>
                     <CopyButton text={g.lines.join("\n")} />
                   </div>
-                  {g.lines.map((line) => (
-                    <p key={line} className="text-body text-fg select-text">
+                  {g.lines.map((line, i) => (
+                    <p key={i} className="text-body text-fg select-text">
                       {line}
                     </p>
                   ))}

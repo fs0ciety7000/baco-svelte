@@ -35,9 +35,11 @@ async function push(day, payload) {
 
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (msg && msg.cmd === "push") {
-    const payload = Array.isArray(msg.dossiers)
-      ? { dossiers: msg.dossiers }
-      : { missions: Array.isArray(msg.missions) ? msg.missions : [] };
+    const payload = Array.isArray(msg.groups)
+      ? { groups: msg.groups }
+      : Array.isArray(msg.dossiers)
+        ? { dossiers: msg.dossiers }
+        : { missions: Array.isArray(msg.missions) ? msg.missions : [] };
     push(msg.day, payload).then(reply);
     return true; // réponse asynchrone
   }

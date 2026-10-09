@@ -41,7 +41,9 @@ function fmtResult(r) {
   const when = r.at ? ` · ${new Date(r.at).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" })}` : "";
   const found = num(r.found ?? r.received);
   // r.days > 1 : synchro de plusieurs jours (totaux cumulés).
-  return `<span class="ok">✓ ${escapeHtml(String(r.day || ""))}${escapeHtml(when)}</span><br>${found} mission(s) PMR → ${num(r.received)} trajet(s)${r.dossiers ? ` · ${num(r.dossiers)} dossier(s)` : ""} · <b>${num(r.created)}</b> créée(s), <b>${num(r.updated)}</b> maj, ${num(r.skipped)} ignorée(s)${fmtMode(r)}`;
+  return `<span class="ok">✓ ${escapeHtml(String(r.day || ""))}${escapeHtml(when)}</span><br>${found} mission(s) PMR → ${num(r.received)} trajet(s)${r.dossiers ? ` · ${num(r.dossiers)} dossier(s)` : ""} · <b>${num(r.created)}</b> créée(s), <b>${num(r.updated)}</b> maj, ${num(r.skipped)} ignorée(s)${
+    r.groups ? `<br>Groupes : ${num(r.groups.received)} trajet(s) · <b>${num(r.groups.created)}</b> créé(s), <b>${num(r.groups.updated)}</b> maj` : ""
+  }${fmtMode(r)}`;
 }
 // Mode de lecture : dossiers complets (trip-details) ou repli sur l'ancien format, avec les chemins essayés.
 function fmtMode(r) {

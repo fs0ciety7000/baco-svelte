@@ -327,3 +327,62 @@ export function aleaGroups(ends: AleaEnd[]): AleaGroup[] {
         a.station.localeCompare(b.station),
     );
 }
+
+// ---------------------------------------------------------------------------------------------------
+// Export ALEA des GROUPES (demande du 9 oct. 2026) : « Embarquement d'un groupe de 53 personnes dont 50 enfants »,
+// sans « dont … » s'il n'y a pas d'enfants ; une ligne par groupe, regroupées par jour + train + gare.
+
+export function aleaGroupLine(
+  verb: "Embarquement" | "Débarquement",
+  total: number,
+  children: number,
+): string {
+  const n = Math.max(1, total || 1);
+  const people = n > 1 ? `${n} personnes` : "1 personne";
+  const kids = children > 0 ? ` dont ${children} ${children > 1 ? "enfants" : "enfant"}` : "";
+  return `${verb} d'un groupe de ${people}${kids}`;
+}
+
+export type GroupEnd = {
+  day: string;
+  train: string;
+  station: string;
+  time: string;
+  io: "IN" | "OUT";
+  total: number;
+  children: number;
+};
+
+export function aleaGroupBlocks(ends: GroupEnd[]): AleaGroup[] {
+  const map = new Map<string, AleaGroup & { items: GroupEnd[] }>();
+  for (const e of ends) {
+    const key = `${e.day}|${e.train}|${e.station}`;
+    const g = map.get(key) ?? {
+      key,
+      day: e.day,
+      train: e.train,
+      station: e.station,
+      time: e.time,
+      lines: [],
+      items: [],
+    };
+    if (e.time && (!g.time || e.time < g.time)) g.time = e.time;
+    g.items.push(e);
+    map.set(key, g);
+  }
+  return [...map.values()]
+    .map(({ items, ...g }) => ({
+      ...g,
+      lines: items
+        .sort((a, b) => (a.io === b.io ? 0 : a.io === "IN" ? -1 : 1))
+        .map((e) =>
+          aleaGroupLine(e.io === "IN" ? "Embarquement" : "Débarquement", e.total, e.children),
+        ),
+    }))
+    .sort(
+      (a, b) =>
+        a.day.localeCompare(b.day) ||
+        (a.time || "99").localeCompare(b.time || "99") ||
+        a.station.localeCompare(b.station),
+    );
+}

@@ -77,6 +77,12 @@ export const MODULES: NavModule[] = [
         permission: "deplacements:read",
         keywords: ["déplacements", "DICOS", "assistance"],
       },
+      {
+        href: "/pmr/groupes",
+        label: "Groupes",
+        permission: "pmr:read",
+        keywords: ["école", "groupe", "DICOS"],
+      },
       { href: "/pmr/historique", label: "Historique", permission: "deplacements:read" },
       { href: "/pmr/clients", label: "Clients", permission: "pmr:read" },
       { href: "/pmr/materiel", label: "Rampes et matériel", permission: "pmr:read" },

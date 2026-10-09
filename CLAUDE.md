@@ -439,7 +439,10 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - 2026-10-09 — **Groupes DICOS** (demande : onglet comme les PMR, « Export ALEA » de groupe) : collection
   `group_missions` (`1760001500`, une ligne par trajet `j<journeyId>`, écrite par le connecteur, lue avec `pmr:read`,
   contact purgé à 12 mois par `pmr-retention`), `mapGroupList` (réservations `Group`, comptages adultes / enfants /
-  seniors), ingestion `{ groups }`.
+  seniors), ingestion `{ groups }`. Écran **PMR › Groupes** (`/pmr/groupes`, lecture seule, mêmes filtres jour/plage/
+  district/statut, panneau avec contact, « Export ALEA » : « Embarquement d'un groupe de 25 personnes dont 20 enfants »,
+  sans « dont… » s'il n'y a pas d'enfant, Débarquement pour OUT). Extension **1.5.0** : envoie aussi les groupes
+  (détail d'un trajet par dossier), totaux « Groupes » dans le popup.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

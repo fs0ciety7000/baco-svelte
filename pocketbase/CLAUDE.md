@@ -97,3 +97,6 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
   (`line_stations`) et PN (`level_crossings`) sont seulement **lus** par l'onglet Lignes. 12 contrôles de règles.
 - **Sauvegardes** : réglées par migration (`0 2 * * *`, 14 conservées dans `pb_data/backups`).
 - `PREPROD_PB_*` désigne une autre instance (jeu) : **n'y jamais écrire**, ne pas y lancer `test-rules.mjs`.
+- **Groupes DICOS** (`1760001500_group_missions.js`) : `group_missions` = une ligne par trajet de réservation de groupe
+  (`dicos_id = j<journeyId>`, unique), écrite par le connecteur (`dicos:write`, `dicos_id` figé), lue avec `pmr:read`
+  (pas `otto_agent`), suppression admin. Contact (nom, téléphone, e-mail) effacé à 12 mois par `pmr-retention`.
