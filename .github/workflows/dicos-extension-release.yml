@@ -1,11 +1,17 @@
 # Publication automatique du Connecteur DICOS : sur un tag `dicos-connector-v*`, construit les deux paquets
 # (Chrome/Edge + Firefox) et crée la Release GitHub avec les .zip en pièces jointes.
 # Déclenchement manuel possible aussi (workflow_dispatch) : construit les zips sans créer de Release.
+# Sur un push d'une branche de session (`claude/**`) qui touche l'extension : construit les zips et les joint au run
+# (artefact « dicos-connector-zips ») — GitHub ne propose « Run workflow » que pour les workflows présents sur `main`.
 name: Connecteur DICOS — release
 
 on:
   push:
     tags: ["dicos-connector-v*"]
+    branches: ["claude/**"]
+    paths:
+      - "extension/**"
+      - ".github/workflows/dicos-extension-release.yml"
   workflow_dispatch:
 
 permissions:

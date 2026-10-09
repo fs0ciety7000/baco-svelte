@@ -463,6 +463,8 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   `extension/dist/` (`build-zips.sh`) ; workflow `.github/workflows/dicos-extension-release.yml` publie la Release sur
   un tag `dicos-connector-v*` (pas de CLI `gh` ni d'API Releases dans l'environnement cloud, et push de tag bloqué par
   le proxy → l'utilisateur crée le tag / la Release).
+  9 oct. : le workflow n'apparaissait pas dans Actions (absent de `main`) → il tourne aussi à chaque push d'une branche
+  `claude/**` qui touche `extension/**` et joint les zips au run (artefact `dicos-connector-zips`).
 - 2026-10-08 — **Module Référentiels** (audit `docs/design/AUDIT-UX-REFERENTIELS.md`, tout validé). 7 collections
   (`1760000900` : `directory_contacts`, `spi_points`, `ptcar` [abbr unique], `ebp_views`, `documents` [fichier
   protégé], `procedures`, `procedure_versions` hook-only) ; écriture annuaire/SPI/PtCar/EBP = coordinateurs,
