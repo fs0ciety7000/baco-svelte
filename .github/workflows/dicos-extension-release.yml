@@ -82,8 +82,12 @@ jobs:
           mkdir -p /tmp/ff /tmp/signed
           cp -r extension/dicos-connector/. /tmp/ff/
           mv /tmp/ff/manifest.firefox.json /tmp/ff/manifest.json
+          # Espaces / retours à la ligne collés avec les secrets : refusés par AMO (« Unknown JWT iss »).
+          key="$(printf %s "$AMO_JWT_ISSUER" | tr -d '[:space:]')"
+          secret="$(printf %s "$AMO_JWT_SECRET" | tr -d '[:space:]')"
+          echo "Clé d'API : ${#key} caractères, commence par ${key%%:*}:"
           npx --yes web-ext@8.10.0 sign --source-dir /tmp/ff --channel unlisted \
-            --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET" --artifacts-dir /tmp/signed
+            --api-key "$key" --api-secret "$secret" --artifacts-dir /tmp/signed
       - name: Commiter le .xpi signé
         if: steps.check.outputs.skip != '1'
         env:
