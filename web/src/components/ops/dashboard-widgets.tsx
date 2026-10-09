@@ -171,6 +171,25 @@ export function TrainsWidget({ favorites }: { favorites: FavoriteStation[] | nul
   );
 }
 
+// Les widgets « Perturbations » et « Travaux » lisent la même liste : une seule requête partagée (30 s), sinon chaque
+// chargement de l'accueil en faisait deux.
+let disturbancesCache: { at: number; promise: Promise<{ items: Disturbance[] }> } | null = null;
+function sharedDisturbances(): Promise<{ items: Disturbance[] }> {
+  if (disturbancesCache && Date.now() - disturbancesCache.at < 30_000)
+    return disturbancesCache.promise;
+  const promise = fetch("/api/operations/irail/perturbations", { cache: "no-store" }).then(
+    async (res) => {
+      if (!res.ok) throw new Error(String(res.status));
+      return (await res.json()) as { items: Disturbance[] };
+    },
+  );
+  disturbancesCache = { at: Date.now(), promise };
+  promise.catch(() => {
+    if (disturbancesCache?.promise === promise) disturbancesCache = null;
+  });
+  return promise;
+}
+
 /**
  * Widgets « Perturbations » et « Travaux » (demande du 9 oct. 2026) : messages iRail du réseau, via le relais du
  * serveur CSM (même source que l'onglet Perturbations de /operations). Rechargés toutes les 5 min, onglet visible.
@@ -189,9 +208,7 @@ export function DisturbanceWidget({
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await fetch("/api/operations/irail/perturbations", { cache: "no-store" });
-        if (!res.ok) throw new Error();
-        const data = (await res.json()) as { items: Disturbance[] };
+        const data = await sharedDisturbances();
         if (!cancelled) {
           setItems(data.items);
           setError(false);

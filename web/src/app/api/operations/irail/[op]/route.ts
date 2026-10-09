@@ -27,10 +27,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ op: 
   const user = await getCurrentUser();
   if (!user) return json({ error: "Non connecté" }, 401);
   if (!can(user, "live:read")) return json({ error: "Introuvable" }, 404);
-  // 60 requêtes par minute et par agent (un écran ouvert en consomme 2 à 4).
-  if (!allow(`irail:${user.id}`, 60, 60_000))
-    return json({ error: "Trop de requêtes : réessayez dans un instant." }, 429);
   const { op } = await params;
+  // 60 requêtes par minute et par agent (un écran ouvert en consomme 2 à 4). Les perturbations ont leur propre
+  // compteur : réponse en cache serveur 5 min (un seul appel iRail quel que soit le nombre d'agents), et deux widgets
+  // d'accueil + l'onglet les lisent (le tableau de bord en recharge pouvait atteindre 429, CI du 9 oct.).
+  const bucket = op === "perturbations" ? `irail-perturbations:${user.id}` : `irail:${user.id}`;
+  if (!allow(bucket, 60, 60_000))
+    return json({ error: "Trop de requêtes : réessayez dans un instant." }, 429);
   const sp = new URL(request.url).searchParams;
   try {
     switch (op) {
