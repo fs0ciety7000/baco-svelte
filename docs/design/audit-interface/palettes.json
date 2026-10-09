@@ -1,0 +1,95 @@
+{
+ "A": {
+  "name": "Commandement affiné",
+  "dark": {
+   "bg": "#0D0B09",
+   "surface": "#161310",
+   "surface-2": "#1F1B17",
+   "border": "#37322C",
+   "border-strong": "#7C766E",
+   "fg": "#EDE7DC",
+   "fg-muted": "#B1AA9E",
+   "fg-subtle": "#8C857C",
+   "accent": "#FAC13B",
+   "accent-fg": "#0D0B09",
+   "ok": "#64CF80",
+   "warn": "#F68C36",
+   "danger": "#FD7277",
+   "info": "#68B7ED",
+   "progress": "#D78ADB"
+  }
+ },
+ "B": {
+  "name": "Craie",
+  "dark": {
+   "bg": "#0E100F",
+   "surface": "#151513",
+   "surface-2": "#1E1E1B",
+   "border": "#3D3E38",
+   "border-strong": "#7B7B72",
+   "fg": "#EEECD6",
+   "fg-muted": "#AFAFA2",
+   "fg-subtle": "#8A8A80",
+   "accent": "#FFFCE1",
+   "accent-fg": "#0E100F",
+   "ok": "#5ED476",
+   "warn": "#F8962D",
+   "danger": "#FF7777",
+   "info": "#5ABDF2"
+  },
+  "modules": {
+   "dark": {
+    "commandes": "#F9E361",
+    "pmr": "#C3B0FD",
+    "operations": "#65E0E7",
+    "annuaire": "#F6B3D8",
+    "equipe": "#F8BFA6",
+    "admin": "#C3BDB0"
+   },
+   "light": {
+    "commandes": "#766200",
+    "pmr": "#6646A8",
+    "operations": "#017272",
+    "annuaire": "#9B3876",
+    "equipe": "#66423F",
+    "admin": "#615D54"
+   }
+  },
+  "light": {
+   "bg": "#FAF8E7",
+   "surface": "#FEFDF4",
+   "surface-2": "#F1EEDC",
+   "border": "#D8D5C3",
+   "border-strong": "#807E70",
+   "fg": "#0D100E",
+   "fg-muted": "#58594F",
+   "fg-subtle": "#6D6C63",
+   "accent": "#131715",
+   "accent-fg": "#FAF8E7",
+   "ok": "#0F6A31",
+   "warn": "#9A4900",
+   "danger": "#AC262A",
+   "info": "#005F98"
+  }
+ },
+ "C": {
+  "name": "Jour (porcelaine)",
+  "light": {
+   "bg": "#F4F6F8",
+   "surface": "#FDFEFF",
+   "surface-2": "#EBEFF2",
+   "border": "#D7DBE0",
+   "border-strong": "#7B8187",
+   "fg": "#131922",
+   "fg-muted": "#515963",
+   "fg-subtle": "#666C75",
+   "accent": "#006071",
+   "accent-fg": "#FDFEFF",
+   "ok": "#146D34",
+   "warn": "#9F5000",
+   "danger": "#B32228",
+   "info": "#3055B6",
+   "progress": "#932B83"
+  }
+ }
+}

@@ -486,6 +486,13 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   depuis le service worker (permission d'hôte, session ATMS du navigateur) ; 3 essais content → service worker ; 100
   trains max ; le popup affiche la voie (onglet / directe) et les trains introuvables. Logique testée avec un `chrome`
   simulé. Les compteurs complète / légère étaient bien remplis (12 / 45 lignes sur le test).
+- 2026-10-09 — **Étape 7 « Finition de l'interface » : audit** (accord de l'utilisateur ; référence gsap.com fournie,
+  `docs/design/references/GSAP-STYLE.md`). 29 écrans capturés (1440 + 390, hors dépôt), 4 audits (UI, UX, motion,
+  typo / couleur) → `docs/design/AUDIT-INTERFACE.md` + `docs/design/audit-interface/`. Critiques : accent partout et
+  confondu avec les statuts, texte trop petit / pâle, premier écran mobile mangé par les filtres, pas de date de
+  synchro DICOS, aucun `loading`/`error.tsx`, dialogues qui glissent en diagonale, graphiques illisibles. Planche
+  interactive (artefact « Planche CSM v2 ») : palettes A Commandement affiné / B Craie (GSAP, couleur par module) /
+  C Porcelaine, forme angle ou pilule, typo. **En attente des choix de l'utilisateur** avant tout changement.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans
