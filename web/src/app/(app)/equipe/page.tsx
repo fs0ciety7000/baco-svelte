@@ -3,6 +3,7 @@ import { Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { pl } from "@/lib/utils";
 import { Avatar } from "@/components/shell/avatar";
 import { Button } from "@/components/ui/button";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
@@ -66,7 +67,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         </div>
       </Form>
       <p className="text-body text-fg-muted">
-        <span className="font-mono text-fg tabular">{rows.length}</span> agent(s)
+        <span className="font-mono text-fg tabular">{rows.length}</span> {pl(rows.length, "agent")}
       </p>
       {rows.length === 0 ? (
         <EmptyState title="Aucun agent" description="Aucun agent ne correspond à ces filtres." />

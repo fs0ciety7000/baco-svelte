@@ -23,6 +23,8 @@ const twMerge = extendTailwindMerge({
             "fg-subtle",
             "accent",
             "accent-fg",
+            "accent-soft",
+            "accent-faint",
             "ok",
             "warn",
             "danger",
@@ -37,4 +39,9 @@ const twMerge = extendTailwindMerge({
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+/** Pluriel français simple (0 et 1 au singulier) : remplace les « mission(s) » (audit UI du 9 oct. 2026). */
+export function pl(n: number, singular: string, plural = `${singular}s`): string {
+  return Math.abs(n) >= 2 ? plural : singular;
 }

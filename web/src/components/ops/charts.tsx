@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn, pl } from "@/lib/utils";
 
 // Graphiques des statistiques en HTML / CSS simple (pas de Chart.js, décision du 8 octobre 2026) : couleurs par jetons,
 // valeurs lisibles sans la couleur (titre au survol, tableau équivalent pour les lecteurs d'écran).
@@ -45,7 +45,7 @@ export function StackedBars({
             {series.map((s) => (
               <div
                 key={s.label}
-                title={`${fmtBucket(s.label)} : ${s.bus} bus, ${s.taxi} taxi(s)`}
+                title={`${fmtBucket(s.label)} : ${s.bus} bus, ${s.taxi} ${pl(s.taxi, "taxi")}`}
                 className="flex h-full min-w-0 flex-1 flex-col justify-end"
               >
                 <span

@@ -60,7 +60,7 @@ export function Topbar() {
         {actions.length > 0 ? (
           <Menu.Root>
             <Menu.Trigger asChild>
-              <Button variant="primary" className="hidden md:inline-flex">
+              <Button variant="secondary" className="hidden md:inline-flex">
                 <Plus /> Nouveau
               </Button>
             </Menu.Trigger>

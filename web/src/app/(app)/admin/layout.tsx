@@ -6,11 +6,7 @@ import { requireAdmin } from "@/server/auth";
 export default async function Layout({ children }: { children: ReactNode }) {
   await requireAdmin();
   return (
-    <ModuleLayout
-      moduleId="admin"
-      title="Administration"
-      eyebrow="// Administration · réservé aux administrateurs"
-    >
+    <ModuleLayout moduleId="admin" title="Administration" eyebrow="Réservé aux administrateurs">
       {children}
     </ModuleLayout>
   );

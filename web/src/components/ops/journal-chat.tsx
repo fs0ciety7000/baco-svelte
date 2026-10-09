@@ -336,7 +336,7 @@ export function JournalChat({
             className={cn(
               "grid size-9 shrink-0 place-items-center border font-mono text-small font-semibold",
               mine
-                ? "border-accent bg-[color-mix(in_oklab,var(--accent)_16%,var(--surface))] text-fg"
+                ? "border-accent bg-accent-soft text-fg"
                 : irail
                   ? "border-info bg-[color-mix(in_oklab,var(--info)_14%,var(--surface))] text-fg"
                   : "border-border-strong bg-surface text-fg-muted",
@@ -375,15 +375,17 @@ export function JournalChat({
               style={{ "--status": tone } as React.CSSProperties}
               aria-label={`Message de ${r.authorName}, ${stampOf(r.created || r.occurredAt)}`}
               className={cn(
-                "group relative flex min-w-0 flex-col gap-2 border border-l-[3px] border-l-(--status) px-3 py-2 animate-fade-in",
-                mine
-                  ? "border-[color-mix(in_oklab,var(--accent)_30%,var(--border))] bg-[color-mix(in_oklab,var(--accent)_7%,var(--surface))]"
-                  : "border-border bg-surface",
+                "group relative flex min-w-0 flex-col gap-2 rounded-box border border-l-[3px] border-l-(--status) px-3 py-2 animate-fade-in",
+                // Mes messages : fond surface-2 ; non lu : pastille info (l'accent est réservé à l'action).
+                mine ? "border-border bg-surface-2" : "border-border bg-surface",
                 r.urgent &&
                   r.status === "active" &&
                   "border-danger bg-[color-mix(in_oklab,var(--danger)_8%,var(--surface))]",
                 r.status === "retiree" && "border-dashed opacity-70",
-                !read && !mine && r.status === "active" && "shadow-[inset_0_0_0_1px_var(--accent)]",
+                !read &&
+                  !mine &&
+                  r.status === "active" &&
+                  "before:absolute before:top-2.5 before:right-2.5 before:size-2 before:rounded-full before:bg-info",
                 wantedEntry === r.id && "outline-2 outline-offset-2 outline-accent",
               )}
             >
@@ -486,7 +488,7 @@ export function JournalChat({
         {pinned.length ? (
           <section
             aria-label="Consignes épinglées"
-            className="border-b border-border bg-[color-mix(in_oklab,var(--accent)_6%,var(--surface))]"
+            className="border-b border-border bg-accent-faint"
             data-testid="log-pinned"
           >
             <button

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, useTransition } from "react";
 
+import { pl } from "@/lib/utils";
+
 import {
   addDriver,
   duplicateOrder,
@@ -786,7 +788,9 @@ function BusPreview({
         <dd className="tabular">{d.order_date || "—"}</dd>
         <dt className="text-fg-muted">Desserte</dt>
         <dd>
-          {d.direct ? "Direct" : `Omnibus${stops.length ? ` · ${stops.length} arrêt(s)` : ""}`}
+          {d.direct
+            ? "Direct"
+            : `Omnibus${stops.length ? ` · ${stops.length} ${pl(stops.length, "arrêt")}` : ""}`}
           {d.round_trip ? " · A-R" : ""}
         </dd>
         <dt className="text-fg-muted">Société</dt>

@@ -3,6 +3,8 @@ import { Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { pl } from "@/lib/utils";
+import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { ClientBoard } from "@/components/pmr/client-board";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,12 +31,13 @@ export default async function Page({
     <section className="flex flex-col gap-4" aria-label="Clients PMR">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-body text-fg-muted">
-          <span className="font-mono text-fg tabular">{list.total}</span> fiche(s)
+          <span className="font-mono text-fg tabular">{list.total}</span> {pl(list.total, "fiche")}
           {archived ? " archivée(s)" : ""}
         </p>
         <LiveRefresh topics={["pmr_clients"]} />
       </div>
       <Form action="/pmr/clients" role="search" className="flex flex-wrap items-end gap-2">
+        <FormAutoSubmit />
         <label className="flex min-w-0 basis-full flex-col gap-1 md:max-w-80 md:flex-1 md:basis-auto">
           <span className="text-small text-fg-muted">Recherche</span>
           <span className="relative">

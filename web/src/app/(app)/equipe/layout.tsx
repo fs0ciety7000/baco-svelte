@@ -4,7 +4,7 @@ import { ModuleLayout } from "@/components/shell/module-layout";
 
 export default async function Layout({ children }: { children: ReactNode }) {
   return (
-    <ModuleLayout moduleId="equipe" title="Équipe" eyebrow="// Équipe">
+    <ModuleLayout moduleId="equipe" title="Équipe">
       {children}
     </ModuleLayout>
   );

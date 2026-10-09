@@ -3,6 +3,8 @@ import { ChevronDown, Download, Search, SlidersHorizontal } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { pl } from "@/lib/utils";
+import { ChipRow, FilterChip } from "@/components/ui/filters";
 import { DutyChip } from "@/components/ops/duty-districts";
 import { JournalChat } from "@/components/ops/journal-chat";
 import { Button } from "@/components/ui/button";
@@ -10,8 +12,8 @@ import { Input } from "@/components/ui/input";
 import { CATEGORY, LOG_CATEGORIES, type LogCategory } from "@/lib/ops/log";
 import { addDays, brusselsDay } from "@/lib/orders/time";
 import { can, isAdmin } from "@/lib/permissions";
-import { cn } from "@/lib/utils";
 import { requirePermission } from "@/server/auth";
+
 import {
   listLog,
   listMentionable,
@@ -24,9 +26,6 @@ import {
 import { LiveRefresh } from "../../commandes/live-refresh";
 
 export const metadata: Metadata = { title: "Journal · CSM" };
-
-const chip = (on: boolean) =>
-  cn("shrink-0", on ? "" : "border border-border text-fg-muted hover:text-fg");
 
 /** Journal (ex-main courante) : fil plein écran façon messagerie (décision du 9 oct. 2026). */
 export default async function Page({
@@ -111,61 +110,40 @@ export default async function Page({
   );
   const active = [f.categorie, f.urgentes, f.retirees, f.agents].filter(Boolean).length;
   const filters = (
-    <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5" aria-label="Filtres">
-      <Button
-        asChild
-        size="sm"
-        variant={!f.categorie ? "primary" : "ghost"}
-        className={chip(!f.categorie)}
-      >
+    <ChipRow aria-label="Filtres">
+      <FilterChip asChild pressed={!f.categorie}>
         <Link
           href={keep({ categorie: undefined })}
           aria-current={!f.categorie ? "true" : undefined}
         >
           Tout
         </Link>
-      </Button>
+      </FilterChip>
       {LOG_CATEGORIES.map((c) => (
-        <Button
-          key={c}
-          asChild
-          size="sm"
-          variant={f.categorie === c ? "primary" : "ghost"}
-          className={chip(f.categorie === c)}
-        >
+        <FilterChip key={c} asChild pressed={f.categorie === c}>
           <Link href={keep({ categorie: c })} aria-current={f.categorie === c ? "true" : undefined}>
             {CATEGORY[c].label}
           </Link>
-        </Button>
+        </FilterChip>
       ))}
-      <Button
-        asChild
-        size="sm"
-        variant={f.urgentes ? "primary" : "ghost"}
-        className={chip(f.urgentes)}
-      >
+      <FilterChip asChild pressed={f.urgentes}>
         <Link href={keep({ urgentes: f.urgentes ? undefined : "1" })} aria-pressed={f.urgentes}>
           Urgents
         </Link>
-      </Button>
-      <Button asChild size="sm" variant={f.agents ? "primary" : "ghost"} className={chip(f.agents)}>
+      </FilterChip>
+      <FilterChip asChild pressed={f.agents}>
         <Link href={keep({ agents: f.agents ? undefined : "1" })} aria-pressed={f.agents}>
           Sans iRail
         </Link>
-      </Button>
+      </FilterChip>
       {coordinator ? (
-        <Button
-          asChild
-          size="sm"
-          variant={f.retirees ? "primary" : "ghost"}
-          className={chip(f.retirees)}
-        >
+        <FilterChip asChild pressed={f.retirees}>
           <Link href={keep({ retirees: f.retirees ? undefined : "1" })} aria-pressed={f.retirees}>
             Avec les retirés
           </Link>
-        </Button>
+        </FilterChip>
       ) : null}
-    </div>
+    </ChipRow>
   );
 
   const header = (
@@ -173,7 +151,7 @@ export default async function Page({
       <div className="flex items-center gap-x-3 gap-y-2 md:flex-wrap">
         {search ? (
           <p className="min-w-0 flex-1 text-body text-fg-muted md:flex-none">
-            <span className="font-mono text-fg tabular">{total}</span> résultat(s){" "}
+            <span className="font-mono text-fg tabular">{total}</span> {pl(total, "résultat")}{" "}
             {f.q ? `pour « ${f.q} »` : "liés au passage à niveau"} (180 jours) ·{" "}
             <Link href={keep({})} className="link">
               revenir au fil
@@ -185,7 +163,7 @@ export default async function Page({
               Fil du journal
             </h2>
             <span className="font-mono text-small text-fg-muted tabular max-sm:hidden">
-              {total} message(s)
+              {total} {pl(total, "message")}
             </span>
           </div>
         )}
@@ -200,7 +178,11 @@ export default async function Page({
       <details className="group md:hidden" open={search || active > 0}>
         <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-small text-fg-muted [&::-webkit-details-marker]:hidden">
           <SlidersHorizontal aria-hidden className="size-4" /> Rechercher et filtrer
-          {active ? <span className="label-mono text-accent">· {active} actif(s)</span> : null}
+          {active ? (
+            <span className="label-mono text-accent">
+              · {active} {pl(active, "actif")}
+            </span>
+          ) : null}
           <ChevronDown
             aria-hidden
             className="ml-auto size-4 transition-transform group-open:rotate-180"

@@ -117,7 +117,7 @@ export function NotificationBell() {
                   key={n.id}
                   className={cn(
                     "flex cursor-pointer gap-3 px-3 py-2 outline-none data-[highlighted]:bg-surface-2",
-                    !n.readAt && "bg-[color-mix(in_oklab,var(--accent)_8%,var(--surface))]",
+                    !n.readAt && "bg-accent-faint",
                   )}
                   onSelect={() => void open(n)}
                 >

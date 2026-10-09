@@ -3,6 +3,7 @@ import { Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { EquipmentBoard } from "@/components/pmr/equipment-board";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
@@ -49,7 +50,7 @@ export default async function Page({
                   className={cn(
                     "inline-flex h-11 items-center gap-2 border px-3 text-body whitespace-nowrap md:h-control",
                     v === list.view
-                      ? "border-accent bg-[color-mix(in_oklab,var(--accent)_12%,var(--surface))] text-fg"
+                      ? "border-accent bg-accent-soft text-fg"
                       : "border-border text-fg-muted hover:text-fg",
                   )}
                 >
@@ -69,6 +70,7 @@ export default async function Page({
         role="search"
         className="grid grid-cols-2 gap-2 md:flex md:items-end"
       >
+        <FormAutoSubmit />
         <input type="hidden" name="vue" value={list.view} />
         <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-64">
           <span className="text-small text-fg-muted">Recherche</span>

@@ -48,7 +48,7 @@ function DutyDialog({
                 className={cn(
                   "flex min-h-12 cursor-pointer items-center gap-3 border px-3 text-left transition-colors",
                   on
-                    ? "border-accent bg-[color-mix(in_oklab,var(--accent)_12%,var(--surface))]"
+                    ? "border-accent bg-accent-soft"
                     : "border-border-strong bg-surface hover:border-fg-muted",
                 )}
               >
@@ -151,7 +151,7 @@ export function DutyBanner({ day, initial }: { day: string; initial: string[] })
       role="region"
       aria-label="Districts du jour"
       data-testid="duty-banner"
-      className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-[color-mix(in_oklab,var(--accent)_8%,var(--surface))] px-4 py-2 md:px-6"
+      className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-accent-faint px-4 py-2 md:px-6"
     >
       <span className="inline-flex items-center gap-1.5 text-small font-medium text-fg">
         <MapPin aria-hidden className="size-4 text-accent" /> Où travaillez-vous aujourd&apos;hui ?
@@ -169,7 +169,7 @@ export function DutyBanner({ day, initial }: { day: string; initial: string[] })
               className={cn(
                 "h-control-sm min-w-11 cursor-pointer border px-3 text-small transition-colors",
                 on
-                  ? "border-accent bg-[color-mix(in_oklab,var(--accent)_16%,var(--surface))] text-fg"
+                  ? "border-accent bg-accent-soft text-fg"
                   : "border-border-strong bg-surface text-fg-muted hover:text-fg",
               )}
               title={d}

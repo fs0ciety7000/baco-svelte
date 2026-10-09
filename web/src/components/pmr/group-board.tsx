@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { pl } from "@/lib/utils";
 import { Sheet } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/status-badge";
 import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
@@ -93,7 +94,7 @@ export function GroupBoard({ rows, district = "" }: { rows: GroupMission[]; dist
         return (
           <section key={d} className="flex flex-col gap-2" aria-label={formatDay(d)}>
             <h2 className="label-mono text-fg-muted first-letter:uppercase">
-              {formatDay(d)} · {list.length} trajet(s)
+              {formatDay(d)} · {list.length} {pl(list.length, "trajet")}
             </h2>
             <div className="hidden md:block">
               <Table>
@@ -202,8 +203,9 @@ export function GroupBoard({ rows, district = "" }: { rows: GroupMission[]; dist
             </dd>
             <dt className="text-small text-fg-muted">Composition</dt>
             <dd>
-              {total(open)} personne(s) : {open.adults} adulte(s), {open.children} enfant(s),{" "}
-              {open.seniors} senior(s)
+              {total(open)} {pl(total(open), "personne")} : {open.adults}{" "}
+              {pl(open.adults, "adulte")}, {open.children} {pl(open.children, "enfant")},{" "}
+              {open.seniors} {pl(open.seniors, "senior")}
             </dd>
             {open.coach ? (
               <>

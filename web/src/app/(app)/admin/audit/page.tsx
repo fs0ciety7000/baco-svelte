@@ -3,6 +3,7 @@ import { Download } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { pl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Input, Select } from "@/components/ui/input";
@@ -105,7 +106,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         </div>
       </Form>
       <p className="text-body text-fg-muted">
-        <span className="font-mono text-fg tabular">{res.totalItems}</span> ligne(s)
+        <span className="font-mono text-fg tabular">{res.totalItems}</span>{" "}
+        {pl(res.totalItems, "ligne")}
         {p.user ? (
           <>
             {" "}

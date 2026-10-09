@@ -38,7 +38,7 @@ import {
 } from "@/lib/ops/irail";
 import { safeCall } from "@/lib/orders/safe-call";
 import { brusselsDay, brusselsTime } from "@/lib/orders/time";
-import { cn } from "@/lib/utils";
+import { cn, pl } from "@/lib/utils";
 import type { Watch } from "@/server/data/ops";
 
 const hm = (ms: number) => (ms ? brusselsTime(new Date(ms)) : "--:--");
@@ -852,7 +852,7 @@ function TrainPanel({
               {comp.segments.map((seg, k) => (
                 <div key={k} className="flex flex-col gap-1">
                   <p className="text-small text-fg-muted">
-                    {seg.from} → {seg.to} · {seg.units.length} voiture(s)
+                    {seg.from} → {seg.to} · {seg.units.length} {pl(seg.units.length, "voiture")}
                   </p>
                   <div className="flex flex-wrap gap-1">
                     {seg.units.map((u, j) => (

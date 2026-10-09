@@ -1,6 +1,7 @@
 import { Download } from "lucide-react";
 import type { Metadata } from "next";
 
+import { pl } from "@/lib/utils";
 import { AssistBoard } from "@/components/pmr/assist-board";
 import { PmrFilterBar, type PmrFilters } from "@/components/pmr/filter-bar";
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
     <section className="flex flex-col gap-4" aria-label="Historique PMR">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-body text-fg-muted">
-          <span className="font-mono text-fg tabular">{total}</span> mission(s)
+          <span className="font-mono text-fg tabular">{total}</span> {pl(total, "mission")}
           {total > rows.length ? ` · ${rows.length} affichées : affinez les filtres` : ""}
         </p>
         <Button asChild variant="secondary">

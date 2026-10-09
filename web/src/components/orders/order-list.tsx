@@ -3,6 +3,8 @@ import { Search } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { ChipRow, CollapsibleFilters, FilterChip } from "@/components/ui/filters";
+import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Input, Select } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/misc";
 import { StatusBadge, statusColor } from "@/components/ui/status-badge";
@@ -37,25 +39,27 @@ export function FilterBar({ action, filters }: { action: string; filters: ListFi
     const params = new URLSearchParams({ ...clean(filters), du, au });
     const active = filters.du === du && filters.au === au;
     return (
-      <Button
-        asChild
-        size="sm"
-        variant={active ? "primary" : "ghost"}
-        className={active ? "" : "border border-border"}
-      >
+      <FilterChip key={label} asChild pressed={active}>
         <Link href={`${action}?${params}`} aria-current={active ? "true" : undefined}>
           {label}
         </Link>
-      </Button>
+      </FilterChip>
     );
   };
   return (
     <div className="flex flex-col gap-2">
+      <ChipRow aria-label="Raccourcis de dates">
+        {shortcut("Aujourd'hui", today, today)}
+        {shortcut("Hier", addDays(today, -1), addDays(today, -1))}
+        {shortcut("Demain", addDays(today, 1), addDays(today, 1))}
+        {shortcut("7 derniers jours", addDays(today, -6), today)}
+      </ChipRow>
       <Form
         action={action}
         className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
         role="search"
       >
+        <FormAutoSubmit />
         <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-64">
           <span className="text-small text-fg-muted">Recherche</span>
           <span className="relative">
@@ -72,51 +76,49 @@ export function FilterBar({ action, filters }: { action: string; filters: ListFi
             />
           </span>
         </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-40">
-          <span className="text-small text-fg-muted">Statut</span>
-          <Select name="statut" defaultValue={filters.statut ?? ""}>
-            <option value="">Tous</option>
-            {ORDER_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {STATUS_LABEL[s]}
-              </option>
-            ))}
-          </Select>
-        </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-40">
-          <span className="text-small text-fg-muted">District</span>
-          <Select name="district" defaultValue={filters.district ?? ""}>
-            <option value="">Tous</option>
-            {DISTRICTS.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </Select>
-        </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-40">
-          <span className="text-small text-fg-muted">Du</span>
-          <Input type="date" name="du" defaultValue={filters.du} />
-        </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-40">
-          <span className="text-small text-fg-muted">Au</span>
-          <Input type="date" name="au" defaultValue={filters.au} />
-        </label>
-        <div className="col-span-2 flex gap-2">
-          <Button type="submit" variant="secondary">
-            Filtrer
-          </Button>
-          <Button asChild variant="ghost">
-            <Link href={action}>Effacer</Link>
-          </Button>
-        </div>
+        <CollapsibleFilters
+          active={[filters.statut, filters.district, filters.du, filters.au].filter(Boolean).length}
+        >
+          <label className="flex min-w-0 flex-col gap-1 md:w-40">
+            <span className="text-small text-fg-muted">Statut</span>
+            <Select name="statut" defaultValue={filters.statut ?? ""}>
+              <option value="">Tous</option>
+              {ORDER_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {STATUS_LABEL[s]}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className="flex min-w-0 flex-col gap-1 md:w-40">
+            <span className="text-small text-fg-muted">District</span>
+            <Select name="district" defaultValue={filters.district ?? ""}>
+              <option value="">Tous</option>
+              {DISTRICTS.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className="flex min-w-0 flex-col gap-1 md:w-40">
+            <span className="text-small text-fg-muted">Du</span>
+            <Input type="date" name="du" defaultValue={filters.du} />
+          </label>
+          <label className="flex min-w-0 flex-col gap-1 md:w-40">
+            <span className="text-small text-fg-muted">Au</span>
+            <Input type="date" name="au" defaultValue={filters.au} />
+          </label>
+          <div className="col-span-2 flex gap-2">
+            <Button type="submit" variant="secondary">
+              Filtrer
+            </Button>
+            <Button asChild variant="ghost">
+              <Link href={action}>Effacer</Link>
+            </Button>
+          </div>
+        </CollapsibleFilters>
       </Form>
-      <div className="flex flex-wrap gap-2" aria-label="Raccourcis de dates">
-        {shortcut("Aujourd'hui", today, today)}
-        {shortcut("Hier", addDays(today, -1), addDays(today, -1))}
-        {shortcut("Demain", addDays(today, 1), addDays(today, 1))}
-        {shortcut("7 derniers jours", addDays(today, -6), today)}
-      </div>
     </div>
   );
 }

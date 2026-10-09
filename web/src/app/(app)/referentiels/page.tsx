@@ -3,6 +3,8 @@ import { Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { pl } from "@/lib/utils";
+import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { ContactBoard } from "@/components/referentiels/contact-board";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
@@ -26,7 +28,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
   return (
     <section className="flex flex-col gap-4" aria-label="Annuaire">
       <p className="text-body text-fg-muted" data-testid="contacts-count">
-        <span className="font-mono text-fg tabular">{total}</span> contact(s)
+        <span className="font-mono text-fg tabular">{total}</span> {pl(total, "contact")}
         {total > rows.length ? ` · ${rows.length} affichés : affinez les filtres` : ""}
       </p>
       <Form
@@ -34,6 +36,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         role="search"
         className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
       >
+        <FormAutoSubmit />
         <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-60">
           <span className="text-small text-fg-muted">Recherche</span>
           <span className="relative">

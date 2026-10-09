@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { pl } from "@/lib/utils";
 import { PmrFilterBar, type PmrFilters } from "@/components/pmr/filter-bar";
 import { GroupBoard } from "@/components/pmr/group-board";
 import { EmptyState } from "@/components/ui/misc";
@@ -28,7 +29,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
     <section className="flex flex-col gap-4" aria-label="Groupes">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-body text-fg-muted">
-          <span className="font-mono text-fg tabular">{total}</span> trajet(s) de groupe
+          <span className="font-mono text-fg tabular">{total}</span> {pl(total, "trajet")} de groupe
           {total > rows.length ? ` · ${rows.length} affichés : réduisez la période` : ""}
         </p>
         <LiveRefresh topics={["group_missions"]} />

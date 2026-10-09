@@ -1,5 +1,6 @@
 "use client";
 
+import { pl } from "@/lib/utils";
 import {
   Copy,
   ExternalLink,
@@ -150,7 +151,7 @@ export function TaxiForm(props: TaxiFormProps) {
         : "",
     passager: d.is_pmr
       ? `PMR${client ? ` · ${client.lastName} ${client.firstName}` : ""}`
-      : `${d.passengers} passager(s)`,
+      : `${d.passengers} ${pl(d.passengers, "passager")}`,
     fournisseur: company?.name ?? d.taxi_email,
   };
 

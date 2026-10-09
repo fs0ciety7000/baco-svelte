@@ -62,7 +62,7 @@ export default async function Page({
                   className={cn(
                     "inline-flex h-11 items-center gap-2 border px-3 text-body whitespace-nowrap md:h-control",
                     v === view
-                      ? "border-accent bg-[color-mix(in_oklab,var(--accent)_12%,var(--surface))] text-fg"
+                      ? "border-accent bg-accent-soft text-fg"
                       : "border-border text-fg-muted hover:text-fg",
                   )}
                   data-testid={`view-${v}`}

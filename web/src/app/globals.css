@@ -30,6 +30,9 @@
   --color-danger: var(--danger);
   --color-info: var(--info);
   --color-progress: var(--progress);
+  /* Teintes de sélection (puces, vues, éléments cochés) : remplacent les color-mix ad hoc de 6 à 22 %. */
+  --color-accent-soft: color-mix(in oklab, var(--accent) 14%, var(--surface));
+  --color-accent-faint: color-mix(in oklab, var(--accent) 6%, var(--surface));
 
   --font-sans: var(--font-ui);
   --font-mono: var(--font-code);
@@ -163,13 +166,7 @@
 
   body {
     min-height: 100dvh;
-    background:
-      radial-gradient(
-        120% 60% at 50% -10%,
-        color-mix(in oklab, var(--accent) 6%, transparent),
-        transparent 60%
-      ),
-      var(--bg);
+    background: var(--bg);
     font-family: var(--font-sans);
     font-size: var(--text-body);
     line-height: var(--text-body--line-height);

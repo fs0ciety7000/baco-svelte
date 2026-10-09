@@ -2,6 +2,8 @@ import Form from "next/form";
 import { Search } from "lucide-react";
 import Link from "next/link";
 
+import { pl } from "@/lib/utils";
+import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -24,6 +26,7 @@ export function RefSearchBar({
 }) {
   return (
     <Form action={action} role="search" className="flex flex-wrap items-end gap-2">
+      <FormAutoSubmit />
       {Object.entries(hidden ?? {}).map(([k, v]) =>
         v ? <input key={k} type="hidden" name={k} value={v} /> : null,
       )}
@@ -75,7 +78,7 @@ export function RefPager({
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <p className="text-small text-fg-muted">
-        <span className="font-mono text-fg tabular">{total}</span> résultat(s)
+        <span className="font-mono text-fg tabular">{total}</span> {pl(total, "résultat")}
         {totalPages > 1 ? ` · page ${page}/${totalPages}` : ""}
       </p>
       {totalPages > 1 ? (

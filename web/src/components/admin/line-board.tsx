@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { pl } from "@/lib/utils";
 import { addStation, deleteStation, reorderLine, updateStation } from "@/app/(app)/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -110,7 +111,9 @@ export function LineBoard({ lines }: { lines: Line[] }) {
                 onClick={() => setOpen(open === l.line ? null : l.line)}
               >
                 <span className="font-mono text-body font-semibold">L.{l.line}</span>
-                <span className="text-small text-fg-muted">{l.stations.length} gare(s)</span>
+                <span className="text-small text-fg-muted">
+                  {l.stations.length} {pl(l.stations.length, "gare")}
+                </span>
                 {l.district ? (
                   <Badge tone="info">{DISTRICT_SHORT[l.district] ?? l.district}</Badge>
                 ) : null}

@@ -508,6 +508,14 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   12 px, badges et en-têtes en casse normale), sélecteur de thème en grille d'aperçus. Test des jetons : contraste +
   ΔE OKLab accent ↔ statuts (594 tests). `FormSection` en `min-w-0` (débordement mobile trouvé par l'E2E /design).
   DESIGN-DIRECTION : écarts validés de l'étape 7.
+- 2026-10-09 — **Lot 2 livré (structure)** : en-tête de module compact sur une ligne (titre `text-h2`, plus de sourcil
+  redondant, fil d'Ariane dans la barre du haut seulement), « Nouveau » de la barre du haut en secondaire (une seule
+  primaire par écran), composants `FilterChip` / `ChipRow` / `CollapsibleFilters` (`components/ui/filters.tsx`) :
+  un seul style de puce (contour accent + `bg-accent-soft`), filtres secondaires repliés en mobile (premier résultat
+  ≈ 120 px plus haut), **filtrage automatique sur toutes les listes** ; jetons `accent-soft` / `accent-faint` à la place
+  des `color-mix` ad hoc ; Journal : mes messages en `surface-2`, non lu = pastille info ; cartes mobiles PMR (trajet
+  entier, Copier dans la carte) ; pluriels accordés (`pl()` dans `lib/utils.ts`, plus de « mission(s) ») ; voile ambre
+  du fond retiré.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

@@ -284,7 +284,7 @@ function ToggleChip({
       className={cn(
         "inline-flex h-control-sm cursor-pointer items-center gap-1.5 rounded-control border px-3 text-small transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50",
         pressed
-          ? "border-accent bg-[color-mix(in_oklab,var(--accent)_14%,var(--surface))] text-fg"
+          ? "border-accent bg-accent-soft text-fg"
           : "border-border-strong bg-surface text-fg-muted hover:text-fg",
       )}
     >

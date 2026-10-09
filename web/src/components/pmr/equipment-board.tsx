@@ -4,6 +4,8 @@ import { MapPinned, Pencil, Plus, Wrench } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState, useTransition } from "react";
 
+import { pl } from "@/lib/utils";
+
 import {
   loadEquipmentEvents,
   saveEquipment,
@@ -602,7 +604,9 @@ function ZonesDialog({
                 <span className="font-mono text-body text-fg">
                   {z.code} {z.label ? `· ${z.label}` : ""} {z.district ? `· ${z.district}` : ""}
                 </span>
-                <span className="text-small text-fg-muted">{z.stations.length} gare(s)</span>
+                <span className="text-small text-fg-muted">
+                  {z.stations.length} {pl(z.stations.length, "gare")}
+                </span>
               </button>
             ))}
             <Button variant="secondary" className="self-start" onClick={() => pick("new")}>

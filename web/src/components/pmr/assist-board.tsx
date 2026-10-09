@@ -4,17 +4,19 @@ import { Copy } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { cn, pl } from "@/lib/utils";
 import { loadAssistPanel } from "@/app/(app)/pmr/actions";
 import { Button } from "@/components/ui/button";
 import { Timeline } from "@/components/ui/form-kit";
 import { EmptyState, Skeleton } from "@/components/ui/misc";
 import { Sheet } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/status-badge";
-import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
+import { Table, Td, Th, THead, Tr } from "@/components/ui/table";
 import { toast } from "@/components/ui/toast";
 import { safeCall } from "@/lib/orders/safe-call";
 import { formatDay, pbDate } from "@/lib/orders/time";
 import { DISTRICT_LABEL } from "@/lib/pmr/districts";
+
 import {
   aleaGroups,
   ASSIST_STATUS,
@@ -264,7 +266,7 @@ export function AssistBoard({
           >
             {d ? (
               <h2 className="label-mono text-fg-muted first-letter:uppercase">
-                {formatDay(d)} · {list.length} mission(s)
+                {formatDay(d)} · {list.length} {pl(list.length, "mission")}
               </h2>
             ) : null}
             <div className="hidden md:block">
@@ -339,28 +341,39 @@ export function AssistBoard({
             </div>
             <ul className="flex flex-col gap-2 md:hidden" data-testid="assists-cards">
               {list.map((a) => (
-                <li key={a.id} className="flex items-stretch gap-2">
+                // Carte mobile (audit UI du 9 oct. 2026) : train + heure + statut, trajet en entier sur sa ligne,
+                // détails, bouton Copier dans la carte (en bas à droite).
+                <li key={a.id} className="relative min-w-0">
                   <button
                     type="button"
-                    className="block min-w-0 flex-1 cursor-pointer text-left"
+                    style={
+                      { "--status": toneVar[ASSIST_STATUS[a.status].tone] } as React.CSSProperties
+                    }
+                    className="flex w-full min-w-0 cursor-pointer flex-col gap-1 rounded-box border border-border border-l-[3px] border-l-(--status) bg-surface px-3 py-2.5 pr-14 text-left"
                     onClick={() => show(a)}
                   >
-                    <ListCard
-                      statusColor={toneVar[ASSIST_STATUS[a.status].tone]}
-                      title={
-                        <span className="inline-flex flex-wrap items-center gap-2">
-                          <TrainChip train={a.train} taxi={a.transport === "taxi"} />
-                          <span className="font-mono tabular">{a.time || "--:--"}</span>
-                          <span className={a.status === "annulee" ? "line-through" : ""}>
-                            {routeLabel(a)}
-                          </span>
-                        </span>
-                      }
-                      meta={`${!groupByDay ? `${formatDay(a.day)} · ` : ""}${[legOf(a).inA ? "IN" : "", legOf(a).outA ? "OUT" : ""].filter(Boolean).join("+") || "—"} · ${a.pax} × ${a.pmrType || "type ?"}${districtsOf(a) ? ` · ${districtsOf(a)}` : ""}${canPmr && a.clientName ? ` · ${a.clientName}` : ""}`}
-                      aside={<AssistBadge status={a.status} />}
-                    />
+                    <span className="flex items-center gap-2 pr-0">
+                      <TrainChip train={a.train} taxi={a.transport === "taxi"} />
+                      <span className="font-mono tabular">{a.time || "--:--"}</span>
+                      <span className="-mr-11 ml-auto">
+                        <AssistBadge status={a.status} />
+                      </span>
+                    </span>
+                    <span
+                      className={cn(
+                        "text-body font-medium text-fg",
+                        a.status === "annulee" && "line-through",
+                      )}
+                    >
+                      {routeLabel(a)}
+                    </span>
+                    <span className="text-small text-fg-muted">
+                      {`${!groupByDay ? `${formatDay(a.day)} · ` : ""}${[legOf(a).inA ? "IN" : "", legOf(a).outA ? "OUT" : ""].filter(Boolean).join("+") || "—"} · ${a.pax} × ${a.pmrType || "type ?"}${districtsOf(a) ? ` · ${districtsOf(a)}` : ""}${canPmr && a.clientName ? ` · ${a.clientName}` : ""}`}
+                    </span>
                   </button>
-                  <CopyButton text={copyTextOf(a, district)} />
+                  <span className="absolute right-2 bottom-2">
+                    <CopyButton text={copyTextOf(a, district)} />
+                  </span>
                 </li>
               ))}
             </ul>

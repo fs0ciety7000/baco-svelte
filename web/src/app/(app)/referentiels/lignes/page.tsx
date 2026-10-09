@@ -3,6 +3,8 @@ import { MapPin, TriangleAlert } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { pl } from "@/lib/utils";
+import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/misc";
@@ -29,6 +31,7 @@ export default async function Page({
   return (
     <section className="flex flex-col gap-4" aria-label="Lignes">
       <Form action="/referentiels/lignes" className="flex flex-wrap items-end gap-2">
+        <FormAutoSubmit />
         <label className="flex min-w-0 flex-col gap-1 md:w-48">
           <span className="text-small text-fg-muted">District</span>
           <Select name="district" defaultValue={district}>
@@ -57,8 +60,8 @@ export default async function Page({
       {!detail ? (
         <>
           <p className="text-small text-fg-muted">
-            <span className="font-mono text-fg tabular">{shown.length}</span> ligne(s) ·
-            choisissez-en une.
+            <span className="font-mono text-fg tabular">{shown.length}</span>{" "}
+            {pl(shown.length, "ligne")} · choisissez-en une.
           </p>
           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="lines-grid">
             {shown.map((l) => (

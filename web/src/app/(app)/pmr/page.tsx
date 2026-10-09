@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { pl } from "@/lib/utils";
 import { AssistBoard } from "@/components/pmr/assist-board";
 import { PmrFilterBar, type PmrFilters } from "@/components/pmr/filter-bar";
 import { can } from "@/lib/permissions";
@@ -26,7 +27,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
     <section className="flex flex-col gap-4" aria-label="Missions PMR">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-body text-fg-muted" data-testid="assists-count">
-          <span className="font-mono text-fg tabular">{total}</span> mission(s)
+          <span className="font-mono text-fg tabular">{total}</span> {pl(total, "mission")}
           {total > rows.length ? ` · ${rows.length} affichées : réduisez la période` : ""}
         </p>
         {/* Plus de création manuelle : les missions sont synchronisées depuis DICOS (décision du 8 octobre 2026). */}

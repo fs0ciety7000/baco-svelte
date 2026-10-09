@@ -324,7 +324,7 @@ export function LogComposer({
           className={cn(
             "h-control-sm min-w-11 shrink-0 cursor-pointer border px-3 text-small transition-colors",
             category === c
-              ? "border-accent bg-[color-mix(in_oklab,var(--accent)_14%,var(--surface))] text-fg"
+              ? "border-accent bg-accent-soft text-fg"
               : "border-border-strong bg-surface text-fg-muted hover:text-fg",
           )}
         >

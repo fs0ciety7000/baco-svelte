@@ -43,7 +43,7 @@ function Tr({
       aria-selected={selected || undefined}
       style={{ ...style, "--status": statusColor ?? "transparent" } as React.CSSProperties}
       className={cn(
-        "h-row border-b border-border bg-surface shadow-[inset_3px_0_0_var(--status)] transition-colors last:border-b-0 hover:bg-surface-2 aria-selected:bg-[color-mix(in_oklab,var(--accent)_10%,var(--surface))]",
+        "h-row border-b border-border bg-surface shadow-[inset_3px_0_0_var(--status)] transition-colors last:border-b-0 hover:bg-surface-2 aria-selected:bg-accent-soft",
         className,
       )}
       {...props}

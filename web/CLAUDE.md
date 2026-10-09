@@ -202,5 +202,8 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   Jetons en plus : `fg-subtle`, `progress`, `--mod-<module>` (`modColor(id)` dans `design/module-color.ts`).
   Rayons : `rounded-box` (cartes, dialogues, panneaux) et `rounded-control` (boutons, champs, badges, puces) ; jamais
   de rayon en dur. Liens : classe `.link`. L'accent ne sert qu'à l'action, la sélection et le focus.
+- Listes (lot 2) : raccourcis et vues en `FilterChip` dans un `ChipRow` ; filtres secondaires dans
+  `CollapsibleFilters` (repliés en mobile, en ligne en desktop) ; `FormAutoSubmit` dans chaque formulaire de filtres ;
+  pluriels avec `pl(n, "mission")`. En-tête de module : `ModuleLayout` (une ligne), `eyebrow` = information utile.
 - E2E `e2e/motion.spec.ts` : palette sans glissement, aucune animation infinie (hors `animate-pulse-dot` /
   `animate-spin`), accueil sans flash, filtre sans rechargement.

@@ -3,6 +3,9 @@ import { Download } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { pl } from "@/lib/utils";
+import { ChipRow, CollapsibleFilters, FilterChip } from "@/components/ui/filters";
+import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { BarList, StackedBars } from "@/components/ops/charts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -49,69 +52,68 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
   return (
     <section className="flex flex-col gap-5" aria-label="Statistiques">
       <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap gap-2" aria-label="Périodes">
+        <ChipRow aria-label="Périodes">
           {presets.map((p) => {
             const active = p.du === from && p.au === to;
             return (
-              <Button
-                key={p.label}
-                asChild
-                size="sm"
-                variant={active ? "primary" : "ghost"}
-                className={active ? "" : "border border-border"}
-              >
+              <FilterChip key={p.label} asChild pressed={active}>
                 <Link
                   href={`/operations/statistiques?${new URLSearchParams({ ...keep, du: p.du, au: p.au })}`}
                   aria-current={active ? "true" : undefined}
                 >
                   {p.label}
                 </Link>
-              </Button>
+              </FilterChip>
             );
           })}
-        </div>
+        </ChipRow>
         <Form
           action="/operations/statistiques"
           className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
         >
-          <label className="flex min-w-0 flex-col gap-1 md:w-40">
-            <span className="text-small text-fg-muted">Du</span>
-            <Input type="date" name="du" defaultValue={from} />
-          </label>
-          <label className="flex min-w-0 flex-col gap-1 md:w-40">
-            <span className="text-small text-fg-muted">Au</span>
-            <Input type="date" name="au" defaultValue={to} />
-          </label>
-          <label className="flex min-w-0 flex-col gap-1 md:w-36">
-            <span className="text-small text-fg-muted">District</span>
-            <Select name="district" defaultValue={filters.district ?? ""}>
-              <option value="">Tous</option>
-              <option>Sud-Ouest</option>
-              <option>Sud-Est</option>
-              <option>Centre</option>
-            </Select>
-          </label>
-          <label className="flex min-w-0 flex-col gap-1 md:w-32">
-            <span className="text-small text-fg-muted">Type C3</span>
-            <Select name="type" defaultValue={filters.type ?? ""}>
-              <option value="">Tous</option>
-              <option value="1">Type 1</option>
-              <option value="2">Type 2</option>
-              <option value="3">Type 3</option>
-            </Select>
-          </label>
-          <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-56">
-            <span className="text-small text-fg-muted">Société de bus</span>
-            <Select name="societe" defaultValue={filters.societe ?? ""}>
-              <option value="">Toutes</option>
-              {companies.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <Button type="submit">Appliquer</Button>
+          <FormAutoSubmit />
+          <CollapsibleFilters
+            active={[filters.district, filters.type, filters.societe].filter(Boolean).length}
+          >
+            <label className="flex min-w-0 flex-col gap-1 md:w-40">
+              <span className="text-small text-fg-muted">Du</span>
+              <Input type="date" name="du" defaultValue={from} />
+            </label>
+            <label className="flex min-w-0 flex-col gap-1 md:w-40">
+              <span className="text-small text-fg-muted">Au</span>
+              <Input type="date" name="au" defaultValue={to} />
+            </label>
+            <label className="flex min-w-0 flex-col gap-1 md:w-36">
+              <span className="text-small text-fg-muted">District</span>
+              <Select name="district" defaultValue={filters.district ?? ""}>
+                <option value="">Tous</option>
+                <option>Sud-Ouest</option>
+                <option>Sud-Est</option>
+                <option>Centre</option>
+              </Select>
+            </label>
+            <label className="flex min-w-0 flex-col gap-1 md:w-32">
+              <span className="text-small text-fg-muted">Type C3</span>
+              <Select name="type" defaultValue={filters.type ?? ""}>
+                <option value="">Tous</option>
+                <option value="1">Type 1</option>
+                <option value="2">Type 2</option>
+                <option value="3">Type 3</option>
+              </Select>
+            </label>
+            <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-56">
+              <span className="text-small text-fg-muted">Société de bus</span>
+              <Select name="societe" defaultValue={filters.societe ?? ""}>
+                <option value="">Toutes</option>
+                {companies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <Button type="submit">Appliquer</Button>
+          </CollapsibleFilters>
           <Button asChild variant="ghost" className="border border-border md:ml-auto">
             <a href={csv} download>
               <Download aria-hidden /> CSV
@@ -142,7 +144,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
           label="Annulations (%)"
           value={Math.round(t.cancelRate * 100)}
           tone={t.cancelRate > 0.1 ? "warn" : "neutral"}
-          hint={`${t.cancelled} annulée(s)`}
+          hint={`${t.cancelled} ${pl(t.cancelled, "annulée")}`}
         />
         {t.assists !== null ? (
           <StatCard label="Prestations PMR" value={t.assists} tone="ok" />
@@ -215,8 +217,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
               <li key={s.name} className="flex flex-col border border-border px-3 py-2">
                 <span className="text-body font-medium">{s.name}</span>
                 <span className="text-small text-fg-muted">
-                  {s.orders} commande(s) · {s.buses} bus · {s.cancelled} annulée(s) · confirmation{" "}
-                  {fmtMin(s.medianConfirm)}
+                  {s.orders} {pl(s.orders, "commande")} · {s.buses} bus · {s.cancelled}{" "}
+                  {pl(s.cancelled, "annulée")} · confirmation {fmtMin(s.medianConfirm)}
                 </span>
               </li>
             ))}
