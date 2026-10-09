@@ -61,7 +61,8 @@ function dicosStaleAlert(app, at) {
 	if (!last.length) return 0;
 	const lastAt = new Date(last[0].getString('created').replace(' ', 'T')).getTime();
 	if (!(date.getTime() - lastAt > STALE_MS)) return 0;
-	const sourceId = last[0].id;
+	// Une alerte par épisode ET par jour de service : sans le jour, la synchro d'hier bloquerait l'alerte du matin.
+	const sourceId = `${last[0].id}:${brusselsDay(date)}`;
 	const tokens = app.findRecordsByFilter('connector_tokens', 'id != ""', '', 500, 0);
 	const owners = {};
 	for (let i = 0; i < tokens.length; i++) owners[tokens[i].getString('user')] = true;

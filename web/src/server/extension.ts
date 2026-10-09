@@ -62,6 +62,7 @@ export type ConnectorToken = {
 
 async function listConnectorTokens(userId: string | null): Promise<ConnectorToken[]> {
   const pb = await pbForRequest();
+  // Vue administration (tous les agents) : une erreur remonte (page d'erreur) plutôt que « aucun appareil » à tort.
   try {
     const rows = await pb.collection("connector_tokens").getFullList({
       ...(userId ? { filter: pb.filter("user = {:u}", { u: userId }) } : {}),
@@ -92,7 +93,8 @@ async function listConnectorTokens(userId: string | null): Promise<ConnectorToke
             }),
       };
     });
-  } catch {
+  } catch (e) {
+    if (!userId) throw e;
     return [];
   }
 }

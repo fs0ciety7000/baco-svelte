@@ -97,9 +97,10 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
   chaque modif, BUG-8) et **refus de suppression** d'un document référencé par une procédure (BUG-6/9). Les gares
   (`line_stations`) et PN (`level_crossings`) sont seulement **lus** par l'onglet Lignes. 12 contrôles de règles.
 - **Sauvegardes** : réglées par migration (`0 2 * * *`, 14 conservées dans `pb_data/backups`). `backups.pb.js`
-  (`onBootstrap`) les envoie dans **R2** si `CSM_BACKUP_S3_ENDPOINT` / `_BUCKET` / `_ACCESS_KEY` / `_SECRET` sont posées
-  (`CSM_BACKUP_S3=off` pour revenir au local, `CSM_BACKUP_KEEP` pour la conservation) ; une erreur de réglage
-  n'empêche pas le démarrage.
+  (`onBootstrap`) les envoie dans **R2** si `CSM_BACKUP_S3_ENDPOINT` / `_BUCKET` / `_ACCESS_KEY` / `_SECRET` sont posées,
+  sinon coupe S3 et efface le secret (variables = seule source de vérité : une copie restaurée n'écrit pas dans le bucket
+  de production) ; seulement pour `serve` ; `CSM_BACKUP_KEEP` pour la conservation ; une erreur de réglage n'empêche pas
+  le démarrage.
 - **Alerte synchro DICOS** : cron `dicos-stale` (10 min, `lib/operations.js` → `dicosStaleAlert`), notification
   `systeme` (`source = "dicos-sync"`, `source_id` = dernière synchro) ; `CSM_DICOS_ALERT_HOURS` (`6-22`, `off`).
 - `PREPROD_PB_*` désigne une autre instance (jeu) : **n'y jamais écrire**, ne pas y lancer `test-rules.mjs`.

@@ -119,6 +119,8 @@ jobs:
     needs: release
     if: github.ref_type == 'branch'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     concurrency:
       group: publish-chrome-${{ github.ref }}
       cancel-in-progress: false

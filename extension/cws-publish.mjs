@@ -63,8 +63,22 @@ console.log(
   `Fiche : publiée ${published.join(", ") || "—"} (${before.publishedItemRevisionStatus?.state || "—"}), ` +
     `soumise ${submitted.join(", ") || "—"} (${before.submittedItemRevisionStatus?.state || "—"}) ; manifest v${version}.`,
 );
-if (published.includes(version) || submitted.includes(version)) {
-  console.log(`v${version} déjà publiée ou en cours d'examen : rien à faire.`);
+const cmp = (a, b) => {
+  const pa = String(a).split(".").map(Number);
+  const pb = String(b).split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d) return d;
+  }
+  return 0;
+};
+if ([...published, ...submitted].some((v) => cmp(v, version) >= 0)) {
+  console.log(`v${version} déjà publiée, soumise ou dépassée sur la fiche : rien à faire.`);
+  process.exit(0);
+}
+if (before.submittedItemRevisionStatus?.state === "PENDING_REVIEW") {
+  // Le Store refuse un nouvel envoi pendant l'examen : on réessaiera au prochain push.
+  console.log(`::notice::Une version est en cours d'examen chez Google : v${version} sera envoyée plus tard.`);
   process.exit(0);
 }
 

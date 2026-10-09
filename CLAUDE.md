@@ -574,7 +574,11 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   `pb_hooks/backups.pb.js` règle les sauvegardes S3 de PocketBase depuis `CSM_BACKUP_S3_*` au démarrage (bucket et
   jeton à créer par l'utilisateur, procédure + test de restauration dans DEPLOIEMENT-V2 §3) ; (e) actions GitHub
   passées en **v7** (checkout, setup-node, upload-artifact, build-push-action ; setup-buildx v4 : Node 24),
-  feuille de route `CSM-V2.md` §7 et `NOUVELLE-SESSION.md` (session 4 : bascule) remises à jour. Note DPO : la durée des
+  feuille de route `CSM-V2.md` §7 et `NOUVELLE-SESSION.md` (session 4 : bascule) remises à jour. Revue : alerte dédupliquée par
+  épisode **et par jour** (sinon la synchro de la veille bloquait l'alerte du matin), variables R2 = seule source de vérité
+  (S3 coupé sans elles, seulement pour `serve`, réglages sur une copie), `publish-chrome` en `contents: read`, versions
+  du Store comparées numériquement + attente si un examen est en cours. Limite connue : une extension installée depuis le
+  Store voit « Nouvelle version » dès le push, avant la fin de l'examen Google. Note DPO : la durée des
   sauvegardes était fausse (« 28 h ») → 14 jours, R2 ajouté comme sous-traitant à valider.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
