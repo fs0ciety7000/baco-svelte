@@ -46,7 +46,11 @@ des jetons (test AA automatique), `prefers-reduced-motion` respecté partout.
 
 ## Décisions demandées à l'utilisateur
 
-1. **Palette** : A « Commandement affiné », B « Craie » (d'après gsap.com, couleur par module, variante claire),
+1. **Thèmes** (demande du 9 oct. : « plusieurs thèmes pour tous les goûts », en plus de Craie) : catalogue de
+   11 thèmes, chacun avec sa forme et sa typographie par défaut — Commandement, Craie, Craie de jour, Ivoire,
+   Porcelaine, Rail, Nocturne, Graphite, Prune, Forêt, Contraste élevé (`audit-interface/themes.json`, contrôlés par
+   `check-themes.mjs` : texte ≥ 7:1, secondaire ≥ 5,5:1, accent distinct des statuts, statuts distincts entre eux).
+   Palettes d'origine de l'audit : A « Commandement affiné », B « Craie » (d'après gsap.com, couleur par module, variante claire),
    C « Porcelaine » (jour, remplacerait Ivoire) — ou une combinaison (ex. B en sombre + C en clair).
 2. **Forme** : angle + chanfrein (direction validée) ou pilules façon GSAP.
 3. **Typographie** : Geist + Saira (actuel), Geist seule (recommandé par l'audit), IBM Plex ; corps 14 ou 15 px.
