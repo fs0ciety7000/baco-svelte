@@ -18,10 +18,16 @@ import { hashToken } from "@/server/dicos-service";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; error: string };
 
-function fail(e: unknown): { ok: false; error: string } {
+function fail(
+  e: unknown,
+  notFound = "Jeton introuvable ou déjà révoqué.",
+): {
+  ok: false;
+  error: string;
+} {
   unstable_rethrow(e);
   if (e instanceof ClientResponseError) {
-    if (e.status === 404) return { ok: false, error: "Jeton introuvable ou déjà révoqué." };
+    if (e.status === 404) return { ok: false, error: notFound };
     return { ok: false, error: e.response?.message || "Refusé." };
   }
   if (e instanceof z.ZodError) return { ok: false, error: "Saisie invalide." };
@@ -50,7 +56,11 @@ export async function createConnectorToken(
     revalidatePath("/pmr/extension");
     return { ok: true, token, id: rec.id };
   } catch (e) {
-    return fail(e);
+    // 404 à la création = collection absente : base pas encore à jour (migration non appliquée au déploiement).
+    return fail(
+      e,
+      "Les jetons ne sont pas encore disponibles sur le serveur (base en cours de mise à jour) : réessaie dans quelques minutes ou préviens un administrateur.",
+    );
   }
 }
 

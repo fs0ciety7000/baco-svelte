@@ -174,6 +174,11 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   appeler `POST /deploy` en plus : deux déploiements simultanés ont laissé `csm-pocketbase` arrêté (`exited:unhealthy`,
   9 oct.) ; rétabli par un nouveau push. Journal de démarrage dans `/pb_data/startup.log` ; `PB_DEBUG_HOLD=1` (variable
   runtime, à retirer ensuite) garde le conteneur en vie après un échec pour l'examiner par tâche planifiée.
+- (v2) Un déploiement Coolify **raté** de `csm-pocketbase` laisse l'ancienne version en ligne : `csm-web` (déployé, lui)
+  appelle alors une collection absente → 404 PocketBase (« Missing collection context »). Vérifier après un push qui
+  ajoute une migration : `curl https://pb-test-csm.fs0ciety.org/api/collections/<nom>/records` (401/403/200 = présente,
+  404 = absente) et l'état des déploiements (`GET /deployments/applications/<uuid>`). 9 oct. : déploiement de b51d672
+  « failed » (journaux illisibles par l'API), migration pourtant valide sur trois copies de la base.
 - (v2) Le job CI `sign-firefox` (si les secrets AMO existent) **commite le .xpi signé sur la branche de session** une fois
   par version, ~10 min après le push : faire `git pull` avant de pousser, sinon le push est refusé (non fast-forward).
 - (v2) `cn()` = tailwind-merge **étendu** (tailles et couleurs sémantiques), sinon il supprime `text-accent-fg` ou

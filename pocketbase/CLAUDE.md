@@ -115,7 +115,7 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
   Depuis `1760002000` : `complete` (dernier lot du jour reçu ; fiches antérieures mises à vrai), `version` (extension),
   `synced_by` (propriétaire du jeton personnel).
 - **Jetons de connecteur** (`1760002000_connector_tokens.js`) : `connector_tokens` (user, label, `token_hash` SHA-256
-  unique, prefix, last_used, last_version). Création pour soi avec `deplacements:read` (dates d'usage non forgeables),
+  unique, prefix, last_used, last_version). Création pour soi avec `deplacements:write` (dates d'usage non forgeables),
   lecture propriétaire / admin / connecteur, mise à jour par le connecteur seul (usage), suppression propriétaire ou
   admin ; 10 au plus par agent et suppression à la désactivation du compte (`users.pb.js`).
 - **Horaires ATMS** (`1760001800_train_schedules.js`) : `train_schedules` (jour + train uniques, `stops` JSON : abréviation
