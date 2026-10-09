@@ -532,6 +532,17 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   (`useCopy`, icône → coche verte, annonce `aria-live`, toast seulement en cas d'échec) dans les listes, le panneau et
   l'export ALEA ; ligne ouverte marquée (`selected` → `bg-accent-soft`) ; durées en jetons CSS `--d-*` (miroir de
   `MOTION`). Continuité Flip ligne → panneau non faite (jugée facultative par l'audit).
+- 2026-10-09 — **GSAP étendu** (feu vert de l'utilisateur) : transition de page côté client (`PageTransition`, corps
+  `[data-page-body]` en fondu + 6 px, jamais au premier affichage ni sur un changement de filtre), fondu de la liste au
+  changement de filtres (primitive `swap` dans `LiveHighlight`), nouveaux messages des collègues signalés dans le
+  Journal, **intro de la page de connexion** (lettres de « CSM », filet, sous-titre ; masqués dès le premier rendu,
+  repli CSS 1,2 s). **Revue adversariale des lots 0-3** (0 critique, 4 importants, 7 mineurs, sécurité RAS), corrigés :
+  `NavProgress` qui ne voyait pas les clics `next/link` (écoute en capture), **filtres périmés après « Effacer »**
+  (`FilterForm` = `next/form` remonté à chaque URL ; état replié mobile gardé par page), observateurs accumulés dans
+  `useSlideIndicator` (`revertOnUpdate`), Groupes « pas encore synchronisé » les jours sans groupe (synchro missions
+  comptée), Vaul animé en mouvement réduit, clés ⌘K en double, débit de `paletteSearch` (120/min), raccourcis « / » et
+  « N » désactivables dans « Affichage » (WCAG 2.1.4) et sans répétition, `aria-current` sur les puces du Journal, « Non
+  lu » annoncé. Reste connu : une synchro DICOS interrompue après un lot s'affiche comme synchronisée.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

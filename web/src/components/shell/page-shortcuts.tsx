@@ -4,6 +4,17 @@ import { useEffect } from "react";
 
 import { useShell } from "./shell-context";
 
+export const SHORTCUTS_KEY = "csm-raccourcis";
+
+/** Raccourcis à une touche désactivables (WCAG 2.1.4), réglage dans « Affichage ». */
+export function shortcutsEnabled(): boolean {
+  try {
+    return window.localStorage.getItem(SHORTCUTS_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+
 const typing = (el: EventTarget | null) =>
   el instanceof HTMLElement &&
   (el.isContentEditable ||
@@ -18,7 +29,9 @@ export function PageShortcuts() {
   const { setPaletteOpen } = useShell();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || typing(e.target)) return;
+      if (e.defaultPrevented || e.repeat || e.metaKey || e.ctrlKey || e.altKey || typing(e.target))
+        return;
+      if (!shortcutsEnabled()) return;
       if (e.key === "/") {
         const field = document.querySelector<HTMLInputElement>(
           'main [role="search"] input:not([type="hidden"]), main input[type="search"]',

@@ -111,7 +111,9 @@ test("mission : panneau en lecture seule, libellé à copier", async ({ page }, 
   await expect(page.getByTestId("assist-realisee")).toHaveCount(0);
   // Bouton « copier le libellé » présent (arrivée + NV → « Débarquement d'un non-voyant »).
   await expect(
-    page.getByRole("button", { name: /Copier le libellé : Débarquement d'un non-voyant/ }),
+    page
+      .getByTestId("assist-panel")
+      .getByRole("button", { name: /Copier le libellé : Débarquement d'un non-voyant/ }),
   ).toBeVisible();
   // Export ALEA : un bloc par train, gare et sens, avec sa composition et une décision « Obligatoire » ou non.
   await page.keyboard.press("Escape");

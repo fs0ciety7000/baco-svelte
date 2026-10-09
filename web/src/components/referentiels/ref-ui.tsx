@@ -1,8 +1,8 @@
-import Form from "next/form";
 import { Search } from "lucide-react";
 import Link from "next/link";
 
 import { pl } from "@/lib/utils";
+import { FilterForm } from "@/components/ui/filter-form";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,7 @@ export function RefSearchBar({
   children?: React.ReactNode;
 }) {
   return (
-    <Form action={action} role="search" className="flex flex-wrap items-end gap-2">
+    <FilterForm action={action} role="search" className="flex flex-wrap items-end gap-2">
       <FormAutoSubmit />
       {Object.entries(hidden ?? {}).map(([k, v]) =>
         v ? <input key={k} type="hidden" name={k} value={v} /> : null,
@@ -55,7 +55,7 @@ export function RefSearchBar({
           <Link href={action}>Effacer</Link>
         </Button>
       ) : null}
-    </Form>
+    </FilterForm>
   );
 }
 

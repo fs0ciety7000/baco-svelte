@@ -1,9 +1,9 @@
-import Form from "next/form";
 import { MapPin, TriangleAlert } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 import { pl } from "@/lib/utils";
+import { FilterForm } from "@/components/ui/filter-form";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/input";
@@ -30,7 +30,7 @@ export default async function Page({
 
   return (
     <section className="flex flex-col gap-4" aria-label="Lignes">
-      <Form action="/referentiels/lignes" className="flex flex-wrap items-end gap-2">
+      <FilterForm action="/referentiels/lignes" className="flex flex-wrap items-end gap-2">
         <FormAutoSubmit />
         <label className="flex min-w-0 flex-col gap-1 md:w-48">
           <span className="text-small text-fg-muted">District</span>
@@ -55,7 +55,7 @@ export default async function Page({
         <Button type="submit" variant="secondary">
           Afficher
         </Button>
-      </Form>
+      </FilterForm>
 
       {!detail ? (
         <>

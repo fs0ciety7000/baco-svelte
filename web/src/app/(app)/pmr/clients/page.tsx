@@ -1,9 +1,9 @@
-import Form from "next/form";
 import { Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 import { pl } from "@/lib/utils";
+import { FilterForm } from "@/components/ui/filter-form";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { ClientBoard } from "@/components/pmr/client-board";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,7 @@ export default async function Page({
         </p>
         <LiveRefresh topics={["pmr_clients"]} />
       </div>
-      <Form action="/pmr/clients" role="search" className="flex flex-wrap items-end gap-2">
+      <FilterForm action="/pmr/clients" role="search" className="flex flex-wrap items-end gap-2">
         <FormAutoSubmit />
         <label className="flex min-w-0 basis-full flex-col gap-1 md:max-w-80 md:flex-1 md:basis-auto">
           <span className="text-small text-fg-muted">Recherche</span>
@@ -63,7 +63,7 @@ export default async function Page({
             {archived ? "Fiches actives" : "Fiches archivées"}
           </Link>
         </Button>
-      </Form>
+      </FilterForm>
       <ClientBoard
         rows={list.rows}
         canWrite={can(user, "pmr:write")}

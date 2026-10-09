@@ -8,6 +8,7 @@ import { CommandPalette } from "./command-palette";
 import { MobileTabBar } from "./mobile-tabbar";
 import { NavProgress } from "./nav-progress";
 import { PageShortcuts } from "./page-shortcuts";
+import { PageTransition } from "./page-transition";
 import { ShellProvider } from "./shell-context";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
@@ -47,6 +48,7 @@ export function AppShell({
         <NavProgress />
       </Suspense>
       <PageShortcuts />
+      <PageTransition />
       <MobileTabBar />
       <CommandPalette />
     </ShellProvider>

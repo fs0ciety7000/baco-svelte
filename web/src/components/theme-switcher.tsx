@@ -1,9 +1,11 @@
 "use client";
 
 import { Monitor } from "lucide-react";
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { saveUiPreferences } from "@/app/preferences-actions";
+import { SHORTCUTS_KEY, shortcutsEnabled } from "@/components/shell/page-shortcuts";
+import { Switch } from "@/components/ui/checkbox";
 import type { UiPreferences } from "@/design/preferences";
 import { type ThemeId, THEMES, themeById } from "@/design/tokens";
 import { cn } from "@/lib/utils";
@@ -96,6 +98,7 @@ export function ThemeSwitcher({
           );
         })}
       </div>
+      <ShortcutsToggle />
       <div role="radiogroup" aria-label="Densité" className="flex gap-2">
         {(["confortable", "compact"] as const).map((d) => (
           <button
@@ -116,5 +119,29 @@ export function ThemeSwitcher({
         ))}
       </div>
     </div>
+  );
+}
+
+/** Raccourcis à une touche (« / », « N ») : désactivables (WCAG 2.1.4), mémorisé dans ce navigateur. */
+function ShortcutsToggle() {
+  const [on, setOn] = useState(true);
+  useEffect(() => setOn(shortcutsEnabled()), []);
+  return (
+    <label className="flex items-center justify-between gap-3 text-body">
+      <span>
+        Raccourcis à une touche{" "}
+        <span className="text-small text-fg-muted">(« / » recherche, « N » nouveau)</span>
+      </span>
+      <Switch
+        checked={on}
+        onCheckedChange={(v) => {
+          setOn(v);
+          try {
+            window.localStorage.setItem(SHORTCUTS_KEY, v ? "on" : "off");
+          } catch {}
+        }}
+        aria-label="Raccourcis à une touche"
+      />
+    </label>
   );
 }

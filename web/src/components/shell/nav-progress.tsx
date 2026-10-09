@@ -26,8 +26,8 @@ export function NavProgress() {
       url.origin === location.origin &&
       (url.pathname !== location.pathname || url.search !== location.search);
     const onClick = (e: MouseEvent) => {
-      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)
-        return;
+      // Phase de capture : next/link annule le clic par défaut avant qu'un écouteur en phase de bulle ne le voie.
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       const a = (e.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
       if (!a || (a.target && a.target !== "_self") || a.hasAttribute("download")) return;
       if (changes(new URL(a.href))) setActive(true);
@@ -42,11 +42,11 @@ export function NavProgress() {
       ).toString();
       if (changes(url)) setActive(true);
     };
-    document.addEventListener("click", onClick);
-    document.addEventListener("submit", onSubmit);
+    document.addEventListener("click", onClick, true);
+    document.addEventListener("submit", onSubmit, true);
     return () => {
-      document.removeEventListener("click", onClick);
-      document.removeEventListener("submit", onSubmit);
+      document.removeEventListener("click", onClick, true);
+      document.removeEventListener("submit", onSubmit, true);
     };
   }, []);
 

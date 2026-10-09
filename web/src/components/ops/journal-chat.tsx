@@ -35,6 +35,7 @@ import {
   retireEntry,
   setRead,
 } from "@/app/(app)/operations/actions";
+import { LiveHighlight } from "@/components/ui/live-highlight";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
@@ -391,8 +392,9 @@ export function JournalChat({
               ) : null}
             </div>
             <article
+              data-hl={r.id}
               style={{ "--status": tone } as React.CSSProperties}
-              aria-label={`Message de ${r.authorName}, ${stampOf(r.created || r.occurredAt)}`}
+              aria-label={`${!read && !mine && r.status === "active" ? "Non lu. " : ""}Message de ${r.authorName}, ${stampOf(r.created || r.occurredAt)}`}
               className={cn(
                 "group relative flex min-w-0 flex-col gap-2 rounded-box border border-l-[3px] border-l-(--status) px-3 py-2 animate-fade-in",
                 // Mes messages : fond surface-2 ; non lu : pastille info (l'accent est réservé à l'action).
@@ -559,8 +561,18 @@ export function JournalChat({
         ) : null}
 
         <div className="relative min-h-0 flex-1">
+          {/* Nouveaux messages des collègues signalés (les siens non : l'agent sait ce qu'il vient d'écrire). */}
+          <LiveHighlight
+            scope="journal"
+            swap={false}
+            context={`${showDay}|${olderHref ?? ""}`}
+            sigs={Object.fromEntries(
+              rows.filter((r) => r.authorId !== me).map((r) => [r.id, `${r.status}|${r.updated}`]),
+            )}
+          />
           <div
             ref={scroller}
+            data-hl-scope="journal"
             className="absolute inset-0 overflow-y-auto overscroll-contain px-3 py-4 md:px-5"
             onScroll={(ev) => {
               const el = ev.currentTarget;

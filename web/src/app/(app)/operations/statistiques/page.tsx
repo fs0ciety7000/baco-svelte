@@ -1,9 +1,9 @@
-import Form from "next/form";
 import { Download } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 import { pl } from "@/lib/utils";
+import { FilterForm } from "@/components/ui/filter-form";
 import { ChipRow, CollapsibleFilters, FilterChip } from "@/components/ui/filters";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { BarList, StackedBars } from "@/components/ops/charts";
@@ -67,7 +67,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
             );
           })}
         </ChipRow>
-        <Form
+        <FilterForm
           action="/operations/statistiques"
           className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
         >
@@ -119,7 +119,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
               <Download aria-hidden /> CSV
             </a>
           </Button>
-        </Form>
+        </FilterForm>
         <p className="text-small text-fg-muted">
           Du {formatDay(from)} au {formatDay(to)} · district de la commande
           {filters.type || filters.societe ? " · taxis exclus (filtre bus)" : ""}

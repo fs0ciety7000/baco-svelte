@@ -96,13 +96,13 @@ export function CommandPalette() {
               <CommandEmpty>Aucun résultat</CommandEmpty>
               {hits.length > 0 ? (
                 <CommandGroup heading="Résultats">
-                  {hits.map((h) => {
+                  {hits.map((h, i) => {
                     const Icon = { contact: UserRound, bus: Bus, ptcar: MapPin, train: TrainFront }[
                       h.kind
                     ];
                     return (
                       <CommandItem
-                        key={h.href + h.label}
+                        key={`${i}-${h.href}`}
                         // La valeur contient la saisie : cmdk ne masque pas un résultat venu du serveur.
                         value={`${query} ${h.label} ${h.meta} ${h.href}`}
                         onSelect={() => go(h.href)}

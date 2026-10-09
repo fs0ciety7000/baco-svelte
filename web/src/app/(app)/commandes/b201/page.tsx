@@ -1,8 +1,8 @@
-import Form from "next/form";
 import { ChevronLeft, ChevronRight, FileText } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { FilterForm } from "@/components/ui/filter-form";
 import { B201Editor } from "@/components/orders/b201-editor";
 import { B201Keys } from "@/components/orders/b201-keys";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,7 @@ export default async function Page({
               <ChevronLeft />
             </Link>
           </Button>
-          <Form action="/commandes/b201" className="flex items-center gap-2">
+          <FilterForm action="/commandes/b201" className="flex items-center gap-2">
             <label className="sr-only" htmlFor="b201-jour">
               Jour
             </label>
@@ -58,7 +58,7 @@ export default async function Page({
             <Button type="submit" variant="ghost" size="sm">
               Aller
             </Button>
-          </Form>
+          </FilterForm>
           <Button asChild variant="secondary" size="icon">
             <Link href={q(addDays(day, 1))} aria-label="Jour suivant">
               <ChevronRight />

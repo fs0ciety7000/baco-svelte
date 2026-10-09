@@ -310,6 +310,19 @@
   }
 }
 
+/* Intro de la page de connexion (GSAP) : masquée dès le premier rendu, repli visible après 1,2 s sans JS. */
+@media (prefers-reduced-motion: no-preference) {
+  .intro-hide {
+    opacity: 0;
+    animation: intro-fallback 0s 1.2s forwards;
+  }
+}
+@keyframes intro-fallback {
+  to {
+    opacity: 1;
+  }
+}
+
 /* Panneau latéral (Vaul) : 500 ms par défaut, ramené au budget des panneaux (≤ 300 ms). */
 [data-vaul-drawer] {
   transition-duration: var(--d-panel) !important;
@@ -325,6 +338,11 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  /* La règle du panneau Vaul (plus haut, !important) l'emportait sur le sélecteur universel. */
+  [data-vaul-drawer] {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
   }
 }
 

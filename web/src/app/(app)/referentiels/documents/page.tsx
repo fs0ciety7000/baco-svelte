@@ -1,8 +1,8 @@
-import Form from "next/form";
 import { Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { FilterForm } from "@/components/ui/filter-form";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { DocumentBoard } from "@/components/referentiels/document-board";
 import { ProcedureBoard } from "@/components/referentiels/procedure-board";
@@ -52,7 +52,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         </Button>
       </div>
 
-      <Form
+      <FilterForm
         action="/referentiels/documents"
         role="search"
         className="flex flex-wrap items-end gap-2"
@@ -102,7 +102,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             </Link>
           </Button>
         ) : null}
-      </Form>
+      </FilterForm>
 
       {vue === "procedures" ? (
         <ProcedureBoard

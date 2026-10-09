@@ -95,7 +95,8 @@ export function useSlideIndicator(
         window.removeEventListener("resize", onResize);
       };
     },
-    { scope: list, dependencies: deps },
+    // revertOnUpdate : sans lui, @gsap/react ne nettoie qu'au démontage et les observateurs s'accumulent.
+    { scope: list, dependencies: deps, revertOnUpdate: true },
   );
 }
 

@@ -1,7 +1,7 @@
-import Form from "next/form";
 import { Search } from "lucide-react";
 import Link from "next/link";
 
+import { FilterForm } from "@/components/ui/filter-form";
 import { Button } from "@/components/ui/button";
 import { ChipRow, CollapsibleFilters, FilterChip } from "@/components/ui/filters";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
@@ -55,7 +55,7 @@ export function FilterBar({ action, filters }: { action: string; filters: ListFi
         {shortcut("Demain", addDays(today, 1), addDays(today, 1))}
         {shortcut("7 derniers jours", addDays(today, -6), today)}
       </ChipRow>
-      <Form
+      <FilterForm
         action={action}
         className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
         role="search"
@@ -119,7 +119,7 @@ export function FilterBar({ action, filters }: { action: string; filters: ListFi
             </Button>
           </div>
         </CollapsibleFilters>
-      </Form>
+      </FilterForm>
     </div>
   );
 }

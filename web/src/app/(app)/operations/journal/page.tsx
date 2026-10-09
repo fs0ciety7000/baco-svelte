@@ -1,9 +1,9 @@
-import Form from "next/form";
 import { ChevronDown, Download, Search, SlidersHorizontal } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 import { pl } from "@/lib/utils";
+import { FilterForm } from "@/components/ui/filter-form";
 import { ChipRow, FilterChip } from "@/components/ui/filters";
 import { DutyChip } from "@/components/ops/duty-districts";
 import { JournalChat } from "@/components/ops/journal-chat";
@@ -77,7 +77,7 @@ export default async function Page({
   };
 
   const searchForm = (
-    <Form
+    <FilterForm
       action="/operations/journal"
       role="search"
       className="flex min-w-0 flex-1 gap-2 md:max-w-sm"
@@ -96,7 +96,7 @@ export default async function Page({
           maxLength={80}
         />
       </label>
-    </Form>
+    </FilterForm>
   );
   const csvLink = search ? null : (
     <Button asChild size="sm" variant="ghost" className="border border-border max-sm:hidden">
@@ -127,18 +127,27 @@ export default async function Page({
         </FilterChip>
       ))}
       <FilterChip asChild pressed={f.urgentes}>
-        <Link href={keep({ urgentes: f.urgentes ? undefined : "1" })} aria-pressed={f.urgentes}>
+        <Link
+          href={keep({ urgentes: f.urgentes ? undefined : "1" })}
+          aria-current={f.urgentes ? "true" : undefined}
+        >
           Urgents
         </Link>
       </FilterChip>
       <FilterChip asChild pressed={f.agents}>
-        <Link href={keep({ agents: f.agents ? undefined : "1" })} aria-pressed={f.agents}>
+        <Link
+          href={keep({ agents: f.agents ? undefined : "1" })}
+          aria-current={f.agents ? "true" : undefined}
+        >
           Sans iRail
         </Link>
       </FilterChip>
       {coordinator ? (
         <FilterChip asChild pressed={f.retirees}>
-          <Link href={keep({ retirees: f.retirees ? undefined : "1" })} aria-pressed={f.retirees}>
+          <Link
+            href={keep({ retirees: f.retirees ? undefined : "1" })}
+            aria-current={f.retirees ? "true" : undefined}
+          >
             Avec les retirés
           </Link>
         </FilterChip>

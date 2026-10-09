@@ -488,7 +488,12 @@ export async function dicosSyncState(
 ): Promise<DicosSync | null> {
   const pb = await pbForRequest();
   try {
-    const kindFilter = pb.filter("kind = {:k}", { k: kind });
+    // Groupes : l'extension n'envoie rien les jours sans groupe ; une synchro des missions du même jour vaut donc
+    // aussi pour les groupes (revue du 9 oct. 2026 : « pas encore synchronisé » affiché en permanence).
+    const kindFilter =
+      kind === "groups"
+        ? '(kind = "groups" || kind = "missions")'
+        : pb.filter("kind = {:k}", { k: kind });
     const [last, inRange] = await Promise.all([
       pb
         .collection("dicos_syncs")

@@ -1,9 +1,9 @@
-import Form from "next/form";
 import { Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 import { pl } from "@/lib/utils";
+import { FilterForm } from "@/components/ui/filter-form";
 import { UserCreate } from "@/components/admin/user-create";
 import { Avatar } from "@/components/shell/avatar";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         </p>
         <UserCreate />
       </div>
-      <Form
+      <FilterForm
         action="/admin"
         role="search"
         className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
@@ -89,7 +89,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             <Link href="/admin">Effacer</Link>
           </Button>
         </div>
-      </Form>
+      </FilterForm>
       {rows.length === 0 ? (
         <EmptyState title="Aucun compte" description="Aucun compte ne correspond à ces filtres." />
       ) : (

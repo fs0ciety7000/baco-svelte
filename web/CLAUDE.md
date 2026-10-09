@@ -191,8 +191,8 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 
 ## Mouvement et navigation (étape 7, lot 0)
 
-- Formulaires de filtres : **`next/form`** (`import Form from "next/form"`, `action` = chemin), jamais
-  `<form method="get">` : navigation côté client, pas de rechargement. `FormAutoSubmit` reste valable.
+- Formulaires de filtres : `next/form` via `FilterForm` (voir plus bas), jamais `<form method="get">` : navigation
+  côté client, pas de rechargement. `FormAutoSubmit` reste valable.
 - Keyframes : animer `transform`, `opacity` ; jamais la propriété `translate` (elle porte le centrage Tailwind
   `-translate-x-1/2`).
 - Trait d'onglet : `useSlideIndicator(listRef, barRef, sélecteur)` (`lib/motion.ts`), trait `w-px origin-left`.
@@ -211,5 +211,8 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - Lot 4 : `<LiveHighlight scope sigs context />` + `data-hl-scope` sur le conteneur et `data-hl` sur l'élément visible
   (la carte, pas un `<li>` transparent) ; `useCopy()` / `CopyButton` / `CopyIcon` (`components/pmr/copy.tsx`) pour
   toute copie ; ligne active via `Tr selected`.
+- Formulaires de filtres : **`FilterForm`** (`components/ui/filter-form.tsx`, `next/form` avec `key` = paramètres
+  d'URL) et jamais `Form` directement. Transition de page : `PageTransition` (shell) anime `[data-page-body]`
+  (posé par `ModuleLayout`). Raccourcis à une touche : `shortcutsEnabled()` (réglage « Affichage »).
 - E2E `e2e/motion.spec.ts` : palette sans glissement, aucune animation infinie (hors `animate-pulse-dot` /
   `animate-spin`), accueil sans flash, filtre sans rechargement.

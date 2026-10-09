@@ -7,6 +7,7 @@ import { can } from "@/lib/permissions";
 import { formatDay, isValidDay } from "@/lib/orders/time";
 import { requireUser } from "@/server/auth";
 import { pbForRequest } from "@/server/data/orders";
+import { allow } from "@/server/rate-limit";
 
 export type SearchHit = {
   kind: "contact" | "bus" | "ptcar" | "train";
@@ -26,6 +27,8 @@ export async function paletteSearch(input: string): Promise<SearchHit[]> {
     const user = await requireUser();
     const parsed = querySchema.safeParse(input);
     if (!parsed.success) return [];
+    // Appelée à la frappe (après 250 ms) : 120 recherches par minute et par agent au plus.
+    if (!allow(`palette:${user.id}`, 120, 60_000)) return [];
     const q = parsed.data;
     const pb = await pbForRequest();
     const hits: SearchHit[] = [];

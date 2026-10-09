@@ -1,9 +1,9 @@
-import Form from "next/form";
 import { Download } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 import { pl } from "@/lib/utils";
+import { FilterForm } from "@/components/ui/filter-form";
 import { Button } from "@/components/ui/button";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Input, Select } from "@/components/ui/input";
@@ -53,7 +53,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
     new URLSearchParams({ ...keep, ...extra }).toString();
   return (
     <section className="flex flex-col gap-4" aria-label="Journal d'audit">
-      <Form
+      <FilterForm
         action="/admin/audit"
         className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
       >
@@ -104,7 +104,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             </a>
           </Button>
         </div>
-      </Form>
+      </FilterForm>
       <p className="text-body text-fg-muted">
         <span className="font-mono text-fg tabular">{res.totalItems}</span>{" "}
         {pl(res.totalItems, "ligne")}

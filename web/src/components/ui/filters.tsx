@@ -47,6 +47,8 @@ export function ChipRow({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
+const openByPage = new Map<string, boolean>();
+
 /**
  * Filtres secondaires repliables en mobile (audit du 9 oct. 2026 : les filtres occupaient le premier écran). En
  * desktop, les champs restent en ligne (`md:contents`). Les champs ne sont jamais démontés : ils partent avec le
@@ -62,8 +64,18 @@ export function CollapsibleFilters({
   children: React.ReactNode;
   className?: string;
 }) {
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpenState] = React.useState(false);
   const id = React.useId();
+  // Le formulaire est remonté à chaque changement d'URL (FilterForm) : l'état ouvert est gardé par page.
+  React.useEffect(() => {
+    if (openByPage.get(window.location.pathname)) setOpenState(true);
+  }, []);
+  const setOpen = (fn: (o: boolean) => boolean) =>
+    setOpenState((o) => {
+      const next = fn(o);
+      openByPage.set(window.location.pathname, next);
+      return next;
+    });
   return (
     <>
       <button

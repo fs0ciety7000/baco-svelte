@@ -1,9 +1,9 @@
-import Form from "next/form";
 import { Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 import { pl } from "@/lib/utils";
+import { FilterForm } from "@/components/ui/filter-form";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { ContactBoard } from "@/components/referentiels/contact-board";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         <span className="font-mono text-fg tabular">{total}</span> {pl(total, "contact")}
         {total > rows.length ? ` · ${rows.length} affichés : affinez les filtres` : ""}
       </p>
-      <Form
+      <FilterForm
         action="/referentiels"
         role="search"
         className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
@@ -94,7 +94,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             <Link href="/referentiels">Effacer</Link>
           </Button>
         </div>
-      </Form>
+      </FilterForm>
       <ContactBoard rows={rows} facets={facets} canWrite={canWrite} />
     </section>
   );

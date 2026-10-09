@@ -27,3 +27,19 @@ test("Missions PMR : état de la synchro DICOS affiché", async ({ page }) => {
   await login(page, "/pmr");
   await expect(page.getByTestId("dicos-sync")).toBeVisible();
 });
+
+test("« Effacer » vide vraiment les filtres (formulaire remonté à chaque URL)", async ({
+  page,
+  isMobile,
+}) => {
+  await login(page, "/commandes");
+  const q = page.locator('main [role="search"] input[name="q"]');
+  await q.fill("zzz");
+  await q.press("Enter");
+  await expect(page).toHaveURL(/q=zzz/);
+  // En mobile, « Effacer » est dans les filtres repliés.
+  if (isMobile) await page.getByRole("button", { name: /^Filtres/ }).click();
+  await page.getByRole("link", { name: "Effacer" }).click();
+  await expect(page).toHaveURL(/\/commandes$/);
+  await expect(page.locator('main [role="search"] input[name="q"]')).toHaveValue("");
+});

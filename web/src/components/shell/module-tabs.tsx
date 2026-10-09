@@ -21,7 +21,7 @@ export function ModuleTabs({ moduleId }: { moduleId: string }) {
   const bar = useRef<HTMLSpanElement>(null);
   const current = mod ? activeTab(pathname, mod) : undefined;
 
-  useSlideIndicator(ref, bar, '[aria-current="page"]', [pathname]);
+  useSlideIndicator(ref, bar, '[aria-current="page"]');
   useEffect(() => {
     ref.current
       ?.querySelector<HTMLElement>('[aria-current="page"]')

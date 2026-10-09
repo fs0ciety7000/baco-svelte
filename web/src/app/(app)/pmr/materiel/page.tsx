@@ -1,8 +1,8 @@
-import Form from "next/form";
 import { Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { FilterForm } from "@/components/ui/filter-form";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { EquipmentBoard } from "@/components/pmr/equipment-board";
 import { Button } from "@/components/ui/button";
@@ -65,7 +65,7 @@ export default async function Page({
         </nav>
         <LiveRefresh topics={["pmr_equipment"]} />
       </div>
-      <Form
+      <FilterForm
         action="/pmr/materiel"
         role="search"
         className="grid grid-cols-2 gap-2 md:flex md:items-end"
@@ -102,7 +102,7 @@ export default async function Page({
         <Button type="submit" variant="secondary" className="self-end">
           Filtrer
         </Button>
-      </Form>
+      </FilterForm>
       <EquipmentBoard
         rows={list.rows}
         zones={zones}

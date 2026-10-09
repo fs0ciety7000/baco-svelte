@@ -32,7 +32,9 @@ export function ModuleLayout({
         </div>
         <ModuleTabs moduleId={moduleId} />
       </header>
-      {children}
+      <div data-page-body className="flex min-w-0 flex-col gap-4">
+        {children}
+      </div>
     </div>
   );
 }

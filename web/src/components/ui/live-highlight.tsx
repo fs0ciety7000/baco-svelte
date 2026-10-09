@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
-import { highlightElements } from "@/lib/motion";
+import { gsap, highlightElements, MOTION, NO_MOTION } from "@/lib/motion";
 
 /**
  * Signale les lignes arrivées ou modifiées en direct (audit motion du 9 oct. 2026 : le direct changeait sans le dire).
@@ -14,13 +14,31 @@ export function LiveHighlight({
   scope,
   sigs,
   context = "",
+  swap = true,
 }: {
   scope: string;
   sigs: Record<string, string>;
+  /** Fondu de la liste au changement de filtres (désactivé pour un fil qui garde sa position). */
+  swap?: boolean;
   /** Filtres affichés : s'ils changent (navigation côté client), nouvelle base sans signal. */
   context?: string;
 }) {
   const prev = useRef<{ sigs: Record<string, string>; context: string } | null>(null);
+  // Primitive `swap` : quand les filtres changent (navigation côté client), la liste réapparaît en fondu court au
+  // lieu de changer d'un coup. Avant la peinture (useLayoutEffect) : pas d'image intermédiaire à pleine opacité.
+  const lastContext = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    const was = lastContext.current;
+    lastContext.current = context;
+    if (!swap || was === null || was === context || window.matchMedia(NO_MOTION).matches) return;
+    const roots = document.querySelectorAll<HTMLElement>(`[data-hl-scope="${CSS.escape(scope)}"]`);
+    if (roots.length)
+      gsap.fromTo(
+        roots,
+        { autoAlpha: 0.35 },
+        { autoAlpha: 1, duration: MOTION.micro, ease: "hud", clearProps: "opacity,visibility" },
+      );
+  }, [context, scope, swap]);
   const key = JSON.stringify(sigs);
   useEffect(() => {
     const was = prev.current;

@@ -1,7 +1,7 @@
-import Form from "next/form";
 import { Search } from "lucide-react";
 import Link from "next/link";
 
+import { FilterForm } from "@/components/ui/filter-form";
 import { Button } from "@/components/ui/button";
 import { ChipRow, CollapsibleFilters, FilterChip } from "@/components/ui/filters";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
@@ -52,7 +52,7 @@ export function PmrFilterBar({
           );
         })}
       </ChipRow>
-      <Form
+      <FilterForm
         action={action}
         role="search"
         className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
@@ -114,7 +114,7 @@ export function PmrFilterBar({
             </Button>
           </div>
         </CollapsibleFilters>
-      </Form>
+      </FilterForm>
     </div>
   );
 }
