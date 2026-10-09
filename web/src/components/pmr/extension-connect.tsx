@@ -1,8 +1,10 @@
 "use client";
 
 import { CheckCircle2, KeyRound, Link2, Puzzle, TriangleAlert } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { revokeAgentConnectorToken } from "@/app/(app)/admin/actions";
 import { revokeConnectorToken, createConnectorToken } from "@/app/(app)/pmr/extension/actions";
 import { CopyButton } from "@/components/pmr/copy";
 import { Button } from "@/components/ui/button";
@@ -235,18 +237,27 @@ export function ExtensionConnect({
   );
 }
 
-function TokenList({ tokens }: { tokens: ConnectorToken[] }) {
+/**
+ * Appareils connectés (jetons de l'extension). `admin` : révocation par l'administration (tout agent) ;
+ * avec `owner` renseigné, le propriétaire est affiché avec un lien vers sa fiche.
+ */
+export function TokenList({
+  tokens,
+  admin = false,
+  title = "Mes appareils connectés",
+  empty = "Aucun appareil connecté à ton compte pour l'instant.",
+}: {
+  tokens: ConnectorToken[];
+  admin?: boolean;
+  title?: string;
+  empty?: string;
+}) {
   const [confirm, setConfirm] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  if (!tokens.length)
-    return (
-      <p className="text-small text-fg-muted">
-        Aucun appareil connecté à ton compte pour l&apos;instant.
-      </p>
-    );
+  if (!tokens.length) return <p className="text-small text-fg-muted">{empty}</p>;
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-body font-semibold">Mes appareils connectés</p>
+      {title ? <p className="text-body font-semibold">{title}</p> : null}
       <ul
         className="flex flex-col divide-y divide-border rounded-box border border-border"
         data-testid="connector-tokens"
@@ -258,6 +269,15 @@ function TokenList({ tokens }: { tokens: ConnectorToken[] }) {
                 {t.lastUsed ? <CheckCircle2 aria-hidden className="size-4 text-ok" /> : null}
                 {t.label || "Extension DICOS"}
               </span>
+              {t.owner ? (
+                <Link
+                  href={`/admin/utilisateurs/${t.owner.id}`}
+                  className="text-small link"
+                  data-testid="token-owner"
+                >
+                  {t.owner.name}
+                </Link>
+              ) : null}
               <span className="text-small text-fg-muted">
                 <span className="font-mono">{t.prefix}…</span> · créé le {when(t.created)} ·
                 dernière synchro {when(t.lastUsed)}
@@ -274,7 +294,9 @@ function TokenList({ tokens }: { tokens: ConnectorToken[] }) {
                   return;
                 }
                 setBusy(t.id);
-                const r = await revokeConnectorToken(t.id);
+                const r = admin
+                  ? await revokeAgentConnectorToken(t.id)
+                  : await revokeConnectorToken(t.id);
                 setBusy(null);
                 setConfirm(null);
                 if (r.ok)

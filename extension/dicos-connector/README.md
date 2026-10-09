@@ -113,6 +113,29 @@ addons.mozilla.org (canal **non listé**, pas de fiche publique) et commite le `
 GitHub **`AMO_JWT_ISSUER`** et **`AMO_JWT_SECRET`** sont définis (compte développeur addons.mozilla.org → *Gérer les
 clés d'API*), une fois par version. Le manifest Firefox déclare `data_collection_permissions` (exigé par AMO).
 
+## Chrome Web Store (mises à jour automatiques sous Chrome et Edge)
+
+Une extension chargée depuis un `.zip` (mode développeur) ne se met jamais à jour seule. Publiée sur le Chrome Web Store
+en **non répertoriée** (accessible seulement par le lien), elle se met à jour toute seule, dans Chrome comme dans Edge
+(« Autoriser les extensions d'autres magasins »). À faire une fois par l'utilisateur :
+
+1. Compte développeur Chrome Web Store (frais uniques de 5 USD) : <https://chrome.google.com/webstore/devconsole>.
+2. « Nouvel élément » → envoyer `web/downloads/dicos-connector/csm-dicos-connector-chrome-v<version>.zip` ;
+   fiche : nom, description, icône 128 px, 1 capture **sans donnée personnelle** (base fictive), catégorie
+   « Productivité » ; onglet *Confidentialité* : finalité unique (synchroniser les missions DICOS de l'agent vers CSM),
+   justification de chaque permission (`storage`, `scripting`, hôtes DICOS / ATMS / CSM), données traitées
+   (informations personnelles et de santé transmises au seul serveur CSM, ni vendues ni utilisées à d'autres fins),
+   lien vers une politique de confidentialité ; *Distribution* : **Non répertoriée**. Soumettre à l'examen.
+3. Une fois publiée, poser `CSM_CHROME_STORE_URL` (adresse de la fiche) sur `csm-web` : la page « Extension DICOS »
+   propose l'installation depuis le magasin. Les agents retirent la version `.zip` et reconnectent l'extension
+   (l'identifiant de l'extension change, le jeton aussi).
+4. Publication automatique des versions suivantes : Google Cloud → projet → activer « Chrome Web Store API » → écran de
+   consentement OAuth (externe, utilisateur de test = le compte développeur) → identifiant client OAuth « Application
+   de bureau » → obtenir un **refresh token** pour la portée `https://www.googleapis.com/auth/chromewebstore` (OAuth
+   Playground avec ses propres identifiants). Secrets GitHub : `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`, `CWS_REFRESH_TOKEN`,
+   `CWS_PUBLISHER_ID` (console développeur → Compte) et `CWS_ITEM_ID` (identifiant de 32 lettres de l'élément). Le job
+   `publish-chrome` envoie alors chaque nouvelle version (une fois, comparée à la fiche) et demande sa publication.
+
 ## Sécurité & vie privée
 
 - Jeton DICOS : **jamais persisté** (mémoire du content script, le temps d'un appel).

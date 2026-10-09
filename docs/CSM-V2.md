@@ -129,12 +129,21 @@ Dans Coolify, deux ressources :
 
 ## 7. Feuille de route v2
 
-| # | Étape | Livrable |
+> Mise à jour le 9 octobre 2026. L'état détaillé et le journal des décisions sont dans `CLAUDE.md` §1 et §8.
+
+| # | Étape | État |
 |---|---|---|
-| 0 | **Sauvegarde Supabase** (schéma, données, rôles, Storage, liste des comptes) | ✅ 8 oct. — `docs/SAUVEGARDE-SUPABASE.md`, restauration testée |
-| 1 | Prototype PocketBase ou Supabase + squelette Next (auth, 1 module) | 🔄 8 oct. — prototype fait, recommandation **`docs/BACKEND-DECISION.md`** soumise (PocketBase confirmé, ≈ 10,75 j de migration backend) |
-| 2 | Design system : jetons, 5 thèmes, bibliothèque de composants, GSAP, page `/design` | ✅ 8 oct. — captures validées |
-| 3 | Shell : 6 entrées, onglets par module, ⌘K, menu utilisateur, mobile | ✅ 8 oct. — captures validées |
-| 4 | Données : schéma, règles d'accès, import depuis la sauvegarde | Données de test sur l'environnement de test |
-| 5 | Modules, dans l'ordre Commandes → PMR → Opérations → Référentiels → Équipe → Admin | ✅ Commandes, ✅ PMR validés (session 3) · Opérations livré, à valider ; un module validé à la fois |
-| 6 | Déploiement sur test-csm.fs0ciety.org, CI, sauvegardes PocketBase | 🔄 8 oct. — ressources Coolify créées (`docs/DEPLOIEMENT-V2.md`) |
+| 0 | **Sauvegarde Supabase** (schéma, données, rôles, Storage, comptes) | ✅ 8 oct. (`docs/SAUVEGARDE-SUPABASE.md`, restauration testée) |
+| 1 | Prototype PocketBase + squelette Next | ✅ 8 oct. (PocketBase 0.40.4 retenu, `docs/BACKEND-DECISION.md`) |
+| 2 | Design system, `/design` | ✅ 8 oct. |
+| 3 | Shell (6 modules, onglets, ⌘K, mobile) + tableau de bord | ✅ 8 oct. |
+| 4 | Données : schéma, règles, import | 🔄 données BACO importées sur l'instance de test ; **migration réelle à la bascule** |
+| 5 | Modules | ✅ Commandes, PMR, Opérations, DICOS / Missions PMR et Groupes, Annuaire et données validés · **Équipe et Admin livrés, à valider** |
+| 6 | Déploiement test-csm.fs0ciety.org, CI | ✅ 8 oct. (`docs/DEPLOIEMENT-V2.md`) ; sauvegardes hors serveur R2 prêtes (variables à poser) |
+| 7 | Finition de l'interface (11 thèmes, motion, UX) | ✅ 9 oct. (lots 0 à 4 + GSAP) |
+| 8 | Extension DICOS (Chrome / Edge / Firefox), jetons personnels | ✅ 9 oct. (v1.7.0, Firefox signé ; Chrome Web Store prêt, fiche à créer) |
+| 9 | **Bascule** : import des référentiels reproductible, répétition, liste de contrôle, domaine de production, gel de BACO | ⏳ à planifier avec l'utilisateur |
+
+Restent ouverts hors code : validation d'Équipe et Admin, réponses du DPO (`docs/DPO-CONSERVATION.md`), accès à
+`pb-test-csm` à restreindre (Cloudflare Access / IP), retrait de `CSM_DICOS_TOKEN` quand toutes les extensions sont en
+1.7.0, correctifs SQL BACO non appliqués (`20261008130000`, `20261008140000`).

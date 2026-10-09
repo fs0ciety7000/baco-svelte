@@ -32,6 +32,9 @@ proxy Traefik). Source : GitHub App `breakable-bee-gkkc8wwg8sswo044`, dépôt `f
 | `csm-web` | `CSM_COOKIE_SECURE` | `true` |
 | `csm-web` | `CSM_DICOS_PB_EMAIL`, `CSM_DICOS_PB_PASSWORD` | compte de service PocketBase (rôle `connector`, droit `dicos:write`) de l'ingestion DICOS / ATMS ; secrets |
 | `csm-web` | `CSM_DICOS_TOKEN` | **facultatif** depuis l'extension 1.7.0 (jetons personnels des agents) : secret partagé des extensions antérieures, à retirer quand toutes sont à jour |
+| `csm-web` | `CSM_CHROME_STORE_URL` | facultative : adresse de la fiche Chrome Web Store du connecteur (`https://chromewebstore.google.com/detail/<nom>/<id>`) ; la page « Extension DICOS » propose alors l'installation depuis le magasin (mises à jour automatiques). Mal formée = ignorée |
+| `csm-pocketbase` | `CSM_BACKUP_S3_ENDPOINT`, `CSM_BACKUP_S3_BUCKET`, `CSM_BACKUP_S3_ACCESS_KEY`, `CSM_BACKUP_S3_SECRET` | facultatives : sauvegardes envoyées dans **Cloudflare R2** (§3), réglées au démarrage par `pb_hooks/backups.pb.js` ; secrets. `CSM_BACKUP_S3=off` = retour aux sauvegardes locales ; `CSM_BACKUP_KEEP` (défaut 14, max 90) |
+| `csm-pocketbase` | `CSM_DICOS_ALERT_HOURS` | facultative : plage de service de l'alerte « synchro DICOS en retard » (défaut `6-22`, heure de Bruxelles ; `off` = coupée) |
 | `csm-web` | `IRAIL_URL`, `TILES_URL`, `CSM_USER_AGENT` | facultatives : défauts `https://api.irail.be/v1`, `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, User-Agent CSM (le serveur doit pouvoir sortir vers ces deux domaines) |
 
 Le point d'entrée de l'image PocketBase applique les migrations puis crée ou met à jour ce superuser à chaque
@@ -49,9 +52,20 @@ domaines autorisés.
   `/pb_data/backups`, 14 conservées.
 - **Sauvegarde Coolify du volume** : chaque nuit à **2 h 30** UTC, 14 conservées localement sur le serveur Coolify,
   alerte après 2 jours sans exécution. Elle contient les zips de 2 h.
-- **À venir** : copie hors serveur sur **Cloudflare R2** (décision du 8 octobre : R2 plus tard). Un stockage S3 R2
-  existe déjà dans Coolify (`agenda`) : créer un bucket `csm-backups` dédié, l'ajouter dans Coolify → S3 Storages, puis
-  activer `save_s3` sur la planification du volume (ou régler S3 dans PocketBase → Settings → Backups).
+- **Hors serveur : Cloudflare R2** (prêt depuis le 9 octobre, à activer) :
+  1. Cloudflare → R2 → créer le bucket **`csm-backups`** (emplacement UE si proposé) ; laisser l'accès public coupé ;
+  2. R2 → « Manage API tokens » → jeton **Object Read & Write limité au bucket `csm-backups`** → noter l'Access Key ID,
+     le Secret Access Key et l'endpoint `https://<id de compte>.r2.cloudflarestorage.com` ;
+  3. Coolify → `csm-pocketbase` → variables runtime (pas build) `CSM_BACKUP_S3_ENDPOINT`, `CSM_BACKUP_S3_BUCKET=csm-backups`,
+     `CSM_BACKUP_S3_ACCESS_KEY`, `CSM_BACKUP_S3_SECRET` (et `CSM_BACKUP_KEEP=30` pour un mois), puis redéployer ;
+  4. au démarrage, le journal affiche « sauvegardes : R2 (csm-backups), N conservées ». La planification de 2 h écrit
+     alors **dans R2 et plus dans `/pb_data/backups`** ; la sauvegarde Coolify du volume (2 h 30) reste locale et
+     couvre le serveur ;
+  5. **test de restauration** (à faire une fois) : PocketBase → Settings → Backups → « Initialize new backup », vérifier
+     le zip dans le bucket R2, le télécharger, le restaurer dans un PocketBase local (`pocketbase serve` sur un dossier
+     vierge, `POST /api/backups/upload` puis `/restore`), comparer les comptages.
+  Le secret R2 est enregistré dans les réglages PocketBase (superusers seulement) : il figure donc dans les sauvegardes ;
+  un jeton limité au seul bucket borne le risque. Le révoquer dans Cloudflare suffit à couper l'accès.
 - **Restauration** : PocketBase → Settings → Backups → Restore (redémarre l'instance), ou arrêter `csm-pocketbase`,
   remplacer le contenu du volume par un zip décompressé, redémarrer. Testé en local le 8 octobre (comptages et fichiers
   identiques).
@@ -126,4 +140,5 @@ répétition de la bascule. Le zip reste dans `/pb_data/backups` comme point de 
 
 | Secret | Rôle |
 |---|---|
+| `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`, `CWS_REFRESH_TOKEN`, `CWS_PUBLISHER_ID`, `CWS_ITEM_ID` | facultatifs : publication sur le **Chrome Web Store** (job `publish-chrome`, `extension/cws-publish.mjs`, API v2), une fois par version puis examen Google. Voir `extension/dicos-connector/README.md` § Chrome Web Store |
 | `AMO_JWT_ISSUER`, `AMO_JWT_SECRET` | facultatifs : clés d'API addons.mozilla.org pour signer l'extension Firefox (job `sign-firefox` de `dicos-extension-release.yml`, canal non listé). Sans eux, le job est ignoré. Espaces et retours à la ligne retirés par le job. AMO n'affiche le secret qu'une fois et en génère un nouveau à chaque demande : copier **la paire** émetteur + secret du même tirage (« Unknown JWT iss » = émetteur faux ; « Error decoding signature » = secret faux ou périmé). |

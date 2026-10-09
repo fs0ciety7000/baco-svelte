@@ -187,6 +187,7 @@ export const ADMIN: NavModule = {
     { href: "/admin", label: "Utilisateurs" },
     { href: "/admin/lignes", label: "Lignes et arrêts" },
     { href: "/admin/audit", label: "Journal d'audit" },
+    { href: "/admin/extension", label: "Appareils connectés" },
     { href: "/admin/sante", label: "Santé" },
   ],
 };

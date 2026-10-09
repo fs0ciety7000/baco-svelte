@@ -21,6 +21,13 @@ const schema = z.object({
   CSM_DICOS_TOKEN: z.string().default(""),
   CSM_DICOS_PB_EMAIL: z.string().default(""),
   CSM_DICOS_PB_PASSWORD: z.string().default(""),
+  // Fiche (non répertoriée) du Connecteur DICOS sur le Chrome Web Store : installation avec mises à jour automatiques.
+  CSM_CHROME_STORE_URL: z
+    .string()
+    .regex(/^(https:\/\/chromewebstore\.google\.com\/detail\/[\w%-]+\/[a-p]{32})?$/)
+    .default("")
+    // Adresse mal formée : ignorée plutôt que de bloquer le démarrage du serveur.
+    .catch(""),
 });
 
 export const env = schema.parse({
@@ -32,4 +39,5 @@ export const env = schema.parse({
   CSM_DICOS_TOKEN: process.env.CSM_DICOS_TOKEN,
   CSM_DICOS_PB_EMAIL: process.env.CSM_DICOS_PB_EMAIL,
   CSM_DICOS_PB_PASSWORD: process.env.CSM_DICOS_PB_PASSWORD,
+  CSM_CHROME_STORE_URL: process.env.CSM_CHROME_STORE_URL?.trim(),
 });

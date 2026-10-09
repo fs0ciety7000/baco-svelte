@@ -19,8 +19,8 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Construire les paquets Chrome et Firefox
@@ -38,7 +38,7 @@ jobs:
             --notes "Extension de synchro DICOS → CSM (Missions PMR). Paquets Chrome/Edge et Firefox (≥ 128). Installation : voir extension/dicos-connector/README.md."
       - name: Publier les paquets (artefacts) sur un déclenchement manuel
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dicos-connector-zips
           path: web/downloads/dicos-connector/*.zip
@@ -59,7 +59,7 @@ jobs:
       AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
       AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Vérifier la configuration
         id: check
         run: |
@@ -72,7 +72,7 @@ jobs:
             echo "::notice::Paquet Firefox signé v$v déjà présent."
             echo "skip=1" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: steps.check.outputs.skip != '1'
         with:
           node-version: 22
@@ -112,3 +112,41 @@ jobs:
           sleep 600
           git pull --rebase origin "$GITHUB_REF_NAME"
           git push origin "HEAD:$GITHUB_REF_NAME"
+
+  # Chrome Web Store (fiche non répertoriée → mises à jour automatiques sous Chrome et Edge) : seulement si les secrets
+  # CWS_* sont définis ; une version n'est envoyée qu'une fois (le script la compare à la fiche), puis examinée par Google.
+  publish-chrome:
+    needs: release
+    if: github.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: publish-chrome-${{ github.ref }}
+      cancel-in-progress: false
+    env:
+      CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+      CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+      CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+      CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
+      CWS_ITEM_ID: ${{ secrets.CWS_ITEM_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Vérifier la configuration
+        id: check
+        run: |
+          for k in CWS_CLIENT_ID CWS_CLIENT_SECRET CWS_REFRESH_TOKEN CWS_PUBLISHER_ID CWS_ITEM_ID; do
+            if [ -z "${!k}" ]; then
+              echo "::notice::Publication Chrome Web Store non configurée ($k absent)."
+              echo "skip=1" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+      - uses: actions/setup-node@v7
+        if: steps.check.outputs.skip != '1'
+        with:
+          node-version: 22
+      - name: Construire et publier
+        if: steps.check.outputs.skip != '1'
+        run: |
+          bash extension/build-zips.sh
+          v="$(node -p "require('./extension/dicos-connector/manifest.json').version")"
+          node extension/cws-publish.mjs "web/downloads/dicos-connector/csm-dicos-connector-chrome-v$v.zip"

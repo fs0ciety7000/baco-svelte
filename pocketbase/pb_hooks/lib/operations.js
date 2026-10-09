@@ -27,6 +27,87 @@ function brusselsDay(at) {
 	return new Date(t + (summer ? 2 : 1) * 3600000).toISOString().slice(0, 10);
 }
 
+// Heure décimale à Bruxelles (même règle d'heure d'été que brusselsDay).
+function brusselsHour(at) {
+	const t = (at || new Date()).getTime();
+	const y = new Date(t).getUTCFullYear();
+	const summer = t >= lastSunday(y, 2) && t < lastSunday(y, 9);
+	const d = new Date(t + (summer ? 2 : 1) * 3600000);
+	return d.getUTCHours() + d.getUTCMinutes() / 60;
+}
+
+// Plage de service de l'alerte de synchro DICOS : `CSM_DICOS_ALERT_HOURS` = « 6-22 » (défaut), « off » = coupée.
+function alertHours(raw) {
+	const v = String(raw || '6-22').trim();
+	if (v === 'off') return null;
+	const m = /^(\d{1,2})-(\d{1,2})$/.exec(v);
+	if (!m || +m[1] >= +m[2] || +m[2] > 24) return { from: 6, to: 22 };
+	return { from: +m[1], to: +m[2] };
+}
+
+// Alerte « synchro DICOS périmée » (demande du 9 oct. 2026) : pendant le service, si la dernière synchro (missions ou
+// groupes) date de plus d'une heure, une notification par épisode (dédupliquée sur l'id de la dernière synchro) aux
+// agents qui ont connecté l'extension (jeton personnel) : ceux qui ont coché leurs districts aujourd'hui s'il y en a,
+// sinon tous. Aucune synchro depuis 60 jours (extension pas utilisée) : rien.
+const STALE_MS = 3600000;
+function dicosStaleAlert(app, at) {
+	const date = at || new Date();
+	const hours = alertHours($os.getenv('CSM_DICOS_ALERT_HOURS'));
+	if (!hours) return 0;
+	const h = brusselsHour(date);
+	// Une heure de marge après l'ouverture du service : la synchro de la veille n'alerte pas dès l'ouverture.
+	if (h < hours.from + 1 || h >= hours.to) return 0;
+	const last = app.findRecordsByFilter('dicos_syncs', 'kind = "missions" || kind = "groups"', '-created', 1, 0);
+	if (!last.length) return 0;
+	const lastAt = new Date(last[0].getString('created').replace(' ', 'T')).getTime();
+	if (!(date.getTime() - lastAt > STALE_MS)) return 0;
+	const sourceId = last[0].id;
+	const tokens = app.findRecordsByFilter('connector_tokens', 'id != ""', '', 500, 0);
+	const owners = {};
+	for (let i = 0; i < tokens.length; i++) owners[tokens[i].getString('user')] = true;
+	const today = brusselsDay(date);
+	const all = [];
+	const onDuty = [];
+	for (const uid in owners) {
+		let u;
+		try {
+			u = app.findRecordById('users', uid);
+		} catch (_) {
+			continue;
+		}
+		if (u.getString('role') === 'disabled' || u.getString('role') === 'connector') continue;
+		all.push(uid);
+		if (u.getString('duty_day') === today) onDuty.push(uid);
+	}
+	const targets = onDuty.length ? onDuty : all;
+	const minutes = Math.round((date.getTime() - lastAt) / 60000);
+	const ago = minutes < 120 ? `${minutes} min` : `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')}`;
+	let sent = 0;
+	for (let i = 0; i < targets.length; i++) {
+		const dup = app.findRecordsByFilter(
+			'notifications',
+			'user = {:u} && source = "dicos-sync" && source_id = {:s}',
+			'',
+			1,
+			0,
+			{ u: targets[i], s: sourceId },
+		);
+		if (dup.length) continue;
+		notify(
+			app,
+			targets[i],
+			'systeme',
+			'Synchro DICOS en retard',
+			`Aucune synchro DICOS depuis ${ago}. Ouvre DICOS et lance la synchro depuis l'extension.`,
+			'/pmr',
+			'dicos-sync',
+			sourceId,
+		);
+		sent++;
+	}
+	return sent;
+}
+
 // Liste d'identifiants d'une relation multiple (le JSVM renvoie un tableau Go).
 function ids(record, field) {
 	const v = record.get(field);
@@ -284,6 +365,9 @@ module.exports = {
 	isCoord,
 	now,
 	brusselsDay,
+	brusselsHour,
+	alertHours,
+	dicosStaleAlert,
 	ids,
 	mentionsFrom,
 	notify,

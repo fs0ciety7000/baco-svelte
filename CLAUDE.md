@@ -35,8 +35,8 @@ gelée** (v1, branche `ccr-5dca0da8-4yg4i6`) : ne pas le modifier.
 | 2 | Design system + page `/design` (5 thèmes, GSAP) | ✅ 8 oct. — jetons + test AA (156 contrôles), 19 composants, `/design`, 17 E2E ; captures et écarts **validés** |
 | 3 | Shell (6 entrées, onglets, ⌘K, mobile 4 + Plus) + tableau de bord | ✅ 8 oct. — 24 E2E, CSP, gardes par page, captures validées |
 | 4 | Données : schéma PocketBase, règles d'accès, import | 🔄 données BACO du 8 oct. importées sur l'instance de test (5 collections) ; migration réelle **en une fois à la bascule** |
-| 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 **Commandes** livré en session 3 (schéma + 66 contrôles de règles, bus, taxi, envoi `.eml` + PDF, suivi, B201, E2E) : **validé le 8 oct.** ; **PMR validé le 8 oct.** (schéma + 105 contrôles de règles, prestations, collage DICOS, clients, matériel, E2E) ; **Opérations validé le 8 oct.** (trains en direct iRail, Journal (ex-main courante), carte PN, statistiques, cloche ; 149 contrôles de règles, 46 E2E) ; **DICOS / Missions PMR validé** (extension + ingestion, lecture seule, trajet/IN-OUT/district/copier) ; **Annuaire et données (ex-Référentiels) livré** (annuaire, lignes, PtCar, EBP, procédures + documents ; 7 collections ; 173 contrôles de règles ; audit + revue passés ; données v1 importées sur l'instance de test) ; **Équipe et Admin livrés, à valider** |
-| 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | ✅ 8 oct. — https://test-csm.fs0ciety.org en ligne ; projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
+| 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 **Commandes** livré en session 3 (schéma + 66 contrôles de règles, bus, taxi, envoi `.eml` + PDF, suivi, B201, E2E) : **validé le 8 oct.** ; **PMR validé le 8 oct.** (schéma + 105 contrôles de règles, prestations, collage DICOS, clients, matériel, E2E) ; **Opérations validé le 8 oct.** (trains en direct iRail, Journal (ex-main courante), carte PN, statistiques, cloche ; 149 contrôles de règles, 46 E2E) ; **DICOS / Missions PMR validé** (extension + ingestion, lecture seule, trajet/IN-OUT/district/copier) ; **Annuaire et données (ex-Référentiels) livré** (annuaire, lignes, PtCar, EBP, procédures + documents ; 7 collections ; 173 contrôles de règles ; audit + revue passés ; données v1 importées sur l'instance de test) ; **Équipe et Admin livrés, à valider** (+ vue admin des appareils connectés, 9 oct.) |
+| 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | ✅ 8 oct. (R2 prêt le 9 oct., variables à poser) — https://test-csm.fs0ciety.org en ligne ; projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
 | — | Hotfix sécurité BACO (`supabase/migrations/20261008120000_security_hotfix.sql`) | ✅ appliqué par l'utilisateur (SQL Editor) le 8 oct., vérifié : 0 ERROR (36 avant). Suite **non appliquée** : `20261008130000_hotfix_followup.sql` (test NULL de `get_my_role()`) et `20261008140000_pn_data_update_fix.sql` (XSS stocké carte PN), accord requis ; protection des mots de passe compromis encore désactivée |
 
 **Ne pas commencer une étape sans validation de l'utilisateur.** Les captures desktop (1440×900) et
@@ -562,6 +562,20 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   « À clôturer » sur l'accueil et le Suivi (212 contrôles de règles) ; (4) **Annuaire dans la barre du bas mobile**
   (5 onglets + Plus, libellé court `shortLabel`) ; (5) **tutoiement** dans toute l'interface (l'e-mail aux sociétés de
   bus reste au vouvoiement).
+- 2026-10-09 — **Suite demandée par l'utilisateur** : (a) **vue admin des jetons d'extension** : onglet Admin « Appareils
+  connectés » (`/admin/extension`, tous les agents, lien vers la fiche) + section dans la fiche d'un compte, révocation
+  par `revokeAgentConnectorToken` (règles déjà ouvertes aux admin / sysop) ; (b) **alerte cloche « Synchro DICOS en
+  retard »** : cron PocketBase `dicos-stale` (10 min), si la dernière synchro missions / groupes a plus d'1 h pendant le
+  service (`CSM_DICOS_ALERT_HOURS`, défaut 6-22 h Bruxelles, 1 h de marge après l'ouverture), notification `systeme` aux
+  propriétaires d'un jeton personnel (ceux qui ont coché leurs districts du jour s'il y en a), une par épisode
+  (dédup `source_id` = dernière synchro), testée en local ; (c) **Chrome Web Store** : `extension/cws-publish.mjs`
+  (API v2, une fois par version), job CI `publish-chrome` (secrets `CWS_*`), `CSM_CHROME_STORE_URL` → bouton
+  « Chrome Web Store » sur la page Extension ; fiche non répertoriée à créer par l'utilisateur (README) ; (d) **R2** :
+  `pb_hooks/backups.pb.js` règle les sauvegardes S3 de PocketBase depuis `CSM_BACKUP_S3_*` au démarrage (bucket et
+  jeton à créer par l'utilisateur, procédure + test de restauration dans DEPLOIEMENT-V2 §3) ; (e) actions GitHub
+  passées en **v7** (checkout, setup-node, upload-artifact, build-push-action ; setup-buildx v4 : Node 24),
+  feuille de route `CSM-V2.md` §7 et `NOUVELLE-SESSION.md` (session 4 : bascule) remises à jour. Note DPO : la durée des
+  sauvegardes était fausse (« 28 h ») → 14 jours, R2 ajouté comme sous-traitant à valider.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

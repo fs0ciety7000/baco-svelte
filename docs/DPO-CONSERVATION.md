@@ -41,7 +41,7 @@ le code source, ni présente dans les captures d'écran ou les documents de trav
 | Notifications aux agents | 30 jours après lecture, 90 jours au plus | supprimées | ☐ |
 | Journal des synchronisations DICOS, horaires ATMS | 60 jours | supprimés (aucune donnée personnelle) | — |
 | Jetons de connecteur des agents | jusqu'à révocation par l'agent ou désactivation du compte | supprimés | ☐ |
-| Sauvegardes de la base | 14 sauvegardes glissantes (environ 28 h) + copie du volume | écrasées ; une donnée effacée disparaît des sauvegardes après environ 28 h | ☐ |
+| Sauvegardes de la base | 1 par nuit, 14 conservées (réglable, `CSM_BACKUP_KEEP`) ; copie hors serveur sur Cloudflare R2 une fois activée + copie locale du volume | écrasées ; une donnée effacée disparaît des sauvegardes après la dernière conservée (14 jours par défaut) | ☐ |
 
 ## 4. Mesures de protection
 
@@ -58,4 +58,5 @@ le code source, ni présente dans les captures d'écran ou les documents de trav
 2. Fiches clients PMR inactives depuis 24 mois : **archivage** (actuel) ou **suppression** ?
 3. Les agents avec `pmr:read` voient le texte libre (remarques) jusqu'à l'anonymisation : est-ce acceptable ?
 4. Faut-il une mention d'information aux voyageurs PMR sur ce traitement (en complément de celle de DICOS) ?
-5. Hébergement : serveur auto-hébergé (Coolify) — lieu d'hébergement et sous-traitance à documenter dans le registre.
+5. Hébergement : serveur auto-hébergé (Coolify) — lieu d'hébergement et sous-traitance à documenter dans le registre ;
+   sauvegardes hors serveur chez **Cloudflare R2** (sous-traitant, emplacement UE demandé) : à valider.

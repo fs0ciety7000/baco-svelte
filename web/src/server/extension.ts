@@ -56,26 +56,53 @@ export type ConnectorToken = {
   created: string;
   lastUsed: string | null;
   lastVersion: string | null;
+  /** Propriétaire (vue administration seulement). */
+  owner?: { id: string; name: string };
 };
 
-/** Jetons de connecteur de l'agent connecté (règle PocketBase : les siens seulement). */
-export async function listMyConnectorTokens(userId: string): Promise<ConnectorToken[]> {
+async function listConnectorTokens(userId: string | null): Promise<ConnectorToken[]> {
   const pb = await pbForRequest();
   try {
     const rows = await pb.collection("connector_tokens").getFullList({
-      filter: pb.filter("user = {:u}", { u: userId }),
-      sort: "-created",
-      fields: "id,label,prefix,created,last_used,last_version",
+      ...(userId ? { filter: pb.filter("user = {:u}", { u: userId }) } : {}),
+      sort: "-last_used,-created",
+      ...(userId ? {} : { expand: "user" }),
+      fields: userId
+        ? "id,label,prefix,created,last_used,last_version"
+        : "id,label,prefix,created,last_used,last_version,user,expand.user.id,expand.user.name,expand.user.username",
     });
-    return rows.map((r) => ({
-      id: r.id,
-      label: String(r.label || ""),
-      prefix: String(r.prefix || ""),
-      created: String(r.created),
-      lastUsed: r.last_used ? String(r.last_used) : null,
-      lastVersion: r.last_version ? String(r.last_version) : null,
-    }));
+    return rows.map((r) => {
+      const u = (
+        r.expand as { user?: { id: string; name?: string; username?: string } } | undefined
+      )?.user;
+      return {
+        id: r.id,
+        label: String(r.label || ""),
+        prefix: String(r.prefix || ""),
+        created: String(r.created),
+        lastUsed: r.last_used ? String(r.last_used) : null,
+        lastVersion: r.last_version ? String(r.last_version) : null,
+        ...(userId
+          ? {}
+          : {
+              owner: {
+                id: String(r.user || ""),
+                name: String(u?.name || u?.username || "Compte supprimé"),
+              },
+            }),
+      };
+    });
   } catch {
     return [];
   }
+}
+
+/** Jetons de connecteur d'un agent (règle PocketBase : les siens, ou tous pour un admin / sysop). */
+export function listMyConnectorTokens(userId: string): Promise<ConnectorToken[]> {
+  return listConnectorTokens(userId);
+}
+
+/** Tous les jetons de connecteur, avec leur propriétaire (administration ; la règle PocketBase revérifie). */
+export function listAllConnectorTokens(): Promise<ConnectorToken[]> {
+  return listConnectorTokens(null);
 }

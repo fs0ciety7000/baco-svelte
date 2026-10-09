@@ -76,7 +76,7 @@ test("navigation principale et onglets en routes", async ({ page, isMobile }, te
     fullPage: true,
   });
   // Administration : 404 pour un agent, et rien du contenu de la page dans la réponse (flux RSC compris).
-  for (const path of ["/admin", "/admin/audit"]) {
+  for (const path of ["/admin", "/admin/audit", "/admin/extension"]) {
     const admin = await page.goto(path);
     expect(admin?.status()).toBe(404);
     expect(await admin?.text()).not.toContain("bientôt");

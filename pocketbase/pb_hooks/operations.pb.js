@@ -154,3 +154,13 @@ cronAdd('irail-journal', '*/5 * * * *', () => {
 		console.log('irail-journal', String(err));
 	}
 });
+
+// Toutes les 10 minutes : alerte dans la cloche si aucune synchro DICOS depuis plus d'une heure pendant le service
+// (`CSM_DICOS_ALERT_HOURS`, défaut 6-22 h à Bruxelles ; « off » = coupée). Une notification par épisode et par agent.
+cronAdd('dicos-stale', '*/10 * * * *', () => {
+	try {
+		require(`${__hooks}/lib/operations.js`).dicosStaleAlert($app);
+	} catch (err) {
+		console.log('dicos-stale', String(err));
+	}
+});

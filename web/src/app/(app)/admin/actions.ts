@@ -2,6 +2,7 @@
 
 import { randomInt } from "node:crypto";
 
+import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
@@ -271,6 +272,19 @@ export async function setMaintenance(on: boolean, message: string): Promise<Resu
       if (!(e instanceof ClientResponseError && e.status === 404)) throw e;
       await pb.collection("app_settings").create({ key: "maintenance", value, updated_by: me.id });
     }
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Révoque le jeton de connecteur (extension DICOS) d'un agent : l'extension est refusée d'ici une minute (cache). */
+export async function revokeAgentConnectorToken(id: string): Promise<Result> {
+  try {
+    await requireAdmin();
+    const pb = await pbForRequest();
+    await pb.collection("connector_tokens").delete(pbId.parse(id));
+    revalidatePath("/admin", "layout");
     return { ok: true };
   } catch (e) {
     return fail(e);
