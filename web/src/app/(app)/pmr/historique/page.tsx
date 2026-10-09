@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 
 import { pl } from "@/lib/utils";
 import { AssistBoard } from "@/components/pmr/assist-board";
-import { PmrFilterBar, type PmrFilters } from "@/components/pmr/filter-bar";
+import { hideCancelled, PmrFilterBar, type PmrFilters } from "@/components/pmr/filter-bar";
 import { Button } from "@/components/ui/button";
 import { can } from "@/lib/permissions";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
@@ -22,7 +22,15 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
   const au = isValidDay(f.au) && f.au >= du ? f.au : def.to >= du ? def.to : du;
   const canPmr = can(user, "pmr:read");
   const { rows, total } = await listAssists(
-    { from: du, to: au, district: f.district, q: f.q, status: f.statut, limit: 500 },
+    {
+      from: du,
+      to: au,
+      district: f.district,
+      q: f.q,
+      status: f.statut,
+      hideCancelled: hideCancelled(f),
+      limit: 500,
+    },
     { canPmr, order: "desc" },
   );
   const exportQuery = new URLSearchParams(
@@ -33,6 +41,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
         district: f.district ?? "",
         statut: f.statut ?? "",
         q: f.q ?? "",
+        annulees: hideCancelled(f) ? "masquees" : "",
       }).filter(([, v]) => v),
     ),
   );

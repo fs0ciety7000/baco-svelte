@@ -596,6 +596,10 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - 2026-10-09 — **Mention « Développé par OCC MONS Studios · <année> »** (lien https://studios.fs0ciety.org/, nouvel
   onglet) en pied de page du shell (sous le contenu, au-dessus de la barre d'onglets mobile) et de la page de connexion :
   `components/shell/studio-credit.tsx`.
+- 2026-10-09 — **« Masquer les annulées »** sur Missions PMR, Groupes et Historique (puce bascule, `?annulees=masquees`,
+  gardée par les raccourcis de dates et les filtres, `status != "annulee"` côté serveur sauf statut précis demandé ; aussi
+  dans l'export CSV de l'historique). **Logo OCC MONS Studios** (emblème du site studio, `public/brand/occ-mons-studios.webp`)
+  à côté de la mention du pied de page ; `/brand` public dans le middleware (page de connexion).
 - 2026-10-08 — **Module Référentiels** (audit `docs/design/AUDIT-UX-REFERENTIELS.md`, tout validé). 7 collections
   (`1760000900` : `directory_contacts`, `spi_points`, `ptcar` [abbr unique], `ebp_views`, `documents` [fichier
   protégé], `procedures`, `procedure_versions` hook-only) ; écriture annuaire/SPI/PtCar/EBP = coordinateurs,

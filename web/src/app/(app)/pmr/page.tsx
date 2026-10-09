@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { AssistBoard } from "@/components/pmr/assist-board";
 import { SyncStatus } from "@/components/pmr/sync-status";
-import { PmrFilterBar, type PmrFilters } from "@/components/pmr/filter-bar";
+import { hideCancelled, PmrFilterBar, type PmrFilters } from "@/components/pmr/filter-bar";
 import { can } from "@/lib/permissions";
 import { pl } from "@/lib/utils";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
@@ -21,7 +21,17 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
   const au = isValidDay(f.au) && f.au >= du ? f.au : du;
   const canPmr = can(user, "pmr:read");
   const [{ rows, total }, sync] = await Promise.all([
-    listAssists({ from: du, to: au, district: f.district, q: f.q, status: f.statut }, { canPmr }),
+    listAssists(
+      {
+        from: du,
+        to: au,
+        district: f.district,
+        q: f.q,
+        status: f.statut,
+        hideCancelled: hideCancelled(f),
+      },
+      { canPmr },
+    ),
     dicosSyncState("missions", du, au),
   ]);
   return (

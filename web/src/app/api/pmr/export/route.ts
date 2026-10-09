@@ -33,6 +33,7 @@ export async function GET(request: Request) {
       district: sp.get("district") ?? undefined,
       status: sp.get("statut") ?? undefined,
       q: sp.get("q") ?? undefined,
+      hideCancelled: sp.get("annulees") === "masquees",
     },
     // Droit réel pour la recherche (même résultat que l'historique) ; le CSV ne contient jamais de nom.
     { canPmr: can(user, "pmr:read"), order: "asc", all: true },

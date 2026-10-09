@@ -7,7 +7,8 @@ import { isExpired } from "@/server/token";
 // Rafraîchit le jeton PocketBase quand il expire dans moins de 24 h.
 
 const SESSION_COOKIE = "csm_session";
-const PUBLIC = ["/connexion"];
+// `/brand` : logos statiques (pied de page de la page de connexion), sans donnée.
+const PUBLIC = ["/connexion", "/brand"];
 const REFRESH_MARGIN_S = 24 * 3600;
 
 /**

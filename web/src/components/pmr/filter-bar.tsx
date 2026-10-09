@@ -1,4 +1,4 @@
-import { Search } from "lucide-react";
+import { EyeOff, Search } from "lucide-react";
 import Link from "next/link";
 
 import { FilterForm } from "@/components/ui/filter-form";
@@ -15,7 +15,11 @@ export type PmrFilters = {
   district?: string;
   q?: string;
   statut?: string;
+  /** « masquees » : les missions annulées sont cachées. */
+  annulees?: string;
 };
+
+export const hideCancelled = (f: PmrFilters) => f.annulees === "masquees";
 
 /** Filtres des missions PMR en GET (URL partageable, sans JS) + raccourcis de dates. */
 export function PmrFilterBar({
@@ -30,34 +34,62 @@ export function PmrFilterBar({
   /** Statuts proposés (par défaut ceux des missions PMR). */
   statuses?: readonly string[];
 }) {
+  const hidden = hideCancelled(filters);
   const keep = Object.fromEntries(
-    Object.entries({ district: filters.district, q: filters.q, statut: filters.statut }).filter(
-      ([, v]) => v,
-    ),
+    Object.entries({
+      district: filters.district,
+      q: filters.q,
+      statut: filters.statut,
+      annulees: hidden ? "masquees" : "",
+    }).filter(([, v]) => v),
   ) as Record<string, string>;
+  // Bascule « Masquer les annulées » : mêmes filtres, paramètre ajouté ou retiré.
+  const toggle = new URLSearchParams(
+    Object.fromEntries(
+      Object.entries({ ...keep, du: filters.du ?? "", au: filters.au ?? "" }).filter(
+        ([k, v]) => v && k !== "annulees",
+      ),
+    ),
+  );
+  if (!hidden) toggle.set("annulees", "masquees");
   return (
     <div className="flex flex-col gap-2">
-      <ChipRow aria-label="Raccourcis de dates">
-        {shortcuts.map((s) => {
-          const active = filters.du === s.du && (filters.au ?? s.du) === s.au;
-          return (
-            <FilterChip key={s.label} asChild pressed={active}>
-              <Link
-                href={`${action}?${new URLSearchParams({ ...keep, du: s.du, au: s.au })}`}
-                aria-current={active ? "true" : undefined}
-              >
-                {s.label}
-              </Link>
-            </FilterChip>
-          );
-        })}
-      </ChipRow>
+      <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
+        <ChipRow aria-label="Raccourcis de dates" className="max-w-full min-w-0">
+          {shortcuts.map((s) => {
+            const active = filters.du === s.du && (filters.au ?? s.du) === s.au;
+            return (
+              <FilterChip key={s.label} asChild pressed={active}>
+                <Link
+                  href={`${action}?${new URLSearchParams({ ...keep, du: s.du, au: s.au })}`}
+                  aria-current={active ? "true" : undefined}
+                >
+                  {s.label}
+                </Link>
+              </FilterChip>
+            );
+          })}
+        </ChipRow>
+        <span aria-hidden className="hidden h-5 w-px shrink-0 bg-border sm:block" />
+        <FilterChip asChild pressed={hidden}>
+          <Link
+            href={`${action}?${toggle}`}
+            aria-pressed={hidden}
+            role="button"
+            data-testid="hide-cancelled"
+          >
+            <EyeOff aria-hidden className="size-4" />
+            Masquer les annulées
+          </Link>
+        </FilterChip>
+      </div>
       <FilterForm
         action={action}
         role="search"
         className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
       >
         <FormAutoSubmit />
+        {hidden ? <input type="hidden" name="annulees" value="masquees" /> : null}
         <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-60">
           <span className="text-small text-fg-muted">Recherche</span>
           <span className="relative">

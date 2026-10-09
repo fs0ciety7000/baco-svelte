@@ -43,3 +43,18 @@ test("« Effacer » vide vraiment les filtres (formulaire remonté à chaque URL
   await expect(page).toHaveURL(/\/commandes$/);
   await expect(page.locator('main [role="search"] input[name="q"]')).toHaveValue("");
 });
+
+test("« Masquer les annulées » se bascule et garde les autres filtres", async ({ page }) => {
+  await login(page, "/pmr");
+  for (const path of ["/pmr", "/groupes"]) {
+    await page.goto(`${path}?district=DSO`);
+    const chip = page.getByTestId("hide-cancelled");
+    await expect(chip).toHaveAttribute("aria-pressed", "false");
+    await chip.click();
+    await expect(page).toHaveURL(/annulees=masquees/);
+    await expect(page).toHaveURL(/district=DSO/);
+    await expect(page.getByTestId("hide-cancelled")).toHaveAttribute("aria-pressed", "true");
+    await page.getByTestId("hide-cancelled").click();
+    await expect(page).not.toHaveURL(/annulees=/);
+  }
+});

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { PmrFilterBar, type PmrFilters } from "@/components/pmr/filter-bar";
+import { hideCancelled, PmrFilterBar, type PmrFilters } from "@/components/pmr/filter-bar";
 import { GroupBoard } from "@/components/pmr/group-board";
 import { SyncStatus } from "@/components/pmr/sync-status";
 import { EmptyState } from "@/components/ui/misc";
@@ -21,7 +21,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
   const du = isValidDay(f.du) ? f.du : today;
   const au = isValidDay(f.au) && f.au >= du ? f.au : du;
   const [{ rows, total }, sync] = await Promise.all([
-    listGroups({ from: du, to: au, district: f.district, q: f.q, status: f.statut }),
+    listGroups({
+      from: du,
+      to: au,
+      district: f.district,
+      q: f.q,
+      status: f.statut,
+      hideCancelled: hideCancelled(f),
+    }),
     dicosSyncState("groups", du, au),
   ]);
   return (

@@ -172,6 +172,7 @@ export const assistListSchema = z.object({
     .optional()
     .transform((v) => (["DCE", "DSE", "DSO"] as const).find((x) => x === v)),
   q: z.string().trim().max(60).default(""),
+  hideCancelled: z.boolean().default(false),
   status: z
     .string()
     .optional()
@@ -193,6 +194,8 @@ export async function listAssists(
   if (p.district)
     parts.push(pb.filter("(district = {:d} || arr_district = {:d})", { d: p.district }));
   if (p.status) parts.push(pb.filter("status = {:s}", { s: p.status }));
+  // « Masquer les annulées » (sans effet si un statut précis est demandé).
+  else if (p.hideCancelled) parts.push('status != "annulee"');
   if (p.q) {
     const ors = ["station ~ {:q}", "other_station ~ {:q}", "train ~ {:q}", "dicos_ref ~ {:q}"];
     // Nom du voyageur : BACO (client lié) et DICOS (détail nominatif), avec `pmr:read` seulement.
