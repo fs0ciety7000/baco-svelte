@@ -593,6 +593,9 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   révoqué à la reconnexion, état de synchro calculé jour par jour (plusieurs agents), job de signature en
   `concurrency` + attente de 10 min avant le push (Coolify), `web-ext` figé. 226 contrôles de règles ; parcours
   vérifié avec la vraie extension chargée dans Chromium (détection, connexion, envoi, 401 sur mauvais jeton).
+- 2026-10-09 — **Mention « Développé par OCC MONS Studios · <année> »** (lien https://studios.fs0ciety.org/, nouvel
+  onglet) en pied de page du shell (sous le contenu, au-dessus de la barre d'onglets mobile) et de la page de connexion :
+  `components/shell/studio-credit.tsx`.
 - 2026-10-08 — **Module Référentiels** (audit `docs/design/AUDIT-UX-REFERENTIELS.md`, tout validé). 7 collections
   (`1760000900` : `directory_contacts`, `spi_points`, `ptcar` [abbr unique], `ebp_views`, `documents` [fichier
   protégé], `procedures`, `procedure_versions` hook-only) ; écriture annuaire/SPI/PtCar/EBP = coordinateurs,

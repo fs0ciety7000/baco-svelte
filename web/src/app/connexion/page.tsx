@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { StudioCredit } from "@/components/shell/studio-credit";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentUser } from "@/server/auth";
 
@@ -28,6 +29,7 @@ export default async function ConnexionPage({
         Même identifiant et même mot de passe que BACO. Problème de connexion : contacte un
         administrateur.
       </p>
+      <StudioCredit />
     </main>
   );
 }

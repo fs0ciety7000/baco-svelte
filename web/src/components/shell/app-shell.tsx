@@ -10,6 +10,7 @@ import { NavProgress } from "./nav-progress";
 import { PageShortcuts } from "./page-shortcuts";
 import { PageTransition } from "./page-transition";
 import { ShellProvider } from "./shell-context";
+import { StudioCredit } from "./studio-credit";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import type { ShellUser } from "./types";
@@ -36,12 +37,12 @@ export function AppShell({
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col">
           <Topbar />
-          <main
-            id="contenu"
-            className="flex-1 pb-[calc(env(safe-area-inset-bottom)+4.5rem)] md:pb-0"
-          >
+          <main id="contenu" className="flex-1">
             {children}
           </main>
+          <footer className="px-4 pt-6 pb-[calc(env(safe-area-inset-bottom)+5rem)] text-center md:px-6 md:pb-4 md:text-left">
+            <StudioCredit />
+          </footer>
         </div>
       </div>
       <Suspense fallback={null}>

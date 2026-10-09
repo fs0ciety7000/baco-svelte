@@ -227,3 +227,5 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `revokeConnectorToken`, jeton en clair renvoyé une fois) ; `components/pmr/extension-connect.tsx` (dialogue
   `postMessage` avec `csm-link.js` : `ping` / `hello` / `configure` / `configured`). `SyncStatus` reçoit `partialAt`
   et `by` de `dicosSyncState()`. `isNewer()` dans `lib/pmr/extension-releases.ts`.
+- Pied de page : `StudioCredit` (`components/shell/studio-credit.tsx`) dans `AppShell` (le `footer` porte la marge basse
+  de la barre d'onglets mobile, plus `main`) et sur `/connexion`.
