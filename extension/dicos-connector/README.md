@@ -35,8 +35,8 @@ Deux `.zip` sont générés dans **`extension/dist/`** (régénérés par `exten
 
 | Navigateur | Paquet | Manifest |
 |---|---|---|
-| **Chrome / Edge** | `csm-dicos-connector-chrome-v1.6.0.zip` | `background.service_worker` |
-| **Firefox** (≥ 128) | `csm-dicos-connector-firefox-v1.6.0.zip` | `background.scripts` + `browser_specific_settings.gecko` |
+| **Chrome / Edge** | `csm-dicos-connector-chrome-v1.6.1.zip` | `background.service_worker` |
+| **Firefox** (≥ 128) | `csm-dicos-connector-firefox-v1.6.1.zip` | `background.scripts` + `browser_specific_settings.gecko` |
 
 Les sources (`src/`) sont **communes** ; seul le manifest diffère. Le code utilise l'espace de noms `chrome.*`
 (aliasé par Firefox) et des content scripts en monde `MAIN` (Chrome 111+, Firefox 128+).
@@ -81,7 +81,10 @@ L'endpoint d'ingestion `POST /api/pmr/missions/ingest` (voir `web/src/app/api/pm
   dans un **onglet ATMS ouvert et connecté** (`GET /api/v1/trains/{n°}/{jour}`, même origine, session de l'agent —
   aucun cookie lu ni conservé) et l'envoie à `POST /api/pmr/schedules/ingest` (même jeton de connecteur). CSM en tire
   le temps d'arrêt prévu de chaque gare pour l'export ALEA « Obligatoire ». Sans onglet ATMS : CSM se rabat sur
-  l'horaire iRail, la synchro DICOS n'est pas bloquée.
+  l'horaire iRail, la synchro DICOS n'est pas bloquée. **1.6.1** : un onglet ATMS ouvert *avant* l'installation ou
+  la mise à jour de l'extension reçoit le script à la demande (permission `scripting`) au lieu d'échouer
+  (« Receiving end does not exist ») ; sans onglet joignable, lecture directe avec la session ATMS du navigateur ;
+  jusqu'à 100 trains par jour ; le popup indique la voie utilisée et les trains introuvables.
 
 Variables à définir côté `csm-web` (Coolify), **en secrets** :
 

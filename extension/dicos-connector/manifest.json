@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
   "name": "CSM — Connecteur DICOS",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "Synchronise les missions PMR et groupes de DICOS vers CSM, avec les temps d'arrêt ATMS, en réutilisant les sessions ouvertes. Aucun mot de passe ni jeton SNCB stocké.",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "scripting"
   ],
   "host_permissions": [
     "https://dicos.intern-belgiantrain.be/*",

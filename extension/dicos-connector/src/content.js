@@ -270,11 +270,24 @@
     }
     if (!trains.length) return null;
     progress("Temps d'arrêt ATMS", 0, trains.length, true);
-    try {
-      return await chrome.runtime.sendMessage({ cmd: "atms", trains });
-    } catch (err) {
-      return { requested: trains.length, fetched: 0, stored: 0, error: String((err && err.message) || err).slice(0, 160) };
+    // Le service worker peut être en cours de (re)démarrage après la longue lecture DICOS : jusqu'à 3 essais.
+    let last = "";
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt) await sleep(attempt * 1500);
+      try {
+        const r = await chrome.runtime.sendMessage({ cmd: "atms", trains });
+        if (r) return r;
+        last = "réponse vide";
+      } catch (err) {
+        last = String((err && err.message) || err).slice(0, 120);
+      }
     }
+    return {
+      requested: trains.length,
+      fetched: 0,
+      stored: 0,
+      error: `Service de l'extension injoignable (${last}) : recharge l'extension puis l'onglet DICOS.`,
+    };
   }
 
   // `fresh` (bouton de synchro manuelle) = rafraîchir vraiment : on purge le cache de détail pour reprendre
@@ -425,6 +438,7 @@
           total.groups[k] += Number(r && r.groups && r.groups[k]) || 0;
         for (const k of Object.keys(total.atms)) total.atms[k] += Number(r && r.atms && r.atms[k]) || 0;
         if (r && r.atms && r.atms.error) total.atms.error = r.atms.error;
+        if (r && r.atms && r.atms.via) total.atms.via = r.atms.via;
         if (r && r.mode === "missions") Object.assign(total, { mode: "missions", tripDiag: r.tripDiag });
       }
     } finally {

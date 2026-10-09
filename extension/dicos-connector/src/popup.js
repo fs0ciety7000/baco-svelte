@@ -49,7 +49,10 @@ function fmtResult(r) {
 function fmtAtms(a) {
   if (!a || !(Number(a.requested) > 0)) return "";
   const num = (v) => Number(v) || 0;
-  const line = `<br>Temps d'arrêt ATMS : <b>${num(a.stored)}</b> / ${num(a.requested)} train(s)`;
+  const via = a.via === "onglet" ? " (onglet ATMS)" : a.via === "direct" ? " (lecture directe)" : "";
+  const line = `<br>Temps d'arrêt ATMS : <b>${num(a.stored)}</b> / ${num(a.requested)} train(s)${via}${
+    num(a.failed) ? ` · ${num(a.failed)} introuvable(s)` : ""
+  }`;
   return a.error ? `${line} · <span class="err">${escapeHtml(String(a.error))}</span>` : line;
 }
 // Mode de lecture : dossiers complets (trip-details) ou repli sur l'ancien format, avec les chemins essayés.

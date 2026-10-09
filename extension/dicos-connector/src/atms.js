@@ -2,6 +2,9 @@
 // (`GET /api/v1/trains/{n°}/{AAAA-MM-JJ}`) avec la session de l'agent et n'en renvoie que les champs utiles au calcul des
 // temps d'arrêt (abréviation PtCar, nom, ordre, heures planifiées). Aucun cookie ni jeton n'est lu ni conservé.
 (() => {
+  // Injecté aussi à la demande par le service worker (onglet ouvert avant l'installation) : une seule fois.
+  if (globalThis.__csmAtms) return;
+  globalThis.__csmAtms = true;
   const pick = (p) => ({
     ptcarSymbolicName: String(p.ptcarSymbolicName || "").slice(0, 20),
     ptcarName: String(p.ptcarName || "").slice(0, 80),
@@ -48,6 +51,7 @@
   }
 
   chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
+    if (msg && msg.cmd === "atms-ping") return void reply(true);
     if (!msg || msg.cmd !== "atms-train") return;
     train(msg.train, msg.day).then(reply);
     return true; // réponse asynchrone

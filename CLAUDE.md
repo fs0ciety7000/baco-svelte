@@ -480,6 +480,12 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   (`aleaDwell`) prend **ATMS d'abord, iRail en repli** ; la modale affiche la source (« ATMS (4) · iRail (1) »). Sans onglet
   ATMS ouvert, la synchro DICOS n'est pas bloquée. Le message de l'utilisateur contenait ses **cookies de session ATMS**
   (MRHSession…) : non utilisés ni conservés, déconnexion d'ATMS conseillée pour invalider la session. 206 contrôles de règles.
+- 2026-10-09 — **ATMS, 1re synchro réelle : 0 / 71 trains** (« Could not establish connection. Receiving end does not
+  exist »). Extension **1.6.1** : onglet ATMS ouvert avant l'installation / la mise à jour → script injecté à la demande
+  (permission `scripting`, ping `atms-ping`, garde contre la double injection) ; sans onglet joignable, **lecture directe**
+  depuis le service worker (permission d'hôte, session ATMS du navigateur) ; 3 essais content → service worker ; 100
+  trains max ; le popup affiche la voie (onglet / directe) et les trains introuvables. Logique testée avec un `chrome`
+  simulé. Les compteurs complète / légère étaient bien remplis (12 / 45 lignes sur le test).
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

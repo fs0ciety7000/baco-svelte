@@ -44,29 +44,108 @@ async function atmsTab() {
   return tabs.find((t) => !t.discarded) || tabs[0] || null;
 }
 
+// Champs utiles au calcul des temps d'arrêt (même tri que src/atms.js) : rien d'autre ne quitte le navigateur.
+const pickPoint = (p) => ({
+  ptcarSymbolicName: String(p.ptcarSymbolicName || "").slice(0, 20),
+  ptcarName: String(p.ptcarName || "").slice(0, 80),
+  orderNumber: Number(p.orderNumber) || 0,
+  operationCode: String(p.operationCode || "").slice(0, 4),
+  plannedFullArrivalTime: p.plannedFullArrivalTime ? String(p.plannedFullArrivalTime).slice(0, 40) : null,
+  plannedFullDepartureTime: p.plannedFullDepartureTime ? String(p.plannedFullDepartureTime).slice(0, 40) : null,
+  isCommercial: p.isCommercial === true,
+});
+
+// Repli sans onglet joignable (1.6.1) : lecture directe depuis l'extension (permission d'hôte ATMS), avec la session
+// ATMS du navigateur. Aucun cookie lu ni conservé par l'extension.
+async function atmsDirect(n, day) {
+  let res;
+  try {
+    res = await fetch(`https://atms.intern-belgiantrain.be/api/v1/trains/${n}/${day}`, {
+      credentials: "include",
+      headers: { Accept: "application/json" },
+    });
+  } catch (_) {
+    return { error: "network" };
+  }
+  if (res.status === 401 || res.status === 403) return { error: "expired" };
+  if (res.status === 404) return { error: "not-found" };
+  if (!res.ok) return { error: `http-${res.status}` };
+  let body;
+  try {
+    body = await res.json();
+  } catch (_) {
+    return { error: "expired" }; // page de connexion (HTML) au lieu du JSON
+  }
+  const data = body && body.data;
+  if (!data || !Array.isArray(data.itineraryPoints)) return { error: "not-found" };
+  return {
+    data: {
+      trains: (Array.isArray(data.trains) ? data.trains : []).slice(0, 1).map((t) => ({
+        trainNumber: Number(t.trainNumber) || 0,
+        label: String(t.label || "").slice(0, 20),
+        departureDay: String(t.departureDay || "").slice(0, 10),
+      })),
+      itineraryPoints: data.itineraryPoints.slice(0, 600).map(pickPoint),
+    },
+  };
+}
+
+// Onglet ATMS ouvert AVANT l'installation ou la mise à jour de l'extension : le content script n'y est pas → on
+// l'injecte (permission « scripting ») au lieu d'échouer sur « Receiving end does not exist ».
+async function reachTab(tab) {
+  const ping = () => chrome.tabs.sendMessage(tab.id, { cmd: "atms-ping" });
+  try {
+    if (await ping()) return true;
+  } catch (_) {}
+  try {
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["src/atms.js"] });
+    return Boolean(await ping());
+  } catch (_) {
+    return false;
+  }
+}
+
 async function syncAtms(trains) {
   const list = (Array.isArray(trains) ? trains : [])
     .filter((t) => t && /^\d{1,6}$/.test(String(t.train)) && /^\d{4}-\d{2}-\d{2}$/.test(String(t.day)))
-    .slice(0, 60);
-  const out = { requested: list.length, fetched: 0, stored: 0, failed: 0 };
+    .slice(0, 100);
+  const out = { requested: list.length, fetched: 0, stored: 0, failed: 0, via: "" };
   if (!list.length) return out;
-  const tab = await atmsTab();
-  if (!tab) return { ...out, error: "Ouvre un onglet ATMS connecté pour les temps d'arrêt (sinon iRail)." };
   const { csmUrl, token } = await config();
   if (!csmUrl || !token) return { ...out, error: "Configure l'URL CSM et le jeton de connecteur." };
+  const tab = await atmsTab();
+  let viaTab = tab ? await reachTab(tab) : false;
+  out.via = viaTab ? "onglet" : "direct";
   const schedules = [];
+  let expired = 0;
   for (let i = 0; i < list.length; i++) {
     if (i > 0) await sleep(300); // ~3 requêtes par seconde vers ATMS
-    let r;
-    try {
-      r = await chrome.tabs.sendMessage(tab.id, { cmd: "atms-train", train: String(list[i].train), day: list[i].day });
-    } catch (_) {
-      return { ...out, error: "Onglet ATMS injoignable : recharge-le (F5) puis réessaie." };
+    const n = String(list[i].train);
+    let r = null;
+    if (viaTab) {
+      try {
+        r = await chrome.tabs.sendMessage(tab.id, { cmd: "atms-train", train: n, day: list[i].day });
+      } catch (_) {
+        viaTab = false; // onglet fermé ou rechargé en cours de route : on continue en direct
+        out.via = "direct";
+      }
     }
-    if (r && r.error === "expired") return { ...out, error: "Session ATMS expirée : reconnecte-toi dans l'onglet ATMS." };
+    if (!r) r = await atmsDirect(n, list[i].day);
+    if (r && r.error === "expired") {
+      // Deux refus d'affilée = session absente : inutile d'insister sur les autres trains.
+      if (++expired >= 2 && !out.fetched)
+        return {
+          ...out,
+          error: tab
+            ? "Session ATMS expirée : reconnecte-toi dans l'onglet ATMS (F5) puis resynchronise."
+            : "Ouvre un onglet ATMS et connecte-toi, puis resynchronise (sinon CSM utilise iRail).",
+        };
+      out.failed++;
+      continue;
+    }
     if (r && r.data) {
       out.fetched++;
-      schedules.push({ day: list[i].day, train: String(list[i].train), data: r.data });
+      schedules.push({ day: list[i].day, train: n, data: r.data });
     } else out.failed++;
   }
   for (let i = 0; i < schedules.length; i += 20) {
