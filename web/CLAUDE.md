@@ -188,3 +188,15 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   interne, suivi du bas à l'arrivée d'un message, position gardée au chargement des plus anciens.
 - Messages iRail : `source = "irail"`, auteur affiché « iRail · SNCB » ; filtre « Sans iRail » (`?agents=1`).
 - Server Action `setDutyDistricts` (`operations/actions.ts`) ; `SessionUser.duty_day` / `duty_districts`.
+
+## Mouvement et navigation (étape 7, lot 0)
+
+- Formulaires de filtres : **`next/form`** (`import Form from "next/form"`, `action` = chemin), jamais
+  `<form method="get">` : navigation côté client, pas de rechargement. `FormAutoSubmit` reste valable.
+- Keyframes : animer `transform`, `opacity` ; jamais la propriété `translate` (elle porte le centrage Tailwind
+  `-translate-x-1/2`).
+- Trait d'onglet : `useSlideIndicator(listRef, barRef, sélecteur)` (`lib/motion.ts`), trait `w-px origin-left`.
+- Pas d'animation d'entrée sur un contenu rendu par le serveur au premier affichage (`useStaggerIn` l'ignore).
+- `NavProgress` (shell) : barre de chargement entre pages ; `(app)/error.tsx` : erreur en français dans le shell.
+- E2E `e2e/motion.spec.ts` : palette sans glissement, aucune animation infinie (hors `animate-pulse-dot` /
+  `animate-spin`), accueil sans flash, filtre sans rechargement.

@@ -1,3 +1,4 @@
+import Form from "next/form";
 import { MapPin, TriangleAlert } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -27,7 +28,7 @@ export default async function Page({
 
   return (
     <section className="flex flex-col gap-4" aria-label="Lignes">
-      <form action="/referentiels/lignes" method="get" className="flex flex-wrap items-end gap-2">
+      <Form action="/referentiels/lignes" className="flex flex-wrap items-end gap-2">
         <label className="flex min-w-0 flex-col gap-1 md:w-48">
           <span className="text-small text-fg-muted">District</span>
           <Select name="district" defaultValue={district}>
@@ -51,7 +52,7 @@ export default async function Page({
         <Button type="submit" variant="secondary">
           Afficher
         </Button>
-      </form>
+      </Form>
 
       {!detail ? (
         <>

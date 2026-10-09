@@ -46,7 +46,8 @@ function StatCard({
 }: StatCardProps) {
   const ref = useRef<HTMLElement>(null);
   const valueRef = useRef<HTMLSpanElement>(null);
-  const previous = useRef(0);
+  // Valeur de départ = valeur affichée : aucun compteur au montage (rien n'a changé), seulement sur un vrai changement.
+  const previous = useRef(value);
 
   useGSAP(
     () => {
@@ -64,7 +65,8 @@ function StatCard({
           ease: "power3.out",
           snap: { v: 1 },
           onUpdate: () => {
-            el.textContent = formatter.format(state.v);
+            // Nœud texte géré par React : on modifie sa valeur, on ne le remplace pas.
+            if (el.firstChild) el.firstChild.nodeValue = formatter.format(state.v);
           },
         });
       });

@@ -1,11 +1,12 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 
 import type { UiPreferences } from "@/design/preferences";
 
 import { CommandPalette } from "./command-palette";
 import { MobileTabBar } from "./mobile-tabbar";
+import { NavProgress } from "./nav-progress";
 import { ShellProvider } from "./shell-context";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
@@ -41,6 +42,9 @@ export function AppShell({
           </main>
         </div>
       </div>
+      <Suspense fallback={null}>
+        <NavProgress />
+      </Suspense>
       <MobileTabBar />
       <CommandPalette />
     </ShellProvider>

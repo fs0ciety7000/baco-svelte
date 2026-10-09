@@ -1,3 +1,4 @@
+import Form from "next/form";
 import { ChevronLeft, ChevronRight, FileText } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -42,7 +43,7 @@ export default async function Page({
               <ChevronLeft />
             </Link>
           </Button>
-          <form action="/commandes/b201" method="get" className="flex items-center gap-2">
+          <Form action="/commandes/b201" className="flex items-center gap-2">
             <label className="sr-only" htmlFor="b201-jour">
               Jour
             </label>
@@ -57,7 +58,7 @@ export default async function Page({
             <Button type="submit" variant="ghost" size="sm">
               Aller
             </Button>
-          </form>
+          </Form>
           <Button asChild variant="secondary" size="icon">
             <Link href={q(addDays(day, 1))} aria-label="Jour suivant">
               <ChevronRight />

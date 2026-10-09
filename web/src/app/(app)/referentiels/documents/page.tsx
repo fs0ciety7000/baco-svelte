@@ -1,3 +1,4 @@
+import Form from "next/form";
 import { Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -49,9 +50,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         </Button>
       </div>
 
-      <form
+      <Form
         action="/referentiels/documents"
-        method="get"
         role="search"
         className="flex flex-wrap items-end gap-2"
       >
@@ -99,7 +99,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             </Link>
           </Button>
         ) : null}
-      </form>
+      </Form>
 
       {vue === "procedures" ? (
         <ProcedureBoard

@@ -1,3 +1,4 @@
+import Form from "next/form";
 import { Search } from "lucide-react";
 import Link from "next/link";
 
@@ -22,7 +23,7 @@ export function RefSearchBar({
   children?: React.ReactNode;
 }) {
   return (
-    <form action={action} method="get" role="search" className="flex flex-wrap items-end gap-2">
+    <Form action={action} role="search" className="flex flex-wrap items-end gap-2">
       {Object.entries(hidden ?? {}).map(([k, v]) =>
         v ? <input key={k} type="hidden" name={k} value={v} /> : null,
       )}
@@ -51,7 +52,7 @@ export function RefSearchBar({
           <Link href={action}>Effacer</Link>
         </Button>
       ) : null}
-    </form>
+    </Form>
   );
 }
 

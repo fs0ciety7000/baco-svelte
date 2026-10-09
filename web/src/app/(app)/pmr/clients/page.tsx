@@ -1,3 +1,4 @@
+import Form from "next/form";
 import { Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -33,12 +34,7 @@ export default async function Page({
         </p>
         <LiveRefresh topics={["pmr_clients"]} />
       </div>
-      <form
-        action="/pmr/clients"
-        method="get"
-        role="search"
-        className="flex flex-wrap items-end gap-2"
-      >
+      <Form action="/pmr/clients" role="search" className="flex flex-wrap items-end gap-2">
         <label className="flex min-w-0 basis-full flex-col gap-1 md:max-w-80 md:flex-1 md:basis-auto">
           <span className="text-small text-fg-muted">Recherche</span>
           <span className="relative">
@@ -64,7 +60,7 @@ export default async function Page({
             {archived ? "Fiches actives" : "Fiches archivées"}
           </Link>
         </Button>
-      </form>
+      </Form>
       <ClientBoard
         rows={list.rows}
         canWrite={can(user, "pmr:write")}

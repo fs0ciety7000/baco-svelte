@@ -1,3 +1,4 @@
+import Form from "next/form";
 import { Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -28,9 +29,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         <span className="font-mono text-fg tabular">{total}</span> contact(s)
         {total > rows.length ? ` · ${rows.length} affichés : affinez les filtres` : ""}
       </p>
-      <form
+      <Form
         action="/referentiels"
-        method="get"
         role="search"
         className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
       >
@@ -91,7 +91,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             <Link href="/referentiels">Effacer</Link>
           </Button>
         </div>
-      </form>
+      </Form>
       <ContactBoard rows={rows} facets={facets} canWrite={canWrite} />
     </section>
   );

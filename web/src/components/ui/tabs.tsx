@@ -3,7 +3,7 @@
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import * as React from "react";
 
-import { gsap, MOTION_OK, useGSAP } from "@/lib/motion";
+import { useSlideIndicator } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 const Tabs = TabsPrimitive.Root;
@@ -20,33 +20,7 @@ function TabsList({
   const ref = React.useRef<HTMLDivElement>(null);
   const bar = React.useRef<HTMLSpanElement>(null);
 
-  useGSAP(
-    () => {
-      const list = ref.current;
-      if (!list) return;
-      const place = (animate: boolean) => {
-        const active = list.querySelector<HTMLElement>('[data-state="active"]');
-        if (!active || !bar.current) return;
-        const props = { x: active.offsetLeft, width: active.offsetWidth };
-        const mm = gsap.matchMedia();
-        mm.add(MOTION_OK, () => {
-          if (animate) gsap.to(bar.current, { ...props, duration: 0.3, ease: "hud" });
-          else gsap.set(bar.current, props);
-        });
-        mm.add("(prefers-reduced-motion: reduce)", () => gsap.set(bar.current, props));
-      };
-      place(false);
-      const observer = new MutationObserver(() => place(true));
-      observer.observe(list, { subtree: true, attributes: true, attributeFilter: ["data-state"] });
-      const onResize = () => place(false);
-      window.addEventListener("resize", onResize);
-      return () => {
-        observer.disconnect();
-        window.removeEventListener("resize", onResize);
-      };
-    },
-    { scope: ref },
-  );
+  useSlideIndicator(ref, bar, '[data-state="active"]');
 
   return (
     <TabsPrimitive.List
@@ -62,7 +36,7 @@ function TabsList({
       <span
         aria-hidden
         ref={bar}
-        className="pointer-events-none absolute bottom-0 left-0 h-0.5 w-0 bg-accent"
+        className="pointer-events-none invisible absolute bottom-0 left-0 h-0.5 w-px origin-left bg-accent"
       />
     </TabsPrimitive.List>
   );

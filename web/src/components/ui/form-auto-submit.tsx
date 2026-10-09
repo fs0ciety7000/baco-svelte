@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 
 /**
- * Filtres « automatiques » : placé dans un <form method="get">, soumet le formulaire dès qu'un champ change
+ * Filtres « automatiques » : placé dans un <Form> de next/form (ou un <form method="get">), soumet le formulaire dès qu'un champ change
  * (liste, date ; la recherche texte à la validation ou à la sortie du champ). Le formulaire reste utilisable sans JS
  * (bouton Filtrer conservé). Retour utilisateur du 8 oct. 2026 : « il faudrait que ça filtre automatiquement ».
  */

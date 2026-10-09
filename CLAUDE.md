@@ -493,6 +493,14 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   synchro DICOS, aucun `loading`/`error.tsx`, dialogues qui glissent en diagonale, graphiques illisibles. Planche
   interactive (artefact « Planche CSM v2 ») : palettes A Commandement affiné / B Craie (GSAP, couleur par module) /
   C Porcelaine, forme angle ou pilule, typo. **En attente des choix de l'utilisateur** avant tout changement.
+- 2026-10-09 — **Étape 7 validée** par l'utilisateur (« je valide tous les thèmes et tes propositions » : 11 thèmes avec
+  forme et typo propres, plan en 5 lots). **Lot 0 livré** : keyframes `pop-in`/`pop-out` en `transform` (la palette ⌘K
+  glissait de 288 px en diagonale), panneau Vaul à 260 ms, squelette statique, compteur des StatCards sans tween au
+  montage, cascade de l'accueil seulement en navigation client (plus de flash), trait d'onglet `useSlideIndicator`
+  (`x` + `scaleX`, posé sans animation au montage, un seul `matchMedia`), **filtres en `next/form`** (14 formulaires,
+  plus de rechargement de page), barre de navigation `NavProgress` (après 150 ms), `(app)/error.tsx` et
+  `global-error.tsx` en français, graphique des Statistiques en HTML (texte à taille réelle, repères). E2E
+  `e2e/motion.spec.ts`.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

@@ -1,3 +1,4 @@
+import Form from "next/form";
 import { Download } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -69,9 +70,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
             );
           })}
         </div>
-        <form
+        <Form
           action="/operations/statistiques"
-          method="get"
           className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
         >
           <label className="flex min-w-0 flex-col gap-1 md:w-40">
@@ -117,7 +117,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
               <Download aria-hidden /> CSV
             </a>
           </Button>
-        </form>
+        </Form>
         <p className="text-small text-fg-muted">
           Du {formatDay(from)} au {formatDay(to)} · district de la commande
           {filters.type || filters.societe ? " · taxis exclus (filtre bus)" : ""}

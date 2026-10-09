@@ -1,3 +1,4 @@
+import Form from "next/form";
 import { ChevronDown, Download, Search, SlidersHorizontal } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -77,9 +78,8 @@ export default async function Page({
   };
 
   const searchForm = (
-    <form
+    <Form
       action="/operations/journal"
-      method="get"
       role="search"
       className="flex min-w-0 flex-1 gap-2 md:max-w-sm"
     >
@@ -97,7 +97,7 @@ export default async function Page({
           maxLength={80}
         />
       </label>
-    </form>
+    </Form>
   );
   const csvLink = search ? null : (
     <Button asChild size="sm" variant="ghost" className="border border-border max-sm:hidden">

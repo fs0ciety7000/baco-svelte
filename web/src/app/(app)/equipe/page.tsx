@@ -1,3 +1,4 @@
+import Form from "next/form";
 import { Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -22,9 +23,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
   const rows = await listTeam({ q: f.q ?? "", district: f.district as never });
   return (
     <section className="flex flex-col gap-4" aria-label="Annuaire de l'équipe">
-      <form
+      <Form
         action="/equipe"
-        method="get"
         role="search"
         className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
       >
@@ -64,7 +64,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             <Link href="/equipe">Effacer</Link>
           </Button>
         </div>
-      </form>
+      </Form>
       <p className="text-body text-fg-muted">
         <span className="font-mono text-fg tabular">{rows.length}</span> agent(s)
       </p>

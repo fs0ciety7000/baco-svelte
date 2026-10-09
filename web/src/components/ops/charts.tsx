@@ -1,4 +1,6 @@
-// Graphiques des statistiques en SVG simple (pas de Chart.js, décision du 8 octobre 2026) : couleurs par jetons,
+import { cn } from "@/lib/utils";
+
+// Graphiques des statistiques en HTML / CSS simple (pas de Chart.js, décision du 8 octobre 2026) : couleurs par jetons,
 // valeurs lisibles sans la couleur (titre au survol, tableau équivalent pour les lecteurs d'écran).
 
 const fmtBucket = (label: string) =>
@@ -13,47 +15,74 @@ export function StackedBars({
   series: { label: string; bus: number; taxi: number }[];
   caption: string;
 }) {
+  // HTML plutôt que SVG mis à l'échelle : le texte garde sa taille réelle quelle que soit la largeur (audit UI du
+  // 9 oct. 2026 : axe à 20 px en desktop, 5 px en mobile). Repères 0 / moitié / max.
   const max = Math.max(1, ...series.map((s) => s.bus + s.taxi));
-  const w = 640;
-  const h = 180;
-  const gap = series.length > 40 ? 1 : 3;
-  const bw = Math.max(2, (w - gap * series.length) / Math.max(1, series.length));
-  const every = Math.ceil(series.length / 10);
+  const top = max <= 4 ? max : Math.ceil(max / 2) * 2;
+  const every = Math.max(1, Math.ceil(series.length / 10));
+  const gap = series.length > 40 ? "1px" : series.length > 20 ? "2px" : "4px";
   return (
-    <figure className="flex flex-col gap-2">
-      <svg viewBox={`0 0 ${w} ${h + 22}`} className="h-auto w-full" role="img" aria-label={caption}>
-        <line x1={0} x2={w} y1={h} y2={h} stroke="var(--border-strong)" />
-        {series.map((s, i) => {
-          const x = i * (bw + gap);
-          const hb = (s.bus / max) * (h - 8);
-          const ht = (s.taxi / max) * (h - 8);
-          return (
-            <g key={s.label}>
-              <title>{`${fmtBucket(s.label)} : ${s.bus} bus, ${s.taxi} taxi(s)`}</title>
-              <rect x={x} y={h - hb} width={bw} height={hb} fill="var(--accent)" />
-              <rect x={x} y={h - hb - ht} width={bw} height={ht} fill="var(--info)" />
-              {i % every === 0 ? (
-                <text
-                  x={x + bw / 2}
-                  y={h + 15}
-                  textAnchor="middle"
-                  fontSize="11"
-                  fill="var(--fg-muted)"
-                  fontFamily="var(--font-mono, monospace)"
-                >
-                  {fmtBucket(s.label)}
-                </text>
-              ) : null}
-            </g>
-          );
-        })}
-      </svg>
+    <figure className="flex min-w-0 flex-col gap-2">
+      <div className="grid grid-cols-[2rem_minmax(0,1fr)] gap-x-2" role="img" aria-label={caption}>
+        <div
+          aria-hidden
+          className="flex h-44 flex-col justify-between text-right font-mono text-small text-fg-muted tabular"
+        >
+          <span className="-translate-y-1/2">{top}</span>
+          <span>{top / 2 === Math.round(top / 2) ? top / 2 : ""}</span>
+          <span className="translate-y-1/2">0</span>
+        </div>
+        <div className="relative h-44 border-b border-border-strong">
+          <span
+            aria-hidden
+            className="absolute inset-x-0 top-0 border-t border-dashed border-border"
+          />
+          <span
+            aria-hidden
+            className="absolute inset-x-0 top-1/2 border-t border-dashed border-border"
+          />
+          <div className="absolute inset-0 flex items-end" style={{ gap }}>
+            {series.map((s) => (
+              <div
+                key={s.label}
+                title={`${fmtBucket(s.label)} : ${s.bus} bus, ${s.taxi} taxi(s)`}
+                className="flex h-full min-w-0 flex-1 flex-col justify-end"
+              >
+                <span
+                  className="block bg-[color-mix(in_oklab,var(--info)_45%,var(--surface))]"
+                  style={{ height: `${(s.taxi / top) * 100}%` }}
+                />
+                <span className="block bg-info" style={{ height: `${(s.bus / top) * 100}%` }} />
+              </div>
+            ))}
+          </div>
+        </div>
+        <span />
+        <div aria-hidden className="mt-1 flex" style={{ gap }}>
+          {series.map((s, i) => (
+            <span
+              key={s.label}
+              className={cn(
+                "min-w-0 flex-1 overflow-visible text-center font-mono text-small whitespace-nowrap text-fg-muted tabular",
+                i % every !== 0 && "invisible",
+                i % (every * 2) !== 0 && "max-sm:invisible",
+              )}
+            >
+              {fmtBucket(s.label)}
+            </span>
+          ))}
+        </div>
+      </div>
       <figcaption className="flex flex-wrap gap-4 text-small text-fg-muted">
         <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden className="size-2.5 bg-accent" /> Bus C3
+          <span aria-hidden className="size-2.5 bg-info" /> Bus C3
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden className="size-2.5 bg-info" /> Taxis
+          <span
+            aria-hidden
+            className="size-2.5 bg-[color-mix(in_oklab,var(--info)_45%,var(--surface))]"
+          />{" "}
+          Taxis
         </span>
         <span>max {max} par période</span>
       </figcaption>
@@ -91,7 +120,7 @@ export function BarList({
           <div className="relative min-h-8 overflow-hidden border border-border">
             <span
               aria-hidden
-              className="absolute inset-y-0 left-0 bg-[color-mix(in_oklab,var(--accent)_22%,var(--surface))]"
+              className="absolute inset-y-0 left-0 bg-[color-mix(in_oklab,var(--info)_22%,var(--surface))]"
               style={{ width: `${(i.value / max) * 100}%` }}
             />
             <span className="relative block truncate px-2 py-1 text-small">{i.label}</span>

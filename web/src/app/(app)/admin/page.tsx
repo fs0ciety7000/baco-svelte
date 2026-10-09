@@ -1,3 +1,4 @@
+import Form from "next/form";
 import { Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -34,9 +35,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         </p>
         <UserCreate />
       </div>
-      <form
+      <Form
         action="/admin"
-        method="get"
         role="search"
         className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
       >
@@ -87,7 +87,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             <Link href="/admin">Effacer</Link>
           </Button>
         </div>
-      </form>
+      </Form>
       {rows.length === 0 ? (
         <EmptyState title="Aucun compte" description="Aucun compte ne correspond à ces filtres." />
       ) : (

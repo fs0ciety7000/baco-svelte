@@ -1,3 +1,4 @@
+import Form from "next/form";
 import { Download } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -51,9 +52,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
     new URLSearchParams({ ...keep, ...extra }).toString();
   return (
     <section className="flex flex-col gap-4" aria-label="Journal d'audit">
-      <form
+      <Form
         action="/admin/audit"
-        method="get"
         className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
       >
         <FormAutoSubmit />
@@ -103,7 +103,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             </a>
           </Button>
         </div>
-      </form>
+      </Form>
       <p className="text-body text-fg-muted">
         <span className="font-mono text-fg tabular">{res.totalItems}</span> ligne(s)
         {p.user ? (

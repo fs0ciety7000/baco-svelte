@@ -1,3 +1,4 @@
+import Form from "next/form";
 import { Search } from "lucide-react";
 import Link from "next/link";
 
@@ -56,9 +57,8 @@ export function PmrFilterBar({
           );
         })}
       </div>
-      <form
+      <Form
         action={action}
-        method="get"
         role="search"
         className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
       >
@@ -117,7 +117,7 @@ export function PmrFilterBar({
             <Link href={action}>Effacer</Link>
           </Button>
         </div>
-      </form>
+      </Form>
     </div>
   );
 }

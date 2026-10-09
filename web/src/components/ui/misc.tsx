@@ -84,10 +84,7 @@ function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       aria-hidden
-      className={cn(
-        "animate-pulse bg-[color-mix(in_oklab,var(--fg)_8%,var(--surface))]",
-        className,
-      )}
+      className={cn("bg-[color-mix(in_oklab,var(--fg)_8%,var(--surface))]", className)}
       {...props}
     />
   );

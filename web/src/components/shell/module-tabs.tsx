@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
-import { gsap, MOTION_OK, useGSAP } from "@/lib/motion";
+import { useSlideIndicator } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { activeTab } from "@/navigation";
 
@@ -19,20 +19,12 @@ export function ModuleTabs({ moduleId }: { moduleId: string }) {
   const bar = useRef<HTMLSpanElement>(null);
   const current = mod ? activeTab(pathname, mod) : undefined;
 
-  useGSAP(
-    () => {
-      const el = ref.current?.querySelector<HTMLElement>('[aria-current="page"]');
-      if (!el || !bar.current) return;
-      const target = { x: el.offsetLeft, width: el.offsetWidth };
-      const mm = gsap.matchMedia();
-      mm.add(MOTION_OK, () => {
-        gsap.to(bar.current, { ...target, duration: 0.3, ease: "hud" });
-      });
-      mm.add("(prefers-reduced-motion: reduce)", () => gsap.set(bar.current, target));
-      el.scrollIntoView({ block: "nearest", inline: "nearest" });
-    },
-    { scope: ref, dependencies: [pathname] },
-  );
+  useSlideIndicator(ref, bar, '[aria-current="page"]', [pathname]);
+  useEffect(() => {
+    ref.current
+      ?.querySelector<HTMLElement>('[aria-current="page"]')
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [pathname]);
 
   if (!mod || mod.tabs.length < 2) return null;
   return (
@@ -61,7 +53,7 @@ export function ModuleTabs({ moduleId }: { moduleId: string }) {
       <span
         aria-hidden
         ref={bar}
-        className="pointer-events-none absolute bottom-0 left-0 h-0.5 w-0 bg-accent"
+        className="pointer-events-none invisible absolute bottom-0 left-0 h-0.5 w-px origin-left bg-accent"
       />
     </div>
   );

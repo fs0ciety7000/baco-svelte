@@ -65,6 +65,7 @@
 
   --ease-hud: cubic-bezier(0.2, 0, 0, 1);
   --animate-pulse-dot: pulse-dot 2s var(--ease-hud) infinite;
+  --animate-nav-progress: nav-progress 8s cubic-bezier(0.1, 0.6, 0.2, 1) 150ms both;
   --animate-fade-in: fade-in 220ms var(--ease-hud);
   --animate-fade-out: fade-out 160ms ease-in forwards;
   --animate-pop-in: pop-in 220ms var(--ease-hud);
@@ -80,19 +81,32 @@
       opacity: 0;
     }
   }
+  /* `transform` et non `translate` : la propriété `translate` porte le centrage Tailwind (-translate-x-1/2) des
+     dialogues ; l'animer faisait glisser la palette ⌘K en diagonale (audit motion du 9 oct. 2026). */
   @keyframes pop-in {
     from {
       opacity: 0;
-      translate: 0 8px;
+      transform: translateY(6px) scale(0.985);
     }
   }
   @keyframes pop-out {
     to {
       opacity: 0;
-      translate: 0 4px;
+      transform: translateY(4px) scale(0.985);
     }
   }
 
+  /* Barre de navigation : invisible les 150 premières ms, puis avance vite et ralentit (jamais 100 % seule). */
+  @keyframes nav-progress {
+    0% {
+      opacity: 1;
+      transform: scaleX(0);
+    }
+    100% {
+      opacity: 1;
+      transform: scaleX(0.9);
+    }
+  }
   @keyframes pulse-dot {
     0%,
     100% {
@@ -262,6 +276,12 @@
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
+}
+
+/* Panneau latéral (Vaul) : 500 ms par défaut, ramené au budget des panneaux (≤ 300 ms). */
+[data-vaul-drawer] {
+  transition-duration: 260ms !important;
+  animation-duration: 260ms !important;
 }
 
 /* Mouvement réduit : aucune animation CSS (GSAP gère le sien via matchMedia). */

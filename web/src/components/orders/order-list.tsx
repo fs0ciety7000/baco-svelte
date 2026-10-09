@@ -1,3 +1,4 @@
+import Form from "next/form";
 import { Search } from "lucide-react";
 import Link from "next/link";
 
@@ -50,9 +51,8 @@ export function FilterBar({ action, filters }: { action: string; filters: ListFi
   };
   return (
     <div className="flex flex-col gap-2">
-      <form
+      <Form
         action={action}
-        method="get"
         className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
         role="search"
       >
@@ -110,7 +110,7 @@ export function FilterBar({ action, filters }: { action: string; filters: ListFi
             <Link href={action}>Effacer</Link>
           </Button>
         </div>
-      </form>
+      </Form>
       <div className="flex flex-wrap gap-2" aria-label="Raccourcis de dates">
         {shortcut("Aujourd'hui", today, today)}
         {shortcut("Hier", addDays(today, -1), addDays(today, -1))}
