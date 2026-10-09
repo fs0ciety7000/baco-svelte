@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { CANCELLED_COOKIE, isCancelledPref } from "@/lib/pmr/cancelled-pref";
 import { isExpired } from "@/server/token";
 
 // Garde de premier niveau : sans jeton valide, redirection vers /connexion. La vraie vérification
@@ -58,20 +57,6 @@ export async function middleware(request: NextRequest) {
   requestHeaders.set("content-security-policy", csp);
   const res = NextResponse.next({ request: { headers: requestHeaders } });
   res.headers.set("content-security-policy", csp);
-  // « Masquer les annulées » (Missions PMR, Groupes, Historique) : la bascule est mémorisée pour les visites suivantes.
-  const annulees = request.nextUrl.searchParams.get("annulees");
-  if (
-    valid &&
-    isCancelledPref(annulees) &&
-    request.cookies.get(CANCELLED_COOKIE)?.value !== annulees
-  )
-    res.cookies.set(CANCELLED_COOKIE, annulees, {
-      httpOnly: true,
-      secure: process.env.CSM_COOKIE_SECURE !== "false",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 365 * 24 * 3600,
-    });
   if (valid && isExpired(token, Date.now(), REFRESH_MARGIN_S)) {
     try {
       const pbUrl = process.env.PB_URL ?? "http://127.0.0.1:8090";

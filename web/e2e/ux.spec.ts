@@ -46,6 +46,7 @@ test("« Effacer » vide vraiment les filtres (formulaire remonté à chaque URL
 
 test("« Masquer les annulées » se bascule, garde les filtres et reste mémorisé", async ({
   page,
+  browser,
 }) => {
   await login(page, "/pmr");
   const chip = () => page.getByTestId("hide-cancelled");
@@ -62,6 +63,12 @@ test("« Masquer les annulées » se bascule, garde les filtres et reste mémori
     await page.goto(path);
     await expect(chip()).toHaveAttribute("aria-pressed", "true");
   }
+  // Préférence de l'agent : retrouvée sur une autre session (autre poste).
+  const other = await browser.newContext();
+  const page2 = await other.newPage();
+  await login(page2, "/groupes");
+  await expect(page2.getByTestId("hide-cancelled")).toHaveAttribute("aria-pressed", "true");
+  await other.close();
   await chip().click();
   await expect(page).toHaveURL(/annulees=affichees/);
   await page.goto("/pmr");
