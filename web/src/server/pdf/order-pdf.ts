@@ -285,13 +285,12 @@ function title(l: Layout, main: string, sub: string | null, banner: string) {
   l.y -= 30;
 }
 
-function numberLine(l: Layout, label: string, number: number, status: Status) {
-  // Plus de « Statut » sur le bon (demande du 9 oct. 2026) ; seule une annulation reste signalée au fournisseur.
-  // Bus : plus de mention « Bon n° » non plus (le numéro reste dans le titre du document et le pied de page).
-  if (label) l.text(`${label} n° ${number || "—"}`, MARGIN, l.y - 10, { size: 11, bold: true });
-  if (status === "annule")
-    l.textRight("ANNULÉ", MARGIN + WIDTH, l.y - 10, { size: 10, bold: true });
-  if (label || status === "annule") l.y -= 16;
+function cancelledMark(l: Layout, status: Status) {
+  // Plus de « Statut » ni de « Bon n° » / « Commande n° » sur le bon (demande du 9 oct. 2026 : le numéro reste dans le
+  // titre du document et le pied de page) ; seule une annulation reste signalée au fournisseur.
+  if (status !== "annule") return;
+  l.textRight("ANNULÉ", MARGIN + WIDTH, l.y - 10, { size: 10, bold: true });
+  l.y -= 16;
 }
 
 function footer(doc: PDFDocument, font: PDFFont, generatedAt: Date, ref: string) {
@@ -430,7 +429,7 @@ export async function busOrderPdf(detail: BusPdfDetail, ctx: PdfContext): Promis
     "Partie A – Services opérationnels SNCB",
     `C3-${d.c3_type} · ${c3Label(d.c3_type).toUpperCase()}`,
   );
-  numberLine(l, "", n, detail.meta.status);
+  cancelledMark(l, detail.meta.status);
 
   const relationLabel = d.c3_type === 3 ? "N° de commande / BNX" : "Relation";
   const stops = busStops(d);
@@ -490,7 +489,7 @@ export async function taxiOrderPdf(detail: TaxiPdfDetail, ctx: PdfContext): Prom
     ].filter(Boolean),
   });
   title(l, "Demande de taxi", null, d.is_pmr ? "TAXI · CLIENT PMR" : "TAXI");
-  numberLine(l, "Commande", n, detail.meta.status);
+  cancelledMark(l, detail.meta.status);
 
   l.section("Trajet");
   l.field("Aller", when(d.trip_day, d.trip_time), { bold: true });

@@ -469,7 +469,7 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   les lignes déjà synchronisées restent « À vérifier » jusqu'à la prochaine synchro. **Colonne Train en premier**, en gras sur
   fond accent (`TrainChip`), PMR et Groupes ; onglet Groupes déplacé en **`/groupes`** (redirection depuis `/pmr/groupes`).
   **PDF** : « Agent » = créateur du bon (`orderAgent`, repli sur l'agent repris de BACO), arrêts intermédiaires sans
-  « (L.125) », plus de ligne « Bon n° » sur le bus.
+  « (L.125) », plus de ligne « Bon n° » (bus) ni « Commande n° » (taxi). Origine / terminus : « À vérifier » confirmé.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans
