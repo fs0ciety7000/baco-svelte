@@ -134,8 +134,16 @@ test("journal : publier (Markdown), lu, corriger, pièce jointe, retirer", async
   await login(page, "/operations/journal");
   // Districts du jour : bandeau du matin (non bloquant), puis puce dans l'en-tête du Journal.
   const banner = page.getByTestId("duty-banner");
-  if (await banner.isVisible()) {
-    await banner.getByRole("checkbox", { name: /DSO/ }).click();
+  // Le bandeau apparaît après l'hydratation (choix « Plus tard » lu dans le navigateur) : on l'attend.
+  const shown = await banner
+    .waitFor({ state: "visible", timeout: 5000 })
+    .then(() => true)
+    .catch(() => false);
+  if (shown) {
+    // Le district du profil est pré-coché : on ne clique que si DSO ne l'est pas déjà.
+    const dso = banner.getByRole("checkbox", { name: /DSO/ });
+    if ((await dso.getAttribute("aria-checked")) !== "true") await dso.click();
+    await expect(dso).toHaveAttribute("aria-checked", "true");
     await banner.getByTestId("duty-save").click();
     await expect(banner).toBeHidden();
   }
