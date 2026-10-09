@@ -777,9 +777,7 @@ function TrainPanel({
             ) : null}
             {canWriteLog ? (
               <Button asChild size="sm" variant="ghost" className="border border-border">
-                <Link
-                  href={`/operations/main-courante/nouveau?train=${encodeURIComponent(trainId)}`}
-                >
+                <Link href={`/operations/journal?train=${encodeURIComponent(trainId)}`}>
                   <NotebookPen aria-hidden /> Noter
                 </Link>
               </Button>

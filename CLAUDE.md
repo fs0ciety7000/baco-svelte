@@ -35,7 +35,7 @@ gelée** (v1, branche `ccr-5dca0da8-4yg4i6`) : ne pas le modifier.
 | 2 | Design system + page `/design` (5 thèmes, GSAP) | ✅ 8 oct. — jetons + test AA (156 contrôles), 19 composants, `/design`, 17 E2E ; captures et écarts **validés** |
 | 3 | Shell (6 entrées, onglets, ⌘K, mobile 4 + Plus) + tableau de bord | ✅ 8 oct. — 24 E2E, CSP, gardes par page, captures validées |
 | 4 | Données : schéma PocketBase, règles d'accès, import | 🔄 données BACO du 8 oct. importées sur l'instance de test (5 collections) ; migration réelle **en une fois à la bascule** |
-| 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 **Commandes** livré en session 3 (schéma + 66 contrôles de règles, bus, taxi, envoi `.eml` + PDF, suivi, B201, E2E) : **validé le 8 oct.** ; **PMR validé le 8 oct.** (schéma + 105 contrôles de règles, prestations, collage DICOS, clients, matériel, E2E) ; **Opérations validé le 8 oct.** (trains en direct iRail, main courante, carte PN, statistiques, cloche ; 149 contrôles de règles, 46 E2E) ; **DICOS / Missions PMR validé** (extension + ingestion, lecture seule, trajet/IN-OUT/district/copier) ; **Annuaire et données (ex-Référentiels) livré** (annuaire, lignes, PtCar, EBP, procédures + documents ; 7 collections ; 173 contrôles de règles ; audit + revue passés ; données v1 importées sur l'instance de test) ; **Équipe et Admin livrés, à valider** |
+| 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 **Commandes** livré en session 3 (schéma + 66 contrôles de règles, bus, taxi, envoi `.eml` + PDF, suivi, B201, E2E) : **validé le 8 oct.** ; **PMR validé le 8 oct.** (schéma + 105 contrôles de règles, prestations, collage DICOS, clients, matériel, E2E) ; **Opérations validé le 8 oct.** (trains en direct iRail, Journal (ex-main courante), carte PN, statistiques, cloche ; 149 contrôles de règles, 46 E2E) ; **DICOS / Missions PMR validé** (extension + ingestion, lecture seule, trajet/IN-OUT/district/copier) ; **Annuaire et données (ex-Référentiels) livré** (annuaire, lignes, PtCar, EBP, procédures + documents ; 7 collections ; 173 contrôles de règles ; audit + revue passés ; données v1 importées sur l'instance de test) ; **Équipe et Admin livrés, à valider** |
 | 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | ✅ 8 oct. — https://test-csm.fs0ciety.org en ligne ; projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
 | — | Hotfix sécurité BACO (`supabase/migrations/20261008120000_security_hotfix.sql`) | ✅ appliqué par l'utilisateur (SQL Editor) le 8 oct., vérifié : 0 ERROR (36 avant). Suite **non appliquée** : `20261008130000_hotfix_followup.sql` (test NULL de `get_my_role()`) et `20261008140000_pn_data_update_fix.sql` (XSS stocké carte PN), accord requis ; protection des mots de passe compromis encore désactivée |
 
@@ -170,6 +170,10 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   `false` pour les secrets ; `custom_internal_name` donne un nom réseau stable (`csm-pocketbase`) ; sonde de santé à
   régler sur `127.0.0.1` (`localhost` = `::1` dans Alpine → 503). Logs de déploiement : droit `read:sensitive` absent
   (voulu) → diagnostic par tâches planifiées exécutées une fois (le statut reflète le code de retour), puis supprimées.
+- (v2) Coolify : **un push sur la branche déployée redéploie déjà `csm-web` et `csm-pocketbase`** (webhook). Ne pas
+  appeler `POST /deploy` en plus : deux déploiements simultanés ont laissé `csm-pocketbase` arrêté (`exited:unhealthy`,
+  9 oct.) ; rétabli par un nouveau push. Journal de démarrage dans `/pb_data/startup.log` ; `PB_DEBUG_HOLD=1` (variable
+  runtime, à retirer ensuite) garde le conteneur en vie après un échec pour l'examiner par tâche planifiée.
 - (v2) `cn()` = tailwind-merge **étendu** (tailles et couleurs sémantiques), sinon il supprime `text-accent-fg` ou
   `text-body` : voir `web/CLAUDE.md`.
 - (v2) Avant de relancer le serveur web, vérifier que l'ancien `next-server` est arrêté (sinon EADDRINUSE et les
@@ -443,6 +447,16 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   district/statut, panneau avec contact, « Export ALEA » : « Embarquement d'un groupe de 25 personnes dont 20 enfants »,
   sans « dont… » s'il n'y a pas d'enfant, Débarquement pour OUT). Extension **1.5.0** : envoie aussi les groupes
   (détail d'un trajet par dossier), totaux « Groupes » dans le popup.
+- 2026-10-09 — **Journal** (ex-main courante, demande de l'utilisateur) : écran plein façon messagerie (`/operations/journal`,
+  anciennes routes redirigées), Markdown sûr maison (`lib/ops/chat-markdown.ts`, arbre → éléments React, testé), emojis
+  (menu Radix, sans dépendance), barre d'écriture ancrée (Entrée envoie au clavier, brouillon local), consignes épinglées en
+  bandeau, « Plein écran ». Puis : **fil continu** (plus de sélection par jour, « messages plus anciens » par 100), chaque
+  message affiche **auteur + date et heure d'envoi** (heure de l'événement à part si elle diffère). **Districts du jour** :
+  `users.duty_day` + `duty_districts` (`1760001600`), bandeau non bloquant le matin + puce dans le Journal ; les urgences
+  et iRail sont notifiées selon ces districts (repli : district du profil). **Perturbations / travaux iRail → Journal** :
+  cron PocketBase `irail-journal` (5 min), `ops_log.source = "irail"` sans auteur, dédup `external_id`, district déduit
+  des gares citées (`line_stations`), notification `perturbation` aux agents du district ; `CSM_IRAIL_URL=off` en CI.
+  CI E2E remise au vert (attentes périmées après les renommages). 201 contrôles de règles.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

@@ -105,7 +105,7 @@ test("mission : panneau en lecture seule, libellé à copier", async ({ page }, 
   await row.click();
   await expect(page.getByTestId("assist-panel")).toContainText("1 × NV");
   // Sens IN/OUT : la mission de démo est une arrivée → débarquement (OUT).
-  await expect(page.getByTestId("assist-panel")).toContainText("Débarquement");
+  await expect(page.getByTestId("assist-panel")).toContainText(/débarquement/i);
   // Aucune action d'édition dans le panneau (ni « Annuler », ni « Marquer réalisée »).
   await expect(page.getByTestId("assist-annulee")).toHaveCount(0);
   await expect(page.getByTestId("assist-realisee")).toHaveCount(0);

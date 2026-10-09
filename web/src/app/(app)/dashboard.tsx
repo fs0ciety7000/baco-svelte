@@ -51,7 +51,7 @@ const TITLES: Record<WidgetId, { eyebrow: string; title: string; wide?: boolean 
   "a-confirmer": { eyebrow: "Commandes", title: "À confirmer", wide: true },
   raccourcis: { eyebrow: "Actions", title: "Raccourcis" },
   trains: { eyebrow: "Opérations", title: "Trains perturbés" },
-  "main-courante": { eyebrow: "Opérations", title: "Main courante" },
+  "main-courante": { eyebrow: "Opérations", title: "Journal" },
   perturbations: { eyebrow: "Opérations", title: "Perturbations" },
   travaux: { eyebrow: "Opérations", title: "Travaux" },
 };

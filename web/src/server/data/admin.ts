@@ -252,7 +252,7 @@ export async function moduleVolumes(): Promise<{ label: string; count: number | 
     ["Commandes bus", "bus_orders"],
     ["Commandes taxi", "taxi_orders"],
     ["Missions PMR", "pmr_assists"],
-    ["Journal (main courante)", "ops_log"],
+    ["Journal", "ops_log"],
     ["Procédures", "procedures"],
     ["Documents", "documents"],
   ];

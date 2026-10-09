@@ -1,10 +1,11 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 
 import { normalizeTrain, parseFavorites, stationId } from "@/lib/ops/irail";
-import { entrySchema, RETIRE_WINDOW_MS } from "@/lib/ops/log";
+import { DUTY_DISTRICTS, entrySchema, RETIRE_WINDOW_MS } from "@/lib/ops/log";
 import { brusselsDay, brusselsToUtc, pbDate } from "@/lib/orders/time";
 import { can, isAdmin } from "@/lib/permissions";
 import { requireUser, type SessionUser } from "@/server/auth";
@@ -366,6 +367,28 @@ export async function saveCrossing(input: {
       .create({ ...d, active: true, source: "csm", updated_by: user.id });
     return { ok: true, data: { id: r.id } };
   } catch (e) {
+    return fail(e);
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Districts du jour (décision du 9 oct. 2026) : l'agent coche où il travaille aujourd'hui ; les notifications
+// d'urgence et des perturbations iRail suivent ces districts (hooks PocketBase).
+
+export async function setDutyDistricts(input: string[]): Promise<Result> {
+  try {
+    const user = await requireUser();
+    const districts = z
+      .array(z.enum(DUTY_DISTRICTS))
+      .max(3)
+      .parse([...new Set(input)]);
+    const pb = await pbForRequest();
+    await pb
+      .collection("users")
+      .update(user.id, { duty_day: brusselsDay(), duty_districts: districts });
+    return { ok: true };
+  } catch (e) {
+    unstable_rethrow(e);
     return fail(e);
   }
 }

@@ -28,7 +28,7 @@ export type LogDigest = {
   author: string;
 };
 
-/** Widget « Main courante » : épinglées puis dernières entrées. */
+/** Widget « Journal » : épinglés puis derniers messages. */
 export function LogWidget({ entries }: { entries: LogDigest[] | null }) {
   if (!entries) return <EmptyState title="Accès restreint" />;
   if (!entries.length)
@@ -36,14 +36,14 @@ export function LogWidget({ entries }: { entries: LogDigest[] | null }) {
       <EmptyState
         icon={<MessageSquareText className="size-6" />}
         title="Rien de noté"
-        description="Aucune entrée récente dans la main courante."
+        description="Aucun message récent dans le journal."
       />
     );
   return (
     <ul className="flex flex-col gap-2">
       {entries.map((e) => (
         <li key={e.id}>
-          <Link href={`/operations/main-courante?entree=${e.id}`} className="block">
+          <Link href={`/operations/journal?entree=${e.id}`} className="block">
             <ListCard
               statusColor={
                 e.urgent ? "var(--danger)" : e.pinned ? "var(--accent)" : "var(--border)"

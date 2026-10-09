@@ -276,7 +276,7 @@ export function PnBoard({
               ) : null}
               {canReadLog ? (
                 <Button asChild size="sm" variant="ghost" className="border border-border">
-                  <Link href={`/operations/main-courante?pn=${sel.id}`}>
+                  <Link href={`/operations/journal?pn=${sel.id}`}>
                     <NotebookPen aria-hidden /> Entrées liées
                   </Link>
                 </Button>

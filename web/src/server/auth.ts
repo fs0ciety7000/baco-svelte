@@ -30,6 +30,9 @@ const userSchema = z.object({
   grants: z.array(z.string()).nullable().default([]),
   denies: z.array(z.string()).nullable().default([]),
   district: z.string().default(""),
+  // Districts du jour cochés par l'agent (valables le jour `duty_day`, Europe/Brussels).
+  duty_day: z.string().default(""),
+  duty_districts: z.array(z.string()).nullable().default([]),
   avatar: z.string().default(""),
   preferences: z.unknown().optional(),
 });

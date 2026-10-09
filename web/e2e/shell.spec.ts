@@ -15,7 +15,7 @@ test("tableau de bord, CSP et absence d'erreur", async ({ page }, testInfo) => {
   expect(res?.headers()["content-security-policy"]).toContain("connect-src 'self'");
   await login(page);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Bonjour, Agent/);
-  await expect(page.getByTestId("dashboard-grid").locator("[data-widget]")).toHaveCount(6);
+  await expect(page.getByTestId("dashboard-grid").locator("[data-widget]")).toHaveCount(7);
   await page.waitForTimeout(800);
   await noHorizontalScroll(page);
   await page.screenshot({
@@ -32,7 +32,9 @@ test("navigation principale et onglets en routes", async ({ page, isMobile }, te
     await expect(bar.getByRole("link")).toHaveText(["Accueil", "Commandes", "PMR", "Opérations"]);
     await bar.getByRole("button", { name: "Plus" }).click();
     const sheet = page.getByRole("dialog", { name: "Plus" });
-    await expect(sheet.getByRole("link", { name: "Référentiels", exact: true })).toBeVisible();
+    await expect(
+      sheet.getByRole("link", { name: "Annuaire et données", exact: true }),
+    ).toBeVisible();
     await expect(sheet.getByRole("link", { name: "Équipe", exact: true })).toBeVisible();
     // Agent (rôle user) : pas d'administration.
     await expect(sheet.getByRole("link", { name: "Administration" })).toHaveCount(0);
@@ -46,7 +48,7 @@ test("navigation principale et onglets en routes", async ({ page, isMobile }, te
       "Commandes",
       "PMR",
       "Opérations",
-      "Référentiels",
+      "Annuaire et données",
       "Équipe",
     ]);
     await side.getByRole("link", { name: "Commandes" }).click();
@@ -83,10 +85,10 @@ test("palette ⌘K : s'ouvre au raccourci, jamais sur un « K » tapé, et navig
   await page.keyboard.press("ControlOrMeta+k");
   const palette = page.getByRole("dialog", { name: "Palette de commandes" });
   await expect(palette).toBeVisible();
-  await page.keyboard.type("opérations main");
+  await page.keyboard.type("opérations journal");
   await page.screenshot({ path: `test-results/shell-palette-${testInfo.project.name}.png` });
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(/\/operations\/main-courante$/);
+  await expect(page).toHaveURL(/\/operations\/journal$/);
   await expect(palette).toBeHidden();
   // Bug v1 : un « K » majuscule dans un champ ouvrait la palette.
   await page.keyboard.press("ControlOrMeta+k");

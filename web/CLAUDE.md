@@ -123,8 +123,9 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `/api/operations/tuiles/{z}/{x}/{y}` (`carte_pn:read`, cache), pièces jointes
   `/api/operations/main-courante/[id]/fichiers` (POST multipart borné, type vérifié sur les octets) et `/[nom]` (GET,
   jeton de fichier côté serveur), exports CSV main courante et statistiques.
-- Écrans : `/operations` (trains en direct, `?gare=&nom=&train=&jour=`), `/operations/main-courante` (`?jour=`,
-  `?entree=`, `?pn=`), `/nouveau` (mobile, `?train=&categorie=`), `/operations/carte-pn` (Leaflet chargé à la demande,
+- Écrans : `/operations` (trains en direct, `?gare=&nom=&train=&jour=`), **`/operations/journal`** (ex-main courante :
+  fil continu façon messagerie, `?entree=&pn=&q=&categorie=&urgentes=&agents=&n=`, `?train=&categorie=` pré-remplit la
+  barre d'écriture ; `/operations/main-courante[/nouveau]` redirigent), `/operations/carte-pn` (Leaflet chargé à la demande,
   `?pn=&q=`), `/operations/statistiques`. Cloche `components/shell/notification-bell.tsx` (SSE `notifications`).
 - Variables : `IRAIL_URL`, `TILES_URL`, `CSM_USER_AGENT` (facultatives). E2E : `e2e/operations.spec.ts` avec
   `node e2e/mock-services.mjs 8094` et `IRAIL_URL=http://127.0.0.1:8094/v1 TILES_URL=http://127.0.0.1:8094/tiles/{z}/{x}/{y}.png`.
@@ -171,3 +172,14 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   - motion : `src/lib/motion.ts` (GSAP + `gsap.matchMedia()`, ease `hud`, `useStaggerIn`) ; budgets de DESIGN-DIRECTION.
 - E2E `e2e/design.spec.ts` : `/design` dans les 5 thèmes × 2 formats (captures `test-results/design-*.png`, pas de
   défilement horizontal, pas d'erreur console, cibles ≥ 44 px sur mobile).
+
+## Journal (ex-main courante, 9 oct. 2026)
+
+- `components/ops/journal-chat.tsx` (fil, bandeau des consignes, plein écran, panneau de détail), `log-composer.tsx`
+  (`variant="chat"` : barre d'écriture ; `form` : modification), `chat-markdown.tsx` + `lib/ops/chat-markdown.ts`
+  (Markdown SÛR en éléments React : gras, italique, barré, code, liens http(s), mentions, listes, citations ; testé),
+  `emoji-picker.tsx` (Radix DropdownMenu), `duty-districts.tsx` (bandeau du matin dans `(app)/layout.tsx` + puce).
+- Le fil remplit l'écran : hauteur `calc(100dvh - top - --journal-gap)` mesurée (ResizeObserver sur `main`), défilement
+  interne, suivi du bas à l'arrivée d'un message, position gardée au chargement des plus anciens.
+- Messages iRail : `source = "irail"`, auteur affiché « iRail · SNCB » ; filtre « Sans iRail » (`?agents=1`).
+- Server Action `setDutyDistricts` (`operations/actions.ts`) ; `SessionUser.duty_day` / `duty_districts`.

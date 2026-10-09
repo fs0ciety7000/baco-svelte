@@ -1,49 +1,15 @@
-import { Check, FileText, Link2, Pin, TriangleAlert } from "lucide-react";
+import { FileText, Link2, Pin, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/status-badge";
-import { CATEGORY, safeUrl, segments } from "@/lib/ops/log";
+import { CATEGORY } from "@/lib/ops/log";
 import { brusselsTime, formatDay, dayOf, pbDate } from "@/lib/orders/time";
-import { cn } from "@/lib/utils";
 import type { LogEntry } from "@/server/data/ops";
 
 const at = (v: string) => {
   const d = pbDate(v);
   return d ? brusselsTime(d) : "--:--";
 };
-
-/** Texte d'une entrée : texte brut (React échappe), mentions mises en avant, liens http(s) seulement. */
-export function LogBody({ body, className }: { body: string; className?: string }) {
-  return (
-    <p className={cn("text-body break-words whitespace-pre-wrap text-fg", className)}>
-      {segments(body).map((s, i) => {
-        if (s.kind === "mention")
-          return (
-            <span key={i} className="font-medium text-accent">
-              {s.value}
-            </span>
-          );
-        if (s.kind === "url") {
-          const url = safeUrl(s.value);
-          return url ? (
-            <a
-              key={i}
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer nofollow"
-              className="text-accent underline underline-offset-2"
-            >
-              {s.value}
-            </a>
-          ) : (
-            <span key={i}>{s.value}</span>
-          );
-        }
-        return <span key={i}>{s.value}</span>;
-      })}
-    </p>
-  );
-}
 
 export function LogMeta({ entry, showDay }: { entry: LogEntry; showDay?: boolean }) {
   const c = CATEGORY[entry.category];
@@ -136,15 +102,5 @@ export function LogLinks({ entry }: { entry: LogEntry }) {
         );
       })}
     </div>
-  );
-}
-
-export function ReadState({ entry, me }: { entry: LogEntry; me: string }) {
-  const mine = entry.readers.some((r) => r.id === me);
-  return (
-    <span className="inline-flex items-center gap-1 text-small text-fg-muted">
-      {mine ? <Check aria-hidden className="size-3.5 text-ok" /> : null}
-      {entry.readers.length ? `Lu par ${entry.readers.length}` : "Pas encore lu"}
-    </span>
   );
 }

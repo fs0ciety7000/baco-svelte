@@ -100,3 +100,9 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
 - **Groupes DICOS** (`1760001500_group_missions.js`) : `group_missions` = une ligne par trajet de réservation de groupe
   (`dicos_id = j<journeyId>`, unique), écrite par le connecteur (`dicos:write`, `dicos_id` figé), lue avec `pmr:read`
   (pas `otto_agent`), suppression admin. Contact (nom, téléphone, e-mail) effacé à 12 mois par `pmr-retention`.
+- **Journal / districts du jour / iRail** (`1760001600_journal_irail_duty.js`) : `ops_log.author` facultatif, `source`
+  (`agent`/`irail`) et `external_id` (unique partiel) **refusés dans les requêtes** ; `users.duty_day` + `duty_districts`
+  (modifiables par l'agent lui-même) ; notification `perturbation`. `lib/operations.js` : `dutyDistricts` (jour coché,
+  sinon district du profil), urgences selon ces districts, `irailJournal` (cron `irail-journal`, 5 min, 30 entrées max par
+  passage, perturbation > 24 h ignorée, district par gares citées dans le titre ou le texte ≥ 4 lettres).
+  `CSM_IRAIL_URL` : autre source (mock) ou `off` (CI).

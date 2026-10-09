@@ -102,10 +102,10 @@ export const MODULES: NavModule[] = [
         keywords: ["iRail", "départs", "retards"],
       },
       {
-        href: "/operations/main-courante",
-        label: "Main courante",
+        href: "/operations/journal",
+        label: "Journal",
         permission: "journal:read",
-        keywords: ["journal"],
+        keywords: ["main courante", "messages", "consignes"],
       },
       {
         href: "/operations/carte-pn",
@@ -191,8 +191,8 @@ export const QUICK_ACTIONS: QuickAction[] = [
     permission: "generate_taxi:write",
   },
   {
-    href: "/operations/main-courante/nouveau",
-    label: "Entrée de main courante",
+    href: "/operations/journal",
+    label: "Message au journal",
     icon: Plus,
     permission: "journal:write",
   },

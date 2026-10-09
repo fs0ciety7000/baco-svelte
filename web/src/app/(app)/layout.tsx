@@ -2,8 +2,11 @@ import { Wrench } from "lucide-react";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
+import { DutyBanner } from "@/components/ops/duty-districts";
 import { AppShell } from "@/components/shell/app-shell";
 import { parseUiCookie, UI_COOKIE } from "@/design/preferences";
+import { brusselsDay } from "@/lib/orders/time";
+import { can } from "@/lib/permissions";
 import { maintenanceState, requireUser } from "@/server/auth";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -11,6 +14,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const ui = parseUiCookie((await cookies()).get(UI_COOKIE)?.value);
   // Les agents sont redirigés vers /maintenance par requireUser ; ici, seulement le bandeau des administrateurs.
   const locked = (await maintenanceState()).on;
+  // Districts du jour : demandés chaque matin aux agents qui lisent le Journal (notifications par district).
+  const today = brusselsDay();
+  const askDuty = can(user, "journal:read") && user.duty_day !== today;
   return (
     <AppShell
       ui={ui}
@@ -32,6 +38,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           administrateurs ont accès à CSM.
         </p>
       ) : null}
+      {askDuty ? <DutyBanner day={today} initial={user.district ? [user.district] : []} /> : null}
       {children}
     </AppShell>
   );

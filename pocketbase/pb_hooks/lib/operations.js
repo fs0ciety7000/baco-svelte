@@ -66,16 +66,125 @@ function mentionsFrom(app, body, authorId) {
 	return out;
 }
 
-// Destinataires d'une entrée urgente : agents qui lisent la main courante, du district de l'entrée (ou tous).
+// Districts où l'agent travaille aujourd'hui : ceux qu'il a cochés pour le jour (`duty_day`), sinon le district de son
+// profil, sinon aucun (décision du 9 oct. 2026).
+function dutyDistricts(u, today) {
+	if (u.getString('duty_day') === today) {
+		const v = u.get('duty_districts');
+		const out = [];
+		if (v) for (let i = 0; i < v.length; i++) if (v[i]) out.push(String(v[i]));
+		if (out.length) return out;
+	}
+	return u.getString('district') ? [u.getString('district')] : [];
+}
+
+// Destinataires d'une entrée urgente : agents qui lisent le journal et travaillent aujourd'hui dans le district de
+// l'entrée (entrée sans district, ou agent sans district connu : tous).
 function urgentRecipients(app, district, exclude) {
 	const list = app.findRecordsByFilter('users', 'role != "disabled" && role != "otto_agent"', '', 500, 0);
+	const today = brusselsDay();
 	const out = [];
 	for (const u of list) {
 		if (exclude.indexOf(u.id) !== -1 || !hasJournalRead(u)) continue;
-		if (district && u.getString('district') && u.getString('district') !== district) continue;
+		const mine = dutyDistricts(u, today);
+		if (district && mine.length && mine.indexOf(district) === -1) continue;
 		out.push(u.id);
 	}
 	return out;
+}
+
+// --- Perturbations et travaux iRail → Journal (cron `irail-journal`) ---
+
+const ACCENTS = { à: 'a', â: 'a', ä: 'a', á: 'a', é: 'e', è: 'e', ê: 'e', ë: 'e', î: 'i', ï: 'i', í: 'i', ô: 'o', ö: 'o', ó: 'o', ù: 'u', û: 'u', ü: 'u', ú: 'u', ç: 'c', ÿ: 'y' };
+function fold(s) {
+	return String(s || '')
+		.toLowerCase()
+		.replace(/[àâäáéèêëîïíôöóùûüúçÿ]/g, (c) => ACCENTS[c] || c);
+}
+
+// Gares des trois districts (line_stations), triées de la plus longue à la plus courte (« Mons » après « Mons-Nord »).
+function stationIndex(app) {
+	const rows = arrayOf(new DynamicModel({ station: '', district: '' }));
+	app.db().newQuery("SELECT DISTINCT station, district FROM line_stations WHERE station != '' AND district != ''").all(rows);
+	const out = [];
+	for (const r of rows) {
+		const name = fold(r.station);
+		if (name.length >= 3) out.push({ name: name, district: String(r.district) });
+	}
+	return out.sort((x, y) => y.name.length - x.name.length);
+}
+
+// Districts cités par un message : gares nommées dans le titre (toutes) ou dans le texte (4 lettres au moins, pour
+// éviter « Ans » dans « depuis deux ans »).
+function districtsIn(index, title, description) {
+	const t = ` ${fold(title)} `;
+	const d = ` ${fold(description)} `;
+	const out = [];
+	for (const st of index) {
+		if (out.indexOf(st.district) !== -1) continue;
+		const re = new RegExp(`[^a-z0-9]${st.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^a-z0-9]`);
+		if (re.test(t) || (st.name.length >= 4 && re.test(d))) out.push(st.district);
+	}
+	return out;
+}
+
+function irailJournal(app) {
+	// CSM_IRAIL_URL : autre source (tests) ; « off » coupe la reprise (CI : notifications déterministes).
+	const setting = $os.getenv('CSM_IRAIL_URL');
+	if (setting === 'off') return 0;
+	const base = (setting || 'https://api.irail.be/v1').replace(/\/$/, '');
+	const res = $http.send({
+		url: `${base}/disturbances/?format=json&lang=fr`,
+		method: 'GET',
+		headers: { 'User-Agent': 'CSM/1.0 (Client Solutions Management Tool; contact: exploitation)' },
+		timeout: 10
+	});
+	if (res.statusCode !== 200 || !res.json) return 0;
+	let items = res.json.disturbance || [];
+	if (!Array.isArray(items)) items = [items];
+	const index = stationIndex(app);
+	const users = app.findRecordsByFilter('users', 'role != "disabled" && role != "otto_agent"', '', 500, 0).filter(hasJournalRead);
+	const today = brusselsDay();
+	const collection = app.findCollectionByNameOrId('ops_log');
+	let created = 0;
+	for (const d of items) {
+		if (created >= 30) break;
+		const title = String(d.title || '').trim().slice(0, 300);
+		if (!title) continue;
+		const ts = parseInt(String(d.timestamp || '0'), 10) * 1000 || Date.now();
+		const planned = String(d.type) === 'planned';
+		// Perturbation de plus de 24 h : déjà ancienne, pas reprise (les travaux annoncés le sont).
+		if (!planned && Date.now() - ts > 86400000) continue;
+		const key = $security.sha256(`${d.link || ''}|${title}|${brusselsDay(new Date(ts))}`).slice(0, 40);
+		try {
+			app.findFirstRecordByFilter('ops_log', 'external_id = {:k}', { k: key });
+			continue; // déjà au journal
+		} catch (_) {}
+		const description = String(d.description || '').replace(/<[^>]*>/g, ' ').replace(/[ \t]+/g, ' ').trim().slice(0, 3400);
+		const restored = /r[ée]tabli/i.test(title);
+		const category = restored ? 'info' : planned ? 'travaux' : 'incident';
+		const emoji = restored ? '✅' : planned ? '🚧' : '⚠️';
+		const districts = districtsIn(index, title, description);
+		const recipients = districts.length
+			? users.filter((u) => dutyDistricts(u, today).some((x) => districts.indexOf(x) !== -1)).map((u) => u.id)
+			: [];
+		const r = new Record(collection);
+		r.set('body', `${emoji} **${title.replace(/\*/g, '')}**${description ? `\n${description}` : ''}`.slice(0, 4000));
+		r.set('category', category);
+		r.set('occurred_at', new Date(ts).toISOString().replace('T', ' '));
+		r.set('status', 'active');
+		r.set('source', 'irail');
+		r.set('external_id', key);
+		if (districts.length === 1) r.set('district', districts[0]);
+		r.set('mentions', []);
+		r.set('notified', recipients);
+		app.save(r);
+		event(app, r.id, 'create', '', '', '', null, 'iRail');
+		const label = restored ? 'Rétabli' : planned ? 'Travaux' : 'Perturbation';
+		for (const u of recipients) notify(app, u, 'perturbation', `${label} (${districts.join(', ')}) : ${title}`, description, `/operations/journal?entree=${r.id}`, 'ops_log', r.id);
+		created++;
+	}
+	return created;
 }
 
 function notify(app, user, kind, title, body, link, source, sourceId) {
@@ -134,11 +243,17 @@ function planNotifications(app, record, mentions, urgent) {
 }
 
 function sendPlanned(app, record, auth, plan) {
-	const link = `/operations/main-courante?entree=${record.id}`;
+	const link = `/operations/journal?entree=${record.id}`;
 	const who = authorName(auth);
-	const excerpt = record.getString('body');
-	for (const u of plan.mention) notify(app, u, 'mention', `${who} vous mentionne dans la main courante`, excerpt, link, 'ops_log', record.id);
-	for (const u of plan.urgent) notify(app, u, 'urgent', `Entrée urgente de ${who}`, excerpt, link, 'ops_log', record.id);
+	// Aperçu sans les marques Markdown du Journal (gras, barré, code, titres, citations).
+	const excerpt = record
+		.getString('body')
+		.replace(/\*\*|~~|`/g, '')
+		.replace(/^\s*[#>]+\s*/gm, '')
+		.replace(/\s+/g, ' ')
+		.trim();
+	for (const u of plan.mention) notify(app, u, 'mention', `${who} vous mentionne dans le journal`, excerpt, link, 'ops_log', record.id);
+	for (const u of plan.urgent) notify(app, u, 'urgent', `Message urgent de ${who}`, excerpt, link, 'ops_log', record.id);
 }
 
 // --- Passages à niveau (import) ---
@@ -161,6 +276,10 @@ function latLon(v) {
 	return { lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6 };
 }
 module.exports = {
+	dutyDistricts,
+	districtsIn,
+	fold,
+	irailJournal,
 	MAX_WATCHES,
 	isCoord,
 	now,

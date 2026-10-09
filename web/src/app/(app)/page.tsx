@@ -1,3 +1,4 @@
+import { plainText } from "@/lib/ops/chat-markdown";
 import type { Metadata } from "next";
 
 import { normalizeLayout } from "@/design/dashboard-layout";
@@ -33,7 +34,7 @@ export default async function AccueilPage() {
             category: e.category,
             urgent: e.urgent,
             pinned: pinned.some((p) => p.id === e.id),
-            body: e.body.replace(/\s+/g, " ").slice(0, 160),
+            body: plainText(e.body).slice(0, 160),
             author: e.authorName,
           }))
       : null;

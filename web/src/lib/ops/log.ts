@@ -28,6 +28,14 @@ export const CATEGORY: Record<
   info: { label: "Info", tone: "neutral" },
 };
 
+/** Districts qu'un agent peut cocher pour la journée (mêmes valeurs que `ops_log.district`). */
+export const DUTY_DISTRICTS = ["Sud-Ouest", "Sud-Est", "Centre"] as const;
+export const DUTY_SHORT: Record<string, string> = {
+  "Sud-Ouest": "DSO",
+  "Sud-Est": "DSE",
+  Centre: "DCE",
+};
+
 /** L'auteur peut retirer son entrée pendant 15 minutes ; ensuite, les coordinateurs (miroir du hook). */
 export const RETIRE_WINDOW_MS = 15 * 60_000;
 

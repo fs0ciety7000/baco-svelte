@@ -1,8 +1,29 @@
 "use client";
 
-import { Link2, Paperclip, Pin, Search, X } from "lucide-react";
+import {
+  Bold,
+  Italic,
+  Link2,
+  List,
+  Paperclip,
+  Pin,
+  Search,
+  SendHorizontal,
+  SlidersHorizontal,
+  Strikethrough,
+  TriangleAlert,
+  X,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 
 import {
   createEntry,
@@ -20,6 +41,8 @@ import { safeCall } from "@/lib/orders/safe-call";
 import { brusselsDay, brusselsTime, dayOf, pbDate } from "@/lib/orders/time";
 import { cn } from "@/lib/utils";
 import type { Agent, Linkable, LinkedObject, LogEntry } from "@/server/data/ops";
+
+import { EmojiPicker } from "./emoji-picker";
 
 const KIND_LABEL: Record<LinkedObject["kind"], string> = {
   bus: "Bus C3",
@@ -40,9 +63,13 @@ export type ComposerPreset = {
   body?: string;
 };
 
+const DRAFT_KEY = "csm-journal-brouillon";
+
 /**
- * Compositeur de la main courante (création et modification) : catégorie, heure de l'événement, texte avec
- * mentions « @ », train, objet lié, urgent, épinglage, pièces jointes (3, 5 Mo, images et PDF).
+ * Compositeur du Journal (création et modification) : catégorie, heure de l'événement, texte Markdown avec
+ * mentions « @ » et emojis, train, objet lié, urgent, épinglage, pièces jointes (3, 5 Mo, images et PDF).
+ * `variant="chat"` : barre d'écriture ancrée en bas du fil (Entrée envoie au clavier, Maj + Entrée = retour à la
+ * ligne), options repliées ; `form` : formulaire complet (modification dans le panneau).
  */
 export function LogComposer({
   agents,
@@ -52,6 +79,7 @@ export function LogComposer({
   onDone,
   onChanged,
   autoFocus,
+  variant = "form",
 }: {
   agents: Agent[];
   /** Types d'objets que l'agent peut lier (selon ses droits de lecture). */
@@ -62,7 +90,9 @@ export function LogComposer({
   /** Appelé après la suppression d'une pièce jointe (l'entrée a changé : relire sa version). */
   onChanged?: () => void;
   autoFocus?: boolean;
+  variant?: "form" | "chat";
 }) {
+  const chat = variant === "chat";
   const router = useRouter();
   const [pending, start] = useTransition();
   const [category, setCategory] = useState<LogCategory>(
@@ -71,6 +101,8 @@ export function LogComposer({
   const [body, setBody] = useState(entry?.body ?? preset?.body ?? "");
   const [day, setDay] = useState(entry ? dayOf(entry.occurredAt) : brusselsDay());
   const [time, setTime] = useState(entry ? hhmm(entry.occurredAt) : brusselsTime());
+  // Barre d'écriture : l'heure de l'événement est celle de l'envoi, sauf si l'agent l'a réglée dans les options.
+  const [timeSet, setTimeSet] = useState(false);
   const [urgent, setUrgent] = useState(entry?.urgent ?? false);
   const [pin, setPin] = useState(!!entry?.pinnedUntil);
   const [pinDay, setPinDay] = useState(
@@ -89,6 +121,71 @@ export function LogComposer({
   const [error, setError] = useState<string | null>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [options, setOptions] = useState(!!preset?.train);
+
+  // Brouillon non envoyé de la barre d'écriture (confort par agent, navigateur seulement).
+  const draftLoaded = useRef(false);
+  useEffect(() => {
+    if (!chat || draftLoaded.current) return;
+    draftLoaded.current = true;
+    if (preset?.body) return;
+    try {
+      const d = window.localStorage.getItem(DRAFT_KEY);
+      if (d) setBody(d.slice(0, 4000));
+    } catch {}
+  }, [chat, preset?.body]);
+  useEffect(() => {
+    if (!chat || !draftLoaded.current) return;
+    try {
+      if (body.trim()) window.localStorage.setItem(DRAFT_KEY, body);
+      else window.localStorage.removeItem(DRAFT_KEY);
+    } catch {}
+  }, [chat, body]);
+
+  // Hauteur de la zone de texte : suit le contenu (1 à ~8 lignes) dans la barre d'écriture.
+  useLayoutEffect(() => {
+    const el = textRef.current;
+    if (!chat || !el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
+  }, [chat, body]);
+
+  /** Remplace la sélection (ou insère au curseur) puis replace le curseur. */
+  const edit = useCallback(
+    (fn: (sel: string) => { text: string; select?: [number, number] }) => {
+      const el = textRef.current;
+      const start = el?.selectionStart ?? body.length;
+      const end = el?.selectionEnd ?? body.length;
+      const { text, select } = fn(body.slice(start, end));
+      const next = `${body.slice(0, start)}${text}${body.slice(end)}`.slice(0, 4000);
+      setBody(next);
+      requestAnimationFrame(() => {
+        el?.focus();
+        const [a, b] = select ?? [text.length, text.length];
+        el?.setSelectionRange(start + a, start + b);
+        setCaret(start + b);
+      });
+    },
+    [body],
+  );
+  const wrap = (mark: string, placeholder: string) =>
+    edit((sel) => {
+      const inner = sel || placeholder;
+      return {
+        text: `${mark}${inner}${mark}`,
+        select: [mark.length, mark.length + inner.length],
+      };
+    });
+  const bullets = () =>
+    edit((sel) => {
+      const text = (sel || "élément")
+        .split("\n")
+        .map((l) => (/^\s*[-*•]\s/.test(l) ? l : `- ${l}`))
+        .join("\n");
+      const lead =
+        body.length && !/\n$/.test(body.slice(0, textRef.current?.selectionStart ?? 0)) ? "\n" : "";
+      return { text: `${lead}${text}` };
+    });
 
   // Suggestions de mention : le mot en cours commence par « @ ».
   const [caret, setCaret] = useState(0);
@@ -155,8 +252,8 @@ export function LogComposer({
       const data = {
         body,
         category,
-        day,
-        time,
+        day: chat && !timeSet ? brusselsDay() : day,
+        time: chat && !timeSet ? brusselsTime() : time,
         urgent,
         pinUntilDay: pin ? pinDay : "",
         pinUntilTime: pin ? pinTime : "",
@@ -194,7 +291,7 @@ export function LogComposer({
           toast.error("Pièces jointes non envoyées (réseau).");
         }
       }
-      toast.success(entry ? "Entrée modifiée." : "Entrée publiée.");
+      toast.success(entry ? "Message modifié." : "Message publié.");
       if (!entry) {
         setBody("");
         setUrgent(false);
@@ -204,146 +301,66 @@ export function LogComposer({
         setFiles([]);
         setTime(brusselsTime());
         setDay(brusselsDay());
+        setTimeSet(false);
+        setOptions(false);
       }
       router.refresh();
       onDone?.(id);
     });
 
-  return (
-    <form
-      className="flex flex-col gap-4"
-      data-testid="log-composer"
-      onSubmit={(e) => {
-        e.preventDefault();
-        submit();
-      }}
-      onKeyDown={(e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-          e.preventDefault();
-          submit();
-        }
-      }}
+  const categoryChips = (
+    <div
+      className={cn("flex gap-1.5", chat ? "-mx-1 overflow-x-auto px-1 pb-0.5" : "flex-wrap")}
+      role="radiogroup"
+      aria-label="Catégorie"
     >
-      <fieldset className="flex flex-col gap-1.5">
-        <legend className="mb-1.5 text-small font-medium text-fg">Catégorie</legend>
-        <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Catégorie">
-          {LOG_CATEGORIES.map((c) => (
-            <button
-              key={c}
-              type="button"
-              role="radio"
-              aria-checked={category === c}
-              onClick={() => setCategory(c)}
-              className={cn(
-                "h-control-sm min-w-11 cursor-pointer border px-3 text-small transition-colors",
-                category === c
-                  ? "border-accent bg-[color-mix(in_oklab,var(--accent)_14%,var(--surface))] text-fg"
-                  : "border-border-strong bg-surface text-fg-muted hover:text-fg",
-              )}
-            >
-              {CATEGORY[c].label}
-            </button>
-          ))}
-        </div>
-      </fieldset>
-
-      <div className="relative">
-        <Field
-          label="Texte"
-          required
-          hint="« @ » pour mentionner un agent · Ctrl + Entrée pour publier"
+      {LOG_CATEGORIES.map((c) => (
+        <button
+          key={c}
+          type="button"
+          role="radio"
+          aria-checked={category === c}
+          onClick={() => setCategory(c)}
+          className={cn(
+            "h-control-sm min-w-11 shrink-0 cursor-pointer border px-3 text-small transition-colors",
+            category === c
+              ? "border-accent bg-[color-mix(in_oklab,var(--accent)_14%,var(--surface))] text-fg"
+              : "border-border-strong bg-surface text-fg-muted hover:text-fg",
+          )}
         >
-          <Textarea
-            ref={textRef}
-            value={body}
-            maxLength={4000}
-            rows={4}
-            autoFocus={autoFocus}
-            data-testid="log-body"
-            onChange={(e) => {
-              setBody(e.target.value);
-              setCaret(e.target.selectionStart);
-            }}
-            onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
-            onKeyDown={(e) => {
-              if (mention && e.key === "Enter" && !e.ctrlKey && !e.metaKey && mention.list[0]) {
-                e.preventDefault();
-                insertMention(mention.list[0]);
-              }
-            }}
-          />
-        </Field>
-        {mention ? (
-          <ul
-            role="listbox"
-            aria-label="Agents à mentionner"
-            className="absolute right-0 left-0 z-20 mt-1 border border-border-strong bg-surface shadow-lg"
+          {CATEGORY[c].label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const mentionList = mention ? (
+    <ul
+      role="listbox"
+      aria-label="Agents à mentionner"
+      className={cn(
+        "absolute right-0 left-0 z-20 border border-border-strong bg-surface shadow-lg",
+        chat ? "bottom-full mb-1" : "mt-1",
+      )}
+    >
+      {mention.list.map((a) => (
+        <li key={a.id} role="option" aria-selected={false}>
+          <button
+            type="button"
+            className="flex min-h-11 w-full cursor-pointer items-center gap-2 px-3 text-left text-body hover:bg-surface-2"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => insertMention(a)}
           >
-            {mention.list.map((a) => (
-              <li key={a.id} role="option" aria-selected={false}>
-                <button
-                  type="button"
-                  className="flex min-h-11 w-full cursor-pointer items-center gap-2 px-3 text-left text-body hover:bg-surface-2"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => insertMention(a)}
-                >
-                  <span className="font-medium">{a.name}</span>
-                  <span className="font-mono text-small text-fg-muted">@{a.username}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
+            <span className="font-medium">{a.name}</span>
+            <span className="font-mono text-small text-fg-muted">@{a.username}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  ) : null;
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Field label="Jour de l'événement">
-          <Input type="date" value={day} onChange={(e) => setDay(e.target.value)} required />
-        </Field>
-        <Field label="Heure">
-          <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} required />
-        </Field>
-        <Field label="Train (facultatif)">
-          <Input
-            value={train}
-            onChange={(e) => setTrain(e.target.value)}
-            placeholder="IC 2134"
-            maxLength={20}
-          />
-        </Field>
-        <div className="flex flex-col justify-end gap-2 pb-1">
-          <label className="flex min-h-11 cursor-pointer items-center gap-2 text-body md:min-h-0">
-            <Checkbox
-              checked={urgent}
-              onCheckedChange={(v) => setUrgent(v === true)}
-              aria-label="Urgent"
-            />
-            Urgent <span className="text-small text-fg-muted">(notifie le district)</span>
-          </label>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-body md:min-h-0">
-          <Checkbox
-            checked={pin}
-            onCheckedChange={(v) => setPin(v === true)}
-            aria-label="Épingler en consigne"
-          />
-          <Pin aria-hidden className="size-4 text-fg-muted" /> Épingler en consigne jusqu&apos;au…
-        </label>
-        {pin ? (
-          <div className="grid grid-cols-2 gap-3 md:max-w-sm">
-            <Field label="Jour">
-              <Input type="date" value={pinDay} onChange={(e) => setPinDay(e.target.value)} />
-            </Field>
-            <Field label="Heure">
-              <Input type="time" value={pinTime} onChange={(e) => setPinTime(e.target.value)} />
-            </Field>
-          </div>
-        ) : null}
-      </div>
-
+  const linkBlock = (
+    <>
       {linkKinds.length ? (
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
@@ -432,81 +449,463 @@ export function LogComposer({
           ) : null}
         </div>
       ) : null}
+    </>
+  );
 
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          {existing.map((name) => (
-            <span
-              key={name}
-              className="inline-flex min-h-8 items-center gap-1 border border-border bg-surface-2 pl-2 text-small"
-            >
-              <Paperclip aria-hidden className="size-3.5" /> {name}
-              <button
-                type="button"
-                className="grid size-8 cursor-pointer place-items-center text-fg-muted hover:text-danger"
-                aria-label={`Supprimer la pièce jointe ${name}`}
-                onClick={async () => {
-                  if (!entry) return;
-                  const res = await safeCall(removeAttachment({ id: entry.id, name }));
-                  if (!res.ok) toast.error(res.error);
-                  else {
-                    router.refresh();
-                    onChanged?.();
-                  }
-                }}
-              >
-                <X className="size-3.5" />
-              </button>
-            </span>
-          ))}
-          {files.map((f, i) => (
-            <span
-              key={`${f.name}-${i}`}
-              className="inline-flex min-h-8 items-center gap-1 border border-dashed border-border-strong pl-2 text-small"
-            >
-              <Paperclip aria-hidden className="size-3.5" /> {f.name}
-              <button
-                type="button"
-                className="grid size-8 cursor-pointer place-items-center text-fg-muted hover:text-fg"
-                aria-label={`Retirer ${f.name}`}
-                onClick={() => setFiles(files.filter((_, k) => k !== i))}
-              >
-                <X className="size-3.5" />
-              </button>
-            </span>
-          ))}
-          {existing.length + files.length < 3 ? (
-            <Button
+  const filesBlock = (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {existing.map((name) => (
+          <span
+            key={name}
+            className="inline-flex min-h-8 items-center gap-1 border border-border bg-surface-2 pl-2 text-small"
+          >
+            <Paperclip aria-hidden className="size-3.5" /> {name}
+            <button
               type="button"
-              size="sm"
-              variant="ghost"
-              className="border border-border"
-              onClick={() => fileRef.current?.click()}
+              className="grid size-8 cursor-pointer place-items-center text-fg-muted hover:text-danger"
+              aria-label={`Supprimer la pièce jointe ${name}`}
+              onClick={async () => {
+                if (!entry) return;
+                const res = await safeCall(removeAttachment({ id: entry.id, name }));
+                if (!res.ok) toast.error(res.error);
+                else {
+                  router.refresh();
+                  onChanged?.();
+                }
+              }}
             >
-              <Paperclip aria-hidden /> Joindre (image, PDF)
-            </Button>
-          ) : null}
-          <input
-            ref={fileRef}
-            type="file"
-            className="sr-only"
-            tabIndex={-1}
-            aria-hidden
-            multiple
-            accept="image/png,image/jpeg,image/webp,application/pdf"
+              <X className="size-3.5" />
+            </button>
+          </span>
+        ))}
+        {files.map((f, i) => (
+          <span
+            key={`${f.name}-${i}`}
+            className="inline-flex min-h-8 items-center gap-1 border border-dashed border-border-strong pl-2 text-small"
+          >
+            <Paperclip aria-hidden className="size-3.5" /> {f.name}
+            <button
+              type="button"
+              className="grid size-8 cursor-pointer place-items-center text-fg-muted hover:text-fg"
+              aria-label={`Retirer ${f.name}`}
+              onClick={() => setFiles(files.filter((_, k) => k !== i))}
+            >
+              <X className="size-3.5" />
+            </button>
+          </span>
+        ))}
+        {!chat && existing.length + files.length < 3 ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="border border-border"
+            onClick={() => fileRef.current?.click()}
+          >
+            <Paperclip aria-hidden /> Joindre (image, PDF)
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+
+  const fileInput = (
+    <input
+      ref={fileRef}
+      type="file"
+      className="sr-only"
+      tabIndex={-1}
+      aria-hidden
+      multiple
+      accept="image/png,image/jpeg,image/webp,application/pdf"
+      onChange={(e) => {
+        addFiles(e.target.files);
+        e.target.value = "";
+      }}
+    />
+  );
+
+  const errorBlock = error ? (
+    <p role="alert" className="text-small text-danger">
+      {error}
+    </p>
+  ) : null;
+
+  const onKeys = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      submit();
+    }
+  };
+
+  if (chat) {
+    const tool =
+      "grid size-10 shrink-0 cursor-pointer place-items-center text-fg-muted hover:bg-surface-2 hover:text-fg aria-pressed:bg-surface-2 aria-pressed:text-fg";
+    return (
+      <form
+        className="relative flex flex-col gap-2 border-t border-border bg-surface px-3 pt-2 pb-2"
+        data-testid="log-composer"
+        aria-label="Écrire dans le journal"
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit();
+        }}
+        onKeyDown={onKeys}
+      >
+        {options ? (
+          <div
+            className="flex max-h-[45dvh] flex-col gap-3 overflow-y-auto border border-border bg-bg p-3"
+            data-testid="log-options"
+          >
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <Field label="Jour de l'événement">
+                <Input
+                  type="date"
+                  value={day}
+                  onChange={(e) => (setDay(e.target.value), setTimeSet(true))}
+                  required
+                />
+              </Field>
+              <Field label="Heure">
+                <Input
+                  type="time"
+                  value={time}
+                  onChange={(e) => (setTime(e.target.value), setTimeSet(true))}
+                  required
+                />
+              </Field>
+              <Field label="Train (facultatif)">
+                <Input
+                  value={train}
+                  onChange={(e) => setTrain(e.target.value)}
+                  placeholder="IC 2134"
+                  maxLength={20}
+                />
+              </Field>
+              <div className="flex flex-col justify-end gap-2 pb-1">
+                <label className="flex min-h-11 cursor-pointer items-center gap-2 text-body md:min-h-0">
+                  <Checkbox
+                    checked={urgent}
+                    onCheckedChange={(v) => setUrgent(v === true)}
+                    aria-label="Urgent"
+                  />
+                  Urgent <span className="text-small text-fg-muted">(notifie le district)</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="flex min-h-11 cursor-pointer items-center gap-2 text-body md:min-h-0">
+                <Checkbox
+                  checked={pin}
+                  onCheckedChange={(v) => setPin(v === true)}
+                  aria-label="Épingler en consigne"
+                />
+                <Pin aria-hidden className="size-4 text-fg-muted" /> Épingler en consigne
+                jusqu&apos;au…
+              </label>
+              {pin ? (
+                <div className="grid grid-cols-2 gap-3 md:max-w-sm">
+                  <Field label="Jour">
+                    <Input type="date" value={pinDay} onChange={(e) => setPinDay(e.target.value)} />
+                  </Field>
+                  <Field label="Heure">
+                    <Input
+                      type="time"
+                      value={pinTime}
+                      onChange={(e) => setPinTime(e.target.value)}
+                    />
+                  </Field>
+                </div>
+              ) : null}
+            </div>
+
+            {linkBlock}
+          </div>
+        ) : null}
+        {fileInput}
+        {existing.length + files.length ? filesBlock : null}
+        {!options && links.length ? (
+          <div className="flex flex-wrap gap-1.5">
+            {links.map((l) => (
+              <span
+                key={`${l.kind}-${l.id}`}
+                className="inline-flex min-h-8 items-center gap-1 border border-border-strong bg-surface-2 px-2 text-small"
+              >
+                <Link2 aria-hidden className="size-3.5 text-fg-muted" /> {l.label}
+              </span>
+            ))}
+          </div>
+        ) : null}
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">{categoryChips}</div>
+          <button
+            type="button"
+            aria-pressed={urgent}
+            onClick={() => setUrgent((u) => !u)}
+            title="Urgent : notifie le district"
+            className={cn(
+              "inline-flex h-control-sm shrink-0 cursor-pointer items-center gap-1 border px-2.5 text-small transition-colors",
+              urgent
+                ? "border-danger bg-[color-mix(in_oklab,var(--danger)_14%,var(--surface))] text-danger"
+                : "border-border-strong text-fg-muted hover:text-fg",
+            )}
+          >
+            <TriangleAlert aria-hidden className="size-3.5" /> Urgent
+          </button>
+        </div>
+        <div
+          className={cn(
+            "relative border bg-bg transition-colors focus-within:border-accent",
+            urgent ? "border-danger" : "border-border-strong",
+          )}
+        >
+          {mentionList}
+          <textarea
+            ref={textRef}
+            value={body}
+            maxLength={4000}
+            rows={1}
+            autoFocus={autoFocus}
+            aria-label="Message"
+            data-testid="log-body"
+            placeholder="Écrire un message… (**gras**, _italique_, - liste, @agent)"
+            className="block max-h-[220px] min-h-11 w-full resize-none bg-transparent px-3 py-2.5 text-body text-fg outline-none placeholder:text-fg-muted"
             onChange={(e) => {
-              addFiles(e.target.files);
-              e.target.value = "";
+              setBody(e.target.value);
+              setCaret(e.target.selectionStart);
+            }}
+            onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
+            onKeyDown={(e) => {
+              if (mention && e.key === "Enter" && !e.ctrlKey && !e.metaKey && mention.list[0]) {
+                e.preventDefault();
+                insertMention(mention.list[0]);
+                return;
+              }
+              // Entrée envoie au clavier physique (pointeur fin) ; Maj + Entrée = retour à la ligne. Sur mobile,
+              // Entrée reste un retour à la ligne (bouton d'envoi).
+              if (
+                e.key === "Enter" &&
+                !e.shiftKey &&
+                !e.ctrlKey &&
+                !e.metaKey &&
+                !e.nativeEvent.isComposing &&
+                window.matchMedia("(pointer: fine)").matches
+              ) {
+                e.preventDefault();
+                submit();
+              }
             }}
           />
+          <div className="flex items-center gap-0.5 border-t border-border px-1">
+            <EmojiPicker onPick={(emoji) => edit(() => ({ text: emoji }))} />
+            <button
+              type="button"
+              className={tool}
+              aria-label="Gras"
+              title="Gras"
+              onClick={() => wrap("**", "texte")}
+            >
+              <Bold aria-hidden className="size-4" />
+            </button>
+            <button
+              type="button"
+              className={tool}
+              aria-label="Italique"
+              title="Italique"
+              onClick={() => wrap("_", "texte")}
+            >
+              <Italic aria-hidden className="size-4" />
+            </button>
+            <button
+              type="button"
+              className={cn(tool, "max-sm:hidden")}
+              aria-label="Barré"
+              title="Barré"
+              onClick={() => wrap("~~", "texte")}
+            >
+              <Strikethrough aria-hidden className="size-4" />
+            </button>
+            <button
+              type="button"
+              className={tool}
+              aria-label="Liste"
+              title="Liste"
+              onClick={bullets}
+            >
+              <List aria-hidden className="size-4" />
+            </button>
+            <span aria-hidden className="mx-0.5 h-5 w-px bg-border" />
+            {existing.length + files.length < 3 ? (
+              <button
+                type="button"
+                className={tool}
+                aria-label="Joindre une image ou un PDF"
+                title="Joindre (image, PDF)"
+                onClick={() => fileRef.current?.click()}
+              >
+                <Paperclip aria-hidden className="size-4" />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className={tool}
+              aria-pressed={options}
+              aria-label="Heure, train, épinglage, lien"
+              title="Heure, train, épinglage, lien"
+              onClick={() => setOptions((o) => !o)}
+              data-testid="log-options-toggle"
+            >
+              <SlidersHorizontal aria-hidden className="size-4" />
+            </button>
+            <span className="ml-auto hidden pr-2 text-hint text-fg-muted lg:inline">
+              Entrée pour envoyer · Maj + Entrée pour aller à la ligne
+            </span>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              className="my-1 ml-auto lg:ml-0"
+              aria-busy={pending || undefined}
+              disabled={pending || !body.trim()}
+              data-testid="log-submit"
+              aria-label="Envoyer"
+            >
+              <SendHorizontal aria-hidden /> <span className="max-sm:sr-only">Envoyer</span>
+            </Button>
+          </div>
+        </div>
+        {errorBlock}
+      </form>
+    );
+  }
+
+  return (
+    <form
+      className="flex flex-col gap-4"
+      data-testid="log-composer"
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit();
+      }}
+      onKeyDown={onKeys}
+    >
+      <fieldset className="flex flex-col gap-1.5">
+        <legend className="mb-1.5 text-small font-medium text-fg">Catégorie</legend>
+        {categoryChips}
+      </fieldset>
+
+      <div className="relative">
+        <Field
+          label="Message"
+          required
+          hint="Markdown : **gras**, _italique_, - liste · « @ » pour mentionner · Ctrl + Entrée pour publier"
+        >
+          <Textarea
+            ref={textRef}
+            value={body}
+            maxLength={4000}
+            rows={4}
+            autoFocus={autoFocus}
+            data-testid="log-body"
+            onChange={(e) => {
+              setBody(e.target.value);
+              setCaret(e.target.selectionStart);
+            }}
+            onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
+            onKeyDown={(e) => {
+              if (mention && e.key === "Enter" && !e.ctrlKey && !e.metaKey && mention.list[0]) {
+                e.preventDefault();
+                insertMention(mention.list[0]);
+              }
+            }}
+          />
+        </Field>
+        <div className="mt-1 flex items-center gap-0.5">
+          <EmojiPicker side="bottom" onPick={(emoji) => edit(() => ({ text: emoji }))} />
+          <button
+            type="button"
+            className="grid size-10 cursor-pointer place-items-center text-fg-muted hover:bg-surface-2 hover:text-fg"
+            aria-label="Gras"
+            onClick={() => wrap("**", "texte")}
+          >
+            <Bold aria-hidden className="size-4" />
+          </button>
+          <button
+            type="button"
+            className="grid size-10 cursor-pointer place-items-center text-fg-muted hover:bg-surface-2 hover:text-fg"
+            aria-label="Italique"
+            onClick={() => wrap("_", "texte")}
+          >
+            <Italic aria-hidden className="size-4" />
+          </button>
+          <button
+            type="button"
+            className="grid size-10 cursor-pointer place-items-center text-fg-muted hover:bg-surface-2 hover:text-fg"
+            aria-label="Liste"
+            onClick={bullets}
+          >
+            <List aria-hidden className="size-4" />
+          </button>
+        </div>
+        {mentionList}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Field label="Jour de l'événement">
+          <Input type="date" value={day} onChange={(e) => setDay(e.target.value)} required />
+        </Field>
+        <Field label="Heure">
+          <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} required />
+        </Field>
+        <Field label="Train (facultatif)">
+          <Input
+            value={train}
+            onChange={(e) => setTrain(e.target.value)}
+            placeholder="IC 2134"
+            maxLength={20}
+          />
+        </Field>
+        <div className="flex flex-col justify-end gap-2 pb-1">
+          <label className="flex min-h-11 cursor-pointer items-center gap-2 text-body md:min-h-0">
+            <Checkbox
+              checked={urgent}
+              onCheckedChange={(v) => setUrgent(v === true)}
+              aria-label="Urgent"
+            />
+            Urgent <span className="text-small text-fg-muted">(notifie le district)</span>
+          </label>
         </div>
       </div>
 
-      {error ? (
-        <p role="alert" className="text-small text-danger">
-          {error}
-        </p>
-      ) : null}
+      <div className="flex flex-col gap-2">
+        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-body md:min-h-0">
+          <Checkbox
+            checked={pin}
+            onCheckedChange={(v) => setPin(v === true)}
+            aria-label="Épingler en consigne"
+          />
+          <Pin aria-hidden className="size-4 text-fg-muted" /> Épingler en consigne jusqu&apos;au…
+        </label>
+        {pin ? (
+          <div className="grid grid-cols-2 gap-3 md:max-w-sm">
+            <Field label="Jour">
+              <Input type="date" value={pinDay} onChange={(e) => setPinDay(e.target.value)} />
+            </Field>
+            <Field label="Heure">
+              <Input type="time" value={pinTime} onChange={(e) => setPinTime(e.target.value)} />
+            </Field>
+          </div>
+        ) : null}
+      </div>
+
+      {linkBlock}
+
+      {filesBlock}
+      {fileInput}
+
+      {errorBlock}
       <div className="flex flex-wrap justify-end gap-2">
         <Button
           type="submit"

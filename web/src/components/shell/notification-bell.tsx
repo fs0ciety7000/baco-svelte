@@ -1,7 +1,7 @@
 "use client";
 
 import * as Menu from "@radix-ui/react-dropdown-menu";
-import { AtSign, Bell, CheckCheck, Train, TriangleAlert } from "lucide-react";
+import { AtSign, Bell, CheckCheck, Construction, Train, TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -12,7 +12,13 @@ import { pbDate, sinceLabel } from "@/lib/orders/time";
 import { cn } from "@/lib/utils";
 import type { Notification } from "@/server/data/ops";
 
-const ICON = { mention: AtSign, urgent: TriangleAlert, train: Train, systeme: Bell } as const;
+const ICON = {
+  mention: AtSign,
+  urgent: TriangleAlert,
+  train: Train,
+  systeme: Bell,
+  perturbation: Construction,
+} as const;
 
 /** Cloche : notifications de l'agent (mentions, urgences, trains suivis), en direct par le relais SSE. */
 export function NotificationBell() {

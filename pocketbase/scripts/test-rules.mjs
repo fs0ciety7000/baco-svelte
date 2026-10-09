@@ -424,6 +424,12 @@ try {
 	check('auteur non forgeable', lgF.status >= 400, `HTTP ${lgF.status}`);
 	const lgM = await api('POST', '/api/collections/ops_log/records', { token: u.token, body: { body: 'x', category: 'info', author: u.id, mentions: [roles.admin.id] } });
 	check('mentions non forgeables', lgM.status >= 400, `HTTP ${lgM.status}`);
+	const lgS = await api('POST', '/api/collections/ops_log/records', { token: u.token, body: { body: 'x', category: 'info', author: u.id, source: 'irail' } });
+	check('source iRail non forgeable', lgS.status >= 400, `HTTP ${lgS.status}`);
+	const lgX = await api('POST', '/api/collections/ops_log/records', { token: u.token, body: { body: 'x', category: 'info', author: u.id, external_id: 'k' } });
+	check('identifiant externe non forgeable', lgX.status >= 400, `HTTP ${lgX.status}`);
+	const lgXu = await api('PATCH', `/api/collections/ops_log/records/${lid}`, { token: u.token, body: { external_id: 'k' } });
+	check('identifiant externe non modifiable', lgXu.status >= 400, `HTTP ${lgXu.status}`);
 	const lgR = await api('POST', '/api/collections/ops_log/records', { token: roles.reader.token, body: { body: 'x', category: 'info', author: roles.reader.id } });
 	check('lecteur ne publie pas', lgR.status >= 400, `HTTP ${lgR.status}`);
 	const lgO = await api('GET', '/api/collections/ops_log/records?perPage=1', { token: roles.otto_agent.token });
@@ -431,7 +437,7 @@ try {
 	const lgRd = await api('GET', `/api/collections/ops_log/records/${lid}`, { token: roles.reader.token });
 	check('lecteur lit une entrée', lgRd.status === 200, `HTTP ${lgRd.status}`);
 	const nMod = await api('GET', `/api/collections/notifications/records?filter=${encodeURIComponent(`source_id="${lid}"`)}`, { token: roles.moderator.token });
-	check('mention notifiée (une seule, même si urgente)', nMod.json?.items?.length === 1 && nMod.json.items[0].kind === 'mention' && nMod.json.items[0].link.startsWith('/operations/main-courante'), JSON.stringify(nMod.json?.items?.map((i) => i.kind)));
+	check('mention notifiée (une seule, même si urgente)', nMod.json?.items?.length === 1 && nMod.json.items[0].kind === 'mention' && nMod.json.items[0].link.startsWith('/operations/journal'), JSON.stringify(nMod.json?.items?.map((i) => i.kind)));
 	const nRd = await api('GET', `/api/collections/notifications/records?filter=${encodeURIComponent(`source_id="${lid}"`)}`, { token: roles.reader.token });
 	check('urgence notifiée aux lecteurs du district', nRd.json?.items?.length === 1 && nRd.json.items[0].kind === 'urgent', `${nRd.json?.items?.length}`);
 	const nOt = await api('GET', `/api/collections/notifications/records?filter=${encodeURIComponent(`source_id="${lid}"`)}`, { token: roles.otto_agent.token });
@@ -650,6 +656,14 @@ try {
 	check('compte désactivé : ancien jeton révoqué', eaOld.status >= 400, `HTTP ${eaOld.status}`);
 	const eaUname = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: u.token, body: { username: `pris${suffix}` } });
 	check('agent ne change pas son identifiant de connexion', eaUname.status >= 400, `HTTP ${eaUname.status}`);
+	// Districts du jour (1760001600) : l'agent les coche pour lui-même, jamais pour un autre.
+	const dutyDay = new Date().toISOString().slice(0, 10);
+	const duty = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: u.token, body: { duty_day: dutyDay, duty_districts: ['Sud-Ouest', 'Centre'] } });
+	check('agent coche ses districts du jour', duty.status === 200 && duty.json.duty_districts?.length === 2, `HTTP ${duty.status}`);
+	const dutyOther = await api('PATCH', `/api/collections/users/records/${roles.reader.id}`, { token: u.token, body: { duty_districts: ['Centre'] } });
+	check('agent ne coche pas les districts d un autre', dutyOther.status >= 400, `HTTP ${dutyOther.status}`);
+	const dutyBad = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: u.token, body: { duty_districts: ['Flandre'] } });
+	check('district du jour inconnu refusé', dutyBad.status >= 400, `HTTP ${dutyBad.status}`);
 	const eaLogin = await api('POST', '/api/collections/users/auth-with-password', { body: { identity: eaMail, password: 'Ea-reset-654321' } });
 	check('compte désactivé : connexion refusée', eaLogin.status >= 400, `HTTP ${eaLogin.status}`);
 

@@ -144,3 +144,13 @@ cronAdd('notifications-purge', '30 3 * * *', () => {
 	const day = (n) => `${new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)} 00:00:00.000Z`;
 	$app.db().newQuery("DELETE FROM notifications WHERE (read_at != '' AND read_at < {:r}) OR created < {:c}").bind({ r: day(30), c: day(90) }).execute();
 });
+
+// Toutes les 5 minutes : perturbations et travaux iRail → Journal (une entrée par message, dédupliquée), notification
+// aux agents qui travaillent aujourd'hui dans un district cité (demande du 9 oct. 2026).
+cronAdd('irail-journal', '*/5 * * * *', () => {
+	try {
+		require(`${__hooks}/lib/operations.js`).irailJournal($app);
+	} catch (err) {
+		console.log('irail-journal', String(err));
+	}
+});

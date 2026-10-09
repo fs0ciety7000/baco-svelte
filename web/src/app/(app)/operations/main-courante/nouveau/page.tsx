@@ -1,44 +1,14 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { LOG_CATEGORIES, type LogCategory } from "@/lib/ops/log";
-import { can } from "@/lib/permissions";
-import { requirePermission } from "@/server/auth";
-import { listMentionable, type LinkedObject } from "@/server/data/ops";
-
-import { NewEntryForm } from "./done";
-
-export const metadata: Metadata = { title: "Nouvelle entrée de main courante · CSM" };
-
+// Ancienne page « Nouvelle entrée » : la barre d'écriture du Journal la remplace (train et catégorie pré-remplis).
 export default async function Page({
   searchParams,
 }: {
   searchParams: Promise<{ train?: string; categorie?: string }>;
 }) {
-  const user = await requirePermission("journal:write");
-  const sp = await searchParams;
-  const agents = await listMentionable();
-  const linkKinds = (
-    [
-      ["bus", "bus:read"],
-      ["taxi", "taxi:read"],
-      ["pmr", "deplacements:read"],
-      ["pn", "carte_pn:read"],
-    ] as const
-  )
-    .filter(([, p]) => can(user, p))
-    .map(([k]) => k as LinkedObject["kind"]);
-  const train = typeof sp.train === "string" ? sp.train.slice(0, 20) : "";
-  const category: LogCategory | undefined = (LOG_CATEGORIES as readonly string[]).includes(
-    sp.categorie ?? "",
-  )
-    ? (sp.categorie as LogCategory)
-    : train
-      ? "incident"
-      : undefined;
-  return (
-    <section className="flex max-w-3xl flex-col gap-4" aria-label="Nouvelle entrée">
-      <h2 className="text-h3 font-semibold">Nouvelle entrée</h2>
-      <NewEntryForm agents={agents} linkKinds={linkKinds} preset={{ train, category }} />
-    </section>
-  );
+  const { train, categorie } = await searchParams;
+  const sp = new URLSearchParams();
+  if (typeof train === "string" && train) sp.set("train", train.slice(0, 20));
+  if (typeof categorie === "string" && categorie) sp.set("categorie", categorie.slice(0, 20));
+  redirect(sp.size ? `/operations/journal?${sp}` : "/operations/journal");
 }

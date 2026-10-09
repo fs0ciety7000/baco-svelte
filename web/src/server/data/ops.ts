@@ -43,6 +43,8 @@ export type LogEntry = {
   retiredReason: string;
   authorId: string;
   authorName: string;
+  /** « irail » : message repris automatiquement d'iRail (perturbation, travaux), sans auteur. */
+  source: "agent" | "irail";
   editedAt: string;
   created: string;
   updated: string;
@@ -118,7 +120,11 @@ function entry(r: RecordModel, readers: Map<string, { id: string; name: string }
     status: str(r.status) === "retiree" ? "retiree" : "active",
     retiredReason: str(r.retired_reason),
     authorId: str(r.author),
-    authorName: str(e.author?.name) || str(e.author?.username) || "Agent",
+    authorName:
+      str(r.source) === "irail"
+        ? "iRail · SNCB"
+        : str(e.author?.name) || str(e.author?.username) || "Agent",
+    source: str(r.source) === "irail" ? "irail" : "agent",
     editedAt: str(r.edited_at),
     created: str(r.created),
     updated: str(r.updated),
@@ -144,6 +150,13 @@ export const logListSchema = z.object({
     .string()
     .optional()
     .transform((v) => v === "1"),
+  /** Masquer les messages iRail. */
+  agents: z
+    .string()
+    .optional()
+    .transform((v) => v === "1"),
+  /** Nombre de messages affichés (fil continu, « plus anciens » par 100). */
+  n: z.coerce.number().int().min(100).max(1000).catch(100).default(100),
   retirees: z
     .string()
     .optional()
@@ -173,39 +186,32 @@ async function readersOf(entryIds: string[]) {
   return map;
 }
 
-/** Fil d'un jour (Europe/Brussels), ou résultats d'une recherche sur 180 jours. */
+/** Fil continu (décision du 9 oct. 2026 : pas de sélection par jour) : les `n` derniers messages par heure d'envoi, ou
+ * les résultats d'une recherche sur 180 jours. */
 export async function listLog(input: LogFilters, ctx: { coordinator: boolean }) {
   const f = logListSchema.parse(input);
   const pb = await pbForRequest();
-  const day = f.jour ?? brusselsDay();
   const parts: string[] = [];
   const since = toPbInstant(brusselsToUtc(addDays(brusselsDay(), -180)));
-  if (f.q) {
-    parts.push(pb.filter("occurred_at >= {:a} && body ~ {:q}", { a: since, q: f.q }));
-  } else if (f.pn) {
+  if (f.q) parts.push(pb.filter("occurred_at >= {:a} && body ~ {:q}", { a: since, q: f.q }));
+  else if (f.pn)
     parts.push(pb.filter("occurred_at >= {:a} && level_crossing = {:p}", { a: since, p: f.pn }));
-  } else {
-    parts.push(
-      pb.filter("occurred_at >= {:a} && occurred_at < {:b}", {
-        a: toPbInstant(brusselsToUtc(day)),
-        b: toPbInstant(brusselsToUtc(addDays(day, 1))),
-      }),
-    );
-  }
   if (f.categorie) parts.push(pb.filter("category = {:c}", { c: f.categorie }));
   if (f.auteur) parts.push(pb.filter("author = {:u}", { u: f.auteur }));
   if (f.urgentes) parts.push("urgent = true");
+  if (f.agents) parts.push('source != "irail"');
   if (!(f.retirees && ctx.coordinator)) parts.push('status = "active"');
-  const res = await pb.collection("ops_log").getList(1, 200, {
+  const res = await pb.collection("ops_log").getList(1, f.n, {
     filter: parts.join(" && "),
-    sort: "-occurred_at,-created",
+    sort: "-created,-id",
     expand: EXPAND,
   });
   const readers = await readersOf(res.items.map((r) => r.id));
   return {
-    day,
     rows: res.items.map((r) => entry(r, readers)),
     total: res.totalItems,
+    limit: f.n,
+    hasMore: res.totalItems > res.items.length,
     search: !!f.q || !!f.pn,
   };
 }
@@ -367,7 +373,7 @@ export async function searchLinkables(kind: LinkedObject["kind"], q: string): Pr
 
 export type Notification = {
   id: string;
-  kind: "mention" | "urgent" | "train" | "systeme";
+  kind: "mention" | "urgent" | "train" | "systeme" | "perturbation";
   title: string;
   body: string;
   link: string;
@@ -386,7 +392,7 @@ export async function listNotifications(
   return {
     items: res.items.map((n) => ({
       id: n.id,
-      kind: (["mention", "urgent", "train", "systeme"].includes(str(n.kind))
+      kind: (["mention", "urgent", "train", "systeme", "perturbation"].includes(str(n.kind))
         ? str(n.kind)
         : "systeme") as Notification["kind"],
       title: str(n.title),

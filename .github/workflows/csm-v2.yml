@@ -13,6 +13,8 @@ concurrency:
 
 env:
   PB_VERSION: "0.40.4"
+  # Reprise des perturbations iRail dans le Journal coupée en CI (notifications des tests déterministes).
+  CSM_IRAIL_URL: "off"
 
 jobs:
   web:

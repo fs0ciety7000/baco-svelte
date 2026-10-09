@@ -127,23 +127,37 @@ test("trains en direct : gare, favori, train, bus de substitution, suivi", async
   expect(errors).toEqual([]);
 });
 
-test("main courante : publier, lu, corriger, pièce jointe, retirer", async ({ page }, info) => {
+test("journal : publier (Markdown), lu, corriger, pièce jointe, retirer", async ({
+  page,
+}, info) => {
   test.skip(info.project.name !== "desktop", "parcours en desktop");
-  await login(page, "/operations/main-courante");
-  await page.getByTestId("log-new").click();
+  await login(page, "/operations/journal");
+  // Districts du jour : bandeau du matin (non bloquant), puis puce dans l'en-tête du Journal.
+  const banner = page.getByTestId("duty-banner");
+  if (await banner.isVisible()) {
+    await banner.getByRole("checkbox", { name: /DSO/ }).click();
+    await banner.getByTestId("duty-save").click();
+    await expect(banner).toBeHidden();
+  }
+  await expect(page.getByTestId("duty-chip")).toContainText("DSO");
   await page.getByRole("radio", { name: "Incident" }).click();
-  await page.getByTestId("log-body").fill(`${MARK} dérangement de signalisation à Jurbise`);
+  await page.getByTestId("log-body").fill(`${MARK} **dérangement** de signalisation à Jurbise 🚨`);
+  await page.getByTestId("log-options-toggle").click();
   await page.getByLabel("Train (facultatif)").fill("ic 2134");
   await page
     .locator('input[type="file"]')
+    .first()
     .setInputFiles({ name: "photo.png", mimeType: "image/png", buffer: PNG });
   await page.getByTestId("log-submit").click();
   const card = page.getByTestId("log-list").locator("article", { hasText: MARK });
   await expect(card).toBeVisible();
   await expect(card).toContainText("IC2134");
+  await expect(card.locator("strong", { hasText: "dérangement" })).toBeVisible();
+  // Le fil tient dans l'écran (défilement interne) et la barre d'écriture reste visible.
+  await expect(page.getByTestId("log-body")).toBeInViewport();
   await expect(card.getByRole("img", { name: /Pièce jointe/ })).toBeVisible();
-  await card.getByTestId("log-read").click();
-  await expect(card).toContainText("Lu par 1");
+  // Son propre message : pas de bouton « Marquer lu ».
+  await expect(card.getByTestId("log-read")).toHaveCount(0);
   await card.getByTestId("log-open").click();
   await page.getByTestId("log-edit").click();
   await page
@@ -185,7 +199,7 @@ test("cloche et statistiques", async ({ page }, info) => {
     title: `Notification ${MARK}`,
     link: "/operations/statistiques",
   });
-  await login(page, "/operations/main-courante");
+  await login(page, "/operations/journal");
   await expect(page.getByTestId("bell")).toHaveAccessibleName(/1 non lue/);
   await page.getByTestId("bell").click();
   await page.getByTestId("bell-menu").getByText(`Notification ${MARK}`).click();
@@ -217,8 +231,9 @@ for (const t of ["commandement", "ivoire"] as const) {
     await page.goto("/operations?gare=BE.NMBS.008881000&nom=Mons&train=IC2100");
     await expect(page.getByTestId("train-panel")).toBeVisible();
     await snap(page, `${t}-train-panneau`, p, false);
-    await page.goto("/operations/main-courante");
-    await snap(page, `${t}-main-courante`, p);
+    await page.goto("/operations/journal");
+    await expect(page.getByTestId("journal")).toBeVisible();
+    await snap(page, `${t}-journal`, p, false);
     await page.goto("/operations/carte-pn?q=L.999");
     await snap(page, `${t}-carte-pn`, p, false);
     await page.goto("/operations/statistiques");
