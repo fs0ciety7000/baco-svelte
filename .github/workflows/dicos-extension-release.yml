@@ -89,6 +89,8 @@ jobs:
           # Diagnostic sans divulguer la valeur : le secret AMO fait 64 caractères hexadécimaux.
           if printf %s "$secret" | grep -Eq '^[0-9a-f]{64}$'; then fmt="64 hexadécimaux (attendu)"; else fmt="format inattendu"; fi
           echo "Secret d'API : ${#secret} caractères, ${fmt}"
+          cls() { printf %s "$secret" | tr -cd "$1" | wc -c; }
+          echo "Composition du secret : chiffres $(cls '0-9'), a-f $(cls 'a-f'), A-F $(cls 'A-F'), g-z $(cls 'g-z'), G-Z $(cls 'G-Z'), autres $(printf %s "$secret" | tr -d '0-9a-zA-Z' | wc -c)"
           [ "$key" = "$secret" ] && echo "::error::AMO_JWT_SECRET contient la même valeur que AMO_JWT_ISSUER."
           npx --yes web-ext@8.10.0 sign --source-dir /tmp/ff --channel unlisted \
             --api-key "$key" --api-secret "$secret" --artifacts-dir /tmp/signed
