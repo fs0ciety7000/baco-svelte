@@ -29,18 +29,25 @@ test("navigation principale et onglets en routes", async ({ page, isMobile }, te
   await login(page);
   if (isMobile) {
     const bar = page.getByRole("navigation", { name: "Navigation principale" });
-    await expect(bar.getByRole("link")).toHaveText(["Accueil", "Commandes", "PMR", "Opérations"]);
+    await expect(bar.getByRole("link")).toHaveText([
+      "Accueil",
+      "Commandes",
+      "PMR",
+      "Opérations",
+      "Annuaire",
+    ]);
     await bar.getByRole("button", { name: "Plus" }).click();
     const sheet = page.getByRole("dialog", { name: "Plus" });
-    await expect(
-      sheet.getByRole("link", { name: "Annuaire et données", exact: true }),
-    ).toBeVisible();
+    // L'Annuaire est dans la barre du bas depuis le 9 oct. 2026 : plus dans « Plus ».
+    await expect(sheet.getByRole("link", { name: "Annuaire et données", exact: true })).toHaveCount(
+      0,
+    );
     await expect(sheet.getByRole("link", { name: "Équipe", exact: true })).toBeVisible();
     // Agent (rôle user) : pas d'administration.
     await expect(sheet.getByRole("link", { name: "Administration" })).toHaveCount(0);
     await page.screenshot({ path: `test-results/shell-plus-${testInfo.project.name}.png` });
-    await sheet.getByRole("link", { name: "Lignes" }).click();
-    await expect(page).toHaveURL(/\/referentiels\/lignes$/);
+    await sheet.getByRole("link", { name: "Mon profil" }).click();
+    await expect(page).toHaveURL(/\/equipe\/profil$/);
   } else {
     const side = page.getByRole("navigation", { name: "Navigation principale" });
     await expect(side.getByRole("list").getByRole("link")).toHaveText([

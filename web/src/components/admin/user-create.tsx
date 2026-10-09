@@ -29,7 +29,7 @@ export function PasswordReveal({ password, onClose }: { password: string; onClos
       <DialogContent
         eyebrow="// Compte"
         title="Mot de passe provisoire"
-        description="Il ne sera plus affiché. Transmettez-le à l'agent, qui le changera dans « Mon profil »."
+        description="Il ne sera plus affiché. Transmets-le à l'agent, qui le changera dans « Mon profil »."
       >
         <p
           className="border border-border-strong bg-surface-2 px-3 py-3 text-center font-mono text-h3 tracking-wider select-all"

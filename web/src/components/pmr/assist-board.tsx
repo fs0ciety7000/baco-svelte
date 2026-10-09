@@ -241,7 +241,7 @@ export function AssistBoard({
     return notSynced ? (
       <EmptyState
         title="Pas encore synchronisé"
-        description="Aucune synchro DICOS pour cette période : lancez la synchro depuis l'extension (onglet DICOS ouvert) pour voir les missions."
+        description="Aucune synchro DICOS pour cette période : lance la synchro depuis l'extension (onglet DICOS ouvert) pour voir les missions."
       />
     ) : (
       <EmptyState title="Aucune mission" description="Aucune mission PMR pour ces filtres." />

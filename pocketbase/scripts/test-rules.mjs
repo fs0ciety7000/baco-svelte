@@ -186,7 +186,21 @@ try {
 	t = await patch(u.token, { sent_by: roles.admin.id });
 	check('sent_by non modifiable', t.status >= 400, `HTTP ${t.status}`);
 	t = await patch(u.token, { status: 'termine' });
-	check('envoyé → terminé refusé (étape sautée)', t.status === 400, `HTTP ${t.status}`);
+	check('envoyé → terminé refusé avant 5 jours (clôture)', t.status === 400, `HTTP ${t.status}`);
+	// Clôture d'un bon envoyé jamais confirmé : permise 5 jours après la date de service.
+	const old = await api('POST', '/api/collections/bus_orders/records', {
+		token: u.token,
+		body: {
+			status: 'brouillon',
+			created_by: u.id,
+			company: withMail.json.id,
+			reason: 'Test clôture',
+			order_date: new Date(Date.now() - 10 * 86400000).toISOString().slice(0, 10) + ' 00:00:00.000Z'
+		}
+	});
+	await api('PATCH', `/api/collections/bus_orders/records/${old.json?.id}`, { token: u.token, body: { status: 'envoye' } });
+	const closed = await api('PATCH', `/api/collections/bus_orders/records/${old.json?.id}`, { token: u.token, body: { status: 'termine' } });
+	check('envoyé → terminé (clôture) après 5 jours', closed.status === 200 && !!closed.json.ended_at, `HTTP ${closed.status} ${JSON.stringify(closed.json).slice(0, 120)}`);
 	t = await patch(roles.otto_agent.token, { status: 'confirme' });
 	check('tout agent confirme (otto_agent)', t.status === 200 && t.json.confirmed_by === roles.otto_agent.id, `HTTP ${t.status}`);
 	t = await patch(u.token, { status: 'en_cours' });

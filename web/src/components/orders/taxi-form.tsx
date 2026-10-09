@@ -431,7 +431,7 @@ export function TaxiForm(props: TaxiFormProps) {
               error={err("taxi_company")}
               hint={
                 company
-                  ? company.emails.join("; ") || "Pas d'adresse : saisissez-la ci-dessous."
+                  ? company.emails.join("; ") || "Pas d'adresse : saisis-la ci-dessous."
                   : undefined
               }
             >
@@ -514,6 +514,7 @@ export function TaxiForm(props: TaxiFormProps) {
           ) : null}
           {orderId ? (
             <TransitionButtons
+              serviceDay={d.trip_day}
               kind="taxi"
               id={orderId}
               status={props.status}
@@ -704,7 +705,7 @@ export function PmrClientPicker({
   }
   if (!canPmr)
     return (
-      <p className="text-small text-fg-muted">Vous n&apos;avez pas accès aux fiches clients PMR.</p>
+      <p className="text-small text-fg-muted">Tu n&apos;as pas accès aux fiches clients PMR.</p>
     );
   return (
     <div className="flex flex-col gap-2">

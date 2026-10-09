@@ -19,7 +19,7 @@ export default function GlobalError({ reset }: { error: Error; reset: () => void
         <main style={{ maxWidth: 420, textAlign: "center" }}>
           <h1 style={{ fontSize: 20 }}>CSM est momentanément indisponible</h1>
           <p style={{ color: "#B1AA9E" }}>
-            Le serveur redémarre peut-être. Réessayez dans quelques secondes.
+            Le serveur redémarre peut-être. Réessaie dans quelques secondes.
           </p>
           <button
             type="button"

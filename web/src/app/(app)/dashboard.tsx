@@ -34,11 +34,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState, PageHeader } from "@/components/ui/misc";
 import { StatCard } from "@/components/ui/stat-card";
-import { StatusBadge, statusColor } from "@/components/ui/status-badge";
+import { Badge, StatusBadge, statusColor } from "@/components/ui/status-badge";
 import { ListCard } from "@/components/ui/table";
 import { toast } from "@/components/ui/toast";
 import { move, type DashboardLayout, type WidgetId } from "@/design/dashboard-layout";
 import { useStaggerIn } from "@/lib/motion";
+import { CLOSE_DAYS } from "@/lib/orders/status";
 import { brusselsDay, daysBetween, formatDay, isValidDay } from "@/lib/orders/time";
 import { cn, pl } from "@/lib/utils";
 import type { FavoriteStation } from "@/lib/ops/irail";
@@ -145,7 +146,12 @@ function WidgetBody({
                           ) : null}
                         </>
                       }
-                      aside={<StatusBadge status={o.status} />}
+                      aside={
+                        <span className="inline-flex flex-col items-end gap-1">
+                          <StatusBadge status={o.status} />
+                          {late >= CLOSE_DAYS ? <Badge tone="warn">À clôturer</Badge> : null}
+                        </span>
+                      }
                       className="hover:bg-surface-2"
                     />
                   </Link>

@@ -6,7 +6,7 @@ export async function safeCall<T>(p: Promise<T>): Promise<T | { ok: false; error
   } catch {
     return {
       ok: false,
-      error: "Serveur injoignable (réseau ou mise à jour en cours) : réessayez.",
+      error: "Serveur injoignable (réseau ou mise à jour en cours) : réessaie.",
     };
   }
 }

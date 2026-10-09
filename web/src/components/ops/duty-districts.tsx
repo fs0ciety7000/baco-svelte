@@ -32,8 +32,8 @@ function DutyDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        title="Où travaillez-vous aujourd'hui ?"
-        description="Vous recevrez les urgences et les perturbations iRail de ces districts, pour la journée."
+        title="Où travailles-tu aujourd'hui ?"
+        description="Tu recevras les urgences et les perturbations iRail de ces districts, pour la journée."
       >
         <div className="flex flex-col gap-2" role="group" aria-label="Districts du jour">
           {DUTY_DISTRICTS.map((d) => {
@@ -154,7 +154,7 @@ export function DutyBanner({ day, initial }: { day: string; initial: string[] })
       className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-accent-faint px-4 py-2 md:px-6"
     >
       <span className="inline-flex items-center gap-1.5 text-small font-medium text-fg">
-        <MapPin aria-hidden className="size-4 text-accent" /> Où travaillez-vous aujourd&apos;hui ?
+        <MapPin aria-hidden className="size-4 text-accent" /> Où travailles-tu aujourd&apos;hui ?
       </span>
       <span className="flex flex-wrap gap-1.5">
         {DUTY_DISTRICTS.map((d) => {

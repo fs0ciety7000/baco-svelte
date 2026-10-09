@@ -54,10 +54,10 @@ function fail(e: unknown): { ok: false; error: string } {
     return { ok: false, error: msg || "Enregistrement refusé." };
   }
   if (e instanceof ConflictError)
-    return { ok: false, error: "CONFLIT : la commande a été modifiée par ailleurs. Rechargez-la." };
+    return { ok: false, error: "CONFLIT : la commande a été modifiée par ailleurs. Recharge-la." };
   if (e instanceof z.ZodError)
     return { ok: false, error: e.issues[0]?.message ?? "Saisie invalide." };
-  return { ok: false, error: "Erreur inattendue, réessayez." };
+  return { ok: false, error: "Erreur inattendue, réessaie." };
 }
 
 async function writer(kind: OrderKind): Promise<SessionUser> {

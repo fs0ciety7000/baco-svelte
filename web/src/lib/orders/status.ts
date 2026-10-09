@@ -25,7 +25,8 @@ export const STATUS_LABEL: Record<Status, string> = {
 
 const TRANSITIONS: Record<Status, Status[]> = {
   brouillon: ["termine", "annule"],
-  envoye: ["brouillon", "confirme", "annule"],
+  // « Clôturer » : seulement 5 jours après la date de service (option `closable`, le hook PocketBase vérifie).
+  envoye: ["brouillon", "confirme", "termine", "annule"],
   confirme: ["envoye", "en_cours", "termine", "annule"],
   en_cours: ["termine"],
   termine: [],
@@ -49,6 +50,7 @@ const ACTION: Record<string, Omit<Transition, "to">> = {
   "brouillon>termine": { label: "Marquer envoyé", primary: true },
   "envoye>confirme": { label: "Confirmer", primary: true },
   "envoye>brouillon": { label: "Revenir en brouillon", tone: "back" },
+  "envoye>termine": { label: "Clôturer sans confirmation" },
   "confirme>en_cours": { label: "Démarrer", primary: true },
   "confirme>termine": { label: "Terminer" },
   "confirme>envoye": { label: "Annuler la confirmation", tone: "back" },
@@ -58,14 +60,26 @@ const ACTION: Record<string, Omit<Transition, "to">> = {
 };
 
 /** Transitions proposées à un agent (le serveur revérifie tout). */
+/** Délai de clôture d'un bon envoyé jamais confirmé (jours après la date de service ; le hook fait foi). */
+export const CLOSE_DAYS = 5;
+
+/** Un bon envoyé peut être clôturé (et est signalé « à clôturer ») 5 jours après sa date de service. */
+export function isClosable(status: Status, serviceDay: string | undefined, today: string): boolean {
+  if (status !== "envoye" || !serviceDay || !/^\d{4}-\d{2}-\d{2}$/.test(serviceDay)) return false;
+  return (
+    (Date.parse(`${today}T12:00:00Z`) - Date.parse(`${serviceDay}T12:00:00Z`)) / 86_400_000 >=
+    CLOSE_DAYS
+  );
+}
+
 export function transitionsFor(
   status: Status,
-  opts: { coordinator: boolean; statusBeforeCancel?: string },
+  opts: { coordinator: boolean; statusBeforeCancel?: string; closable?: boolean },
 ): Transition[] {
   const targets = [
     ...TRANSITIONS[status],
     ...(opts.coordinator ? (COORDINATOR[status] ?? []) : []),
-  ];
+  ].filter((to) => !(status === "envoye" && to === "termine" && !opts.closable));
   const list: Transition[] = targets.map((to) =>
     to === "annule"
       ? { to, label: "Annuler la commande", tone: "danger" }

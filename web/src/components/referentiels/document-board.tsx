@@ -174,7 +174,7 @@ function UploadForm({ categories, onDone }: { categories: string[]; onDone: () =
       onSubmit={(e) => {
         e.preventDefault();
         const file = fileRef.current?.files?.[0];
-        if (!file) return void toast.error("Sélectionnez un fichier.");
+        if (!file) return void toast.error("Sélectionne un fichier.");
         const fd = new FormData();
         fd.set("name", name || file.name.replace(/\.[^.]+$/, ""));
         fd.set("category", category);

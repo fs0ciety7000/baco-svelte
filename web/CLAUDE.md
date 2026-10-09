@@ -214,5 +214,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - Formulaires de filtres : **`FilterForm`** (`components/ui/filter-form.tsx`, `next/form` avec `key` = paramètres
   d'URL) et jamais `Form` directement. Transition de page : `PageTransition` (shell) anime `[data-page-body]`
   (posé par `ModuleLayout`). Raccourcis à une touche : `shortcutsEnabled()` (réglage « Affichage »).
+- **Tutoiement** dans toute l'interface (décision du 9 oct. 2026) ; seuls les e-mails aux fournisseurs
+  (`lib/orders/mail.ts`) vouvoient. Barre mobile : 5 modules (`mobile: true`, `shortLabel`) + « Plus ».
 - E2E `e2e/motion.spec.ts` : palette sans glissement, aucune animation infinie (hors `animate-pulse-dot` /
   `animate-spin`), accueil sans flash, filtre sans rechargement.

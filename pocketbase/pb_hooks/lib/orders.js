@@ -8,12 +8,16 @@ const KIND = { bus_orders: 'bus', taxi_orders: 'taxi' };
 // Transitions permises à tout agent qui écrit des commandes.
 const TRANSITIONS = {
 	brouillon: ['envoye', 'termine', 'annule'],
-	envoye: ['brouillon', 'confirme', 'annule'],
+	// « Clôturer » un bon jamais confirmé (décision du 9 oct. 2026) : 5 jours après la date de service (voir CLOSE_DAYS).
+	envoye: ['brouillon', 'confirme', 'termine', 'annule'],
 	confirme: ['envoye', 'en_cours', 'termine', 'annule'],
 	en_cours: ['termine'],
 	termine: [],
 	annule: []
 };
+// Délai avant de pouvoir clôturer un bon envoyé jamais confirmé (jours après la date de service).
+const CLOSE_DAYS = 5;
+
 // Transitions réservées aux coordinateurs (moderator, admin, sysop).
 // « en cours → confirmé » aussi : sinon un agent contournerait l'annulation réservée (en cours → confirmé → annulé).
 const COORDINATOR = {
@@ -60,6 +64,15 @@ function checkTransition(app, record, from, to, auth) {
 		allowed = true;
 	}
 	if (!allowed) throw new BadRequestError(`Transition impossible : ${from} → ${to}.`);
+	if (from === 'envoye' && to === 'termine') {
+		const raw = record.getString(record.collection().name === 'bus_orders' ? 'order_date' : 'trip_at');
+		const day = Date.parse(String(raw).slice(0, 10) + 'T12:00:00Z');
+		if (!day || Date.now() - day < CLOSE_DAYS * 86400000) {
+			throw new BadRequestError(
+				`Clôture possible ${CLOSE_DAYS} jours après la date de service : confirme d'abord le bon (ou annule-le).`
+			);
+		}
+	}
 
 	if (to === 'annule' && !record.getString('cancel_reason').trim()) {
 		throw new BadRequestError("Le motif d'annulation est obligatoire.");

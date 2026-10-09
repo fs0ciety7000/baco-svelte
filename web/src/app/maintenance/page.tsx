@@ -20,7 +20,7 @@ export default async function Page() {
         <Wrench aria-hidden className="size-8 text-warn" />
         <h1 className="display text-h2">Maintenance en cours</h1>
         <p className="text-body whitespace-pre-line text-fg-muted">
-          {m.message || "CSM est momentanément indisponible. Réessayez dans quelques minutes."}
+          {m.message || "CSM est momentanément indisponible. Réessaie dans quelques minutes."}
         </p>
         <Link href="/" className="inline-flex min-h-11 items-center text-small link">
           Réessayer

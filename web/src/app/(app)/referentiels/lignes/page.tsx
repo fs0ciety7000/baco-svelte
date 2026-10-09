@@ -61,7 +61,7 @@ export default async function Page({
         <>
           <p className="text-small text-fg-muted">
             <span className="font-mono text-fg tabular">{shown.length}</span>{" "}
-            {pl(shown.length, "ligne")} · choisissez-en une.
+            {pl(shown.length, "ligne")} · choisis-en une.
           </p>
           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="lines-grid">
             {shown.map((l) => (

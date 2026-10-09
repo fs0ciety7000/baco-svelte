@@ -9,10 +9,10 @@ import { loadOrderPanel, type OrderPanel } from "@/app/(app)/commandes/actions";
 import { Button } from "@/components/ui/button";
 import { EmptyState, Kbd, Skeleton } from "@/components/ui/misc";
 import { Sheet } from "@/components/ui/sheet";
-import { StatusBadge, statusColor } from "@/components/ui/status-badge";
+import { Badge, StatusBadge, statusColor } from "@/components/ui/status-badge";
 import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
-import { STATUS_LABEL } from "@/lib/orders/status";
-import { formatDay, pbDate, sinceLabel } from "@/lib/orders/time";
+import { isClosable, STATUS_LABEL } from "@/lib/orders/status";
+import { brusselsDay, formatDay, pbDate, sinceLabel } from "@/lib/orders/time";
 import type { OrderRow } from "@/server/data/orders";
 
 import { KindIconClient } from "./kind-icon";
@@ -36,6 +36,7 @@ export function TrackingBoard({
   /** Vue « À confirmer » : ancienneté de l'envoi. */
   showSince: boolean;
 }) {
+  const today = brusselsDay();
   const router = useRouter();
   const [active, setActive] = useState(0);
   const [open, setOpen] = useState<OrderRow | null>(null);
@@ -54,7 +55,7 @@ export function TrackingBoard({
     try {
       res = await loadOrderPanel({ kind: r.kind, id: r.id });
     } catch {
-      res = { ok: false, error: "Serveur injoignable : réessayez." };
+      res = { ok: false, error: "Serveur injoignable : réessaie." };
     }
     if (wanted.current !== key) return;
     if (res.ok) setPanel(res.data);
@@ -163,7 +164,12 @@ export function TrackingBoard({
                 <Td className="max-w-36 truncate text-fg-muted">{r.author || "—"}</Td>
                 <Td>
                   <span className="flex flex-col items-start gap-0.5">
-                    <StatusBadge status={r.status} />
+                    <span className="inline-flex flex-wrap items-center gap-1">
+                      <StatusBadge status={r.status} />
+                      {isClosable(r.status, r.day, today) ? (
+                        <Badge tone="warn">À clôturer</Badge>
+                      ) : null}
+                    </span>
                     {showSince && r.sentAt ? (
                       <span className="text-hint text-fg-muted">
                         {sinceLabel(pbDate(r.sentAt) ?? new Date())}
@@ -200,7 +206,14 @@ export function TrackingBoard({
                   </span>
                 }
                 meta={`n° ${r.number} · ${formatDay(r.day)}${r.company ? ` · ${r.company}` : ""}${showSince && r.sentAt ? ` · ${sinceLabel(pbDate(r.sentAt) ?? new Date())}` : ""}`}
-                aside={<StatusBadge status={r.status} />}
+                aside={
+                  <span className="inline-flex flex-col items-end gap-1">
+                    <StatusBadge status={r.status} />
+                    {isClosable(r.status, r.day, today) ? (
+                      <Badge tone="warn">À clôturer</Badge>
+                    ) : null}
+                  </span>
+                }
               />
             </button>
           </li>
@@ -230,6 +243,7 @@ export function TrackingBoard({
           open && panel ? (
             <div className="flex w-full flex-wrap gap-2">
               <TransitionButtons
+                serviceDay={open.day}
                 kind={open.kind}
                 id={open.id}
                 status={panel.meta.status}

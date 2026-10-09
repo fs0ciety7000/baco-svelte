@@ -28,7 +28,7 @@ export default function AppError({
       <EmptyState
         icon={<AlertTriangle className="size-6 text-warn" />}
         title="La page n'a pas pu s'afficher"
-        description="Le serveur est peut-être en cours de redémarrage ou momentanément injoignable. Réessayez dans quelques secondes ; si le problème continue, prévenez un administrateur."
+        description="Le serveur est peut-être en cours de redémarrage ou momentanément injoignable. Réessaie dans quelques secondes ; si le problème continue, préviens un administrateur."
         action={
           <div className="flex flex-wrap justify-center gap-2">
             <Button

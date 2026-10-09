@@ -33,7 +33,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ op: 
   // d'accueil + l'onglet les lisent (le tableau de bord en recharge pouvait atteindre 429, CI du 9 oct.).
   const bucket = op === "perturbations" ? `irail-perturbations:${user.id}` : `irail:${user.id}`;
   if (!allow(bucket, 60, 60_000))
-    return json({ error: "Trop de requêtes : réessayez dans un instant." }, 429);
+    return json({ error: "Trop de requêtes : réessaie dans un instant." }, 429);
   const sp = new URL(request.url).searchParams;
   try {
     switch (op) {
@@ -83,7 +83,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ op: 
     if (e instanceof IrailError && e.message === "introuvable")
       return json({ error: "Aucune donnée iRail pour cette recherche." }, 404);
     if (e instanceof IrailError && e.message === "occupé")
-      return json({ error: "iRail est très sollicité : réessayez dans un instant." }, 503);
-    return json({ error: "iRail ne répond pas. Réessayez dans un instant." }, 502);
+      return json({ error: "iRail est très sollicité : réessaie dans un instant." }, 503);
+    return json({ error: "iRail ne répond pas. Réessaie dans un instant." }, 502);
   }
 }

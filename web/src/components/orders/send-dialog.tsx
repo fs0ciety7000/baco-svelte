@@ -49,7 +49,7 @@ export function SendDialog({
 
   const download = async (what: "eml" | "pdf") => {
     if (!(await flush())) {
-      toast.error("Enregistrement impossible : corrigez la saisie avant l'envoi.");
+      toast.error("Enregistrement impossible : corrige la saisie avant l'envoi.");
       return;
     }
     if (what === "pdf" && noMail) {
@@ -82,7 +82,7 @@ export function SendDialog({
         // Valider l'envoi termine la commande (décision du 9 oct. 2026).
         res = await transitionOrder({ kind, id: id ?? "", to: "termine" });
       } catch {
-        toast.error("Serveur injoignable : réessayez dans un instant.");
+        toast.error("Serveur injoignable : réessaie dans un instant.");
         return;
       }
       if (!res.ok) {
@@ -101,8 +101,8 @@ export function SendDialog({
         title="Préparer l'envoi"
         description={
           noMail
-            ? "Aucune adresse e-mail pour ce fournisseur : téléchargez le bon en PDF et transmettez-le (téléphone, autre canal)."
-            : "Le brouillon s'ouvre dans Outlook avec le bon en PDF. Vérifiez l'expéditeur (boîte fonctionnelle), puis envoyez."
+            ? "Aucune adresse e-mail pour ce fournisseur : télécharge le bon en PDF et transmets-le (téléphone, autre canal)."
+            : "Le brouillon s'ouvre dans Outlook avec le bon en PDF. Vérifie l'expéditeur (boîte fonctionnelle), puis envoie."
         }
       >
         {missing.length ? (
@@ -137,10 +137,10 @@ export function SendDialog({
             data-testid="confirm-banner"
           >
             <p className="text-body font-medium text-fg">
-              {noMail ? "Avez-vous transmis le bon ?" : "Avez-vous envoyé l'e-mail ?"}
+              {noMail ? "As-tu transmis le bon ?" : "As-tu envoyé l'e-mail ?"}
             </p>
             <p className="text-small text-fg-muted">
-              La commande passe à « Terminé » seulement si vous le confirmez.
+              La commande passe à « Terminé » seulement si tu le confirmes.
             </p>
           </div>
         ) : null}

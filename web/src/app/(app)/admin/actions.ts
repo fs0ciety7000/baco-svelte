@@ -39,7 +39,7 @@ function fail(e: unknown): { ok: false; error: string } {
     return { ok: false, error: e.issues[0]?.message ?? "Saisie invalide." };
   if (e instanceof Error && e.message.startsWith("DROIT:"))
     return { ok: false, error: e.message.slice(6) };
-  return { ok: false, error: "Erreur inattendue, réessayez." };
+  return { ok: false, error: "Erreur inattendue, réessaie." };
 }
 
 /** Le compte de service DICOS (`connector`) ne se gère pas ici : sinon l'ingestion pourrait tourner en admin. */
@@ -103,7 +103,7 @@ export async function updateUser(id: string, input: unknown): Promise<Result> {
     const uid = userId.parse(id);
     const p = profileSchema.parse(input);
     if (uid === me.id && p.role !== me.role)
-      throw new Error("DROIT:Vous ne pouvez pas changer votre propre rôle.");
+      throw new Error("DROIT:Tu ne peux pas changer ton propre rôle.");
     const pb = await pbForRequest();
     await managed(pb, uid);
     await pb.collection("users").update(uid, { ...p, district: p.district || null });
@@ -143,7 +143,7 @@ export async function setActive(id: string, active: boolean, role?: string): Pro
   try {
     const me = await requireAdmin();
     const uid = userId.parse(id);
-    if (uid === me.id) throw new Error("DROIT:Vous ne pouvez pas désactiver votre propre compte.");
+    if (uid === me.id) throw new Error("DROIT:Tu ne peux pas désactiver ton propre compte.");
     const pb = await pbForRequest();
     const cur = await managed(pb, uid);
     if (active) {
@@ -170,7 +170,7 @@ export async function resetPassword(id: string): Promise<Result<{ password: stri
   try {
     const me = await requireAdmin();
     const uid = userId.parse(id);
-    if (uid === me.id) throw new Error("DROIT:Changez votre mot de passe depuis « Mon profil ».");
+    if (uid === me.id) throw new Error("DROIT:Change ton mot de passe depuis « Mon profil ».");
     const password = tempPassword();
     const pb = await pbForRequest();
     await managed(pb, uid);
@@ -244,7 +244,7 @@ export async function reorderLine(line: string, ids: string[]): Promise<Result> 
       .getFullList({ filter: pb.filter("line = {:l}", { l }), fields: "id,position" });
     const known = new Set(rows.map((r) => r.id));
     if (list.length !== rows.length || list.some((id) => !known.has(id)))
-      throw new Error("DROIT:La liste a changé entre-temps : rechargez la page.");
+      throw new Error("DROIT:La liste a changé entre-temps : recharge la page.");
     const pos = new Map(rows.map((r) => [r.id, r.position as number]));
     for (const [i, id] of list.entries())
       if (pos.get(id) !== i + 1)

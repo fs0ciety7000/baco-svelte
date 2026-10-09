@@ -377,7 +377,7 @@ export function JournalChat({
               )}
             >
               <span className="text-small font-semibold text-fg">
-                {mine ? `Vous (${r.authorName})` : r.authorName}
+                {mine ? `Toi (${r.authorName})` : r.authorName}
               </span>
               <span className="font-mono text-hint text-fg-muted tabular" title="Envoyé le">
                 {stampOf(r.created || r.occurredAt)}

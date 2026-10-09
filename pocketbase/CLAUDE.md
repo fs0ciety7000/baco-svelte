@@ -46,7 +46,8 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
   Création toujours en `brouillon`, au nom de l'agent. `number` = n° de bon, attribué par une seule instruction
   SQL atomique sur la table interne `_order_counters` (pas de doublon en création simultanée, testé à 12 requêtes) ;
   = ancien id pour les bus importés. `en_cours → confirmé` est réservé aux coordinateurs (sinon contournement de
-  l'annulation). Rétablir une annulée ne réhorodate pas. `time_pending` (taxi) : heure de prise en charge non saisie.
+  l'annulation). **`envoye → termine`** (« clôturer » un bon jamais confirmé) seulement 5 jours après la date de service
+  (`CLOSE_DAYS`, décision du 9 oct. 2026). Rétablir une annulée ne réhorodate pas. `time_pending` (taxi) : heure de prise en charge non saisie.
   `updated_by` de `pmr_clients` / `b201_reports` et l'attribution BACO des bus (`sent_by_name`, `validated_by`,
   `legacy_id`) ne sont pas forgeables.
 - **Piège des index** : un champ nombre vide vaut **0**, pas NULL → un index unique `WHERE legacy_id IS NOT NULL`

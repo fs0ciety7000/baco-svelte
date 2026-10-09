@@ -28,8 +28,10 @@ export type NavModule = {
   id: string;
   href: string;
   label: string;
+  /** Libellé court (barre d'onglets mobile). */
+  shortLabel?: string;
   icon: LucideIcon;
-  /** Présent dans la barre d'onglets mobile (4 au maximum, le reste va dans « Plus »). */
+  /** Présent dans la barre d'onglets mobile (5 au maximum, le reste va dans « Plus »). */
   mobile?: boolean;
   tabs: NavTab[];
 };
@@ -120,6 +122,9 @@ export const MODULES: NavModule[] = [
     id: "referentiels",
     href: "/referentiels",
     label: "Annuaire et données",
+    shortLabel: "Annuaire",
+    // Barre du bas en mobile (décision du 9 oct. 2026).
+    mobile: true,
     icon: Database,
     tabs: [
       {

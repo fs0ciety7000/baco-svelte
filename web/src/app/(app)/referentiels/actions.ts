@@ -40,7 +40,7 @@ function fail(e: unknown): { ok: false; error: string } {
     return { ok: false, error: e.issues[0]?.message ?? "Saisie invalide." };
   if (e instanceof Error && e.message.startsWith("DROIT:"))
     return { ok: false, error: e.message.slice(6) };
-  return { ok: false, error: "Erreur inattendue, réessayez." };
+  return { ok: false, error: "Erreur inattendue, réessaie." };
 }
 
 async function need(perm: string): Promise<SessionUser> {

@@ -29,7 +29,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-body text-fg-muted">
           <span className="font-mono text-fg tabular">{total}</span> {pl(total, "trajet")} de groupe
-          {total > rows.length ? ` · ${rows.length} affichés : réduisez la période` : ""}
+          {total > rows.length ? ` · ${rows.length} affichés : réduis la période` : ""}
         </p>
         <div className="flex flex-wrap items-center gap-3">
           {sync ? <SyncStatus {...sync} /> : null}
@@ -50,7 +50,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
         sync && !sync.covered ? (
           <EmptyState
             title="Pas encore synchronisé"
-            description="Aucune synchro DICOS pour cette période : lancez la synchro depuis l'extension (onglet DICOS ouvert)."
+            description="Aucune synchro DICOS pour cette période : lance la synchro depuis l'extension (onglet DICOS ouvert)."
           />
         ) : (
           <EmptyState

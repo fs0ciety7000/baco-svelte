@@ -118,7 +118,7 @@ export async function POST(request: Request) {
   if (!provided || !tokenOk(provided))
     return Response.json({ error: "Jeton de connecteur invalide." }, { status: 401 });
   if (!allow("dicos-ingest", 30, 60_000))
-    return Response.json({ error: "Trop de requêtes, réessayez plus tard." }, { status: 429 });
+    return Response.json({ error: "Trop de requêtes, réessaie plus tard." }, { status: 429 });
   const len = Number(request.headers.get("content-length") ?? "0");
   if (Number.isFinite(len) && len > MAX_BODY)
     return Response.json({ error: "Corps trop volumineux." }, { status: 413 });

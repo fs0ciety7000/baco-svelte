@@ -89,7 +89,7 @@ export function UserEditor({ user, isSelf }: { user: AdminUser; isSelf: boolean 
             </Field>
             <Field
               label={disabled ? "Rôle à la réactivation" : "Rôle"}
-              hint={isSelf ? "Vous ne pouvez pas changer votre propre rôle." : undefined}
+              hint={isSelf ? "Tu ne peux pas changer ton propre rôle." : undefined}
             >
               <Select
                 value={f.role}
@@ -169,7 +169,7 @@ export function UserEditor({ user, isSelf }: { user: AdminUser; isSelf: boolean 
             </div>
             {isSelf ? (
               <p className="text-hint text-fg-muted">
-                Votre propre compte : changez votre mot de passe dans « Mon profil ».
+                Ton propre compte : change ton mot de passe dans « Mon profil ».
               </p>
             ) : null}
           </CardContent>

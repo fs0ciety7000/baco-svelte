@@ -46,7 +46,7 @@ function fail(e: unknown): { ok: false; error: string } {
     return { ok: false, error: e.issues[0]?.message ?? "Saisie invalide." };
   if (e instanceof Error && e.message.startsWith("DROIT:"))
     return { ok: false, error: e.message.slice(6) };
-  return { ok: false, error: "Erreur inattendue, réessayez." };
+  return { ok: false, error: "Erreur inattendue, réessaie." };
 }
 
 async function need(perm: string): Promise<SessionUser> {
@@ -104,7 +104,7 @@ export async function updateEntry(input: {
     if (current.updated !== input.expectedUpdated)
       return {
         ok: false,
-        error: "L'entrée a été modifiée entre-temps : rouvrez-la pour voir la dernière version.",
+        error: "L'entrée a été modifiée entre-temps : rouvre-la pour voir la dernière version.",
       };
     await pb.collection("ops_log").update(id, entryBody(p));
     return { ok: true };
@@ -388,7 +388,7 @@ export async function saveCrossing(input: {
       const id = pbId.parse(input.id);
       const current = await pb.collection("level_crossings").getOne(id, { fields: "updated" });
       if (current.updated !== input.expectedUpdated)
-        return { ok: false, error: "Le PN a été modifié entre-temps : rouvrez la fiche." };
+        return { ok: false, error: "Le PN a été modifié entre-temps : rouvre la fiche." };
       await pb.collection("level_crossings").update(id, { ...d, updated_by: user.id });
       return { ok: true, data: { id } };
     }

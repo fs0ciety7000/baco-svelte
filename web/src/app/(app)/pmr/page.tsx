@@ -29,7 +29,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-body text-fg-muted" data-testid="assists-count">
           <span className="font-mono text-fg tabular">{total}</span> {pl(total, "mission")}
-          {total > rows.length ? ` · ${rows.length} affichées : réduisez la période` : ""}
+          {total > rows.length ? ` · ${rows.length} affichées : réduis la période` : ""}
         </p>
         {/* Plus de création manuelle : les missions sont synchronisées depuis DICOS (décision du 8 octobre 2026). */}
         <div className="flex flex-wrap items-center gap-3">

@@ -59,7 +59,7 @@ export function useAutosave<T>({
           // Réseau coupé ou serveur redéployé (« Failed to find Server Action ») : la saisie reste à l'écran.
           setState(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "error");
           setError(
-            "Enregistrement impossible (réseau ou mise à jour du serveur) : la saisie est gardée, réessayez.",
+            "Enregistrement impossible (réseau ou mise à jour du serveur) : la saisie est gardée, réessaie.",
           );
           return false;
         }

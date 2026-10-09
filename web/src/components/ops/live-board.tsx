@@ -350,8 +350,8 @@ export function LiveBoard({
         <TabsContent value="tableau" className="flex flex-col gap-3 pt-3">
           {!station ? (
             <EmptyState
-              title="Choisissez une gare"
-              description="Tapez le nom d'une gare, ou un numéro de train pour ouvrir son parcours. Ajoutez vos gares en favori (étoile)."
+              title="Choisis une gare"
+              description="Tape le nom d'une gare, ou un numéro de train pour ouvrir son parcours. Ajoute tes gares en favori (étoile)."
             />
           ) : (
             <>
@@ -552,7 +552,7 @@ export function LiveBoard({
           {watches.length === 0 ? (
             <EmptyState
               title="Aucun train suivi"
-              description="Ouvrez un train et choisissez « Suivre » : une notification arrive dès 5 min de retard ou en cas de suppression (10 trains, pour la journée)."
+              description="Ouvre un train et choisis « Suivre » : une notification arrive dès 5 min de retard ou en cas de suppression (10 trains, pour la journée)."
             />
           ) : (
             <ul className="flex flex-col gap-2" data-testid="live-watches">

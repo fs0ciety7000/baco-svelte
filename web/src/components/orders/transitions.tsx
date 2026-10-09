@@ -10,7 +10,14 @@ import { Field } from "@/components/ui/field";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 import type { BusLine } from "@/lib/orders/schemas";
-import { transitionsFor, type OrderKind, type Status, type Transition } from "@/lib/orders/status";
+import { brusselsDay } from "@/lib/orders/time";
+import {
+  transitionsFor,
+  type OrderKind,
+  type Status,
+  type Transition,
+  isClosable,
+} from "@/lib/orders/status";
 
 type Driver = { id: string; name: string; company: string };
 type Extra = Omit<Parameters<typeof transitionOrder>[0], "kind" | "id" | "to">;
@@ -33,6 +40,7 @@ export function TransitionButtons({
   onDone,
   hideSend = false,
   size = "md",
+  serviceDay,
 }: {
   kind: OrderKind;
   id: string;
@@ -48,11 +56,14 @@ export function TransitionButtons({
   /** « Marquer envoyé » passe par la feuille d'envoi (brouillon Outlook) : masqué ici. */
   hideSend?: boolean;
   size?: "sm" | "md";
+  /** Jour de service (AAAA-MM-JJ) : « Clôturer sans confirmation » 5 jours après. */
+  serviceDay?: string;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [dialog, setDialog] = useState<Transition | null>(null);
-  const list = transitionsFor(status, { coordinator, statusBeforeCancel }).filter(
+  const closable = isClosable(status, serviceDay, brusselsDay());
+  const list = transitionsFor(status, { coordinator, statusBeforeCancel, closable }).filter(
     // Seul l'envoi depuis le brouillon (« Marquer envoyé » → terminé) est masqué : il passe par la feuille d'envoi.
     (t) => !(hideSend && status === "brouillon" && t.to === "termine"),
   );
@@ -67,7 +78,7 @@ export function TransitionButtons({
         }
         res = await transitionOrder({ kind, id, to: t.to, ...extra });
       } catch {
-        toast.error("Serveur injoignable (réseau ou mise à jour en cours) : réessayez.");
+        toast.error("Serveur injoignable (réseau ou mise à jour en cours) : réessaie.");
         return;
       }
       if (!res.ok) {

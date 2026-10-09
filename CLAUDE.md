@@ -543,6 +543,13 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   comptée), Vaul animé en mouvement réduit, clés ⌘K en double, débit de `paletteSearch` (120/min), raccourcis « / » et
   « N » désactivables dans « Affichage » (WCAG 2.1.4) et sans répétition, `aria-current` sur les puces du Journal, « Non
   lu » annoncé. Reste connu : une synchro DICOS interrompue après un lot s'affiche comme synchronisée.
+- 2026-10-09 — **Réponses aux 5 questions UX** : (1) messages iRail comptés dans les non-lus du Journal **et** dans la
+  cloche (déjà le cas, gardé) ; (2) **pas** d'export ALEA commun PMR + groupes pour l'instant ; (3) **clôture d'un bon
+  envoyé jamais confirmé 5 jours après la date de service** : transition `envoye → termine` ajoutée au hook
+  (`CLOSE_DAYS`, refus avant 5 jours, `ended_at` posé), bouton « Clôturer sans confirmation » (`isClosable`), badge
+  « À clôturer » sur l'accueil et le Suivi (212 contrôles de règles) ; (4) **Annuaire dans la barre du bas mobile**
+  (5 onglets + Plus, libellé court `shortLabel`) ; (5) **tutoiement** dans toute l'interface (l'e-mail aux sociétés de
+  bus reste au vouvoiement).
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

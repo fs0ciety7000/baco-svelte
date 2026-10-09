@@ -347,7 +347,7 @@ export function BusForm(props: BusFormProps) {
               </div>
             ) : (
               <p className="text-small text-fg-muted">
-                Saisissez l&apos;origine et la destination pour proposer les lignes.
+                Saisis l&apos;origine et la destination pour proposer les lignes.
               </p>
             )}
             {!d.direct ? (
@@ -395,8 +395,8 @@ export function BusForm(props: BusFormProps) {
                   </div>
                 ) : (
                   <p className="text-small text-fg-muted">
-                    Aucun arrêt trouvé : choisissez une ligne qui dessert les deux gares, ou passez
-                    en saisie libre.
+                    Aucun arrêt trouvé : choisis une ligne qui dessert les deux gares, ou passe en
+                    saisie libre.
                   </p>
                 )}
               </div>
@@ -416,7 +416,7 @@ export function BusForm(props: BusFormProps) {
               hint={
                 company
                   ? company.email ||
-                    "Pas d'adresse e-mail enregistrée : saisissez-la ci-dessous (facultatif)."
+                    "Pas d'adresse e-mail enregistrée : saisis-la ci-dessous (facultatif)."
                   : undefined
               }
             >
@@ -662,6 +662,7 @@ export function BusForm(props: BusFormProps) {
           ) : null}
           {orderId ? (
             <TransitionButtons
+              serviceDay={d.order_date}
               kind="bus"
               id={orderId}
               status={props.status}

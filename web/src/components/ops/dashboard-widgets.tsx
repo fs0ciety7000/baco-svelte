@@ -117,7 +117,7 @@ export function TrainsWidget({ favorites }: { favorites: FavoriteStation[] | nul
       <EmptyState
         icon={<Train className="size-6" />}
         title="Aucune gare favorite"
-        description="Ajoutez vos gares en favori dans Trains en direct (étoile)."
+        description="Ajoute tes gares en favori dans Trains en direct (étoile)."
         action={
           <Link href="/operations" className="text-small link">
             Ouvrir les trains en direct
