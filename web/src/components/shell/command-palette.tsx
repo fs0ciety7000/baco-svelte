@@ -1,11 +1,12 @@
 "use client";
 
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { CornerDownLeft, Monitor, Palette } from "lucide-react";
+import { Bus, CornerDownLeft, MapPin, Monitor, Palette, TrainFront, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { saveUiPreferences } from "@/app/preferences-actions";
+import { paletteSearch, type SearchHit } from "@/app/search-actions";
 import {
   Command,
   CommandEmpty,
@@ -38,6 +39,27 @@ export function CommandPalette() {
     return () => window.removeEventListener("keydown", onKey);
   }, [paletteOpen, setPaletteOpen]);
 
+  // Recherche dans les données (contacts, bons, PtCar, trains), après 250 ms sans frappe.
+  const [query, setQuery] = useState("");
+  const [hits, setHits] = useState<SearchHit[]>([]);
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) return void setHits([]);
+    let cancelled = false;
+    const t = window.setTimeout(() => {
+      void paletteSearch(q)
+        .then((r) => !cancelled && setHits(r))
+        .catch(() => !cancelled && setHits([]));
+    }, 250);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [query]);
+  useEffect(() => {
+    if (!paletteOpen) setQuery("");
+  }, [paletteOpen]);
+
   const go = (href: string) => {
     setPaletteOpen(false);
     router.push(href);
@@ -64,9 +86,38 @@ export function CommandPalette() {
         >
           <DialogPrimitive.Title className="sr-only">Palette de commandes</DialogPrimitive.Title>
           <Command label="Palette de commandes" loop>
-            <CommandInput placeholder="Aller à, créer, changer de thème…" autoFocus />
+            <CommandInput
+              placeholder="Rechercher un contact, un bon, une gare, un train… ou aller à"
+              autoFocus
+              value={query}
+              onValueChange={setQuery}
+            />
             <CommandList className="max-h-[min(60dvh,26rem)]">
               <CommandEmpty>Aucun résultat</CommandEmpty>
+              {hits.length > 0 ? (
+                <CommandGroup heading="Résultats">
+                  {hits.map((h) => {
+                    const Icon = { contact: UserRound, bus: Bus, ptcar: MapPin, train: TrainFront }[
+                      h.kind
+                    ];
+                    return (
+                      <CommandItem
+                        key={h.href + h.label}
+                        // La valeur contient la saisie : cmdk ne masque pas un résultat venu du serveur.
+                        value={`${query} ${h.label} ${h.meta} ${h.href}`}
+                        onSelect={() => go(h.href)}
+                      >
+                        <Icon /> <span className="truncate">{h.label}</span>
+                        {h.meta ? (
+                          <span className="ml-auto truncate text-small text-fg-muted">
+                            {h.meta}
+                          </span>
+                        ) : null}
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              ) : null}
               {actions.length > 0 ? (
                 <CommandGroup heading="Créer">
                   {actions.map((a) => (
@@ -144,6 +195,9 @@ export function CommandPalette() {
               </span>
               <span className="flex items-center gap-1">
                 <Kbd>Échap</Kbd> fermer
+              </span>
+              <span className="ml-auto flex items-center gap-1">
+                <Kbd>/</Kbd> recherche de la page · <Kbd>N</Kbd> nouveau
               </span>
             </div>
           </Command>

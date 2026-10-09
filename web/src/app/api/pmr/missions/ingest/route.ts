@@ -249,6 +249,24 @@ export async function POST(request: Request) {
     }
   }
 
+  // Journal des synchros (date « synchronisé il y a X min » des écrans) : jamais bloquant pour l'ingestion.
+  const log = (
+    kind: "missions" | "groups",
+    n: { received: number; created: number; updated: number },
+  ) =>
+    pb
+      .collection("dicos_syncs")
+      .create({
+        day: body.day,
+        kind,
+        received: n.received,
+        created_count: n.created,
+        updated_count: n.updated,
+      })
+      .catch(() => null);
+  if (body.dossiers || body.missions) await log("missions", { received, ...c });
+  if (body.groups) await log("groups", g);
+
   return Response.json(
     { day: body.day, received, ...c, groups: g },
     { headers: { "cache-control": "no-store" } },

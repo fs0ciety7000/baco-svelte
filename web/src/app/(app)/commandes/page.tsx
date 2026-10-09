@@ -40,7 +40,7 @@ export default async function CommandesBusPage({
           <LiveRefresh topics={["bus_orders"]} />
           {can(user, "otto:write") ? (
             <Button asChild variant="primary">
-              <Link href="/commandes/nouveau">
+              <Link href="/commandes/nouveau" data-shortcut="new" aria-keyshortcuts="n">
                 <Plus aria-hidden /> Nouveau bon
               </Link>
             </Button>

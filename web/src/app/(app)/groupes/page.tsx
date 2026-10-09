@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 
-import { pl } from "@/lib/utils";
 import { PmrFilterBar, type PmrFilters } from "@/components/pmr/filter-bar";
 import { GroupBoard } from "@/components/pmr/group-board";
+import { SyncStatus } from "@/components/pmr/sync-status";
 import { EmptyState } from "@/components/ui/misc";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
 import { requireRoute } from "@/server/auth";
 import { listGroups } from "@/server/data/groups";
+import { dicosSyncState } from "@/server/data/pmr";
+import { pl } from "@/lib/utils";
 
 import { LiveRefresh } from "../commandes/live-refresh";
 
@@ -18,13 +20,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
   const today = brusselsDay();
   const du = isValidDay(f.du) ? f.du : today;
   const au = isValidDay(f.au) && f.au >= du ? f.au : du;
-  const { rows, total } = await listGroups({
-    from: du,
-    to: au,
-    district: f.district,
-    q: f.q,
-    status: f.statut,
-  });
+  const [{ rows, total }, sync] = await Promise.all([
+    listGroups({ from: du, to: au, district: f.district, q: f.q, status: f.statut }),
+    dicosSyncState("groups", du, au),
+  ]);
   return (
     <section className="flex flex-col gap-4" aria-label="Groupes">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -32,7 +31,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
           <span className="font-mono text-fg tabular">{total}</span> {pl(total, "trajet")} de groupe
           {total > rows.length ? ` · ${rows.length} affichés : réduisez la période` : ""}
         </p>
-        <LiveRefresh topics={["group_missions"]} />
+        <div className="flex flex-wrap items-center gap-3">
+          {sync ? <SyncStatus {...sync} /> : null}
+          <LiveRefresh topics={["group_missions", "dicos_syncs"]} />
+        </div>
       </div>
       <PmrFilterBar
         action="/groupes"
@@ -45,10 +47,17 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
         ]}
       />
       {rows.length === 0 ? (
-        <EmptyState
-          title="Aucun groupe"
-          description="Aucune mission de groupe pour cette période (synchronisées depuis DICOS par l'extension)."
-        />
+        sync && !sync.covered ? (
+          <EmptyState
+            title="Pas encore synchronisé"
+            description="Aucune synchro DICOS pour cette période : lancez la synchro depuis l'extension (onglet DICOS ouvert)."
+          />
+        ) : (
+          <EmptyState
+            title="Aucun groupe"
+            description="Aucune mission de groupe pour cette période."
+          />
+        )
       ) : (
         <GroupBoard rows={rows} district={f.district ?? ""} />
       )}

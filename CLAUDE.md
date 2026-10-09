@@ -516,6 +516,15 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   des `color-mix` ad hoc ; Journal : mes messages en `surface-2`, non lu = pastille info ; cartes mobiles PMR (trajet
   entier, Copier dans la carte) ; pluriels accordés (`pl()` dans `lib/utils.ts`, plus de « mission(s) ») ; voile ambre
   du fond retiré.
+- 2026-10-09 — **Lot 3 livré (UX)** : **fraîcheur DICOS** (collection `dicos_syncs`, `1760001900`, une fiche par envoi
+  de l'extension, écrite par le connecteur, lue avec `pmr:read`, purge 60 j ; « Synchronisé avec DICOS il y a X min »
+  sur Missions PMR et Groupes, alerte au-delà d'1 h ou si la période n'est pas synchronisée, état vide « Pas encore
+  synchronisé » distinct de « Aucune mission ») ; **« Tout marquer lu »** dans le Journal (`markAllRead`, 200 max) ;
+  widget « À confirmer » avec jour de service, retard « il y a N jours » et lien vers le Suivi ; **⌘K cherche dans les
+  données** (`app/search-actions.ts` : contacts, bons, PtCar, n° de train, avec les droits de l'agent) ; raccourcis
+  **« / »** (recherche de la page) et **« N »** (nouveau, `data-shortcut="new"`). 211 contrôles de règles. Questions
+  UX encore ouvertes (iRail dans les non-lus, ALEA commun PMR + groupes, clôture des bons jamais confirmés, Annuaire
+  dans la barre mobile, tu / vous).
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

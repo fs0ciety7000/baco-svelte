@@ -36,7 +36,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Lis
           <LiveRefresh topics={["taxi_orders"]} />
           {can(user, "generate_taxi:write") ? (
             <Button asChild variant="primary">
-              <Link href="/commandes/taxi/nouveau">
+              <Link href="/commandes/taxi/nouveau" data-shortcut="new" aria-keyshortcuts="n">
                 <Plus aria-hidden /> Nouveau taxi
               </Link>
             </Button>

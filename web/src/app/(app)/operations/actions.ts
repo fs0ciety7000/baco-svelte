@@ -174,6 +174,36 @@ export async function setRead(input: { id: string; read: boolean }): Promise<Res
   }
 }
 
+/** « Tout marquer lu » (audit UX du 9 oct. 2026 : 36 non-lus à marquer un par un). 200 entrées au plus. */
+export async function markAllRead(ids: string[]): Promise<Result<{ marked: number }>> {
+  try {
+    const user = await need("journal:read");
+    const list = z.array(pbId).max(200).parse(ids);
+    if (!list.length) return { ok: true, data: { marked: 0 } };
+    const pb = await pbForRequest();
+    const already = await pb.collection("ops_log_reads").getFullList({
+      filter: pb.filter(`user = {:u} && (${list.map((_, i) => `entry = {:e${i}}`).join(" || ")})`, {
+        u: user.id,
+        ...Object.fromEntries(list.map((id, i) => [`e${i}`, id])),
+      }),
+      fields: "entry",
+    });
+    const done = new Set(already.map((r) => r.entry as string));
+    let marked = 0;
+    for (const id of list) {
+      if (done.has(id)) continue;
+      await pb
+        .collection("ops_log_reads")
+        .create({ entry: id, user: user.id })
+        .then(() => marked++)
+        .catch(() => null);
+    }
+    return { ok: true, data: { marked } };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
 export async function loadEntryPanel(
   id: string,
 ): Promise<Result<{ entry: LogEntry; events: LogEvent[] }>> {

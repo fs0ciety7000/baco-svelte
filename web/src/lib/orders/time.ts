@@ -131,3 +131,8 @@ export function periodOf(time: string): Period {
   if (h >= 13 && h < 21) return "apres_midi";
   return "nuit";
 }
+
+/** Nombre de jours de `from` à `to` (jours AAAA-MM-JJ, positif si `to` est après `from`). */
+export function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86_400_000);
+}

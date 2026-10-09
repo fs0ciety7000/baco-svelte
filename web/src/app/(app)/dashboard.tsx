@@ -39,7 +39,8 @@ import { ListCard } from "@/components/ui/table";
 import { toast } from "@/components/ui/toast";
 import { move, type DashboardLayout, type WidgetId } from "@/design/dashboard-layout";
 import { useStaggerIn } from "@/lib/motion";
-import { cn } from "@/lib/utils";
+import { brusselsDay, daysBetween, formatDay, isValidDay } from "@/lib/orders/time";
+import { cn, pl } from "@/lib/utils";
 import type { FavoriteStation } from "@/lib/ops/irail";
 import type { DashboardStats } from "@/server/data/dashboard";
 
@@ -115,25 +116,47 @@ function WidgetBody({
           />
         );
       return (
-        <ul className="grid gap-2 @3xl:grid-cols-2">
-          {stats.pending.map((o) => (
-            <li key={o.id}>
-              {/* Lien vers le bon (demande du 9 oct. 2026). */}
-              <Link
-                href={`/commandes/bus/${o.id}`}
-                className="block outline-none focus-visible:ring-2 focus-visible:ring-accent"
-              >
-                <ListCard
-                  statusColor={statusColor(o.status)}
-                  title={`${o.origin || "?"} → ${o.destination || "?"}`}
-                  meta={[o.relation, o.call_time].filter(Boolean).join(" · ") || "—"}
-                  aside={<StatusBadge status={o.status} />}
-                  className="hover:bg-surface-2"
-                />
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <div className="flex flex-col gap-2">
+          <ul className="grid gap-2 @3xl:grid-cols-2">
+            {stats.pending.map((o) => {
+              // Jour de service et retard de confirmation (audit UX du 9 oct. 2026 : heure seule, bons de 200 j).
+              const day = o.order_date.slice(0, 10);
+              const late = isValidDay(day) ? daysBetween(day, brusselsDay()) : 0;
+              return (
+                <li key={o.id} className="min-w-0">
+                  {/* Lien vers le bon (demande du 9 oct. 2026). */}
+                  <Link
+                    href={`/commandes/bus/${o.id}`}
+                    className="block rounded-box outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    <ListCard
+                      statusColor={statusColor(o.status)}
+                      title={`${o.origin || "?"} → ${o.destination || "?"}`}
+                      meta={
+                        <>
+                          {[isValidDay(day) ? formatDay(day) : "", o.call_time, o.relation]
+                            .filter(Boolean)
+                            .join(" · ") || "—"}
+                          {late > 0 ? (
+                            <span className="text-warn">
+                              {" "}
+                              · il y a {late} {pl(late, "jour")}
+                            </span>
+                          ) : null}
+                        </>
+                      }
+                      aside={<StatusBadge status={o.status} />}
+                      className="hover:bg-surface-2"
+                    />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          <Link href="/commandes/suivi" className="link self-start text-small">
+            Tout le suivi ({stats.toConfirm} à confirmer)
+          </Link>
+        </div>
       );
     case "raccourcis":
       if (actions.length === 0)

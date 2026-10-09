@@ -596,6 +596,21 @@ try {
 		const tsMove = await api('PATCH', `/api/collections/train_schedules/records/${ts.json?.id}`, { token: ctok, body: { train: '2' } });
 		check('train d un horaire ATMS figé', tsMove.status >= 400, `HTTP ${tsMove.status}`);
 		if (ts.json?.id) await api('DELETE', `/api/collections/train_schedules/records/${ts.json.id}`, { token: root });
+		// Journal des synchros DICOS (1760001900) : écrit par le connecteur, lu avec pmr:read, jamais modifiable.
+		const ds = await api('POST', '/api/collections/dicos_syncs/records', {
+			token: ctok,
+			body: { day: '2026-10-09', kind: 'missions', received: 3, created_count: 1, updated_count: 2 }
+		});
+		check('connector journalise une synchro DICOS', ds.status === 200, `HTTP ${ds.status}`);
+		const dsUser = await api('POST', '/api/collections/dicos_syncs/records', { token: u.token, body: { day: '2026-10-09', kind: 'missions' } });
+		check('agent ne journalise pas de synchro DICOS', dsUser.status >= 400, `HTTP ${dsUser.status}`);
+		const dsRead = await api('GET', `/api/collections/dicos_syncs/records/${ds.json?.id}`, { token: roles.reader.token });
+		check('synchros DICOS lisibles avec pmr:read', dsRead.status === 200, `HTTP ${dsRead.status}`);
+		const dsOtto = await api('GET', `/api/collections/dicos_syncs/records/${ds.json?.id}`, { token: roles.otto_agent.token });
+		check('otto_agent ne lit pas les synchros DICOS', dsOtto.status >= 400, `HTTP ${dsOtto.status}`);
+		const dsEdit = await api('PATCH', `/api/collections/dicos_syncs/records/${ds.json?.id}`, { token: ctok, body: { received: 99 } });
+		check('synchro DICOS non modifiable', dsEdit.status >= 400, `HTTP ${dsEdit.status}`);
+		if (ds.json?.id) await api('DELETE', `/api/collections/dicos_syncs/records/${ds.json.id}`, { token: root });
 	}
 	// Un agent reste soumis à la table des transitions sur une mission DICOS (réalisée → absent est interdit).
 	const dmTrans = await api('PATCH', `/api/collections/pmr_assists/records/${did}`, { token: u.token, body: { status: 'absent', cancel_reason: 'x', updated_by: u.id } });

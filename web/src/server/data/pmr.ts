@@ -469,3 +469,41 @@ export async function listEquipment(input: { view?: string; q?: string; zone?: s
 export function historyRange(today = brusselsDay()) {
   return { from: addDays(today, -30), to: addDays(today, -1) };
 }
+
+export type DicosSync = {
+  /** Dernière synchro reçue (tous jours confondus), ISO, ou null. */
+  lastAt: string | null;
+  /** Au moins une synchro pour un jour de la période affichée. */
+  covered: boolean;
+};
+
+/**
+ * État des synchros DICOS (audit UX du 9 oct. 2026 : rien n'indiquait la fraîcheur des missions). `null` si la
+ * collection n'est pas lisible (droits) : l'écran n'affiche alors rien.
+ */
+export async function dicosSyncState(
+  kind: "missions" | "groups",
+  from: string,
+  to: string,
+): Promise<DicosSync | null> {
+  const pb = await pbForRequest();
+  try {
+    const kindFilter = pb.filter("kind = {:k}", { k: kind });
+    const [last, inRange] = await Promise.all([
+      pb
+        .collection("dicos_syncs")
+        .getList(1, 1, { filter: kindFilter, sort: "-created", fields: "created" }),
+      pb.collection("dicos_syncs").getList(1, 1, {
+        filter: `${kindFilter} && ${pb.filter("day >= {:a} && day <= {:b}", { a: from, b: to })}`,
+        fields: "id",
+        skipTotal: true,
+      }),
+    ]);
+    return {
+      lastAt: (last.items[0]?.created as string | undefined) ?? null,
+      covered: inRange.items.length > 0,
+    };
+  } catch {
+    return null;
+  }
+}

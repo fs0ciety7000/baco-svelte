@@ -206,10 +206,13 @@ export function AssistBoard({
   canPmr,
   groupByDay,
   district = "",
+  notSynced = false,
 }: {
   rows: Assist[];
   canPmr: boolean;
   groupByDay: boolean;
+  /** Aucune synchro DICOS pour la période : état vide distinct de « aucune mission ». */
+  notSynced?: boolean;
   /** District filtré : ses gares sont surlignées, ses bouts d'assistance retenus pour le libellé à copier. */
   district?: string;
 }) {
@@ -236,7 +239,14 @@ export function AssistBoard({
   }, [openUpdated]);
 
   if (rows.length === 0)
-    return <EmptyState title="Aucune mission" description="Aucune mission PMR pour ces filtres." />;
+    return notSynced ? (
+      <EmptyState
+        title="Pas encore synchronisé"
+        description="Aucune synchro DICOS pour cette période : lancez la synchro depuis l'extension (onglet DICOS ouvert) pour voir les missions."
+      />
+    ) : (
+      <EmptyState title="Aucune mission" description="Aucune mission PMR pour ces filtres." />
+    );
 
   const days = groupByDay ? [...new Set(rows.map((r) => r.day))] : [""];
   const routeLabel = (a: Assist) => {

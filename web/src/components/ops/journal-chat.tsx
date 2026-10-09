@@ -3,6 +3,7 @@
 import {
   ArrowDown,
   Check,
+  CheckCheck,
   ChevronDown,
   ChevronUp,
   History,
@@ -27,7 +28,13 @@ import {
   type ReactNode,
 } from "react";
 
-import { loadEntryPanel, restoreEntry, retireEntry, setRead } from "@/app/(app)/operations/actions";
+import {
+  loadEntryPanel,
+  markAllRead,
+  restoreEntry,
+  retireEntry,
+  setRead,
+} from "@/app/(app)/operations/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
@@ -226,6 +233,18 @@ export function JournalChat({
   const unread = list.filter(
     (r) => r.status === "active" && r.authorId !== me && !r.readers.some((x) => x.id === me),
   ).length;
+  const markAll = () =>
+    start(async () => {
+      const ids = list
+        .filter(
+          (r) => r.status === "active" && r.authorId !== me && !r.readers.some((x) => x.id === me),
+        )
+        .map((r) => r.id)
+        .slice(-200);
+      const res = await safeCall(markAllRead(ids));
+      if (!res.ok) return void toast.error(res.error);
+      router.refresh();
+    });
   const frame = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const [full, setFull] = useState(false);
@@ -467,9 +486,19 @@ export function JournalChat({
           <div className="min-w-0 flex-1">{header}</div>
           <div className="flex shrink-0 items-center gap-1">
             {unread ? (
-              <span className="label-mono hidden border border-accent px-1.5 py-0.5 text-accent sm:inline">
-                {unread} non lu{unread > 1 ? "s" : ""}
-              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="border border-border"
+                disabled={pending}
+                onClick={markAll}
+                data-testid="log-read-all"
+                title="Marquer tous les messages affichés comme lus"
+              >
+                <CheckCheck aria-hidden />
+                <span className="max-sm:sr-only">Tout marquer lu</span>
+                <span className="font-mono tabular">({unread})</span>
+              </Button>
             ) : null}
             <Button
               size="icon"

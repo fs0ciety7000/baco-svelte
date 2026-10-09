@@ -205,5 +205,8 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - Listes (lot 2) : raccourcis et vues en `FilterChip` dans un `ChipRow` ; filtres secondaires dans
   `CollapsibleFilters` (repliés en mobile, en ligne en desktop) ; `FormAutoSubmit` dans chaque formulaire de filtres ;
   pluriels avec `pl(n, "mission")`. En-tête de module : `ModuleLayout` (une ligne), `eyebrow` = information utile.
+- Lot 3 : `SyncStatus` (`components/pmr/sync-status.tsx`) + `dicosSyncState()` ; ⌘K `paletteSearch()`
+  (`app/search-actions.ts`, 5 résultats par type, droits de l'agent) ; `PageShortcuts` (« / », « N » via
+  `data-shortcut="new"`) ; Journal `markAllRead`. E2E `e2e/ux.spec.ts`.
 - E2E `e2e/motion.spec.ts` : palette sans glissement, aucune animation infinie (hors `animate-pulse-dot` /
   `animate-spin`), accueil sans flash, filtre sans rechargement.

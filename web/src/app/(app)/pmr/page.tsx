@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 
-import { pl } from "@/lib/utils";
 import { AssistBoard } from "@/components/pmr/assist-board";
+import { SyncStatus } from "@/components/pmr/sync-status";
 import { PmrFilterBar, type PmrFilters } from "@/components/pmr/filter-bar";
 import { can } from "@/lib/permissions";
+import { pl } from "@/lib/utils";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
 import { requirePermission } from "@/server/auth";
-import { listAssists } from "@/server/data/pmr";
+import { dicosSyncState, listAssists } from "@/server/data/pmr";
 
 import { LiveRefresh } from "../commandes/live-refresh";
 
@@ -19,10 +20,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
   const du = isValidDay(f.du) ? f.du : today;
   const au = isValidDay(f.au) && f.au >= du ? f.au : du;
   const canPmr = can(user, "pmr:read");
-  const { rows, total } = await listAssists(
-    { from: du, to: au, district: f.district, q: f.q, status: f.statut },
-    { canPmr },
-  );
+  const [{ rows, total }, sync] = await Promise.all([
+    listAssists({ from: du, to: au, district: f.district, q: f.q, status: f.statut }, { canPmr }),
+    dicosSyncState("missions", du, au),
+  ]);
   return (
     <section className="flex flex-col gap-4" aria-label="Missions PMR">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -31,7 +32,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
           {total > rows.length ? ` · ${rows.length} affichées : réduisez la période` : ""}
         </p>
         {/* Plus de création manuelle : les missions sont synchronisées depuis DICOS (décision du 8 octobre 2026). */}
-        <LiveRefresh topics={["pmr_assists"]} />
+        <div className="flex flex-wrap items-center gap-3">
+          {sync ? <SyncStatus {...sync} /> : null}
+          <LiveRefresh topics={["pmr_assists", "dicos_syncs"]} />
+        </div>
       </div>
       <PmrFilterBar
         action="/pmr"
@@ -42,7 +46,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
           { label: "7 prochains jours", du: today, au: addDays(today, 6) },
         ]}
       />
-      <AssistBoard rows={rows} canPmr={canPmr} groupByDay district={f.district ?? ""} />
+      <AssistBoard
+        rows={rows}
+        canPmr={canPmr}
+        groupByDay
+        district={f.district ?? ""}
+        notSynced={sync ? !sync.covered : false}
+      />
     </section>
   );
 }
