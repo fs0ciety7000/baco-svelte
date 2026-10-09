@@ -232,3 +232,5 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - Filtres PMR / Groupes : `hideCancelled(f)` (`components/pmr/filter-bar.tsx`, `?annulees=masquees`) → option
   `hideCancelled` de `listAssists` / `listGroups`. Fichiers statiques publics sans session : `public/brand/`
   (`PUBLIC` dans `middleware.ts`).
+- « Masquer les annulées » mémorisé : `cancelledPref(param, cookie)` (`lib/pmr/cancelled-pref.ts`) lu par les pages
+  (`cookies()`), cookie `csm_annulees` posé par `middleware.ts` ; la barre de filtres envoie toujours la valeur explicite.

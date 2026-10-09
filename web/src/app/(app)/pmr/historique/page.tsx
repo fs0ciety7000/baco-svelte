@@ -1,9 +1,11 @@
 import { Download } from "lucide-react";
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 
 import { pl } from "@/lib/utils";
 import { AssistBoard } from "@/components/pmr/assist-board";
 import { hideCancelled, PmrFilterBar, type PmrFilters } from "@/components/pmr/filter-bar";
+import { CANCELLED_COOKIE, cancelledPref } from "@/lib/pmr/cancelled-pref";
 import { Button } from "@/components/ui/button";
 import { can } from "@/lib/permissions";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
@@ -14,7 +16,12 @@ export const metadata: Metadata = { title: "Historique PMR · CSM" };
 
 export default async function Page({ searchParams }: { searchParams: Promise<PmrFilters> }) {
   const user = await requirePermission("deplacements:read");
-  const f = await searchParams;
+  const sp = await searchParams;
+  // Choix « masquer les annulées » : paramètre d'URL, sinon dernier choix mémorisé (cookie).
+  const f: PmrFilters = {
+    ...sp,
+    annulees: cancelledPref(sp.annulees, (await cookies()).get(CANCELLED_COOKIE)?.value),
+  };
   const today = brusselsDay();
   const def = historyRange(today);
   const du = isValidDay(f.du) ? f.du : def.from;

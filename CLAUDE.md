@@ -600,6 +600,9 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   gardée par les raccourcis de dates et les filtres, `status != "annulee"` côté serveur sauf statut précis demandé ; aussi
   dans l'export CSV de l'historique). **Logo OCC MONS Studios** (emblème du site studio, `public/brand/occ-mons-studios.webp`)
   à côté de la mention du pied de page ; `/brand` public dans le middleware (page de connexion).
+- 2026-10-09 — **Choix « Masquer les annulées » mémorisé** : cookie `csm_annulees` (1 an, httpOnly) posé par le middleware
+  à chaque bascule (`?annulees=masquees|affichees`) ; sans paramètre, les trois écrans reprennent le dernier choix
+  (`lib/pmr/cancelled-pref.ts`, testé). Par navigateur, commun à Missions PMR, Groupes et Historique.
 - 2026-10-08 — **Module Référentiels** (audit `docs/design/AUDIT-UX-REFERENTIELS.md`, tout validé). 7 collections
   (`1760000900` : `directory_contacts`, `spi_points`, `ptcar` [abbr unique], `ebp_views`, `documents` [fichier
   protégé], `procedures`, `procedure_versions` hook-only) ; écriture annuaire/SPI/PtCar/EBP = coordinateurs,

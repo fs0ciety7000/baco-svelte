@@ -44,17 +44,26 @@ test("« Effacer » vide vraiment les filtres (formulaire remonté à chaque URL
   await expect(page.locator('main [role="search"] input[name="q"]')).toHaveValue("");
 });
 
-test("« Masquer les annulées » se bascule et garde les autres filtres", async ({ page }) => {
+test("« Masquer les annulées » se bascule, garde les filtres et reste mémorisé", async ({
+  page,
+}) => {
   await login(page, "/pmr");
+  const chip = () => page.getByTestId("hide-cancelled");
+  // Point de départ connu : annulées affichées.
+  await page.goto("/pmr?annulees=affichees");
+  await expect(chip()).toHaveAttribute("aria-pressed", "false");
+  await page.goto("/pmr?district=DSO");
+  await chip().click();
+  await expect(page).toHaveURL(/annulees=masquees/);
+  await expect(page).toHaveURL(/district=DSO/);
+  await expect(chip()).toHaveAttribute("aria-pressed", "true");
+  // Mémorisé : sans paramètre, sur Missions PMR comme sur Groupes.
   for (const path of ["/pmr", "/groupes"]) {
-    await page.goto(`${path}?district=DSO`);
-    const chip = page.getByTestId("hide-cancelled");
-    await expect(chip).toHaveAttribute("aria-pressed", "false");
-    await chip.click();
-    await expect(page).toHaveURL(/annulees=masquees/);
-    await expect(page).toHaveURL(/district=DSO/);
-    await expect(page.getByTestId("hide-cancelled")).toHaveAttribute("aria-pressed", "true");
-    await page.getByTestId("hide-cancelled").click();
-    await expect(page).not.toHaveURL(/annulees=/);
+    await page.goto(path);
+    await expect(chip()).toHaveAttribute("aria-pressed", "true");
   }
+  await chip().click();
+  await expect(page).toHaveURL(/annulees=affichees/);
+  await page.goto("/pmr");
+  await expect(chip()).toHaveAttribute("aria-pressed", "false");
 });

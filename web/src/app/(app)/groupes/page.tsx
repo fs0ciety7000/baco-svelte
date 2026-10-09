@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 
 import { hideCancelled, PmrFilterBar, type PmrFilters } from "@/components/pmr/filter-bar";
+import { CANCELLED_COOKIE, cancelledPref } from "@/lib/pmr/cancelled-pref";
 import { GroupBoard } from "@/components/pmr/group-board";
 import { SyncStatus } from "@/components/pmr/sync-status";
 import { EmptyState } from "@/components/ui/misc";
@@ -16,7 +18,12 @@ export const metadata: Metadata = { title: "Groupes · CSM" };
 
 export default async function Page({ searchParams }: { searchParams: Promise<PmrFilters> }) {
   await requireRoute("/groupes");
-  const f = await searchParams;
+  const sp = await searchParams;
+  // Choix « masquer les annulées » : paramètre d'URL, sinon dernier choix mémorisé (cookie).
+  const f: PmrFilters = {
+    ...sp,
+    annulees: cancelledPref(sp.annulees, (await cookies()).get(CANCELLED_COOKIE)?.value),
+  };
   const today = brusselsDay();
   const du = isValidDay(f.du) ? f.du : today;
   const au = isValidDay(f.au) && f.au >= du ? f.au : du;

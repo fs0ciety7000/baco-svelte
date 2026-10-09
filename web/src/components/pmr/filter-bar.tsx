@@ -15,7 +15,7 @@ export type PmrFilters = {
   district?: string;
   q?: string;
   statut?: string;
-  /** « masquees » : les missions annulées sont cachées. */
+  /** « masquees » / « affichees » (choix mémorisé : voir `lib/pmr/cancelled-pref.ts`). */
   annulees?: string;
 };
 
@@ -40,7 +40,7 @@ export function PmrFilterBar({
       district: filters.district,
       q: filters.q,
       statut: filters.statut,
-      annulees: hidden ? "masquees" : "",
+      annulees: hidden ? "masquees" : "affichees",
     }).filter(([, v]) => v),
   ) as Record<string, string>;
   // Bascule « Masquer les annulées » : mêmes filtres, paramètre ajouté ou retiré.
@@ -51,7 +51,7 @@ export function PmrFilterBar({
       ),
     ),
   );
-  if (!hidden) toggle.set("annulees", "masquees");
+  toggle.set("annulees", hidden ? "affichees" : "masquees");
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
@@ -89,7 +89,7 @@ export function PmrFilterBar({
         className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
       >
         <FormAutoSubmit />
-        {hidden ? <input type="hidden" name="annulees" value="masquees" /> : null}
+        <input type="hidden" name="annulees" value={hidden ? "masquees" : "affichees"} />
         <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-60">
           <span className="text-small text-fg-muted">Recherche</span>
           <span className="relative">
