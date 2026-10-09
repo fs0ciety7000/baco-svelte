@@ -480,6 +480,8 @@ export function aleaGroupBlocks(ends: GroupEnd[]): AleaGroup[] {
 export type AleaDwell = {
   seconds: number | null;
   position: "stop" | "origin" | "terminus" | "unknown" | "taxi";
+  /** Horaire utilisé : ATMS (synchronisé par l'extension) en priorité, sinon iRail. */
+  source?: "atms" | "irail";
 };
 export type AleaDecision = { status: "obligatoire" | "non" | "verifier"; reason: string };
 

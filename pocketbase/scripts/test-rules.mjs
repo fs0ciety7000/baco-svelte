@@ -581,6 +581,21 @@ try {
 		const cgId = await api('PATCH', `/api/collections/group_missions/records/${cg.json?.id}`, { token: ctok, body: { dicos_id: 'autre' } });
 		check('dicos_id d une mission de groupe figé', cgId.status >= 400, `HTTP ${cgId.status}`);
 		if (cg.json?.id) await api('DELETE', `/api/collections/group_missions/records/${cg.json.id}`, { token: root });
+		// Horaires ATMS (1760001800) : écrits par le connecteur seul, lus avec pmr:read, jour et train figés.
+		const ts = await api('POST', '/api/collections/train_schedules/records', {
+			token: ctok,
+			body: { day: '2026-10-09', train: `9${suffix.replace(/\D/g, '').slice(0, 5) || '1'}`, stops: [{ abbr: 'FMS', dwell: 0 }], source: 'atms' }
+		});
+		check('connector écrit un horaire ATMS', ts.status === 200, `HTTP ${ts.status} ${JSON.stringify(ts.json).slice(0, 80)}`);
+		const tsUser = await api('POST', '/api/collections/train_schedules/records', { token: u.token, body: { day: '2026-10-09', train: '1', stops: [] } });
+		check('agent n écrit pas les horaires ATMS', tsUser.status >= 400, `HTTP ${tsUser.status}`);
+		const tsRead = await api('GET', `/api/collections/train_schedules/records/${ts.json?.id}`, { token: roles.reader.token });
+		check('horaires ATMS lisibles avec pmr:read', tsRead.status === 200, `HTTP ${tsRead.status}`);
+		const tsOtto = await api('GET', `/api/collections/train_schedules/records/${ts.json?.id}`, { token: roles.otto_agent.token });
+		check('otto_agent ne lit pas les horaires ATMS', tsOtto.status >= 400, `HTTP ${tsOtto.status}`);
+		const tsMove = await api('PATCH', `/api/collections/train_schedules/records/${ts.json?.id}`, { token: ctok, body: { train: '2' } });
+		check('train d un horaire ATMS figé', tsMove.status >= 400, `HTTP ${tsMove.status}`);
+		if (ts.json?.id) await api('DELETE', `/api/collections/train_schedules/records/${ts.json.id}`, { token: root });
 	}
 	// Un agent reste soumis à la table des transitions sur une mission DICOS (réalisée → absent est interdit).
 	const dmTrans = await api('PATCH', `/api/collections/pmr_assists/records/${did}`, { token: u.token, body: { status: 'absent', cancel_reason: 'x', updated_by: u.id } });

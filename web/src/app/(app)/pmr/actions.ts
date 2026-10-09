@@ -289,7 +289,7 @@ export async function saveZone(
 }
 
 // ---------------------------------------------------------------------------------------------------
-// Export ALEA : temps d'arrêt prévu du train à la gare (horaire iRail), pour le logigramme « Obligatoire ».
+// Export ALEA : temps d'arrêt prévu du train à la gare (horaire ATMS synchronisé par l'extension, repli iRail), pour le logigramme « Obligatoire ».
 
 const dwellSchema = z
   .array(
@@ -302,6 +302,39 @@ const dwellSchema = z
   )
   .max(300);
 
+/** Abréviation PtCar → nom français (référentiel « Annuaire et données »), gardé une heure en mémoire. */
+let ptcarNames: { at: number; map: Map<string, string> } | null = null;
+async function ptcarMap(
+  pb: Awaited<ReturnType<typeof pbForRequest>>,
+): Promise<Map<string, string>> {
+  if (ptcarNames && Date.now() - ptcarNames.at < 3_600_000) return ptcarNames.map;
+  const rows = await pb.collection("ptcar").getFullList({ fields: "abbr,name_fr", batch: 1000 });
+  const map = new Map<string, string>();
+  for (const r of rows) {
+    const abbr = String(r.abbr ?? "")
+      .trim()
+      .toUpperCase();
+    if (abbr && r.name_fr) map.set(abbr, String(r.name_fr));
+  }
+  ptcarNames = { at: Date.now(), map };
+  return map;
+}
+
+type AtmsStop = { abbr: string; name: string; dwell: number; position: string };
+
+/** Cherche la gare DICOS dans une liste d'arrêts (nom exact sans accents, sinon début de nom). */
+function findStop<T>(stops: T[], name: (s: T) => string, station: string): number {
+  const want = stationKey(station);
+  if (!want) return -1;
+  let i = stops.findIndex((s) => stationKey(name(s)) === want);
+  if (i < 0)
+    i = stops.findIndex((s) => {
+      const k = stationKey(name(s));
+      return !!k && (k.startsWith(want) || want.startsWith(k));
+    });
+  return i;
+}
+
 export async function aleaDwell(
   input: z.input<typeof dwellSchema>,
 ): Promise<Result<Record<string, AleaDwell>>> {
@@ -309,7 +342,45 @@ export async function aleaDwell(
     await need("pmr:read");
     const items = dwellSchema.parse(input);
     const out: Record<string, AleaDwell> = {};
-    // Un appel iRail par train et par jour (cache serveur), 60 trains au plus, 3 à la fois (débit iRail).
+    const pb = await pbForRequest();
+
+    // 1. Horaires ATMS synchronisés par l'extension (source préférée, demande du 9 oct. 2026).
+    const wanted = [
+      ...new Set(
+        items
+          .filter((it) => /^\d{1,6}$/.test(it.train.trim()))
+          .map((it) => `${it.day}|${it.train.trim()}`),
+      ),
+    ].slice(0, 100);
+    const atms = new Map<string, AtmsStop[]>();
+    if (wanted.length) {
+      const filter = wanted.map((k, i) => `(day = {:d${i}} && train = {:t${i}})`).join(" || ");
+      const params: Record<string, string> = {};
+      wanted.forEach((k, i) => {
+        const [d, t] = k.split("|") as [string, string];
+        params[`d${i}`] = d;
+        params[`t${i}`] = t;
+      });
+      try {
+        const rows = await pb
+          .collection("train_schedules")
+          .getFullList({ filter: pb.filter(filter, params), fields: "day,train,stops" });
+        const names = rows.length
+          ? await ptcarMap(pb).catch(() => new Map<string, string>())
+          : new Map();
+        for (const r of rows) {
+          const stops = (Array.isArray(r.stops) ? r.stops : []) as AtmsStop[];
+          atms.set(
+            `${r.day}|${r.train}`,
+            stops.map((s) => ({ ...s, name: names.get(String(s.abbr).toUpperCase()) ?? s.name })),
+          );
+        }
+      } catch {
+        // Collection absente ou illisible : on passe à iRail.
+      }
+    }
+
+    // 2. Repli iRail : un appel par train et par jour (cache serveur), 60 trains au plus, 3 à la fois.
     const trains = new Map<string, Promise<Train | null>>();
     const load = (id: string, day: string) => {
       const k = `${id}|${day}`;
@@ -331,26 +402,39 @@ export async function aleaDwell(
           out[it.key] = { seconds: null, position: "taxi" };
           continue;
         }
+        const sched = atms.get(`${it.day}|${it.train.trim()}`);
+        if (sched) {
+          const i = findStop(sched, (s) => s.name, it.station);
+          const stop = i >= 0 ? sched[i] : undefined;
+          if (stop) {
+            out[it.key] = {
+              seconds: stop.position === "stop" ? stop.dwell : 0,
+              position:
+                stop.position === "origin"
+                  ? "origin"
+                  : stop.position === "terminus"
+                    ? "terminus"
+                    : "stop",
+              source: "atms",
+            };
+            continue;
+          }
+        }
         const id = normalizeTrain(it.train);
         const t = id ? await load(id, it.day) : null;
-        const want = stationKey(it.station);
         const stops = t?.stops ?? [];
-        let i = stops.findIndex((s) => stationKey(s.station) === want);
-        if (i < 0 && want)
-          i = stops.findIndex((s) => {
-            const k = stationKey(s.station);
-            return k.startsWith(want) || want.startsWith(k);
-          });
+        const i = findStop(stops, (s) => s.station, it.station);
         const stop = i >= 0 ? stops[i] : undefined;
         out[it.key] = !stop
           ? { seconds: null, position: "unknown" }
           : i === 0
-            ? { seconds: 0, position: "origin" }
+            ? { seconds: 0, position: "origin", source: "irail" }
             : i === stops.length - 1
-              ? { seconds: 0, position: "terminus" }
+              ? { seconds: 0, position: "terminus", source: "irail" }
               : {
                   seconds: Math.max(0, Math.round((stop.at - stop.arrivalAt) / 1000)),
                   position: "stop",
+                  source: "irail",
                 };
       }
     };

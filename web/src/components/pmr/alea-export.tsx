@@ -24,6 +24,17 @@ const DECISION: Record<AleaDecision["status"], { label: string; tone: "danger" |
 
 type Filter = "tous" | "obligatoire" | "verifier";
 
+/** « Temps d'arrêt prévus : ATMS (5) · iRail (2) » — ATMS (synchronisé par l'extension) en priorité. */
+function sourceLabel(dwell: Record<string, AleaDwell>): string {
+  const v = Object.values(dwell);
+  const atms = v.filter((d) => d.source === "atms").length;
+  const irail = v.filter((d) => d.source === "irail").length;
+  const parts = [atms ? `ATMS (${atms})` : "", irail ? `iRail (${irail})` : ""].filter(Boolean);
+  return parts.length
+    ? `Temps d'arrêt prévus : ${parts.join(" · ")}`
+    : "Temps d'arrêt prévus : non trouvés";
+}
+
 const verbOf = (g: AleaGroup) => (g.io === "IN" ? "Embarquement" : "Débarquement");
 const headOf = (g: AleaGroup) =>
   `${formatDay(g.day)} · ${g.train} · ${g.station}${g.time ? ` (${g.time})` : ""} · ${verbOf(g)}`;
@@ -31,7 +42,7 @@ const headOf = (g: AleaGroup) =>
 /**
  * Bouton « Export ALEA » + modale (demande du 9 oct. 2026). Un bloc par train, jour, gare et sens ; les PMR (ou les
  * groupes) de tous les dossiers y sont additionnées ; l'en-tête dit quels dossiers composent le bloc et le total ;
- * « Obligatoire » suit les logigrammes d'encodage (temps d'arrêt prévu lu dans l'horaire iRail). Partagé PMR / groupes.
+ * « Obligatoire » suit les logigrammes d'encodage (temps d'arrêt prévu : horaire ATMS synchronisé par l'extension, sinon iRail). Partagé PMR / groupes.
  */
 export function AleaButton({
   disabled,
@@ -134,7 +145,7 @@ export function AleaButton({
                       Temps d&apos;arrêt indisponibles : {dwellError}
                     </span>
                   ) : (
-                    "Temps d'arrêt prévus : horaire iRail"
+                    sourceLabel(dwell)
                   )}
                 </span>
               </div>

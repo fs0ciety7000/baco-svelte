@@ -114,6 +114,8 @@ cronAdd('pmr-retention', '15 3 * * *', () => {
 	q("DELETE FROM pmr_assist_legacy WHERE assist IN (SELECT id FROM pmr_assists WHERE anonymized = 1)");
 	// Détail nominatif des missions DICOS (client, contacts, accompagnement) : supprimé à l'anonymisation.
 	q("DELETE FROM pmr_mission WHERE assist IN (SELECT id FROM pmr_assists WHERE anonymized = 1)");
+	// Horaires ATMS (temps d'arrêt pour l'ALEA) : utiles quelques jours seulement, gardés 60 jours.
+	q("DELETE FROM train_schedules WHERE day < {:d}", { d: day(60) });
 	q("UPDATE pmr_events SET note = '', \"from\" = CASE WHEN field IN ('status') THEN \"from\" ELSE '' END, \"to\" = CASE WHEN field IN ('status') THEN \"to\" ELSE '' END WHERE kind = 'assist' AND record IN (SELECT id FROM pmr_assists WHERE anonymized = 1)");
 	q("DELETE FROM audit_log WHERE collection = 'pmr_assists' AND record IN (SELECT id FROM pmr_assists WHERE anonymized = 1)");
 	// Missions de groupe (9 oct. 2026) : contact du groupe effacé après 12 mois (les comptages restent).

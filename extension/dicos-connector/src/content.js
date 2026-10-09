@@ -257,6 +257,26 @@
     return total;
   }
 
+  // Temps d'arrêt ATMS (9 oct. 2026) : trains des missions PMR et groupes du jour, lus dans l'onglet ATMS par le service
+  // worker et envoyés à CSM. Jamais bloquant pour la synchro DICOS.
+  async function syncAtms(day, missions) {
+    const seen = new Set();
+    const trains = [];
+    for (const m of missions) {
+      const n = Number(m && m.journey && m.journey.trainNumber);
+      if (!(n > 0) || seen.has(n)) continue;
+      seen.add(n);
+      trains.push({ train: String(n), day });
+    }
+    if (!trains.length) return null;
+    progress("Temps d'arrêt ATMS", 0, trains.length, true);
+    try {
+      return await chrome.runtime.sendMessage({ cmd: "atms", trains });
+    } catch (err) {
+      return { requested: trains.length, fetched: 0, stored: 0, error: String((err && err.message) || err).slice(0, 160) };
+    }
+  }
+
   // `fresh` (bouton de synchro manuelle) = rafraîchir vraiment : on purge le cache de détail pour reprendre
   // toute mission même si son statut n'a pas changé (le cache ne capte pas les corrections de point de rencontre, etc.).
   async function doSync(day, { fresh = false } = {}) {
@@ -295,7 +315,8 @@
         return groupStats;
       }
       if (!items.length) {
-        const r = { day, found: 0, received: 0, created: 0, updated: 0, skipped: 0, groups: groupStats };
+        const atms = await syncAtms(day, groupItems);
+        const r = { day, found: 0, received: 0, created: 0, updated: 0, skipped: 0, groups: groupStats, atms };
         setLast(r);
         return r;
       }
@@ -309,6 +330,7 @@
             "missions",
             await fetchDetails(items, (d, t) => progress("Détail des missions (ancien format)", d, t)),
           );
+      const atms = sent.error ? null : await syncAtms(day, items.concat(groupItems));
       const r = sent.error
         ? sent
         : {
@@ -319,6 +341,7 @@
             tripDiag: dossiers ? [] : tripDiag.slice(0, 12),
             ...sent,
             groups: groupStats,
+            atms,
           };
       setLast(r);
       return r;
@@ -389,7 +412,7 @@
   async function doSyncRange(start, days, { fresh = true } = {}) {
     const n = Math.max(1, Math.min(7, Number(days) || 1));
     if (n === 1) return doSync(start, { fresh });
-    const total = { day: `${start} → ${addDays(start, n - 1)}`, days: n, found: 0, dossiers: 0, received: 0, created: 0, updated: 0, unchanged: 0, skipped: 0, groups: { received: 0, created: 0, updated: 0, unchanged: 0, skipped: 0 } };
+    const total = { day: `${start} → ${addDays(start, n - 1)}`, days: n, found: 0, dossiers: 0, received: 0, created: 0, updated: 0, unchanged: 0, skipped: 0, groups: { received: 0, created: 0, updated: 0, unchanged: 0, skipped: 0 }, atms: { requested: 0, fetched: 0, stored: 0, failed: 0 } };
     try {
       for (let i = 0; i < n; i++) {
         rangeLabel = `Jour ${i + 1}/${n} · `;
@@ -400,6 +423,8 @@
           total[k] += Number(r && r[k]) || 0;
         for (const k of Object.keys(total.groups))
           total.groups[k] += Number(r && r.groups && r.groups[k]) || 0;
+        for (const k of Object.keys(total.atms)) total.atms[k] += Number(r && r.atms && r.atms[k]) || 0;
+        if (r && r.atms && r.atms.error) total.atms.error = r.atms.error;
         if (r && r.mode === "missions") Object.assign(total, { mode: "missions", tripDiag: r.tripDiag });
       }
     } finally {

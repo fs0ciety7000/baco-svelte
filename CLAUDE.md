@@ -470,6 +470,16 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   fond accent (`TrainChip`), PMR et Groupes ; onglet Groupes déplacé en **`/groupes`** (redirection depuis `/pmr/groupes`).
   **PDF** : « Agent » = créateur du bon (`orderAgent`, repli sur l'agent repris de BACO), arrêts intermédiaires sans
   « (L.125) », plus de ligne « Bon n° » (bus) ni « Commande n° » (taxi). Origine / terminus : « À vérifier » confirmé.
+- 2026-10-09 — **Temps d'arrêt ATMS** (demande : « procéder comme avec DICOS mais pour ATMS ») : l'extension **1.6.0**
+  lit, après chaque synchro DICOS, l'itinéraire des trains des missions (PMR + groupes) dans un **onglet ATMS connecté**
+  (`atms.js`, `GET /api/v1/trains/{n°}/{jour}`, même origine, aucun cookie lu ni conservé ; ~3 req/s, 60 trains max) et
+  l'envoie à `POST /api/pmr/schedules/ingest` (même jeton de connecteur ; `server/dicos-service.ts` partagé). Calcul côté
+  serveur (`lib/pmr/atms.ts`, `mapAtmsTrain`, testé) : temps d'arrêt = départ − arrivée planifiés par point
+  (`ptcarSymbolicName` = abréviation PtCar → nom FR via le référentiel `ptcar`). Collection `train_schedules`
+  (`1760001800`, une fiche par jour + train, connecteur seul en écriture, `pmr:read` en lecture, purge 60 j). L'ALEA
+  (`aleaDwell`) prend **ATMS d'abord, iRail en repli** ; la modale affiche la source (« ATMS (4) · iRail (1) »). Sans onglet
+  ATMS ouvert, la synchro DICOS n'est pas bloquée. Le message de l'utilisateur contenait ses **cookies de session ATMS**
+  (MRHSession…) : non utilisés ni conservés, déconnexion d'ATMS conseillée pour invalider la session. 206 contrôles de règles.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

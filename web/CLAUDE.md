@@ -111,7 +111,8 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   ALEA de groupe `aleaGroupBlocks` (`lib/pmr/model.ts`). Contact lisible avec `pmr:read`.
 - **Export ALEA** : `components/pmr/alea-export.tsx` (`AleaButton`, partagé PMR / groupes), modèle `aleaGroups` /
   `aleaGroupBlocks` / `aleaDecision` / `stationKey` (`lib/pmr/model.ts`, testés), temps d'arrêt par la Server Action
-  `aleaDwell` (`pmr/actions.ts`, iRail côté serveur, 60 trains max, 3 en parallèle). `copy.tsx` (`copyLabel`,
+  `aleaDwell` (`pmr/actions.ts`) : horaire **ATMS** (`train_schedules`, poussé par l'extension via
+  `POST /api/pmr/schedules/ingest`, mapping `lib/pmr/atms.ts`) d'abord, **iRail** en repli (60 trains max, 3 en parallèle). `copy.tsx` (`copyLabel`,
   `CopyButton`), `train-chip.tsx` (train en première colonne).
 - E2E `e2e/pmr.spec.ts` (fixtures superuser, captures `test-results/pmr-*`).
 

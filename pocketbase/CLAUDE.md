@@ -108,3 +108,6 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
   `CSM_IRAIL_URL` : autre source (mock) ou `off` (CI).
 - **ALEA** (`1760001700_pmr_assistance_level.js`) : `pmr_assists.full_pax` / `light_pax` (voyageurs en assistance
   complète / légère, compteurs DICOS posés par l'ingestion ; 0 et 0 = inconnu) pour le logigramme « Obligatoire ».
+- **Horaires ATMS** (`1760001800_train_schedules.js`) : `train_schedules` (jour + train uniques, `stops` JSON : abréviation
+  PtCar, nom ATMS, arrivée, départ, temps d'arrêt, position), écrits par le connecteur (`dicos:write`, jour et train
+  figés), lus avec `pmr:read` (pas `otto_agent`), purgés après 60 jours par `pmr-retention`. Données d'exploitation.

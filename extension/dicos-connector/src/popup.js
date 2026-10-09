@@ -43,7 +43,14 @@ function fmtResult(r) {
   // r.days > 1 : synchro de plusieurs jours (totaux cumulés).
   return `<span class="ok">✓ ${escapeHtml(String(r.day || ""))}${escapeHtml(when)}</span><br>${found} mission(s) PMR → ${num(r.received)} trajet(s)${r.dossiers ? ` · ${num(r.dossiers)} dossier(s)` : ""} · <b>${num(r.created)}</b> créée(s), <b>${num(r.updated)}</b> maj, ${num(r.skipped)} ignorée(s)${
     r.groups ? `<br>Groupes : ${num(r.groups.received)} trajet(s) · <b>${num(r.groups.created)}</b> créé(s), <b>${num(r.groups.updated)}</b> maj` : ""
-  }${fmtMode(r)}`;
+  }${fmtAtms(r.atms)}${fmtMode(r)}`;
+}
+// Temps d'arrêt ATMS (export ALEA) : trains lus dans l'onglet ATMS ; sans onglet, CSM utilise iRail.
+function fmtAtms(a) {
+  if (!a || !(Number(a.requested) > 0)) return "";
+  const num = (v) => Number(v) || 0;
+  const line = `<br>Temps d'arrêt ATMS : <b>${num(a.stored)}</b> / ${num(a.requested)} train(s)`;
+  return a.error ? `${line} · <span class="err">${escapeHtml(String(a.error))}</span>` : line;
 }
 // Mode de lecture : dossiers complets (trip-details) ou repli sur l'ancien format, avec les chemins essayés.
 function fmtMode(r) {

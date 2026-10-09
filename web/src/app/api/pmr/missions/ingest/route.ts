@@ -1,5 +1,3 @@
-import { timingSafeEqual } from "node:crypto";
-
 import type PocketBase from "pocketbase";
 import { z } from "zod";
 
@@ -11,6 +9,7 @@ import {
   type MappedMission,
 } from "@/lib/pmr/dicos-mission";
 import { isValidDay } from "@/lib/orders/time";
+import { nullOn404, serviceAuth, tokenOk } from "@/server/dicos-service";
 import { createPb } from "@/server/pocketbase";
 import { env } from "@/server/env";
 import { allow } from "@/server/rate-limit";
@@ -37,33 +36,10 @@ const bodySchema = z
   })
   .refine((b) => b.missions || b.dossiers || b.groups, "missions, dossiers ou groupes requis");
 
-function tokenOk(provided: string): boolean {
-  const a = Buffer.from(provided);
-  const b = Buffer.from(env.CSM_DICOS_TOKEN);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-
-// Ne masque QUE le 404 ; toute autre erreur remonte (audit du 8 oct.).
-function nullOn404(e: unknown): null {
-  if (e && typeof e === "object" && (e as { status?: number }).status === 404) return null;
-  throw e;
-}
-
 function dayClose(a: string, b: string): boolean {
   const da = Date.parse(a + "T00:00:00Z");
   const db = Date.parse(b + "T00:00:00Z");
   return Number.isFinite(da) && Number.isFinite(db) && Math.abs(da - db) <= 86_400_000;
-}
-
-let service: { token: string; id: string; at: number } | null = null;
-async function serviceAuth() {
-  if (service && Date.now() - service.at < 30 * 60_000) return service;
-  const pb = createPb();
-  const auth = await pb
-    .collection("users")
-    .authWithPassword(env.CSM_DICOS_PB_EMAIL, env.CSM_DICOS_PB_PASSWORD);
-  service = { token: pb.authStore.token, id: auth.record.id, at: Date.now() };
-  return service;
 }
 
 type Rec = Record<string, unknown>;

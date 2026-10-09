@@ -35,8 +35,8 @@ Deux `.zip` sont générés dans **`extension/dist/`** (régénérés par `exten
 
 | Navigateur | Paquet | Manifest |
 |---|---|---|
-| **Chrome / Edge** | `csm-dicos-connector-chrome-v1.5.0.zip` | `background.service_worker` |
-| **Firefox** (≥ 128) | `csm-dicos-connector-firefox-v1.5.0.zip` | `background.scripts` + `browser_specific_settings.gecko` |
+| **Chrome / Edge** | `csm-dicos-connector-chrome-v1.6.0.zip` | `background.service_worker` |
+| **Firefox** (≥ 128) | `csm-dicos-connector-firefox-v1.6.0.zip` | `background.scripts` + `browser_specific_settings.gecko` |
 
 Les sources (`src/`) sont **communes** ; seul le manifest diffère. Le code utilise l'espace de noms `chrome.*`
 (aliasé par Firefox) et des content scripts en monde `MAIN` (Chrome 111+, Firefox 128+).
@@ -76,7 +76,12 @@ L'endpoint d'ingestion `POST /api/pmr/missions/ingest` (voir `web/src/app/api/pm
 - est **idempotent** (dédup sur `dicos_id`), ne touche pas les prestations **anonymisées**, et range le détail
   nominatif dans `pmr_mission` (lisible avec `pmr:read` seulement) ;
 - reçoit aussi les **groupes** (`{ day, groups }`, depuis 1.5.0) : missions `reservationType` « Group » sans
-  voyageur PMR (`disabled = 0`), rangées dans `group_missions` (onglet **PMR › Groupes**, export ALEA).
+  voyageur PMR (`disabled = 0`), rangées dans `group_missions` (onglet **PMR › Groupes**, export ALEA) ;
+- **temps d'arrêt ATMS** (depuis 1.6.0) : après chaque synchro, l'extension lit l'itinéraire des trains concernés
+  dans un **onglet ATMS ouvert et connecté** (`GET /api/v1/trains/{n°}/{jour}`, même origine, session de l'agent —
+  aucun cookie lu ni conservé) et l'envoie à `POST /api/pmr/schedules/ingest` (même jeton de connecteur). CSM en tire
+  le temps d'arrêt prévu de chaque gare pour l'export ALEA « Obligatoire ». Sans onglet ATMS : CSM se rabat sur
+  l'horaire iRail, la synchro DICOS n'est pas bloquée.
 
 Variables à définir côté `csm-web` (Coolify), **en secrets** :
 

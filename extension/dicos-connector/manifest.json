@@ -1,27 +1,53 @@
 {
   "manifest_version": 3,
   "name": "CSM — Connecteur DICOS",
-  "version": "1.5.0",
-  "description": "Synchronise les missions PMR de DICOS vers CSM (Missions PMR), en réutilisant la session DICOS ouverte. Aucun mot de passe ni jeton SNCB stocké.",
-  "permissions": ["storage", "activeTab"],
-  "host_permissions": ["https://dicos.intern-belgiantrain.be/*"],
-  "optional_host_permissions": ["https://*.fs0ciety.org/*"],
+  "version": "1.6.0",
+  "description": "Synchronise les missions PMR et groupes de DICOS vers CSM, avec les temps d'arrêt ATMS, en réutilisant les sessions ouvertes. Aucun mot de passe ni jeton SNCB stocké.",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://dicos.intern-belgiantrain.be/*",
+    "https://atms.intern-belgiantrain.be/*"
+  ],
+  "optional_host_permissions": [
+    "https://*.fs0ciety.org/*"
+  ],
   "background": {
     "service_worker": "src/background.js",
     "type": "module"
   },
   "content_scripts": [
     {
-      "matches": ["https://dicos.intern-belgiantrain.be/*"],
-      "js": ["src/inject.js"],
+      "matches": [
+        "https://dicos.intern-belgiantrain.be/*"
+      ],
+      "js": [
+        "src/inject.js"
+      ],
       "run_at": "document_start",
       "world": "MAIN",
       "all_frames": false
     },
     {
-      "matches": ["https://dicos.intern-belgiantrain.be/*"],
-      "js": ["src/content.js"],
+      "matches": [
+        "https://dicos.intern-belgiantrain.be/*"
+      ],
+      "js": [
+        "src/content.js"
+      ],
       "run_at": "document_start",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://atms.intern-belgiantrain.be/*"
+      ],
+      "js": [
+        "src/atms.js"
+      ],
+      "run_at": "document_idle",
       "all_frames": false
     }
   ],
