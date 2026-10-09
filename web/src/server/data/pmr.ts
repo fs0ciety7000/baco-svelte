@@ -76,6 +76,9 @@ export type Assist = {
   dicosRef: string;
   pax: number;
   pmrType: string;
+  /** Voyageurs en assistance complète / légère (DICOS ; 0 et 0 = inconnu) — logigramme ALEA. */
+  fullPax: number;
+  lightPax: number;
   clientId: string;
   /** Vide sans `pmr:read` (nom du voyageur : DICOS → `pmr_mission`, repris de BACO → `pmr_clients`). */
   clientName: string;
@@ -126,6 +129,8 @@ function assist(r: RecordModel, canPmr: boolean): Assist {
     zoneCode: str(e.zone?.code),
     dicosRef: str(r.dicos_ref),
     pax: num(r.pax) || 1,
+    fullPax: num(r.full_pax),
+    lightPax: num(r.light_pax),
     pmrType: str(r.pmr_type),
     clientId: str(r.client),
     clientName: nameFromMission || nameFromClient,

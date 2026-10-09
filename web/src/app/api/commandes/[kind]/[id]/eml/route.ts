@@ -5,7 +5,13 @@ import { buildEml, contentDisposition } from "@/lib/orders/eml";
 import { busMail, taxiMail, type OrderMail } from "@/lib/orders/mail";
 import { can } from "@/lib/permissions";
 import { getCurrentUser } from "@/server/auth";
-import { busReference, getBusOrder, getTaxiOrder, redactPmr } from "@/server/data/orders";
+import {
+  busReference,
+  getBusOrder,
+  getTaxiOrder,
+  orderAgent,
+  redactPmr,
+} from "@/server/data/orders";
 import { busOrderPdf, taxiOrderPdf } from "@/server/pdf/order-pdf";
 
 // Brouillon d'e-mail `.eml` (X-Unsent) avec le bon PDF joint : Outlook l'ouvre, l'agent vérifie
@@ -45,11 +51,11 @@ export async function GET(
     let mail: OrderMail;
     if (kind === "bus") {
       const [order, ref] = await Promise.all([getBusOrder(id), busReference()]);
-      pdf = await busOrderPdf(order, { agentName, drivers: ref.drivers });
+      pdf = await busOrderPdf(order, { agentName: orderAgent(order.meta), drivers: ref.drivers });
       mail = busMail(order, { agentName });
     } else {
       const order = await getTaxiOrder(id).then((o) => (can(user, "pmr:read") ? o : redactPmr(o)));
-      pdf = await taxiOrderPdf(order, { agentName });
+      pdf = await taxiOrderPdf(order, { agentName: orderAgent(order.meta) });
       mail = taxiMail(order, { agentName });
     }
     const eml = buildEml({

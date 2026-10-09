@@ -1,12 +1,11 @@
 "use client";
 
-import { ClipboardList, Copy } from "lucide-react";
+import { Copy } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { loadAssistPanel } from "@/app/(app)/pmr/actions";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Timeline } from "@/components/ui/form-kit";
 import { EmptyState, Skeleton } from "@/components/ui/misc";
 import { Sheet } from "@/components/ui/sheet";
@@ -24,12 +23,14 @@ import {
   DIRECTION_LABEL,
   PMR_TYPE_LABEL,
   type AleaEnd,
-  type AleaGroup,
   type AssistStatus,
 } from "@/lib/pmr/model";
 import type { Assist, PmrEvent } from "@/server/data/pmr";
 
+import { AleaButton } from "./alea-export";
+import { CopyButton, copyLabel } from "./copy";
 import { PhoneLink } from "./phone-link";
+import { TrainChip } from "./train-chip";
 
 const toneVar = {
   info: "var(--info)",
@@ -161,35 +162,6 @@ function copyTextOf(a: Assist, district: string): string {
   return ends.map((direction) => assistCopyText({ ...a, direction })).join(" / ");
 }
 
-export async function copyLabel(text: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-    toast.success(`Copié : ${text}`);
-  } catch {
-    toast.error("Copie impossible (presse-papiers indisponible).");
-  }
-}
-
-/** Bouton « copier le libellé » (ex. « Embarquement d'une chaise roulante »). */
-export function CopyButton({ text, label }: { text: string; label?: boolean }) {
-  return (
-    <Button
-      size="sm"
-      variant="ghost"
-      className="border border-border"
-      aria-label={`Copier le libellé : ${text}`}
-      title={text}
-      onClick={(e) => {
-        e.stopPropagation();
-        void copyLabel(text);
-      }}
-    >
-      <Copy aria-hidden className="size-4" />
-      {label ? "Copier" : null}
-    </Button>
-  );
-}
-
 const at = new Intl.DateTimeFormat("fr-BE", {
   timeZone: "Europe/Brussels",
   day: "2-digit",
@@ -289,12 +261,12 @@ export function AssistBoard({
               <Table>
                 <THead>
                   <tr>
+                    <Th>Train</Th>
                     {!groupByDay ? <Th>Date</Th> : null}
                     <Th>Heure</Th>
                     <Th>Trajet (départ → arrivée)</Th>
                     <Th>District</Th>
                     <Th>Sens</Th>
-                    <Th>Train</Th>
                     <Th>Voyageur</Th>
                     <Th>Réf. DICOS</Th>
                     <Th>Statut</Th>
@@ -309,6 +281,9 @@ export function AssistBoard({
                       className="cursor-pointer"
                       onClick={() => show(a)}
                     >
+                      <Td>
+                        <TrainChip train={a.train} taxi={a.transport === "taxi"} />
+                      </Td>
                       {!groupByDay ? (
                         <Td className="font-mono tabular">{formatDay(a.day)}</Td>
                       ) : null}
@@ -334,13 +309,6 @@ export function AssistBoard({
                       <Td>
                         <IoBadges leg={legOf(a)} district={district} />
                       </Td>
-                      <Td className="font-mono">
-                        {a.transport === "taxi" ? (
-                          <span title={a.train}>Taxi</span>
-                        ) : (
-                          a.train || "—"
-                        )}
-                      </Td>
                       <Td className="max-w-56 truncate">
                         {a.pax} × {a.pmrType || "type ?"}
                         {canPmr && a.clientName ? (
@@ -364,20 +332,21 @@ export function AssistBoard({
                 <li key={a.id} className="flex items-stretch gap-2">
                   <button
                     type="button"
-                    className="block flex-1 cursor-pointer text-left"
+                    className="block min-w-0 flex-1 cursor-pointer text-left"
                     onClick={() => show(a)}
                   >
                     <ListCard
                       statusColor={toneVar[ASSIST_STATUS[a.status].tone]}
                       title={
-                        <span className="inline-flex items-center gap-2">
+                        <span className="inline-flex flex-wrap items-center gap-2">
+                          <TrainChip train={a.train} taxi={a.transport === "taxi"} />
                           <span className="font-mono tabular">{a.time || "--:--"}</span>
                           <span className={a.status === "annulee" ? "line-through" : ""}>
                             {routeLabel(a)}
                           </span>
                         </span>
                       }
-                      meta={`${!groupByDay ? `${formatDay(a.day)} · ` : ""}${[legOf(a).inA ? "IN" : "", legOf(a).outA ? "OUT" : ""].filter(Boolean).join("+") || "—"}${a.transport === "taxi" ? " · Taxi" : a.train ? ` · ${a.train}` : ""} · ${a.pax} × ${a.pmrType || "type ?"}${districtsOf(a) ? ` · ${districtsOf(a)}` : ""}${canPmr && a.clientName ? ` · ${a.clientName}` : ""}`}
+                      meta={`${!groupByDay ? `${formatDay(a.day)} · ` : ""}${[legOf(a).inA ? "IN" : "", legOf(a).outA ? "OUT" : ""].filter(Boolean).join("+") || "—"} · ${a.pax} × ${a.pmrType || "type ?"}${districtsOf(a) ? ` · ${districtsOf(a)}` : ""}${canPmr && a.clientName ? ` · ${a.clientName}` : ""}`}
                       aside={<AssistBadge status={a.status} />}
                     />
                   </button>
@@ -632,7 +601,15 @@ function aleaEnds(rows: Assist[], district: string): AleaEnd[] {
     if (a.status === "annulee") continue;
     const l = legOf(a);
     const train = a.transport === "taxi" ? `Taxi${a.train ? ` ${a.train}` : ""}` : a.train || "—";
-    const base = { day: a.day, train, pax: a.pax, pmrType: a.pmrType };
+    const base = {
+      day: a.day,
+      train,
+      pax: a.pax,
+      pmrType: a.pmrType,
+      dossier: a.dicosRef,
+      fullPax: a.fullPax,
+      lightPax: a.lightPax,
+    };
     if (l.inA && (!district || l.depDistrict === district))
       ends.push({ ...base, station: l.dep, time: l.depTime, io: "IN" });
     if (l.outA && (!district || l.arrDistrict === district))
@@ -650,85 +627,8 @@ function AleaExport({ rows, district }: { rows: Assist[]; district: string }) {
     <AleaButton
       disabled={!rows.length}
       eyebrow="// Missions PMR"
-      description={`Par train et par gare, PMR additionnées par sens et par type${district ? ` (district ${district})` : ""}. Missions annulées exclues.`}
+      description={`Par train, gare et sens : les PMR de tous les dossiers additionnées par type${district ? ` (district ${district})` : ""}. Missions annulées exclues.`}
       compute={() => aleaGroups(aleaEnds(rows, district))}
     />
-  );
-}
-
-/** Bouton « Export ALEA » + modale (blocs jour · train · gare, copie par bloc ou « Tout copier »). Partagé PMR / groupes. */
-export function AleaButton({
-  disabled,
-  eyebrow,
-  description,
-  compute,
-}: {
-  disabled: boolean;
-  eyebrow: string;
-  description: string;
-  compute: () => AleaGroup[];
-}) {
-  const [open, setOpen] = useState(false);
-  const groups = open ? compute() : [];
-  const blockText = (g: AleaGroup) =>
-    [
-      `${formatDay(g.day)} · ${g.train} · ${g.station}${g.time ? ` (${g.time})` : ""}`,
-      ...g.lines,
-    ].join("\n");
-  return (
-    <>
-      <Button variant="secondary" onClick={() => setOpen(true)} disabled={disabled}>
-        <ClipboardList aria-hidden /> Export ALEA
-      </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent eyebrow={eyebrow} title="Export ALEA" description={description}>
-          {groups.length === 0 ? (
-            <EmptyState
-              title="Rien à exporter"
-              description="Aucune assistance prévue dans la liste affichée."
-            />
-          ) : (
-            <ul
-              className="flex max-h-[60vh] flex-col gap-3 overflow-y-auto"
-              data-testid="alea-groups"
-            >
-              {groups.map((g) => (
-                <li
-                  key={g.key}
-                  className="flex flex-col gap-1 border border-border bg-surface px-3 py-2"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-small text-fg-muted">
-                      <span className="first-letter:uppercase">{formatDay(g.day)}</span> ·{" "}
-                      <span className="font-mono text-fg">{g.train}</span> ·{" "}
-                      <span className="font-medium text-fg">{g.station}</span>
-                      {g.time ? <span className="font-mono"> ({g.time})</span> : null}
-                    </p>
-                    <CopyButton text={g.lines.join("\n")} />
-                  </div>
-                  {g.lines.map((line, i) => (
-                    <p key={i} className="text-body text-fg select-text">
-                      {line}
-                    </p>
-                  ))}
-                </li>
-              ))}
-            </ul>
-          )}
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)}>
-              Fermer
-            </Button>
-            <Button
-              variant="primary"
-              disabled={!groups.length}
-              onClick={() => void copyLabel(groups.map(blockText).join("\n\n"))}
-            >
-              <Copy aria-hidden /> Tout copier
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
   );
 }

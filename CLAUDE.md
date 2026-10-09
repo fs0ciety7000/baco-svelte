@@ -457,6 +457,19 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   cron PocketBase `irail-journal` (5 min), `ops_log.source = "irail"` sans auteur, dédup `external_id`, district déduit
   des gares citées (`line_stations`), notification `perturbation` aux agents du district ; `CSM_IRAIL_URL=off` en CI.
   CI E2E remise au vert (attentes périmées après les renommages). 201 contrôles de règles.
+- 2026-10-09 — **ALEA « Obligatoire »** (logigrammes d'encodage fournis par l'utilisateur) : un bloc ALEA = **train + jour +
+  gare + sens** (IN embarquement / OUT débarquement), PMR de tous les dossiers additionnées par type (groupes additionnés
+  aussi : « Embarquement de 2 groupes, 52 personnes dont 22 enfants ») ; en-tête « X dossiers composent cet ALEA » avec le
+  nombre par dossier et le total ; modale élargie, train et gare mis en avant, filtres Obligatoires / À vérifier,
+  « Copier les obligatoires ». Décision (`aleaDecision`, testée) : arrêt prévu ≥ 5 min → non ; PMR complète → oui ; PMR
+  légère < 4 → non, sinon oui si nombre × 30 s > arrêt ; groupes : ≥ 25 enfants, ≥ 25 seniors ou ≥ 75 personnes → oui.
+  Temps d'arrêt = horaire iRail (`aleaDwell`, départ − arrivée prévus à la gare) ; **gare d'origine / terminus, train ou
+  gare introuvable, assistance inconnue → « À vérifier »** ; taxi → non. Complète / légère = compteurs DICOS
+  `fullAssistances` / `lightAssistances`, stockés à l'ingestion (`pmr_assists.full_pax` / `light_pax`, `1760001700`) :
+  les lignes déjà synchronisées restent « À vérifier » jusqu'à la prochaine synchro. **Colonne Train en premier**, en gras sur
+  fond accent (`TrainChip`), PMR et Groupes ; onglet Groupes déplacé en **`/groupes`** (redirection depuis `/pmr/groupes`).
+  **PDF** : « Agent » = créateur du bon (`orderAgent`, repli sur l'agent repris de BACO), arrêts intermédiaires sans
+  « (L.125) », plus de ligne « Bon n° » sur le bus.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

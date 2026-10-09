@@ -113,6 +113,13 @@ test("mission : panneau en lecture seule, libellé à copier", async ({ page }, 
   await expect(
     page.getByRole("button", { name: /Copier le libellé : Débarquement d'un non-voyant/ }),
   ).toBeVisible();
+  // Export ALEA : un bloc par train, gare et sens, avec sa composition et une décision « Obligatoire » ou non.
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Export ALEA" }).click();
+  const block = page.getByTestId("alea-block").filter({ hasText: STATION }).first();
+  await expect(block).toContainText("Débarquement d'un non-voyant");
+  await expect(block).toContainText("Total : 1 PMR");
+  await expect(block).toContainText(/Obligatoire|Non obligatoire|À vérifier/);
   expect(errors).toEqual([]);
 });
 

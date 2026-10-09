@@ -116,6 +116,13 @@ describe("busMail", () => {
     expect(
       busStops({ ...bus.draft, stops_mode: "manuel", stops_manual: "Ath\nLeuze ; Péruwelz" }),
     ).toEqual(["Ath", "Leuze", "Péruwelz"]);
+    expect(
+      busStops({
+        ...bus.draft,
+        stops_mode: "auto",
+        stops: ["Namêche (L.125)", "Leman (L.125)", "Ath"],
+      }),
+    ).toEqual(["Namêche", "Leman", "Ath"]);
   });
 });
 

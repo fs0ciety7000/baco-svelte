@@ -59,7 +59,8 @@ export const pmrTypeLabel = (code: string) =>
 /** Arrêts intermédiaires effectifs (liste calculée, ou saisie manuelle découpée). */
 export function busStops(d: BusDraft): string[] {
   const list = d.stops_mode === "manuel" ? d.stops_manual.split(/\r?\n|;|,/) : d.stops;
-  return list.map((s) => s.trim()).filter(Boolean);
+  // Sans le numéro de ligne « (L.125) » (demande du 9 oct. 2026) : le fournisseur n'en a pas besoin.
+  return list.map((s) => s.replace(/\s*\(L\.\s*[\w./-]+\)\s*$/i, "").trim()).filter(Boolean);
 }
 
 /** Échappe un texte pour HTML (contenu et attributs). */

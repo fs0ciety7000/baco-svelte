@@ -5,7 +5,13 @@ import { contentDisposition } from "@/lib/orders/eml";
 import { busFilename, taxiFilename } from "@/lib/orders/mail";
 import { can } from "@/lib/permissions";
 import { getCurrentUser } from "@/server/auth";
-import { busReference, getBusOrder, getTaxiOrder, redactPmr } from "@/server/data/orders";
+import {
+  busReference,
+  getBusOrder,
+  getTaxiOrder,
+  orderAgent,
+  redactPmr,
+} from "@/server/data/orders";
 import { busOrderPdf, taxiOrderPdf } from "@/server/pdf/order-pdf";
 
 // Bon de commande PDF (affiché dans le navigateur). Lecture seule : le statut n'est jamais modifié ici.
@@ -37,17 +43,16 @@ export async function GET(
   if (!can(user, kind === "bus" ? "otto:read" : "generate_taxi:read"))
     return plain("Introuvable", 404);
 
-  const agentName = user.name || user.username;
   try {
     let pdf: Uint8Array;
     let filename: string;
     if (kind === "bus") {
       const [order, ref] = await Promise.all([getBusOrder(id), busReference()]);
-      pdf = await busOrderPdf(order, { agentName, drivers: ref.drivers });
+      pdf = await busOrderPdf(order, { agentName: orderAgent(order.meta), drivers: ref.drivers });
       filename = busFilename(order.draft);
     } else {
       const order = await getTaxiOrder(id).then((o) => (can(user, "pmr:read") ? o : redactPmr(o)));
-      pdf = await taxiOrderPdf(order, { agentName });
+      pdf = await taxiOrderPdf(order, { agentName: orderAgent(order.meta) });
       filename = taxiFilename(order.draft);
     }
     return new Response(new Blob([pdf as Uint8Array<ArrayBuffer>]), {

@@ -286,11 +286,12 @@ function title(l: Layout, main: string, sub: string | null, banner: string) {
 }
 
 function numberLine(l: Layout, label: string, number: number, status: Status) {
-  l.text(`${label} n° ${number || "—"}`, MARGIN, l.y - 10, { size: 11, bold: true });
   // Plus de « Statut » sur le bon (demande du 9 oct. 2026) ; seule une annulation reste signalée au fournisseur.
+  // Bus : plus de mention « Bon n° » non plus (le numéro reste dans le titre du document et le pied de page).
+  if (label) l.text(`${label} n° ${number || "—"}`, MARGIN, l.y - 10, { size: 11, bold: true });
   if (status === "annule")
     l.textRight("ANNULÉ", MARGIN + WIDTH, l.y - 10, { size: 10, bold: true });
-  l.y -= 16;
+  if (label || status === "annule") l.y -= 16;
 }
 
 function footer(doc: PDFDocument, font: PDFFont, generatedAt: Date, ref: string) {
@@ -429,7 +430,7 @@ export async function busOrderPdf(detail: BusPdfDetail, ctx: PdfContext): Promis
     "Partie A – Services opérationnels SNCB",
     `C3-${d.c3_type} · ${c3Label(d.c3_type).toUpperCase()}`,
   );
-  numberLine(l, "Bon", n, detail.meta.status);
+  numberLine(l, "", n, detail.meta.status);
 
   const relationLabel = d.c3_type === 3 ? "N° de commande / BNX" : "Relation";
   const stops = busStops(d);

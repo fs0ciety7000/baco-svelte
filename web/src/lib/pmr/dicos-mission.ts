@@ -201,6 +201,9 @@ export type MappedAssist = {
   dicos_ref: string;
   pax: number;
   pmr_type: PmrType | "";
+  /** Voyageurs en assistance complète / légère (compteurs DICOS ; 0 = inconnu). Logigramme ALEA. */
+  full_pax: number;
+  light_pax: number;
   status: "prevue" | "realisee" | "annulee" | "absent";
   source: "dicos";
 };
@@ -247,6 +250,8 @@ export function mapMission(raw: unknown): { assist: MappedAssist; mission: Mappe
     dicos_ref: /^\d{4}-\d{2}-\d{2}-\d{4}$/.test(ref) ? ref : "",
     pax,
     pmr_type: type,
+    full_pax: n(m.traveler.fullAssistances),
+    light_pax: n(m.traveler.lightAssistances),
     status: mapStatus(m.status, m.clientStatus),
     source: "dicos",
   };
@@ -370,6 +375,9 @@ export type MappedLeg = {
   dicos_ref: string;
   pax: number;
   pmr_type: PmrType | "";
+  /** Voyageurs en assistance complète / légère (compteurs DICOS ; 0 = inconnu). Logigramme ALEA. */
+  full_pax: number;
+  light_pax: number;
   status: "prevue" | "realisee" | "annulee" | "absent";
   source: "dicos";
 };
@@ -422,6 +430,8 @@ export function mapDossier(raw: unknown): {
           dicos_ref: dossierRef,
           pax,
           pmr_type: type,
+          full_pax: 0,
+          light_pax: 0,
           status: legStatus(j, statuses),
           source: "dicos",
         },
@@ -558,6 +568,9 @@ export function mapMissionList(raws: unknown[]): { assist: MappedLeg; mission: M
         dicos_ref: first(parts.map((x) => x.m.assist.dicos_ref)) ?? "",
         pax: (typed ?? parts[0]!).m.assist.pax,
         pmr_type: typed?.m.assist.pmr_type ?? "",
+        // Les missions d'un même trajet décrivent les mêmes voyageurs : le plus grand compteur, jamais la somme.
+        full_pax: Math.max(0, ...parts.map((x) => x.m.assist.full_pax)),
+        light_pax: Math.max(0, ...parts.map((x) => x.m.assist.light_pax)),
         status,
         source: "dicos",
       },

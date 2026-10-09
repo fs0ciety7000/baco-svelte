@@ -68,6 +68,8 @@ export type OrderMeta = {
   statusBeforeCancel: string;
   cancelReason: string;
   createdBy: Person | null;
+  /** Agent repris de BACO (bons importés, sans compte créateur). */
+  legacyAgent: string;
   created: string;
   updated: string;
   sentAt: string;
@@ -90,6 +92,7 @@ function meta(kind: OrderKind, r: RecordModel): OrderMeta {
     statusBeforeCancel: str(r.status_before_cancel),
     cancelReason: str(r.cancel_reason),
     createdBy: person(r, "created_by"),
+    legacyAgent: str(r.sent_by_name),
     created: str(r.created),
     updated: str(r.updated),
     sentAt: str(r.sent_at),
@@ -689,4 +692,9 @@ export function redactPmr<T extends TaxiOrderDetail>(o: T): T {
     draft: { ...o.draft, pmr_client: "", pmr_type: "", pmr_reason: "", passenger_name: "" },
     snapshot: { ...o.snapshot, pmrLastName: "", pmrFirstName: "", pmrPhone: "", pmrFile: "" },
   };
+}
+
+/** Agent du bon (PDF) : celui qui l'a créé, jamais celui qui l'ouvre (demande du 9 oct. 2026). */
+export function orderAgent(m: OrderMeta): string {
+  return m.createdBy?.name || m.legacyAgent || "";
 }

@@ -279,32 +279,91 @@ export type AleaEnd = {
   io: "IN" | "OUT";
   pax: number;
   pmrType: string;
+  /** N° de dossier DICOS (vide si inconnu). */
+  dossier?: string;
+  /** Voyageurs en assistance complète / légère (0 et 0 = inconnu). */
+  fullPax?: number;
+  lightPax?: number;
 };
+
+/** Ce que le logigramme d'encodage ALEA examine pour un bloc (jour · train · gare). */
+export type AleaRuleInput =
+  | { kind: "pmr"; full: number; light: number; unknown: number }
+  | { kind: "group"; children: number; seniors: number; total: number };
+
 export type AleaGroup = {
   key: string;
   day: string;
   train: string;
   station: string;
   time: string;
+  io: "IN" | "OUT";
   lines: string[];
+  /** Dossiers qui composent le bloc, avec leur nombre de PMR / personnes. */
+  dossiers: { ref: string; count: number }[];
+  /** Total de PMR (missions PMR) ou de personnes (groupes). */
+  total: number;
+  unit: "PMR" | "personnes";
+  rule: AleaRuleInput;
 };
+
+// Un bloc ALEA = un train, un jour, une gare et un SENS (IN = embarquement, OUT = débarquement) : on additionne
+// tous les dossiers qui y montent (ou en descendent), par type (précision de l'utilisateur, 9 oct. 2026).
+const blockKey = (e: { day: string; train: string; station: string; io: "IN" | "OUT" }) =>
+  `${e.day}|${e.train}|${e.station}|${e.io}`;
+const byTime = (a: AleaGroup, b: AleaGroup) =>
+  a.day.localeCompare(b.day) ||
+  (a.time || "99").localeCompare(b.time || "99") ||
+  a.station.localeCompare(b.station) ||
+  a.io.localeCompare(b.io);
+
+/** Additionne par dossier (composition affichée dans l'en-tête du bloc). */
+function addDossier(list: { ref: string; count: number }[], ref: string, count: number) {
+  const key = ref || "sans n°";
+  const d = list.find((x) => x.ref === key);
+  if (d) d.count += count;
+  else list.push({ ref: key, count });
+}
 
 /** Regroupe par jour + train + gare, additionne par sens et type ; tri par heure. */
 export function aleaGroups(ends: AleaEnd[]): AleaGroup[] {
   const groups = new Map<string, { g: AleaGroup; sums: Map<string, number> }>();
   for (const e of ends) {
-    const key = `${e.day}|${e.train}|${e.station}`;
+    const key = blockKey(e);
     let entry = groups.get(key);
     if (!entry) {
       entry = {
-        g: { key, day: e.day, train: e.train, station: e.station, time: e.time, lines: [] },
+        g: {
+          key,
+          day: e.day,
+          train: e.train,
+          station: e.station,
+          time: e.time,
+          io: e.io,
+          lines: [],
+          dossiers: [],
+          total: 0,
+          unit: "PMR",
+          rule: { kind: "pmr", full: 0, light: 0, unknown: 0 },
+        },
         sums: new Map(),
       };
       groups.set(key, entry);
     }
     if (e.time && (!entry.g.time || e.time < entry.g.time)) entry.g.time = e.time;
+    const pax = Math.max(1, e.pax || 1);
     const k = `${e.io}|${e.pmrType}`;
-    entry.sums.set(k, (entry.sums.get(k) ?? 0) + Math.max(1, e.pax || 1));
+    entry.sums.set(k, (entry.sums.get(k) ?? 0) + pax);
+    entry.g.total += pax;
+    addDossier(entry.g.dossiers, e.dossier ?? "", pax);
+    const rule = entry.g.rule as Extract<AleaRuleInput, { kind: "pmr" }>;
+    const full = Math.max(0, e.fullPax ?? 0);
+    const light = Math.max(0, e.lightPax ?? 0);
+    if (full + light === 0) rule.unknown += pax;
+    else {
+      rule.full += Math.min(full, pax);
+      rule.light += Math.min(light, Math.max(0, pax - Math.min(full, pax)));
+    }
   }
   const ORDER = ["IN", "OUT"];
   return [...groups.values()]
@@ -320,27 +379,26 @@ export function aleaGroups(ends: AleaEnd[]): AleaGroup[] {
           return aleaLine(io === "IN" ? "Embarquement" : "Débarquement", n, type);
         }),
     }))
-    .sort(
-      (a, b) =>
-        a.day.localeCompare(b.day) ||
-        (a.time || "99").localeCompare(b.time || "99") ||
-        a.station.localeCompare(b.station),
-    );
+    .sort(byTime);
 }
 
 // ---------------------------------------------------------------------------------------------------
 // Export ALEA des GROUPES (demande du 9 oct. 2026) : « Embarquement d'un groupe de 53 personnes dont 50 enfants »,
-// sans « dont … » s'il n'y a pas d'enfants ; une ligne par groupe, regroupées par jour + train + gare.
+// sans « dont … » s'il n'y a pas d'enfants. Plusieurs groupes au même train, même gare et même sens sont ADDITIONNÉS
+// (« Embarquement de 2 groupes, 80 personnes dont 50 enfants »), regroupés par jour + train + gare.
 
 export function aleaGroupLine(
   verb: "Embarquement" | "Débarquement",
   total: number,
   children: number,
+  groups = 1,
 ): string {
   const n = Math.max(1, total || 1);
   const people = n > 1 ? `${n} personnes` : "1 personne";
   const kids = children > 0 ? ` dont ${children} ${children > 1 ? "enfants" : "enfant"}` : "";
-  return `${verb} d'un groupe de ${people}${kids}`;
+  return groups > 1
+    ? `${verb} de ${groups} groupes, ${people}${kids}`
+    : `${verb} d'un groupe de ${people}${kids}`;
 }
 
 export type GroupEnd = {
@@ -351,38 +409,143 @@ export type GroupEnd = {
   io: "IN" | "OUT";
   total: number;
   children: number;
+  seniors?: number;
+  dossier?: string;
 };
 
 export function aleaGroupBlocks(ends: GroupEnd[]): AleaGroup[] {
-  const map = new Map<string, AleaGroup & { items: GroupEnd[] }>();
+  type Block = AleaGroup & { sums: Map<string, { n: number; total: number; children: number }> };
+  const map = new Map<string, Block>();
   for (const e of ends) {
-    const key = `${e.day}|${e.train}|${e.station}`;
-    const g = map.get(key) ?? {
+    const key = blockKey(e);
+    const g: Block = map.get(key) ?? {
       key,
       day: e.day,
       train: e.train,
       station: e.station,
       time: e.time,
+      io: e.io,
       lines: [],
-      items: [],
+      dossiers: [],
+      total: 0,
+      unit: "personnes",
+      rule: { kind: "group", children: 0, seniors: 0, total: 0 },
+      sums: new Map(),
     };
     if (e.time && (!g.time || e.time < g.time)) g.time = e.time;
-    g.items.push(e);
+    const total = Math.max(1, e.total || 1);
+    const sum = g.sums.get(e.io) ?? { n: 0, total: 0, children: 0 };
+    sum.n += 1;
+    sum.total += total;
+    sum.children += Math.max(0, e.children);
+    g.sums.set(e.io, sum);
+    // Un groupe qui embarque ET débarque à la même gare (rare) n'est compté qu'une fois dans la composition.
+    const ref = e.dossier || "sans n°";
+    if (!g.dossiers.some((d) => d.ref === ref && ref !== "sans n°")) {
+      g.dossiers.push({ ref, count: total });
+      g.total += total;
+      const rule = g.rule as Extract<AleaRuleInput, { kind: "group" }>;
+      rule.total += total;
+      rule.children += Math.max(0, e.children);
+      rule.seniors += Math.max(0, e.seniors ?? 0);
+    }
     map.set(key, g);
   }
   return [...map.values()]
-    .map(({ items, ...g }) => ({
+    .map(({ sums, ...g }) => ({
       ...g,
-      lines: items
-        .sort((a, b) => (a.io === b.io ? 0 : a.io === "IN" ? -1 : 1))
-        .map((e) =>
-          aleaGroupLine(e.io === "IN" ? "Embarquement" : "Débarquement", e.total, e.children),
-        ),
+      lines: (["IN", "OUT"] as const)
+        .filter((io) => sums.has(io))
+        .map((io) => {
+          const x = sums.get(io)!;
+          return aleaGroupLine(
+            io === "IN" ? "Embarquement" : "Débarquement",
+            x.total,
+            x.children,
+            x.n,
+          );
+        }),
     }))
-    .sort(
-      (a, b) =>
-        a.day.localeCompare(b.day) ||
-        (a.time || "99").localeCompare(b.time || "99") ||
-        a.station.localeCompare(b.station),
-    );
+    .sort(byTime);
+}
+
+// ---------------------------------------------------------------------------------------------------
+// « Obligatoire » ou non (logigrammes « Encodage des PMR / des groupes dans ALEA », 9 oct. 2026).
+// PMR : arrêt prévu ≥ 5 min → ne pas encoder ; sinon PMR complète → encoder ; PMR légère : moins de 4 → ne pas
+// encoder, 4 ou plus → nombre × 30 s, encoder seulement si l'arrêt prévu est dépassé.
+// Groupes : arrêt prévu ≥ 5 min → ne pas encoder ; sinon ≥ 25 enfants (< 12 ans), ou ≥ 25 seniors (> 65 ans, si
+// les âges sont connus), ou ≥ 75 personnes → encoder.
+
+/** Temps d'arrêt prévu du train à la gare (iRail) ; `null` si le train ou la gare n'ont pas été trouvés. */
+export type AleaDwell = {
+  seconds: number | null;
+  position: "stop" | "origin" | "terminus" | "unknown" | "taxi";
+};
+export type AleaDecision = { status: "obligatoire" | "non" | "verifier"; reason: string };
+
+const mmss = (sec: number) => {
+  const m = Math.floor(sec / 60);
+  const s = Math.round(sec % 60);
+  return s ? `${m} min ${String(s).padStart(2, "0")} s` : `${m} min`;
+};
+
+export function aleaDecision(rule: AleaRuleInput, dwell: AleaDwell | undefined): AleaDecision {
+  if (!dwell) return { status: "verifier", reason: "Temps d'arrêt en cours de lecture…" };
+  if (dwell.position === "taxi")
+    return { status: "non", reason: "Transport en taxi : pas d'arrêt de train concerné." };
+  if (dwell.position === "origin" || dwell.position === "terminus")
+    return {
+      status: "verifier",
+      reason: `Gare ${dwell.position === "origin" ? "d'origine" : "terminus"} du train : pas de temps d'arrêt prévu dans l'horaire.`,
+    };
+  if (dwell.seconds === null)
+    return {
+      status: "verifier",
+      reason: "Temps d'arrêt inconnu (train ou gare introuvable dans iRail).",
+    };
+  const stop = `arrêt prévu de ${mmss(dwell.seconds)}`;
+  if (dwell.seconds >= 300)
+    return { status: "non", reason: `Arrêt prévu de 5 minutes ou plus (${mmss(dwell.seconds)}).` };
+  if (rule.kind === "group") {
+    const hits = [
+      rule.children >= 25 ? `${rule.children} enfants (≥ 25)` : "",
+      rule.seniors >= 25 ? `${rule.seniors} seniors (≥ 25)` : "",
+      rule.total >= 75 ? `${rule.total} personnes (≥ 75)` : "",
+    ].filter(Boolean);
+    return hits.length
+      ? { status: "obligatoire", reason: `${hits.join(", ")} ; ${stop}.` }
+      : {
+          status: "non",
+          reason: `${rule.total} personnes dont ${rule.children} enfants et ${rule.seniors} seniors : sous les seuils (25 enfants, 25 seniors, 75 personnes).`,
+        };
+  }
+  if (rule.full > 0)
+    return { status: "obligatoire", reason: `${rule.full} PMR en assistance complète ; ${stop}.` };
+  if (rule.unknown > 0)
+    return {
+      status: "verifier",
+      reason: `Assistance complète ou légère inconnue pour ${rule.unknown} PMR (à resynchroniser depuis DICOS) ; ${stop}.`,
+    };
+  if (rule.light < 4)
+    return { status: "non", reason: `${rule.light} PMR en assistance légère (moins de 4).` };
+  const needed = rule.light * 30;
+  return needed > dwell.seconds
+    ? {
+        status: "obligatoire",
+        reason: `${rule.light} PMR légères × 30 s = ${mmss(needed)}, plus que l'${stop}.`,
+      }
+    : {
+        status: "non",
+        reason: `${rule.light} PMR légères × 30 s = ${mmss(needed)}, l'${stop} n'est pas dépassé.`,
+      };
+}
+
+/** Rapproche le nom d'une gare DICOS de celui d'iRail (accents, casse, tirets ignorés). */
+export function stationKey(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }

@@ -106,3 +106,5 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
   sinon district du profil), urgences selon ces districts, `irailJournal` (cron `irail-journal`, 5 min, 30 entrées max par
   passage, perturbation > 24 h ignorée, district par gares citées dans le titre ou le texte ≥ 4 lettres).
   `CSM_IRAIL_URL` : autre source (mock) ou `off` (CI).
+- **ALEA** (`1760001700_pmr_assistance_level.js`) : `pmr_assists.full_pax` / `light_pax` (voyageurs en assistance
+  complète / légère, compteurs DICOS posés par l'ingestion ; 0 et 0 = inconnu) pour le logigramme « Obligatoire ».

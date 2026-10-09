@@ -10,8 +10,10 @@ import { DISTRICT_LABEL } from "@/lib/pmr/districts";
 import { aleaGroupBlocks, type GroupEnd } from "@/lib/pmr/model";
 import type { GroupMission } from "@/server/data/groups";
 
-import { AleaButton, HIGHLIGHT, IoBadges, type Leg } from "./assist-board";
+import { AleaButton } from "./alea-export";
+import { HIGHLIGHT, IoBadges, type Leg } from "./assist-board";
 import { PhoneLink } from "./phone-link";
+import { TrainChip } from "./train-chip";
 
 // Missions de GROUPE DICOS (lecture seule, demande du 9 oct. 2026) : même présentation que les missions PMR
 // (trajet, IN/OUT, district, gare assistée surlignée), avec le nom du groupe et ses comptages.
@@ -57,7 +59,14 @@ function groupEnds(rows: GroupMission[], district: string): GroupEnd[] {
   for (const g of rows) {
     if (g.status === "annulee") continue;
     const l = legOf(g);
-    const base = { day: g.day, train: trainOf(g), total: total(g), children: g.children };
+    const base = {
+      day: g.day,
+      train: trainOf(g),
+      total: total(g),
+      children: g.children,
+      seniors: g.seniors,
+      dossier: g.dicosRef,
+    };
     if (l.inA && (!district || l.depDistrict === district))
       ends.push({ ...base, station: l.dep, time: l.depTime, io: "IN" });
     if (l.outA && (!district || l.arrDistrict === district))
@@ -90,10 +99,10 @@ export function GroupBoard({ rows, district = "" }: { rows: GroupMission[]; dist
               <Table>
                 <THead>
                   <tr>
+                    <Th>Train</Th>
                     <Th>Heure</Th>
                     <Th>Trajet (départ → arrivée)</Th>
                     <Th>Sens</Th>
-                    <Th>Train</Th>
                     <Th>Groupe</Th>
                     <Th>Adultes</Th>
                     <Th>Enfants</Th>
@@ -104,6 +113,9 @@ export function GroupBoard({ rows, district = "" }: { rows: GroupMission[]; dist
                 <tbody data-testid="groups-table">
                   {list.map((g) => (
                     <Tr key={g.id} className="cursor-pointer" onClick={() => setOpen(g)}>
+                      <Td>
+                        <TrainChip train={g.train} taxi={g.transport === "taxi"} />
+                      </Td>
                       <Td className="font-mono tabular">{g.time || g.arrTime || "—"}</Td>
                       <Td>
                         <Route g={g} district={district} />
@@ -111,7 +123,6 @@ export function GroupBoard({ rows, district = "" }: { rows: GroupMission[]; dist
                       <Td>
                         <IoBadges leg={legOf(g)} district={district} />
                       </Td>
-                      <Td className="font-mono">{trainOf(g)}</Td>
                       <Td className="max-w-56 truncate">
                         <button
                           type="button"
@@ -144,8 +155,13 @@ export function GroupBoard({ rows, district = "" }: { rows: GroupMission[]; dist
                     onClick={() => setOpen(g)}
                   >
                     <ListCard
-                      title={<Route g={g} district={district} />}
-                      meta={`${trainOf(g)} · ${g.groupName || "Groupe"} · ${total(g)} pers.${g.children ? ` dont ${g.children} enfants` : ""}`}
+                      title={
+                        <span className="inline-flex flex-wrap items-center gap-2">
+                          <TrainChip train={g.train} taxi={g.transport === "taxi"} />
+                          <Route g={g} district={district} />
+                        </span>
+                      }
+                      meta={`${g.groupName || "Groupe"} · ${total(g)} pers.${g.children ? ` dont ${g.children} enfants` : ""}`}
                       aside={<Badge tone={STATUS[g.status].tone}>{STATUS[g.status].label}</Badge>}
                     />
                   </button>

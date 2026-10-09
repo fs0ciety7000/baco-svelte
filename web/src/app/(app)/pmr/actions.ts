@@ -1,11 +1,21 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 
 import { can, isAdmin } from "@/lib/permissions";
-import { ASSIST_STATUSES, clientSchema, EQUIPMENT_STATES, equipmentSchema } from "@/lib/pmr/model";
+import { normalizeTrain, type Train } from "@/lib/ops/irail";
+import {
+  ASSIST_STATUSES,
+  clientSchema,
+  EQUIPMENT_STATES,
+  equipmentSchema,
+  stationKey,
+  type AleaDwell,
+} from "@/lib/pmr/model";
 import { requireUser, type SessionUser } from "@/server/auth";
+import { train as irailTrain } from "@/server/irail";
 import { pbForRequest } from "@/server/data/orders";
 import {
   getAssist,
@@ -274,6 +284,80 @@ export async function saveZone(
     else await pb.collection("pmr_zones").create(body);
     return { ok: true };
   } catch (e) {
+    return fail(e);
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Export ALEA : temps d'arrêt prévu du train à la gare (horaire iRail), pour le logigramme « Obligatoire ».
+
+const dwellSchema = z
+  .array(
+    z.object({
+      key: z.string().max(200),
+      day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      train: z.string().max(40),
+      station: z.string().max(120),
+    }),
+  )
+  .max(300);
+
+export async function aleaDwell(
+  input: z.input<typeof dwellSchema>,
+): Promise<Result<Record<string, AleaDwell>>> {
+  try {
+    await need("pmr:read");
+    const items = dwellSchema.parse(input);
+    const out: Record<string, AleaDwell> = {};
+    // Un appel iRail par train et par jour (cache serveur), 60 trains au plus, 3 à la fois (débit iRail).
+    const trains = new Map<string, Promise<Train | null>>();
+    const load = (id: string, day: string) => {
+      const k = `${id}|${day}`;
+      if (!trains.has(k)) {
+        if (trains.size >= 60) return Promise.resolve(null);
+        trains.set(
+          k,
+          irailTrain(id, day)
+            .then((r) => r.train)
+            .catch(() => null),
+        );
+      }
+      return trains.get(k)!;
+    };
+    const queue = [...items];
+    const worker = async () => {
+      for (let it = queue.shift(); it; it = queue.shift()) {
+        if (/^taxi/i.test(it.train)) {
+          out[it.key] = { seconds: null, position: "taxi" };
+          continue;
+        }
+        const id = normalizeTrain(it.train);
+        const t = id ? await load(id, it.day) : null;
+        const want = stationKey(it.station);
+        const stops = t?.stops ?? [];
+        let i = stops.findIndex((s) => stationKey(s.station) === want);
+        if (i < 0 && want)
+          i = stops.findIndex((s) => {
+            const k = stationKey(s.station);
+            return k.startsWith(want) || want.startsWith(k);
+          });
+        const stop = i >= 0 ? stops[i] : undefined;
+        out[it.key] = !stop
+          ? { seconds: null, position: "unknown" }
+          : i === 0
+            ? { seconds: 0, position: "origin" }
+            : i === stops.length - 1
+              ? { seconds: 0, position: "terminus" }
+              : {
+                  seconds: Math.max(0, Math.round((stop.at - stop.arrivalAt) / 1000)),
+                  position: "stop",
+                };
+      }
+    };
+    await Promise.all([worker(), worker(), worker()]);
+    return { ok: true, data: out };
+  } catch (e) {
+    unstable_rethrow(e);
     return fail(e);
   }
 }

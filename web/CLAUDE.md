@@ -106,9 +106,13 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   par `x-dicos-token` (`CSM_DICOS_TOKEN`, comparaison à temps constant), écrit via le compte de service
   (`CSM_DICOS_PB_EMAIL`/`CSM_DICOS_PB_PASSWORD`, droit `dicos:write`), idempotent (dédup `dicos_id`), ignore les
   prestations anonymisées ; **503** tant que les variables sont vides. Heure/jour lus en mur d'horloge de l'ISO local.
-- **Groupes** (`/pmr/groupes`) : `group_missions` (ingérée par `mapGroupList`, réservations DICOS `Group` sans PMR),
-  `server/data/groups.ts`, `components/pmr/group-board.tsx` (réutilise `Leg`, `IoBadges`, `AleaButton` d'`assist-board`),
+- **Groupes** (**`/groupes`**, onglet du module PMR via `groupes/layout.tsx` ; `/pmr/groupes` redirige) : `group_missions` (ingérée par `mapGroupList`, réservations DICOS `Group` sans PMR),
+  `server/data/groups.ts`, `components/pmr/group-board.tsx` (réutilise `Leg`, `IoBadges` d'`assist-board`),
   ALEA de groupe `aleaGroupBlocks` (`lib/pmr/model.ts`). Contact lisible avec `pmr:read`.
+- **Export ALEA** : `components/pmr/alea-export.tsx` (`AleaButton`, partagé PMR / groupes), modèle `aleaGroups` /
+  `aleaGroupBlocks` / `aleaDecision` / `stationKey` (`lib/pmr/model.ts`, testés), temps d'arrêt par la Server Action
+  `aleaDwell` (`pmr/actions.ts`, iRail côté serveur, 60 trains max, 3 en parallèle). `copy.tsx` (`copyLabel`,
+  `CopyButton`), `train-chip.tsx` (train en première colonne).
 - E2E `e2e/pmr.spec.ts` (fixtures superuser, captures `test-results/pmr-*`).
 
 ## Module Opérations (étape 5, session 3)
