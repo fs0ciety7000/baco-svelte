@@ -237,4 +237,4 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   toujours la valeur explicite.
 - Firefox signé : le job CI `sign-firefox` commite `downloads/dicos-connector/csm-dicos-connector-firefox-v<version>.xpi`
   (+ `release.json`) ; la page propose alors « Installer dans Firefox ». Premier `.xpi` signé : v1.7.0 (9 oct. 2026).
-  Jamais de « [skip ci] » dans ce commit : Coolify ne redéploierait pas `csm-web`.
+  Jamais de marqueur d'omission de CI dans ce commit (ni ailleurs, même cité) : Coolify ne redéploierait pas `csm-web`.

@@ -182,7 +182,8 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - (v2) Le job CI `sign-firefox` (si les secrets AMO existent) **commite le .xpi signé sur la branche de session** une fois
   par version, ~10 min après le push : faire `git pull` avant de pousser, sinon le push est refusé (non fast-forward).
 - (v2) **« [skip ci] » dans un message de commit fait aussi sauter le déploiement Coolify** (pas seulement GitHub Actions) :
-  le 1er `.xpi` signé (fa0422b) n'a pas été servi. Ne pas l'utiliser ; un push fait avec `GITHUB_TOKEN` ne relance aucun
+  le 1er `.xpi` signé (fa0422b) n'a pas été servi. Même **cité** dans un message (dfd312d), le marqueur suffit à bloquer le déploiement : ne
+  jamais l'écrire dans un message de commit. Ne pas l'utiliser ; un push fait avec `GITHUB_TOKEN` ne relance aucun
   workflow. Secrets AMO : 1er essai avec retours à la ligne puis le secret **masqué** (« •••• ») copié depuis AMO —
   le job affiche maintenant longueur / format / classes de caractères des clés, jamais leur valeur.
 - (v2) `cn()` = tailwind-merge **étendu** (tailles et couleurs sémantiques), sinon il supprime `text-accent-fg` ou
