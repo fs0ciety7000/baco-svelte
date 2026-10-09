@@ -559,7 +559,15 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   9 oct. : le workflow n'apparaissait pas dans Actions (absent de `main`) → il tourne aussi à chaque push d'une branche
   `claude/**` qui touche `extension/**` et joint les zips au run (artefact `dicos-connector-zips`). Filtre `paths` retiré
   le 9 oct. (les pushes sans changement de l'extension ne produisaient plus de zip) : **chaque** push de la branche de
-  session produit l'artefact (90 j) ; les zips de la version courante sont aussi suivis dans `extension/dist/`.
+  session produit l'artefact (90 j).
+- 2026-10-09 — **Page « Extension DICOS »** (`/pmr/extension`, onglet PMR, `deplacements:read`) : téléchargement des
+  paquets Chrome / Edge et Firefox **depuis CSM** (route `GET /api/pmr/extension/[fichier]`, agent connecté, liste
+  blanche = `release.json`), procédure d'installation, configuration (URL CSM à copier, jeton fourni par l'admin),
+  synchro quotidienne, mise à jour, dépannage des messages de l'extension, nouveautés par version
+  (`lib/pmr/extension-releases.ts`). Les zips sont désormais construits dans **`web/downloads/dicos-connector/`**
+  (+ `release.json` : version, tailles, SHA-256 ; inclus dans l'image par `outputFileTracingIncludes`) au lieu
+  d'`extension/dist/`. Un test vérifie manifests = paquets = nouveautés. Lien « Extension DICOS » sous la date de
+  synchro quand elle est périmée.
 - 2026-10-08 — **Module Référentiels** (audit `docs/design/AUDIT-UX-REFERENTIELS.md`, tout validé). 7 collections
   (`1760000900` : `directory_contacts`, `spi_points`, `ptcar` [abbr unique], `ebp_views`, `documents` [fichier
   protégé], `procedures`, `procedure_versions` hook-only) ; écriture annuaire/SPI/PtCar/EBP = coordinateurs,

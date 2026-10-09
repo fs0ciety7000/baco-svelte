@@ -26,14 +26,14 @@ jobs:
       - name: Construire les paquets Chrome et Firefox
         run: bash extension/build-zips.sh
       - name: Lister les paquets
-        run: ls -l extension/dist
+        run: ls -l web/downloads/dicos-connector
       - name: Créer la Release et joindre les .zip
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           version="${GITHUB_REF_NAME#dicos-connector-v}"
-          gh release create "$GITHUB_REF_NAME" extension/dist/*.zip \
+          gh release create "$GITHUB_REF_NAME" web/downloads/dicos-connector/*.zip \
             --title "Connecteur DICOS v$version" \
             --notes "Extension de synchro DICOS → CSM (Missions PMR). Paquets Chrome/Edge et Firefox (≥ 128). Installation : voir extension/dicos-connector/README.md."
       - name: Publier les paquets (artefacts) sur un déclenchement manuel
@@ -41,5 +41,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dicos-connector-zips
-          path: extension/dist/*.zip
+          path: web/downloads/dicos-connector/*.zip
           retention-days: 90

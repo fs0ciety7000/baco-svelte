@@ -31,7 +31,11 @@ volontairement « bête » et envoie la mission brute (liste + détail fusionné
 
 ## Paquets prêts à charger
 
-Deux `.zip` sont générés dans **`extension/dist/`** (régénérés par `extension/build-zips.sh`) :
+Deux `.zip` sont générés dans **`web/downloads/dicos-connector/`** (régénérés par `extension/build-zips.sh`, avec
+`release.json` : version, tailles, SHA-256). Les agents les téléchargent dans **CSM › PMR › Extension DICOS**
+(`/pmr/extension`), qui donne aussi la procédure d'installation, de mise à jour et de dépannage. À chaque nouvelle
+version : monter la version des deux manifests, ajouter les nouveautés dans `web/src/lib/pmr/extension-releases.ts`,
+relancer `build-zips.sh` (un test vérifie que les trois concordent).
 
 | Navigateur | Paquet | Manifest |
 |---|---|---|

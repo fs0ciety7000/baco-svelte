@@ -88,6 +88,12 @@ export const MODULES: NavModule[] = [
       { href: "/pmr/historique", label: "Historique", permission: "deplacements:read" },
       { href: "/pmr/clients", label: "Clients", permission: "pmr:read" },
       { href: "/pmr/materiel", label: "Rampes et matériel", permission: "pmr:read" },
+      {
+        href: "/pmr/extension",
+        label: "Extension DICOS",
+        permission: "deplacements:read",
+        keywords: ["connecteur", "zip", "installer", "ATMS", "télécharger"],
+      },
     ],
   },
   {

@@ -218,3 +218,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   (`lib/orders/mail.ts`) vouvoient. Barre mobile : 5 modules (`mobile: true`, `shortLabel`) + « Plus ».
 - E2E `e2e/motion.spec.ts` : palette sans glissement, aucune animation infinie (hors `animate-pulse-dot` /
   `animate-spin`), accueil sans flash, filtre sans rechargement.
+- **Extension DICOS** (`/pmr/extension`) : paquets lus dans `downloads/dicos-connector/` (`server/extension.ts`,
+  `release.json` validé par zod), servis par `api/pmr/extension/[file]` ; `next.config.ts` → `outputFileTracingIncludes`
+  (sinon absents du standalone). Nouvelle version de l'extension : manifests + `lib/pmr/extension-releases.ts` +
+  `../extension/build-zips.sh` (test `extension-releases.test.ts`).

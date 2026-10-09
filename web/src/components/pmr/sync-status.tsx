@@ -1,6 +1,7 @@
 "use client";
 
 import { RefreshCw, TriangleAlert } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { pbDate } from "@/lib/orders/time";
@@ -51,6 +52,11 @@ export function SyncStatus({ lastAt, covered }: { lastAt: string | null; covered
         : !covered
           ? `Période pas encore synchronisée (dernière synchro DICOS ${min === null ? "" : ago(min)})`
           : `Synchronisé avec DICOS ${min === null ? "" : ago(min)}`}
+      {stale ? (
+        <Link href="/pmr/extension" className="link ml-1">
+          Extension DICOS
+        </Link>
+      ) : null}
     </p>
   );
 }

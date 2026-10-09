@@ -15,6 +15,11 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Racine de traçage = ce dossier (évite que Next remonte au package-lock.json du dépôt parent).
   outputFileTracingRoot: path.join(__dirname),
+  // Paquets du Connecteur DICOS lus à l'exécution (page PMR › Extension DICOS et route de téléchargement).
+  outputFileTracingIncludes: {
+    "/api/pmr/extension/[file]": ["./downloads/dicos-connector/**"],
+    "/pmr/extension": ["./downloads/dicos-connector/**"],
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
