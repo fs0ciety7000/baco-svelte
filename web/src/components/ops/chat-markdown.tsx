@@ -35,7 +35,7 @@ function inline(nodes: Inline[], key: string): ReactNode[] {
         );
       case "mention":
         return (
-          <span key={k} className="font-medium text-accent">
+          <span key={k} className="font-medium text-info">
             {n.v}
           </span>
         );
@@ -49,7 +49,7 @@ function inline(nodes: Inline[], key: string): ReactNode[] {
             href={href}
             target="_blank"
             rel="noopener noreferrer nofollow"
-            className="break-all text-accent underline underline-offset-2"
+            className="break-all link"
           >
             {label}
           </a>

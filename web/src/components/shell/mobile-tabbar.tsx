@@ -1,5 +1,8 @@
 "use client";
 
+import type * as React from "react";
+
+import { modColor } from "@/design/module-color";
 import { LayoutGrid } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -41,14 +44,15 @@ export function MobileTabBar() {
                 <Link
                   href={m.href}
                   aria-current={isActive ? "page" : undefined}
-                  className={cn(item, isActive && "text-accent")}
+                  style={{ "--mod": modColor(m.id) } as React.CSSProperties}
+                  className={cn(item, isActive && "text-(--mod)")}
                 >
                   <span
                     aria-hidden
-                    className={cn("absolute inset-x-3 top-0 h-0.5", isActive && "bg-accent")}
+                    className={cn("absolute inset-x-3 top-0 h-0.5", isActive && "bg-(--mod)")}
                   />
                   <Icon className="size-5" aria-hidden />
-                  <span className="label-mono text-[0.6875rem] tracking-wider">{m.label}</span>
+                  <span className="text-[0.75rem] leading-4 font-medium">{m.label}</span>
                 </Link>
               </li>
             );
@@ -65,7 +69,7 @@ export function MobileTabBar() {
                 className={cn("absolute inset-x-3 top-0 h-0.5", moreActive && "bg-accent")}
               />
               <LayoutGrid className="size-5" aria-hidden />
-              <span className="label-mono text-[0.6875rem] tracking-wider">Plus</span>
+              <span className="text-[0.75rem] leading-4 font-medium">Plus</span>
             </button>
           </li>
         </ul>

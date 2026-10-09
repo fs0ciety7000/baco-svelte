@@ -2,7 +2,7 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-export type Tone = "neutral" | "accent" | "ok" | "warn" | "danger" | "info";
+export type Tone = "neutral" | "accent" | "ok" | "warn" | "danger" | "info" | "progress";
 
 const toneVar: Record<Tone, string> = {
   neutral: "var(--fg-muted)",
@@ -11,14 +11,17 @@ const toneVar: Record<Tone, string> = {
   warn: "var(--warn)",
   danger: "var(--danger)",
   info: "var(--info)",
+  progress: "var(--progress)",
 };
 
+// L'accent est réservé à l'action (bouton primaire, sélection, focus) : « Confirmé » a sa couleur `progress`
+// (audit du 9 oct. 2026 : confirmé se confondait avec « en cours » / « envoyé »).
 // Statut unifié des commandes bus et taxi. Pas de « facturé » : une commande dont l'envoi est confirmé est
 // facturée d'office (décision utilisateur du 8 octobre 2026).
 export const ORDER_STATUS = {
   brouillon: { label: "Brouillon", tone: "neutral" },
   envoye: { label: "Envoyé", tone: "info" },
-  confirme: { label: "Confirmé", tone: "accent" },
+  confirme: { label: "Confirmé", tone: "progress" },
   en_cours: { label: "En cours", tone: "warn" },
   termine: { label: "Terminé", tone: "ok" },
   annule: { label: "Annulé", tone: "danger" },
@@ -26,7 +29,7 @@ export const ORDER_STATUS = {
 
 export type OrderStatus = keyof typeof ORDER_STATUS;
 
-/** Badge : mono majuscules, pastille carrée, fond du ton à 12 %, bordure à 40 % (contraste testé). */
+/** Badge : casse normale (lisibilité, audit du 9 oct. 2026), pastille, fond du ton à 12 %, bordure à 40 % (contraste testé). */
 function Badge({
   tone = "neutral",
   className,
@@ -38,12 +41,12 @@ function Badge({
       data-slot="badge"
       style={{ "--tone": toneVar[tone] } as React.CSSProperties}
       className={cn(
-        "label-mono inline-flex h-6 items-center gap-1.5 border border-[color-mix(in_oklab,var(--tone)_40%,transparent)] bg-[color-mix(in_oklab,var(--tone)_12%,var(--surface))] px-2 whitespace-nowrap text-(--tone)",
+        "inline-flex h-6 items-center gap-1.5 rounded-control border text-small font-medium border-[color-mix(in_oklab,var(--tone)_40%,transparent)] bg-[color-mix(in_oklab,var(--tone)_12%,var(--surface))] px-2 whitespace-nowrap text-(--tone)",
         className,
       )}
       {...props}
     >
-      <span aria-hidden className="size-1.5 bg-(--tone)" />
+      <span aria-hidden className="size-1.5 rounded-control bg-(--tone)" />
       {children}
     </span>
   );

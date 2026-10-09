@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
-    <div className="relative w-full overflow-x-auto border border-border">
+    <div className="relative w-full overflow-x-auto rounded-box border border-border">
       <table className={cn("w-full border-collapse text-body", className)} {...props} />
     </div>
   );
@@ -22,7 +22,7 @@ function Th({ className, numeric, ...props }: React.ComponentProps<"th"> & { num
     <th
       scope="col"
       className={cn(
-        "label-mono h-9 border-b border-border px-3 text-left font-medium text-fg-muted",
+        "h-9 border-b border-border px-3 text-left text-small font-medium whitespace-nowrap text-fg-muted",
         numeric && "text-right",
         className,
       )}
@@ -73,7 +73,7 @@ function ListCard({
     <div
       style={{ "--status": statusColor ?? "var(--border)" } as React.CSSProperties}
       className={cn(
-        "flex min-h-14 items-center gap-3 border border-border border-l-[3px] border-l-(--status) bg-surface px-3 py-2",
+        "flex min-h-14 items-center gap-3 rounded-box border border-border border-l-[3px] border-l-(--status) bg-surface px-3 py-2",
         className,
       )}
       {...props}

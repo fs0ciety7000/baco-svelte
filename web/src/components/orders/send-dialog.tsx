@@ -192,7 +192,7 @@ export function SendDialog({
 export function PdfLink({ href }: { href: string }) {
   return href ? (
     <a
-      className="inline-flex min-h-11 items-center gap-2 text-body text-accent underline-offset-2 hover:underline"
+      className="inline-flex min-h-11 items-center gap-2 text-body link"
       href={href}
       target="_blank"
       rel="noopener"

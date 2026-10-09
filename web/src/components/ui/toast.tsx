@@ -14,8 +14,8 @@ function Toaster() {
         unstyled: true,
         classNames: {
           toast:
-            "flex w-[min(24rem,calc(100vw-2rem))] items-start gap-3 border border-border border-l-[3px] border-l-fg-muted bg-surface-2 px-4 py-3 text-body text-fg",
-          title: "label-mono text-fg",
+            "flex w-[min(24rem,calc(100vw-2rem))] items-start gap-3 rounded-box border border-border border-l-[3px] border-l-fg-muted bg-surface-2 px-4 py-3 text-body text-fg",
+          title: "text-body font-semibold text-fg",
           description: "mt-1 text-hint text-fg-muted",
           actionButton:
             "ml-auto h-8 cursor-pointer border border-border-strong px-3 text-small text-fg hover:bg-surface",

@@ -1,5 +1,8 @@
 "use client";
 
+import type * as React from "react";
+
+import { modColor } from "@/design/module-color";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -38,6 +41,8 @@ export function Sidebar() {
               <Link
                 href={m.href}
                 aria-current={isActive ? "page" : undefined}
+                // Couleur du module (thèmes « taxonomie » comme Craie ; ailleurs, l'accent).
+                style={{ "--mod": modColor(m.id) } as React.CSSProperties}
                 className={cn(
                   "relative flex flex-col items-center gap-1 px-1 py-2 text-small text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg xl:h-10 xl:flex-row xl:gap-3 xl:px-3 xl:py-0 xl:text-body",
                   isActive && "bg-surface-2 text-fg",
@@ -47,10 +52,10 @@ export function Sidebar() {
                   aria-hidden
                   className={cn(
                     "absolute top-1 bottom-1 left-0 w-0.5",
-                    isActive ? "bg-accent" : "bg-transparent",
+                    isActive ? "bg-(--mod)" : "bg-transparent",
                   )}
                 />
-                <Icon className={cn("size-5 xl:size-4", isActive && "text-accent")} aria-hidden />
+                <Icon className={cn("size-5 xl:size-4", isActive && "text-(--mod)")} aria-hidden />
                 <span className="text-center leading-tight">{m.label}</span>
               </Link>
             </li>

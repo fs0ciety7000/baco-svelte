@@ -21,7 +21,7 @@ function inline(text: string, key: string): ReactNode[] {
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-accent underline-offset-2 hover:underline"
+        className="link"
       >
         {label}
       </a>,

@@ -83,6 +83,7 @@ export function UserMenu({ compact }: { compact?: boolean }) {
         <DialogContent
           eyebrow="Préférences"
           title="Affichage"
+          className="max-w-2xl"
           description="Appliqué tout de suite, mémorisé pour tes prochaines connexions."
         >
           <ThemeSwitcher value={ui} onChange={setUi} />

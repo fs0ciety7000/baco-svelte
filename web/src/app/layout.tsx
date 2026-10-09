@@ -1,5 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Saira_Condensed } from "next/font/google";
+import {
+  Geist,
+  Geist_Mono,
+  IBM_Plex_Mono,
+  IBM_Plex_Sans,
+  IBM_Plex_Sans_Condensed,
+  Saira_Condensed,
+} from "next/font/google";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
@@ -23,6 +30,29 @@ const saira = Saira_Condensed({
   display: "swap",
 });
 
+// IBM Plex : thèmes Rail et Forêt seulement → pas de préchargement (téléchargée à la demande).
+const plex = IBM_Plex_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-plex",
+  display: "swap",
+  preload: false,
+});
+const plexCondensed = IBM_Plex_Sans_Condensed({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  variable: "--font-plex-condensed",
+  display: "swap",
+  preload: false,
+});
+const plexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-plex-mono",
+  display: "swap",
+  preload: false,
+});
+
 export const metadata: Metadata = {
   title: "CSM",
 };
@@ -42,7 +72,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       data-theme={ui.theme}
       data-scheme={scheme}
       data-density={ui.density}
-      className={`${geist.variable} ${geistMono.variable} ${saira.variable}`}
+      className={[geist, geistMono, saira, plex, plexCondensed, plexMono]
+        .map((f) => f.variable)
+        .join(" ")}
     >
       <body>
         <Providers>{children}</Providers>

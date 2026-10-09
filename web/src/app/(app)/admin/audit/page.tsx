@@ -111,7 +111,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             {" "}
             · auteur filtré ·{" "}
             <Link
-              className="text-accent underline-offset-2 hover:underline"
+              className="link"
               href={`/admin/audit?${new URLSearchParams(Object.fromEntries(Object.entries(keep).filter(([k]) => k !== "user")))}`}
             >
               retirer
@@ -141,10 +141,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
                     <span className="font-mono text-small text-fg-muted">{r.record}</span>
                     <span className="ml-auto flex flex-wrap items-center gap-2 text-small text-fg-muted">
                       {r.user ? (
-                        <Link
-                          className="text-accent underline-offset-2 hover:underline"
-                          href={`/admin/audit?${qs({ user: r.user })}`}
-                        >
+                        <Link className="link" href={`/admin/audit?${qs({ user: r.user })}`}>
                           {r.userName || "Compte technique"}
                         </Link>
                       ) : (

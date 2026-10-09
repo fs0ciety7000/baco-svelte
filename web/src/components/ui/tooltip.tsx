@@ -19,7 +19,7 @@ function Tooltip({
       <TooltipPrimitive.Portal>
         <TooltipPrimitive.Content
           sideOffset={6}
-          className="z-50 border border-border-strong bg-surface-2 px-2 py-1 text-small text-fg data-[state=delayed-open]:animate-fade-in"
+          className="z-50 rounded-control border border-border-strong bg-surface-2 px-2 py-1 text-small text-fg data-[state=delayed-open]:animate-fade-in"
         >
           {content}
         </TooltipPrimitive.Content>

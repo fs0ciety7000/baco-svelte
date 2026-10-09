@@ -18,11 +18,11 @@ export type LogCategory = (typeof LOG_CATEGORIES)[number];
 
 export const CATEGORY: Record<
   LogCategory,
-  { label: string; tone: "danger" | "info" | "accent" | "warn" | "ok" | "neutral" }
+  { label: string; tone: "danger" | "info" | "accent" | "warn" | "ok" | "neutral" | "progress" }
 > = {
   incident: { label: "Incident", tone: "danger" },
   pmr: { label: "PMR", tone: "info" },
-  commande: { label: "Commande", tone: "accent" },
+  commande: { label: "Commande", tone: "progress" },
   travaux: { label: "Travaux", tone: "warn" },
   consigne: { label: "Consigne", tone: "ok" },
   info: { label: "Info", tone: "neutral" },

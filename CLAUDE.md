@@ -501,6 +501,13 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   plus de rechargement de page), barre de navigation `NavProgress` (après 150 ms), `(app)/error.tsx` et
   `global-error.tsx` en français, graphique des Statistiques en HTML (texte à taille réelle, repères). E2E
   `e2e/motion.spec.ts`.
+- 2026-10-09 — **Lot 1 livré : 11 thèmes** (`tokens.ts` : couleurs + forme + typographie + couleurs de module ;
+  `themes.css` régénéré ; IBM Plex chargée sans préchargement), jetons `fg-subtle` / `progress` / `--mod-*`,
+  `rounded-box` / `rounded-control` sur les composants, chanfrein qui suit le thème, accent réservé à l'action
+  (Confirmé en `progress`, train en puce neutre, liens `.link`, IN/OUT neutres), échelle typo (corps 15 px, rien sous
+  12 px, badges et en-têtes en casse normale), sélecteur de thème en grille d'aperçus. Test des jetons : contraste +
+  ΔE OKLab accent ↔ statuts (594 tests). `FormSection` en `min-w-0` (débordement mobile trouvé par l'E2E /design).
+  DESIGN-DIRECTION : écarts validés de l'étape 7.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

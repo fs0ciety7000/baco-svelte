@@ -198,5 +198,9 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - Trait d'onglet : `useSlideIndicator(listRef, barRef, sélecteur)` (`lib/motion.ts`), trait `w-px origin-left`.
 - Pas d'animation d'entrée sur un contenu rendu par le serveur au premier affichage (`useStaggerIn` l'ignore).
 - `NavProgress` (shell) : barre de chargement entre pages ; `(app)/error.tsx` : erreur en français dans le shell.
+- Thèmes (lot 1) : 11 thèmes dans `src/design/tokens.ts` (couleurs, `shape`, `type`, `modules`) → `npm run tokens`.
+  Jetons en plus : `fg-subtle`, `progress`, `--mod-<module>` (`modColor(id)` dans `design/module-color.ts`).
+  Rayons : `rounded-box` (cartes, dialogues, panneaux) et `rounded-control` (boutons, champs, badges, puces) ; jamais
+  de rayon en dur. Liens : classe `.link`. L'accent ne sert qu'à l'action, la sélection et le focus.
 - E2E `e2e/motion.spec.ts` : palette sans glissement, aucune animation infinie (hors `animate-pulse-dot` /
   `animate-spin`), accueil sans flash, filtre sans rechargement.

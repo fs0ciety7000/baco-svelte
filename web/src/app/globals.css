@@ -4,7 +4,8 @@
 /*
  * Design system CSM « Tactical premium » (docs/DESIGN-DIRECTION.md).
  * Couleurs : uniquement les jetons sémantiques (bg, surface, surface-2, border, border-strong, fg, fg-muted,
- * accent, accent-fg, ok, warn, danger, info). La palette Tailwind par défaut est désactivée.
+ * fg-subtle, accent, accent-fg, ok, warn, danger, info, progress). La palette Tailwind par défaut est désactivée.
+ * Forme (rayons, chanfrein) et typographie viennent du thème (src/design/tokens.ts → themes.css).
  */
 
 @custom-variant dark (&:where([data-scheme="dark"], [data-scheme="dark"] *));
@@ -21,28 +22,31 @@
   --color-border-strong: var(--border-strong);
   --color-fg: var(--fg);
   --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
   --color-accent: var(--accent);
   --color-accent-fg: var(--accent-fg);
   --color-ok: var(--ok);
   --color-warn: var(--warn);
   --color-danger: var(--danger);
   --color-info: var(--info);
+  --color-progress: var(--progress);
 
-  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
-  --font-display: var(--font-saira), var(--font-geist), ui-sans-serif, sans-serif;
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-code);
+  --font-display: var(--font-title);
 
-  /* Échelle typographique (px / interligne) : label 11/16, small 12/16, hint 13/18 (aides, erreurs, toasts), body 14/20, body-lg 16/24,
-     h3 20/24, h2 28/32, h1 40/40, stat 32/1. */
-  --text-label: 0.6875rem;
+  /* Échelle typographique (audit du 9 oct. 2026 : rien sous 12 px, données ≥ 13 px) : label 12/16, small 13/18,
+     hint 13/18 (aides, erreurs, toasts), body 15/22 en confortable (14/20 en compact), body-lg 16/24, h3 20/24,
+     h2 28/32, h1 40/40, stat 32/1. */
+  --text-label: 0.75rem;
   --text-label--line-height: 1rem;
-  --text-label--letter-spacing: 0.1em;
-  --text-small: 0.75rem;
-  --text-small--line-height: 1rem;
+  --text-label--letter-spacing: 0.06em;
+  --text-small: 0.8125rem;
+  --text-small--line-height: 1.125rem;
   --text-hint: 0.8125rem;
   --text-hint--line-height: 1.125rem;
-  --text-body: 0.875rem;
-  --text-body--line-height: 1.25rem;
+  --text-body: var(--fs-body);
+  --text-body--line-height: var(--lh-body);
   --text-body-lg: 1rem;
   --text-body-lg--line-height: 1.5rem;
   --text-h3: 1.25rem;
@@ -57,6 +61,9 @@
   --radius-*: initial;
   --radius-none: 0;
   --radius-full: 9999px;
+  /* Rayons du thème : boîtes (cartes, dialogues, panneaux) et contrôles (boutons, champs, badges, puces). */
+  --radius-box: var(--r-box);
+  --radius-control: var(--r-control);
 
   /* Hauteurs de contrôle, pilotées par la densité (voir :root plus bas). */
   --spacing-control: var(--control-h);
@@ -123,8 +130,8 @@
   --control-h: 2.25rem;
   --control-h-sm: 2rem;
   --row-h: 2.5rem;
-  --chamfer: 8px;
-  --chamfer-sm: 6px;
+  --fs-body: 0.9375rem;
+  --lh-body: 1.375rem;
   --focus: var(--accent);
 }
 
@@ -132,6 +139,8 @@
   --control-h: 2rem;
   --control-h-sm: 1.75rem;
   --row-h: 2rem;
+  --fs-body: 0.875rem;
+  --lh-body: 1.25rem;
 }
 
 /* Écrans tactiles : cibles d'au moins 44 px quelle que soit la densité. */
@@ -202,6 +211,19 @@
 }
 
 @layer utilities {
+  /* Lien : couleur du texte, souligné discret, accent au survol (l'accent est réservé à l'action et à la sélection). */
+  .link {
+    color: var(--fg);
+    text-decoration-line: underline;
+    text-decoration-color: color-mix(in oklab, var(--fg) 35%, transparent);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+    transition: text-decoration-color 150ms var(--ease-hud);
+  }
+  .link:hover {
+    text-decoration-color: var(--accent);
+  }
+
   .tabular {
     font-variant-numeric: tabular-nums;
   }
@@ -211,15 +233,16 @@
     font-family: var(--font-mono);
     font-size: var(--text-label);
     line-height: var(--text-label--line-height);
-    letter-spacing: 0.1em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
   }
 
+  /* Titres : police, casse et approche propres au thème (Saira capitales, Geist serré, Plex condensé). */
   .display {
     font-family: var(--font-display);
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
+    font-weight: var(--display-weight);
+    letter-spacing: var(--display-track);
+    text-transform: var(--display-case);
   }
 
   /*
@@ -229,10 +252,13 @@
    */
   /* :where() = spécificité nulle : `fixed` / `absolute` (dialogues chanfreinés) l'emportent toujours, sinon le
      dialogue retombait dans le flux en bas de page. */
+  /* Thèmes « doux » et « pilule » : chanfrein à 0 et rayon du thème (--rr), appliqué au cadre et au remplissage. */
   :where(.chamfer) {
     --c: var(--chamfer);
+    --rr: var(--r-box);
     position: relative;
     isolation: isolate;
+    border-radius: var(--rr);
   }
 
   .chamfer::before,
@@ -245,6 +271,7 @@
 
   .chamfer::before {
     inset: 0;
+    border-radius: var(--rr);
     background: var(--frame, var(--border));
     clip-path: polygon(
       var(--c) 0,
@@ -258,6 +285,7 @@
 
   .chamfer::after {
     inset: 1px;
+    border-radius: max(0px, calc(var(--rr) - 1px));
     background: var(--fill, var(--surface));
     clip-path: polygon(
       calc(var(--c) - 0.5px) 0,
@@ -271,6 +299,7 @@
 
   .chamfer-sm {
     --c: var(--chamfer-sm);
+    --rr: var(--r-control);
   }
 
   .safe-bottom {

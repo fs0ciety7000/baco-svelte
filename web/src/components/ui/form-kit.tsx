@@ -41,7 +41,7 @@ function Segmented<T extends string | number>({
       role="radiogroup"
       aria-label={label}
       className={cn(
-        "flex w-full border border-border-strong bg-surface p-0.5 sm:w-auto",
+        "flex w-full rounded-control border border-border-strong bg-surface p-0.5 sm:w-auto",
         className,
       )}
     >
@@ -69,7 +69,7 @@ function Segmented<T extends string | number>({
               }
             }}
             className={cn(
-              "h-control-sm min-w-0 flex-1 cursor-pointer truncate px-2 text-small font-medium whitespace-nowrap transition-colors sm:px-3 duration-150 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none",
+              "h-control-sm min-w-0 flex-1 cursor-pointer truncate rounded-control px-2 text-small font-medium whitespace-nowrap transition-colors sm:px-3 duration-150 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none",
               active
                 ? "bg-accent text-accent-fg"
                 : "text-fg-muted hover:bg-surface-2 hover:text-fg",
@@ -110,7 +110,7 @@ function FormSection({
     <section
       id={id}
       aria-labelledby={`${contentId}-titre`}
-      className="scroll-mt-24 border border-border bg-surface"
+      className="min-w-0 scroll-mt-24 rounded-box border border-border bg-surface"
     >
       <h2 id={`${contentId}-titre`} className="m-0">
         <button
@@ -282,7 +282,7 @@ function ToggleChip({
       disabled={disabled}
       onClick={() => onPressedChange(!pressed)}
       className={cn(
-        "inline-flex h-control-sm cursor-pointer items-center gap-1.5 border px-3 text-small transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex h-control-sm cursor-pointer items-center gap-1.5 rounded-control border px-3 text-small transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50",
         pressed
           ? "border-accent bg-[color-mix(in_oklab,var(--accent)_14%,var(--surface))] text-fg"
           : "border-border-strong bg-surface text-fg-muted hover:text-fg",

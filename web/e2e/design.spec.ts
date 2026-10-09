@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { THEME_IDS as THEMES } from "../src/design/tokens";
+
 import { login as loginAs } from "./helpers";
 
 // Page /design dans chaque thème : pas de défilement horizontal, pas d'erreur console, captures
@@ -8,8 +10,6 @@ import { login as loginAs } from "./helpers";
 const identity = process.env.E2E_IDENTITY ?? "";
 const password = process.env.E2E_PASSWORD ?? "";
 test.skip(!identity || !password, "E2E_IDENTITY / E2E_PASSWORD non définis");
-
-const THEMES = ["commandement", "ivoire", "rail", "contraste", "nocturne"] as const;
 
 async function login(page: Page) {
   await loginAs(page, "/design");

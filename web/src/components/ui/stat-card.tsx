@@ -14,6 +14,7 @@ const toneVar: Record<Tone, string> = {
   warn: "var(--warn)",
   danger: "var(--danger)",
   info: "var(--info)",
+  progress: "var(--progress)",
 };
 
 type StatCardProps = {
@@ -90,10 +91,6 @@ function StatCard({
         className,
       )}
     >
-      <span
-        aria-hidden
-        className="absolute top-0 left-0 h-0.5 w-16 bg-[linear-gradient(90deg,var(--danger),var(--warn)_35%,var(--accent)_60%,var(--info))]"
-      />
       <span aria-hidden className="absolute top-1 bottom-0 left-0 w-0.5 bg-(--tone)" />
       <span className="label-mono text-fg-muted">{label}</span>
       <span className="display tabular text-stat text-fg">

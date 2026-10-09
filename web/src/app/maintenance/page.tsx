@@ -22,10 +22,7 @@ export default async function Page() {
         <p className="text-body whitespace-pre-line text-fg-muted">
           {m.message || "CSM est momentanément indisponible. Réessayez dans quelques minutes."}
         </p>
-        <Link
-          href="/"
-          className="inline-flex min-h-11 items-center text-small text-accent underline-offset-2 hover:underline"
-        >
+        <Link href="/" className="inline-flex min-h-11 items-center text-small link">
           Réessayer
         </Link>
       </div>

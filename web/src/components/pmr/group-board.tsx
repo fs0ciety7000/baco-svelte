@@ -126,7 +126,7 @@ export function GroupBoard({ rows, district = "" }: { rows: GroupMission[]; dist
                       <Td className="max-w-56 truncate">
                         <button
                           type="button"
-                          className="cursor-pointer text-left text-accent underline-offset-2 hover:underline"
+                          className="cursor-pointer text-left link"
                           onClick={(e) => {
                             e.stopPropagation();
                             setOpen(g);
@@ -233,10 +233,7 @@ export function GroupBoard({ rows, district = "" }: { rows: GroupMission[]; dist
               <>
                 <dt className="text-small text-fg-muted">E-mail</dt>
                 <dd className="break-all">
-                  <a
-                    className="text-accent underline-offset-2 hover:underline"
-                    href={`mailto:${open.contactEmail}`}
-                  >
+                  <a className="link" href={`mailto:${open.contactEmail}`}>
                     {open.contactEmail}
                   </a>
                 </dd>

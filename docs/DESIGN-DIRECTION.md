@@ -184,3 +184,24 @@ de chaque paire texte/fond dans les 5 thèmes (AAA pour le texte du thème Contr
   client absent (warn). Matériel : en service (ok), hors service (danger), en attente (warn) ; validité en badge
   (dépassée = danger, < 60 jours = warn), clé à molette = réparation demandée.
 - « Coller depuis DICOS » : zone de texte + aperçu de ce qui est reconnu avant de remplir le formulaire.
+
+
+## Écarts validés — étape 7 « Finition » (9 oct. 2026)
+
+Validés par l'utilisateur après l'audit (`docs/design/AUDIT-INTERFACE.md`) et la planche de thèmes :
+
+- **11 thèmes** au lieu de 5, chacun avec sa **forme** et sa **typographie** (source : `web/src/design/tokens.ts`) :
+  Commandement (angle, Saira), Craie et Craie de jour (pilule, Geist, **couleur par module**, d'après gsap.com),
+  Ivoire (angle, Saira), Porcelaine, Nocturne, Graphite, Prune (doux, Geist), Rail et Forêt (angle, IBM Plex),
+  Contraste élevé (angle, Geist). « Automatique » = Commandement / Ivoire.
+- **Formes** : *angle* (rayon 0, chanfrein 8 / 6 px — la direction d'origine), *doux* (boîtes 8 px, contrôles 6 px),
+  *pilule* (boîtes 12 px, contrôles 999 px). Utilitaires `rounded-box` / `rounded-control` ; `.chamfer` suit le thème.
+- **L'accent est réservé à l'action** : bouton primaire, sélection, focus, onglet actif. « Confirmé » prend le jeton
+  **`progress`** ; n° de train en puce inversée neutre ; liens neutres soulignés (`.link`, accent au survol) ; sens
+  IN / OUT en badges neutres ; graphiques en `info`. Le test des jetons impose ΔE OKLab ≥ 0,1 entre l'accent et chaque
+  statut, et entre statuts.
+- **Nouveaux jetons** : `fg-subtle` (placeholder, désactivé ; ≥ 3:1), `progress`, `--mod-<module>`.
+- **Échelle typographique** : rien sous 12 px ; label 12, small 13, hint 13, **corps 15 px en confortable**
+  (14 en compact). Badges, en-têtes de tableau, titres de toast et d'état vide en **casse normale** ; les capitales
+  mono restent pour les sourcils et horodatages.
+- Bande arc-en-ciel des StatCards **retirée** (décorative).

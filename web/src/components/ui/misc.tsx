@@ -20,14 +20,14 @@ function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-3 border border-dashed border-border-strong px-6 py-10 text-center",
+        "flex flex-col items-center gap-3 rounded-box border border-dashed border-border-strong px-6 py-10 text-center",
         className,
       )}
     >
       <span className="text-fg-muted" aria-hidden>
         {icon ?? <Inbox className="size-6" />}
       </span>
-      <p className="label-mono text-fg">{title}</p>
+      <p className="text-body font-semibold text-fg">{title}</p>
       {description ? <p className="max-w-sm text-body text-fg-muted">{description}</p> : null}
       {action}
     </div>
@@ -71,7 +71,7 @@ function Kbd({ className, ...props }: React.ComponentProps<"kbd">) {
   return (
     <kbd
       className={cn(
-        "inline-flex h-5 min-w-5 items-center justify-center border border-border-strong bg-surface-2 px-1 font-mono text-[0.6875rem] text-fg-muted",
+        "inline-flex h-5 min-w-5 items-center justify-center rounded-[min(var(--r-control),4px)] border border-border-strong bg-surface-2 px-1 font-mono text-[0.75rem] text-fg-muted",
         className,
       )}
       {...props}

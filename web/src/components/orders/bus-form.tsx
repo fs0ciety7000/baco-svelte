@@ -446,10 +446,7 @@ export function BusForm(props: BusFormProps) {
             {company?.phone ? (
               <p className="text-small text-fg-muted">
                 Tél.{" "}
-                <a
-                  className="text-accent underline-offset-2 hover:underline"
-                  href={`tel:${company.phone.replace(/\s/g, "")}`}
-                >
+                <a className="link" href={`tel:${company.phone.replace(/\s/g, "")}`}>
                   {company.phone}
                 </a>
               </p>

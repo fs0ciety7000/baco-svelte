@@ -220,7 +220,7 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
       className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-6 md:px-6 md:py-8"
     >
       <PageHeader
-        eyebrow="// Design system · 5 thèmes · AA vérifié"
+        eyebrow={`// Design system · ${THEMES.length} thèmes · AA vérifié`}
         title="Bibliothèque CSM"
         description="Chaque composant de web/src/components/ui, dans le thème choisi. Données fictives."
         actions={
@@ -249,7 +249,7 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
         <Swatches themeId={current} />
       </Section>
 
-      <Section id="comparatif" title="Les 5 thèmes côte à côte">
+      <Section id="comparatif" title={`Les ${THEMES.length} thèmes côte à côte`}>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {THEMES.map((t) => (
             <ThemeSample key={t.id} themeId={t.id} />

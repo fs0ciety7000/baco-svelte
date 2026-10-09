@@ -6,8 +6,7 @@ import { dialable } from "@/lib/pmr/model";
 export function PhoneLink({ phone }: { phone: string }) {
   const n = dialable(phone);
   if (!n) return <span>{phone}</span>;
-  const cls =
-    "min-h-11 items-center gap-1.5 text-accent underline-offset-2 hover:underline md:min-h-0";
+  const cls = "min-h-11 items-center gap-1.5 link md:min-h-0";
   return (
     <>
       <a href={`etrali:${n}`} className={`${cls} hidden md:inline-flex`}>

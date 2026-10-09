@@ -110,7 +110,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
                     <Td>
                       <Link
                         href={`/admin/utilisateurs/${u.id}`}
-                        className="flex items-center gap-2 font-medium text-accent underline-offset-2 hover:underline"
+                        className="flex items-center gap-2 font-medium link"
                       >
                         <Avatar name={u.name} email={u.email} />
                         {u.name || u.username || "—"}

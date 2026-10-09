@@ -119,10 +119,7 @@ export function TrainsWidget({ favorites }: { favorites: FavoriteStation[] | nul
         title="Aucune gare favorite"
         description="Ajoutez vos gares en favori dans Trains en direct (étoile)."
         action={
-          <Link
-            href="/operations"
-            className="text-small text-accent underline-offset-2 hover:underline"
-          >
+          <Link href="/operations" className="text-small link">
             Ouvrir les trains en direct
           </Link>
         }
@@ -256,10 +253,7 @@ export function DisturbanceWidget({
           </li>
         ))}
       </ul>
-      <Link
-        href="/operations"
-        className="inline-flex min-h-11 items-center text-small text-accent underline-offset-2 hover:underline"
-      >
+      <Link href="/operations" className="inline-flex min-h-11 items-center text-small link">
         {list.length > 5 ? `Voir les ${list.length} messages` : "Ouvrir les trains en direct"}
       </Link>
     </div>

@@ -47,12 +47,12 @@ function Sheet({
           className={cn(
             "fixed z-50 flex flex-col border-border bg-surface outline-none",
             desktop
-              ? "top-0 right-0 bottom-0 w-[min(32rem,100vw)] border-l"
-              : "right-0 bottom-0 left-0 max-h-[92dvh] border-t safe-bottom",
+              ? "top-0 right-0 bottom-0 w-[min(32rem,100vw)] rounded-l-box border-l"
+              : "right-0 bottom-0 left-0 max-h-[92dvh] rounded-t-box border-t safe-bottom",
           )}
         >
           {!desktop ? (
-            <Drawer.Handle className="mx-auto mt-2 h-1.5 w-12 shrink-0 bg-border-strong" />
+            <Drawer.Handle className="mx-auto mt-2 h-1.5 w-12 shrink-0 rounded-full bg-border-strong" />
           ) : null}
           <div className="flex flex-col gap-1 border-b border-border px-5 py-4">
             {eyebrow ? <p className="label-mono text-fg-muted">{eyebrow}</p> : null}

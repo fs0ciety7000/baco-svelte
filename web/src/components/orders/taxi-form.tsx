@@ -458,11 +458,7 @@ export function TaxiForm(props: TaxiFormProps) {
               <p className="text-small text-fg-muted">
                 Tél.{" "}
                 {company.phones.map((p, i) => (
-                  <a
-                    key={p + i}
-                    className="mr-3 text-accent underline-offset-2 hover:underline"
-                    href={`tel:${p.replace(/\s/g, "")}`}
-                  >
+                  <a key={p + i} className="mr-3 link" href={`tel:${p.replace(/\s/g, "")}`}>
                     {p}
                   </a>
                 ))}
@@ -688,7 +684,7 @@ export function PmrClientPicker({
           </span>
           <Link
             href={client.id ? `/pmr/clients?id=${client.id}` : "/pmr/clients"}
-            className="inline-flex items-center gap-1 text-small text-accent underline-offset-2 hover:underline"
+            className="inline-flex items-center gap-1 text-small link"
           >
             Ouvrir la fiche <ExternalLink aria-hidden className="size-3" />
           </Link>

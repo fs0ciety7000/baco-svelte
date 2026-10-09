@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 // Champs : bordure border-strong (≥ 3:1), focus en accent, erreur via aria-invalid.
 export const fieldBase =
-  "w-full min-w-0 border border-border-strong bg-surface px-3 text-body text-fg placeholder:text-fg-muted transition-colors duration-150 outline-none hover:border-fg-muted focus-visible:border-accent focus-visible:outline-1 focus-visible:outline-offset-0 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger aria-invalid:focus-visible:outline-danger";
+  "rounded-control w-full min-w-0 border border-border-strong bg-surface px-3 text-body text-fg placeholder:text-fg-subtle transition-colors duration-150 outline-none hover:border-fg-muted focus-visible:border-accent focus-visible:outline-1 focus-visible:outline-offset-0 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger aria-invalid:focus-visible:outline-danger";
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
@@ -26,7 +26,7 @@ function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
   return (
     <textarea
       data-slot="textarea"
-      className={cn(fieldBase, "min-h-24 py-2", className)}
+      className={cn(fieldBase, "min-h-24 rounded-box py-2", className)}
       {...props}
     />
   );

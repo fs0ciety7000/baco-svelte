@@ -111,16 +111,25 @@ function ioLabel(direction: string): string {
 /** Badges IN / OUT d'un trajet (les deux si assistance aux deux bouts). */
 export function IoBadges({ leg, district }: { leg: Leg; district: string }) {
   if (!leg.inA && !leg.outA) return <span className="text-fg-muted">—</span>;
-  const dim = (d: string) => (district && d !== district ? "opacity-40" : "");
+  // Sens IN / OUT en badges neutres (les couleurs de statut restent aux statuts) ; hors district : estompé à 60 %.
+  const dim = (d: string) => (district && d !== district ? "opacity-60" : "");
   return (
     <span className="inline-flex gap-1">
       {leg.inA ? (
-        <Badge tone="info" title="Embarquement (gare de départ)" className={dim(leg.depDistrict)}>
+        <Badge
+          tone="neutral"
+          title="Embarquement (gare de départ)"
+          className={dim(leg.depDistrict)}
+        >
           IN
         </Badge>
       ) : null}
       {leg.outA ? (
-        <Badge tone="ok" title="Débarquement (gare d'arrivée)" className={dim(leg.arrDistrict)}>
+        <Badge
+          tone="neutral"
+          title="Débarquement (gare d'arrivée)"
+          className={dim(leg.arrDistrict)}
+        >
           OUT
         </Badge>
       ) : null}
@@ -128,7 +137,8 @@ export function IoBadges({ leg, district }: { leg: Leg; district: string }) {
   );
 }
 
-export const HIGHLIGHT = "bg-[color-mix(in_oklab,var(--accent)_22%,transparent)] px-1 text-fg";
+export const HIGHLIGHT =
+  "rounded-[min(var(--r-control),4px)] bg-[color-mix(in_oklab,var(--fg)_12%,transparent)] px-1 font-semibold text-fg";
 
 /** Trajet : « 06:02 GARE A → 06:55 GARE B ». Gare d'assistance soulignée ; gare du district filtré surlignée. */
 function RouteText({ a, district, barred }: { a: Assist; district: string; barred?: boolean }) {
@@ -442,10 +452,7 @@ export function AssistBoard({
                 {canPmr && panel.assist.clientName ? (
                   <span className="flex flex-col">
                     {panel.assist.clientId ? (
-                      <Link
-                        className="text-accent underline-offset-2 hover:underline"
-                        href={`/pmr/clients?id=${panel.assist.clientId}`}
-                      >
+                      <Link className="link" href={`/pmr/clients?id=${panel.assist.clientId}`}>
                         {panel.assist.clientName}
                       </Link>
                     ) : (
@@ -470,10 +477,7 @@ export function AssistBoard({
                 <>
                   <dt className="text-small text-fg-muted">E-mail</dt>
                   <dd className="break-all">
-                    <a
-                      className="text-accent underline-offset-2 hover:underline"
-                      href={`mailto:${panel.assist.mission.clientEmail}`}
-                    >
+                    <a className="link" href={`mailto:${panel.assist.mission.clientEmail}`}>
                       {panel.assist.mission.clientEmail}
                     </a>
                   </dd>

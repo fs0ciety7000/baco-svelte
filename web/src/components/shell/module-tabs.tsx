@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { type CSSProperties, useEffect, useRef } from "react";
+
+import { modColor } from "@/design/module-color";
 
 import { useSlideIndicator } from "@/lib/motion";
 import { cn } from "@/lib/utils";
@@ -31,6 +33,7 @@ export function ModuleTabs({ moduleId }: { moduleId: string }) {
     <div
       ref={ref}
       role="navigation"
+      style={{ "--mod": modColor(moduleId) } as CSSProperties}
       aria-label={`Onglets ${mod.label}`}
       className="relative -mx-4 flex overflow-x-auto border-b border-border px-4 [scrollbar-width:none] md:mx-0 md:px-0"
     >
@@ -53,7 +56,7 @@ export function ModuleTabs({ moduleId }: { moduleId: string }) {
       <span
         aria-hidden
         ref={bar}
-        className="pointer-events-none invisible absolute bottom-0 left-0 h-0.5 w-px origin-left bg-accent"
+        className="pointer-events-none invisible absolute bottom-0 left-0 h-0.5 w-px origin-left bg-(--mod)"
       />
     </div>
   );

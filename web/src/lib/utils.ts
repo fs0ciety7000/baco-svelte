@@ -6,6 +6,7 @@ import { extendTailwindMerge } from "tailwind-merge";
 const twMerge = extendTailwindMerge({
   extend: {
     classGroups: {
+      rounded: [{ rounded: ["box", "control"] }],
       "font-size": [
         { text: ["label", "small", "hint", "body", "body-lg", "h3", "h2", "h1", "stat"] },
       ],
@@ -19,12 +20,14 @@ const twMerge = extendTailwindMerge({
             "border-strong",
             "fg",
             "fg-muted",
+            "fg-subtle",
             "accent",
             "accent-fg",
             "ok",
             "warn",
             "danger",
             "info",
+            "progress",
           ],
         },
       ],

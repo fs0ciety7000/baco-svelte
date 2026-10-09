@@ -3,8 +3,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { contrast } from "./contrast";
-import { BADGE_TINT, THEMES, themesCss, type ColorToken } from "./tokens";
+import { contrast, deltaE } from "./contrast";
+import { BADGE_TINT, MODULE_IDS, THEMES, themesCss, type ColorToken } from "./tokens";
 
 function mix(a: string, b: string, t: number): string {
   const ch = (h: string, i: number) => parseInt(h.slice(i, i + 2), 16);
@@ -21,7 +21,17 @@ function mix(a: string, b: string, t: number): string {
 }
 
 const SURFACES: ColorToken[] = ["bg", "surface", "surface-2"];
-const TEXTS: ColorToken[] = ["fg", "fg-muted", "accent", "ok", "warn", "danger", "info"];
+const TEXTS: ColorToken[] = [
+  "fg",
+  "fg-muted",
+  "accent",
+  "ok",
+  "warn",
+  "danger",
+  "info",
+  "progress",
+];
+const STATUSES: ColorToken[] = ["ok", "warn", "danger", "info", "progress"];
 
 describe.each(THEMES)("thème $label", (theme) => {
   const c = theme.colors;
@@ -36,6 +46,29 @@ describe.each(THEMES)("thème $label", (theme) => {
     },
   );
 
+  it.each(SURFACES)("texte d'appoint (fg-subtle) repérable sur %s (≥ 3:1)", (surface) => {
+    expect(contrast(c["fg-subtle"], c[surface])).toBeGreaterThanOrEqual(3);
+  });
+
+  // Audit du 9 oct. 2026 : l'accent se confondait avec « warn » / « info » (« Confirmé » illisible).
+  it.each(STATUSES)("accent distinct du statut %s (ΔE OKLab ≥ 0,1)", (status) => {
+    expect(deltaE(c.accent, c[status])).toBeGreaterThanOrEqual(0.1);
+  });
+
+  it("statuts distincts entre eux (ΔE OKLab ≥ 0,1)", () => {
+    for (const a of STATUSES)
+      for (const b of STATUSES) if (a < b) expect(deltaE(c[a], c[b])).toBeGreaterThanOrEqual(0.1);
+  });
+
+  it("couleurs de module lisibles sur bg et surface", () => {
+    for (const m of MODULE_IDS) {
+      const color = theme.modules?.[m];
+      if (!color) continue;
+      for (const s of ["bg", "surface"] as const)
+        expect(contrast(color, c[s])).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
   it("texte sur l'accent (boutons primaires)", () => {
     expect(contrast(c["accent-fg"], c.accent)).toBeGreaterThanOrEqual(4.5);
   });
@@ -44,7 +77,7 @@ describe.each(THEMES)("thème $label", (theme) => {
     expect(contrast(c["border-strong"], c[surface])).toBeGreaterThanOrEqual(3);
   });
 
-  it.each(["accent", "ok", "warn", "danger", "info", "fg-muted"] as ColorToken[])(
+  it.each(["accent", "ok", "warn", "danger", "info", "progress", "fg-muted"] as ColorToken[])(
     "badge %s lisible sur sa teinte",
     (token) => {
       expect(contrast(c[token], mix(c.surface, c[token], BADGE_TINT))).toBeGreaterThanOrEqual(4.5);

@@ -60,7 +60,7 @@ export function CommandPalette() {
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-[color-mix(in_oklab,var(--bg)_70%,transparent)] data-[state=open]:animate-fade-in" />
         <DialogPrimitive.Content
           aria-describedby={undefined}
-          className="fixed top-0 left-1/2 z-50 w-full max-w-xl -translate-x-1/2 border border-border-strong bg-surface data-[state=open]:animate-pop-in md:top-[12vh]"
+          className="fixed top-0 left-1/2 z-50 w-full max-w-xl -translate-x-1/2 overflow-hidden border border-border-strong bg-surface md:rounded-box data-[state=open]:animate-pop-in md:top-[12vh]"
         >
           <DialogPrimitive.Title className="sr-only">Palette de commandes</DialogPrimitive.Title>
           <Command label="Palette de commandes" loop>

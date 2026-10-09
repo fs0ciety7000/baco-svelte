@@ -16,10 +16,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   if (!user || user.role === "connector") notFound();
   return (
     <section className="flex flex-col gap-4" aria-label="Fiche du compte">
-      <Link
-        href="/admin"
-        className="inline-flex min-h-11 items-center gap-1 text-small text-accent underline-offset-2 hover:underline"
-      >
+      <Link href="/admin" className="inline-flex min-h-11 items-center gap-1 text-small link">
         <ArrowLeft aria-hidden className="size-4" /> Retour aux utilisateurs
       </Link>
       <UserEditor key={`${user.id}-${user.role}`} user={user} isSelf={user.id === me.id} />

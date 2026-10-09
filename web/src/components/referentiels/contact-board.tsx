@@ -179,7 +179,7 @@ export function ContactBoard({
           <div className="flex flex-col gap-5" data-testid="contact-panel">
             {detail.phone ? <PhoneLink phone={detail.phone} /> : null}
             {detail.email ? (
-              <a className="text-accent hover:underline" href={`mailto:${detail.email}`}>
+              <a className="link" href={`mailto:${detail.email}`}>
                 {detail.email}
               </a>
             ) : null}
@@ -425,7 +425,7 @@ function ContactForm({
               <li key={d.id}>
                 <button
                   type="button"
-                  className="min-h-11 cursor-pointer text-accent underline-offset-2 hover:underline md:min-h-0"
+                  className="min-h-11 cursor-pointer link md:min-h-0"
                   onClick={() => onOpen?.(d.id)}
                 >
                   {d.name}

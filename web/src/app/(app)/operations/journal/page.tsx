@@ -175,7 +175,7 @@ export default async function Page({
           <p className="min-w-0 flex-1 text-body text-fg-muted md:flex-none">
             <span className="font-mono text-fg tabular">{total}</span> résultat(s){" "}
             {f.q ? `pour « ${f.q} »` : "liés au passage à niveau"} (180 jours) ·{" "}
-            <Link href={keep({})} className="text-accent underline-offset-2 hover:underline">
+            <Link href={keep({})} className="link">
               revenir au fil
             </Link>
           </p>

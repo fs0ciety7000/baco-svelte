@@ -381,7 +381,7 @@ function ClientEditor({
               <li key={d.id}>
                 <button
                   type="button"
-                  className="min-h-11 cursor-pointer text-accent underline-offset-2 hover:underline md:min-h-0"
+                  className="min-h-11 cursor-pointer link md:min-h-0"
                   onClick={() => onOpen?.(d.id)}
                 >
                   {d.name}
