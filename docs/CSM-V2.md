@@ -141,7 +141,7 @@ Dans Coolify, deux ressources :
 | 5 | Modules | ✅ Commandes, PMR, Opérations, DICOS / Missions PMR et Groupes, Annuaire et données validés · **Équipe et Admin livrés, à valider** |
 | 6 | Déploiement test-csm.fs0ciety.org, CI | ✅ 8 oct. (`docs/DEPLOIEMENT-V2.md`) ; sauvegardes hors serveur R2 prêtes (variables à poser) |
 | 7 | Finition de l'interface (11 thèmes, motion, UX) | ✅ 9 oct. (lots 0 à 4 + GSAP) |
-| 8 | Extension DICOS (Chrome / Edge / Firefox), jetons personnels | ✅ 9 oct. (v1.7.0, Firefox signé ; Chrome Web Store prêt, fiche à créer) |
+| 8 | Extension DICOS (Chrome / Edge / Firefox), jetons personnels | ✅ 9 oct. (v1.7.0, Firefox signé ; Chrome Web Store abandonné le 9 oct. : compte payant, Chrome / Edge restent en `.zip`) |
 | 9 | **Bascule** : import des référentiels reproductible, répétition, liste de contrôle, domaine de production, gel de BACO | ⏳ à planifier avec l'utilisateur |
 
 Restent ouverts hors code : validation d'Équipe et Admin, réponses du DPO (`docs/DPO-CONSERVATION.md`), accès à

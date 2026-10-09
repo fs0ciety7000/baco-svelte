@@ -8,8 +8,7 @@ l'environnement cloud **CSM**.
   `CSM_PB_ADMIN_EMAIL` / `CSM_PB_ADMIN_PASSWORD` (valeurs de `PB_ADMIN_EMAIL` / `PB_ADMIN_PASSWORD` de `csm-pocketbase`
   dans Coolify) ;
 - domaines autorisés : ceux de `docs/ENVIRONNEMENT-CLOUD.md` (dont `pb-test-csm.fs0ciety.org`) ;
-- si ce n'est pas fait : bucket R2 + variables `CSM_BACKUP_S3_*` (`docs/DEPLOIEMENT-V2.md` §3), fiche Chrome Web Store
-  (`extension/dicos-connector/README.md`).
+- si ce n'est pas fait : bucket R2 + variables `CSM_BACKUP_S3_*` (`docs/DEPLOIEMENT-V2.md` §3).
 
 ---
 
@@ -34,7 +33,7 @@ d'opérateurs.
 - Interface : 11 thèmes, motion GSAP, tutoiement, mobile 5 onglets + Plus.
 - Extension DICOS 1.7.0 (Chrome / Edge en `.zip`, Firefox **signé**) ; jetons de connecteur personnels, vue admin des
   appareils connectés (`/admin/extension`) ; alerte cloche si aucune synchro DICOS depuis 1 h pendant le service
-  (cron `dicos-stale`, 6-22 h). Publication Chrome Web Store prête (job `publish-chrome`, secrets `CWS_*` à poser).
+  (cron `dicos-stale`, 6-22 h). Chrome Web Store abandonné (compte payant) : Chrome / Edge en `.zip`.
 - Sauvegardes : PocketBase 2 h (local tant que R2 n'est pas configuré) + volume Coolify 2 h 30 ; R2 prêt
   (`pb_hooks/backups.pb.js`).
 

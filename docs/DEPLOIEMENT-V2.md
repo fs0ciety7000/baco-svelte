@@ -32,7 +32,6 @@ proxy Traefik). Source : GitHub App `breakable-bee-gkkc8wwg8sswo044`, dépôt `f
 | `csm-web` | `CSM_COOKIE_SECURE` | `true` |
 | `csm-web` | `CSM_DICOS_PB_EMAIL`, `CSM_DICOS_PB_PASSWORD` | compte de service PocketBase (rôle `connector`, droit `dicos:write`) de l'ingestion DICOS / ATMS ; secrets |
 | `csm-web` | `CSM_DICOS_TOKEN` | **facultatif** depuis l'extension 1.7.0 (jetons personnels des agents) : secret partagé des extensions antérieures, à retirer quand toutes sont à jour |
-| `csm-web` | `CSM_CHROME_STORE_URL` | facultative : adresse de la fiche Chrome Web Store du connecteur (`https://chromewebstore.google.com/detail/<nom>/<id>`) ; la page « Extension DICOS » propose alors l'installation depuis le magasin (mises à jour automatiques). Mal formée = ignorée |
 | `csm-pocketbase` | `CSM_BACKUP_S3_ENDPOINT`, `CSM_BACKUP_S3_BUCKET`, `CSM_BACKUP_S3_ACCESS_KEY`, `CSM_BACKUP_S3_SECRET` | facultatives : sauvegardes envoyées dans **Cloudflare R2** (§3), réglées au démarrage de `serve` par `pb_hooks/backups.pb.js` ; secrets. **Seule source de vérité** : variables absentes ou incomplètes = S3 coupé et secret effacé (une copie restaurée ailleurs n'écrit jamais dans le bucket de production) ; `CSM_BACKUP_KEEP` (défaut 14, max 90) |
 | `csm-pocketbase` | `CSM_DICOS_ALERT_HOURS` | facultative : plage de service de l'alerte « synchro DICOS en retard » (défaut `6-22`, heure de Bruxelles ; `off` = coupée) |
 | `csm-web` | `IRAIL_URL`, `TILES_URL`, `CSM_USER_AGENT` | facultatives : défauts `https://api.irail.be/v1`, `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, User-Agent CSM (le serveur doit pouvoir sortir vers ces deux domaines) |
@@ -140,5 +139,4 @@ répétition de la bascule. Le zip reste dans `/pb_data/backups` comme point de 
 
 | Secret | Rôle |
 |---|---|
-| `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`, `CWS_REFRESH_TOKEN`, `CWS_PUBLISHER_ID`, `CWS_ITEM_ID` | facultatifs : publication sur le **Chrome Web Store** (job `publish-chrome`, `extension/cws-publish.mjs`, API v2), une fois par version puis examen Google. Voir `extension/dicos-connector/README.md` § Chrome Web Store |
 | `AMO_JWT_ISSUER`, `AMO_JWT_SECRET` | facultatifs : clés d'API addons.mozilla.org pour signer l'extension Firefox (job `sign-firefox` de `dicos-extension-release.yml`, canal non listé). Sans eux, le job est ignoré. Espaces et retours à la ligne retirés par le job. AMO n'affiche le secret qu'une fois et en génère un nouveau à chaque demande : copier **la paire** émetteur + secret du même tirage (« Unknown JWT iss » = émetteur faux ; « Error decoding signature » = secret faux ou périmé). |

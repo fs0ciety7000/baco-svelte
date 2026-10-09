@@ -10,7 +10,6 @@ import { EmptyState } from "@/components/ui/misc";
 import { can } from "@/lib/permissions";
 import { EXTENSION_NOTES } from "@/lib/pmr/extension-releases";
 import { requirePermission } from "@/server/auth";
-import { env } from "@/server/env";
 import { listMyConnectorTokens, readExtensionRelease } from "@/server/extension";
 
 export const metadata: Metadata = { title: "Extension DICOS · CSM" };
@@ -67,23 +66,6 @@ export default async function Page() {
             puis les envoie à CSM. Elle lit aussi les temps d&apos;arrêt dans ATMS pour
             l&apos;export ALEA. Elle ne stocke aucun mot de passe SNCB.
           </p>
-          {env.CSM_CHROME_STORE_URL ? (
-            <div className="flex flex-col gap-2 rounded-box border border-border bg-surface-2 p-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-body">
-                <strong>Chrome / Edge : installe depuis le Chrome Web Store</strong>
-                <span className="block text-small text-fg-muted">
-                  Mises à jour automatiques. Remplace une version installée depuis un .zip (retire
-                  l&apos;ancienne, puis reconnecte l&apos;extension à ton compte).
-                </span>
-              </p>
-              <Button asChild>
-                <a href={env.CSM_CHROME_STORE_URL} target="_blank" rel="noopener noreferrer">
-                  <Download aria-hidden />
-                  Chrome Web Store
-                </a>
-              </Button>
-            </div>
-          ) : null}
           {release ? (
             <>
               <ul className="grid gap-3 sm:grid-cols-2">
@@ -93,15 +75,7 @@ export default async function Page() {
                     className="flex min-w-0 flex-col gap-2 rounded-box border border-border p-3"
                   >
                     <p className="text-body font-semibold">{BROWSER[f.browser]}</p>
-                    <Button
-                      asChild
-                      variant={
-                        f.browser === "firefox" ||
-                        (f.browser === "chrome" && env.CSM_CHROME_STORE_URL)
-                          ? "secondary"
-                          : "primary"
-                      }
-                    >
+                    <Button asChild variant={f.browser === "firefox" ? "secondary" : "primary"}>
                       {f.browser === "firefox-signed" ? (
                         // Firefox propose l'installation en ouvrant le .xpi signé (pas de téléchargement).
                         <a href={`/api/pmr/extension/${encodeURIComponent(f.name)}`}>

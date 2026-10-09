@@ -568,17 +568,14 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   retard »** : cron PocketBase `dicos-stale` (10 min), si la dernière synchro missions / groupes a plus d'1 h pendant le
   service (`CSM_DICOS_ALERT_HOURS`, défaut 6-22 h Bruxelles, 1 h de marge après l'ouverture), notification `systeme` aux
   propriétaires d'un jeton personnel (ceux qui ont coché leurs districts du jour s'il y en a), une par épisode
-  (dédup `source_id` = dernière synchro), testée en local ; (c) **Chrome Web Store** : `extension/cws-publish.mjs`
-  (API v2, une fois par version), job CI `publish-chrome` (secrets `CWS_*`), `CSM_CHROME_STORE_URL` → bouton
-  « Chrome Web Store » sur la page Extension ; fiche non répertoriée à créer par l'utilisateur (README) ; (d) **R2** :
+  (dédup `source_id` = dernière synchro), testée en local ; (c) **Chrome Web Store** préparé puis **abandonné** par l'utilisateur (compte développeur payant) : script, job CI et
+  bouton retirés, Chrome / Edge restent installés depuis le `.zip`; (d) **R2** :
   `pb_hooks/backups.pb.js` règle les sauvegardes S3 de PocketBase depuis `CSM_BACKUP_S3_*` au démarrage (bucket et
   jeton à créer par l'utilisateur, procédure + test de restauration dans DEPLOIEMENT-V2 §3) ; (e) actions GitHub
   passées en **v7** (checkout, setup-node, upload-artifact, build-push-action ; setup-buildx v4 : Node 24),
   feuille de route `CSM-V2.md` §7 et `NOUVELLE-SESSION.md` (session 4 : bascule) remises à jour. Revue : alerte dédupliquée par
   épisode **et par jour** (sinon la synchro de la veille bloquait l'alerte du matin), variables R2 = seule source de vérité
-  (S3 coupé sans elles, seulement pour `serve`, réglages sur une copie), `publish-chrome` en `contents: read`, versions
-  du Store comparées numériquement + attente si un examen est en cours. Limite connue : une extension installée depuis le
-  Store voit « Nouvelle version » dès le push, avant la fin de l'examen Google. Note DPO : la durée des
+  (S3 coupé sans elles, seulement pour `serve`, réglages sur une copie). Note DPO : la durée des
   sauvegardes était fausse (« 28 h ») → 14 jours, R2 ajouté comme sous-traitant à valider.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
