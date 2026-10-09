@@ -65,7 +65,9 @@ test("l'accueil ne clignote pas au premier affichage", async ({ page }) => {
   await page.reload();
   await page.locator("[data-widget]").first().waitFor();
   await page.waitForTimeout(1200);
-  const min = await page.evaluate(() => (window as unknown as { __minOpacity: number }).__minOpacity);
+  const min = await page.evaluate(
+    () => (window as unknown as { __minOpacity: number }).__minOpacity,
+  );
   expect(min, "un widget visible a été masqué puis réaffiché").toBeGreaterThan(0.99);
 });
 
