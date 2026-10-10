@@ -116,6 +116,14 @@ transitoire. L'ancien service `stalwart` (`h7vpjks3…`, `mail.tandem-agenda.app
   `tls://mail.fs0ciety.org:587` avec l'identifiant de la boîte, filtres Sieve sur 4190, SQLite en volume, réglages dans
   `custom.inc.php` (compose). Aucun secret dans le service. Vérifié le 10 oct. : connexion `nicolas@fs0ciety.org`, envoi vers
   `contact@fs0ciety.org` reçu dans la boîte.
+- **Mot de passe d'application « Services hébergés (SMTP) »** sur le compte `nicolas` (`x:AppPassword` créé dans le compte
+  `d` avec la clé admin ; secret généré par Stalwart, dans `/home/user/csm-secrets/smtp-services-app-password` de
+  l'environnement cloud et dans les variables Coolify) : **tous les services l'utilisent** (CSM preview + prod, OCC Deliveries,
+  agenda, RailCards, elo, fs0ciety, documenso, ntfy), jamais le mot de passe personnel de Nicolas (le changer avait coupé tous
+  les envois le 10 oct.). Révocable seul. `allowedIps` (IP du serveur + réseaux Docker) posé mais **non appliqué** par
+  Stalwart en JMAP (authentification acceptée depuis une autre IP). Le compte `csm@` est supprimé : `csm@fs0ciety.org` est
+  un alias de `nicolas` (expéditeur de CSM inchangé). Après suppression d'un compte puis alias de même adresse : relancer
+  le service SMTP client, pas de cache à vider côté Stalwart.
 - **Services basculés le 10 oct.** (décision : **un seul compte d'envoi, `nicolas@fs0ciety.org`**, pas de compte par
   service ; expéditeurs = alias du compte : `noreply@fs0ciety.org`, `noreply@eat.fs0ciety.org`, `noreply@empire.fs0ciety.org`,
   `no-reply@tandem-agenda.app`) : OCC Deliveries (`OCC_SMTP_*` port 465, `OCC_MAIL_FROM=noreply@eat…`), agenda / Tandem

@@ -258,6 +258,12 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - (v2) **`csm.fs0ciety.org` résout par le joker `*.fs0ciety.org`** (aucun enregistrement propre) : y ajouter un MX / TXT
   fait cesser le joker pour ce nom → prod hors service. Poser d'abord un `A` explicite (152.53.176.13, non proxifié),
   vérifier `/api/health`, puis le reste. Un CNAME n'admet pas de MX : le remplacer par un A équivalent (même proxy).
+- (v2) **Cloudflare Access ne protège que les noms proxifiés** (nuage orange) : un nom en « DNS seulement » ou résolu par le
+  joker `*.fs0ciety.org` est joint directement, Access ou non. Proxifier avant de protéger (zone en SSL « Full ») ; jamais
+  `mail.fs0ciety.org` (SMTP / IMAP exigent le DNS seul). Un service avec clients non navigateur (API, webhooks, appli mobile)
+  casse derrière Access sauf jeton de service ou chemin limité (`base.fs0ciety.org/_` = admin PocketBase seul).
+- (v2) **Les services envoient avec le mot de passe d'application** du compte Stalwart `nicolas`, jamais son mot de passe
+  personnel (le changer coupe tous les envois : 10 oct.).
 - (v2) Playwright : un libellé avec astérisque requis (`Arrivée *`) ne répond pas à `getByLabel(…, { exact: true })` ;
   passer par `getByRole(…, { name, exact: true })`.
 
@@ -830,6 +836,12 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - 2026-10-10 — **OCC Studios désactivé** (remplacé par interactive.cardormedia.com) : application Coolify `OCC MONS Studios`
   arrêtée (pas supprimée), CNAME `studios.fs0ciety.org` retiré (le nom résout encore par le joker `*.fs0ciety.org` → 503).
   **Cosmic Empires** : déploiements Vercel coupés (`vercel.json` `git.deploymentEnabled: false`, ogame-like `7556af4`).
+
+- 2026-10-10 — **CSM passé sur `nicolas@`** (compte `csm@` supprimé, `csm@` en alias) ; le mot de passe personnel de Nicolas
+  ayant été changé, **mot de passe d'application** dédié aux services, posé partout et vérifié (test de campagne preview OK).
+  **Cloudflare Access** : application « Outils internes fs0ciety » (`bdd4ba85-8fd8-4af2-8852-7b661ef4807f`, 24 h, Allow =
+  occmons@gmail.com + nico.dessenius@gmail.com) sur convert, img, link, profilarr, surrealist, tools, search, webmail
+  (passés en proxifié) et `base.fs0ciety.org/_` (admin PocketBase de Cosmic Empires ; API publique gardée).
 
 ---
 
