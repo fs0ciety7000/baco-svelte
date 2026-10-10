@@ -135,4 +135,42 @@ export function highlightElements(els: HTMLElement[]) {
   );
 }
 
+/**
+ * Continuité ligne → panneau (étape 7, lot 4) : un cadre fantôme (contour accent) part du rectangle de la ligne cliquée et
+ * rejoint celui du panneau qui s'ouvre, puis s'efface (≈ 300 ms). Rien en mouvement réduit. Aucun nœud ne reste dans le DOM.
+ */
+export function ghostFlip(
+  from: DOMRect,
+  to: { left: number; top: number; width: number; height: number },
+) {
+  if (typeof window === "undefined" || window.matchMedia(NO_MOTION).matches) return;
+  if (from.width < 4 || from.height < 4) return;
+  const ghost = document.createElement("div");
+  ghost.setAttribute("aria-hidden", "true");
+  Object.assign(ghost.style, {
+    position: "fixed",
+    left: `${from.left}px`,
+    top: `${from.top}px`,
+    width: `${from.width}px`,
+    height: `${from.height}px`,
+    border: "2px solid var(--accent)",
+    background: "color-mix(in oklab, var(--accent) 8%, transparent)",
+    borderRadius: "var(--r-box, 0px)",
+    zIndex: "60",
+    pointerEvents: "none",
+  });
+  document.body.appendChild(ghost);
+  gsap
+    .timeline({ onComplete: () => ghost.remove() })
+    .to(ghost, {
+      left: to.left,
+      top: to.top,
+      width: to.width,
+      height: to.height,
+      duration: 0.26,
+      ease: "power3.inOut",
+    })
+    .to(ghost, { opacity: 0, duration: 0.12, ease: "power1.out" });
+}
+
 export { Flip, gsap, useGSAP };

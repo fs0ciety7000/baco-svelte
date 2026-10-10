@@ -31,6 +31,7 @@ export function ModuleTabs({ moduleId }: { moduleId: string }) {
   if (!mod || mod.tabs.length < 2) return null;
   return (
     <div
+      data-print="hide"
       ref={ref}
       role="navigation"
       style={{ "--mod": modColor(moduleId) } as CSSProperties}

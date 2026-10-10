@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { subscribeLive } from "@/lib/live";
+
 // Abonnement au relais SSE du serveur CSM (/api/events). À chaque changement, la page serveur est
 // relue (router.refresh), regroupé sur 300 ms pour absorber les rafales.
 export function LiveRefresh({ topics }: { topics: string[] }) {
@@ -12,15 +14,17 @@ export function LiveRefresh({ topics }: { topics: string[] }) {
   const key = topics.join(",");
 
   useEffect(() => {
-    const source = new EventSource(`/api/events?topics=${encodeURIComponent(key)}`);
-    source.addEventListener("ready", () => setState("direct"));
-    source.addEventListener("change", () => {
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => router.refresh(), 300);
-    });
-    source.onerror = () => setState("coupé");
+    // Flux partagé (une seule connexion SSE par onglet, voir lib/live.ts).
+    const off = subscribeLive(
+      key.split(","),
+      () => {
+        if (timer.current) clearTimeout(timer.current);
+        timer.current = setTimeout(() => router.refresh(), 300);
+      },
+      setState,
+    );
     return () => {
-      source.close();
+      off();
       if (timer.current) clearTimeout(timer.current);
     };
   }, [key, router]);

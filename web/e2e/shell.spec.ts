@@ -15,7 +15,7 @@ test("tableau de bord, CSP et absence d'erreur", async ({ page }, testInfo) => {
   expect(res?.headers()["content-security-policy"]).toContain("connect-src 'self'");
   await login(page);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Bonjour, Agent/);
-  await expect(page.getByTestId("dashboard-grid").locator("[data-widget]")).toHaveCount(7);
+  await expect(page.getByTestId("dashboard-grid").locator("[data-widget]")).toHaveCount(10);
   await page.waitForTimeout(800);
   await noHorizontalScroll(page);
   await page.screenshot({

@@ -24,7 +24,10 @@ export function Topbar() {
   const tab = mod ? activeTab(pathname, mod) : undefined;
 
   return (
-    <header className="sticky top-0 z-30 flex h-12 shrink-0 items-center gap-2 border-b border-border bg-[color-mix(in_oklab,var(--bg)_88%,transparent)] px-3 backdrop-blur md:h-14 md:px-6">
+    <header
+      data-print="hide"
+      className="sticky top-0 z-30 flex h-12 shrink-0 items-center gap-2 border-b border-border bg-[color-mix(in_oklab,var(--bg)_88%,transparent)] px-3 backdrop-blur md:h-14 md:px-6"
+    >
       <Link href="/" className="flex items-center gap-2 md:hidden" aria-label="Accueil CSM">
         <span aria-hidden className="size-2 bg-accent" />
         <span className="display text-body-lg tracking-wider">CSM</span>

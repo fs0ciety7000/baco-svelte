@@ -12,6 +12,7 @@ import {
   Pencil,
   MessageSquareReply,
   Pin,
+  Printer,
   Reply,
   TriangleAlert,
   Undo2,
@@ -575,6 +576,17 @@ export function JournalChat({
                 <span className="font-mono tabular">({unread})</span>
               </Button>
             ) : null}
+            <Button
+              size="icon"
+              variant="ghost"
+              className="max-md:hidden"
+              data-print="hide"
+              onClick={() => window.print()}
+              aria-label="Imprimer le fil affiché"
+              title="Imprimer le fil affiché"
+            >
+              <Printer aria-hidden />
+            </Button>
             <Button
               size="icon"
               variant="ghost"

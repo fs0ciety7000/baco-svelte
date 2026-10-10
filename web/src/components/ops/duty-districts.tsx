@@ -156,6 +156,7 @@ export function DutyBanner({ day, initial }: { day: string; initial: string[] })
   return (
     <div
       role="region"
+      data-print="hide"
       aria-label="Districts du jour"
       data-testid="duty-banner"
       className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-accent-faint px-4 py-2 md:px-6"

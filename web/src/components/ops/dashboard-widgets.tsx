@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { DelayBadge, TrainChip } from "@/components/pmr/train-chip";
 import { EmptyState, Skeleton } from "@/components/ui/misc";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/status-badge";
 import { ListCard } from "@/components/ui/table";
 import {
@@ -17,8 +18,9 @@ import {
   type FavoriteStation,
 } from "@/lib/ops/irail";
 import { CATEGORY, type LogCategory } from "@/lib/ops/log";
-import { brusselsTime } from "@/lib/orders/time";
-import type { ImpactedMission } from "@/server/data/impacts";
+import { brusselsTime, pbDate } from "@/lib/orders/time";
+import type { ImpactedMission, TodayPmr } from "@/server/data/impacts";
+import type { Notification } from "@/server/data/ops";
 
 export type LogDigest = {
   id: string;
@@ -301,6 +303,104 @@ export function ImpactsWidget({ items }: { items: ImpactedMission[] | null }) {
       {items.length > 8 ? (
         <li className="text-small text-fg-muted">+ {items.length - 8} autres</li>
       ) : null}
+    </ul>
+  );
+}
+
+/** Aujourd'hui en PMR : volumes du jour, prochaines prises en charge (districts de l'agent), fraîcheur DICOS. */
+export function TodayPmrWidget({ data }: { data: TodayPmr | null }) {
+  if (data === null)
+    return <EmptyState title="Accès restreint" description="Tu n'as pas accès aux missions PMR." />;
+  const age = data.lastSync
+    ? Math.round((Date.now() - (pbDate(data.lastSync)?.getTime() ?? Date.now())) / 60000)
+    : null;
+  return (
+    <div className="flex flex-col gap-3" data-testid="today-pmr-widget">
+      <div className="grid grid-cols-3 gap-2">
+        {(
+          [
+            ["Missions PMR", data.missions, "/pmr"],
+            ["Groupes", data.groups, "/groupes"],
+            ["Impactées", data.impacted, "/pmr"],
+          ] as const
+        ).map(([label, n, href]) => (
+          <Link
+            key={label}
+            href={href}
+            className={cn(
+              "flex flex-col gap-0.5 rounded-box border border-border bg-surface-2 px-3 py-2 hover:border-fg-muted",
+              label === "Impactées" && n > 0 && "border-warn",
+            )}
+          >
+            <span className="font-mono text-h3 font-semibold tabular">{n}</span>
+            <span className="text-small text-fg-muted">{label}</span>
+          </Link>
+        ))}
+      </div>
+      <p className={cn("text-small", age === null || age > 60 ? "text-warn" : "text-fg-muted")}>
+        {age === null
+          ? "Pas encore synchronisé avec DICOS aujourd'hui."
+          : `Synchro DICOS il y a ${age < 60 ? `${age} min` : `${Math.floor(age / 60)} h ${String(age % 60).padStart(2, "0")}`}.`}
+      </p>
+      {data.next.length ? (
+        <ul className="flex flex-col gap-1.5">
+          {data.next.map((m) => (
+            <li key={m.id}>
+              <Link
+                href={m.href}
+                className="flex min-w-0 items-center gap-2 rounded-box px-1 py-1 hover:bg-surface-2"
+              >
+                <span className="w-12 shrink-0 font-mono text-body tabular">{m.time}</span>
+                <TrainChip train={m.train} taxi={m.train === "Taxi"} />
+                <DelayBadge impact={m.impact} />
+                <Badge tone={m.io === "IN" ? "info" : "ok"}>{m.io}</Badge>
+                <span className="min-w-0 flex-1 truncate text-body">{m.station}</span>
+                <span className="shrink-0 text-small text-fg-muted max-sm:hidden">{m.detail}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-small text-fg-muted">
+          Plus aucune prise en charge prévue aujourd&apos;hui dans tes districts.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Mentions, urgences et alertes non lues (même source que la cloche). */
+export function MentionsWidget({ items }: { items: Notification[] | null }) {
+  if (items === null) return <EmptyState title="Indisponible" />;
+  const unread = items.filter((n) => !n.readAt).slice(0, 6);
+  if (!unread.length)
+    return <EmptyState title="Rien de nouveau" description="Aucune mention ni alerte non lue." />;
+  return (
+    <ul className="flex flex-col gap-2" data-testid="mentions-widget">
+      {unread.map((n) => (
+        <li key={n.id} className="min-w-0">
+          <Link
+            href={n.link || "/"}
+            className="block rounded-box outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <ListCard
+              statusColor={
+                n.kind === "urgent"
+                  ? "var(--danger)"
+                  : n.kind === "train"
+                    ? "var(--warn)"
+                    : "var(--info)"
+              }
+              title={<span className="line-clamp-1">{n.title}</span>}
+              meta={`${(() => {
+                const d = pbDate(n.created);
+                return d ? brusselsTime(d) : "";
+              })()} · ${n.body.slice(0, 90)}`}
+              className="hover:bg-surface-2"
+            />
+          </Link>
+        </li>
+      ))}
     </ul>
   );
 }

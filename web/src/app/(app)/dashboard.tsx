@@ -26,6 +26,8 @@ import { useRef, useState, useTransition, type ReactNode } from "react";
 import {
   DisturbanceWidget,
   ImpactsWidget,
+  MentionsWidget,
+  TodayPmrWidget,
   LogWidget,
   TrainsWidget,
   type LogDigest,
@@ -45,7 +47,8 @@ import { brusselsDay, daysBetween, formatDay, isValidDay } from "@/lib/orders/ti
 import { cn, pl } from "@/lib/utils";
 import type { FavoriteStation } from "@/lib/ops/irail";
 import type { DashboardStats } from "@/server/data/dashboard";
-import type { ImpactedMission } from "@/server/data/impacts";
+import type { ImpactedMission, TodayPmr } from "@/server/data/impacts";
+import type { Notification } from "@/server/data/ops";
 
 import { saveDashboardLayout } from "../dashboard-actions";
 import { LiveRefresh } from "./commandes/live-refresh";
@@ -53,6 +56,8 @@ import { LiveRefresh } from "./commandes/live-refresh";
 const TITLES: Record<WidgetId, { eyebrow: string; title: string; wide?: boolean }> = {
   commandes: { eyebrow: "Commandes", title: "Vue du jour", wide: true },
   impacts: { eyebrow: "PMR et groupes", title: "Missions impactées", wide: true },
+  "pmr-jour": { eyebrow: "PMR et groupes", title: "Aujourd'hui en PMR" },
+  mentions: { eyebrow: "Pour toi", title: "Mentions et alertes" },
   "a-confirmer": { eyebrow: "Commandes", title: "À confirmer", wide: true },
   raccourcis: { eyebrow: "Actions", title: "Raccourcis" },
   trains: { eyebrow: "Opérations", title: "Trains perturbés" },
@@ -72,6 +77,8 @@ export type OpsDigest = {
   log: LogDigest[] | null;
   favorites: FavoriteStation[] | null;
   impacts: ImpactedMission[] | null;
+  today: TodayPmr | null;
+  mentions: Notification[] | null;
 };
 
 function WidgetBody({
@@ -191,6 +198,10 @@ function WidgetBody({
       );
     case "impacts":
       return <ImpactsWidget items={ops.impacts} />;
+    case "pmr-jour":
+      return <TodayPmrWidget data={ops.today} />;
+    case "mentions":
+      return <MentionsWidget items={ops.mentions} />;
     case "trains":
       return <TrainsWidget favorites={ops.favorites} />;
     case "main-courante":
@@ -302,8 +313,10 @@ function Widget({
               </>
             ) : id === "commandes" || id === "a-confirmer" ? (
               <LiveRefresh topics={["bus_orders"]} />
-            ) : id === "impacts" ? (
-              <LiveRefresh topics={["mission_trains"]} />
+            ) : id === "impacts" || id === "pmr-jour" ? (
+              <LiveRefresh topics={["mission_trains", "pmr_assists"]} />
+            ) : id === "mentions" ? (
+              <LiveRefresh topics={["notifications"]} />
             ) : null
           }
         />

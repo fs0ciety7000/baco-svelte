@@ -11,5 +11,5 @@ import type { ComponentProps } from "react";
  */
 export function FilterForm(props: ComponentProps<typeof Form>) {
   const params = useSearchParams();
-  return <Form key={params.toString()} {...props} />;
+  return <Form key={params.toString()} data-print="hide" {...props} />;
 }

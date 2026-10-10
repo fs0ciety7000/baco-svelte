@@ -205,10 +205,75 @@
     }
   }
 
+  /* Impression (demande du 10 oct. 2026) : listes, B201, Journal. Le shell, les filtres et les actions disparaissent,
+     couleurs claires quel que soit le thème, tableaux sans coupure de ligne, fil du Journal imprimé en entier. */
   @media print {
+    :root,
+    :root[data-theme] {
+      --bg: #fff;
+      --surface: #fff;
+      --surface-2: #f3f3f3;
+      --fg: #000;
+      --fg-muted: #444;
+      --fg-subtle: #555;
+      --border: #bbb;
+      --border-strong: #888;
+      color-scheme: light;
+    }
+    @page {
+      margin: 12mm;
+    }
     body {
       background: #fff;
       color: #000;
+    }
+    [data-print="hide"],
+    form[role="search"],
+    [data-testid="log-composer"],
+    [data-testid="journal-full"],
+    [data-testid="live-state"],
+    [data-sonner-toaster],
+    [data-shortcut],
+    [aria-label="Filtres"],
+    [data-testid="duty-chip"],
+    [data-testid="log-read-all"],
+    a[download],
+    [data-testid="journal"] article button:not([data-testid="log-quote"]) {
+      display: none !important;
+    }
+    main {
+      padding: 0 !important;
+    }
+    /* Fil du Journal : hauteur libre, plus de défilement interne. */
+    [data-testid="journal"] {
+      height: auto !important;
+      min-height: 0 !important;
+      overflow: visible !important;
+      border: 0 !important;
+    }
+    [data-testid="journal"] [data-hl-scope="journal"] {
+      position: static !important;
+      overflow: visible !important;
+    }
+    thead {
+      display: table-header-group;
+    }
+    tr,
+    li,
+    article {
+      break-inside: avoid;
+    }
+    /* Listes : la vue tableau (desktop) est imprimée, jamais les cartes mobiles. */
+    .md\:hidden {
+      display: none !important;
+    }
+    .hidden.md\:block {
+      display: block !important;
+    }
+    * {
+      box-shadow: none !important;
+      animation: none !important;
+      transition: none !important;
     }
   }
 }

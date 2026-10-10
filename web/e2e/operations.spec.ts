@@ -166,14 +166,6 @@ test("journal : publier (Markdown), lu, corriger, pièce jointe, retirer", async
   await expect(card.getByRole("img", { name: /Pièce jointe/ })).toBeVisible();
   // Son propre message : pas de bouton « Marquer lu ».
   await expect(card.getByTestId("log-read")).toHaveCount(0);
-  // Réponse (fil) : citation du message d'origine et compteur de réponses.
-  await card.getByTestId("log-reply").click();
-  await expect(page.getByTestId("log-replying")).toBeVisible();
-  await page.getByTestId("log-body").fill(`${MARK} réponse @DSO`);
-  await page.getByTestId("log-submit").click();
-  const answer = page.getByTestId("log-list").locator("article", { hasText: `${MARK} réponse` });
-  await expect(answer.getByTestId("log-quote")).toBeVisible();
-  await expect(card.getByTestId("log-replies")).toContainText("1");
   await card.getByTestId("log-open").click();
   await page.getByTestId("log-edit").click();
   await page
@@ -188,6 +180,31 @@ test("journal : publier (Markdown), lu, corriger, pièce jointe, retirer", async
   await expect(page.getByTestId("log-panel")).toContainText("Retirée");
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("log-list").locator("article", { hasText: MARK })).toHaveCount(0);
+});
+
+test("journal : répondre en fil (citation, compteur, panneau)", async ({ page }, info) => {
+  test.skip(info.project.name !== "desktop", "parcours en desktop");
+  await login(page, "/operations/journal");
+  const origin = `FIL-${Date.now().toString(36)}`;
+  await page.getByTestId("log-body").fill(`${origin} message d'origine`);
+  await page.getByTestId("log-submit").click();
+  const card = page
+    .getByTestId("log-list")
+    .locator("article", { hasText: `${origin} message` })
+    .first();
+  await expect(card).toBeVisible();
+  await card.getByTestId("log-reply").click();
+  await expect(page.getByTestId("log-replying")).toBeVisible();
+  await page.getByTestId("log-body").fill("Bien reçu, je m'en occupe");
+  await page.getByTestId("log-submit").click();
+  const answer = page
+    .getByTestId("log-list")
+    .locator("article", { hasText: "je m'en occupe" })
+    .last();
+  await expect(answer.getByTestId("log-quote")).toContainText(origin);
+  await expect(card.getByTestId("log-replies")).toContainText("1");
+  await card.getByTestId("log-replies").click();
+  await expect(page.getByTestId("log-thread")).toContainText("je m'en occupe");
 });
 
 test("carte PN : recherche, fiche, itinéraire, tuiles relayées", async ({ page }, info) => {

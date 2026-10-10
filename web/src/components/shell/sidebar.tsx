@@ -22,6 +22,7 @@ export function Sidebar() {
 
   return (
     <nav
+      data-print="hide"
       aria-label="Navigation principale"
       className="sticky top-0 hidden h-dvh w-24 shrink-0 flex-col border-r border-border bg-surface md:flex xl:w-58"
     >

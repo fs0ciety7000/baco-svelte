@@ -3,8 +3,31 @@
 import * as React from "react";
 import { Drawer } from "vaul";
 
+import { ghostFlip } from "@/lib/motion";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
+
+// Dernière ligne / carte cliquée (moins de 800 ms) : origine du cadre fantôme à l'ouverture d'un panneau.
+let origin: { rect: DOMRect; at: number } | null = null;
+if (typeof document !== "undefined")
+  document.addEventListener(
+    "pointerdown",
+    (e) => {
+      // La ligne entière plutôt que le bouton cliqué dedans.
+      const t = e.target as Element | null;
+      const el =
+        t?.closest?.("[data-hl]") ??
+        t?.closest?.("tr") ??
+        t?.closest?.("[data-entry] article") ??
+        t?.closest?.("li") ??
+        t?.closest?.("button");
+      origin = el ? { rect: el.getBoundingClientRect(), at: Date.now() } : null;
+    },
+    { capture: true, passive: true },
+  );
+function lastOrigin(): DOMRect | null {
+  return origin && Date.now() - origin.at < 800 ? origin.rect : null;
+}
 
 /**
  * Panneau de détail : bottom sheet avec poignée sur mobile, panneau latéral droit sur desktop (≥ 768 px).
@@ -30,6 +53,25 @@ function Sheet({
   footer?: React.ReactNode;
 }) {
   const desktop = useMediaQuery("(min-width: 768px)");
+  // Continuité ligne → panneau : à l'ouverture, cadre fantôme depuis la ligne (ou la carte) qui vient d'être cliquée.
+  const wasOpen = React.useRef(open);
+  React.useEffect(() => {
+    if (open && !wasOpen.current) {
+      const origin = lastOrigin();
+      if (origin) {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const width = Math.min(512, w);
+        ghostFlip(
+          origin,
+          desktop
+            ? { left: w - width, top: 0, width, height: h }
+            : { left: 0, top: h * 0.3, width: w, height: h * 0.7 },
+        );
+      }
+    }
+    wasOpen.current = open;
+  }, [open, desktop]);
   return (
     // handleOnly : seule la poignée (mobile) fait glisser le panneau. Sans cela, sélectionner du texte (clic +
     // glisser) déplaçait le panneau → copier-coller impossible (retour utilisateur du 8 oct. 2026). Sur desktop il n'y

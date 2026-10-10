@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { loadNotifications, markNotifications } from "@/app/(app)/operations/actions";
 import { Button } from "@/components/ui/button";
+import { subscribeLive } from "@/lib/live";
 import { safeCall } from "@/lib/orders/safe-call";
 import { pbDate, sinceLabel } from "@/lib/orders/time";
 import { cn } from "@/lib/utils";
@@ -37,13 +38,12 @@ export function NotificationBell() {
 
   useEffect(() => {
     void load();
-    const source = new EventSource("/api/events?topics=notifications");
-    source.addEventListener("change", () => {
+    const off = subscribeLive(["notifications"], () => {
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => void load(), 400);
     });
     return () => {
-      source.close();
+      off();
       if (timer.current) clearTimeout(timer.current);
     };
   }, [load]);

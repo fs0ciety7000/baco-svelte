@@ -40,7 +40,10 @@ export function AppShell({
           <main id="contenu" className="flex-1">
             {children}
           </main>
-          <footer className="px-4 pt-6 pb-[calc(env(safe-area-inset-bottom)+5rem)] text-center md:px-6 md:pb-4 md:text-left">
+          <footer
+            data-print="hide"
+            className="px-4 pt-6 pb-[calc(env(safe-area-inset-bottom)+5rem)] text-center md:px-6 md:pb-4 md:text-left"
+          >
             <StudioCredit />
           </footer>
         </div>

@@ -32,6 +32,7 @@ export function MobileTabBar() {
   return (
     <>
       <nav
+        data-print="hide"
         aria-label="Navigation principale"
         className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface md:hidden"
       >

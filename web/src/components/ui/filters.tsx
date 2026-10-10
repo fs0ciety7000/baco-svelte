@@ -38,6 +38,7 @@ export function FilterChip({
 export function ChipRow({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
+      data-print="hide"
       className={cn(
         "-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] md:mx-0 md:flex-wrap md:px-0",
         className,

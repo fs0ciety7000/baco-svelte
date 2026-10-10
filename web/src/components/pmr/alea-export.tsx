@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";
+import { subscribeLive } from "@/lib/live";
 import { safeCall } from "@/lib/orders/safe-call";
 import { brusselsTime, formatDay, pbDate } from "@/lib/orders/time";
 import { aleaDecision, type AleaDecision, type AleaDwell, type AleaGroup } from "@/lib/pmr/model";
@@ -86,15 +87,14 @@ export function AleaButton({
   useEffect(() => {
     if (!open || !groups.length) return;
     void loadMarks();
-    const source = new EventSource("/api/events?topics=alea_marks");
     let timer: ReturnType<typeof setTimeout> | undefined;
-    source.addEventListener("change", () => {
+    const off = subscribeLive(["alea_marks"], () => {
       clearTimeout(timer);
       timer = setTimeout(() => void loadMarks(), 300);
     });
     return () => {
       clearTimeout(timer);
-      source.close();
+      off();
     };
   }, [open, groups, loadMarks]);
   const toggle = async (key: string) => {

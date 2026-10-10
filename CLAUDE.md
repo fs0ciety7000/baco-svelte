@@ -222,6 +222,9 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   vers la page déjà ouverte.
 - (v2) Le relais iRail et les tuiles passent par `fetch` de Node : dans l'environnement cloud, lancer le serveur avec
   `NODE_USE_ENV_PROXY=1` ; les serveurs de tuiles sont bloqués ici → E2E et captures avec `web/e2e/mock-services.mjs`.
+- (v2) **Une seule connexion SSE par onglet** (`web/src/lib/live.ts`) : plusieurs `EventSource` saturent les 6 connexions
+  HTTP/1.1 par domaine et la navigation se bloque (accueil avec widgets en direct, 10 oct.) ; en production HTTP/2 masque le
+  problème. Trouvé par l'E2E shell en local.
 - (v2) Playwright : un libellé avec astérisque requis (`Arrivée *`) ne répond pas à `getByLabel(…, { exact: true })` ;
   passer par `getByRole(…, { name, exact: true })`.
 
@@ -600,6 +603,11 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   reclassement BACO qui ne touche ni les consignes ni une catégorie d'origine autre qu'« info » par la règle par défaut ;
   double coche ALEA simultanée tolérée. **E2E Admin en CI** (compte admin de test `E2E_ADMIN_*`, `e2e/admin.spec.ts` :
   écrans 1440 + 390, création / désactivation / réactivation). Laissé : mentions de district ouvertes à tout agent qui écrit.
+- 2026-10-10 — **Finition** : continuité animée ligne → panneau (`ghostFlip`, tous les panneaux `Sheet`), widgets
+  « Aujourd'hui en PMR » (volumes, prochaines prises en charge des districts du jour avec retard du train, fraîcheur DICOS)
+  et « Mentions et alertes », **impression** soignée (listes, Journal ; B201 garde son PDF), **E2E Admin** en CI. Corrigé en
+  route : flux temps réel mutualisé (6 SSE bloquaient la navigation depuis l'accueil), attente « 7 widgets » de l'E2E shell
+  périmée depuis « Missions impactées ».
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

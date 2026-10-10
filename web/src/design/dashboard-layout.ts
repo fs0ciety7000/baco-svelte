@@ -5,12 +5,14 @@ import { z } from "zod";
 export const WIDGET_IDS = [
   "commandes",
   "impacts",
+  "pmr-jour",
   "a-confirmer",
   "raccourcis",
   "trains",
   "main-courante",
   "perturbations",
   "travaux",
+  "mentions",
 ] as const;
 // « equipe » (Présents aujourd'hui) retiré le 9 oct. 2026 : pas de source fiable sans planning.
 export type WidgetId = (typeof WIDGET_IDS)[number];

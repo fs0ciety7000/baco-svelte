@@ -252,3 +252,14 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `@DSO` / `@DSE` / `@DCE` ; mobile : catégorie en liste déroulante, méta compacte (heure seule), actions en icônes, fil
   bord à bord. Tri automatique : `lib/ops/journal-rules.ts` (`ruleCategory`, miroir du hook, testé), page
   `/admin/journal` (`JournalRulesEditor`, `saveJournalRules`, `reclassBacoMessages`).
+- **Temps réel partagé** : `lib/live.ts` (`subscribeLive(topics, onChange, onState)`) = UNE connexion SSE par onglet (union
+  des sujets). Ne jamais ouvrir un `EventSource` directement : en HTTP/1.1 le navigateur limite à 6 connexions par domaine
+  et l'accueil (widgets en direct + cloche) bloquait la navigation. `LiveRefresh`, la cloche et l'ALEA passent par le hub.
+- Continuité ligne → panneau : `ghostFlip` (`lib/motion.ts`) déclenché par `Sheet` à l'ouverture depuis la dernière ligne
+  cliquée (< 800 ms) ; rien en mouvement réduit.
+- Widgets d'accueil : `pmr-jour` (« Aujourd'hui en PMR », `todayPmr`) et `mentions` (« Mentions et alertes », même source
+  que la cloche). 10 widgets (`WIDGET_IDS`) : l'E2E shell en compte 10.
+- Impression : `@media print` dans `globals.css` (thème clair forcé, shell / filtres / actions masqués via
+  `data-print="hide"`, `FilterForm` et `ChipRow` masqués, vue tableau imprimée, fil du Journal en entier) ; bouton
+  « Imprimer » dans le Journal.
+- E2E Admin : `e2e/admin.spec.ts` (compte `E2E_ADMIN_IDENTITY` / `E2E_ADMIN_PASSWORD`, créé par la CI).
