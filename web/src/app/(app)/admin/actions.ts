@@ -336,9 +336,19 @@ export async function reclassBacoMessages(): Promise<Result<{ changed: number; t
       .collection("ops_log")
       .getFullList({ filter: "legacy_id > 0", fields: "id,body,category", batch: 500 });
     let changed = 0;
+    // Mots-clés : tout message sauf les consignes ; règle sans mot-clé : seulement les messages restés « info »
+    // (une catégorie d'origine choisie dans BACO n'est jamais écrasée par la règle par défaut).
+    const keywords = rules.filter((x) => x.match.trim());
     for (const r of rows) {
       const current = String(r.category) as LogCategory;
-      const next = ruleCategory(rules, "baco", String(r.body), current);
+      if (current === "consigne") continue;
+      const byWord = ruleCategory(keywords, "baco", String(r.body), current);
+      const next =
+        byWord !== current
+          ? byWord
+          : current === "info"
+            ? ruleCategory(rules, "baco", String(r.body), current)
+            : current;
       if (next !== current) {
         await pb.collection("ops_log").update(r.id, { category: next });
         changed++;

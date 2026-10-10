@@ -7,10 +7,18 @@ const state = {
   cancelled: false,
   checkedAt: "",
   stops: [
-    { st: "Bruxelles-Midi", t: "08:00", d: 1, c: false, l: true },
+    {
+      st: "Bruxelles-Midi",
+      alt: "Brussel-Zuid/Bruxelles-Midi",
+      t: "08:00",
+      d: 1,
+      c: false,
+      l: true,
+    },
     { st: "Braine-le-Comte", t: "08:20", d: 7, c: false, l: false },
     { st: "Mons", t: "08:40", d: 12, c: false, l: false },
     { st: "Quévy", t: "08:55", d: 0, c: true, l: false },
+    { st: "Athus", t: "09:30", d: 0, da: 20, c: false, l: false },
   ],
 };
 const states: TrainStates = { "2026-10-10|IC2108": state };
@@ -33,6 +41,8 @@ describe("retards des trains de mission", () => {
     expect(stopAt(state, "QUEVY")?.c).toBe(true);
     expect(stopAt(state, "Bruxelles Midi")?.t).toBe("08:00");
     expect(stopAt(state, "Namur")).toBeNull();
+    expect(stopAt(state, "Brussel Zuid")?.t).toBe("08:00");
+    expect(stopAt(state, "Ath")).toBeNull();
   });
   it("retard à la gare d'arrivée pour un débarquement", () => {
     expect(missionImpact(base, states)).toEqual({
@@ -49,6 +59,12 @@ describe("retards des trains de mission", () => {
     expect(
       missionImpact({ ...base, inAssist: true, otherStation: "Quévy" }, states)?.cancelled,
     ).toBe(true);
+  });
+  it("débarquement au terminus : retard à l'arrivée", () => {
+    expect(missionImpact({ ...base, otherStation: "Athus" }, states)?.delay).toBe(20);
+    expect(
+      missionImpact({ ...base, station: "Athus", inAssist: true, outAssist: false }, states),
+    ).toBeNull();
   });
   it("taxi ou train non suivi : rien", () => {
     expect(missionImpact({ ...base, transport: "taxi" }, states)).toBeNull();

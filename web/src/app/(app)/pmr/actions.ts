@@ -511,10 +511,24 @@ export async function setAleaMark(
     }
     if (existing)
       return { ok: true, data: { by: user.name || user.username, at: existing.created } };
-    const rec = await pb
-      .collection("alea_marks")
-      .create({ day, kind: k, block: b, marked_by: user.id });
-    return { ok: true, data: { by: user.name || user.username, at: String(rec.created) } };
+    try {
+      const rec = await pb
+        .collection("alea_marks")
+        .create({ day, kind: k, block: b, marked_by: user.id });
+      return { ok: true, data: { by: user.name || user.username, at: String(rec.created) } };
+    } catch (err) {
+      // Coché au même moment par un collègue (index unique) : on relit au lieu d'afficher une erreur.
+      const now = await pb
+        .collection("alea_marks")
+        .getFirstListItem(pb.filter("kind = {:k} && block = {:b}", { k, b }), {
+          expand: "marked_by",
+        })
+        .catch(() => null);
+      if (!now) throw err;
+      const u = (now.expand as { marked_by?: { name?: string; username?: string } } | undefined)
+        ?.marked_by;
+      return { ok: true, data: { by: u?.name || u?.username || "?", at: String(now.created) } };
+    }
   } catch (e) {
     unstable_rethrow(e);
     return fail(e);

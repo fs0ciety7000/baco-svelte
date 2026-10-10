@@ -45,7 +45,8 @@ export async function impactedMissions(user: SessionUser): Promise<ImpactedMissi
   const [assists, groups] = await Promise.all([
     listAssists(
       { from: today, to: today, hideCancelled: true },
-      { canPmr: can(user, "pmr:read") },
+      // Le widget n'affiche aucun nom : pas de lecture du détail nominatif.
+      { canPmr: false },
     ).catch(() => ({ rows: [] })),
     can(user, "pmr:read")
       ? listGroups({ from: today, to: today, hideCancelled: true }).catch(() => ({ rows: [] }))

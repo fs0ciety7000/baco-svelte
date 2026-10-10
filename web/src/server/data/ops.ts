@@ -190,12 +190,16 @@ async function replyCounts(entryIds: string[]) {
   if (!entryIds.length) return map;
   const pb = await pbForRequest();
   try {
-    const rows = await pb.collection("ops_log").getFullList({
-      filter: `status = "active" && (${entryIds.map((id, i) => pb.filter(`reply_to = {:r${i}}`, { [`r${i}`]: id })).join(" || ")})`,
-      fields: "reply_to",
-      batch: 500,
-    });
-    for (const r of rows) map.set(str(r.reply_to), (map.get(str(r.reply_to)) ?? 0) + 1);
+    // Par paquets de 50 (longueur d'URL, profondeur d'expression SQLite).
+    for (let i = 0; i < entryIds.length; i += 50) {
+      const chunk = entryIds.slice(i, i + 50);
+      const rows = await pb.collection("ops_log").getFullList({
+        filter: `status = "active" && (${chunk.map((id, j) => pb.filter(`reply_to = {:r${j}}`, { [`r${j}`]: id })).join(" || ")})`,
+        fields: "reply_to",
+        batch: 500,
+      });
+      for (const r of rows) map.set(str(r.reply_to), (map.get(str(r.reply_to)) ?? 0) + 1);
+    }
   } catch {
     // Champ absent (base pas encore migrée) : pas de compteur.
   }

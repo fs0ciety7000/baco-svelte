@@ -63,7 +63,9 @@ onRecordUpdateRequest((e) => {
 	// Changement de catégorie seul (tri, reclassement) : pas une correction du texte, pas de mention « modifié ».
 	if (changes.some((c) => c[0] !== 'category')) r.set('edited_at', ops.now());
 	// Notifications : nouvelles mentions et passage en urgent, une fois par agent et par entrée (champ `notified`).
-	const plan = to === 'active' ? ops.planNotifications(e.app, r, ops.ids(r, 'mentions'), r.getBool('urgent')) : { mention: [], urgent: [] };
+	// Changement de catégorie seul (tri, reclassement) : aucune notification (un ancien message n'est pas rediffusé).
+	const onlyCategory = changes.length > 0 && changes.every((c) => c[0] === 'category') && from === to;
+	const plan = to === 'active' && !onlyCategory ? ops.planNotifications(e.app, r, ops.ids(r, 'mentions'), r.getBool('urgent')) : { mention: [], urgent: [] };
 	e.next();
 	if (from !== to) ops.event(e.app, r.id, to === 'retiree' ? 'retire' : 'restore', 'status', from, to, e.auth, r.getString('retired_reason'));
 	for (const c of changes) ops.event(e.app, r.id, 'edit', c[0], c[1], c[2], e.auth, '');

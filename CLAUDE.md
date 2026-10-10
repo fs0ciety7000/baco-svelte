@@ -591,6 +591,15 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   catégorie en liste, actions en icônes, fil bord à bord), catégories **Service / Perturbation / Groupes** (choix de
   l'utilisateur), **tri automatique** réglable (Administration › Tri du Journal : règles source iRail / BACO + mots-clés)
   et **reclassement des anciens messages BACO** (« les deux » : messages automatiques et messages importés). 240 contrôles.
+- 2026-10-10 — **Revue adversariale des trois lots** (0 critique), corrigés : un changement de catégorie seul (reclassement)
+  ne renotifie plus (urgence / mentions des anciens messages) et l'import BACO remplit `notified` ; noms de gares iRail en
+  français d'abord (nom officiel bilingue gardé en `alt`, comparé par moitiés) ; **retard à l'arrivée pour les
+  débarquements** (`da` / `ca`, terminus compris) ; notifications de retard seulement aux agents dont les districts du jour
+  croisent ceux des gares (plus de diffusion aux comptes sans district) et enregistrées avant l'envoi ; préfixe de gare à
+  une frontière de mot (« Ath » ≠ « Athus ») ; compteurs de réponses par paquets de 50 ; widget sans lecture nominative ;
+  reclassement BACO qui ne touche ni les consignes ni une catégorie d'origine autre qu'« info » par la règle par défaut ;
+  double coche ALEA simultanée tolérée. **E2E Admin en CI** (compte admin de test `E2E_ADMIN_*`, `e2e/admin.spec.ts` :
+  écrans 1440 + 390, création / désactivation / réactivation). Laissé : mentions de district ouvertes à tout agent qui écrit.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

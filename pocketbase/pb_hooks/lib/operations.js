@@ -417,13 +417,16 @@ function brusselsHHMM(sec) {
 
 // Arrêt iRail d'une gare de mission : nom replié identique, ou l'un commence par l'autre (« Bruxelles-Midi »).
 function findStop(stops, station) {
-	const k = fold(station).replace(/[^a-z0-9]+/g, ' ').trim();
+	const norm = (v) => fold(v).replace(/[^a-z0-9]+/g, ' ').trim();
+	const k = norm(station);
 	if (!k) return null;
+	const namesOf = (s) => [s.st].concat(s.alt ? [s.alt].concat(String(s.alt).split('/')) : []).map(norm).filter(Boolean);
 	let best = null;
 	for (const s of stops) {
-		const n = fold(s.st).replace(/[^a-z0-9]+/g, ' ').trim();
-		if (n === k) return s;
-		if (!best && (n.indexOf(k) === 0 || k.indexOf(n) === 0)) best = s;
+		const names = namesOf(s);
+		if (names.indexOf(k) !== -1) return s;
+		// Préfixe à une frontière de mot seulement (« Ath » ≠ « Athus »).
+		if (!best && names.some((n) => n.indexOf(`${k} `) === 0 || k.indexOf(`${n} `) === 0)) best = s;
 	}
 	return best;
 }
@@ -509,13 +512,27 @@ function missionTrains(app, at) {
 		}
 		let raw = json.stops.stop || [];
 		if (!Array.isArray(raw)) raw = [raw];
-		const stops = raw.map((s) => ({
-			st: String((s.stationinfo && s.stationinfo.standardname) || s.station || ''),
-			t: brusselsHHMM(parseInt(s.time || '0', 10)),
-			d: Math.round(parseInt(s.delay || '0', 10) / 60) || 0,
-			c: s.canceled === '1' || s.canceled === 1,
-			l: s.left === '1' || s.left === 1
-		}));
+		// Nom français (lang=fr) d'abord : le nom officiel iRail est bilingue à Bruxelles et néerlandais en Flandre ;
+		// retard et suppression au départ (d, c) ET à l'arrivée (da, ca : débarquements, terminus).
+		const stops = raw.map((s) => {
+			const fr = String(s.station || (s.stationinfo && s.stationinfo.name) || '');
+			const official = String((s.stationinfo && s.stationinfo.standardname) || '');
+			const flag = (v) => v === '1' || v === 1;
+			const min = (v) => Math.round(parseInt(v || '0', 10) / 60) || 0;
+			const dep = min(s.departureDelay !== undefined ? s.departureDelay : s.delay);
+			const arr = min(s.arrivalDelay !== undefined ? s.arrivalDelay : s.delay);
+			const out = {
+				st: fr || official,
+				t: brusselsHHMM(parseInt(s.time || s.scheduledDepartureTime || '0', 10)),
+				d: dep,
+				da: arr,
+				c: flag(s.departureCanceled) || flag(s.canceled),
+				ca: flag(s.arrivalCanceled) || flag(s.canceled),
+				l: flag(s.left)
+			};
+			if (official && official !== out.st) out.alt = official;
+			return out;
+		});
 		if (!stops.length) continue;
 		const next = stops.filter((s) => !s.l)[0] || stops[stops.length - 1];
 		const allCancelled = stops.every((s) => s.c);
@@ -542,15 +559,18 @@ function missionTrains(app, at) {
 		for (const m of byTrain[train]) {
 			let hit = false;
 			const legs = [];
-			if (m.inA) legs.push([m.dep, m.depD]);
-			if (m.outA) legs.push([m.arr, m.arrD]);
+			if (m.inA) legs.push([m.dep, m.depD, false]);
+			if (m.outA) legs.push([m.arr, m.arrD, true]);
 			for (const leg of legs) {
 				const s = findStop(stops, leg[0]);
 				if (!s || s.l) continue;
-				if (s.c) cancelHit = true;
-				if (s.c || s.d >= DELAY_ALERT) {
+				// Débarquement : retard et suppression à l'arrivée ; embarquement : au départ.
+				const delay = leg[2] ? s.da : s.d;
+				const cancelled = leg[2] ? s.ca : s.c;
+				if (cancelled) cancelHit = true;
+				if (cancelled || delay >= DELAY_ALERT) {
 					hit = true;
-					worst = Math.max(worst, s.d);
+					worst = Math.max(worst, delay);
 					if (leg[1]) districts[leg[1]] = true;
 					where[s.st] = true;
 				}
@@ -560,6 +580,7 @@ function missionTrains(app, at) {
 		const notifiedDelay = rec.getInt('notified_delay');
 		const newCancel = cancelHit && !rec.getBool('notified_cancel');
 		const newDelay = !cancelHit && worst >= DELAY_ALERT && worst >= (notifiedDelay ? notifiedDelay + 10 : DELAY_ALERT);
+		let pending = null;
 		if (newCancel || newDelay) {
 			const names = Object.keys(districts).map((c) => DISTRICT_NAME[c]).filter(Boolean);
 			const parts = [];
@@ -567,18 +588,25 @@ function missionTrains(app, at) {
 			if (groups) parts.push(`${groups} groupe${groups > 1 ? 's' : ''}`);
 			const stations = Object.keys(where).slice(0, 3).join(', ');
 			const label = train.replace(/^([A-Z]+)(\d)/, '$1 $2');
-			const title = newCancel ? `Train ${label} supprimé à ${stations}` : `Train ${label} : +${worst} min à ${stations}`;
-			const body = `${parts.join(' et ')} concernée${pmr + groups > 1 ? 's' : ''} (iRail).`;
-			for (const u of users) {
-				const mine = dutyDistricts(u, today);
-				if (names.length && mine.length && !mine.some((d) => names.indexOf(d) !== -1)) continue;
-				notify(app, u.id, 'train', title, body, `/pmr?q=${encodeURIComponent(train.replace(/^[A-Z]+/, ''))}`, 'mission_trains', `${train}:${today}`.slice(0, 40));
-				sent++;
-			}
+			pending = {
+				names: names,
+				title: newCancel ? `Train ${label} supprimé à ${stations}` : `Train ${label} : +${worst} min à ${stations}`,
+				body: `${parts.join(' et ')} concernée${pmr + groups > 1 ? 's' : ''} (iRail).`
+			};
 			if (newCancel) rec.set('notified_cancel', true);
 			if (newDelay) rec.set('notified_delay', worst);
 		}
+		// Enregistré avant d'envoyer : un échec d'écriture ne rejoue pas les mêmes alertes au passage suivant.
 		app.save(rec);
+		if (pending && pending.names.length) {
+			// Seulement les agents dont les districts du jour croisent ceux des gares concernées (pas de diffusion générale).
+			for (const u of users) {
+				const mine = dutyDistricts(u, today);
+				if (!mine.some((d) => pending.names.indexOf(d) !== -1)) continue;
+				notify(app, u.id, 'train', pending.title, pending.body, `/pmr?q=${encodeURIComponent(train.replace(/^[A-Z]+/, ''))}`, 'mission_trains', `${train}:${today}`.slice(0, 40));
+				sent++;
+			}
+		}
 	}
 	return sent;
 }

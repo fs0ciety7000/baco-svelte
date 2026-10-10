@@ -254,7 +254,13 @@ export function TokenList({
 }) {
   const [confirm, setConfirm] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  if (!tokens.length) return <p className="text-small text-fg-muted">{empty}</p>;
+  if (!tokens.length)
+    return (
+      <div className="flex flex-col gap-1">
+        {title ? <p className="text-body font-semibold">{title}</p> : null}
+        <p className="text-small text-fg-muted">{empty}</p>
+      </div>
+    );
   return (
     <div className="flex flex-col gap-2">
       {title ? <p className="text-body font-semibold">{title}</p> : null}

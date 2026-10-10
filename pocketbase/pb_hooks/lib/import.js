@@ -514,7 +514,10 @@ function importOperations(app, dir, report) {
 		r.set('district', districtOf[m.user_id] || '');
 		r.set('status', 'active');
 		r.set('author', m.user_id);
-		r.set('mentions', ops.mentionsFrom(app, m.message_content, m.user_id));
+		const mentioned = ops.mentionsFrom(app, m.message_content, m.user_id);
+		r.set('mentions', mentioned);
+		// Messages repris : déjà lus à l'époque, jamais renotifiés (mentions, urgence, districts cités).
+		r.set('notified', mentioned.concat(m.is_urgent ? ['*urgent'] : [], ops.districtTagsIn(m.message_content).map((t) => `*@${t}`)));
 		const edited = m.updated_at && new Date(m.updated_at).getTime() - new Date(m.created_at).getTime() > 60000;
 		if (edited) r.set('edited_at', toDate(m.updated_at));
 		app.save(r);

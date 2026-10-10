@@ -78,6 +78,8 @@ jobs:
       PB_SUPERUSER_PASSWORD: Ci-${{ github.run_id }}-e2e
       E2E_IDENTITY: e2e@csm.invalid
       E2E_PASSWORD: E2e-${{ github.run_id }}-agent
+      E2E_ADMIN_IDENTITY: admin-e2e@csm.local
+      E2E_ADMIN_PASSWORD: E2e-${{ github.run_id }}-admin
       # iRail et tuiles simulés (web/e2e/mock-services.mjs) : E2E déterministes, sans dépendance externe.
       IRAIL_URL: http://127.0.0.1:8094/v1
       TILES_URL: http://127.0.0.1:8094/tiles/{z}/{x}/{y}.png
@@ -104,6 +106,8 @@ jobs:
             -d "{\"identity\":\"$PB_SUPERUSER_EMAIL\",\"password\":\"$PB_SUPERUSER_PASSWORD\"}" | node -pe 'JSON.parse(require("fs").readFileSync(0)).token')
           curl -sf -X POST $PB_URL/api/collections/users/records -H "authorization: $T" -H 'content-type: application/json' \
             -d "{\"email\":\"$E2E_IDENTITY\",\"password\":\"$E2E_PASSWORD\",\"passwordConfirm\":\"$E2E_PASSWORD\",\"name\":\"Agent E2E\",\"role\":\"user\",\"district\":\"Sud-Ouest\",\"verified\":true}" > /dev/null
+          curl -sf -X POST $PB_URL/api/collections/users/records -H "authorization: $T" -H 'content-type: application/json' \
+            -d "{\"email\":\"$E2E_ADMIN_IDENTITY\",\"password\":\"$E2E_ADMIN_PASSWORD\",\"passwordConfirm\":\"$E2E_ADMIN_PASSWORD\",\"name\":\"Admin E2E\",\"role\":\"admin\",\"verified\":true}" > /dev/null
       - name: Build et démarrage du serveur standalone
         working-directory: web
         run: |
