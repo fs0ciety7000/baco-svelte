@@ -263,3 +263,9 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `data-print="hide"`, `FilterForm` et `ChipRow` masqués, vue tableau imprimée, fil du Journal en entier) ; bouton
   « Imprimer » dans le Journal.
 - E2E Admin : `e2e/admin.spec.ts` (compte `E2E_ADMIN_IDENTITY` / `E2E_ADMIN_PASSWORD`, créé par la CI).
+- **Relève de service** (`/operations/releve`, `journal:read`) : `server/data/handover.ts` (`buildHandover`, districts du jour
+  ou `?district=DSO|DSE|DCE|tous`) → bons bus / taxi à confirmer, à clôturer (≥ `CLOSE_DAYS`), en cours ; missions et groupes
+  à venir (jusqu'à demain 10 h) ; trains en retard ; ALEA du jour non encodés ; urgences 12 h + consignes ; perturbations
+  iRail 12 h. Texte copiable `handoverText` (`lib/ops/handover.ts`, testé), « Épingler au Journal » (`pinHandover` :
+  consigne épinglée 12 h). Trajets et bouts ALEA partagés : **`lib/pmr/legs.ts`** (`legOf`, `groupLegOf`, `aleaEnds`,
+  `groupEnds`) — plus dans les composants.

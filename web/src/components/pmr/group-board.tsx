@@ -9,12 +9,13 @@ import { Badge } from "@/components/ui/status-badge";
 import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
 import { formatDay } from "@/lib/orders/time";
 import { DISTRICT_LABEL } from "@/lib/pmr/districts";
-import { aleaGroupBlocks, type GroupEnd } from "@/lib/pmr/model";
+import { aleaGroupBlocks } from "@/lib/pmr/model";
+import { groupEnds, groupLegOf, groupTotal, groupTrain } from "@/lib/pmr/legs";
 import { missionImpact, type TrainStates } from "@/lib/pmr/train-delay";
 import type { GroupMission } from "@/server/data/groups";
 
 import { AleaButton } from "./alea-export";
-import { HIGHLIGHT, IoBadges, type Leg } from "./assist-board";
+import { HIGHLIGHT, IoBadges } from "./assist-board";
 import { PhoneLink } from "./phone-link";
 import { DelayBadge, TrainChip } from "./train-chip";
 
@@ -27,19 +28,9 @@ const STATUS = {
   annulee: { label: "Annulée", tone: "danger" },
 } as const;
 
-const legOf = (g: GroupMission): Leg => ({
-  dep: g.station || "—",
-  depTime: g.time,
-  depDistrict: g.district,
-  arr: g.otherStation || "—",
-  arrTime: g.arrTime,
-  arrDistrict: g.arrDistrict,
-  inA: g.inAssist,
-  outA: g.outAssist,
-});
-const total = (g: GroupMission) => g.adults + g.children + g.seniors;
-const trainOf = (g: GroupMission) =>
-  g.transport === "taxi" ? `Taxi${g.train ? ` ${g.train}` : ""}` : g.train || "—";
+const legOf = groupLegOf;
+const trainOf = groupTrain;
+const total = groupTotal;
 
 function Route({ g, district }: { g: GroupMission; district: string }) {
   const l = legOf(g);
@@ -55,27 +46,6 @@ function Route({ g, district }: { g: GroupMission; district: string }) {
       {end(l.arr, l.arrTime, l.outA, l.arrDistrict)}
     </span>
   );
-}
-
-function groupEnds(rows: GroupMission[], district: string): GroupEnd[] {
-  const ends: GroupEnd[] = [];
-  for (const g of rows) {
-    if (g.status === "annulee") continue;
-    const l = legOf(g);
-    const base = {
-      day: g.day,
-      train: trainOf(g),
-      total: total(g),
-      children: g.children,
-      seniors: g.seniors,
-      dossier: g.dicosRef,
-    };
-    if (l.inA && (!district || l.depDistrict === district))
-      ends.push({ ...base, station: l.dep, time: l.depTime, io: "IN" });
-    if (l.outA && (!district || l.arrDistrict === district))
-      ends.push({ ...base, station: l.arr, time: l.arrTime, io: "OUT" });
-  }
-  return ends;
 }
 
 export function GroupBoard({

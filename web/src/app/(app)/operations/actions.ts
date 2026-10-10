@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { normalizeTrain, parseFavorites, stationId } from "@/lib/ops/irail";
 import { DUTY_DISTRICTS, entrySchema, RETIRE_WINDOW_MS } from "@/lib/ops/log";
-import { brusselsDay, brusselsToUtc, pbDate } from "@/lib/orders/time";
+import { brusselsDay, brusselsTime, brusselsToUtc, pbDate } from "@/lib/orders/time";
 import { can, isAdmin } from "@/lib/permissions";
 import { requireUser, type SessionUser } from "@/server/auth";
 import {
@@ -428,6 +428,28 @@ export async function setDutyDistricts(input: string[]): Promise<Result> {
     return { ok: true };
   } catch (e) {
     unstable_rethrow(e);
+    return fail(e);
+  }
+}
+
+/** Relève de service épinglée au Journal en consigne (jusqu'à 12 h plus tard). */
+export async function pinHandover(body: string): Promise<Result<{ id: string }>> {
+  try {
+    const user = await need("journal:write");
+    const now = new Date();
+    const until = new Date(now.getTime() + 12 * 3600_000);
+    const p = entrySchema.parse({
+      body,
+      category: "consigne",
+      day: brusselsDay(now),
+      time: brusselsTime(now),
+      pinUntilDay: brusselsDay(until),
+      pinUntilTime: brusselsTime(until),
+    });
+    const pb = await pbForRequest();
+    const r = await pb.collection("ops_log").create({ ...entryBody(p), author: user.id });
+    return { ok: true, data: { id: r.id } };
+  } catch (e) {
     return fail(e);
   }
 }

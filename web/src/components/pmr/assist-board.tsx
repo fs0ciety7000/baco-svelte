@@ -23,9 +23,9 @@ import {
   DIRECTION_IO,
   DIRECTION_LABEL,
   PMR_TYPE_LABEL,
-  type AleaEnd,
   type AssistStatus,
 } from "@/lib/pmr/model";
+import { aleaEnds, legOf, type Leg } from "@/lib/pmr/legs";
 import { missionImpact, type TrainStates } from "@/lib/pmr/train-delay";
 import type { Assist, PmrEvent } from "@/server/data/pmr";
 
@@ -47,50 +47,7 @@ export function AssistBadge({ status }: { status: AssistStatus }) {
 
 /** Un trajet DICOS v3 porte ses deux bouts (gare + heure + district, assistance IN au départ / OUT à l'arrivée).
  *  Une ancienne ligne (v2, BACO) n'a qu'une gare d'assistance + un sens : on la ramène au même modèle. */
-export type Leg = {
-  dep: string;
-  depTime: string;
-  depDistrict: string;
-  arr: string;
-  arrTime: string;
-  arrDistrict: string;
-  inA: boolean;
-  outA: boolean;
-};
-function legOf(a: Assist): Leg {
-  if (a.inAssist || a.outAssist || a.arrTime || a.transport)
-    return {
-      dep: a.station || "—",
-      depTime: a.time,
-      depDistrict: a.district,
-      arr: a.otherStation || "—",
-      arrTime: a.arrTime,
-      arrDistrict: a.arrDistrict,
-      inA: a.inAssist,
-      outA: a.outAssist,
-    };
-  if (a.direction === "arrivee")
-    return {
-      dep: a.otherStation || "—",
-      depTime: "",
-      depDistrict: "",
-      arr: a.station || "—",
-      arrTime: a.time,
-      arrDistrict: a.district,
-      inA: false,
-      outA: true,
-    };
-  return {
-    dep: a.station || "—",
-    depTime: a.time,
-    depDistrict: a.district,
-    arr: a.otherStation || "—",
-    arrTime: "",
-    arrDistrict: "",
-    inA: a.direction === "depart",
-    outA: false,
-  };
-}
+export type { Leg };
 
 /** Bouts d'assistance retenus : ceux du district filtré s'il y en a un, sinon tous. */
 function assistedEnds(l: Leg, district: string): ("depart" | "arrivee")[] {
@@ -638,30 +595,6 @@ export function AssistBoard({
       </Sheet>
     </>
   );
-}
-
-/** Bouts d'assistance des trajets affichés (annulés exclus ; avec un filtre district, ses gares seulement). */
-function aleaEnds(rows: Assist[], district: string): AleaEnd[] {
-  const ends: AleaEnd[] = [];
-  for (const a of rows) {
-    if (a.status === "annulee") continue;
-    const l = legOf(a);
-    const train = a.transport === "taxi" ? `Taxi${a.train ? ` ${a.train}` : ""}` : a.train || "—";
-    const base = {
-      day: a.day,
-      train,
-      pax: a.pax,
-      pmrType: a.pmrType,
-      dossier: a.dicosRef,
-      fullPax: a.fullPax,
-      lightPax: a.lightPax,
-    };
-    if (l.inA && (!district || l.depDistrict === district))
-      ends.push({ ...base, station: l.dep, time: l.depTime, io: "IN" });
-    if (l.outA && (!district || l.arrDistrict === district))
-      ends.push({ ...base, station: l.arr, time: l.arrTime, io: "OUT" });
-  }
-  return ends;
 }
 
 /**

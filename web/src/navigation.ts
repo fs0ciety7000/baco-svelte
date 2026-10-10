@@ -116,6 +116,12 @@ export const MODULES: NavModule[] = [
         keywords: ["main courante", "messages", "consignes"],
       },
       {
+        href: "/operations/releve",
+        label: "Relève",
+        permission: "journal:read",
+        keywords: ["relève", "passation", "fin de service", "synthèse"],
+      },
+      {
         href: "/operations/carte-pn",
         label: "Carte PN",
         permission: "carte_pn:read",
