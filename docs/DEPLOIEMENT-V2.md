@@ -26,6 +26,24 @@ redéploie les deux applications selon `watch_paths`). Rien d'autre ne pousse su
 **Cloudflare** : `csm` et `pb-csm` existent ; activer **Cloudflare Access** sur `pb-csm.fs0ciety.org` (le web n'en a pas
 besoin : il joint PocketBase par le réseau Docker). Garder l'« Email Address Obfuscation » sans effet (`no-transform`).
 
+**Cloudflare Access sur PocketBase** (`pb-csm` et `pb-test-csm`, enregistrements proxifiés) : Zero Trust
+(one.dash.cloudflare.com, offre Free ≤ 50 utilisateurs) → Access → Applications → Add → **Self-hosted**, deux noms
+d'hôte (`pb-csm`, `pb-test-csm` sur `fs0ciety.org`), politique **Allow** sur l'e-mail de l'utilisateur (connexion par
+code à usage unique). Aucun effet sur CSM : `csm-web` joint PocketBase par le réseau Docker (`PB_URL` interne), la sonde
+de santé est locale, les liens d'e-mail pointent vers `CSM_APP_URL`. Effet sur Claude : les appels directs à
+`https://pb-*.fs0ciety.org` (restauration par l'API, réglages, contrôle « collection présente » du §6) renvoient la page
+Cloudflare → passer par un **jeton de service** Access (politique « Service Auth », en-têtes `CF-Access-Client-Id` /
+`CF-Access-Client-Secret`, à poser comme variables de l'environnement cloud) ou par une tâche planifiée Coolify.
+
+**SMTP Brevo** (mot de passe oublié + campagnes) : domaine authentifié = **`fs0ciety.org`** (racine : un `TXT` y est
+possible, contrairement à `csm` qui porte l'enregistrement de l'application ; SPF `v=spf1 mx ~all` et DMARC
+`p=quarantine` existants **gardés**, Resend y est aussi vérifié). Enregistrements Brevo : `TXT brevo-code` à la racine,
+`CNAME brevo1._domainkey` / `brevo2._domainkey` (**non proxifiés**). Clé SMTP : Brevo → SMTP & API → SMTP.
+Variables sur `csm-pocketbase-prod` **et** `csm-pocketbase` (runtime, non build) : `CSM_SMTP_HOST=smtp-relay.brevo.com`,
+`CSM_SMTP_PORT=587`, `CSM_SMTP_USER` (identifiant `…@smtp-brevo.com`), `CSM_SMTP_PASSWORD` (clé SMTP),
+`CSM_MAIL_SENDER` (adresse d'un expéditeur validé dans Brevo, ex. `csm@fs0ciety.org`), `CSM_MAIL_SENDER_NAME`, puis
+redéploiement. Journal de démarrage : « e-mail : SMTP smtp-relay.brevo.com:587 ». Offre gratuite : 300 e-mails / jour.
+
 ### Preview (environnement `production` historique, branche de session)
 
 Projet **CSM** (`cqqgszrebw6mm6wyizbzb5i3`), environnement `production`, serveur `localhost` (Coolify 4.4.2,
