@@ -119,7 +119,8 @@ transitoire. L'ancien service `stalwart` (`h7vpjks3…`, `mail.tandem-agenda.app
 - **Cloudflare Access (10 oct.)**, Allow = occmons@gmail.com + nico.dessenius@gmail.com + nd.managment@gmail.com, 24 h, **une application par nom
   d'hôte ou par chemin** (un regroupement provoque une boucle de connexion) :
   - « PocketBase CSM » (pb-csm, pb-test-csm) ; admins PocketBase `/_` : `base`, `devblog`, `eat`, `test`, `base-test` ;
-  - outils internes (une application chacun) : convert, img, link, profilarr, surrealist, tools, search, webmail ;
+  - Surrealist et webmail (une application chacun) ; convert, img, link, profilarr, tools, search **volontairement publics**
+    (décision de l'utilisateur du 10 oct., remis en DNS seul) ;
   - **Coolify** (`coolify.fs0ciety.org`, proxifié) : tableau de bord protégé, **`/api` et `/webhooks` en Bypass** (API
     protégée par jeton, webhooks GitHub des déploiements automatiques) ;
   - Termix `ssh.fs0ciety.org`, Immich `photos.fs0ciety.org` (tunnel Cloudflare ; l'appli mobile Immich exige alors un

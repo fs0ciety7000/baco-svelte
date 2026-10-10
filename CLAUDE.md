@@ -864,6 +864,9 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   `base.fs0ciety.org` + préprod `test.fs0ciety.org`) testé après réglage manuel du SMTP par l'utilisateur (mot de passe
   d'application dédié « Cosmic Empires ») : 204, file vide. Non testé : documenso (403). `nd.managment@gmail.com` ajouté aux politiques Access.
 
+- 2026-10-10 — **Access retiré** de convert, img, link, profilarr, tools, search (décision de l'utilisateur : publics), remis en
+  DNS seul ; restent protégés : Coolify, ssh, Immich, mailadmin, webmail, Surrealist, admins PocketBase.
+
 ---
 
 ## Annexe — stack v1 SvelteKit (référence gelée)
