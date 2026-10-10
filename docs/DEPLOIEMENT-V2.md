@@ -50,14 +50,13 @@ par une tâche planifiée Coolify exécutée une fois, ou demander à l'utilisat
 « Service Auth » ajoutée à l'application, en-têtes `CF-Access-Client-Id` / `CF-Access-Client-Secret` posés comme
 variables de l'environnement cloud).
 
-**SMTP Brevo** (mot de passe oublié + campagnes) : domaine authentifié = **`fs0ciety.org`** (racine : un `TXT` y est
-possible, contrairement à `csm` qui porte l'enregistrement de l'application ; SPF `v=spf1 mx ~all` et DMARC
-`p=quarantine` existants **gardés**, Resend y est aussi vérifié). Enregistrements Brevo : `TXT brevo-code` à la racine,
-`CNAME brevo1._domainkey` / `brevo2._domainkey` (**non proxifiés**). Clé SMTP : Brevo → SMTP & API → SMTP.
-Variables sur `csm-pocketbase-prod` **et** `csm-pocketbase` (runtime, non build) : `CSM_SMTP_HOST=smtp-relay.brevo.com`,
-`CSM_SMTP_PORT=587`, `CSM_SMTP_USER` (identifiant `…@smtp-brevo.com`), `CSM_SMTP_PASSWORD` (clé SMTP),
-`CSM_MAIL_SENDER` (adresse d'un expéditeur validé dans Brevo, ex. `csm@fs0ciety.org`), `CSM_MAIL_SENDER_NAME`, puis
-redéploiement. Journal de démarrage : « e-mail : SMTP smtp-relay.brevo.com:587 ». Offre gratuite : 300 e-mails / jour.
+**SMTP Resend** (mot de passe oublié + campagnes) : domaine d'envoi **dédié** `mail.fs0ciety.org` (jamais `csm` ni un
+nom qui porte une application : la configuration automatique Brevo a remplacé l'enregistrement `csm` le 10 oct. et coupé
+la prod ; Brevo abandonné). Resend → Add domain (région eu-west-1), enregistrements DKIM / MX / TXT de `send.mail`
+**non proxifiés** ; clé API « Sending access » limitée au domaine. Variables sur `csm-pocketbase-prod` **et**
+`csm-pocketbase` (runtime) : `CSM_SMTP_HOST=smtp.resend.com`, `CSM_SMTP_PORT=587`, `CSM_SMTP_USER=resend`,
+`CSM_SMTP_PASSWORD` (clé API), `CSM_MAIL_SENDER=csm@mail.fs0ciety.org`, `CSM_MAIL_SENDER_NAME`, puis redéploiement.
+Journal de démarrage : « e-mail : SMTP smtp.resend.com:587 ».
 
 ### Preview (environnement `production` historique, branche de session)
 

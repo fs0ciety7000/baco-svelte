@@ -167,6 +167,10 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - (v2) **Sauvegardes PocketBase et bucket partagé** : la rotation supprime toutes les sauvegardes `@auto_pb_backup_*` du
   stockage au-delà de N, quelle que soit l'instance (vérifié dans `core/backup.go` de la 0.40.4) → **un bucket R2 = une
   instance**. `csm-backups` est réservé à la prod ; la preview sauvegarde sur son volume.
+- (v2) **Ne jamais authentifier un domaine d'envoi d'e-mail sur un nom qui porte une application** : la configuration
+  automatique Brevo (Domain Connect) sur `csm.fs0ciety.org` a remplacé son enregistrement par un CNAME `brevosend.com` →
+  **production hors service** le 10 oct. (rétabli par l'utilisateur, Brevo abandonné). Envoi : sous-domaine dédié
+  (`mail.fs0ciety.org`, Resend). Après tout changement DNS, vérifier `https://csm.fs0ciety.org/api/health`.
 - (v2) PocketBase refuse un **filtre sur `email`** (champ masqué) même pour un admin avec `manageRule` : filtrer en
   JavaScript après lecture (campagnes).
 - (v2) PostgREST (Supabase) plafonne une réponse à **1000 lignes** : paginer (`offset`) — PtCar en a 1148.
@@ -721,9 +725,9 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   CSM (`lib/mail/campaign.ts`, Markdown du Journal → HTML de messagerie échappé + texte, `{prenom}`), aperçu isolé (iframe
   `sandbox`), **e-mail de test obligatoire** avant l'envoi à tous, envoi un par un (400 ms) par la route interne
   `/api/csm/mail/send` (SMTP de PocketBase), journal (envoyés, échecs), une campagne envoyée ne repart pas (dupliquer).
-  Deuxième exception à « pas d'envoi automatique » validée par l'utilisateur (avec le mot de passe oublié). SMTP conseillé :
-  **Brevo** gratuit (300 e-mails / jour, relais SMTP, domaine authentifié par DKIM) ; Resend gratuit = 1 domaine (déjà
-  pris par empire.fs0ciety.org). 261 contrôles de règles.
+  Deuxième exception à « pas d'envoi automatique » validée par l'utilisateur (avec le mot de passe oublié). SMTP : **Resend**
+  sur un sous-domaine dédié (`mail.fs0ciety.org`) ; Brevo essayé puis abandonné (vérification par SMS, et sa configuration
+  DNS automatique a coupé la prod). 261 contrôles de règles.
 - 2026-10-10 — **Lot suivant évoqué : Quinyx** (tableau de service) pour voir qui est en poste — à cadrer (API Quinyx
   avec identifiants délivrés par l'IT, ou flux iCal par agent).
 - 2026-10-10 — **Cloudflare Access devant les deux PocketBase** (autorisation du propriétaire, par l'API Cloudflare) :
