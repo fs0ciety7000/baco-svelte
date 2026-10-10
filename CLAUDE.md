@@ -169,8 +169,8 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   instance**. `csm-backups` est réservé à la prod ; la preview sauvegarde sur son volume.
 - (v2) **Ne jamais authentifier un domaine d'envoi d'e-mail sur un nom qui porte une application** : la configuration
   automatique Brevo (Domain Connect) sur `csm.fs0ciety.org` a remplacé son enregistrement par un CNAME `brevosend.com` →
-  **production hors service** le 10 oct. (rétabli par l'utilisateur, Brevo abandonné). Envoi : sous-domaine dédié
-  (`mail.fs0ciety.org`, Resend). Après tout changement DNS, vérifier `https://csm.fs0ciety.org/api/health`.
+  **production hors service** le 10 oct. (rétabli par l'utilisateur, Brevo abandonné). Envoi : serveur Stalwart
+  `mail.fs0ciety.org` (compte `csm@fs0ciety.org`, DEPLOIEMENT-V2 §SMTP). Après tout changement DNS, vérifier `https://csm.fs0ciety.org/api/health`.
 - (v2) PocketBase refuse un **filtre sur `email`** (champ masqué) même pour un admin avec `manageRule` : filtrer en
   JavaScript après lecture (campagnes).
 - (v2) PostgREST (Supabase) plafonne une réponse à **1000 lignes** : paginer (`offset`) — PtCar en a 1148.
@@ -800,10 +800,11 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 
 - 2026-10-10 — **Serveur mail Stalwart** (`smtp-fs0ciety`, projet Dev) : **tous les envois et réceptions des services
   hébergés y passeront** (décision de l'utilisateur), Resend transitoire ; variables Coolify (et code si besoin) des services
-  à adapter ensuite (inventaire dans DEPLOIEMENT-V2 §SMTP). Relevé : 5 domaines + DKIM RSA/Ed25519 déjà créés, pas de
-  listener 587, pas de certificat (ACME TLS-ALPN-01 en échec, HTTP-01 intercepté par Traefik). Écritures (listener,
-  comptes `csm@` / `dmarc@`, certificat, DNS, variables CSM) **en attente** : refusées par le garde-fou du mode automatique
-  malgré l'accord de l'utilisateur ; choix du certificat (DNS-01 jeton limité ou passthrough) soumis.
+  à adapter ensuite (inventaire dans DEPLOIEMENT-V2 §SMTP). Fait : certificat Let's Encrypt `*.fs0ciety.org` par **DNS-01**
+  avec le jeton Cloudflare existant (accord de l'utilisateur ; HTTP-01 intercepté par Traefik), listener 587, compte
+  `csm@fs0ciety.org` + alias `dmarc@`, DKIM des 5 domaines, MX `cardormedia.com` / `empire` (CNAME → A proxifié).
+  **CSM branché** (preview puis prod, santé 200, test de campagne envoyé depuis la preview). Reste à l'utilisateur : SPF de
+  4 domaines, MX `tandem-agenda.app` (après création des boîtes) et `tasks.tandem-agenda.app` (après adaptation d'agenda).
 
 ---
 

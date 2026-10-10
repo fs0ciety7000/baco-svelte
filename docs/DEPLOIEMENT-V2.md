@@ -50,7 +50,7 @@ par une tâche planifiée Coolify exécutée une fois, ou demander à l'utilisat
 « Service Auth » ajoutée à l'application, en-têtes `CF-Access-Client-Id` / `CF-Access-Client-Secret` posés comme
 variables de l'environnement cloud).
 
-**SMTP Resend** (mot de passe oublié + campagnes) : domaine d'envoi **dédié** `mail.fs0ciety.org` (jamais `csm` ni un
+**SMTP Resend (remplacé par Stalwart le 10 oct., gardé pour mémoire)** (mot de passe oublié + campagnes) : domaine d'envoi **dédié** `mail.fs0ciety.org` (jamais `csm` ni un
 nom qui porte une application : la configuration automatique Brevo a remplacé l'enregistrement `csm` le 10 oct. et coupé
 la prod ; Brevo abandonné). Resend → Add domain (région eu-west-1), enregistrements DKIM / MX / TXT de `send.mail`
 **non proxifiés** ; clé API « Sending access » limitée au domaine. Variables sur `csm-pocketbase-prod` **et**
@@ -58,36 +58,48 @@ la prod ; Brevo abandonné). Resend → Add domain (région eu-west-1), enregist
 `CSM_SMTP_PASSWORD` (clé API), `CSM_MAIL_SENDER=csm@mail.fs0ciety.org`, `CSM_MAIL_SENDER_NAME`, puis redéploiement.
 Journal de démarrage : « e-mail : SMTP smtp.resend.com:587 ».
 
-**Serveur mail Stalwart (décision du 10 oct., en cours)** : **tous les envois et réceptions** des services hébergés
-passeront par le serveur auto-hébergé **Stalwart v0.16.13**, service Coolify `smtp-fs0ciety`
+**Serveur mail Stalwart (en service depuis le 10 oct.)** : **tous les envois et réceptions** des services hébergés
+passent (ou passeront) par le serveur auto-hébergé **Stalwart v0.16.13**, service Coolify `smtp-fs0ciety`
 (`s7rxizvqhtvgib6cs2rqqd9g`, projet **Dev**, hôte 152.53.176.13, DNS inverse `mail.fs0ciety.org`, ports 25 / 465 /
 587 / 993 / 4190, interface + API derrière Traefik sur `https://mail.fs0ciety.org` → conteneur 8080). Resend devient
 transitoire. L'ancien service `stalwart` (`h7vpjks3…`, `mail.tandem-agenda.app`) est **arrêté** (aucun conflit de ports).
-- API v0.16 = **JMAP** (`POST /jmap/`, `using: urn:stalwart:jmap`, objets `x:Domain`, `x:Account`, `x:DkimSignature`,
-  `x:NetworkListener`, `x:AcmeProvider`, `x:Certificate`, `x:SystemSettings` id `singleton`, `x:Task`) ; les anciens
-  `/api/principal`, `/api/settings`, `/api/dkim` renvoient 404. `GET /api/account` liste les droits de la clé.
-- État relevé : nom d'hôte `mail.fs0ciety.org` ✓ ; 5 domaines créés (`fs0ciety.org`, `empire.fs0ciety.org`,
-  `cardormedia.com`, `tandem-agenda.app`, `tasks.tandem-agenda.app`) avec DKIM automatique RSA + Ed25519
-  (sélecteurs `v1-rsa-AAAAMMJJ` / `v1-ed25519-AAAAMMJJ`, rotation 90 j : **les enregistrements DNS suivent la rotation**) ;
-  seul compte `admin@fs0ciety.org` ; **pas de listener 587** (à créer : `submission`, STARTTLS) ; **aucun certificat**.
-- **Certificat** : le fournisseur ACME est en TLS-ALPN-01 (port 443 tenu par Traefik → échec) et **HTTP-01 est
-  impossible** : Traefik (Coolify) intercepte `/.well-known/acme-challenge/` sur le port 80 pour ses propres
-  certificats (404 vide). Solutions : DNS-01 avec un jeton Cloudflare **limité** à `Zone › DNS › Edit` de
-  `fs0ciety.org` (recommandé), ou routeur TCP Traefik en passthrough `HostSNI(mail.fs0ciety.org)` → port 443 du conteneur.
-  Sans certificat valide, PocketBase refuse le STARTTLS : ne pas poser `CSM_SMTP_*` avant.
-- CSM (à faire) : `CSM_SMTP_HOST=mail.fs0ciety.org`, `CSM_SMTP_PORT=587`, `CSM_SMTP_USER=csm@fs0ciety.org`,
-  `CSM_SMTP_PASSWORD` (fichier hors dépôt, mode 600), `CSM_MAIL_SENDER=csm@fs0ciety.org`,
-  `CSM_MAIL_SENDER_NAME=CSM · Client Solutions` sur `csm-pocketbase` puis `csm-pocketbase-prod` (aucune variable
-  `CSM_SMTP_*` n'y était posée le 10 oct.), redémarrage preview → test « Envoyer un test » → prod.
+- API v0.16 = **JMAP** (`POST /jmap/`, `using: urn:stalwart:jmap`, compte `b`, objets `x:Domain`, `x:Account`,
+  `x:NetworkListener`, `x:AcmeProvider`, `x:Certificate`, `x:DnsServer`, `x:SystemSettings` id `singleton`, `x:Task`,
+  `x:QueuedMessage`) ; schéma complet par `GET /api/schema` ; les anciens `/api/principal`, `/api/settings`, `/api/dkim`
+  renvoient 404. `x:Trace` (journal de livraison) = édition Enterprise seulement.
+- **Certificat** : Let's Encrypt `*.fs0ciety.org` + `fs0ciety.org` (couvre `mail.fs0ciety.org`), émis le 10 oct., valable
+  jusqu'au 8 janv. 2027, renouvellement automatique (tâche `AcmeRenewal`). Défi **DNS-01** par le serveur DNS Stalwart
+  « Cloudflare » (`x:DnsServer` `ji9jfilpkwqa`, jeton Cloudflare du compte, accord de l'utilisateur). HTTP-01 et
+  TLS-ALPN-01 impossibles derrière Traefik (voir CLAUDE.md §7).
+- Domaines : `fs0ciety.org` (gestion DNS **automatique** limitée au **DKIM** : Stalwart publie et fait tourner ses clés
+  tous les 90 j), `empire.fs0ciety.org`, `cardormedia.com`, `tandem-agenda.app`, `tasks.tandem-agenda.app` (gestion DNS
+  **manuelle**, clés `v1-rsa-20261010` / `v1-ed25519-20261010` posées à la main le 10 oct. : **à republier à chaque
+  rotation** (90 j) ou passer ces domaines en gestion automatique DKIM comme `fs0ciety.org`). Ancienne clé
+  `mail._domainkey.fs0ciety.org` supprimée.
+- Listener `submission` **587** (STARTTLS) ajouté le 10 oct. ; 465 (TLS implicite) existait. Un listener ne s'active
+  qu'au redémarrage du service : le « Reload settings » à chaud échoue sur une règle DNSBL par défaut (`bit_and`).
+- Comptes : `admin@fs0ciety.org` (alias **`dmarc@fs0ciety.org`**, destinataire des rapports DMARC) ;
+  **`csm@fs0ciety.org`** (rôle User, envoi de CSM ; mot de passe dans `/home/user/csm-secrets/smtp-csm-password` de
+  l'environnement cloud, mode 600, et dans les variables Coolify ; jamais dans Git).
+- **CSM branché le 10 oct.** sur `csm-pocketbase` puis `csm-pocketbase-prod` (variables runtime) :
+  `CSM_SMTP_HOST=mail.fs0ciety.org`, `CSM_SMTP_PORT=587`, `CSM_SMTP_USER=csm@fs0ciety.org`, `CSM_SMTP_PASSWORD`,
+  `CSM_MAIL_SENDER=csm@fs0ciety.org`, `CSM_MAIL_SENDER_NAME=CSM · Client Solutions` (+ `CSM_APP_URL` déjà présent).
+  Redémarrage par `POST /applications/{uuid}/restart`. Vérifié : santé 200 (preview et prod), page « mot de passe
+  oublié » en mode envoi (preview et prod), **test de campagne envoyé depuis la preview** (STARTTLS accepté, file
+  Stalwart vide ensuite).
+- DNS posé le 10 oct. : DKIM des 5 domaines ; MX `cardormedia.com` et `empire.fs0ciety.org` → `mail.fs0ciety.org` ;
+  `empire.fs0ciety.org` passé de CNAME proxifié (→ `fs0ciety.org`) à **A proxifié 152.53.176.13** (site vérifié 200).
+  **Reste à poser par l'utilisateur** (refusé au garde-fou de l'environnement) : SPF `empire.fs0ciety.org`
+  `v=spf1 mx ~all`, `cardormedia.com` `v=spf1 mx include:spf.brevo.com ~all` (aucun SPF aujourd'hui),
+  `tandem-agenda.app` `v=spf1 ip4:152.53.176.13 include:spf.tutanota.de -all` (remplace l'existant),
+  `tasks.tandem-agenda.app` `v=spf1 ip4:152.53.176.13 ~all`. MX `tandem-agenda.app` (Tutanota) : **après** création des
+  boîtes dans Stalwart (sinon le courrier est refusé) ; MX `tasks.tandem-agenda.app` (Amazon SES, réception entrante
+  d'agenda) : **après** adaptation du code d'agenda (`INBOUND_EMAIL_*`).
 - Autres services à basculer ensuite (noms de variables relevés le 10 oct., valeurs jamais lues) : OCC Deliveries
-  (`OCC_SMTP_*`, `OCC_MAIL_FROM*`), agenda / Tandem (`SMTP_*`, `RESEND_*`, `INBOUND_EMAIL_*` : réception entrante à
-  revoir), rail-cards (`SMTP_*`, `EMAIL_FROM`), elo (`RESEND_*`), fs0ciety (`RESEND_API_KEY`), documenso
-  (`NEXT_PRIVATE_SMTP_*`, `NEXT_PRIVATE_RESEND_API_KEY`), ntfy (`NTFY_SMTP_SENDER_*`). Un compte d'envoi par service
-  (mot de passe propre, révocable). Code des services à adapter quand ils n'envoient que par l'API Resend.
-- DNS : SPF **fusionné** (un seul par nom, `ip4:152.53.176.13` ajouté sans retirer les `include:`), DKIM Stalwart,
-  DMARC existant gardé ; MX de `cardormedia.com` (aucun) / `tandem-agenda.app` (Tutanota) / `tasks.tandem-agenda.app`
-  (Amazon SES) = décision de l'utilisateur ; `empire.fs0ciety.org` est un CNAME proxifié → ni MX ni SPF possibles
-  tant qu'il le reste (envoi aligné DMARC par DKIM seulement).
+  (`OCC_SMTP_*`, `OCC_MAIL_FROM*`), agenda / Tandem (`SMTP_*`, `RESEND_*`, `INBOUND_EMAIL_*`), rail-cards (`SMTP_*`,
+  `EMAIL_FROM`), elo (`RESEND_*`), fs0ciety (`RESEND_API_KEY`), documenso (`NEXT_PRIVATE_SMTP_*`,
+  `NEXT_PRIVATE_RESEND_API_KEY`), ntfy (`NTFY_SMTP_SENDER_*`). **Un compte d'envoi par service** (mot de passe propre,
+  révocable). Code à adapter quand le service n'envoie que par l'API Resend.
 
 ### Preview (environnement `production` historique, branche de session)
 
@@ -118,7 +130,7 @@ proxy Traefik). Source : GitHub App `breakable-bee-gkkc8wwg8sswo044`, dépôt `f
 | `csm-web` | `CSM_DICOS_PB_EMAIL`, `CSM_DICOS_PB_PASSWORD` | compte de service PocketBase (rôle `connector`, droit `dicos:write`) de l'ingestion DICOS / ATMS ; secrets |
 | `csm-web` | `CSM_DICOS_TOKEN` | **facultatif** depuis l'extension 1.7.0 (jetons personnels des agents) : secret partagé des extensions antérieures, à retirer quand toutes sont à jour |
 | `csm-pocketbase` | `CSM_BACKUP_S3_ENDPOINT`, `CSM_BACKUP_S3_BUCKET`, `CSM_BACKUP_S3_ACCESS_KEY`, `CSM_BACKUP_S3_SECRET` | facultatives : sauvegardes envoyées dans **Cloudflare R2** (§3), réglées au démarrage de `serve` par `pb_hooks/backups.pb.js` ; secrets. **Seule source de vérité** : variables absentes ou incomplètes = S3 coupé et secret effacé (une copie restaurée ailleurs n'écrit jamais dans le bucket de production) ; `CSM_BACKUP_KEEP` (défaut 14, max 90) |
-| `csm-pocketbase` | `CSM_SMTP_HOST`, `CSM_SMTP_PORT`, `CSM_SMTP_USER`, `CSM_SMTP_PASSWORD`, `CSM_MAIL_SENDER`, `CSM_MAIL_SENDER_NAME`, `CSM_APP_URL` | « Mot de passe oublié » par e-mail (`pb_hooks/mail.pb.js`) ; secrets SMTP **à fournir par l'utilisateur** ; incomplètes = envoi coupé. `CSM_APP_URL` (adresse du site dans le lien) posée le 10 oct. |
+| `csm-pocketbase` | `CSM_SMTP_HOST`, `CSM_SMTP_PORT`, `CSM_SMTP_USER`, `CSM_SMTP_PASSWORD`, `CSM_MAIL_SENDER`, `CSM_MAIL_SENDER_NAME`, `CSM_APP_URL` | « Mot de passe oublié » par e-mail (`pb_hooks/mail.pb.js`) ; serveur **Stalwart** `mail.fs0ciety.org:587`, compte `csm@fs0ciety.org` (posées le 10 oct. sur preview et prod) ; incomplètes = envoi coupé. `CSM_APP_URL` (adresse du site dans le lien) posée le 10 oct. |
 | `csm-web` + `csm-pocketbase` | `CSM_INTERNAL_SECRET` | même valeur des deux côtés, ≥ 32 caractères, **runtime** : routes internes des passkeys (posée par l'API le 10 oct. ; à régénérer = changer les deux puis redéployer). `csm-web` : `CSM_PUBLIC_URL` **obligatoire** pour les passkeys (identifiant WebAuthn ; posée le 10 oct. : `https://test-csm.fs0ciety.org`, à changer pour la prod) |
 | `csm-pocketbase` | `CSM_DICOS_ALERT_HOURS` | facultative : plage de service de l'alerte « synchro DICOS en retard » (défaut `6-22`, heure de Bruxelles ; `off` = coupée) |
 | `csm-web` | `IRAIL_URL`, `TILES_URL`, `CSM_USER_AGENT` | facultatives : défauts `https://api.irail.be/v1`, `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, User-Agent CSM (le serveur doit pouvoir sortir vers ces deux domaines) |
