@@ -824,6 +824,9 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   elo, fs0ciety, documenso, ntfy ; adresses de contact ajoutées / remplacées dans 10 dépôts (agents par dépôt, relus, poussés
   sur les branches déployées). SPF `cardormedia.com` et `tandem-agenda.app` posés. CSM garde `csm@fs0ciety.org`.
 
+- 2026-10-10 — **Webmail Roundcube** sur https://webmail.fs0ciety.org (service Coolify `webmail`, projet Dev), branché sur
+  Stalwart (IMAP 993, SMTP 587, Sieve 4190) ; connexion et envoi / réception vérifiés avec la boîte `nicolas@`.
+
 ---
 
 ## Annexe — stack v1 SvelteKit (référence gelée)

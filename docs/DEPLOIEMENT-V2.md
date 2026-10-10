@@ -111,6 +111,11 @@ transitoire. L'ancien service `stalwart` (`h7vpjks3…`, `mail.tandem-agenda.app
   `tasks.tandem-agenda.app` `v=spf1 ip4:152.53.176.13 ~all`. MX `tandem-agenda.app` (Tutanota) : **après** création des
   boîtes dans Stalwart (sinon le courrier est refusé) ; MX `tasks.tandem-agenda.app` (Amazon SES, réception entrante
   d'agenda) : **après** adaptation du code d'agenda (`INBOUND_EMAIL_*`).
+- **Webmail** : Roundcube 1.6.19 (service Coolify `webmail`, `nl0viskc8qkr3ta1qmv0t0fv`, projet **Dev**) sur
+  **https://webmail.fs0ciety.org** (A explicite non proxifié) ; IMAP `ssl://mail.fs0ciety.org:993`, envoi
+  `tls://mail.fs0ciety.org:587` avec l'identifiant de la boîte, filtres Sieve sur 4190, SQLite en volume, réglages dans
+  `custom.inc.php` (compose). Aucun secret dans le service. Vérifié le 10 oct. : connexion `nicolas@fs0ciety.org`, envoi vers
+  `contact@fs0ciety.org` reçu dans la boîte.
 - **Services basculés le 10 oct.** (décision : **un seul compte d'envoi, `nicolas@fs0ciety.org`**, pas de compte par
   service ; expéditeurs = alias du compte : `noreply@fs0ciety.org`, `noreply@eat.fs0ciety.org`, `noreply@empire.fs0ciety.org`,
   `no-reply@tandem-agenda.app`) : OCC Deliveries (`OCC_SMTP_*` port 465, `OCC_MAIL_FROM=noreply@eat…`), agenda / Tandem
