@@ -422,6 +422,14 @@ export function JournalChat({
             >
               <span className="text-small font-semibold text-fg">
                 {mine ? `Toi (${r.authorName})` : r.authorName}
+                {r.authorStatus ? (
+                  <span
+                    className="ml-1.5 rounded-control border border-border-strong px-1 text-label font-medium text-fg-muted"
+                    data-testid="author-status"
+                  >
+                    {r.authorStatus}
+                  </span>
+                ) : null}
               </span>
               <span className="font-mono text-hint text-fg-muted tabular" title="Envoyé le">
                 <span className="max-sm:hidden">{stampOf(r.created || r.occurredAt)}</span>

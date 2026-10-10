@@ -16,3 +16,17 @@ export const DISTRICT_SHORT: Record<string, string> = {
   "Sud-Est": "DSE",
   Centre: "DCE",
 };
+
+/** Statuts du jour proposés (Journal, Équipe ; demande du 10 oct. 2026). Saisie libre possible (40 caractères). */
+export const STATUS_PRESETS = [
+  "EXTRA",
+  "Pas en service",
+  "En pause",
+  "Au téléphone",
+  "En formation",
+] as const;
+
+/** Statut visible seulement le jour où il a été posé (Europe/Brussels). */
+export function statusOf(status: string, statusDay: string, today: string): string {
+  return status && statusDay === today ? status : "";
+}

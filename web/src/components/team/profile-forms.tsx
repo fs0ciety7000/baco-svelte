@@ -14,6 +14,7 @@ import {
 import { setDutyDistricts } from "@/app/(app)/operations/actions";
 import { Avatar } from "@/components/shell/avatar";
 import { PasskeysCard } from "@/components/team/passkeys";
+import { HomeCard, SessionsCard, StatusCard } from "@/components/team/profile-extras";
 import { useShell } from "@/components/shell/shell-context";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Button } from "@/components/ui/button";
@@ -225,12 +226,16 @@ export function ProfileForms({
   duty,
   canExtension,
   passkeys,
+  status,
+  home,
 }: {
   profile: MyProfile;
   activity: MyActivity;
   duty: string[];
   canExtension: boolean;
   passkeys: boolean;
+  status: string;
+  home: string;
 }) {
   const router = useRouter();
   const { ui, setUi } = useShell();
@@ -306,6 +311,8 @@ export function ProfileForms({
       </Card>
       <div className="flex flex-col gap-4">
         <DutyCard initial={duty} />
+        <StatusCard initial={status} />
+        <HomeCard initial={home} />
         <ActivityCard activity={activity} />
       </div>
       <Card className="lg:col-span-2">
@@ -354,6 +361,7 @@ export function ProfileForms({
         </CardContent>
       </Card>
       {passkeys ? <PasskeysCard /> : null}
+      <SessionsCard />
       {canExtension ? (
         <Card>
           <CardHeader eyebrow="// Sécurité" title="Appareils connectés" />

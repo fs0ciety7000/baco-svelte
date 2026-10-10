@@ -1,10 +1,32 @@
 # Déploiement de CSM v2 sur Coolify
 
-> Environnement de test : **https://test-csm.fs0ciety.org** (web) et **https://pb-test-csm.fs0ciety.org** (PocketBase,
-> réservé à l'administration). Ressources créées par Claude via l'API Coolify le 8 octobre 2026.
+> **Production** (10 octobre 2026) : **https://csm.fs0ciety.org** (web) et **https://pb-csm.fs0ciety.org** (PocketBase, à
+> protéger par Cloudflare Access), branche **`csm-prod`**, environnement Coolify `prod`.
+> **Preview** : **https://test-csm.fs0ciety.org** (web) et **https://pb-test-csm.fs0ciety.org**, branche de session.
+> Ressources créées par Claude via l'API Coolify (test le 8 octobre, prod le 10 octobre 2026).
 > BACO (Vercel, branche `main`, base Supabase) n'est pas concerné.
 
 ## 1. Ressources Coolify
+
+### Production (environnement `prod`, branche `csm-prod`)
+
+| Ressource | UUID | Domaine | Notes |
+|---|---|---|---|
+| `csm-pocketbase-prod` | `k3qyrzgja0ob7pbgd25xp0ms` | `pb-csm.fs0ciety.org` | volume `csm-pb-prod-data` → `/pb_data` ; R2 `csm-backups` (30 conservées) ; nom réseau `csm-pocketbase-prod` |
+| `csm-web-prod` | `oe9umzuky1alqztamtenvugz` | `csm.fs0ciety.org` | `PB_URL=http://csm-pocketbase-prod:8090` |
+
+Variables prod (runtime) : PocketBase `PB_ADMIN_EMAIL` / `PB_ADMIN_PASSWORD` (superuser neuf, visible dans Coolify),
+`CSM_APP_URL=https://csm.fs0ciety.org`, `CSM_INTERNAL_SECRET`, `CSM_BACKUP_S3_*`, `CSM_BACKUP_KEEP=30`, **`CSM_SMTP_*` à
+poser** ; web `PB_URL`, `CSM_COOKIE_SECURE=true`, `CSM_PUBLIC_URL=https://csm.fs0ciety.org`, `CSM_INTERNAL_SECRET` (même
+valeur), `CSM_DICOS_PB_EMAIL` / `_PASSWORD` (compte `connector` de la prod), `CSM_USER_AGENT`.
+
+**Mettre en production** une version validée sur la preview : `git push origin <commit>:csm-prod` (avance rapide ; Coolify
+redéploie les deux applications selon `watch_paths`). Rien d'autre ne pousse sur `csm-prod`.
+
+**Cloudflare** : `csm` et `pb-csm` existent ; activer **Cloudflare Access** sur `pb-csm.fs0ciety.org` (le web n'en a pas
+besoin : il joint PocketBase par le réseau Docker). Garder l'« Email Address Obfuscation » sans effet (`no-transform`).
+
+### Preview (environnement `production` historique, branche de session)
 
 Projet **CSM** (`cqqgszrebw6mm6wyizbzb5i3`), environnement `production`, serveur `localhost` (Coolify 4.4.2,
 proxy Traefik). Source : GitHub App `breakable-bee-gkkc8wwg8sswo044`, dépôt `fs0ciety7000/baco-svelte`.
@@ -53,7 +75,8 @@ domaines autorisés.
   `/pb_data/backups`, 14 conservées.
 - **Sauvegarde Coolify du volume** : chaque nuit à **2 h 30** UTC, 14 conservées localement sur le serveur Coolify,
   alerte après 2 jours sans exécution. Elle contient les zips de 2 h.
-- **Hors serveur : Cloudflare R2** (prêt depuis le 9 octobre, à activer) :
+- **Hors serveur : Cloudflare R2** — **réservé à la production depuis le 10 octobre** (la rotation de PocketBase supprime les
+  sauvegardes des autres instances d'un bucket partagé ; la preview sauvegarde sur son volume) :
   1. Cloudflare → R2 → créer le bucket **`csm-backups`** (emplacement UE si proposé) ; laisser l'accès public coupé ;
   2. R2 → « Manage API tokens » → jeton **Object Read & Write limité au bucket `csm-backups`** → noter l'Access Key ID,
      le Secret Access Key et l'endpoint `https://<id de compte>.r2.cloudflarestorage.com` ;

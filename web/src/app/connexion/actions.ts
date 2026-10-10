@@ -3,8 +3,10 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { createPb } from "@/server/pocketbase";
-import { clearSessionToken, writeSessionToken } from "@/server/session";
+import { homeOf } from "@/lib/home";
+import { createPb as pbFor } from "@/server/pocketbase";
+import { clearSessionToken, readSessionToken, writeSessionToken } from "@/server/session";
+import { endSession, startSession } from "@/server/sessions";
 
 const loginSchema = z.object({
   identity: z.string().trim().min(1, "Identifiant requis").max(200),
@@ -27,19 +29,24 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     return { error: parsed.error.issues[0]?.message ?? "Saisie invalide" };
   }
   const { identity, password, next } = parsed.data;
-  const pb = createPb();
+  const pb = pbFor();
+  let home = "/";
   try {
     const auth = await pb.collection("users").authWithPassword(identity, password);
     if (auth.record.role === "disabled") return { error: "Compte désactivé.", identity };
     await writeSessionToken(auth.token);
+    await startSession(auth.token, "password");
+    home = homeOf(auth.record.preferences);
   } catch {
     // Message identique que l'identifiant existe ou non.
     return { error: "Identifiant ou mot de passe incorrect.", identity };
   }
-  redirect(safeNext(next));
+  // Lien demandé (suite) d'abord, sinon la page d'accueil choisie par l'agent.
+  redirect(next ? safeNext(next) : home);
 }
 
 export async function logout(): Promise<void> {
+  await endSession(await readSessionToken());
   await clearSessionToken();
   redirect("/connexion");
 }

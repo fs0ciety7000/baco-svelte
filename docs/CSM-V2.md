@@ -147,3 +147,6 @@ Dans Coolify, deux ressources :
 Restent ouverts hors code : validation d'Équipe et Admin, réponses du DPO (`docs/DPO-CONSERVATION.md`), accès à
 `pb-test-csm` à restreindre (Cloudflare Access / IP), retrait de `CSM_DICOS_TOKEN` quand toutes les extensions sont en
 1.7.0, correctifs SQL BACO non appliqués (`20261008130000`, `20261008140000`).
+
+
+**10 octobre 2026 : mise en production** sur `csm.fs0ciety.org` (branche `csm-prod`, données BACO importées) ; `test-csm` devient la preview. Prochain lot proposé : synchronisation du tableau de service Quinyx (qui est en poste).

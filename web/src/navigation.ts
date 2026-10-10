@@ -201,6 +201,7 @@ export const ADMIN: NavModule = {
     { href: "/admin/audit", label: "Journal d'audit" },
     { href: "/admin/journal", label: "Tri du Journal" },
     { href: "/admin/extension", label: "Appareils connectés" },
+    { href: "/admin/campagnes", label: "Campagnes" },
     { href: "/admin/sante", label: "Santé" },
   ],
 };

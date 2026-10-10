@@ -7,6 +7,7 @@ import { parseFavorites, type FavoriteStation } from "@/lib/ops/irail";
 import { plainText } from "@/lib/ops/chat-markdown";
 import { LOG_CATEGORIES, type LogCategory } from "@/lib/ops/log";
 import { addDays, brusselsDay, brusselsToUtc, isValidDay } from "@/lib/orders/time";
+import { statusOf } from "@/lib/team";
 
 import { pbForRequest, toPbInstant } from "./orders";
 
@@ -46,6 +47,8 @@ export type LogEntry = {
   authorName: string;
   /** Fichier d'avatar de l'auteur (vide = initiales). */
   authorAvatar: string;
+  /** Statut du jour de l'auteur (« EXTRA »…), vide sinon. */
+  authorStatus: string;
   /** « irail » : message repris automatiquement d'iRail (perturbation, travaux), sans auteur. */
   source: "agent" | "irail";
   editedAt: string;
@@ -132,6 +135,10 @@ function entry(r: RecordModel, readers: Map<string, { id: string; name: string }
         ? "iRail · SNCB"
         : str(e.author?.name) || str(e.author?.username) || "Agent",
     authorAvatar: str(r.source) === "irail" ? "" : str(e.author?.avatar),
+    authorStatus:
+      str(r.source) === "irail"
+        ? ""
+        : statusOf(str(e.author?.status), str(e.author?.status_day), brusselsDay()),
     source: str(r.source) === "irail" ? "irail" : "agent",
     editedAt: str(r.edited_at),
     created: str(r.created),

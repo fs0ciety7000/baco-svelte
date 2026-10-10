@@ -295,3 +295,13 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `components/pwa-register.tsx` (production seulement). Tout nouveau fichier statique chargé sans cookie (manifeste,
   icônes) doit être ajouté à `PUBLIC` dans `middleware.ts`. **Écran commun** : `app/tv/page.tsx` (hors `(app)`, donc sans
   shell ; `requireUser` + `journal:read`), `components/ops/tv-board.tsx` (réutilise `buildHandover`).
+- **Sessions** : `server/sessions.ts` (`startSession` après connexion mot de passe / passkey, `sessionAlive` appelé par
+  `getCurrentUser` : cookie `csm_sid` inconnu → déconnecté ; erreur réseau ≠ déconnexion), `endSession` à la déconnexion ;
+  `lib/sessions.ts` (`deviceLabel`, `maskIp`, testés) ; actions `listMySessions` / `revokeMySession` / `logoutOtherDevices`
+  (`equipe/actions.ts`). **Statut** : `setMyStatus`, `statusOf` (`lib/team.ts`), `LogEntry.authorStatus`,
+  `TeamMember.status`. **Accueil** : `lib/home.ts` (`HOME_CHOICES`, `homeOf`), `setMyHome`, redirection dans `login` et
+  `passkeyLogin` (le paramètre `suite` reste prioritaire). Cartes `components/team/profile-extras.tsx`.
+- **Campagnes** : `lib/mail/campaign.ts` (`renderCampaign`, `DEFAULT_CAMPAIGN`, testé), `app/(app)/admin/campaign-actions.ts`,
+  `components/admin/campaigns.tsx`, page `/admin/campagnes`. Destinataires filtrés en JS (PocketBase refuse le filtre sur
+  `email`).
+- **Prod** : `middleware.ts` pose `Cache-Control: … no-transform` sur les pages (Cloudflare réécrivait les e-mails du HTML).

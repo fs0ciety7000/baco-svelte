@@ -3,6 +3,9 @@ import "server-only";
 import type { RecordModel } from "pocketbase";
 import { z } from "zod";
 
+import { brusselsDay } from "@/lib/orders/time";
+import { statusOf } from "@/lib/team";
+
 import { pbForRequest } from "./orders";
 
 // Équipe (décisions du 9 oct. 2026 : annuaire léger, profil, Nouveautés ; pas de planning, congés, « présents » ni
@@ -21,9 +24,11 @@ export type TeamMember = {
   role: string;
   avatar: string;
   workPhone: string;
+  /** Statut du jour (vide sinon). */
+  status: string;
 };
 
-const MEMBER_FIELDS = "id,name,username,fonction,district,role,avatar,work_phone";
+const MEMBER_FIELDS = "id,name,username,fonction,district,role,avatar,work_phone,status,status_day";
 
 function member(r: RecordModel): TeamMember {
   return {
@@ -35,6 +40,7 @@ function member(r: RecordModel): TeamMember {
     role: str(r.role),
     avatar: str(r.avatar),
     workPhone: str(r.work_phone),
+    status: statusOf(str(r.status), str(r.status_day), brusselsDay()),
   };
 }
 

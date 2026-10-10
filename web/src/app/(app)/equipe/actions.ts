@@ -8,7 +8,12 @@ import { isAdmin } from "@/lib/permissions";
 import { requireUser } from "@/server/auth";
 import { pbForRequest } from "@/server/data/orders";
 import { createPb } from "@/server/pocketbase";
+import { HOME_CHOICES } from "@/lib/home";
+import { brusselsDay } from "@/lib/orders/time";
+import { deviceLabel, maskIp } from "@/lib/sessions";
+import { env } from "@/server/env";
 import { writeSessionToken } from "@/server/session";
+import { currentSid } from "@/server/sessions";
 
 // Écritures du module Équipe : profil de l'agent, mot de passe, Nouveautés (admin, sysop, moderator).
 
@@ -136,6 +141,8 @@ export async function changeMyPassword(input: unknown): Promise<Result> {
       .update(user.id, { oldPassword: p.current, password: p.next, passwordConfirm: p.next });
     const auth = await createPb().collection("users").authWithPassword(email, p.next);
     await writeSessionToken(auth.token);
+    // Les autres appareils ont perdu leur jeton (PocketBase invalide tout au changement) : leurs sessions sont closes.
+    await dropOtherSessions(auth.token, user.id);
     return { ok: true };
   } catch (e) {
     return fail(e);
@@ -173,6 +180,138 @@ export async function deleteChangelog(id: string): Promise<Result> {
     await editor();
     const pb = await pbForRequest();
     await pb.collection("changelog").delete(pbId.parse(id));
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Statut du jour, page d'accueil, sessions ouvertes (demande du 10 oct. 2026)
+
+/** Statut affiché au Journal pour la journée (« EXTRA », « Pas en service »…) ; vide = aucun. */
+export async function setMyStatus(input: unknown): Promise<Result> {
+  try {
+    const user = await requireUser();
+    const status = z
+      .string()
+      .trim()
+      .max(40)
+      .parse(input ?? "");
+    const pb = await pbForRequest();
+    await pb
+      .collection("users")
+      .update(user.id, { status, status_day: status ? brusselsDay() : "" });
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Page d'accueil après la connexion (liste fermée). */
+export async function setMyHome(input: unknown): Promise<Result> {
+  try {
+    const user = await requireUser();
+    const href = z.enum(HOME_CHOICES.map((c) => c.href) as [string, ...string[]]).parse(input);
+    const pb = await pbForRequest();
+    const me = await pb.collection("users").getOne(user.id, { fields: "preferences" });
+    const prefs =
+      me.preferences && typeof me.preferences === "object"
+        ? (me.preferences as Record<string, unknown>)
+        : {};
+    await pb.collection("users").update(user.id, { preferences: { ...prefs, home: href } });
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export type MySession = {
+  id: string;
+  device: string;
+  ip: string;
+  method: string;
+  created: string;
+  lastSeen: string;
+  current: boolean;
+};
+
+export async function listMySessions(): Promise<
+  { ok: true; data: MySession[] } | { ok: false; error: string }
+> {
+  try {
+    const user = await requireUser();
+    const pb = await pbForRequest();
+    const sid = await currentSid();
+    const rows = await pb.collection("user_sessions").getFullList({
+      filter: pb.filter("user = {:u}", { u: user.id }),
+      sort: "-last_seen",
+      fields: "id,sid,user_agent,ip,method,created,last_seen",
+    });
+    return {
+      ok: true,
+      data: rows.map((r) => ({
+        id: r.id,
+        device: deviceLabel(String(r.user_agent ?? "")),
+        ip: maskIp(String(r.ip ?? "")),
+        method: String(r.method ?? ""),
+        created: String(r.created ?? ""),
+        lastSeen: String(r.last_seen ?? r.created ?? ""),
+        current: !!sid && r.sid === sid,
+      })),
+    };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Déconnecte un appareil (sa session est refusée à sa prochaine requête). */
+export async function revokeMySession(id: string): Promise<Result> {
+  try {
+    await requireUser();
+    const pb = await pbForRequest();
+    await pb.collection("user_sessions").delete(pbId.parse(id));
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+async function dropOtherSessions(token: string, userId: string) {
+  const pb = createPb(token);
+  const sid = await currentSid();
+  const rows = await pb
+    .collection("user_sessions")
+    .getFullList({ filter: pb.filter("user = {:u}", { u: userId }), fields: "id,sid" })
+    .catch(() => []);
+  for (const r of rows)
+    if (r.sid !== sid)
+      await pb
+        .collection("user_sessions")
+        .delete(r.id)
+        .catch(() => null);
+}
+
+/**
+ * Déconnecte tous les autres appareils : nouvelle clé de jeton côté PocketBase (route interne : tous les jetons de
+ * l'agent deviennent invalides, y compris ceux d'avant le suivi des sessions), nouveau jeton pour cet appareil, autres
+ * sessions closes.
+ */
+export async function logoutOtherDevices(): Promise<Result> {
+  try {
+    const user = await requireUser();
+    if (env.CSM_INTERNAL_SECRET.length < 32)
+      throw new Error("DROIT:Fonction indisponible sur ce serveur (secret interne absent).");
+    const res = await fetch(`${env.PB_URL.replace(/\/$/, "")}/api/csm/session/rotate`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-csm-internal": env.CSM_INTERNAL_SECRET },
+      body: JSON.stringify({ user: user.id }),
+      cache: "no-store",
+    });
+    const body = (await res.json().catch(() => ({}))) as { token?: string };
+    if (!res.ok || !body.token) throw new Error("DROIT:Déconnexion des autres appareils refusée.");
+    await writeSessionToken(body.token);
+    await dropOtherSessions(body.token, user.id);
     return { ok: true };
   } catch (e) {
     return fail(e);

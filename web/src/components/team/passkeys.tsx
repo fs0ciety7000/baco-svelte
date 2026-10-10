@@ -67,7 +67,7 @@ export function PasskeyLoginButton({ next }: { next?: string }) {
         const res = await startAuthentication({ optionsJSON: opts.data });
         const r = await passkeyLogin(res);
         if (!r.ok) return setError(r.error);
-        const dest = next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+        const dest = next && next.startsWith("/") && !next.startsWith("//") ? next : r.data;
         window.location.assign(dest);
       } catch (e) {
         if (!cancelled(e)) setError("Passkey indisponible sur cet appareil.");

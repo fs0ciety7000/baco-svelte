@@ -27,6 +27,10 @@ import {
 } from "@/server/passkeys";
 import { allow } from "@/server/rate-limit";
 import { writeSessionToken } from "@/server/session";
+import { startSession } from "@/server/sessions";
+import { homeOf } from "@/lib/home";
+import { createPb } from "@/server/pocketbase";
+import { tokenPayload } from "@/server/token";
 
 // Passkeys (décision du 10 oct. 2026) : enregistrement depuis le profil (agent connecté), connexion depuis /connexion.
 
@@ -183,7 +187,7 @@ export async function passkeyLoginOptions(): Promise<
   }
 }
 
-export async function passkeyLogin(response: AuthenticationResponseJSON): Promise<Result> {
+export async function passkeyLogin(response: AuthenticationResponseJSON): Promise<Result<string>> {
   const refused = { ok: false as const, error: "Passkey refusée ou inconnue." };
   try {
     const h = await headers();
@@ -221,7 +225,16 @@ export async function passkeyLogin(response: AuthenticationResponseJSON): Promis
     });
     if (t.status !== 200 || !t.data.token) return refused;
     await writeSessionToken(t.data.token);
-    return { ok: true, data: undefined };
+    await startSession(t.data.token, "passkey");
+    // Page d'accueil choisie par l'agent (préférences lues avec son propre jeton).
+    const id = tokenPayload(t.data.token)?.id ?? "";
+    const me = id
+      ? await createPb(t.data.token)
+          .collection("users")
+          .getOne(id, { fields: "preferences" })
+          .catch(() => null)
+      : null;
+    return { ok: true, data: homeOf(me?.preferences) };
   } catch (e) {
     unstable_rethrow(e);
     return refused;

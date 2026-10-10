@@ -844,6 +844,32 @@ try {
 		check(`route interne passkey ${route} fermée sans secret`, r.status === 404, `HTTP ${r.status}`);
 	}
 
+	// Sessions ouvertes et campagnes (10 oct. 2026).
+	const sid = 'a'.repeat(40) + suffix.replace(/[^a-f0-9]/g, '0').padEnd(8, '0');
+	const sess = await api('POST', '/api/collections/user_sessions/records', { token: u.token, body: { user: u.id, sid, user_agent: 'test' } });
+	check('agent ouvre sa session', sess.status === 200, `HTTP ${sess.status}`);
+	const sessOther = await api('POST', '/api/collections/user_sessions/records', { token: u.token, body: { user: roles.reader.id, sid: 'b'.repeat(48) } });
+	check("agent n'ouvre pas de session pour un autre", sessOther.status >= 400, `HTTP ${sessOther.status}`);
+	const sessSid = await api('PATCH', `/api/collections/user_sessions/records/${sess.json?.id}`, { token: u.token, body: { sid: 'c'.repeat(48) } });
+	check("agent ne change pas l'identifiant d'une session", sessSid.status >= 400, `HTTP ${sessSid.status}`);
+	const sessRead = await api('GET', `/api/collections/user_sessions/records/${sess.json?.id}`, { token: roles.reader.token });
+	check("un autre agent ne voit pas la session", sessRead.status === 404, `HTTP ${sessRead.status}`);
+	const sessDel = await api('DELETE', `/api/collections/user_sessions/records/${sess.json?.id}`, { token: u.token });
+	check('agent ferme sa session', sessDel.status === 204, `HTTP ${sessDel.status}`);
+	const campUser = await api('POST', '/api/collections/mail_campaigns/records', { token: u.token, body: { subject: 'x', body: 'y', created_by: u.id } });
+	check("agent ne crée pas de campagne d'e-mail", campUser.status >= 400, `HTTP ${campUser.status}`);
+	const camp = await api('POST', '/api/collections/mail_campaigns/records', { token: roles.admin.token, body: { subject: 'Test', body: 'Bonjour', created_by: roles.admin.id } });
+	check("admin crée une campagne d'e-mail", camp.status === 200, `HTTP ${camp.status}`);
+	const campRead = await api('GET', `/api/collections/mail_campaigns/records/${camp.json?.id}`, { token: u.token });
+	check('agent ne lit pas les campagnes', campRead.status === 404, `HTTP ${campRead.status}`);
+	if (camp.json?.id) await api('DELETE', `/api/collections/mail_campaigns/records/${camp.json.id}`, { token: root });
+	for (const route of ['/api/csm/mail/send', '/api/csm/session/rotate']) {
+		const r = await api('POST', route, { body: { to: 'x@example.org', user: u.id } });
+		check(`route interne ${route} fermée sans secret`, r.status === 404, `HTTP ${r.status}`);
+	}
+	const st = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: u.token, body: { status: 'EXTRA', status_day: '2026-10-10' } });
+	check('agent pose son statut du jour', st.status === 200, `HTTP ${st.status}`);
+
 	// Admin : supprime.
 	const adel = await api('DELETE', `/api/collections/bus_orders/records/${order.json.id}`, { token: roles.admin.token });
 	check('admin supprime', adel.status === 204, `HTTP ${adel.status}`);

@@ -87,7 +87,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
                 className="size-10"
               />
               <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-body font-medium text-fg">{m.name}</span>
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <span className="truncate text-body font-medium text-fg">{m.name}</span>
+                  {m.status ? <Badge tone="info">{m.status}</Badge> : null}
+                </span>
                 <span className="truncate text-small text-fg-muted">
                   {m.fonction || ROLE_LABEL[m.role] || "—"}
                 </span>

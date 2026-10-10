@@ -34,9 +34,9 @@ gelée** (v1, branche `ccr-5dca0da8-4yg4i6`) : ne pas le modifier.
 | 1 | Prototype PocketBase vs Supabase + squelette Next | ✅ 8 oct. — `pocketbase/` : migrations, audit, import (29 comptes + empreintes, 295 BC bus), 24 contrôles de règles OK, sauvegarde/restauration OK ; `web/` : Next 15.5, connexion cookie httpOnly, `/commandes`, relais SSE, 6 E2E OK (1440 + 390). recommandation `docs/BACKEND-DECISION.md` validée |
 | 2 | Design system + page `/design` (5 thèmes, GSAP) | ✅ 8 oct. — jetons + test AA (156 contrôles), 19 composants, `/design`, 17 E2E ; captures et écarts **validés** |
 | 3 | Shell (6 entrées, onglets, ⌘K, mobile 4 + Plus) + tableau de bord | ✅ 8 oct. — 24 E2E, CSP, gardes par page, captures validées |
-| 4 | Données : schéma PocketBase, règles d'accès, import | 🔄 données BACO du 8 oct. importées sur l'instance de test (5 collections) ; migration réelle **en une fois à la bascule** |
+| 4 | Données : schéma PocketBase, règles d'accès, import | ✅ **bascule faite le 10 oct.** : sauvegarde Supabase fraîche (GET seuls) → base construite en local (`csm-import` + référentiels) → restaurée sur `pb-csm` ; comptages vérifiés (29 comptes + connecteur, 300 bons bus, 445 prestations, 1148 PtCar…) |
 | 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 **Commandes** livré en session 3 (schéma + 66 contrôles de règles, bus, taxi, envoi `.eml` + PDF, suivi, B201, E2E) : **validé le 8 oct.** ; **PMR validé le 8 oct.** (schéma + 105 contrôles de règles, prestations, collage DICOS, clients, matériel, E2E) ; **Opérations validé le 8 oct.** (trains en direct iRail, Journal (ex-main courante), carte PN, statistiques, cloche ; 149 contrôles de règles, 46 E2E) ; **DICOS / Missions PMR validé** (extension + ingestion, lecture seule, trajet/IN-OUT/district/copier) ; **Annuaire et données (ex-Référentiels) livré** (annuaire, lignes, PtCar, EBP, procédures + documents ; 7 collections ; 173 contrôles de règles ; audit + revue passés ; données v1 importées sur l'instance de test) ; **Équipe et Admin validés le 10 oct.** (+ vue admin des appareils connectés) |
-| 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | ✅ 8 oct. (R2 prêt le 9 oct., variables à poser) — https://test-csm.fs0ciety.org en ligne ; projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
+| 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | ✅ 8 oct. — **PRODUCTION en ligne le 10 oct. : https://csm.fs0ciety.org** (`csm-web-prod` + `csm-pocketbase-prod`, environnement Coolify `prod`, branche **`csm-prod`**, données BACO importées le 10 oct., sauvegardes R2) ; **test-csm = preview** (branche de session) ; projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
 | — | Hotfix sécurité BACO (`supabase/migrations/20261008120000_security_hotfix.sql`) | ✅ appliqué par l'utilisateur (SQL Editor) le 8 oct., vérifié : 0 ERROR (36 avant). Suite **non appliquée** : `20261008130000_hotfix_followup.sql` (test NULL de `get_my_role()`) et `20261008140000_pn_data_update_fix.sql` (XSS stocké carte PN), accord requis ; protection des mots de passe compromis encore désactivée |
 
 **Ne pas commencer une étape sans validation de l'utilisateur.** Les captures desktop (1440×900) et
@@ -141,10 +141,11 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 ## 6. Contraintes métier / infra (non négociables)
 
 - **Réseau entreprise** : WebSocket (et probablement HTTPS) vers `*.supabase.co` bloqués, l'IT n'ouvrira rien.
-  → Le navigateur ne parle **qu'au domaine CSM** (`test-csm.fs0ciety.org` en test) ; données via le serveur Next,
+  → Le navigateur ne parle **qu'au domaine CSM** (`csm.fs0ciety.org` en production, `test-csm.fs0ciety.org` en preview) ; données via le serveur Next,
   temps réel via SSE relayé par le serveur. PocketBase n'est jamais appelé directement par le navigateur.
 - **E-mail** : pas de jeton Outlook/Graph ; l'envoi est **manuel** depuis la **boîte fonctionnelle**.
-  → Générer un brouillon `.eml` (`X-Unsent: 1`) avec le PDF joint, jamais d'envoi SMTP automatique.
+  → Générer un brouillon `.eml` (`X-Unsent: 1`) avec le PDF joint pour les fournisseurs. **Seules exceptions SMTP
+  (validées le 10 oct.)** : e-mail « mot de passe oublié » et campagnes internes envoyées par un admin.
 - **Coexistence** : BACO (Vercel, branche `main`) reste en production sur Supabase jusqu'à la **date de bascule**.
   CSM v2 tourne sur sa propre base PocketBase, alimentée par import ; la migration réelle se fait **en une fois**
   à la bascule (gel de BACO, export, import, vérification). Aucune écriture dans Supabase d'ici là.
@@ -156,6 +157,19 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 ## 7. Pièges connus
 
 - (v2) `PREPROD_PB_URL` n'est pas l'instance CSM (voir §2).
+- (v2) **Deux instances : prod (`csm.fs0ciety.org`, `pb-csm.fs0ciety.org`, branche `csm-prod`) et preview (`test-csm`,
+  `pb-test-csm`, branche de session).** On développe et on valide sur la preview ; la prod n'avance que par une avance
+  rapide de `csm-prod` (`git push origin HEAD:csm-prod`) **quand l'utilisateur le demande**. Jamais de test destructif ni
+  de données fictives sur la prod (`pb-csm`) ; les comptes réels y sont.
+- (v2) **Cloudflare « Email Address Obfuscation »** réécrit les e-mails du HTML → erreurs d'hydratation React (#418) et
+  `mailto:` cassés : `middleware.ts` pose `Cache-Control: … no-transform` sur les pages (10 oct.). Une nouvelle option
+  Cloudflare de réécriture (Rocket Loader, Auto Minify…) doit rester coupée ou couverte par `no-transform`.
+- (v2) **Sauvegardes PocketBase et bucket partagé** : la rotation supprime toutes les sauvegardes `@auto_pb_backup_*` du
+  stockage au-delà de N, quelle que soit l'instance (vérifié dans `core/backup.go` de la 0.40.4) → **un bucket R2 = une
+  instance**. `csm-backups` est réservé à la prod ; la preview sauvegarde sur son volume.
+- (v2) PocketBase refuse un **filtre sur `email`** (champ masqué) même pour un admin avec `manageRule` : filtrer en
+  JavaScript après lecture (campagnes).
+- (v2) PostgREST (Supabase) plafonne une réponse à **1000 lignes** : paginer (`offset`) — PtCar en a 1148.
 - (v2) Dans l'environnement cloud, `fetch` de Node ignore le proxy sortant : lancer les scripts avec
   `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt`. Un domaine absent de « Network access »
   renvoie un 403 du proxy (`curl -sS "$HTTPS_PROXY/__agentproxy/status"`).
@@ -678,6 +692,33 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - 2026-10-10 — **Écran commun** : départs et arrivées iRail **de Mons** en temps réel (`?gare=` pour une autre gare,
   relu toutes les 60 s, voie, retard, suppression) ; **thèmes Forêt (défaut) et Rail** (`?theme=rail`, `data-theme` posé sur
   le `<main>` de `/tv`, indépendant du thème de l'agent connecté sur le poste). Liens depuis la Relève.
+- 2026-10-10 — **Mise en production** (accord de l'utilisateur : « Tu peux lancer la PROD ») : branche **`csm-prod`**,
+  environnement Coolify **`prod`** du projet CSM (`csm-pocketbase-prod` `k3qyrzgja0ob7pbgd25xp0ms`, volume `/pb_data`,
+  domaine `pb-csm.fs0ciety.org` à protéger par **Cloudflare Access** (choix de l'utilisateur) ; `csm-web-prod`
+  `oe9umzuky1alqztamtenvugz`, `https://csm.fs0ciety.org`), secrets neufs (superuser, `CSM_INTERNAL_SECRET`, compte
+  connecteur DICOS), copiés hors dépôt dans `/home/user/csm-backup-prod/.*` (600). **Données** : sauvegarde Supabase
+  fraîche en lecture seule (écart depuis le 8 oct. : 4 bons, 2 audits, 2 coordonnées), empreintes de mot de passe reprises
+  de la base de test (empreintes BACO ou mot de passe changé depuis dans CSM, jamais affichées), `csm-import` + script des
+  référentiels (PtCar paginé), compte `connector` créé, zip restauré par l'API ; parcours vérifié avec le compte admin réel
+  (11 écrans, desktop + mobile, cookie httpOnly/Secure, en-têtes). **R2** : l'utilisateur voulait le même bucket pour test
+  et prod ; la rotation de PocketBase l'interdit (voir §7) → bucket réservé à la prod, variables retirées de la preview.
+  Trouvé en prod : obfuscation d'e-mails Cloudflare (corrigé par `no-transform`).
+- 2026-10-10 — **Profil (suite)** : **statut du jour** (`users.status` + `status_day`, préréglages EXTRA / Pas en service /
+  En pause / Au téléphone / En formation ou texte libre, affiché au Journal à côté du nom et dans l'annuaire Équipe) ;
+  **page d'accueil choisie** (`preferences.home`, liste fermée `lib/home.ts`, appliquée après la connexion par mot de passe
+  ou passkey, « Accueil » reste le tableau de bord) ; **sessions ouvertes** (`user_sessions` + cookie httpOnly `csm_sid`,
+  appareil / IP masquée / méthode / dernière activité notée toutes les 10 min ; supprimer une fiche déconnecte l'appareil
+  à sa requête suivante ; « déconnecter les autres appareils » = nouvelle `tokenKey` par la route interne
+  `/api/csm/session/rotate` + jeton neuf pour l'appareil courant ; changement de mot de passe = autres sessions closes).
+- 2026-10-10 — **Campagnes d'e-mail** (Administration › Campagnes, admin / sysop) : modèle « BACO devient CSM » au design de
+  CSM (`lib/mail/campaign.ts`, Markdown du Journal → HTML de messagerie échappé + texte, `{prenom}`), aperçu isolé (iframe
+  `sandbox`), **e-mail de test obligatoire** avant l'envoi à tous, envoi un par un (400 ms) par la route interne
+  `/api/csm/mail/send` (SMTP de PocketBase), journal (envoyés, échecs), une campagne envoyée ne repart pas (dupliquer).
+  Deuxième exception à « pas d'envoi automatique » validée par l'utilisateur (avec le mot de passe oublié). SMTP conseillé :
+  **Brevo** gratuit (300 e-mails / jour, relais SMTP, domaine authentifié par DKIM) ; Resend gratuit = 1 domaine (déjà
+  pris par empire.fs0ciety.org). 261 contrôles de règles.
+- 2026-10-10 — **Lot suivant évoqué : Quinyx** (tableau de service) pour voir qui est en poste — à cadrer (API Quinyx
+  avec identifiants délivrés par l'IT, ou flux iCal par agent).
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

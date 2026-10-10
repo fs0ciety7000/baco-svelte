@@ -55,3 +55,29 @@ onBootstrap((e) => {
 routerAdd('GET', '/api/csm/password-reset', (e) => {
 	return e.json(200, { enabled: !!$app.settings().smtp.enabled });
 });
+
+// Envoi d'un e-mail de campagne (Administration › Campagnes, demande du 10 oct. 2026), réservé à Next par le secret
+// partagé ; un destinataire par appel (Next borne le débit). Refusé si le SMTP n'est pas réglé.
+routerAdd('POST', '/api/csm/mail/send', (e) => {
+	const secret = String($os.getenv('CSM_INTERNAL_SECRET') || '');
+	const given = String(e.request.header.get('x-csm-internal') || '');
+	if (secret.length < 32 || !$security.equal(given, secret)) return e.json(404, { message: 'Not found.' });
+	const settings = $app.settings();
+	if (!settings.smtp.enabled) return e.json(503, { message: 'SMTP non configuré.' });
+	const body = e.requestInfo().body || {};
+	const to = String(body.to || '').trim();
+	if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to) || to.length > 200) return e.json(400, { message: 'Destinataire invalide.' });
+	const message = new MailerMessage({
+		from: { address: settings.meta.senderAddress, name: settings.meta.senderName },
+		to: [{ address: to }],
+		subject: String(body.subject || '').slice(0, 200),
+		html: String(body.html || '').slice(0, 200000),
+		text: String(body.text || '').slice(0, 100000),
+	});
+	try {
+		$app.newMailClient().send(message);
+	} catch (err) {
+		return e.json(502, { message: 'Envoi refusé par le serveur SMTP.' });
+	}
+	return e.json(200, { ok: true });
+});

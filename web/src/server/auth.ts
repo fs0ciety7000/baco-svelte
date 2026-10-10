@@ -9,6 +9,7 @@ import { visibleModules } from "@/navigation";
 
 import { createPb } from "./pocketbase";
 import { readSessionToken } from "./session";
+import { sessionAlive } from "./sessions";
 import { isExpired, tokenPayload } from "./token";
 
 export const ROLES = [
@@ -34,6 +35,9 @@ const userSchema = z.object({
   duty_day: z.string().default(""),
   duty_districts: z.array(z.string()).nullable().default([]),
   avatar: z.string().default(""),
+  // Statut du jour affiché au Journal (« EXTRA »…), valable le jour `status_day`.
+  status: z.string().default(""),
+  status_day: z.string().default(""),
   preferences: z.unknown().optional(),
 });
 
@@ -49,9 +53,12 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   if (!token || !payload || isExpired(token)) return null;
   const pb = createPb(token);
   try {
-    const record = await pb.collection("users").getOne(payload.id);
+    const [record, alive] = await Promise.all([
+      pb.collection("users").getOne(payload.id),
+      sessionAlive(token),
+    ]);
     const user = userSchema.parse(record);
-    return user.role === "disabled" ? null : user;
+    return user.role === "disabled" || !alive ? null : user;
   } catch {
     return null;
   }

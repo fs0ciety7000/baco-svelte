@@ -17,6 +17,8 @@ Niveau **Limited**, case « Allow package managers » cochée (npm, GitHub…), 
 | `mgljaheyimizrydazrxh.supabase.co` | Sauvegarde / export BACO (lecture seule) |
 | `test-csm.fs0ciety.org` | Vérifier le déploiement CSM |
 | `pb-test-csm.fs0ciety.org` | Instance PocketBase CSM de test (**à ajouter** : absent en session 2, la vérification directe a été refusée) |
+| `csm.fs0ciety.org` | CSM en **production** (depuis le 10 oct. 2026) |
+| `pb-csm.fs0ciety.org` | PocketBase de production (administration, import ; derrière Cloudflare Access) |
 | `<domaine de ton Coolify>` | API Coolify (déploiements), si tu fournis un jeton |
 | `api.irail.be` | Trains en direct (iRail) |
 | `fonts.googleapis.com`, `fonts.gstatic.com` | `next/font` télécharge Saira Condensed au build |

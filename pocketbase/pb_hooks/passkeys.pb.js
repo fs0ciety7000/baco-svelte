@@ -118,3 +118,22 @@ onRecordAfterUpdateSuccess((e) => {
 		console.log('passkeys : nettoyage après désactivation impossible :', String(err));
 	}
 }, 'users');
+
+// « Déconnecter les autres appareils » (demande du 10 oct. 2026) : nouvelle clé de jeton (tous les jetons existants de
+// l'agent deviennent invalides) puis jeton neuf pour l'appareil courant, renvoyé à Next seul (secret partagé).
+routerAdd('POST', '/api/csm/session/rotate', (e) => {
+	const secret = String($os.getenv('CSM_INTERNAL_SECRET') || '');
+	const given = String(e.request.header.get('x-csm-internal') || '');
+	if (secret.length < 32 || !$security.equal(given, secret)) return e.json(404, { message: 'Not found.' });
+	const body = e.requestInfo().body || {};
+	let user;
+	try {
+		user = $app.findRecordById('users', String(body.user || ''));
+	} catch (err) {
+		return e.json(404, { message: 'Compte introuvable.' });
+	}
+	if (user.getString('role') === 'disabled') return e.json(403, { message: 'Compte désactivé.' });
+	user.refreshTokenKey();
+	$app.saveNoValidate(user);
+	return e.json(200, { token: user.newAuthToken() });
+});
