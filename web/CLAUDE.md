@@ -269,3 +269,8 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   iRail 12 h. Texte copiable `handoverText` (`lib/ops/handover.ts`, testé), « Épingler au Journal » (`pinHandover` :
   consigne épinglée 12 h). Trajets et bouts ALEA partagés : **`lib/pmr/legs.ts`** (`legOf`, `groupLegOf`, `aleaEnds`,
   `groupEnds`) — plus dans les composants.
+- **Frise « Ma journée »** (`/operations/journee`, `journal:read`, chaque type selon ses droits) : `server/data/timeline.ts`
+  (`buildTimeline` : bouts IN / OUT, retard par bout via `missionImpact` sur une copie IN seul / OUT seul, bons du jour hors
+  brouillon / annulé), placement pur `lib/ops/timeline.ts` (`span` retard compris, `packLanes`, `hourRange` 6 h – 22 h au
+  moins, `nextIndex` ; testé), composant `components/ops/day-timeline.tsx` (desktop horizontal `hidden md:block`, mobile
+  agenda `md:hidden` : les deux sont dans le DOM, viser `timeline-desktop` / `timeline-mobile` dans les tests).

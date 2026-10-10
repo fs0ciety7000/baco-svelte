@@ -241,6 +241,40 @@ test("cloche et statistiques", async ({ page }, info) => {
   await expect(page.getByTestId("bell")).toHaveAccessibleName("Notifications");
 });
 
+test("ma journée et relève : frise du jour, filtre de gare, synthèse", async ({ page }, info) => {
+  const day = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Brussels" });
+  const a = await pb("POST", "/api/collections/pmr_assists/records", {
+    dicos_id: `je2e${suffix}`,
+    source: "dicos",
+    day,
+    time: "23:40",
+    station: "Mons",
+    other_station: "Quévy",
+    arr_time: "23:55",
+    in_assist: true,
+    train: `E2E ${suffix}`,
+    pax: 1,
+    pmr_type: "MR",
+    status: "prevue",
+    transport: "train",
+    district: "DSO",
+  });
+  if (a?.id) fixtures.push({ col: "pmr_assists", id: a.id });
+  await login(page, "/operations/journee");
+  await page.goto("/operations/journee?district=tous");
+  await expect(page.getByTestId("timeline-summary")).toContainText("prise");
+  const scope = page.getByTestId(
+    info.project.name === "desktop" ? "timeline-desktop" : "timeline-mobile",
+  );
+  await expect(scope.getByRole("link", { name: new RegExp(`E2E ${suffix}`) })).toBeVisible();
+  await noHorizontalScroll(page);
+  await page.goto("/operations/journee?district=tous&gare=Quévy");
+  await expect(page.getByRole("link", { name: new RegExp(`E2E ${suffix}`) })).toHaveCount(0);
+  await page.goto("/operations/releve?district=tous");
+  await expect(page.getByText("Missions et groupes à venir").first()).toBeVisible();
+  await noHorizontalScroll(page);
+});
+
 async function snap(page: Page, name: string, project: string, full = true) {
   await page.waitForTimeout(600);
   await noHorizontalScroll(page);

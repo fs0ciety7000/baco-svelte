@@ -612,6 +612,13 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   notifications du navigateur, feuille de route PDF par gare, export ALEA commun PMR + groupes, ⌘K étendue (Journal,
   missions), PWA, fiabilité de la synchro DICOS, page **/tv** (écran commun du bureau). **Relève livrée**
   (`/operations/releve`, copier / épingler au Journal en consigne 12 h).
+- 2026-10-10 — **Frise « Ma journée »** (`/operations/journee`, onglet Opérations) : une prise en charge par bout assisté
+  (IN à la gare de départ, OUT à l'arrivée) + bons de bus (premier → dernier départ prévu) et taxis du jour, sur une ligne
+  de temps horizontale en desktop (rangées PMR / Groupes / Bus / Taxis, pistes sans chevauchement, queue ambre / rouge du
+  retard iRail propre au bout, trait « maintenant » qui avance, placée sur maintenant à l'ouverture) et en **agenda vertical**
+  en mobile (trait « maintenant » entre les éléments). Filtres jour / district (districts du jour par défaut) / gare
+  (liste des gares du jour). GSAP : trait qui descend, queues de retard qui s'étirent, éléments en cascade au changement de
+  filtre (jamais au premier rendu). Aucun nom de voyageur. E2E Ma journée + Relève (1440 + 390).
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

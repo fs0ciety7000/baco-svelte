@@ -116,6 +116,12 @@ export const MODULES: NavModule[] = [
         keywords: ["main courante", "messages", "consignes"],
       },
       {
+        href: "/operations/journee",
+        label: "Ma journée",
+        permission: "journal:read",
+        keywords: ["frise", "ligne de temps", "planning du jour", "agenda"],
+      },
+      {
         href: "/operations/releve",
         label: "Relève",
         permission: "journal:read",
