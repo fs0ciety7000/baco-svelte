@@ -388,7 +388,7 @@ export type Equipment = {
   updated: string;
 };
 
-function equipment(r: RecordModel): Equipment {
+export function equipment(r: RecordModel): Equipment {
   return {
     id: r.id,
     station: str(r.station),

@@ -53,9 +53,11 @@ export function AleaButton({
   eyebrow,
   description,
   compute,
+  label = "Export ALEA",
 }: {
-  /** Liste d'origine : sert de portée aux blocs « encodés » (PMR et groupes séparés). */
-  kind: "pmr" | "groupe";
+  /** Liste d'origine : sert de portée aux blocs « encodés » (PMR et groupes séparés) ; « commun » = blocs fusionnés. */
+  kind: "pmr" | "groupe" | "commun";
+  label?: string;
   /** L'agent peut cocher « encodé » (droit d'écrire les missions) ; sinon lecture seule. */
   canMark: boolean;
   disabled: boolean;
@@ -74,16 +76,32 @@ export function AleaButton({
   // Blocs déjà saisis dans ALEA (partagés par l'équipe, en direct pendant que la fenêtre est ouverte).
   const [marks, setMarks] = useState<Record<string, AleaMark>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  // Coche « encodé » : par liste d'origine (un bloc commun coche ses parties PMR et groupes). Clé `liste|bloc`.
+  const partsOf = useCallback(
+    (g: AleaGroup): ["pmr" | "groupe", string][] =>
+      kind === "commun"
+        ? (Object.entries(g.parts ?? {}) as ["pmr" | "groupe", string][]).filter(([, k]) => k)
+        : [[kind, g.key]],
+    [kind],
+  );
   const loadMarks = useCallback(async () => {
     if (!groups.length) return;
-    const res = await safeCall(
-      aleaMarks(
-        kind,
-        groups.map((g) => g.key),
-      ),
-    );
-    if (res.ok) setMarks(res.data);
-  }, [groups, kind]);
+    const parts = groups.flatMap(partsOf);
+    const next: Record<string, AleaMark> = {};
+    for (const scope of ["pmr", "groupe"] as const) {
+      const keys = parts.filter(([s]) => s === scope).map(([, k]) => k);
+      if (!keys.length) continue;
+      const res = await safeCall(aleaMarks(scope, keys));
+      if (!res.ok) return;
+      for (const [k, m] of Object.entries(res.data)) next[`${scope}|${k}`] = m;
+    }
+    setMarks(next);
+  }, [groups, partsOf]);
+  /** Marque d'un bloc : toutes ses parties encodées (la première donne l'auteur et l'heure). */
+  const markOf = (g: AleaGroup): AleaMark | undefined => {
+    const ms = partsOf(g).map(([s, k]) => marks[`${s}|${k}`]);
+    return ms.length && ms.every(Boolean) ? ms[0] : undefined;
+  };
   useEffect(() => {
     if (!open || !groups.length) return;
     void loadMarks();
@@ -97,21 +115,25 @@ export function AleaButton({
       off();
     };
   }, [open, groups, loadMarks]);
-  const toggle = async (key: string) => {
-    const done = !marks[key];
-    setBusy(key);
-    const res = await safeCall(setAleaMark(kind, key, done));
-    setBusy(null);
-    if (!res.ok) {
-      toast.error(res.error);
-      return;
+  const toggle = async (g: AleaGroup) => {
+    const done = !markOf(g);
+    setBusy(g.key);
+    for (const [scope, key] of partsOf(g)) {
+      if (Boolean(marks[`${scope}|${key}`]) === done) continue;
+      const res = await safeCall(setAleaMark(scope, key, done));
+      if (!res.ok) {
+        setBusy(null);
+        toast.error(res.error);
+        return;
+      }
+      setMarks((m) => {
+        const next = { ...m };
+        if (res.data) next[`${scope}|${key}`] = res.data;
+        else delete next[`${scope}|${key}`];
+        return next;
+      });
     }
-    setMarks((m) => {
-      const next = { ...m };
-      if (res.data) next[key] = res.data;
-      else delete next[key];
-      return next;
-    });
+    setBusy(null);
   };
 
   // Temps d'arrêt prévus (iRail, côté serveur), une fois à l'ouverture.
@@ -144,22 +166,21 @@ export function AleaButton({
       : aleaDecision(g.rule, undefined),
   }));
   const count = (s: AleaDecision["status"]) => decided.filter((x) => x.d.status === s).length;
-  const todo = decided.filter((x) => !marks[x.g.key]).length;
+  const todo = decided.filter((x) => !markOf(x.g)).length;
   const shown = decided.filter((x) =>
-    filter === "tous" ? true : filter === "a-encoder" ? !marks[x.g.key] : x.d.status === filter,
+    filter === "tous" ? true : filter === "a-encoder" ? !markOf(x.g) : x.d.status === filter,
   );
   const blockText = (g: AleaGroup) => [headOf(g), ...g.lines].join("\n");
-  const unit = groups[0]?.unit ?? "PMR";
 
   return (
     <>
       <Button variant="secondary" onClick={() => setOpen(true)} disabled={disabled}>
-        <ClipboardList aria-hidden /> Export ALEA
+        <ClipboardList aria-hidden /> {label}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
           eyebrow={eyebrow}
-          title="Export ALEA"
+          title={label}
           description={description}
           className="max-h-[92dvh] max-w-5xl"
         >
@@ -206,105 +227,109 @@ export function AleaButton({
                 </span>
               </div>
               <ul className="flex flex-col gap-3" data-testid="alea-groups">
-                {shown.map(({ g, d }) => (
-                  <li
-                    key={g.key}
-                    className={cn(
-                      "flex flex-col border border-border bg-surface transition-opacity duration-(--d-base)",
-                      d.status === "obligatoire" && "border-l-[3px] border-l-danger",
-                      d.status === "verifier" && "border-l-[3px] border-l-warn",
-                      marks[g.key] && "border-l-[3px] border-l-ok opacity-70",
-                    )}
-                    data-testid="alea-block"
-                    data-encoded={marks[g.key] ? "1" : undefined}
-                  >
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-surface-2 px-3 py-2">
-                      <span
-                        className="bg-accent px-2 py-0.5 font-mono text-body-lg font-bold text-accent-fg tabular"
-                        title="Train"
-                      >
-                        {g.train}
-                      </span>
-                      <span className="text-body-lg font-bold text-fg">{g.station}</span>
-                      <Badge tone={g.io === "IN" ? "info" : "ok"}>
-                        {g.io} · {verbOf(g)}
-                      </Badge>
-                      <span className="text-small text-fg-muted">
-                        <span className="first-letter:uppercase">{formatDay(g.day)}</span>
-                        {g.time ? <span className="font-mono tabular"> · {g.time}</span> : null}
-                      </span>
-                      <span className="ml-auto inline-flex flex-wrap items-center justify-end gap-2">
-                        <Button
-                          size="sm"
-                          variant={marks[g.key] ? "secondary" : "ghost"}
-                          className={marks[g.key] ? "text-ok" : "border border-border"}
-                          aria-pressed={Boolean(marks[g.key])}
-                          disabled={!canMark}
-                          loading={busy === g.key}
-                          title={
-                            marks[g.key]
-                              ? `Encodé par ${marks[g.key]!.by}${(() => {
-                                  const at = pbDate(marks[g.key]!.at);
-                                  return at ? ` à ${brusselsTime(at)}` : "";
-                                })()}`
-                              : canMark
-                                ? "Marquer comme saisi dans ALEA"
-                                : "Lecture seule"
-                          }
-                          onClick={() => void toggle(g.key)}
-                          data-testid="alea-mark"
+                {shown.map(({ g, d }) => {
+                  const mark = markOf(g);
+                  return (
+                    <li
+                      key={g.key}
+                      className={cn(
+                        "flex flex-col border border-border bg-surface transition-opacity duration-(--d-base)",
+                        d.status === "obligatoire" && "border-l-[3px] border-l-danger",
+                        d.status === "verifier" && "border-l-[3px] border-l-warn",
+                        mark && "border-l-[3px] border-l-ok opacity-70",
+                      )}
+                      data-testid="alea-block"
+                      data-encoded={mark ? "1" : undefined}
+                    >
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-surface-2 px-3 py-2">
+                        <span
+                          className="bg-accent px-2 py-0.5 font-mono text-body-lg font-bold text-accent-fg tabular"
+                          title="Train"
                         >
-                          {marks[g.key] ? <CheckSquare2 aria-hidden /> : <Square aria-hidden />}
-                          {marks[g.key] ? `Encodé · ${marks[g.key]!.by.split(" ")[0]}` : "Encodé"}
-                        </Button>
-                        <Badge tone={dwell ? DECISION[d.status].tone : "neutral"}>
-                          {dwell ? DECISION[d.status].label : "…"}
+                          {g.train}
+                        </span>
+                        <span className="text-body-lg font-bold text-fg">{g.station}</span>
+                        <Badge tone={g.io === "IN" ? "info" : "ok"}>
+                          {g.io} · {verbOf(g)}
                         </Badge>
-                        <CopyButton text={g.lines.join("\n")} />
-                      </span>
-                    </div>
-                    <div className="flex flex-col gap-2 px-3 py-2">
-                      <p
-                        className={cn(
-                          "text-small",
-                          d.status === "obligatoire"
-                            ? "text-danger"
-                            : d.status === "verifier"
-                              ? "text-warn"
-                              : "text-fg-muted",
-                        )}
-                      >
-                        {d.reason}
-                      </p>
-                      <div className="flex flex-wrap items-center gap-1.5 text-small">
-                        <span className="font-medium text-fg">
-                          {g.dossiers.length > 1
-                            ? `${g.dossiers.length} dossiers composent cet ALEA :`
-                            : "Dossier :"}
+                        <span className="text-small text-fg-muted">
+                          <span className="first-letter:uppercase">{formatDay(g.day)}</span>
+                          {g.time ? <span className="font-mono tabular"> · {g.time}</span> : null}
                         </span>
-                        {g.dossiers.map((x) => (
-                          <span
-                            key={x.ref}
-                            className="border border-border bg-surface-2 px-1.5 py-0.5 font-mono tabular"
+                        <span className="ml-auto inline-flex flex-wrap items-center justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant={mark ? "secondary" : "ghost"}
+                            className={mark ? "text-ok" : "border border-border"}
+                            aria-pressed={Boolean(mark)}
+                            disabled={!canMark}
+                            loading={busy === g.key}
+                            title={
+                              mark
+                                ? `Encodé par ${mark!.by}${(() => {
+                                    const at = pbDate(mark!.at);
+                                    return at ? ` à ${brusselsTime(at)}` : "";
+                                  })()}`
+                                : canMark
+                                  ? "Marquer comme saisi dans ALEA"
+                                  : "Lecture seule"
+                            }
+                            onClick={() => void toggle(g)}
+                            data-testid="alea-mark"
                           >
-                            {x.ref} · {x.count} {unit === "PMR" ? "PMR" : "pers."}
-                          </span>
-                        ))}
-                        <span className="font-semibold text-fg">
-                          Total : {g.total}{" "}
-                          {unit === "PMR" ? "PMR" : g.total > 1 ? "personnes" : "personne"}
+                            {mark ? <CheckSquare2 aria-hidden /> : <Square aria-hidden />}
+                            {mark ? `Encodé · ${mark!.by.split(" ")[0]}` : "Encodé"}
+                          </Button>
+                          <Badge tone={dwell ? DECISION[d.status].tone : "neutral"}>
+                            {dwell ? DECISION[d.status].label : "…"}
+                          </Badge>
+                          <CopyButton text={g.lines.join("\n")} />
                         </span>
                       </div>
-                      <div className="flex flex-col gap-0.5 border-l-2 border-accent pl-3">
-                        {g.lines.map((line, i) => (
-                          <p key={i} className="text-body font-medium text-fg select-text">
-                            {line}
-                          </p>
-                        ))}
+                      <div className="flex flex-col gap-2 px-3 py-2">
+                        <p
+                          className={cn(
+                            "text-small",
+                            d.status === "obligatoire"
+                              ? "text-danger"
+                              : d.status === "verifier"
+                                ? "text-warn"
+                                : "text-fg-muted",
+                          )}
+                        >
+                          {d.reason}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-1.5 text-small">
+                          <span className="font-medium text-fg">
+                            {g.dossiers.length > 1
+                              ? `${g.dossiers.length} dossiers composent cet ALEA :`
+                              : "Dossier :"}
+                          </span>
+                          {g.dossiers.map((x) => (
+                            <span
+                              key={x.ref}
+                              className="border border-border bg-surface-2 px-1.5 py-0.5 font-mono tabular"
+                            >
+                              {x.ref} · {x.count} {(x.unit ?? g.unit) === "PMR" ? "PMR" : "pers."}
+                            </span>
+                          ))}
+                          <span className="font-semibold text-fg">
+                            Total :{" "}
+                            {g.totalLabel ??
+                              `${g.total} ${g.unit === "PMR" ? "PMR" : g.total > 1 ? "personnes" : "personne"}`}
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-0.5 border-l-2 border-accent pl-3">
+                          {g.lines.map((line, i) => (
+                            <p key={i} className="text-body font-medium text-fg select-text">
+                              {line}
+                            </p>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
                 {shown.length === 0 ? (
                   <li className="text-small text-fg-muted">Aucun bloc pour ce filtre.</li>
                 ) : null}

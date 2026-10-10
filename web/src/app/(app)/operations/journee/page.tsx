@@ -1,3 +1,4 @@
+import { FileText } from "lucide-react";
 import type { Metadata } from "next";
 
 import { DayTimeline } from "@/components/ops/day-timeline";
@@ -5,6 +6,7 @@ import { FilterForm } from "@/components/ui/filter-form";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Input, Select } from "@/components/ui/input";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
+import { can } from "@/lib/permissions";
 import { requireRoute } from "@/server/auth";
 import { HANDOVER_CODES, handoverDistricts } from "@/server/data/handover";
 import { buildTimeline } from "@/server/data/timeline";
@@ -76,9 +78,32 @@ export default async function Page({
             </datalist>
           </label>
         </FilterForm>
-        <LiveRefresh
-          topics={["bus_orders", "taxi_orders", "pmr_assists", "group_missions", "mission_trains"]}
-        />
+        <div className="flex flex-wrap items-center gap-3">
+          {gare && can(user, "deplacements:read") ? (
+            <a
+              href={`/api/pmr/feuille-de-route?${new URLSearchParams({ gare, jour: day, district: codes[0] ?? "" })}`}
+              target="_blank"
+              rel="noopener"
+              className="inline-flex min-h-11 items-center gap-2 rounded-control border border-border-strong px-3 text-body hover:bg-surface-2"
+              data-testid="roadmap-pdf"
+            >
+              <FileText aria-hidden className="size-4" /> Feuille de route PDF
+            </a>
+          ) : can(user, "deplacements:read") ? (
+            <span className="text-small text-fg-muted">
+              Choisis une gare pour sa feuille de route PDF.
+            </span>
+          ) : null}
+          <LiveRefresh
+            topics={[
+              "bus_orders",
+              "taxi_orders",
+              "pmr_assists",
+              "group_missions",
+              "mission_trains",
+            ]}
+          />
+        </div>
       </div>
       <DayTimeline
         data={data}

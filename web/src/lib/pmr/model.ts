@@ -287,9 +287,12 @@ export type AleaEnd = {
 };
 
 /** Ce que le logigramme d'encodage ALEA examine pour un bloc (jour · train · gare). */
-export type AleaRuleInput =
+type AleaSingleRule =
   | { kind: "pmr"; full: number; light: number; unknown: number }
   | { kind: "group"; children: number; seniors: number; total: number };
+/** Bloc commun PMR + groupes (export ALEA commun, 10 oct. 2026) : les deux logigrammes, le plus exigeant l'emporte. */
+export type AleaRuleInput =
+  AleaSingleRule | { kind: "mixed"; pmr: AleaSingleRule; group: AleaSingleRule };
 
 export type AleaGroup = {
   key: string;
@@ -300,11 +303,15 @@ export type AleaGroup = {
   io: "IN" | "OUT";
   lines: string[];
   /** Dossiers qui composent le bloc, avec leur nombre de PMR / personnes. */
-  dossiers: { ref: string; count: number }[];
+  dossiers: { ref: string; count: number; unit?: "PMR" | "personnes" }[];
   /** Total de PMR (missions PMR) ou de personnes (groupes). */
   total: number;
   unit: "PMR" | "personnes";
   rule: AleaRuleInput;
+  /** Export commun : clés des blocs PMR / groupes d'origine (coche « encodé » propre à chaque liste). */
+  parts?: { pmr?: string; groupe?: string };
+  /** Export commun : total affiché (« 3 PMR + 25 personnes »). */
+  totalLabel?: string;
 };
 
 // Un bloc ALEA = un train, un jour, une gare et un SENS (IN = embarquement, OUT = débarquement) : on additionne
@@ -491,7 +498,16 @@ const mmss = (sec: number) => {
   return s ? `${m} min ${String(s).padStart(2, "0")} s` : `${m} min`;
 };
 
+const SEVERITY: Record<AleaDecision["status"], number> = { obligatoire: 2, verifier: 1, non: 0 };
+
 export function aleaDecision(rule: AleaRuleInput, dwell: AleaDwell | undefined): AleaDecision {
+  if (rule.kind === "mixed") {
+    const a = aleaDecision(rule.pmr, dwell);
+    const b = aleaDecision(rule.group, dwell);
+    if (a.reason === b.reason) return a;
+    const worst = SEVERITY[b.status] > SEVERITY[a.status] ? b : a;
+    return { status: worst.status, reason: `PMR : ${a.reason} Groupes : ${b.reason}` };
+  }
   if (!dwell) return { status: "verifier", reason: "Temps d'arrêt en cours de lecture…" };
   if (dwell.position === "taxi")
     return { status: "non", reason: "Transport en taxi : pas d'arrêt de train concerné." };
@@ -550,4 +566,35 @@ export function stationKey(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
+}
+
+/**
+ * Export ALEA commun (demande du 10 oct. 2026) : les blocs PMR et groupes d'un même train, jour, gare et sens fusionnés
+ * (lignes PMR puis groupes, dossiers des deux, décision la plus exigeante). Triés comme les exports séparés.
+ */
+export function mergeAleaBlocks(pmr: AleaGroup[], groups: AleaGroup[]): AleaGroup[] {
+  const label = (n: number, unit: AleaGroup["unit"]) =>
+    unit === "PMR" ? `${n} PMR` : `${n} ${n > 1 ? "personnes" : "personne"}`;
+  const map = new Map<string, AleaGroup>();
+  for (const p of pmr)
+    map.set(p.key, { ...p, parts: { pmr: p.key }, totalLabel: label(p.total, p.unit) });
+  for (const g of groups) {
+    const p = map.get(g.key);
+    if (!p) {
+      map.set(g.key, { ...g, parts: { groupe: g.key }, totalLabel: label(g.total, g.unit) });
+      continue;
+    }
+    if (p.rule.kind === "mixed" || g.rule.kind === "mixed") continue;
+    map.set(g.key, {
+      ...p,
+      time: p.time || g.time,
+      lines: [...p.lines, ...g.lines],
+      dossiers: [...p.dossiers, ...g.dossiers.map((d) => ({ ...d, unit: "personnes" as const }))],
+      total: p.total + g.total,
+      rule: { kind: "mixed", pmr: p.rule, group: g.rule },
+      parts: { pmr: p.key, groupe: g.key },
+      totalLabel: `${label(p.total, "PMR")} + ${label(g.total, "personnes")}`,
+    });
+  }
+  return [...map.values()].sort(byTime);
 }

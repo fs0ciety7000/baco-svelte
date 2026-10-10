@@ -625,6 +625,15 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   clic → onglet ramené au premier plan, notification lue, lien ouvert. **Le texte d'une mention ou d'une urgence n'est
   jamais affiché par le système** (il peut citer un voyageur) : titre + « Mention au Journal » / « Urgence au Journal ».
   Repli service worker (Android) prévu pour la PWA. Titre de mention passé au tutoiement (« te mentionne dans le Journal »).
+- 2026-10-10 — **Feuille de route PDF par gare** (bouton dans « Ma journée » dès qu'une gare est filtrée ; route
+  `GET /api/pmr/feuille-de-route?gare=&jour=`) : prises en charge à la gare (embarquements au départ, débarquements à
+  l'arrivée, PMR + groupes, annulées barrées), dossier, nom et téléphone du voyageur **seulement avec `pmr:read`** +
+  RDV / voiture / porte, rampes de la gare (`pmr_equipment` par abréviation PtCar), contacts de l'annuaire qui citent la
+  gare ; mention « données personnelles, à détruire après le service ». **Export ALEA commun PMR + groupes** (bouton
+  « ALEA PMR + groupes » sur Missions PMR, avec `pmr:read`) : blocs d'un même train / jour / gare / sens fusionnés
+  (`mergeAleaBlocks`), règle « mixed » = la décision la plus exigeante des deux logigrammes ; la coche « encodé » d'un
+  bloc commun coche ses parties PMR et groupes (`alea_marks` inchangé). Revient sur la réponse du 9 oct. (« pas pour
+  l'instant ») : demandé explicitement le 10 oct.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

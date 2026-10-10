@@ -7,6 +7,7 @@ import { can } from "@/lib/permissions";
 import { pl } from "@/lib/utils";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
 import { requirePermission } from "@/server/auth";
+import { listGroups } from "@/server/data/groups";
 import { resolveCancelledPref } from "@/server/pmr-prefs";
 import { dicosSyncState, listAssists, listTrainStates } from "@/server/data/pmr";
 
@@ -23,7 +24,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
   const du = isValidDay(f.du) ? f.du : today;
   const au = isValidDay(f.au) && f.au >= du ? f.au : du;
   const canPmr = can(user, "pmr:read");
-  const [{ rows, total }, sync, delays] = await Promise.all([
+  const [{ rows, total }, sync, delays, groups] = await Promise.all([
     listAssists(
       {
         from: du,
@@ -37,6 +38,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
     ),
     dicosSyncState("missions", du, au),
     listTrainStates(du, au),
+    // Export ALEA commun PMR + groupes (10 oct. 2026) : groupes de la même période et du même district.
+    canPmr
+      ? listGroups({ from: du, to: au, district: f.district, hideCancelled: true })
+          .then((r) => r.rows)
+          .catch(() => [])
+      : Promise.resolve([]),
   ]);
   return (
     <section className="flex flex-col gap-4" aria-label="Missions PMR">
@@ -68,6 +75,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
         notSynced={sync ? !sync.covered : false}
         delays={delays}
         canMark={can(user, "deplacements:write")}
+        groups={groups}
       />
     </section>
   );

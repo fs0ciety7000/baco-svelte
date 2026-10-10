@@ -278,3 +278,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `mention` / `train`, `notificationBody` sans texte de message, testé), déclenchées par `NotificationBell` ; réglage
   `BrowserNotifyToggle` dans `theme-switcher.tsx`. Chromium headless refuse la permission : tester avec un `Notification`
   simulé (`addInitScript`).
+- **Feuille de route** : `server/data/roadmap.ts` (`buildRoadmap`, gare comparée par `stationKey`, PtCar → abréviation
+  du matériel) + `roadmapPdf` (`server/pdf/order-pdf.ts`, `gridTable` générique). **ALEA commun** : `mergeAleaBlocks`
+  (`lib/pmr/model.ts`, `parts` / `totalLabel`, testé), `AleaButton kind="commun"` (marques chargées par liste, clé
+  `liste|bloc`).

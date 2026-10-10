@@ -619,3 +619,175 @@ export async function b201Pdf(input: B201PdfInput, ctx: PdfContext): Promise<Uin
   footer(doc, font, at, `B201 ${input.day}`);
   return doc.save();
 }
+
+// ---------------------------------------------------------------------------------------------------
+// Feuille de route d'une gare (demande du 10 oct. 2026)
+
+function gridTable(l: Layout, cols: Col[], rows: { cells: string[][]; strike?: boolean }[]) {
+  const head = () => {
+    const h = 18;
+    l.page.drawRectangle({ x: MARGIN, y: l.y - h, width: WIDTH, height: h, color: FILL });
+    let x = MARGIN;
+    for (const c of cols) {
+      l.text(c.title, x + CELL_PAD, l.y - 12, { size: TABLE_SIZE, bold: true });
+      x += c.w;
+    }
+    l.line(MARGIN, l.y - h, MARGIN + WIDTH, l.y - h, BLACK, 0.8);
+    l.y -= h;
+  };
+  l.ensure(40);
+  head();
+  l.onBreak = head;
+  for (const r of rows) {
+    const wrapped = r.cells.map((c, j) =>
+      c.filter(Boolean).flatMap((s) => l.wrap(s, cols[j]!.w - 2 * CELL_PAD, { size: TABLE_SIZE })),
+    );
+    const h = Math.max(1, ...wrapped.map((c) => c.length)) * TABLE_LH + 2 * CELL_PAD;
+    l.ensure(h);
+    let x = MARGIN;
+    wrapped.forEach((lines, j) => {
+      lines.forEach((s, k) => {
+        const y = l.y - CELL_PAD - 8 - k * TABLE_LH;
+        l.text(s, x + CELL_PAD, y, { size: TABLE_SIZE, bold: j <= 1 && k === 0 });
+        if (r.strike) {
+          const w = l.width(s, { size: TABLE_SIZE, bold: j <= 1 && k === 0 });
+          l.line(x + CELL_PAD, y + 3, x + CELL_PAD + w, y + 3, BLACK, 0.9);
+        }
+      });
+      x += cols[j]!.w;
+    });
+    l.y -= h;
+    l.line(MARGIN, l.y, MARGIN + WIDTH, l.y);
+  }
+  l.onBreak = null;
+}
+
+export type RoadmapPdfInput = {
+  day: string;
+  station: string;
+  abbr: string;
+  district: string;
+  withNames: boolean;
+  rows: {
+    time: string;
+    train: string;
+    io: "IN" | "OUT";
+    who: string;
+    other: string;
+    dossier: string;
+    client: string;
+    extra: string;
+    cancelled: boolean;
+  }[];
+  equipment: {
+    platform: string;
+    rampType: string;
+    rampId: string;
+    state: string;
+    stateNote: string;
+    padlock: string;
+    validUntil: string;
+    rampNote: string;
+    stationRestrictions: string;
+    stationInfo: string;
+  }[];
+  contacts: { name: string; phone: string; group: string }[];
+};
+
+const STATE_LABEL: Record<string, string> = {
+  ok: "OK",
+  hs: "Hors service",
+  en_attente: "En attente",
+};
+
+export async function roadmapPdf(input: RoadmapPdfInput, ctx: PdfContext): Promise<Uint8Array> {
+  const label = `${input.station}${input.abbr ? ` (${input.abbr})` : ""}`;
+  const { doc, font, l, at } = await setup(
+    `Feuille de route ${input.station} ${input.day}`,
+    `Feuille de route ${label} du ${formatShortDay(input.day)}`,
+    ctx,
+  );
+  header(l, officeFor(input.district || "Sud-Ouest"), ctx.agentName, {
+    name: label,
+    lines: [formatLongDay(input.day)],
+  });
+  const active = input.rows.filter((r) => !r.cancelled);
+  const ins = active.filter((r) => r.io === "IN").length;
+  title(
+    l,
+    "Feuille de route",
+    `${active.length} prise${active.length > 1 ? "s" : ""} en charge : ${ins} embarquement${ins > 1 ? "s" : ""}, ${active.length - ins} débarquement${active.length - ins > 1 ? "s" : ""}`,
+    `${label} · ${formatShortDay(input.day)}`,
+  );
+
+  l.section("Prises en charge");
+  if (!input.rows.length) l.field("Missions", "Aucune prise en charge à cette gare ce jour-là.");
+  else
+    gridTable(
+      l,
+      [
+        { title: "Heure", w: 38 },
+        { title: "Train", w: 56 },
+        { title: "Sens", w: 74 },
+        { title: "Voyageurs", w: 104 },
+        { title: "Trajet", w: 96 },
+        { title: input.withNames ? "Dossier · client · infos" : "Dossier · infos", w: WIDTH - 368 },
+      ],
+      input.rows.map((r) => ({
+        strike: r.cancelled,
+        cells: [
+          [r.time || "--:--"],
+          [r.train],
+          [r.io === "IN" ? "Embarquement" : "Débarquement", ...(r.cancelled ? ["ANNULÉE"] : [])],
+          [r.who],
+          [r.other],
+          [r.dossier, r.client, r.extra],
+        ],
+      })),
+    );
+
+  l.section("Rampes et matériel de la gare");
+  if (!input.equipment.length)
+    l.field(
+      "Matériel",
+      input.withNames ? "Aucun matériel enregistré pour cette gare." : "Non disponible.",
+    );
+  for (const e of input.equipment) {
+    l.field(
+      `Quai ${e.platform || "?"}`,
+      [
+        [e.rampType, e.rampId ? `n° ${e.rampId}` : ""].filter(Boolean).join(" ") || "Rampe",
+        `état : ${STATE_LABEL[e.state] ?? e.state}${e.stateNote ? ` (${e.stateNote})` : ""}`,
+        e.padlock ? `cadenas ${e.padlock}` : "",
+        e.validUntil ? `valide jusqu'au ${formatShortDay(e.validUntil)}` : "",
+      ]
+        .filter(Boolean)
+        .join(" · "),
+    );
+    for (const [k, v] of [
+      ["Remarque", e.rampNote],
+      ["Restrictions", e.stationRestrictions],
+      ["Infos gare", e.stationInfo],
+    ] as const)
+      if (v) l.field(k, v, { size: 8.5 });
+  }
+
+  l.section("Contacts");
+  if (!input.contacts.length)
+    l.field("Annuaire", "Aucun contact de l'annuaire ne cite cette gare.");
+  for (const c of input.contacts) l.field(c.name, [c.phone, c.group].filter(Boolean).join(" · "));
+
+  if (input.withNames) {
+    l.ensure(30);
+    l.y -= 10;
+    l.text(
+      "Document contenant des données personnelles : usage interne, à détruire après le service.",
+      MARGIN,
+      l.y - 10,
+      { size: 8.5, bold: true },
+    );
+    l.y -= 16;
+  }
+  footer(doc, font, at, `Feuille de route ${input.abbr || input.station} ${input.day}`);
+  return doc.save();
+}

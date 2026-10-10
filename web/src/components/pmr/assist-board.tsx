@@ -17,16 +17,19 @@ import { formatDay, pbDate } from "@/lib/orders/time";
 import { DISTRICT_LABEL } from "@/lib/pmr/districts";
 
 import {
+  aleaGroupBlocks,
   aleaGroups,
   ASSIST_STATUS,
   assistCopyText,
   DIRECTION_IO,
   DIRECTION_LABEL,
+  mergeAleaBlocks,
   PMR_TYPE_LABEL,
   type AssistStatus,
 } from "@/lib/pmr/model";
-import { aleaEnds, legOf, type Leg } from "@/lib/pmr/legs";
+import { aleaEnds, groupEnds, legOf, type Leg } from "@/lib/pmr/legs";
 import { missionImpact, type TrainStates } from "@/lib/pmr/train-delay";
+import type { GroupMission } from "@/server/data/groups";
 import type { Assist, PmrEvent } from "@/server/data/pmr";
 
 import { AleaButton } from "./alea-export";
@@ -166,8 +169,11 @@ export function AssistBoard({
   notSynced = false,
   delays,
   canMark = false,
+  groups,
 }: {
   rows: Assist[];
+  /** Groupes de la même période (avec `pmr:read`) : export ALEA commun PMR + groupes. */
+  groups?: GroupMission[];
   /** Peut cocher « encodé » dans l'export ALEA (droit d'écrire les missions). */
   canMark?: boolean;
   /** États iRail des trains du jour (« jour|train », `listTrainStates`) : badge de retard à la gare assistée. */
@@ -232,7 +238,25 @@ export function AssistBoard({
         sigs={Object.fromEntries(rows.map((r) => [r.id, `${r.status}|${r.updated}`]))}
       />
       <div className="flex justify-end">
-        <AleaExport rows={rows} district={district} canMark={canMark} />
+        <div className="flex flex-wrap justify-end gap-2">
+          {groups?.length ? (
+            <AleaButton
+              kind="commun"
+              label="ALEA PMR + groupes"
+              canMark={canMark}
+              disabled={!rows.length && !groups.length}
+              eyebrow="// Missions PMR et groupes"
+              description={`Un bloc par train, gare et sens : PMR et groupes réunis${district ? ` (district ${district})` : ""}, la règle la plus exigeante décide. Missions annulées exclues.`}
+              compute={() =>
+                mergeAleaBlocks(
+                  aleaGroups(aleaEnds(rows, district)),
+                  aleaGroupBlocks(groupEnds(groups, district)),
+                )
+              }
+            />
+          ) : null}
+          <AleaExport rows={rows} district={district} canMark={canMark} />
+        </div>
       </div>
       {days.map((d) => {
         const list = d ? rows.filter((r) => r.day === d) : rows;

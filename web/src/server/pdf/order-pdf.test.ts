@@ -5,7 +5,7 @@ import { busDraftSchema, taxiDraftSchema } from "@/lib/orders/schemas";
 
 vi.mock("server-only", () => ({}));
 
-const { busOrderPdf, safe, taxiOrderPdf } = await import("./order-pdf");
+const { busOrderPdf, roadmapPdf, safe, taxiOrderPdf } = await import("./order-pdf");
 
 // Données fictives.
 const ctx = {
@@ -124,5 +124,61 @@ describe("taxiOrderPdf", () => {
     const bytes = await taxiOrderPdf(taxi, ctx);
     expect(head(bytes)).toBe("%PDF-");
     expect(await pageCount(bytes)).toBe(1);
+  });
+});
+
+describe("feuille de route", () => {
+  it("produit un PDF lisible, sans échouer sur les caractères spéciaux", async () => {
+    const pdf = await roadmapPdf(
+      {
+        day: "2026-10-10",
+        station: "Mons",
+        abbr: "FMS",
+        district: "Sud-Ouest",
+        withNames: true,
+        rows: [
+          {
+            time: "07:12",
+            train: "IC 3804",
+            io: "IN",
+            who: "1 × chaise roulante fixe",
+            other: "vers Bruxelles-Midi",
+            dossier: "2026-10-10-0001",
+            client: "Client fictif · 0470 00 00 00",
+            extra: "RDV guichet → quai 3",
+            cancelled: false,
+          },
+          {
+            time: "",
+            train: "Taxi",
+            io: "OUT",
+            who: "Groupe de 34 (dont 30 enfants)",
+            other: "de Namur",
+            dossier: "",
+            client: "",
+            extra: "",
+            cancelled: true,
+          },
+        ],
+        equipment: [
+          {
+            platform: "3",
+            rampType: "Rampe pliante",
+            rampId: "R12",
+            state: "ok",
+            stateNote: "",
+            padlock: "1234",
+            validUntil: "2026-12-31",
+            rampNote: "Clé au guichet",
+            stationRestrictions: "",
+            stationInfo: "",
+          },
+        ],
+        contacts: [{ name: "Gare de Mons (fictif)", phone: "065 00 00 00", group: "Borne PMR" }],
+      },
+      { agentName: "Agent test", generatedAt: new Date("2026-10-10T08:00:00Z") },
+    );
+    expect(Buffer.from(pdf.slice(0, 5)).toString()).toBe("%PDF-");
+    expect(pdf.length).toBeGreaterThan(2000);
   });
 });
