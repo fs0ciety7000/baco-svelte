@@ -855,8 +855,9 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 
 - 2026-10-10 — **Tests « mot de passe oublié »** avec nd.managment@gmail.com et nico.dessenius@gmail.com : CSM prod + preview,
   OCC Deliveries, Tandem (en-tête `X-Requested-With: tandem` exigé), RailCards, fs0ciety, HumaScan → demandes acceptées, file
-  Stalwart vide, aucun avis de non-distribution ; réception depuis Gmail et Outlook vérifiée. Non testés : Cosmic Empires
-  (SMTP à régler à la main dans PocketBase), documenso (403). `nd.managment@gmail.com` ajouté aux politiques Access.
+  Stalwart vide, aucun avis de non-distribution ; réception depuis Gmail et Outlook vérifiée. Cosmic Empires (prod
+  `base.fs0ciety.org` + préprod `test.fs0ciety.org`) testé après réglage manuel du SMTP par l'utilisateur (mot de passe
+  d'application dédié « Cosmic Empires ») : 204, file vide. Non testé : documenso (403). `nd.managment@gmail.com` ajouté aux politiques Access.
 
 ---
 
