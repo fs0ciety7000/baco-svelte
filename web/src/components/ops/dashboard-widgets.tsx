@@ -4,6 +4,7 @@ import { MessageSquareText, Train, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { DelayBadge, TrainChip } from "@/components/pmr/train-chip";
 import { EmptyState, Skeleton } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
 import { ListCard } from "@/components/ui/table";
@@ -17,6 +18,7 @@ import {
 } from "@/lib/ops/irail";
 import { CATEGORY, type LogCategory } from "@/lib/ops/log";
 import { brusselsTime } from "@/lib/orders/time";
+import type { ImpactedMission } from "@/server/data/impacts";
 
 export type LogDigest = {
   id: string;
@@ -257,5 +259,48 @@ export function DisturbanceWidget({
         {list.length > 5 ? `Voir les ${list.length} messages` : "Ouvrir les trains en direct"}
       </Link>
     </div>
+  );
+}
+
+/** Missions PMR / groupes du jour touchées par un retard ou une suppression de leur train (iRail, cron `mission-trains`). */
+export function ImpactsWidget({ items }: { items: ImpactedMission[] | null }) {
+  if (items === null)
+    return <EmptyState title="Accès restreint" description="Tu n'as pas accès aux missions PMR." />;
+  if (items.length === 0)
+    return (
+      <EmptyState
+        title="Aucune mission impactée"
+        description="Les trains des missions du jour sont à l'heure (iRail, toutes les 3 min)."
+      />
+    );
+  return (
+    <ul className="grid gap-2 @3xl:grid-cols-2" data-testid="impacts-widget">
+      {items.slice(0, 8).map((m) => (
+        <li key={`${m.kind}-${m.id}`} className="min-w-0">
+          <Link
+            href={m.href}
+            className="block rounded-box outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <ListCard
+              statusColor={
+                m.impact.cancelled || m.impact.delay >= 15 ? "var(--danger)" : "var(--warn)"
+              }
+              title={
+                <span className="inline-flex min-w-0 flex-wrap items-center gap-2">
+                  <TrainChip train={m.train} />
+                  <DelayBadge impact={m.impact} />
+                  <span className="min-w-0 truncate">{m.route}</span>
+                </span>
+              }
+              meta={`${m.time || "--:--"} · ${m.detail} · ${m.impact.cancelled ? "supprimé" : "retard"} à ${m.impact.station}`}
+              className="hover:bg-surface-2"
+            />
+          </Link>
+        </li>
+      ))}
+      {items.length > 8 ? (
+        <li className="text-small text-fg-muted">+ {items.length - 8} autres</li>
+      ) : null}
+    </ul>
   );
 }

@@ -8,7 +8,7 @@ import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
 import { requireRoute } from "@/server/auth";
 import { resolveCancelledPref } from "@/server/pmr-prefs";
 import { listGroups } from "@/server/data/groups";
-import { dicosSyncState } from "@/server/data/pmr";
+import { dicosSyncState, listTrainStates } from "@/server/data/pmr";
 import { pl } from "@/lib/utils";
 
 import { LiveRefresh } from "../commandes/live-refresh";
@@ -23,7 +23,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
   const today = brusselsDay();
   const du = isValidDay(f.du) ? f.du : today;
   const au = isValidDay(f.au) && f.au >= du ? f.au : du;
-  const [{ rows, total }, sync] = await Promise.all([
+  const [{ rows, total }, sync, delays] = await Promise.all([
     listGroups({
       from: du,
       to: au,
@@ -33,6 +33,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
       hideCancelled: hideCancelled(f),
     }),
     dicosSyncState("groups", du, au),
+    listTrainStates(du, au),
   ]);
   return (
     <section className="flex flex-col gap-4" aria-label="Groupes">
@@ -43,7 +44,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
         </p>
         <div className="flex flex-wrap items-center gap-3">
           {sync ? <SyncStatus {...sync} /> : null}
-          <LiveRefresh topics={["group_missions", "dicos_syncs"]} />
+          <LiveRefresh topics={["group_missions", "dicos_syncs", "mission_trains"]} />
         </div>
       </div>
       <PmrFilterBar
@@ -69,7 +70,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
           />
         )
       ) : (
-        <GroupBoard rows={rows} district={f.district ?? ""} />
+        <GroupBoard rows={rows} district={f.district ?? ""} delays={delays} />
       )}
     </section>
   );

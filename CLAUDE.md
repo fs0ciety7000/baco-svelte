@@ -577,6 +577,13 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   épisode **et par jour** (sinon la synchro de la veille bloquait l'alerte du matin), variables R2 = seule source de vérité
   (S3 coupé sans elles, seulement pour `serve`, réglages sur une copie). Note DPO : la durée des
   sauvegardes était fausse (« 28 h ») → 14 jours, R2 ajouté comme sous-traitant à valider.
+- 2026-10-10 — **Retards des trains liés aux missions PMR et aux groupes** (demande de l'utilisateur, lot « suite » du 10 oct. :
+  retards, ALEA encodé, Journal (fils, recherche, image collée, @district, refonte mobile, catégories auto + nouvelles
+  catégories Service / Perturbation / Groupes, tri des messages automatiques ET reclassement des anciens messages BACO),
+  Flip, widgets, impression, E2E admin). Cron PocketBase `mission-trains` (3 min) → `mission_trains`, badge « +N » /
+  « Supprimé » à la gare assistée (Missions PMR, Groupes), notification `train` aux agents du district, widget d'accueil
+  « Missions impactées ». Vérifié en local avec le faux iRail (retard de 5 min à Mons, notification, badge, widget,
+  1440 + 390). 230 contrôles de règles.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

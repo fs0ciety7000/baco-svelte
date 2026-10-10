@@ -4,6 +4,7 @@ import { z } from "zod";
 
 export const WIDGET_IDS = [
   "commandes",
+  "impacts",
   "a-confirmer",
   "raccourcis",
   "trains",

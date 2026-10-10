@@ -20,6 +20,7 @@ const TOPICS = new Set([
   "pmr_assists",
   "group_missions",
   "dicos_syncs",
+  "mission_trains",
   "pmr_equipment",
   "pmr_clients",
   "ops_log",

@@ -10,12 +10,13 @@ import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
 import { formatDay } from "@/lib/orders/time";
 import { DISTRICT_LABEL } from "@/lib/pmr/districts";
 import { aleaGroupBlocks, type GroupEnd } from "@/lib/pmr/model";
+import { missionImpact, type TrainStates } from "@/lib/pmr/train-delay";
 import type { GroupMission } from "@/server/data/groups";
 
 import { AleaButton } from "./alea-export";
 import { HIGHLIGHT, IoBadges, type Leg } from "./assist-board";
 import { PhoneLink } from "./phone-link";
-import { TrainChip } from "./train-chip";
+import { DelayBadge, TrainChip } from "./train-chip";
 
 // Missions de GROUPE DICOS (lecture seule, demande du 9 oct. 2026) : même présentation que les missions PMR
 // (trajet, IN/OUT, district, gare assistée surlignée), avec le nom du groupe et ses comptages.
@@ -77,7 +78,16 @@ function groupEnds(rows: GroupMission[], district: string): GroupEnd[] {
   return ends;
 }
 
-export function GroupBoard({ rows, district = "" }: { rows: GroupMission[]; district?: string }) {
+export function GroupBoard({
+  rows,
+  district = "",
+  delays,
+}: {
+  rows: GroupMission[];
+  district?: string;
+  /** États iRail des trains du jour : badge de retard à la gare assistée. */
+  delays?: TrainStates;
+}) {
   const [open, setOpen] = useState<GroupMission | null>(null);
   const days = [...new Set(rows.map((r) => r.day))];
   return (
@@ -129,7 +139,10 @@ export function GroupBoard({ rows, district = "" }: { rows: GroupMission[]; dist
                       onClick={() => setOpen(g)}
                     >
                       <Td>
-                        <TrainChip train={g.train} taxi={g.transport === "taxi"} />
+                        <span className="inline-flex items-center gap-1.5">
+                          <TrainChip train={g.train} taxi={g.transport === "taxi"} />
+                          <DelayBadge impact={missionImpact(g, delays)} />
+                        </span>
                       </Td>
                       <Td className="font-mono tabular">{g.time || g.arrTime || "—"}</Td>
                       <Td>
@@ -174,6 +187,7 @@ export function GroupBoard({ rows, district = "" }: { rows: GroupMission[]; dist
                       title={
                         <span className="inline-flex flex-wrap items-center gap-2">
                           <TrainChip train={g.train} taxi={g.transport === "taxi"} />
+                          <DelayBadge impact={missionImpact(g, delays)} />
                           <Route g={g} district={district} />
                         </span>
                       }

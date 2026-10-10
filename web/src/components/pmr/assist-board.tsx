@@ -26,12 +26,13 @@ import {
   type AleaEnd,
   type AssistStatus,
 } from "@/lib/pmr/model";
+import { missionImpact, type TrainStates } from "@/lib/pmr/train-delay";
 import type { Assist, PmrEvent } from "@/server/data/pmr";
 
 import { AleaButton } from "./alea-export";
 import { CopyButton } from "./copy";
 import { PhoneLink } from "./phone-link";
-import { TrainChip } from "./train-chip";
+import { DelayBadge, TrainChip } from "./train-chip";
 
 const toneVar = {
   info: "var(--info)",
@@ -206,8 +207,11 @@ export function AssistBoard({
   groupByDay,
   district = "",
   notSynced = false,
+  delays,
 }: {
   rows: Assist[];
+  /** États iRail des trains du jour (« jour|train », `listTrainStates`) : badge de retard à la gare assistée. */
+  delays?: TrainStates;
   canPmr: boolean;
   groupByDay: boolean;
   /** Aucune synchro DICOS pour la période : état vide distinct de « aucune mission ». */
@@ -310,7 +314,10 @@ export function AssistBoard({
                       onClick={() => show(a)}
                     >
                       <Td>
-                        <TrainChip train={a.train} taxi={a.transport === "taxi"} />
+                        <span className="inline-flex items-center gap-1.5">
+                          <TrainChip train={a.train} taxi={a.transport === "taxi"} />
+                          <DelayBadge impact={missionImpact(a, delays)} />
+                        </span>
                       </Td>
                       {!groupByDay ? (
                         <Td className="font-mono tabular">{formatDay(a.day)}</Td>
@@ -375,6 +382,7 @@ export function AssistBoard({
                   >
                     <span className="flex items-center gap-2 pr-0">
                       <TrainChip train={a.train} taxi={a.transport === "taxi"} />
+                      <DelayBadge impact={missionImpact(a, delays)} />
                       <span className="font-mono tabular">{a.time || "--:--"}</span>
                       <span className="-mr-11 ml-auto">
                         <AssistBadge status={a.status} />

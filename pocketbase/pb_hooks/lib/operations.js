@@ -357,7 +357,202 @@ function latLon(v) {
 	if (lat < 49 || lat > 52 || lon < 2 || lon > 7) return null;
 	return { lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6 };
 }
+
+// --- Retards des trains des missions PMR / groupes (cron `mission-trains`, demande du 10 oct. 2026) ---
+
+const DISTRICT_NAME = { DSO: 'Sud-Ouest', DSE: 'Sud-Est', DCE: 'Centre' };
+const DELAY_ALERT = 5; // minutes : premier seuil, puis paliers de 10 min
+
+function trainId(raw) {
+	const s = String(raw || '').trim().toUpperCase().replace(/^BE\.NMBS\./, '').replace(/\s+/g, '');
+	return /^[A-Z]{0,4}\d{1,6}$/.test(s) ? s : '';
+}
+
+function minutesOf(hhmm) {
+	const m = /^(\d{2}):(\d{2})$/.exec(String(hhmm || ''));
+	return m ? +m[1] * 60 + +m[2] : -1;
+}
+
+// Heure HH:MM à Bruxelles d'un instant (secondes Unix).
+function brusselsHHMM(sec) {
+	const t = sec * 1000;
+	const y = new Date(t).getUTCFullYear();
+	const summer = t >= lastSunday(y, 2) && t < lastSunday(y, 9);
+	return new Date(t + (summer ? 2 : 1) * 3600000).toISOString().slice(11, 16);
+}
+
+// Arrêt iRail d'une gare de mission : nom replié identique, ou l'un commence par l'autre (« Bruxelles-Midi »).
+function findStop(stops, station) {
+	const k = fold(station).replace(/[^a-z0-9]+/g, ' ').trim();
+	if (!k) return null;
+	let best = null;
+	for (const s of stops) {
+		const n = fold(s.st).replace(/[^a-z0-9]+/g, ' ').trim();
+		if (n === k) return s;
+		if (!best && (n.indexOf(k) === 0 || k.indexOf(n) === 0)) best = s;
+	}
+	return best;
+}
+
+function hasPerm(u, perm, roles) {
+	const role = u.getString('role');
+	if (role === 'disabled') return false;
+	if (role === 'admin' || role === 'sysop') return true;
+	if (u.getString('grants').indexOf(`"${perm}"`) !== -1) return true;
+	return roles.indexOf(role) !== -1 && u.getString('denies').indexOf(`"${perm}"`) === -1;
+}
+
+// Lit l'état iRail des trains portant une mission du jour (dans une fenêtre autour de leurs heures), l'enregistre dans
+// `mission_trains` et prévient les agents du district quand le retard à la gare assistée atteint 5 min (puis +10) ou
+// quand l'arrêt est supprimé. Une notification par train et par palier.
+function missionTrains(app, at) {
+	const setting = $os.getenv('CSM_IRAIL_URL');
+	if (setting === 'off') return 0;
+	const base = (setting || 'https://api.irail.be/v1').replace(/\/$/, '');
+	const date = at || new Date();
+	const nowMin = Math.floor(brusselsHour(date) * 60);
+	if (nowMin < 5 * 60) return 0;
+	const today = brusselsDay(date);
+	const missions = [];
+	const collect = (name, kind) => {
+		const rows = app.findRecordsByFilter(
+			name,
+			'day = {:d} && status != "annulee" && status != "realisee" && train != "" && transport != "taxi"',
+			'time',
+			2000,
+			0,
+			{ d: today }
+		);
+		for (const r of rows) {
+			const id = trainId(r.getString('train'));
+			if (!id) continue;
+			const from = minutesOf(r.getString('time'));
+			const to = Math.max(from, minutesOf(r.getString('arr_time')));
+			// Fenêtre : 90 min avant le départ jusqu'à 60 min après l'arrivée (heure inconnue : toujours).
+			if (from >= 0 && (nowMin < from - 90 || nowMin > to + 60)) continue;
+			missions.push({
+				kind: kind,
+				train: id,
+				dep: r.getString('station'),
+				arr: r.getString('other_station'),
+				inA: r.getBool('in_assist') || (!r.getBool('in_assist') && !r.getBool('out_assist')),
+				outA: r.getBool('out_assist'),
+				depD: r.getString('district'),
+				arrD: r.getString('arr_district'),
+				from: from
+			});
+		}
+	};
+	collect('pmr_assists', 'pmr');
+	collect('group_missions', 'groupe');
+	if (!missions.length) return 0;
+	const byTrain = {};
+	for (const m of missions) (byTrain[m.train] = byTrain[m.train] || []).push(m);
+	const ddmmyy = `${today.slice(8, 10)}${today.slice(5, 7)}${today.slice(2, 4)}`;
+	const users = app
+		.findRecordsByFilter('users', 'role != "disabled" && role != "connector"', '', 500, 0)
+		.filter((u) => hasPerm(u, 'deplacements:read', ['moderator', 'user', 'reader']));
+	const collection = app.findCollectionByNameOrId('mission_trains');
+	const started = Date.now();
+	const trains = Object.keys(byTrain).slice(0, 60);
+	let sent = 0;
+	for (let k = 0; k < trains.length; k++) {
+		if (Date.now() - started > 100000) break;
+		if (k > 0) sleep(350);
+		const train = trains[k];
+		let json;
+		try {
+			const res = $http.send({
+				url: `${base}/vehicle/?id=BE.NMBS.${encodeURIComponent(train)}&date=${ddmmyy}&format=json&lang=fr`,
+				method: 'GET',
+				headers: { 'User-Agent': 'CSM/1.0 (Client Solutions Management Tool; contact: exploitation)' },
+				timeout: 5
+			});
+			if (res.statusCode !== 200 || !res.json || !res.json.stops) continue;
+			json = res.json;
+		} catch (_) {
+			continue;
+		}
+		let raw = json.stops.stop || [];
+		if (!Array.isArray(raw)) raw = [raw];
+		const stops = raw.map((s) => ({
+			st: String((s.stationinfo && s.stationinfo.standardname) || s.station || ''),
+			t: brusselsHHMM(parseInt(s.time || '0', 10)),
+			d: Math.round(parseInt(s.delay || '0', 10) / 60) || 0,
+			c: s.canceled === '1' || s.canceled === 1,
+			l: s.left === '1' || s.left === 1
+		}));
+		if (!stops.length) continue;
+		const next = stops.filter((s) => !s.l)[0] || stops[stops.length - 1];
+		const allCancelled = stops.every((s) => s.c);
+		let rec;
+		try {
+			rec = app.findFirstRecordByFilter('mission_trains', 'day = {:d} && train = {:t}', { d: today, t: train });
+		} catch (_) {
+			rec = new Record(collection);
+			rec.set('day', today);
+			rec.set('train', train);
+		}
+		rec.set('delay', Math.max(0, Math.min(1440, next.d)));
+		rec.set('cancelled', allCancelled);
+		rec.set('stops', stops);
+		rec.set('checked_at', now());
+
+		// Impact aux gares assistées (seulement les arrêts pas encore quittés).
+		let worst = 0;
+		let cancelHit = false;
+		const districts = {};
+		const where = {};
+		let pmr = 0;
+		let groups = 0;
+		for (const m of byTrain[train]) {
+			let hit = false;
+			const legs = [];
+			if (m.inA) legs.push([m.dep, m.depD]);
+			if (m.outA) legs.push([m.arr, m.arrD]);
+			for (const leg of legs) {
+				const s = findStop(stops, leg[0]);
+				if (!s || s.l) continue;
+				if (s.c) cancelHit = true;
+				if (s.c || s.d >= DELAY_ALERT) {
+					hit = true;
+					worst = Math.max(worst, s.d);
+					if (leg[1]) districts[leg[1]] = true;
+					where[s.st] = true;
+				}
+			}
+			if (hit) m.kind === 'pmr' ? pmr++ : groups++;
+		}
+		const notifiedDelay = rec.getInt('notified_delay');
+		const newCancel = cancelHit && !rec.getBool('notified_cancel');
+		const newDelay = !cancelHit && worst >= DELAY_ALERT && worst >= (notifiedDelay ? notifiedDelay + 10 : DELAY_ALERT);
+		if (newCancel || newDelay) {
+			const names = Object.keys(districts).map((c) => DISTRICT_NAME[c]).filter(Boolean);
+			const parts = [];
+			if (pmr) parts.push(`${pmr} mission${pmr > 1 ? 's' : ''} PMR`);
+			if (groups) parts.push(`${groups} groupe${groups > 1 ? 's' : ''}`);
+			const stations = Object.keys(where).slice(0, 3).join(', ');
+			const label = train.replace(/^([A-Z]+)(\d)/, '$1 $2');
+			const title = newCancel ? `Train ${label} supprimé à ${stations}` : `Train ${label} : +${worst} min à ${stations}`;
+			const body = `${parts.join(' et ')} concernée${pmr + groups > 1 ? 's' : ''} (iRail).`;
+			for (const u of users) {
+				const mine = dutyDistricts(u, today);
+				if (names.length && mine.length && !mine.some((d) => names.indexOf(d) !== -1)) continue;
+				notify(app, u.id, 'train', title, body, `/pmr?q=${encodeURIComponent(train.replace(/^[A-Z]+/, ''))}`, 'mission_trains', `${train}:${today}`.slice(0, 40));
+				sent++;
+			}
+			if (newCancel) rec.set('notified_cancel', true);
+			if (newDelay) rec.set('notified_delay', worst);
+		}
+		app.save(rec);
+	}
+	return sent;
+}
+
 module.exports = {
+	missionTrains,
+	trainId,
+	findStop,
 	dutyDistricts,
 	districtsIn,
 	fold,

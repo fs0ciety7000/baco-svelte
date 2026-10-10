@@ -8,7 +8,7 @@ import { pl } from "@/lib/utils";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
 import { requirePermission } from "@/server/auth";
 import { resolveCancelledPref } from "@/server/pmr-prefs";
-import { dicosSyncState, listAssists } from "@/server/data/pmr";
+import { dicosSyncState, listAssists, listTrainStates } from "@/server/data/pmr";
 
 import { LiveRefresh } from "../commandes/live-refresh";
 
@@ -23,7 +23,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
   const du = isValidDay(f.du) ? f.du : today;
   const au = isValidDay(f.au) && f.au >= du ? f.au : du;
   const canPmr = can(user, "pmr:read");
-  const [{ rows, total }, sync] = await Promise.all([
+  const [{ rows, total }, sync, delays] = await Promise.all([
     listAssists(
       {
         from: du,
@@ -36,6 +36,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
       { canPmr },
     ),
     dicosSyncState("missions", du, au),
+    listTrainStates(du, au),
   ]);
   return (
     <section className="flex flex-col gap-4" aria-label="Missions PMR">
@@ -47,7 +48,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
         {/* Plus de création manuelle : les missions sont synchronisées depuis DICOS (décision du 8 octobre 2026). */}
         <div className="flex flex-wrap items-center gap-3">
           {sync ? <SyncStatus {...sync} /> : null}
-          <LiveRefresh topics={["pmr_assists", "dicos_syncs"]} />
+          <LiveRefresh topics={["pmr_assists", "dicos_syncs", "mission_trains"]} />
         </div>
       </div>
       <PmrFilterBar
@@ -65,6 +66,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
         groupByDay
         district={f.district ?? ""}
         notSynced={sync ? !sync.covered : false}
+        delays={delays}
       />
     </section>
   );

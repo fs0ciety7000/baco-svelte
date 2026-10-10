@@ -127,3 +127,11 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
 - **Horaires ATMS** (`1760001800_train_schedules.js`) : `train_schedules` (jour + train uniques, `stops` JSON : abréviation
   PtCar, nom ATMS, arrivée, départ, temps d'arrêt, position), écrits par le connecteur (`dicos:write`, jour et train
   figés), lus avec `pmr:read` (pas `otto_agent`), purgés après 60 jours par `pmr-retention`. Données d'exploitation.
+- **Retards des trains de mission** (`1760002100_mission_trains.js`, cron `mission-trains` toutes les 3 min, 5 h - minuit à
+  Bruxelles, `lib/operations.js` → `missionTrains`) : trains des `pmr_assists` / `group_missions` du jour (pas annulées ni
+  réalisées, ni taxi), dans une fenêtre de 90 min avant le départ à 60 min après l'arrivée ; 60 trains et 100 s par
+  passage, 350 ms entre appels iRail. `mission_trains` (jour + train uniques) : retard courant, `cancelled`, `stops`
+  (`st`, `t`, `d`, `c`, `l`), écrit par le hook seul, lu avec `deplacements:read`, purgé après 7 jours. Notification
+  `train` aux agents `deplacements:read` des districts concernés (districts du jour), au retard ≥ 5 min à la gare
+  assistée puis par paliers de 10 min, et à la suppression de l'arrêt (`notified_delay`, `notified_cancel`).
+  `CSM_IRAIL_URL=off` coupe aussi ce suivi (CI).

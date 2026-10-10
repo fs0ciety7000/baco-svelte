@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { ASSIST_STATUSES, type AssistStatus, type EquipmentState } from "@/lib/pmr/model";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
+import type { TrainState, TrainStates } from "@/lib/pmr/train-delay";
 
 import { pbForRequest } from "./orders";
 
@@ -548,5 +549,34 @@ export async function dicosSyncState(
     };
   } catch {
     return null;
+  }
+}
+
+/**
+ * États iRail des trains de mission (`mission_trains`, cron PocketBase) sur une période, par « jour|train ». Les trains
+ * ne sont suivis que le jour même : une période passée ou future renvoie peu ou rien. Collection absente : vide.
+ */
+export async function listTrainStates(from: string, to: string): Promise<TrainStates> {
+  if (!isValidDay(from) || !isValidDay(to)) return {};
+  const pb = await pbForRequest();
+  try {
+    const rows = await pb.collection("mission_trains").getFullList({
+      filter: pb.filter("day >= {:from} && day <= {:to}", { from, to }),
+      fields: "day,train,delay,cancelled,stops,checked_at",
+      batch: 500,
+    });
+    const out: TrainStates = {};
+    for (const r of rows) {
+      const stops = (Array.isArray(r.stops) ? r.stops : []) as TrainState["stops"];
+      out[`${r.day}|${r.train}`] = {
+        delay: typeof r.delay === "number" ? r.delay : 0,
+        cancelled: r.cancelled === true,
+        stops,
+        checkedAt: typeof r.checked_at === "string" ? r.checked_at : "",
+      };
+    }
+    return out;
+  } catch {
+    return {};
   }
 }

@@ -22,8 +22,8 @@ describe("disposition du tableau de bord", () => {
   });
 
   it("déplace d'un cran, sans sortir des bornes", () => {
-    expect(move(DEFAULT_LAYOUT, "a-confirmer", -1).order.slice(0, 2)).toEqual([
-      "a-confirmer",
+    expect(move(DEFAULT_LAYOUT, "impacts", -1).order.slice(0, 2)).toEqual([
+      "impacts",
       "commandes",
     ]);
     expect(move(DEFAULT_LAYOUT, "commandes", -1)).toBe(DEFAULT_LAYOUT);

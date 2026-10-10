@@ -164,3 +164,13 @@ cronAdd('dicos-stale', '*/10 * * * *', () => {
 		console.log('dicos-stale', String(err));
 	}
 });
+
+// Toutes les 3 minutes (5 h - minuit à Bruxelles) : état iRail des trains portant une mission PMR ou un groupe du jour
+// (`mission_trains`) et notification aux agents du district au-delà de 5 min de retard ou à la suppression.
+cronAdd('mission-trains', '*/3 * * * *', () => {
+	try {
+		require(`${__hooks}/lib/operations.js`).missionTrains($app);
+	} catch (err) {
+		console.log('mission-trains', String(err));
+	}
+});

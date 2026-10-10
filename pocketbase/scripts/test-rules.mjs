@@ -610,6 +610,15 @@ try {
 		const tsMove = await api('PATCH', `/api/collections/train_schedules/records/${ts.json?.id}`, { token: ctok, body: { train: '2' } });
 		check('train d un horaire ATMS figé', tsMove.status >= 400, `HTTP ${tsMove.status}`);
 		if (ts.json?.id) await api('DELETE', `/api/collections/train_schedules/records/${ts.json.id}`, { token: root });
+		// Retards des trains de mission (1760002100) : écrits par le hook seulement, lus avec deplacements:read.
+		const mtList = await api('GET', '/api/collections/mission_trains/records', { token: u.token });
+		check('agent lit les retards des trains de mission', mtList.status === 200, `HTTP ${mtList.status}`);
+		const mtAnon = await api('GET', '/api/collections/mission_trains/records', {});
+		check('retards des trains : anonyme sans résultat', mtAnon.status >= 400 || (mtAnon.json?.items?.length ?? 0) === 0, `HTTP ${mtAnon.status}`);
+		const mtUser = await api('POST', '/api/collections/mission_trains/records', { token: u.token, body: { day: '2026-10-09', train: 'IC1' } });
+		check('agent n écrit pas les retards des trains', mtUser.status >= 400, `HTTP ${mtUser.status}`);
+		const mtConn = await api('POST', '/api/collections/mission_trains/records', { token: ctok, body: { day: '2026-10-09', train: 'IC1' } });
+		check('connector n écrit pas les retards des trains', mtConn.status >= 400, `HTTP ${mtConn.status}`);
 		// Journal des synchros DICOS (1760001900) : écrit par le connecteur, lu avec pmr:read, jamais modifiable.
 		const ds = await api('POST', '/api/collections/dicos_syncs/records', {
 			token: ctok,

@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { normalizeLayout } from "@/design/dashboard-layout";
 import { requireUser } from "@/server/auth";
 import { dashboardStats } from "@/server/data/dashboard";
+import { impactedMissions } from "@/server/data/impacts";
 import { favoritesOf, latestLog, listPinned } from "@/server/data/ops";
 import { brusselsTime, pbDate } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
@@ -15,10 +16,11 @@ export const metadata: Metadata = { title: "Accueil · CSM" };
 export default async function AccueilPage() {
   const user = await requireUser();
   const prefs = (user.preferences ?? {}) as { dashboard?: unknown };
-  const [stats, pinned, latest] = await Promise.all([
+  const [stats, pinned, latest, impacts] = await Promise.all([
     can(user, "otto:read") ? dashboardStats() : null,
     can(user, "journal:read") ? listPinned().catch(() => []) : null,
     can(user, "journal:read") ? latestLog(5).catch(() => []) : null,
+    impactedMissions(user).catch(() => []),
   ]);
   // Widget main courante : épinglées puis dernières entrées (5 au total).
   const log =
@@ -43,7 +45,11 @@ export default async function AccueilPage() {
     <Dashboard
       firstName={firstName}
       stats={stats}
-      ops={{ log, favorites: can(user, "live:read") ? favoritesOf(user.preferences) : null }}
+      ops={{
+        log,
+        favorites: can(user, "live:read") ? favoritesOf(user.preferences) : null,
+        impacts,
+      }}
       initialLayout={normalizeLayout(prefs.dashboard)}
     />
   );

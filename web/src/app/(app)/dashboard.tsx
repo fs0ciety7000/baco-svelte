@@ -25,6 +25,7 @@ import { useRef, useState, useTransition, type ReactNode } from "react";
 
 import {
   DisturbanceWidget,
+  ImpactsWidget,
   LogWidget,
   TrainsWidget,
   type LogDigest,
@@ -44,12 +45,14 @@ import { brusselsDay, daysBetween, formatDay, isValidDay } from "@/lib/orders/ti
 import { cn, pl } from "@/lib/utils";
 import type { FavoriteStation } from "@/lib/ops/irail";
 import type { DashboardStats } from "@/server/data/dashboard";
+import type { ImpactedMission } from "@/server/data/impacts";
 
 import { saveDashboardLayout } from "../dashboard-actions";
 import { LiveRefresh } from "./commandes/live-refresh";
 
 const TITLES: Record<WidgetId, { eyebrow: string; title: string; wide?: boolean }> = {
   commandes: { eyebrow: "Commandes", title: "Vue du jour", wide: true },
+  impacts: { eyebrow: "PMR et groupes", title: "Missions impactées", wide: true },
   "a-confirmer": { eyebrow: "Commandes", title: "À confirmer", wide: true },
   raccourcis: { eyebrow: "Actions", title: "Raccourcis" },
   trains: { eyebrow: "Opérations", title: "Trains perturbés" },
@@ -65,7 +68,11 @@ const dateLabel = new Intl.DateTimeFormat("fr-BE", {
   timeZone: "Europe/Brussels",
 });
 
-export type OpsDigest = { log: LogDigest[] | null; favorites: FavoriteStation[] | null };
+export type OpsDigest = {
+  log: LogDigest[] | null;
+  favorites: FavoriteStation[] | null;
+  impacts: ImpactedMission[] | null;
+};
 
 function WidgetBody({
   id,
@@ -182,6 +189,8 @@ function WidgetBody({
           ))}
         </div>
       );
+    case "impacts":
+      return <ImpactsWidget items={ops.impacts} />;
     case "trains":
       return <TrainsWidget favorites={ops.favorites} />;
     case "main-courante":
@@ -293,6 +302,8 @@ function Widget({
               </>
             ) : id === "commandes" || id === "a-confirmer" ? (
               <LiveRefresh topics={["bus_orders"]} />
+            ) : id === "impacts" ? (
+              <LiveRefresh topics={["mission_trains"]} />
             ) : null
           }
         />
