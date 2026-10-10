@@ -58,6 +58,37 @@ la prod ; Brevo abandonné). Resend → Add domain (région eu-west-1), enregist
 `CSM_SMTP_PASSWORD` (clé API), `CSM_MAIL_SENDER=csm@mail.fs0ciety.org`, `CSM_MAIL_SENDER_NAME`, puis redéploiement.
 Journal de démarrage : « e-mail : SMTP smtp.resend.com:587 ».
 
+**Serveur mail Stalwart (décision du 10 oct., en cours)** : **tous les envois et réceptions** des services hébergés
+passeront par le serveur auto-hébergé **Stalwart v0.16.13**, service Coolify `smtp-fs0ciety`
+(`s7rxizvqhtvgib6cs2rqqd9g`, projet **Dev**, hôte 152.53.176.13, DNS inverse `mail.fs0ciety.org`, ports 25 / 465 /
+587 / 993 / 4190, interface + API derrière Traefik sur `https://mail.fs0ciety.org` → conteneur 8080). Resend devient
+transitoire. L'ancien service `stalwart` (`h7vpjks3…`, `mail.tandem-agenda.app`) est **arrêté** (aucun conflit de ports).
+- API v0.16 = **JMAP** (`POST /jmap/`, `using: urn:stalwart:jmap`, objets `x:Domain`, `x:Account`, `x:DkimSignature`,
+  `x:NetworkListener`, `x:AcmeProvider`, `x:Certificate`, `x:SystemSettings` id `singleton`, `x:Task`) ; les anciens
+  `/api/principal`, `/api/settings`, `/api/dkim` renvoient 404. `GET /api/account` liste les droits de la clé.
+- État relevé : nom d'hôte `mail.fs0ciety.org` ✓ ; 5 domaines créés (`fs0ciety.org`, `empire.fs0ciety.org`,
+  `cardormedia.com`, `tandem-agenda.app`, `tasks.tandem-agenda.app`) avec DKIM automatique RSA + Ed25519
+  (sélecteurs `v1-rsa-AAAAMMJJ` / `v1-ed25519-AAAAMMJJ`, rotation 90 j : **les enregistrements DNS suivent la rotation**) ;
+  seul compte `admin@fs0ciety.org` ; **pas de listener 587** (à créer : `submission`, STARTTLS) ; **aucun certificat**.
+- **Certificat** : le fournisseur ACME est en TLS-ALPN-01 (port 443 tenu par Traefik → échec) et **HTTP-01 est
+  impossible** : Traefik (Coolify) intercepte `/.well-known/acme-challenge/` sur le port 80 pour ses propres
+  certificats (404 vide). Solutions : DNS-01 avec un jeton Cloudflare **limité** à `Zone › DNS › Edit` de
+  `fs0ciety.org` (recommandé), ou routeur TCP Traefik en passthrough `HostSNI(mail.fs0ciety.org)` → port 443 du conteneur.
+  Sans certificat valide, PocketBase refuse le STARTTLS : ne pas poser `CSM_SMTP_*` avant.
+- CSM (à faire) : `CSM_SMTP_HOST=mail.fs0ciety.org`, `CSM_SMTP_PORT=587`, `CSM_SMTP_USER=csm@fs0ciety.org`,
+  `CSM_SMTP_PASSWORD` (fichier hors dépôt, mode 600), `CSM_MAIL_SENDER=csm@fs0ciety.org`,
+  `CSM_MAIL_SENDER_NAME=CSM · Client Solutions` sur `csm-pocketbase` puis `csm-pocketbase-prod` (aucune variable
+  `CSM_SMTP_*` n'y était posée le 10 oct.), redémarrage preview → test « Envoyer un test » → prod.
+- Autres services à basculer ensuite (noms de variables relevés le 10 oct., valeurs jamais lues) : OCC Deliveries
+  (`OCC_SMTP_*`, `OCC_MAIL_FROM*`), agenda / Tandem (`SMTP_*`, `RESEND_*`, `INBOUND_EMAIL_*` : réception entrante à
+  revoir), rail-cards (`SMTP_*`, `EMAIL_FROM`), elo (`RESEND_*`), fs0ciety (`RESEND_API_KEY`), documenso
+  (`NEXT_PRIVATE_SMTP_*`, `NEXT_PRIVATE_RESEND_API_KEY`), ntfy (`NTFY_SMTP_SENDER_*`). Un compte d'envoi par service
+  (mot de passe propre, révocable). Code des services à adapter quand ils n'envoient que par l'API Resend.
+- DNS : SPF **fusionné** (un seul par nom, `ip4:152.53.176.13` ajouté sans retirer les `include:`), DKIM Stalwart,
+  DMARC existant gardé ; MX de `cardormedia.com` (aucun) / `tandem-agenda.app` (Tutanota) / `tasks.tandem-agenda.app`
+  (Amazon SES) = décision de l'utilisateur ; `empire.fs0ciety.org` est un CNAME proxifié → ni MX ni SPF possibles
+  tant qu'il le reste (envoi aligné DMARC par DKIM seulement).
+
 ### Preview (environnement `production` historique, branche de session)
 
 Projet **CSM** (`cqqgszrebw6mm6wyizbzb5i3`), environnement `production`, serveur `localhost` (Coolify 4.4.2,

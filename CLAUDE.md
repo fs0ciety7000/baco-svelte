@@ -252,6 +252,9 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - (v2) **Une seule connexion SSE par onglet** (`web/src/lib/live.ts`) : plusieurs `EventSource` saturent les 6 connexions
   HTTP/1.1 par domaine et la navigation se bloque (accueil avec widgets en direct, 10 oct.) ; en production HTTP/2 masque le
   problème. Trouvé par l'E2E shell en local.
+- (v2) **Traefik (Coolify) intercepte `/.well-known/acme-challenge/` sur le port 80** : un service derrière Traefik ne peut
+  pas obtenir son certificat en HTTP-01 (404 vide), ni en TLS-ALPN-01 (443 tenu par Traefik). Stalwart : DNS-01 (jeton
+  Cloudflare limité) ou passthrough TCP. API Stalwart v0.16 = JMAP (`/jmap/`, `urn:stalwart:jmap`), plus de `/api/principal`.
 - (v2) Playwright : un libellé avec astérisque requis (`Arrivée *`) ne répond pas à `getByLabel(…, { exact: true })` ;
   passer par `getByRole(…, { name, exact: true })`.
 
@@ -794,6 +797,13 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   l'annuaire (page large, référentiel borné), `documents.updateRule` resserré aux coordinateurs + `uploaded_by` figé
   (`1760001000`), hook de suppression fail-closed (`findRecordsByFilter`), restauration de version réservée aux
   coordinateurs, filtre par catégorie câblé, e-mail validé. 173 contrôles de règles.
+
+- 2026-10-10 — **Serveur mail Stalwart** (`smtp-fs0ciety`, projet Dev) : **tous les envois et réceptions des services
+  hébergés y passeront** (décision de l'utilisateur), Resend transitoire ; variables Coolify (et code si besoin) des services
+  à adapter ensuite (inventaire dans DEPLOIEMENT-V2 §SMTP). Relevé : 5 domaines + DKIM RSA/Ed25519 déjà créés, pas de
+  listener 587, pas de certificat (ACME TLS-ALPN-01 en échec, HTTP-01 intercepté par Traefik). Écritures (listener,
+  comptes `csm@` / `dmarc@`, certificat, DNS, variables CSM) **en attente** : refusées par le garde-fou du mode automatique
+  malgré l'accord de l'utilisateur ; choix du certificat (DNS-01 jeton limité ou passthrough) soumis.
 
 ---
 
