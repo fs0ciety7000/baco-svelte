@@ -1,41 +1,48 @@
-import Image from "next/image";
-
 import { cn } from "@/lib/utils";
 
-/** Mention de l'éditeur avec son logo (pied de page du shell et de la page de connexion). */
+import { BrandMark } from "./brand-mark";
+
+/**
+ * Mention de l'éditeur (pied de page du shell et des pages de connexion) : OCC Interactive, division de CARDOR Media,
+ * avec ses emblèmes animés (Dragon et roue du Car d'Or, charte https://cardormedia.com/marque).
+ */
 export function StudioCredit({ className }: { className?: string }) {
   return (
     <p
+      data-brand-host
       className={cn(
-        "inline-flex flex-wrap items-center gap-x-1.5 gap-y-1 text-small text-fg-muted",
+        "inline-flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-small text-fg-muted md:justify-start",
         className,
       )}
     >
       <a
-        href="https://studios.fs0ciety.org/"
+        href="https://interactive.cardormedia.com/"
         target="_blank"
         rel="noopener noreferrer"
         aria-hidden
         tabIndex={-1}
         className="shrink-0"
       >
-        <Image
-          src="/brand/occ-mons-studios.webp"
-          alt=""
-          width={19}
-          height={32}
-          unoptimized
-          className="h-8 w-auto"
-        />
+        <BrandMark name="occ-interactive" className="h-8" />
       </a>
       Développé par{" "}
       <a
-        href="https://studios.fs0ciety.org/"
+        href="https://interactive.cardormedia.com/"
         target="_blank"
         rel="noopener noreferrer"
         className="link"
       >
-        OCC MONS Studios
+        OCC Interactive
+      </a>
+      <span>· une division de</span>
+      <a
+        href="https://cardormedia.com/marque"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="link inline-flex items-center gap-1"
+      >
+        <BrandMark name="cardor-monogram" className="h-4" />
+        CARDOR Media
       </a>{" "}
       · {new Date().getFullYear()}
     </p>

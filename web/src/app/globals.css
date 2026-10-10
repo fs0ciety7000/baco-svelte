@@ -431,3 +431,23 @@
 .pn-map .leaflet-control-attribution a {
   color: var(--fg);
 }
+
+/* Emblèmes de l'éditeur (StudioCredit, components/shell/brand-mark.tsx) : monochromes au repos (couleur du texte),
+   couleurs de la charte CARDOR Media au survol ou au focus du conteneur (`initial` = repli sur la couleur du SVG). */
+.brand-mark {
+  --logo-t1: currentColor;
+  --logo-t2: color-mix(in oklab, currentColor 45%, transparent);
+  --logo-t3: currentColor;
+}
+.brand-mark[data-mark="cardor-monogram"] {
+  --logo-t2: transparent;
+}
+[data-brand-host]:hover .brand-mark,
+[data-brand-host]:focus-within .brand-mark {
+  --logo-t1: initial;
+  --logo-t2: initial;
+  --logo-t3: initial;
+}
+.brand-mark g[fill] {
+  transition: fill 0.6s ease;
+}
