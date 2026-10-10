@@ -268,6 +268,8 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   nom d'hôte ou par chemin**, jamais de regroupement.
 - (v2) **Les services envoient avec le mot de passe d'application** du compte Stalwart `nicolas`, jamais son mot de passe
   personnel (le changer coupe tous les envois : 10 oct.).
+- (v2) **Tests d'envoi d'e-mail : uniquement vers `nd.managment@gmail.com`** (demande de l'utilisateur du 10 oct.), jamais
+  vers d'autres adresses ni vers les joueurs / agents ; jamais d'envoi de campagne à tous pour un test.
 - (v2) Playwright : un libellé avec astérisque requis (`Arrivée *`) ne répond pas à `getByLabel(…, { exact: true })` ;
   passer par `getByRole(…, { name, exact: true })`.
 
