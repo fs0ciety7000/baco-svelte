@@ -192,6 +192,11 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   appeler `POST /deploy` en plus : deux déploiements simultanés ont laissé `csm-pocketbase` arrêté (`exited:unhealthy`,
   9 oct.) ; rétabli par un nouveau push. Journal de démarrage dans `/pb_data/startup.log` ; `PB_DEBUG_HOLD=1` (variable
   runtime, à retirer ensuite) garde le conteneur en vie après un échec pour l'examiner par tâche planifiée.
+- (v2) **Les PocketBase publics (`pb-csm`, `pb-test-csm`) sont derrière Cloudflare Access depuis le 10 oct.** (application
+  « PocketBase CSM », e-mail du propriétaire seulement, `docs/DEPLOIEMENT-V2.md`) : depuis l'environnement cloud, tout appel
+  direct (contrôle « collection présente » ci-dessous, restauration par l'API, réglages, `CSM_PB_URL`) reçoit un 302 vers
+  `cinecode.cloudflareaccess.com`. Passer par une tâche planifiée Coolify exécutée une fois, ou demander à l'utilisateur un
+  jeton de service Access posé en variables d'environnement. L'appli web n'est pas concernée (réseau Docker interne).
 - (v2) Un déploiement Coolify **raté** de `csm-pocketbase` laisse l'ancienne version en ligne : `csm-web` (déployé, lui)
   appelle alors une collection absente → 404 PocketBase (« Missing collection context »). Vérifier après un push qui
   ajoute une migration : `curl https://pb-test-csm.fs0ciety.org/api/collections/<nom>/records` (401/403/200 = présente,
@@ -721,6 +726,10 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   pris par empire.fs0ciety.org). 261 contrôles de règles.
 - 2026-10-10 — **Lot suivant évoqué : Quinyx** (tableau de service) pour voir qui est en poste — à cadrer (API Quinyx
   avec identifiants délivrés par l'IT, ou flux iCal par agent).
+- 2026-10-10 — **Cloudflare Access devant les deux PocketBase** (autorisation du propriétaire, par l'API Cloudflare) :
+  application « PocketBase CSM » (`85ccd53d-4528-43ce-a653-96214a9c6a77`) sur `pb-csm` et `pb-test-csm`, One-time PIN
+  existant, session 24 h, politique Allow = `occmons@gmail.com`, pas de jeton de service. Vérifié : PocketBase → 302 vers
+  Access ; web prod et preview → santé 200 (`pocketbase: true`), connexion 200. Clôt le « Reste (infra) » du 9 oct.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

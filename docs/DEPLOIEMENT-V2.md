@@ -1,7 +1,7 @@
 # Déploiement de CSM v2 sur Coolify
 
-> **Production** (10 octobre 2026) : **https://csm.fs0ciety.org** (web) et **https://pb-csm.fs0ciety.org** (PocketBase, à
-> protéger par Cloudflare Access), branche **`csm-prod`**, environnement Coolify `prod`.
+> **Production** (10 octobre 2026) : **https://csm.fs0ciety.org** (web) et **https://pb-csm.fs0ciety.org** (PocketBase,
+> derrière Cloudflare Access), branche **`csm-prod`**, environnement Coolify `prod`.
 > **Preview** : **https://test-csm.fs0ciety.org** (web) et **https://pb-test-csm.fs0ciety.org**, branche de session.
 > Ressources créées par Claude via l'API Coolify (test le 8 octobre, prod le 10 octobre 2026).
 > BACO (Vercel, branche `main`, base Supabase) n'est pas concerné.
@@ -23,17 +23,32 @@ valeur), `CSM_DICOS_PB_EMAIL` / `_PASSWORD` (compte `connector` de la prod), `CS
 **Mettre en production** une version validée sur la preview : `git push origin <commit>:csm-prod` (avance rapide ; Coolify
 redéploie les deux applications selon `watch_paths`). Rien d'autre ne pousse sur `csm-prod`.
 
-**Cloudflare** : `csm` et `pb-csm` existent ; activer **Cloudflare Access** sur `pb-csm.fs0ciety.org` (le web n'en a pas
+**Cloudflare** : `csm` et `pb-csm` existent ; **Cloudflare Access** actif sur `pb-csm` et `pb-test-csm` (le web n'en a pas
 besoin : il joint PocketBase par le réseau Docker). Garder l'« Email Address Obfuscation » sans effet (`no-transform`).
 
-**Cloudflare Access sur PocketBase** (`pb-csm` et `pb-test-csm`, enregistrements proxifiés) : Zero Trust
-(one.dash.cloudflare.com, offre Free ≤ 50 utilisateurs) → Access → Applications → Add → **Self-hosted**, deux noms
-d'hôte (`pb-csm`, `pb-test-csm` sur `fs0ciety.org`), politique **Allow** sur l'e-mail de l'utilisateur (connexion par
-code à usage unique). Aucun effet sur CSM : `csm-web` joint PocketBase par le réseau Docker (`PB_URL` interne), la sonde
-de santé est locale, les liens d'e-mail pointent vers `CSM_APP_URL`. Effet sur Claude : les appels directs à
-`https://pb-*.fs0ciety.org` (restauration par l'API, réglages, contrôle « collection présente » du §6) renvoient la page
-Cloudflare → passer par un **jeton de service** Access (politique « Service Auth », en-têtes `CF-Access-Client-Id` /
-`CF-Access-Client-Secret`, à poser comme variables de l'environnement cloud) ou par une tâche planifiée Coolify.
+**Cloudflare Access sur PocketBase** — **fait par l'API Cloudflare le 10 octobre 2026** (jeton `CLOUDFLARE_API_TOKEN` de
+l'environnement cloud, compte `CLOUDFLARE_ACCOUNT_ID`, organisation Zero Trust existante `cinecode.cloudflareaccess.com`) :
+
+| Élément | Valeur |
+|---|---|
+| Application | « PocketBase CSM », `self_hosted`, id `85ccd53d-4528-43ce-a653-96214a9c6a77` |
+| Destinations | `pb-csm.fs0ciety.org` (prod) et `pb-test-csm.fs0ciety.org` (preview) — rien d'autre |
+| Session | 24 h, redirection directe vers le fournisseur, masquée du lanceur d'applications |
+| Fournisseur | One-time PIN (déjà présent, id `8a62d92a-75c8-458c-969b-43e5b50c81fc`, code reçu par e-mail) |
+| Politique | « Propriétaire CSM », **Allow**, include e-mail `occmons@gmail.com` (id `f1527b0c-f4d9-4e2e-99a3-5a8c9f15b215`) |
+| Jeton de service | aucun (son secret ne peut pas être remis sans l'afficher) |
+
+Vérifié : `pb-csm` et `pb-test-csm` `/api/health` → 302 vers `cinecode.cloudflareaccess.com` ; `csm` et `test-csm`
+`/api/health` → 200 `{"ok":true,"pocketbase":true}`, `/connexion` → 200. Les autres applications Access du compte
+(autres projets) ne sont pas touchées. **Ajouter une adresse** : one.dash.cloudflare.com → Access → Applications →
+« PocketBase CSM » → Policies → « Propriétaire CSM » → Include → ajouter un sélecteur *Emails* → Save.
+
+Aucun effet sur CSM : `csm-web` joint PocketBase par le réseau Docker (`PB_URL` interne), la sonde de santé est locale,
+les liens d'e-mail pointent vers `CSM_APP_URL`. **Effet sur Claude** : les appels directs à `https://pb-*.fs0ciety.org`
+(restauration par l'API, réglages, contrôle « collection présente » du §6) renvoient la redirection Cloudflare → passer
+par une tâche planifiée Coolify exécutée une fois, ou demander à l'utilisateur un **jeton de service** Access (politique
+« Service Auth » ajoutée à l'application, en-têtes `CF-Access-Client-Id` / `CF-Access-Client-Secret` posés comme
+variables de l'environnement cloud).
 
 **SMTP Brevo** (mot de passe oublié + campagnes) : domaine authentifié = **`fs0ciety.org`** (racine : un `TXT` y est
 possible, contrairement à `csm` qui porte l'enregistrement de l'application ; SPF `v=spf1 mx ~all` et DMARC
