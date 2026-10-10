@@ -4,6 +4,7 @@ import type { RecordModel } from "pocketbase";
 import { z } from "zod";
 
 import { parseFavorites, type FavoriteStation } from "@/lib/ops/irail";
+import { plainText } from "@/lib/ops/chat-markdown";
 import { LOG_CATEGORIES, type LogCategory } from "@/lib/ops/log";
 import { addDays, brusselsDay, brusselsToUtc, isValidDay } from "@/lib/orders/time";
 
@@ -49,6 +50,10 @@ export type LogEntry = {
   created: string;
   updated: string;
   readers: { id: string; name: string }[];
+  /** Message d'origine quand celui-ci est une réponse (fil à un niveau). */
+  replyTo: { id: string; author: string; excerpt: string } | null;
+  /** Nombre de réponses actives (renseigné dans le fil). */
+  replyCount: number;
   /** Champs bruts des liens (formulaire de modification). */
   raw: { busOrder: string; taxiOrder: string; pmrAssist: string; levelCrossing: string };
 };
@@ -129,6 +134,21 @@ function entry(r: RecordModel, readers: Map<string, { id: string; name: string }
     created: str(r.created),
     updated: str(r.updated),
     readers: readers.get(r.id) ?? [],
+    replyTo: (() => {
+      const p = e.reply_to as RecordModel | undefined;
+      if (!str(r.reply_to)) return null;
+      if (!p) return { id: str(r.reply_to), author: "", excerpt: "Message indisponible" };
+      const pa = (p.expand as { author?: RecordModel } | undefined)?.author;
+      return {
+        id: p.id,
+        author:
+          str(p.source) === "irail"
+            ? "iRail · SNCB"
+            : str(pa?.name) || str(pa?.username) || "Agent",
+        excerpt: plainText(str(p.body)).slice(0, 140),
+      };
+    })(),
+    replyCount: 0,
     raw: {
       busOrder: str(r.bus_order),
       taxiOrder: str(r.taxi_order),
@@ -138,7 +158,7 @@ function entry(r: RecordModel, readers: Map<string, { id: string; name: string }
   };
 }
 
-const EXPAND = "author,bus_order,taxi_order,pmr_assist,level_crossing";
+const EXPAND = "author,bus_order,taxi_order,pmr_assist,level_crossing,reply_to,reply_to.author";
 
 export const logListSchema = z.object({
   jour: z.string().refine(isValidDay).optional().catch(undefined),
@@ -163,6 +183,35 @@ export const logListSchema = z.object({
     .transform((v) => v === "1"),
 });
 export type LogFilters = z.input<typeof logListSchema>;
+
+/** Réponses actives par message d'origine (un appel, borné à la page affichée). */
+async function replyCounts(entryIds: string[]) {
+  const map = new Map<string, number>();
+  if (!entryIds.length) return map;
+  const pb = await pbForRequest();
+  try {
+    const rows = await pb.collection("ops_log").getFullList({
+      filter: `status = "active" && (${entryIds.map((id, i) => pb.filter(`reply_to = {:r${i}}`, { [`r${i}`]: id })).join(" || ")})`,
+      fields: "reply_to",
+      batch: 500,
+    });
+    for (const r of rows) map.set(str(r.reply_to), (map.get(str(r.reply_to)) ?? 0) + 1);
+  } catch {
+    // Champ absent (base pas encore migrée) : pas de compteur.
+  }
+  return map;
+}
+
+/** Réponses d'un message (panneau de détail), de la plus ancienne à la plus récente. */
+export async function listReplies(id: string): Promise<LogEntry[]> {
+  const pb = await pbForRequest();
+  const items = await pb.collection("ops_log").getFullList({
+    filter: pb.filter('reply_to = {:id} && status = "active"', { id: pbId.parse(id) }),
+    sort: "created",
+    expand: EXPAND,
+  });
+  return items.map((r) => entry(r, new Map()));
+}
 
 async function readersOf(entryIds: string[]) {
   const map = new Map<string, { id: string; name: string }[]>();
@@ -193,8 +242,18 @@ export async function listLog(input: LogFilters, ctx: { coordinator: boolean }) 
   const pb = await pbForRequest();
   const parts: string[] = [];
   const since = toPbInstant(brusselsToUtc(addDays(brusselsDay(), -180)));
-  if (f.q) parts.push(pb.filter("occurred_at >= {:a} && body ~ {:q}", { a: since, q: f.q }));
-  else if (f.pn)
+  // Recherche plein texte : chaque mot doit figurer dans le texte, le nom de l'auteur ou le n° de train.
+  if (f.q) {
+    const words = f.q.split(/\s+/).filter(Boolean).slice(0, 6);
+    parts.push(pb.filter("occurred_at >= {:a}", { a: since }));
+    words.forEach((w) =>
+      parts.push(
+        pb.filter("(body ~ {:w} || author.name ~ {:w} || author.username ~ {:w} || train ~ {:w})", {
+          w,
+        }),
+      ),
+    );
+  } else if (f.pn)
     parts.push(pb.filter("occurred_at >= {:a} && level_crossing = {:p}", { a: since, p: f.pn }));
   if (f.categorie) parts.push(pb.filter("category = {:c}", { c: f.categorie }));
   if (f.auteur) parts.push(pb.filter("author = {:u}", { u: f.auteur }));
@@ -206,9 +265,10 @@ export async function listLog(input: LogFilters, ctx: { coordinator: boolean }) 
     sort: "-created,-id",
     expand: EXPAND,
   });
-  const readers = await readersOf(res.items.map((r) => r.id));
+  const ids = res.items.map((r) => r.id);
+  const [readers, counts] = await Promise.all([readersOf(ids), replyCounts(ids)]);
   return {
-    rows: res.items.map((r) => entry(r, readers)),
+    rows: res.items.map((r) => ({ ...entry(r, readers), replyCount: counts.get(r.id) ?? 0 })),
     total: res.totalItems,
     limit: f.n,
     hasMore: res.totalItems > res.items.length,

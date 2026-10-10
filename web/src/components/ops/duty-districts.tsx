@@ -117,7 +117,14 @@ export function DutyChip({ districts, today }: { districts: string[]; today: boo
         title="Districts où je travaille aujourd'hui"
       >
         <MapPin aria-hidden className="size-3.5" />
-        {set ? districts.map((d) => DUTY_SHORT[d] ?? d).join(" · ") : "Mes districts du jour ?"}
+        {set ? (
+          districts.map((d) => DUTY_SHORT[d] ?? d).join(" · ")
+        ) : (
+          <>
+            <span className="sm:hidden">Districts ?</span>
+            <span className="max-sm:hidden">Mes districts du jour ?</span>
+          </>
+        )}
       </button>
       <DutyDialog open={open} onOpenChange={setOpen} initial={today ? districts : []} />
     </>

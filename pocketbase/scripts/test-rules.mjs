@@ -444,6 +444,15 @@ try {
 	check('identifiant externe non forgeable', lgX.status >= 400, `HTTP ${lgX.status}`);
 	const lgXu = await api('PATCH', `/api/collections/ops_log/records/${lid}`, { token: u.token, body: { external_id: 'k' } });
 	check('identifiant externe non modifiable', lgXu.status >= 400, `HTTP ${lgXu.status}`);
+	// Réponses (1760002300) : rattachées au message d'origine, un seul niveau, `reply_to` figé.
+	const rp1 = await api('POST', '/api/collections/ops_log/records', { token: mod.token, body: { body: 'Réponse', category: 'info', author: mod.id, reply_to: lid } });
+	check('agent répond à un message', rp1.status === 200 && rp1.json.reply_to === lid, `HTTP ${rp1.status}`);
+	const rp2 = await api('POST', '/api/collections/ops_log/records', { token: u.token, body: { body: 'Réponse 2', category: 'service', author: u.id, reply_to: rp1.json?.id } });
+	check('réponse à une réponse rattachée au même fil (catégorie service)', rp2.status === 200 && rp2.json.reply_to === lid, `HTTP ${rp2.status} ${rp2.json?.reply_to}`);
+	const rpMove = await api('PATCH', `/api/collections/ops_log/records/${rp2.json?.id}`, { token: u.token, body: { reply_to: rp1.json?.id } });
+	check('fil d une réponse figé', rpMove.status >= 400, `HTTP ${rpMove.status}`);
+	const rpBad = await api('POST', '/api/collections/ops_log/records', { token: u.token, body: { body: 'x', category: 'info', author: u.id, reply_to: 'aaaaaaaaaaaaaaa' } });
+	check('réponse à un message inexistant refusée', rpBad.status >= 400, `HTTP ${rpBad.status}`);
 	const lgR = await api('POST', '/api/collections/ops_log/records', { token: roles.reader.token, body: { body: 'x', category: 'info', author: roles.reader.id } });
 	check('lecteur ne publie pas', lgR.status >= 400, `HTTP ${lgR.status}`);
 	const lgO = await api('GET', '/api/collections/ops_log/records?perPage=1', { token: roles.otto_agent.token });

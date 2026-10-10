@@ -7,6 +7,7 @@ import {
   List,
   Paperclip,
   Pin,
+  Reply,
   Search,
   SendHorizontal,
   SlidersHorizontal,
@@ -80,7 +81,12 @@ export function LogComposer({
   onChanged,
   autoFocus,
   variant = "form",
+  replyTo,
+  onCancelReply,
 }: {
+  /** Réponse en cours (barre d'écriture) : message d'origine, retirable. */
+  replyTo?: { id: string; author: string; excerpt: string } | null;
+  onCancelReply?: () => void;
   agents: Agent[];
   /** Types d'objets que l'agent peut lier (selon ses droits de lecture). */
   linkKinds: LinkedObject["kind"][];
@@ -194,9 +200,18 @@ export function LogComposer({
     const m = /(^|\s)@([\w.-]{0,30})$/.exec(before);
     if (!m) return null;
     const q = (m[2] ?? "").toLowerCase();
-    const list = agents
-      .filter((a) => a.username.toLowerCase().startsWith(q) || a.name.toLowerCase().includes(q))
-      .slice(0, 6);
+    // Districts entiers (@DSO, @DSE, @DCE) : notifie les agents qui y travaillent aujourd'hui.
+    const districts: Agent[] = [
+      { id: "district-DSO", name: "District Sud-Ouest (tous)", username: "DSO" },
+      { id: "district-DSE", name: "District Sud-Est (tous)", username: "DSE" },
+      { id: "district-DCE", name: "District Centre (tous)", username: "DCE" },
+    ].filter((d) => q && d.username.toLowerCase().startsWith(q));
+    const list = [
+      ...districts,
+      ...agents.filter(
+        (a) => a.username.toLowerCase().startsWith(q) || a.name.toLowerCase().includes(q),
+      ),
+    ].slice(0, 6);
     return list.length ? { start: before.length - (m[2] ?? "").length - 1, list } : null;
   }, [body, caret, agents]);
   const insertMention = (a: Agent) => {
@@ -229,7 +244,7 @@ export function LogComposer({
   }, [linkKind, linkQ, linkOpen]);
 
   const existing = entry?.attachments ?? [];
-  const addFiles = (list: FileList | null) => {
+  const addFiles = (list: FileList | File[] | null) => {
     if (!list) return;
     const next = [...files];
     for (const f of Array.from(list)) {
@@ -244,6 +259,30 @@ export function LogComposer({
       next.push(f);
     }
     setFiles(next);
+  };
+
+  // Image collée depuis le presse-papiers (capture d'écran) : jointe comme une pièce jointe.
+  const onPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const images = Array.from(e.clipboardData?.items ?? [])
+      .filter((it) => it.kind === "file" && /^image\/(png|jpeg|webp)$/.test(it.type))
+      .map((it) => it.getAsFile())
+      .filter((f): f is File => !!f);
+    if (!images.length) return;
+    e.preventDefault();
+    const stamp = new Date().toISOString().slice(11, 19).replace(/:/g, "");
+    addFiles(
+      images.map(
+        (f, i) =>
+          new File(
+            [f],
+            `capture-${stamp}${images.length > 1 ? `-${i + 1}` : ""}.${f.type.split("/")[1]}`,
+            {
+              type: f.type,
+            },
+          ),
+      ),
+    );
+    toast.success(images.length > 1 ? `${images.length} images jointes.` : "Image jointe.");
   };
 
   const submit = () =>
@@ -262,6 +301,7 @@ export function LogComposer({
         taxiOrder: links.find((l) => l.kind === "taxi")?.id ?? "",
         pmrAssist: links.find((l) => l.kind === "pmr")?.id ?? "",
         levelCrossing: links.find((l) => l.kind === "pn")?.id ?? "",
+        replyTo: !entry && replyTo ? replyTo.id : "",
       };
       let id = entry?.id ?? "";
       if (entry) {
@@ -303,6 +343,7 @@ export function LogComposer({
         setDay(brusselsDay());
         setTimeSet(false);
         setOptions(false);
+        onCancelReply?.();
       }
       router.refresh();
       onDone?.(id);
@@ -638,8 +679,45 @@ export function LogComposer({
             ))}
           </div>
         ) : null}
+        {replyTo ? (
+          <div
+            className="flex min-w-0 items-center gap-2 border-l-2 border-accent bg-accent-faint py-1 pr-1 pl-2"
+            data-testid="log-replying"
+          >
+            <Reply aria-hidden className="size-4 shrink-0 text-accent" />
+            <span className="min-w-0 flex-1 truncate text-small">
+              <span className="font-semibold text-fg">
+                Réponse à {replyTo.author || "un message"}
+              </span>
+              <span className="text-fg-muted"> · {replyTo.excerpt}</span>
+            </span>
+            <button
+              type="button"
+              className="grid size-9 shrink-0 cursor-pointer place-items-center text-fg-muted hover:text-fg"
+              aria-label="Annuler la réponse"
+              onClick={onCancelReply}
+            >
+              <X aria-hidden className="size-4" />
+            </button>
+          </div>
+        ) : null}
         <div className="flex items-center gap-2">
-          <div className="min-w-0 flex-1">{categoryChips}</div>
+          <div className="min-w-0 flex-1 max-sm:hidden">{categoryChips}</div>
+          <label className="min-w-0 flex-1 sm:hidden">
+            <span className="sr-only">Catégorie</span>
+            <Select
+              value={category}
+              onChange={(e) => setCategory(e.target.value as LogCategory)}
+              className="h-control-sm"
+              data-testid="log-category-select"
+            >
+              {LOG_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {CATEGORY[c].label}
+                </option>
+              ))}
+            </Select>
+          </label>
           <button
             type="button"
             aria-pressed={urgent}
@@ -677,10 +755,16 @@ export function LogComposer({
               setCaret(e.target.selectionStart);
             }}
             onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
+            onPaste={onPaste}
             onKeyDown={(e) => {
               if (mention && e.key === "Enter" && !e.ctrlKey && !e.metaKey && mention.list[0]) {
                 e.preventDefault();
                 insertMention(mention.list[0]);
+                return;
+              }
+              if (e.key === "Escape" && replyTo) {
+                e.preventDefault();
+                onCancelReply?.();
                 return;
               }
               // Entrée envoie au clavier physique (pointeur fin) ; Maj + Entrée = retour à la ligne. Sur mobile,
@@ -814,6 +898,7 @@ export function LogComposer({
               setCaret(e.target.selectionStart);
             }}
             onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
+            onPaste={onPaste}
             onKeyDown={(e) => {
               if (mention && e.key === "Enter" && !e.ctrlKey && !e.metaKey && mention.list[0]) {
                 e.preventDefault();

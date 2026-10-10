@@ -586,6 +586,11 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   1440 + 390). 230 contrôles de règles.
 - 2026-10-10 — **ALEA « encodé »** : chaque bloc de l'export ALEA (PMR et groupes) se coche une fois saisi dans ALEA ;
   partagé en direct avec l'équipe (`alea_marks`, SSE), auteur et heure au survol, filtre « À encoder ». 236 contrôles.
+- 2026-10-10 — **Journal v2** : réponses en fil (citation, compteur, panneau), recherche plein texte surlignée, image collée
+  depuis le presse-papiers, mentions de district `@DSO` / `@DSE` / `@DCE`, refonte mobile (en-tête sans chevauchement,
+  catégorie en liste, actions en icônes, fil bord à bord), catégories **Service / Perturbation / Groupes** (choix de
+  l'utilisateur), **tri automatique** réglable (Administration › Tri du Journal : règles source iRail / BACO + mots-clés)
+  et **reclassement des anciens messages BACO** (« les deux » : messages automatiques et messages importés). 240 contrôles.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

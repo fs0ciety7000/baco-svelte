@@ -244,7 +244,8 @@ function irailJournal(app) {
 		} catch (_) {}
 		const description = String(d.description || '').replace(/<[^>]*>/g, ' ').replace(/[ \t]+/g, ' ').trim().slice(0, 3400);
 		const restored = /r[ée]tabli/i.test(title);
-		const category = restored ? 'info' : planned ? 'travaux' : 'incident';
+		// Tri automatique (Administration › Journal) : mot-clé d'abord ; la règle sans mot-clé vaut pour les perturbations.
+		const category = journalCategory(app, 'irail', `${title} ${description}`, restored ? 'info' : planned ? 'travaux' : '', 'perturbation');
 		const emoji = restored ? '✅' : planned ? '🚧' : '⚠️';
 		const districts = districtsIn(index, title, description);
 		const recipients = districts.length
@@ -310,18 +311,50 @@ function jsonList(record, field) {
 
 // Notifications d'une entrée, préparées AVANT l'enregistrement : chaque agent est notifié une fois au plus par entrée
 // (mention ou urgence), l'urgence n'est diffusée qu'une fois (« *urgent »). La liste est gardée dans `notified`.
+// « @DSO », « @DSE », « @DCE » (casse libre) : mention d'un district entier (demande du 10 oct. 2026).
+const DISTRICT_TAGS = { DSO: 'Sud-Ouest', DSE: 'Sud-Est', DCE: 'Centre' };
+function districtTagsIn(body) {
+	const out = [];
+	const re = /(^|[^A-Za-z0-9_.-])@(DSO|DSE|DCE)(?![A-Za-z0-9_])/gi;
+	let m;
+	while ((m = re.exec(String(body || '')))) {
+		const tag = m[2].toUpperCase();
+		if (out.indexOf(tag) === -1) out.push(tag);
+	}
+	return out;
+}
+
+// Agents qui lisent le journal et travaillent aujourd'hui dans ce district (districts du jour, sinon du profil).
+function districtRecipients(app, tag, exclude) {
+	const name = DISTRICT_TAGS[tag];
+	const list = app.findRecordsByFilter('users', 'role != "disabled" && role != "otto_agent"', '', 500, 0);
+	const today = brusselsDay();
+	return list.filter((u) => exclude.indexOf(u.id) === -1 && hasJournalRead(u) && dutyDistricts(u, today).indexOf(name) !== -1).map((u) => u.id);
+}
+
 function planNotifications(app, record, mentions, urgent) {
 	const already = jsonList(record, 'notified');
+	const author = record.getString('author');
 	const mention = mentions.filter((u) => already.indexOf(u) === -1);
 	let urgentTo = [];
 	if (urgent && already.indexOf('*urgent') === -1) {
-		const exclude = already.concat(mention, [record.getString('author')]);
+		const exclude = already.concat(mention, [author]);
 		urgentTo = urgentRecipients(app, record.getString('district'), exclude);
 	}
 	const next = already.concat(mention, urgentTo);
 	if (urgentTo.length || (urgent && already.indexOf('*urgent') === -1)) next.push('*urgent');
+	// Mentions de district : une fois par district et par entrée, sans doubler une mention ou une urgence.
+	const district = [];
+	for (const tag of districtTagsIn(record.getString('body'))) {
+		if (already.indexOf(`*@${tag}`) !== -1) continue;
+		next.push(`*@${tag}`);
+		for (const u of districtRecipients(app, tag, next.concat([author]))) {
+			district.push({ user: u, tag: tag });
+			next.push(u);
+		}
+	}
 	record.set('notified', next);
-	return { mention: mention, urgent: urgentTo };
+	return { mention: mention, urgent: urgentTo, district: district };
 }
 
 function sendPlanned(app, record, auth, plan) {
@@ -336,6 +369,7 @@ function sendPlanned(app, record, auth, plan) {
 		.trim();
 	for (const u of plan.mention) notify(app, u, 'mention', `${who} vous mentionne dans le journal`, excerpt, link, 'ops_log', record.id);
 	for (const u of plan.urgent) notify(app, u, 'urgent', `Message urgent de ${who}`, excerpt, link, 'ops_log', record.id);
+	for (const d of plan.district || []) notify(app, d.user, 'mention', `${who} mentionne @${d.tag} dans le journal`, excerpt, link, 'ops_log', record.id);
 }
 
 // --- Passages à niveau (import) ---
@@ -549,7 +583,38 @@ function missionTrains(app, at) {
 	return sent;
 }
 
+// --- Tri automatique des messages (réglage `journal_rules`, demande du 10 oct. 2026) ---
+const JOURNAL_CATEGORIES = ['incident', 'pmr', 'commande', 'travaux', 'consigne', 'info', 'service', 'perturbation', 'groupes'];
+function journalRules(app) {
+	try {
+		const rec = app.findFirstRecordByData('app_settings', 'key', 'journal_rules');
+		const v = JSON.parse(rec.getString('value') || '{}');
+		return Array.isArray(v.rules) ? v.rules : [];
+	} catch (_) {
+		return [];
+	}
+}
+// Catégorie d'un message automatique : 1re règle de la source dont un mot-clé figure dans le texte ; sinon `fixed`
+// (catégorie imposée par le type, ex. travaux) ; sinon la règle sans mot-clé de la source ; sinon `fallback`.
+function journalCategory(app, source, text, fixed, fallback, rules) {
+	const list = (rules || journalRules(app)).filter((r) => r && r.source === source && JOURNAL_CATEGORIES.indexOf(r.category) !== -1);
+	const t = fold(text);
+	for (const r of list) {
+		const words = String(r.match || '')
+			.split(',')
+			.map((w) => fold(w).trim())
+			.filter(Boolean);
+		if (words.length && words.some((w) => t.indexOf(w) !== -1)) return r.category;
+	}
+	if (fixed) return fixed;
+	const plain = list.filter((r) => !String(r.match || '').trim())[0];
+	return plain ? plain.category : fallback;
+}
+
 module.exports = {
+	journalCategory,
+	journalRules,
+	districtTagsIn,
 	missionTrains,
 	trainId,
 	findStop,

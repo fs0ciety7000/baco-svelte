@@ -11,6 +11,7 @@ import { can, isAdmin } from "@/lib/permissions";
 import { requireUser, type SessionUser } from "@/server/auth";
 import {
   getLogEntry,
+  listReplies,
   listLogEvents,
   listNotifications,
   searchLinkables,
@@ -82,7 +83,11 @@ export async function createEntry(input: unknown): Promise<Result<{ id: string }
     const user = await need("journal:write");
     const p = entrySchema.parse(input);
     const pb = await pbForRequest();
-    const r = await pb.collection("ops_log").create({ ...entryBody(p), author: user.id });
+    const r = await pb.collection("ops_log").create({
+      ...entryBody(p),
+      author: user.id,
+      ...(p.replyTo ? { reply_to: p.replyTo } : {}),
+    });
     return { ok: true, data: { id: r.id } };
   } catch (e) {
     return fail(e);
@@ -206,11 +211,15 @@ export async function markAllRead(ids: string[]): Promise<Result<{ marked: numbe
 
 export async function loadEntryPanel(
   id: string,
-): Promise<Result<{ entry: LogEntry; events: LogEvent[] }>> {
+): Promise<Result<{ entry: LogEntry; events: LogEvent[]; replies: LogEntry[] }>> {
   try {
     await need("journal:read");
-    const [entry, events] = await Promise.all([getLogEntry(id), listLogEvents(id)]);
-    return { ok: true, data: { entry, events } };
+    const [entry, events, replies] = await Promise.all([
+      getLogEntry(id),
+      listLogEvents(id),
+      listReplies(id).catch(() => []),
+    ]);
+    return { ok: true, data: { entry, events, replies } };
   } catch (e) {
     return fail(e);
   }

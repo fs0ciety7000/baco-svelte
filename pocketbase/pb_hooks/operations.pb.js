@@ -8,6 +8,18 @@ onRecordCreateRequest((e) => {
 	if (!r.getString('status')) r.set('status', 'active');
 	if (!r.getString('occurred_at')) r.set('occurred_at', ops.now());
 	if (!r.getString('district') && e.auth && !e.auth.isSuperuser()) r.set('district', e.auth.getString('district'));
+	// Réponse : le message d'origine doit exister et être actif ; répondre à une réponse rattache au même fil.
+	const parentId = r.getString('reply_to');
+	if (parentId) {
+		let parent;
+		try {
+			parent = e.app.findRecordById('ops_log', parentId);
+		} catch (_) {
+			throw new BadRequestError('Message d\'origine introuvable.');
+		}
+		if (parent.getString('status') !== 'active') throw new BadRequestError('Le message d\'origine a été retiré.');
+		if (parent.getString('reply_to')) r.set('reply_to', parent.getString('reply_to'));
+	}
 	const mentions = ops.mentionsFrom(e.app, r.getString('body'), r.getString('author'));
 	r.set('mentions', mentions);
 	r.set('notified', []);
@@ -48,7 +60,8 @@ onRecordUpdateRequest((e) => {
 	const initialUpload = changes.length === 0 && age < 2 * 60000 && !!e.auth && e.auth.id === r.getString('author') && ops.ids(before, 'attachments').length === 0;
 	if (filesBefore !== filesAfter && !initialUpload) changes.push(['attachments', String(ops.ids(before, 'attachments').length), String(ops.ids(r, 'attachments').length)]);
 	if (before.getString('body') !== r.getString('body')) r.set('mentions', ops.mentionsFrom(e.app, r.getString('body'), r.getString('author')));
-	if (changes.length) r.set('edited_at', ops.now());
+	// Changement de catégorie seul (tri, reclassement) : pas une correction du texte, pas de mention « modifié ».
+	if (changes.some((c) => c[0] !== 'category')) r.set('edited_at', ops.now());
 	// Notifications : nouvelles mentions et passage en urgent, une fois par agent et par entrée (champ `notified`).
 	const plan = to === 'active' ? ops.planNotifications(e.app, r, ops.ids(r, 'mentions'), r.getBool('urgent')) : { mention: [], urgent: [] };
 	e.next();

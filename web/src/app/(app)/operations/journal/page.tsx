@@ -91,7 +91,7 @@ export default async function Page({
         <Input
           name="q"
           defaultValue={f.q}
-          placeholder="Rechercher (180 jours)…"
+          placeholder="Texte, agent, train (180 jours)…"
           className="pl-9"
           maxLength={80}
         />
@@ -167,7 +167,7 @@ export default async function Page({
             </Link>
           </p>
         ) : (
-          <div className="flex min-w-0 flex-1 items-baseline gap-2 md:flex-none">
+          <div className="flex min-w-0 flex-1 items-baseline gap-2 max-sm:hidden md:flex-none">
             <h2 className="text-body-lg font-semibold whitespace-nowrap" data-testid="log-day">
               Fil du journal
             </h2>
@@ -219,6 +219,7 @@ export default async function Page({
         header={header}
         preset={train || presetCategory ? { train, category: presetCategory } : undefined}
         olderHref={hasMore ? keep({ n: String(Math.min(1000, limit + 100)) }) : undefined}
+        highlight={f.q ? f.q.split(/\s+/).filter(Boolean) : []}
       />
     </section>
   );

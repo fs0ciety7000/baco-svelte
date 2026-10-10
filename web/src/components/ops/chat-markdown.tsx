@@ -5,26 +5,65 @@ import { cn } from "@/lib/utils";
 
 // Rendu du Markdown du Journal en éléments React (React échappe tout texte ; aucun `dangerouslySetInnerHTML`).
 
-function inline(nodes: Inline[], key: string): ReactNode[] {
+/** Surligne les mots recherchés (insensible à la casse et aux accents) dans un texte brut. */
+function mark(text: string, words: string[], key: string): ReactNode {
+  if (!words.length || !text) return text;
+  const fold = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  const f = fold(text);
+  // La forme repliée garde la longueur du texte d'origine pour les lettres latines usuelles (é → e).
+  if (f.length !== text.length) return text;
+  const hits: [number, number][] = [];
+  for (const w of words) {
+    const fw = fold(w);
+    if (!fw) continue;
+    for (let i = f.indexOf(fw); i !== -1; i = f.indexOf(fw, i + fw.length))
+      hits.push([i, i + fw.length]);
+  }
+  if (!hits.length) return text;
+  hits.sort((a, b) => a[0] - b[0]);
+  const out: ReactNode[] = [];
+  let last = 0;
+  hits.forEach(([a, b], j) => {
+    if (a < last) return;
+    if (a > last) out.push(text.slice(last, a));
+    out.push(
+      <mark
+        key={`${key}.m${j}`}
+        className="bg-[color-mix(in_oklab,var(--warn)_30%,transparent)] text-fg"
+      >
+        {text.slice(a, b)}
+      </mark>,
+    );
+    last = b;
+  });
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+
+function inline(nodes: Inline[], key: string, HL: string[] = []): ReactNode[] {
   return nodes.map((n, i) => {
     const k = `${key}.${i}`;
     switch (n.t) {
       case "text":
-        return n.v;
+        return HL.length ? <span key={k}>{mark(n.v, HL, k)}</span> : n.v;
       case "br":
         return <br key={k} />;
       case "b":
         return (
           <strong key={k} className="font-semibold text-fg">
-            {inline(n.c, k)}
+            {inline(n.c, k, HL)}
           </strong>
         );
       case "i":
-        return <em key={k}>{inline(n.c, k)}</em>;
+        return <em key={k}>{inline(n.c, k, HL)}</em>;
       case "s":
         return (
           <s key={k} className="text-fg-muted">
-            {inline(n.c, k)}
+            {inline(n.c, k, HL)}
           </s>
         );
       case "code":
@@ -62,8 +101,19 @@ function inline(nodes: Inline[], key: string): ReactNode[] {
 }
 
 /** Message du Journal : Markdown sûr (gras, italique, barré, code, liens, mentions, listes, citations). */
-export function ChatMarkdown({ body, className }: { body: string; className?: string }) {
+export function ChatMarkdown({
+  body,
+  className,
+  highlight = [],
+}: {
+  body: string;
+  className?: string;
+  /** Mots de la recherche à surligner. */
+  highlight?: string[];
+}) {
   const blocks = parseChatMarkdown(body);
+  // Rendu synchrone : la liste des mots est posée pour ce rendu seulement.
+  const HL = highlight.filter((w) => w.length >= 2).slice(0, 6);
   return (
     <div className={cn("flex flex-col gap-1.5 text-body break-words text-fg", className)}>
       {blocks.map((b, i) => {
@@ -71,7 +121,7 @@ export function ChatMarkdown({ body, className }: { body: string; className?: st
         if (b.type === "h")
           return (
             <p key={k} className="text-body-lg font-semibold">
-              {inline(b.c, k)}
+              {inline(b.c, k, HL)}
             </p>
           );
         if (b.type === "ul" || b.type === "ol") {
@@ -85,7 +135,7 @@ export function ChatMarkdown({ body, className }: { body: string; className?: st
               )}
             >
               {b.items.map((it, j) => (
-                <li key={j}>{inline(it, `${k}.${j}`)}</li>
+                <li key={j}>{inline(it, `${k}.${j}`, HL)}</li>
               ))}
             </List>
           );
@@ -93,7 +143,7 @@ export function ChatMarkdown({ body, className }: { body: string; className?: st
         if (b.type === "quote")
           return (
             <blockquote key={k} className="border-l-2 border-border-strong pl-3 text-fg-muted">
-              {inline(b.c, k)}
+              {inline(b.c, k, HL)}
             </blockquote>
           );
         if (b.type === "code")
@@ -105,7 +155,7 @@ export function ChatMarkdown({ body, className }: { body: string; className?: st
               {b.v}
             </pre>
           );
-        return <p key={k}>{inline(b.c, k)}</p>;
+        return <p key={k}>{inline(b.c, k, HL)}</p>;
       })}
     </div>
   );

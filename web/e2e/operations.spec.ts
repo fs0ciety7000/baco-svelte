@@ -166,6 +166,14 @@ test("journal : publier (Markdown), lu, corriger, pièce jointe, retirer", async
   await expect(card.getByRole("img", { name: /Pièce jointe/ })).toBeVisible();
   // Son propre message : pas de bouton « Marquer lu ».
   await expect(card.getByTestId("log-read")).toHaveCount(0);
+  // Réponse (fil) : citation du message d'origine et compteur de réponses.
+  await card.getByTestId("log-reply").click();
+  await expect(page.getByTestId("log-replying")).toBeVisible();
+  await page.getByTestId("log-body").fill(`${MARK} réponse @DSO`);
+  await page.getByTestId("log-submit").click();
+  const answer = page.getByTestId("log-list").locator("article", { hasText: `${MARK} réponse` });
+  await expect(answer.getByTestId("log-quote")).toBeVisible();
+  await expect(card.getByTestId("log-replies")).toContainText("1");
   await card.getByTestId("log-open").click();
   await page.getByTestId("log-edit").click();
   await page

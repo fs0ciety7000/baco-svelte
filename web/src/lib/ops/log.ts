@@ -13,6 +13,9 @@ export const LOG_CATEGORIES = [
   "travaux",
   "consigne",
   "info",
+  "service",
+  "perturbation",
+  "groupes",
 ] as const;
 export type LogCategory = (typeof LOG_CATEGORIES)[number];
 
@@ -26,6 +29,9 @@ export const CATEGORY: Record<
   travaux: { label: "Travaux", tone: "warn" },
   consigne: { label: "Consigne", tone: "ok" },
   info: { label: "Info", tone: "neutral" },
+  service: { label: "Service", tone: "neutral" },
+  perturbation: { label: "Perturbation", tone: "warn" },
+  groupes: { label: "Groupes", tone: "info" },
 };
 
 /** Districts qu'un agent peut cocher pour la journée (mêmes valeurs que `ops_log.district`). */
@@ -82,6 +88,8 @@ export const entrySchema = z
     taxiOrder: id,
     pmrAssist: id,
     levelCrossing: id,
+    /** Réponse à un message (création seulement ; le hook rattache une réponse de réponse au même fil). */
+    replyTo: id,
   })
   .refine((v) => !v.pinUntilTime || !!v.pinUntilDay, {
     message: "Date de fin d'épinglage manquante.",

@@ -7,6 +7,8 @@ import { unstable_rethrow } from "next/navigation";
 import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 
+import { ruleCategory, rulesSchema } from "@/lib/ops/journal-rules";
+import type { LogCategory } from "@/lib/ops/log";
 import { PERMISSION_CATALOG } from "@/lib/permissions";
 import { requireAdmin } from "@/server/auth";
 import { pbForRequest } from "@/server/data/orders";
@@ -286,6 +288,63 @@ export async function revokeAgentConnectorToken(id: string): Promise<Result> {
     await pb.collection("connector_tokens").delete(pbId.parse(id));
     revalidatePath("/admin", "layout");
     return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Règles de tri automatique du Journal (`app_settings.journal_rules`), lues par le hook PocketBase à chaque message. */
+export async function saveJournalRules(input: unknown): Promise<Result> {
+  try {
+    const me = await requireAdmin();
+    const value = rulesSchema.parse(input);
+    const pb = await pbForRequest();
+    try {
+      const r = await pb
+        .collection("app_settings")
+        .getFirstListItem(pb.filter('key = "journal_rules"'));
+      await pb.collection("app_settings").update(r.id, { value, updated_by: me.id });
+    } catch (e) {
+      if (!(e instanceof ClientResponseError && e.status === 404)) throw e;
+      await pb
+        .collection("app_settings")
+        .create({ key: "journal_rules", value, updated_by: me.id });
+    }
+    revalidatePath("/admin/journal");
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/**
+ * Reclasse les messages repris de BACO (`legacy_id > 0`) selon les règles « BACO » : seules les catégories qui changent
+ * sont modifiées (historique « Catégorie », sans mention « modifié »). À rejouer après l'import de la bascule.
+ */
+export async function reclassBacoMessages(): Promise<Result<{ changed: number; total: number }>> {
+  try {
+    await requireAdmin();
+    const pb = await pbForRequest();
+    const setting = await pb
+      .collection("app_settings")
+      .getFirstListItem(pb.filter('key = "journal_rules"'))
+      .catch(() => null);
+    const rules = rulesSchema.safeParse(setting?.value).data?.rules ?? [];
+    if (!rules.some((r) => r.source === "baco"))
+      return { ok: false, error: "Aucune règle « BACO » : ajoute-en une avant de reclasser." };
+    const rows = await pb
+      .collection("ops_log")
+      .getFullList({ filter: "legacy_id > 0", fields: "id,body,category", batch: 500 });
+    let changed = 0;
+    for (const r of rows) {
+      const current = String(r.category) as LogCategory;
+      const next = ruleCategory(rules, "baco", String(r.body), current);
+      if (next !== current) {
+        await pb.collection("ops_log").update(r.id, { category: next });
+        changed++;
+      }
+    }
+    return { ok: true, data: { changed, total: rows.length } };
   } catch (e) {
     return fail(e);
   }

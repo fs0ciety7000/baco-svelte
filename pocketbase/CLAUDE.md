@@ -138,3 +138,10 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
 - **ALEA « encodé »** (`1760002200_alea_marks.js`) : `alea_marks` (jour, `kind` pmr / groupe, `block` = clé
   jour|train|gare|sens de l'export, `marked_by` forcé = l'appelant), unique par (kind, block) ; coché / décoché par un agent
   `deplacements:write`, lu avec `deplacements:read`, purgé après 30 jours.
+- **Journal v2** (`1760002300_journal_threads.js`) : catégories `service`, `perturbation`, `groupes` ; `ops_log.reply_to`
+  (réponse, un niveau : le hook rattache une réponse de réponse au fil d'origine, refuse un message absent ou retiré ;
+  non modifiable après publication). Mentions de district `@DSO` / `@DSE` / `@DCE` (`districtTagsIn`, une fois par district
+  et par entrée, `*@DSO` dans `notified`). Tri automatique : réglage `app_settings.journal_rules` (`{ rules: [{ source:
+  irail|baco, match, category }] }`), appliqué par `journalCategory` aux messages iRail (perturbations → `perturbation`) ;
+  reclassement des messages BACO (`legacy_id > 0`) depuis Administration › Tri du Journal. Un changement de catégorie
+  seul ne pose plus `edited_at` (pas de « modifié »).

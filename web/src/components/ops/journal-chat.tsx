@@ -10,7 +10,9 @@ import {
   Maximize2,
   Minimize2,
   Pencil,
+  MessageSquareReply,
   Pin,
+  Reply,
   TriangleAlert,
   Undo2,
   XCircle,
@@ -138,6 +140,7 @@ export function JournalChat({
   header,
   preset,
   olderHref,
+  highlight = [],
 }: {
   rows: LogEntry[];
   pinned: LogEntry[];
@@ -152,12 +155,36 @@ export function JournalChat({
   preset?: ComposerPreset;
   /** Lien « messages plus anciens » (fil continu chargé par paquets de 100). */
   olderHref?: string;
+  /** Mots recherchés, surlignés dans les messages. */
+  highlight?: string[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
   const [openId, setOpenId] = useState<string | null>(params.get("entree"));
-  const [panel, setPanel] = useState<{ entry: LogEntry; events: LogEvent[] } | null>(null);
+  const [panel, setPanel] = useState<{
+    entry: LogEntry;
+    events: LogEvent[];
+    replies: LogEntry[];
+  } | null>(null);
+  // Réponse en cours dans la barre d'écriture.
+  const [replying, setReplying] = useState<LogEntry | null>(null);
+  const reply = (r: LogEntry) => {
+    setReplying(r);
+    requestAnimationFrame(() =>
+      document.querySelector<HTMLTextAreaElement>('[data-testid="log-body"]')?.focus(),
+    );
+  };
+  const jumpTo = (id: string) => {
+    const el = scroller.current?.querySelector(`[data-entry="${CSS.escape(id)}"]`);
+    if (el) {
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      el.querySelector("article")?.animate(
+        [{ outlineColor: "var(--accent)" }, { outlineColor: "transparent" }],
+        { duration: 1200 },
+      );
+    } else open(id);
+  };
   const [editing, setEditing] = useState(false);
   const [retiring, setRetiring] = useState(false);
   const [reason, setReason] = useState("");
@@ -350,11 +377,14 @@ export function JournalChat({
             <span aria-hidden className="h-px flex-1 bg-border" />
           </li>
         ) : null}
-        <li data-entry={r.id} className={cn("mt-4 flex gap-2.5", mine && "flex-row-reverse")}>
+        <li
+          data-entry={r.id}
+          className={cn("mt-3 flex gap-2 sm:mt-4 sm:gap-2.5", mine && "flex-row-reverse")}
+        >
           <span
             aria-hidden
             className={cn(
-              "grid size-9 shrink-0 place-items-center border font-mono text-small font-semibold",
+              "grid size-7 shrink-0 place-items-center border font-mono text-hint font-semibold sm:size-9 sm:text-small",
               mine
                 ? "border-accent bg-accent-soft text-fg"
                 : irail
@@ -366,7 +396,7 @@ export function JournalChat({
           </span>
           <div
             className={cn(
-              "flex min-w-0 max-w-[min(46rem,88%)] flex-col gap-1",
+              "flex min-w-0 max-w-[min(46rem,calc(100%-2.25rem))] flex-col gap-1 sm:max-w-[min(46rem,88%)]",
               mine && "items-end",
             )}
           >
@@ -380,7 +410,8 @@ export function JournalChat({
                 {mine ? `Toi (${r.authorName})` : r.authorName}
               </span>
               <span className="font-mono text-hint text-fg-muted tabular" title="Envoyé le">
-                {stampOf(r.created || r.occurredAt)}
+                <span className="max-sm:hidden">{stampOf(r.created || r.occurredAt)}</span>
+                <span className="sm:hidden">{hhmm(r.created || r.occurredAt)}</span>
               </span>
               {gap > 5 * 60_000 ? (
                 <span className="text-hint text-fg-muted">
@@ -425,8 +456,23 @@ export function JournalChat({
                 {r.status === "retiree" ? <Badge tone="neutral">Retiré</Badge> : null}
                 {r.district ? <span className="label-mono text-fg-muted">{r.district}</span> : null}
               </div>
+              {r.replyTo ? (
+                <button
+                  type="button"
+                  onClick={() => jumpTo(r.replyTo!.id)}
+                  className="flex min-w-0 cursor-pointer flex-col items-start border-l-2 border-border-strong bg-surface-2 px-2 py-1 text-left hover:border-accent"
+                  aria-label={`Réponse à ${r.replyTo.author || "un message"} : aller au message d'origine`}
+                  data-testid="log-quote"
+                >
+                  <span className="inline-flex items-center gap-1 text-hint font-semibold text-fg-muted">
+                    <Reply aria-hidden className="size-3" /> {r.replyTo.author || "Message"}
+                  </span>
+                  <span className="line-clamp-2 text-small text-fg-muted">{r.replyTo.excerpt}</span>
+                </button>
+              ) : null}
               <ChatMarkdown
                 body={r.body}
+                highlight={highlight}
                 className={r.status === "retiree" ? "line-through" : ""}
               />
               {r.status === "retiree" && r.retiredReason ? (
@@ -440,6 +486,32 @@ export function JournalChat({
                   {r.editedAt ? " · modifié" : ""}
                 </span>
                 <span className="flex items-center">
+                  {r.replyCount > 0 ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 px-2 text-info"
+                      onClick={() => open(r.id)}
+                      data-testid="log-replies"
+                      aria-label={`${r.replyCount} réponse${r.replyCount > 1 ? "s" : ""} : ouvrir le fil`}
+                    >
+                      <MessageSquareReply aria-hidden />
+                      <span className="font-mono tabular">{r.replyCount}</span>
+                      <span className="max-sm:sr-only">réponse{r.replyCount > 1 ? "s" : ""}</span>
+                    </Button>
+                  ) : null}
+                  {canWrite && r.status === "active" ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 px-2"
+                      onClick={() => reply(r)}
+                      data-testid="log-reply"
+                      aria-label={`Répondre à ${r.authorName}`}
+                    >
+                      <Reply aria-hidden /> <span className="max-sm:sr-only">Répondre</span>
+                    </Button>
+                  ) : null}
                   {r.status === "active" && !mine ? (
                     <Button
                       size="sm"
@@ -450,7 +522,8 @@ export function JournalChat({
                       data-testid="log-read"
                       aria-label={read ? "Marquer comme non lu" : "Marquer comme lu"}
                     >
-                      <Check aria-hidden /> {read ? "Lu" : "Marquer lu"}
+                      <Check aria-hidden />{" "}
+                      <span className="max-sm:sr-only">{read ? "Lu" : "Marquer lu"}</span>
                     </Button>
                   ) : null}
                   <Button
@@ -478,7 +551,7 @@ export function JournalChat({
         ref={frame}
         style={full ? undefined : { height: `calc(100dvh - ${top}px - var(--journal-gap))` }}
         className={cn(
-          "flex min-h-[26rem] flex-col overflow-hidden border border-border bg-bg [--journal-gap:calc(env(safe-area-inset-bottom)+5.25rem)] md:[--journal-gap:1.5rem]",
+          "flex min-h-[26rem] flex-col overflow-hidden border border-border bg-bg max-sm:-mx-4 max-sm:border-x-0 [--journal-gap:calc(env(safe-area-inset-bottom)+5.25rem)] md:[--journal-gap:1.5rem]",
           full &&
             "fixed inset-0 z-[45] min-h-0 border-0 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
         )}
@@ -644,6 +717,16 @@ export function JournalChat({
             agents={agents}
             linkKinds={linkKinds}
             preset={preset}
+            replyTo={
+              replying
+                ? {
+                    id: replying.id,
+                    author: replying.authorName,
+                    excerpt: plainText(replying.body).slice(0, 120),
+                  }
+                : null
+            }
+            onCancelReply={() => setReplying(null)}
             onDone={() => {
               if (showDay) router.push("/operations/journal");
             }}
@@ -727,6 +810,54 @@ export function JournalChat({
               </p>
             ) : null}
             <LogLinks entry={e} />
+            {e.replyTo ? (
+              <button
+                type="button"
+                className="flex cursor-pointer flex-col items-start border-l-2 border-border-strong bg-surface-2 px-2 py-1 text-left hover:border-accent"
+                onClick={() => open(e.replyTo!.id)}
+              >
+                <span className="text-hint font-semibold text-fg-muted">
+                  En réponse à {e.replyTo.author || "un message"}
+                </span>
+                <span className="text-small text-fg-muted">{e.replyTo.excerpt}</span>
+              </button>
+            ) : null}
+            <div className="flex flex-col gap-2" data-testid="log-thread">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="label-mono text-fg-muted">
+                  Réponses ({panel?.replies.length ?? 0})
+                </h3>
+                {canWrite && e.status === "active" ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="border border-border"
+                    onClick={() => {
+                      close();
+                      reply(e);
+                    }}
+                  >
+                    <Reply aria-hidden /> Répondre
+                  </Button>
+                ) : null}
+              </div>
+              {panel?.replies.length ? (
+                <ul className="flex flex-col gap-2">
+                  {panel.replies.map((x) => (
+                    <li key={x.id} className="border border-border bg-surface px-3 py-2">
+                      <p className="text-hint text-fg-muted">
+                        <span className="font-semibold text-fg">{x.authorName}</span> ·{" "}
+                        {stampOf(x.created)}
+                      </p>
+                      <ChatMarkdown body={x.body} />
+                      <LogLinks entry={x} />
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-small text-fg-muted">Aucune réponse pour l&apos;instant.</p>
+              )}
+            </div>
             <div className="flex flex-col gap-1">
               <h3 className="label-mono text-fg-muted">Lu par</h3>
               <p className="text-body">

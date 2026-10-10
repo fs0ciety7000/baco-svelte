@@ -246,3 +246,9 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   Widget d'accueil **« Missions impactées »** (`impacts`, `server/data/impacts.ts` : districts du jour de l'agent).
 - **ALEA « encodé »** : actions `aleaMarks` / `setAleaMark` (`pmr/actions.ts`) ; `AleaButton` reçoit `kind` et `canMark`,
   bouton « Encodé » par bloc (auteur au survol), filtre « À encoder », SSE `alea_marks` pendant que la modale est ouverte.
+- **Journal v2** : réponses (`replyTo` / `replyCount` dans `LogEntry`, `listReplies`, panneau « Réponses », citation
+  cliquable `log-quote`, bouton `log-reply`, barre `log-replying`) ; recherche plein texte (chaque mot dans le texte,
+  l'auteur ou le train) avec surlignage (`ChatMarkdown highlight`) ; image collée → pièce jointe (`onPaste`) ; suggestions
+  `@DSO` / `@DSE` / `@DCE` ; mobile : catégorie en liste déroulante, méta compacte (heure seule), actions en icônes, fil
+  bord à bord. Tri automatique : `lib/ops/journal-rules.ts` (`ruleCategory`, miroir du hook, testé), page
+  `/admin/journal` (`JournalRulesEditor`, `saveJournalRules`, `reclassBacoMessages`).
