@@ -164,6 +164,10 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - (v2) PocketBase : un champ JSON `null` dans une règle (`denies !~ …`) vaut faux en SQL → hook de normalisation
   (`pocketbase/pb_hooks/users.pb.js`). Trouvé par l'E2E, pas par le test des règles : tester aussi des comptes
   créés « à nu ».
+- (v2) **PocketBase JSVM : une fonction déclarée en tête d'un `*.pb.js` n'est PAS visible dans un gestionnaire `routerAdd` /
+  `onRecord…`** (« Something went wrong », HTTP 400) : répéter le code dans le gestionnaire ou passer par `require()`.
+- (v2) WebAuthn refuse une adresse IP comme identifiant : tester les passkeys sur `http://localhost:3000` (pas 127.0.0.1),
+  avec l'authentificateur virtuel de Chromium (CDP `WebAuthn.addVirtualAuthenticator`).
 - (v2) Docker : le démon n'est pas lancé dans l'environnement cloud (`nohup dockerd &` suffit) ; les builds qui
   téléchargent (wget, npm, polices) échouent derrière le proxy TLS → tester l'image avec le binaire local.
 - (v2) Coolify : `POST /deploy` (et non GET) ; variables créées par l'API = `is_buildtime: true` par défaut → forcer
@@ -644,6 +648,18 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   passe oublié par e-mail (SMTP)**, **passkeys (WebAuthn, `@simplewebauthn`)** ; **passage en production demandé ensuite**
   : `csm.fs0ciety.org` = prod, `test-csm.fs0ciety.org` = preview, réimport complet des données BACO (Supabase) à date
   fraîche.
+- 2026-10-10 — **Mot de passe oublié par e-mail** : seul envoi automatique de CSM (exception validée par l'utilisateur) ;
+  `pb_hooks/mail.pb.js` règle le SMTP au démarrage depuis `CSM_SMTP_HOST` / `_PORT` / `_USER` / `_PASSWORD`,
+  `CSM_MAIL_SENDER` (+ `_NAME`) et `CSM_APP_URL` (sinon coupé, la page renvoie vers un admin) ; modèle d'e-mail français,
+  lien vers `/connexion/nouveau-mot-de-passe?token=` (30 min, usage unique ; migration `1760002500`) ; même réponse que le
+  compte existe ou non, débit borné (IP, boîte). **Variables SMTP à fournir par l'utilisateur.** **Passkeys** (WebAuthn,
+  `@simplewebauthn` 13.3, choix de l'utilisateur) : collection `passkeys` (`1760002600` : l'agent crée les siennes sans
+  compteur, ne modifie que le nom ; admin / sysop lisent et suppriment), vérification par le serveur Next, défis à usage
+  unique 5 min ; connexion : routes internes PocketBase `/api/csm/passkey/lookup` et `/token` (compteur anti-clonage,
+  compte désactivé refusé, jeton `newAuthToken`) protégées par **`CSM_INTERNAL_SECRET`** (≥ 32 caractères, posé sur
+  `csm-web` et `csm-pocketbase` par l'API Coolify le 10 oct. ; sans lui, passkeys masquées). Profil : « Passkeys »
+  (ajout, liste, suppression) ; fiche admin : passkeys de l'agent. Une passkey est liée au domaine : à recréer après le
+  passage sur `csm.fs0ciety.org`. 249 contrôles de règles.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

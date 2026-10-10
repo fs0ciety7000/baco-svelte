@@ -33,7 +33,7 @@ test("un mauvais mot de passe est refusé sans détail", async ({ page }) => {
   await page.goto("/connexion");
   await page.getByLabel("E-mail ou identifiant").fill(identity);
   await page.getByLabel("Mot de passe").fill("mauvais-mot-de-passe");
-  await page.getByRole("button", { name: "Se connecter" }).click();
+  await page.getByRole("button", { name: "Se connecter", exact: true }).click();
   await expect(page.getByText("Identifiant ou mot de passe incorrect.")).toBeVisible();
 });
 
@@ -51,7 +51,7 @@ test("connexion par cookie httpOnly, données et temps réel via le seul domaine
   await page.goto("/commandes");
   await page.getByLabel("E-mail ou identifiant").fill(identity);
   await page.getByLabel("Mot de passe").fill(password);
-  await page.getByRole("button", { name: "Se connecter" }).click();
+  await page.getByRole("button", { name: "Se connecter", exact: true }).click();
   await expect(page).toHaveURL(/\/commandes$/);
   await expect(page.getByRole("button", { name: /Menu de Agent E2E/ })).toBeVisible();
 

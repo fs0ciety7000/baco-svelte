@@ -21,6 +21,11 @@ const schema = z.object({
   CSM_DICOS_TOKEN: z.string().default(""),
   CSM_DICOS_PB_EMAIL: z.string().default(""),
   CSM_DICOS_PB_PASSWORD: z.string().default(""),
+  // Passkeys (10 oct. 2026) : secret partagé avec csm-pocketbase pour ses routes internes (clé publique, jeton de
+  // session). Moins de 32 caractères = passkeys désactivées. Adresse publique du site (identifiant WebAuthn) : sinon
+  // déduite de la requête.
+  CSM_INTERNAL_SECRET: z.string().default(""),
+  CSM_PUBLIC_URL: z.string().default(""),
 });
 
 export const env = schema.parse({
@@ -32,4 +37,6 @@ export const env = schema.parse({
   CSM_DICOS_TOKEN: process.env.CSM_DICOS_TOKEN,
   CSM_DICOS_PB_EMAIL: process.env.CSM_DICOS_PB_EMAIL,
   CSM_DICOS_PB_PASSWORD: process.env.CSM_DICOS_PB_PASSWORD,
+  CSM_INTERNAL_SECRET: process.env.CSM_INTERNAL_SECRET,
+  CSM_PUBLIC_URL: process.env.CSM_PUBLIC_URL,
 });

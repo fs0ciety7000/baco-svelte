@@ -5,6 +5,7 @@ import { brusselsDay } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
 import { requireRoute } from "@/server/auth";
 import { getMyActivity, getMyProfile } from "@/server/data/team";
+import { passkeysEnabled } from "@/server/passkeys";
 
 export const metadata: Metadata = { title: "Mon profil · CSM" };
 
@@ -18,6 +19,7 @@ export default async function Page() {
       activity={activity}
       duty={duty}
       canExtension={can(user, "deplacements:write")}
+      passkeys={passkeysEnabled()}
     />
   );
 }

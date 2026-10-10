@@ -13,6 +13,7 @@ import {
 } from "@/app/(app)/equipe/actions";
 import { setDutyDistricts } from "@/app/(app)/operations/actions";
 import { Avatar } from "@/components/shell/avatar";
+import { PasskeysCard } from "@/components/team/passkeys";
 import { useShell } from "@/components/shell/shell-context";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Button } from "@/components/ui/button";
@@ -223,11 +224,13 @@ export function ProfileForms({
   activity,
   duty,
   canExtension,
+  passkeys,
 }: {
   profile: MyProfile;
   activity: MyActivity;
   duty: string[];
   canExtension: boolean;
+  passkeys: boolean;
 }) {
   const router = useRouter();
   const { ui, setUi } = useShell();
@@ -350,6 +353,7 @@ export function ProfileForms({
           </div>
         </CardContent>
       </Card>
+      {passkeys ? <PasskeysCard /> : null}
       {canExtension ? (
         <Card>
           <CardHeader eyebrow="// Sécurité" title="Appareils connectés" />

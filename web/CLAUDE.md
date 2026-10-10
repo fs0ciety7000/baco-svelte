@@ -285,3 +285,9 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - **Avatar** : fichier protégé, jamais d'URL PocketBase au navigateur : `/api/avatar/<id>?v=<fichier>[&t=256]` (jeton de
   fichier de l'agent, `Cache-Control: private`, CSP sandbox). `Avatar` (`components/shell/avatar.tsx`) prend `id` + `avatar`
   (repli initiales) ; `TeamMember.avatar` / `workPhone`, `LogEntry.authorAvatar`, `ShellUser.avatar`.
+- **Mot de passe oublié** : `app/connexion/reset-actions.ts` (`passwordResetEnabled` lit `/api/csm/password-reset` de
+  PocketBase), pages `/connexion/mot-de-passe-oublie` et `/connexion/nouveau-mot-de-passe` (publiques par le préfixe
+  `/connexion`). **Passkeys** : `server/passkeys.ts` (identité WebAuthn, défis, routes internes), `app/passkey-actions.ts`,
+  `components/team/passkeys.tsx` (`PasskeyLoginButton`, `PasskeysCard`), `components/admin/user-passkeys.tsx`. Variables :
+  `CSM_INTERNAL_SECRET`, `CSM_PUBLIC_URL` (facultative). E2E : le bouton de connexion se vise par
+  `{ name: "Se connecter", exact: true }` (le bouton passkey contient « Connexion »).

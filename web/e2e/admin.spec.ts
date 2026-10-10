@@ -13,7 +13,7 @@ async function loginAdmin(page: Page) {
   await page.goto("/connexion");
   await page.getByLabel("E-mail ou identifiant").fill(adminId);
   await page.getByLabel("Mot de passe").fill(adminPw);
-  await page.getByRole("button", { name: "Se connecter" }).click();
+  await page.getByRole("button", { name: "Se connecter", exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
 }
 

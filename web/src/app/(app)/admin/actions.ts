@@ -293,6 +293,19 @@ export async function revokeAgentConnectorToken(id: string): Promise<Result> {
   }
 }
 
+/** Supprime la passkey d'un agent (appareil perdu, départ) : elle ne permet plus de se connecter. */
+export async function revokeAgentPasskey(id: string): Promise<Result> {
+  try {
+    await requireAdmin();
+    const pb = await pbForRequest();
+    await pb.collection("passkeys").delete(pbId.parse(id));
+    revalidatePath("/admin", "layout");
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
 /** Règles de tri automatique du Journal (`app_settings.journal_rules`), lues par le hook PocketBase à chaque message. */
 export async function saveJournalRules(input: unknown): Promise<Result> {
   try {
