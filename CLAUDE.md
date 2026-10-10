@@ -619,6 +619,12 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   en mobile (trait « maintenant » entre les éléments). Filtres jour / district (districts du jour par défaut) / gare
   (liste des gares du jour). GSAP : trait qui descend, queues de retard qui s'étirent, éléments en cascade au changement de
   filtre (jamais au premier rendu). Aucun nom de voyageur. E2E Ma journée + Relève (1440 + 390).
+- 2026-10-10 — **Notifications du navigateur** (réglage « Affichage », par navigateur, demande la permission) : urgences,
+  mentions et retards de train quand l'onglet CSM est **en arrière-plan** ; la cloche détecte les nouvelles notifications
+  (le premier chargement amorce sans alerter), une seule alerte même avec plusieurs onglets (marque en `localStorage`),
+  clic → onglet ramené au premier plan, notification lue, lien ouvert. **Le texte d'une mention ou d'une urgence n'est
+  jamais affiché par le système** (il peut citer un voyageur) : titre + « Mention au Journal » / « Urgence au Journal ».
+  Repli service worker (Android) prévu pour la PWA. Titre de mention passé au tutoiement (« te mentionne dans le Journal »).
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

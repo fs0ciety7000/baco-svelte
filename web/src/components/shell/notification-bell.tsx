@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { loadNotifications, markNotifications } from "@/app/(app)/operations/actions";
 import { Button } from "@/components/ui/button";
+import { browserNotifyEnabled, shouldNotify, showBrowserNotification } from "@/lib/browser-notify";
 import { subscribeLive } from "@/lib/live";
 import { safeCall } from "@/lib/orders/safe-call";
 import { pbDate, sinceLabel } from "@/lib/orders/time";
@@ -28,13 +29,27 @@ export function NotificationBell() {
   const [unread, setUnread] = useState(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Notifications déjà vues par cet onglet : le premier chargement les amorce sans alerter.
+  const known = useRef<Set<string> | null>(null);
+
   const load = useCallback(async () => {
     const res = await safeCall(loadNotifications());
-    if (res.ok) {
-      setItems(res.data.items);
-      setUnread(res.data.unread);
+    if (!res.ok) return;
+    setItems(res.data.items);
+    setUnread(res.data.unread);
+    const seen = known.current;
+    known.current = new Set(res.data.items.map((n) => n.id));
+    if (!seen) return;
+    const enabled = browserNotifyEnabled();
+    for (const n of res.data.items) {
+      if (seen.has(n.id) || n.readAt || !shouldNotify(n, document.hidden, enabled)) continue;
+      void showBrowserNotification(n, () => {
+        setUnread((u) => Math.max(0, u - 1));
+        void safeCall(markNotifications({ ids: [n.id] }));
+        if (n.link) router.push(n.link);
+      });
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     void load();

@@ -274,3 +274,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   brouillon / annulé), placement pur `lib/ops/timeline.ts` (`span` retard compris, `packLanes`, `hourRange` 6 h – 22 h au
   moins, `nextIndex` ; testé), composant `components/ops/day-timeline.tsx` (desktop horizontal `hidden md:block`, mobile
   agenda `md:hidden` : les deux sont dans le DOM, viser `timeline-desktop` / `timeline-mobile` dans les tests).
+- **Notifications du navigateur** : `lib/browser-notify.ts` (préférence `csm-notifications-navigateur`, types `urgent` /
+  `mention` / `train`, `notificationBody` sans texte de message, testé), déclenchées par `NotificationBell` ; réglage
+  `BrowserNotifyToggle` dans `theme-switcher.tsx`. Chromium headless refuse la permission : tester avec un `Notification`
+  simulé (`addInitScript`).

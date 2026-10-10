@@ -367,9 +367,9 @@ function sendPlanned(app, record, auth, plan) {
 		.replace(/^\s*[#>]+\s*/gm, '')
 		.replace(/\s+/g, ' ')
 		.trim();
-	for (const u of plan.mention) notify(app, u, 'mention', `${who} vous mentionne dans le journal`, excerpt, link, 'ops_log', record.id);
+	for (const u of plan.mention) notify(app, u, 'mention', `${who} te mentionne dans le Journal`, excerpt, link, 'ops_log', record.id);
 	for (const u of plan.urgent) notify(app, u, 'urgent', `Message urgent de ${who}`, excerpt, link, 'ops_log', record.id);
-	for (const d of plan.district || []) notify(app, d.user, 'mention', `${who} mentionne @${d.tag} dans le journal`, excerpt, link, 'ops_log', record.id);
+	for (const d of plan.district || []) notify(app, d.user, 'mention', `${who} mentionne @${d.tag} dans le Journal`, excerpt, link, 'ops_log', record.id);
 }
 
 // --- Passages à niveau (import) ---

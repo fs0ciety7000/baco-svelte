@@ -5,6 +5,11 @@ import { useEffect, useState, useTransition } from "react";
 
 import { saveUiPreferences } from "@/app/preferences-actions";
 import { SHORTCUTS_KEY, shortcutsEnabled } from "@/components/shell/page-shortcuts";
+import {
+  browserNotifyEnabled,
+  browserNotifySupported,
+  setBrowserNotify,
+} from "@/lib/browser-notify";
 import { Switch } from "@/components/ui/checkbox";
 import type { UiPreferences } from "@/design/preferences";
 import { type ThemeId, THEMES, themeById } from "@/design/tokens";
@@ -99,6 +104,7 @@ export function ThemeSwitcher({
         })}
       </div>
       <ShortcutsToggle />
+      <BrowserNotifyToggle />
       <div role="radiogroup" aria-label="Densité" className="flex gap-2">
         {(["confortable", "compact"] as const).map((d) => (
           <button
@@ -141,6 +147,66 @@ function ShortcutsToggle() {
           } catch {}
         }}
         aria-label="Raccourcis à une touche"
+      />
+    </label>
+  );
+}
+
+/**
+ * Notifications du navigateur (demande du 10 oct. 2026) : urgences, mentions et retards de train quand CSM est en
+ * arrière-plan. Activer demande la permission du navigateur ; mémorisé dans ce navigateur.
+ */
+function BrowserNotifyToggle() {
+  const [on, setOn] = useState(false);
+  const [state, setState] = useState<"ok" | "unsupported" | "denied">("ok");
+  useEffect(() => {
+    if (!browserNotifySupported()) return setState("unsupported");
+    if (Notification.permission === "denied") setState("denied");
+    setOn(browserNotifyEnabled());
+  }, []);
+  const hint =
+    state === "unsupported"
+      ? "Ce navigateur ne les prend pas en charge."
+      : state === "denied"
+        ? "Bloquées par le navigateur : autorise-les dans les réglages du site (icône du cadenas)."
+        : "Urgences, mentions et retards de train, quand CSM est en arrière-plan.";
+  return (
+    <label className="flex items-center justify-between gap-3 text-body">
+      <span>
+        Notifications du navigateur{" "}
+        <span
+          className={cn("block text-small", state === "ok" ? "text-fg-muted" : "text-warn")}
+          data-testid="browser-notify-hint"
+        >
+          {hint}
+        </span>
+      </span>
+      <Switch
+        checked={on}
+        disabled={state !== "ok"}
+        onCheckedChange={async (v) => {
+          if (!v) {
+            setBrowserNotify(false);
+            return setOn(false);
+          }
+          const perm =
+            Notification.permission === "granted"
+              ? "granted"
+              : await Notification.requestPermission().catch(() => "denied" as const);
+          if (perm !== "granted") {
+            if (perm === "denied") setState("denied");
+            return setOn(false);
+          }
+          setBrowserNotify(true);
+          setOn(true);
+          try {
+            new Notification("Notifications CSM activées", {
+              body: "CSM t'alertera des urgences, mentions et retards quand il est en arrière-plan.",
+              tag: "csm-notif-test",
+            });
+          } catch {}
+        }}
+        aria-label="Notifications du navigateur"
       />
     </label>
   );
