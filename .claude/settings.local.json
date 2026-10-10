@@ -7,7 +7,8 @@
       "Bash(find /var/home/phantomhex/Documents/code/baco-svelte -type d -name \"database\\\\|migrations\\\\|supabase\")",
       "Bash(grep -r \"notes\\\\|remarks\\\\|notes_footer\" /var/home/phantomhex/Documents/code/baco-svelte/src --include=*.js --include=*.svelte)",
       "WebFetch(domain:docs.irail.be)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(curl:*)"
     ]
   }
 }
