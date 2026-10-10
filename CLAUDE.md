@@ -760,6 +760,7 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   division de CARDOR Media »** (liens https://interactive.cardormedia.com/ et https://cardormedia.com/marque), emblèmes
   animés du site Cardor (Dragon : glitch et « boot » à l'apparition ; roue du Car d'Or : un tour au survol), monochromes au
   repos, couleurs de la charte au survol, rien en mouvement réduit. Pied de l'e-mail de campagne mis à jour.
+- 2026-10-10 — Mention de l'éditeur : **« CM Interactive »** au lieu d'« OCC Interactive » (demande de l'utilisateur).
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

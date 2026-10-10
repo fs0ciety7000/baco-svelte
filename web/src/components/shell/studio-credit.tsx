@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { BrandMark } from "./brand-mark";
 
 /**
- * Mention de l'éditeur (pied de page du shell et des pages de connexion) : OCC Interactive, division de CARDOR Media,
+ * Mention de l'éditeur (pied de page du shell et des pages de connexion) : CM Interactive, division de CARDOR Media,
  * avec ses emblèmes animés (Dragon et roue du Car d'Or, charte https://cardormedia.com/marque).
  */
 export function StudioCredit({ className }: { className?: string }) {
@@ -32,7 +32,7 @@ export function StudioCredit({ className }: { className?: string }) {
         rel="noopener noreferrer"
         className="link"
       >
-        OCC Interactive
+        CM Interactive
       </a>
       <span>· une division de</span>
       <a

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { NO_MOTION } from "@/lib/motion";
 
-// Emblèmes animés de l'éditeur (charte CARDOR Media, https://cardormedia.com/marque) : le Dragon d'OCC Interactive
+// Emblèmes animés de l'éditeur (charte CARDOR Media, https://cardormedia.com/marque) : le Dragon de CM Interactive
 // (« glitch ») et la roue du Car d'Or (un tour, le noyau bat). Repris du site cardormedia.com (Logo.svelte /
 // emblem-motion.ts) : le SVG détaillé est chargé puis inséré tel quel (fichier statique du domaine CSM, sans script),
 // chaque forme est enveloppée pour être animée sans perdre sa position. Monochrome au repos, couleurs de la marque au
