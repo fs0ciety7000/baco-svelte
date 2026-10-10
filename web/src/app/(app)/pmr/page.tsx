@@ -67,6 +67,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
         district={f.district ?? ""}
         notSynced={sync ? !sync.covered : false}
         delays={delays}
+        canMark={can(user, "deplacements:write")}
       />
     </section>
   );

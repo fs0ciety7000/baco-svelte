@@ -21,6 +21,7 @@ const TOPICS = new Set([
   "group_missions",
   "dicos_syncs",
   "mission_trains",
+  "alea_marks",
   "pmr_equipment",
   "pmr_clients",
   "ops_log",

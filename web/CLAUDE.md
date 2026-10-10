@@ -244,3 +244,5 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `listTrainStates(du, au)` (`server/data/pmr.ts`), `DelayBadge` (`components/pmr/train-chip.tsx`, « +12 » ambre / rouge
   dès 15 min, « Supprimé ») à côté du train dans Missions PMR et Groupes (prop `delays`), sujet SSE `mission_trains`.
   Widget d'accueil **« Missions impactées »** (`impacts`, `server/data/impacts.ts` : districts du jour de l'agent).
+- **ALEA « encodé »** : actions `aleaMarks` / `setAleaMark` (`pmr/actions.ts`) ; `AleaButton` reçoit `kind` et `canMark`,
+  bouton « Encodé » par bloc (auteur au survol), filtre « À encoder », SSE `alea_marks` pendant que la modale est ouverte.

@@ -1,15 +1,16 @@
 "use client";
 
-import { ClipboardList, Loader2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { CheckSquare2, ClipboardList, Loader2, Square } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { aleaDwell } from "@/app/(app)/pmr/actions";
+import { aleaDwell, aleaMarks, setAleaMark, type AleaMark } from "@/app/(app)/pmr/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
+import { toast } from "@/components/ui/toast";
 import { safeCall } from "@/lib/orders/safe-call";
-import { formatDay } from "@/lib/orders/time";
+import { brusselsTime, formatDay, pbDate } from "@/lib/orders/time";
 import { aleaDecision, type AleaDecision, type AleaDwell, type AleaGroup } from "@/lib/pmr/model";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +23,7 @@ const DECISION: Record<AleaDecision["status"], { label: string; tone: "danger" |
     verifier: { label: "À vérifier", tone: "warn" },
   };
 
-type Filter = "tous" | "obligatoire" | "verifier";
+type Filter = "tous" | "obligatoire" | "verifier" | "a-encoder";
 
 /** « Temps d'arrêt prévus : ATMS (5) · iRail (2) » — ATMS (synchronisé par l'extension) en priorité. */
 function sourceLabel(dwell: Record<string, AleaDwell>): string {
@@ -45,11 +46,17 @@ const headOf = (g: AleaGroup) =>
  * « Obligatoire » suit les logigrammes d'encodage (temps d'arrêt prévu : horaire ATMS synchronisé par l'extension, sinon iRail). Partagé PMR / groupes.
  */
 export function AleaButton({
+  kind,
+  canMark,
   disabled,
   eyebrow,
   description,
   compute,
 }: {
+  /** Liste d'origine : sert de portée aux blocs « encodés » (PMR et groupes séparés). */
+  kind: "pmr" | "groupe";
+  /** L'agent peut cocher « encodé » (droit d'écrire les missions) ; sinon lecture seule. */
+  canMark: boolean;
   disabled: boolean;
   eyebrow: string;
   description: string;
@@ -63,6 +70,49 @@ export function AleaButton({
   const [dwellError, setDwellError] = useState<string | null>(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const groups = useMemo(() => (open ? compute() : []), [open]);
+  // Blocs déjà saisis dans ALEA (partagés par l'équipe, en direct pendant que la fenêtre est ouverte).
+  const [marks, setMarks] = useState<Record<string, AleaMark>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  const loadMarks = useCallback(async () => {
+    if (!groups.length) return;
+    const res = await safeCall(
+      aleaMarks(
+        kind,
+        groups.map((g) => g.key),
+      ),
+    );
+    if (res.ok) setMarks(res.data);
+  }, [groups, kind]);
+  useEffect(() => {
+    if (!open || !groups.length) return;
+    void loadMarks();
+    const source = new EventSource("/api/events?topics=alea_marks");
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    source.addEventListener("change", () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => void loadMarks(), 300);
+    });
+    return () => {
+      clearTimeout(timer);
+      source.close();
+    };
+  }, [open, groups, loadMarks]);
+  const toggle = async (key: string) => {
+    const done = !marks[key];
+    setBusy(key);
+    const res = await safeCall(setAleaMark(kind, key, done));
+    setBusy(null);
+    if (!res.ok) {
+      toast.error(res.error);
+      return;
+    }
+    setMarks((m) => {
+      const next = { ...m };
+      if (res.data) next[key] = res.data;
+      else delete next[key];
+      return next;
+    });
+  };
 
   // Temps d'arrêt prévus (iRail, côté serveur), une fois à l'ouverture.
   useEffect(() => {
@@ -94,7 +144,10 @@ export function AleaButton({
       : aleaDecision(g.rule, undefined),
   }));
   const count = (s: AleaDecision["status"]) => decided.filter((x) => x.d.status === s).length;
-  const shown = decided.filter((x) => filter === "tous" || x.d.status === filter);
+  const todo = decided.filter((x) => !marks[x.g.key]).length;
+  const shown = decided.filter((x) =>
+    filter === "tous" ? true : filter === "a-encoder" ? !marks[x.g.key] : x.d.status === filter,
+  );
   const blockText = (g: AleaGroup) => [headOf(g), ...g.lines].join("\n");
   const unit = groups[0]?.unit ?? "PMR";
 
@@ -123,6 +176,7 @@ export function AleaButton({
                     ["tous", `Tous (${groups.length})`],
                     ["obligatoire", `Obligatoires (${count("obligatoire")})`],
                     ["verifier", `À vérifier (${count("verifier")})`],
+                    ["a-encoder", `À encoder (${todo})`],
                   ] as const
                 ).map(([k, label]) => (
                   <Button
@@ -156,11 +210,13 @@ export function AleaButton({
                   <li
                     key={g.key}
                     className={cn(
-                      "flex flex-col border border-border bg-surface",
+                      "flex flex-col border border-border bg-surface transition-opacity duration-(--d-base)",
                       d.status === "obligatoire" && "border-l-[3px] border-l-danger",
                       d.status === "verifier" && "border-l-[3px] border-l-warn",
+                      marks[g.key] && "border-l-[3px] border-l-ok opacity-70",
                     )}
                     data-testid="alea-block"
+                    data-encoded={marks[g.key] ? "1" : undefined}
                   >
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-surface-2 px-3 py-2">
                       <span
@@ -177,7 +233,30 @@ export function AleaButton({
                         <span className="first-letter:uppercase">{formatDay(g.day)}</span>
                         {g.time ? <span className="font-mono tabular"> · {g.time}</span> : null}
                       </span>
-                      <span className="ml-auto inline-flex items-center gap-2">
+                      <span className="ml-auto inline-flex flex-wrap items-center justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant={marks[g.key] ? "secondary" : "ghost"}
+                          className={marks[g.key] ? "text-ok" : "border border-border"}
+                          aria-pressed={Boolean(marks[g.key])}
+                          disabled={!canMark}
+                          loading={busy === g.key}
+                          title={
+                            marks[g.key]
+                              ? `Encodé par ${marks[g.key]!.by}${(() => {
+                                  const at = pbDate(marks[g.key]!.at);
+                                  return at ? ` à ${brusselsTime(at)}` : "";
+                                })()}`
+                              : canMark
+                                ? "Marquer comme saisi dans ALEA"
+                                : "Lecture seule"
+                          }
+                          onClick={() => void toggle(g.key)}
+                          data-testid="alea-mark"
+                        >
+                          {marks[g.key] ? <CheckSquare2 aria-hidden /> : <Square aria-hidden />}
+                          {marks[g.key] ? `Encodé · ${marks[g.key]!.by.split(" ")[0]}` : "Encodé"}
+                        </Button>
                         <Badge tone={dwell ? DECISION[d.status].tone : "neutral"}>
                           {dwell ? DECISION[d.status].label : "…"}
                         </Badge>

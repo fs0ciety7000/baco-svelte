@@ -82,8 +82,11 @@ export function GroupBoard({
   rows,
   district = "",
   delays,
+  canMark = false,
 }: {
   rows: GroupMission[];
+  /** Peut cocher « encodé » dans l'export ALEA. */
+  canMark?: boolean;
   district?: string;
   /** États iRail des trains du jour : badge de retard à la gare assistée. */
   delays?: TrainStates;
@@ -101,6 +104,8 @@ export function GroupBoard({
       />
       <div className="flex justify-end">
         <AleaButton
+          kind="groupe"
+          canMark={canMark}
           disabled={!rows.length}
           eyebrow="// Groupes"
           description={`Par train et par gare, une ligne par groupe${district ? ` (district ${district})` : ""}. Missions annulées exclues.`}

@@ -9,6 +9,7 @@ import { requireRoute } from "@/server/auth";
 import { resolveCancelledPref } from "@/server/pmr-prefs";
 import { listGroups } from "@/server/data/groups";
 import { dicosSyncState, listTrainStates } from "@/server/data/pmr";
+import { can } from "@/lib/permissions";
 import { pl } from "@/lib/utils";
 
 import { LiveRefresh } from "../commandes/live-refresh";
@@ -70,7 +71,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
           />
         )
       ) : (
-        <GroupBoard rows={rows} district={f.district ?? ""} delays={delays} />
+        <GroupBoard
+          rows={rows}
+          district={f.district ?? ""}
+          delays={delays}
+          canMark={can(user, "deplacements:write")}
+        />
       )}
     </section>
   );

@@ -135,3 +135,6 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
   `train` aux agents `deplacements:read` des districts concernés (districts du jour), au retard ≥ 5 min à la gare
   assistée puis par paliers de 10 min, et à la suppression de l'arrêt (`notified_delay`, `notified_cancel`).
   `CSM_IRAIL_URL=off` coupe aussi ce suivi (CI).
+- **ALEA « encodé »** (`1760002200_alea_marks.js`) : `alea_marks` (jour, `kind` pmr / groupe, `block` = clé
+  jour|train|gare|sens de l'export, `marked_by` forcé = l'appelant), unique par (kind, block) ; coché / décoché par un agent
+  `deplacements:write`, lu avec `deplacements:read`, purgé après 30 jours.

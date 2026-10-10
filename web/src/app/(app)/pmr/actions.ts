@@ -17,6 +17,7 @@ import {
 import { requireUser, type SessionUser } from "@/server/auth";
 import { train as irailTrain } from "@/server/irail";
 import { pbForRequest } from "@/server/data/orders";
+import { isValidDay } from "@/lib/orders/time";
 import {
   getAssist,
   getClientDetail,
@@ -440,6 +441,80 @@ export async function aleaDwell(
     };
     await Promise.all([worker(), worker(), worker()]);
     return { ok: true, data: out };
+  } catch (e) {
+    unstable_rethrow(e);
+    return fail(e);
+  }
+}
+
+// --- ALEA « encodé » (demande du 10 oct. 2026) : blocs cochés une fois saisis dans ALEA, partagés par l'équipe. ---
+
+export type AleaMark = { by: string; at: string };
+const markKind = z.enum(["pmr", "groupe"]);
+const markBlock = z.string().min(1).max(300);
+
+/** Blocs déjà encodés parmi ceux affichés (clé du bloc → auteur, heure). */
+export async function aleaMarks(
+  kind: "pmr" | "groupe",
+  blocks: string[],
+): Promise<Result<Record<string, AleaMark>>> {
+  try {
+    await need("deplacements:read");
+    const k = markKind.parse(kind);
+    const list = z.array(markBlock).max(500).parse(blocks);
+    const days = [...new Set(list.map((b) => b.slice(0, 10)).filter(isValidDay))];
+    if (!days.length) return { ok: true, data: {} };
+    const pb = await pbForRequest();
+    const rows = await pb.collection("alea_marks").getFullList({
+      filter: pb.filter(
+        `kind = {:k} && (${days.map((_, i) => `day = {:d${i}}`).join(" || ")})`,
+        Object.fromEntries([["k", k], ...days.map((d, i) => [`d${i}`, d])]),
+      ),
+      expand: "marked_by",
+      fields: "block,created,expand.marked_by.name,expand.marked_by.username",
+    });
+    const wanted = new Set(list);
+    const out: Record<string, AleaMark> = {};
+    for (const r of rows) {
+      if (!wanted.has(String(r.block))) continue;
+      const u = (r.expand as { marked_by?: { name?: string; username?: string } } | undefined)
+        ?.marked_by;
+      out[String(r.block)] = { by: u?.name || u?.username || "?", at: String(r.created) };
+    }
+    return { ok: true, data: out };
+  } catch (e) {
+    unstable_rethrow(e);
+    return fail(e);
+  }
+}
+
+/** Coche (encodé) ou décoche un bloc ALEA. */
+export async function setAleaMark(
+  kind: "pmr" | "groupe",
+  block: string,
+  done: boolean,
+): Promise<Result<AleaMark | null>> {
+  try {
+    const user = await need("deplacements:write");
+    const k = markKind.parse(kind);
+    const b = markBlock.parse(block);
+    const day = b.slice(0, 10);
+    if (!isValidDay(day)) throw new z.ZodError([]);
+    const pb = await pbForRequest();
+    const existing = await pb
+      .collection("alea_marks")
+      .getFirstListItem(pb.filter("kind = {:k} && block = {:b}", { k, b }))
+      .catch(() => null);
+    if (!done) {
+      if (existing) await pb.collection("alea_marks").delete(existing.id);
+      return { ok: true, data: null };
+    }
+    if (existing)
+      return { ok: true, data: { by: user.name || user.username, at: existing.created } };
+    const rec = await pb
+      .collection("alea_marks")
+      .create({ day, kind: k, block: b, marked_by: user.id });
+    return { ok: true, data: { by: user.name || user.username, at: String(rec.created) } };
   } catch (e) {
     unstable_rethrow(e);
     return fail(e);

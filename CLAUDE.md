@@ -584,6 +584,8 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   « Supprimé » à la gare assistée (Missions PMR, Groupes), notification `train` aux agents du district, widget d'accueil
   « Missions impactées ». Vérifié en local avec le faux iRail (retard de 5 min à Mons, notification, badge, widget,
   1440 + 390). 230 contrôles de règles.
+- 2026-10-10 — **ALEA « encodé »** : chaque bloc de l'export ALEA (PMR et groupes) se coche une fois saisi dans ALEA ;
+  partagé en direct avec l'équipe (`alea_marks`, SSE), auteur et heure au survol, filtre « À encoder ». 236 contrôles.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

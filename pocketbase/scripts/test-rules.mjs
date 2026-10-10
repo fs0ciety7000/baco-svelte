@@ -619,6 +619,20 @@ try {
 		check('agent n écrit pas les retards des trains', mtUser.status >= 400, `HTTP ${mtUser.status}`);
 		const mtConn = await api('POST', '/api/collections/mission_trains/records', { token: ctok, body: { day: '2026-10-09', train: 'IC1' } });
 		check('connector n écrit pas les retards des trains', mtConn.status >= 400, `HTTP ${mtConn.status}`);
+		// ALEA « encodé » (1760002200) : coché par un agent qui écrit les missions, auteur forcé, unique par bloc.
+		const amBody = { day: '2026-10-09', kind: 'pmr', block: `2026-10-09|IC1|Mons|IN|${suffix}`, marked_by: u.id };
+		const am = await api('POST', '/api/collections/alea_marks/records', { token: u.token, body: amBody });
+		check('agent coche un bloc ALEA encodé', am.status === 200, `HTTP ${am.status} ${JSON.stringify(am.json).slice(0, 80)}`);
+		const amDup = await api('POST', '/api/collections/alea_marks/records', { token: u.token, body: amBody });
+		check('bloc ALEA encodé unique', amDup.status >= 400, `HTTP ${amDup.status}`);
+		const amForge = await api('POST', '/api/collections/alea_marks/records', { token: u.token, body: { ...amBody, block: `${amBody.block}x`, marked_by: roles.reader.id } });
+		check('auteur d un bloc ALEA encodé non forgeable', amForge.status >= 400, `HTTP ${amForge.status}`);
+		const amReader = await api('POST', '/api/collections/alea_marks/records', { token: roles.reader.token, body: { ...amBody, block: `${amBody.block}r`, marked_by: roles.reader.id } });
+		check('lecteur ne coche pas ALEA encodé', amReader.status >= 400, `HTTP ${amReader.status}`);
+		const amRead = await api('GET', `/api/collections/alea_marks/records/${am.json?.id}`, { token: roles.reader.token });
+		check('blocs ALEA encodés lisibles avec deplacements:read', amRead.status === 200, `HTTP ${amRead.status}`);
+		const amDel = await api('DELETE', `/api/collections/alea_marks/records/${am.json?.id}`, { token: u.token });
+		check('agent décoche un bloc ALEA encodé', amDel.status === 204, `HTTP ${amDel.status}`);
 		// Journal des synchros DICOS (1760001900) : écrit par le connecteur, lu avec pmr:read, jamais modifiable.
 		const ds = await api('POST', '/api/collections/dicos_syncs/records', {
 			token: ctok,

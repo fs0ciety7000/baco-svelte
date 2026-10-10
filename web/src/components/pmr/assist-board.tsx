@@ -208,8 +208,11 @@ export function AssistBoard({
   district = "",
   notSynced = false,
   delays,
+  canMark = false,
 }: {
   rows: Assist[];
+  /** Peut cocher « encodé » dans l'export ALEA (droit d'écrire les missions). */
+  canMark?: boolean;
   /** États iRail des trains du jour (« jour|train », `listTrainStates`) : badge de retard à la gare assistée. */
   delays?: TrainStates;
   canPmr: boolean;
@@ -272,7 +275,7 @@ export function AssistBoard({
         sigs={Object.fromEntries(rows.map((r) => [r.id, `${r.status}|${r.updated}`]))}
       />
       <div className="flex justify-end">
-        <AleaExport rows={rows} district={district} />
+        <AleaExport rows={rows} district={district} canMark={canMark} />
       </div>
       {days.map((d) => {
         const list = d ? rows.filter((r) => r.day === d) : rows;
@@ -665,9 +668,19 @@ function aleaEnds(rows: Assist[], district: string): AleaEnd[] {
  * « Export ALEA » (demande du 9 oct. 2026) : par train et par gare, les PMR additionnées par sens et type précis,
  * une ligne par combinaison (« Embarquement de trois non-voyants »), à copier bloc par bloc ou en entier.
  */
-function AleaExport({ rows, district }: { rows: Assist[]; district: string }) {
+function AleaExport({
+  rows,
+  district,
+  canMark,
+}: {
+  rows: Assist[];
+  district: string;
+  canMark: boolean;
+}) {
   return (
     <AleaButton
+      kind="pmr"
+      canMark={canMark}
       disabled={!rows.length}
       eyebrow="// Missions PMR"
       description={`Par train, gare et sens : les PMR de tous les dossiers additionnées par type${district ? ` (district ${district})` : ""}. Missions annulées exclues.`}
