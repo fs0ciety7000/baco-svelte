@@ -123,10 +123,18 @@ export async function sendCampaign(id: string): Promise<Result<{ sent: number; f
     await requireAdmin();
     const pb = await pbForRequest();
     const c = await pb.collection("mail_campaigns").getOne(pbId.parse(id));
-    if (c.status === "envoyee")
-      throw new Error("DROIT:Campagne déjà envoyée : duplique-la pour la renvoyer.");
+    if (c.status !== "brouillon")
+      throw new Error(
+        "DROIT:Campagne déjà envoyée ou en cours d'envoi : duplique-la pour la renvoyer.",
+      );
     const list = await recipients();
     if (!list.length) throw new Error("DROIT:Aucun destinataire.");
+    // Verrou : « envoi » ne se pose que sur un brouillon (règle PocketBase) ; un second clic échoue ici.
+    try {
+      await pb.collection("mail_campaigns").update(c.id, { status: "envoi" });
+    } catch {
+      throw new Error("DROIT:Envoi déjà lancé.");
+    }
     let sent = 0;
     const failed: { email: string; error: string }[] = [];
     for (const r of list) {
@@ -142,8 +150,15 @@ export async function sendCampaign(id: string): Promise<Result<{ sent: number; f
         );
         sent++;
       } catch (e) {
-        // SMTP absent : inutile d'insister sur les suivants.
-        if (e instanceof Error && e.message.startsWith("DROIT:")) throw e;
+        // SMTP absent : inutile d'insister ; la campagne redevient un brouillon si rien n'est parti.
+        if (e instanceof Error && e.message.startsWith("DROIT:")) {
+          if (sent === 0)
+            await pb
+              .collection("mail_campaigns")
+              .update(c.id, { status: "brouillon" })
+              .catch(() => null);
+          throw e;
+        }
         failed.push({
           email: r.email,
           error: e instanceof Error ? e.message.slice(0, 120) : "erreur",

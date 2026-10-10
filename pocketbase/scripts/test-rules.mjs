@@ -846,10 +846,9 @@ try {
 
 	// Sessions ouvertes et campagnes (10 oct. 2026).
 	const sid = 'a'.repeat(40) + suffix.replace(/[^a-f0-9]/g, '0').padEnd(8, '0');
-	const sess = await api('POST', '/api/collections/user_sessions/records', { token: u.token, body: { user: u.id, sid, user_agent: 'test' } });
-	check('agent ouvre sa session', sess.status === 200, `HTTP ${sess.status}`);
-	const sessOther = await api('POST', '/api/collections/user_sessions/records', { token: u.token, body: { user: roles.reader.id, sid: 'b'.repeat(48) } });
-	check("agent n'ouvre pas de session pour un autre", sessOther.status >= 400, `HTTP ${sessOther.status}`);
+	const sessDirect = await api('POST', '/api/collections/user_sessions/records', { token: u.token, body: { user: u.id, sid, user_agent: 'test' } });
+	check("agent n'ouvre pas de session directement (route interne seule)", sessDirect.status >= 400, `HTTP ${sessDirect.status}`);
+	const sess = await api('POST', '/api/collections/user_sessions/records', { token: root, body: { user: u.id, sid, user_agent: 'test' } });
 	const sessSid = await api('PATCH', `/api/collections/user_sessions/records/${sess.json?.id}`, { token: u.token, body: { sid: 'c'.repeat(48) } });
 	check("agent ne change pas l'identifiant d'une session", sessSid.status >= 400, `HTTP ${sessSid.status}`);
 	const sessRead = await api('GET', `/api/collections/user_sessions/records/${sess.json?.id}`, { token: roles.reader.token });
@@ -863,7 +862,7 @@ try {
 	const campRead = await api('GET', `/api/collections/mail_campaigns/records/${camp.json?.id}`, { token: u.token });
 	check('agent ne lit pas les campagnes', campRead.status === 404, `HTTP ${campRead.status}`);
 	if (camp.json?.id) await api('DELETE', `/api/collections/mail_campaigns/records/${camp.json.id}`, { token: root });
-	for (const route of ['/api/csm/mail/send', '/api/csm/session/rotate']) {
+	for (const route of ['/api/csm/mail/send', '/api/csm/session/rotate', '/api/csm/session/open']) {
 		const r = await api('POST', route, { body: { to: 'x@example.org', user: u.id } });
 		check(`route interne ${route} fermée sans secret`, r.status === 404, `HTTP ${r.status}`);
 	}

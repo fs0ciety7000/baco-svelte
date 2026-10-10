@@ -27,7 +27,7 @@ export type CampaignRow = {
   id: string;
   subject: string;
   body: string;
-  status: "brouillon" | "envoyee";
+  status: "brouillon" | "envoi" | "envoyee";
   sentCount: number;
   failed: number;
   sentAt: string;
@@ -60,7 +60,7 @@ export function CampaignEditor({
   const [preview, setPreview] = useState("");
   const [confirm, setConfirm] = useState(false);
   const [pending, start] = useTransition();
-  const sent = current?.status === "envoyee";
+  const sent = current?.status === "envoyee" || current?.status === "envoi";
   const dirty = !current || current.subject !== subject || current.body !== body;
 
   useEffect(() => {
@@ -116,8 +116,16 @@ export function CampaignEditor({
                   >
                     <span className="w-full truncate text-body text-fg">{c.subject}</span>
                     <span className="flex items-center gap-1.5 text-small text-fg-muted">
-                      <Badge tone={c.status === "envoyee" ? "ok" : "neutral"}>
-                        {c.status === "envoyee" ? "Envoyée" : "Brouillon"}
+                      <Badge
+                        tone={
+                          c.status === "envoyee" ? "ok" : c.status === "envoi" ? "warn" : "neutral"
+                        }
+                      >
+                        {c.status === "envoyee"
+                          ? "Envoyée"
+                          : c.status === "envoi"
+                            ? "Envoi en cours"
+                            : "Brouillon"}
                       </Badge>
                       {c.status === "envoyee" ? `${c.sentCount} ${pl(c.sentCount, "envoi")}` : ""}
                     </span>

@@ -40,5 +40,6 @@ describe("campagne d'e-mail", () => {
       }).text,
     ).toContain("Bonjour,");
     expect(firstNameOf("  Marie Dupont ")).toBe("Marie");
+    expect(firstNameOf("[x](https://piege.example)")).toBe("xhttps://piege.example");
   });
 });

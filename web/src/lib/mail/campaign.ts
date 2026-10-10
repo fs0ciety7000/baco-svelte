@@ -166,4 +166,6 @@ E-mail interne de l'équipe Client Solutions, envoyé depuis CSM. Développé pa
 }
 
 /** Prénom pour « Bonjour {prenom} » : premier mot du nom affiché (vide si inconnu). */
-export const firstNameOf = (name: string) => name.trim().split(/\s+/)[0] ?? "";
+export const firstNameOf = (name: string) =>
+  // Sans caractères Markdown : un nom ne doit pas pouvoir fabriquer un lien ou de la mise en forme (revue sécurité).
+  (name.trim().split(/\s+/)[0] ?? "").replace(/[[\]()*_~`<>@]/g, "").slice(0, 40);

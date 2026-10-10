@@ -709,7 +709,9 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   ou passkey, « Accueil » reste le tableau de bord) ; **sessions ouvertes** (`user_sessions` + cookie httpOnly `csm_sid`,
   appareil / IP masquée / méthode / dernière activité notée toutes les 10 min ; supprimer une fiche déconnecte l'appareil
   à sa requête suivante ; « déconnecter les autres appareils » = nouvelle `tokenKey` par la route interne
-  `/api/csm/session/rotate` + jeton neuf pour l'appareil courant ; changement de mot de passe = autres sessions closes).
+  `/api/csm/session/rotate` + jeton neuf pour l'appareil courant ; changement de mot de passe = autres sessions closes). Revue sécurité : `csm_sid` **obligatoire** (le retirer contournait la
+  révocation ; tout le monde se reconnecte une fois), fiches créées par la route interne `/api/csm/session/open` seulement
+  (20 par agent, purge 30 j), flux SSE coupé après révocation, verrou d'envoi des campagnes, `{prenom}` neutralisé.
 - 2026-10-10 — **Campagnes d'e-mail** (Administration › Campagnes, admin / sysop) : modèle « BACO devient CSM » au design de
   CSM (`lib/mail/campaign.ts`, Markdown du Journal → HTML de messagerie échappé + texte, `{prenom}`), aperçu isolé (iframe
   `sandbox`), **e-mail de test obligatoire** avant l'envoi à tous, envoi un par un (400 ms) par la route interne

@@ -70,7 +70,7 @@ routerAdd('POST', '/api/csm/mail/send', (e) => {
 	const message = new MailerMessage({
 		from: { address: settings.meta.senderAddress, name: settings.meta.senderName },
 		to: [{ address: to }],
-		subject: String(body.subject || '').slice(0, 200),
+		subject: String(body.subject || '').replace(/[\r\n]+/g, ' ').slice(0, 200),
 		html: String(body.html || '').slice(0, 200000),
 		text: String(body.text || '').slice(0, 100000),
 	});

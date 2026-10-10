@@ -28,7 +28,7 @@ export default async function Page() {
     id: r.id,
     subject: String(r.subject ?? ""),
     body: String(r.body ?? ""),
-    status: r.status === "envoyee" ? "envoyee" : "brouillon",
+    status: r.status === "envoyee" ? "envoyee" : r.status === "envoi" ? "envoi" : "brouillon",
     sentCount: Number(r.sent_count ?? 0),
     failed: Array.isArray(r.failed) ? (r.failed as { email: string; error: string }[]).length : 0,
     sentAt: String(r.sent_at ?? ""),

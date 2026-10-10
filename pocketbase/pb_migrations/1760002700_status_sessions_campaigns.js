@@ -25,7 +25,8 @@ migrate(
 				name: 'user_sessions',
 				listRule: `${ACTIVE} && (user = @request.auth.id || ${ADMIN})`,
 				viewRule: `${ACTIVE} && (user = @request.auth.id || ${ADMIN})`,
-				createRule: `${ACTIVE} && @request.body.user = @request.auth.id`,
+				// Création par la route interne seulement (plafond par agent, champs non forgeables : revue sécurité).
+				createRule: null,
 				// Seule la dernière activité est mise à jour (par Next, avec le jeton de l'agent).
 				updateRule:
 					`${ACTIVE} && user = @request.auth.id && @request.body.user:isset = false && @request.body.sid:isset = false` +
@@ -55,12 +56,17 @@ migrate(
 				listRule: `${ACTIVE} && ${ADMIN}`,
 				viewRule: `${ACTIVE} && ${ADMIN}`,
 				createRule: `${ACTIVE} && ${ADMIN} && @request.body.created_by = @request.auth.id`,
-				updateRule: `${ACTIVE} && ${ADMIN} && @request.body.created_by:isset = false`,
+				// Une campagne envoyée (ou en cours d'envoi) ne se modifie plus ; « envoi » ne se pose que sur un brouillon
+				// (verrou contre le double envoi).
+				updateRule:
+					`${ACTIVE} && ${ADMIN} && @request.body.created_by:isset = false && status != "envoyee"` +
+					' && (status = "brouillon" || @request.body.status = "envoyee")' +
+					' && (@request.body.status != "envoi" || status = "brouillon")',
 				deleteRule: `${ACTIVE} && ${ADMIN}`,
 				fields: [
 					{ name: 'subject', type: 'text', required: true, max: 200 },
 					{ name: 'body', type: 'text', max: 20000 },
-					{ name: 'status', type: 'select', maxSelect: 1, values: ['brouillon', 'envoyee'] },
+					{ name: 'status', type: 'select', maxSelect: 1, values: ['brouillon', 'envoi', 'envoyee'] },
 					{ name: 'sent_count', type: 'number', onlyInt: true, min: 0 },
 					{ name: 'failed', type: 'json', maxSize: 20000 },
 					{ name: 'sent_at', type: 'date' },

@@ -296,7 +296,9 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   icônes) doit être ajouté à `PUBLIC` dans `middleware.ts`. **Écran commun** : `app/tv/page.tsx` (hors `(app)`, donc sans
   shell ; `requireUser` + `journal:read`), `components/ops/tv-board.tsx` (réutilise `buildHandover`).
 - **Sessions** : `server/sessions.ts` (`startSession` après connexion mot de passe / passkey, `sessionAlive` appelé par
-  `getCurrentUser` : cookie `csm_sid` inconnu → déconnecté ; erreur réseau ≠ déconnexion), `endSession` à la déconnexion ;
+  `getCurrentUser` : cookie `csm_sid` **absent** ou inconnu → déconnecté ; erreur réseau ou collection absente ≠ déconnexion ;
+  le flux SSE revérifie la session à l'ouverture puis toutes les ~2 min ; tout est coupé sans `CSM_INTERNAL_SECRET` ≥ 32 car.,
+  `sessionsEnabled()`, CI et local), `endSession` à la déconnexion ;
   `lib/sessions.ts` (`deviceLabel`, `maskIp`, testés) ; actions `listMySessions` / `revokeMySession` / `logoutOtherDevices`
   (`equipe/actions.ts`). **Statut** : `setMyStatus`, `statusOf` (`lib/team.ts`), `LogEntry.authorStatus`,
   `TeamMember.status`. **Accueil** : `lib/home.ts` (`HOME_CHOICES`, `homeOf`), `setMyHome`, redirection dans `login` et

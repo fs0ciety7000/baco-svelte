@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 
 import { env } from "@/server/env";
 import { readSessionToken } from "@/server/session";
+import { sessionAlive } from "@/server/sessions";
 import { formatSse, SseParser } from "@/server/sse";
 import { isExpired } from "@/server/token";
 
@@ -34,6 +35,8 @@ const HEARTBEAT_MS = 25_000;
 export async function GET(request: NextRequest) {
   const token = await readSessionToken();
   if (!token || isExpired(token)) return new Response("Non connecté", { status: 401 });
+  // Session révoquée (appareil déconnecté depuis le profil) : plus de flux (revue sécurité du 10 oct. 2026).
+  if (!(await sessionAlive(token))) return new Response("Session fermée", { status: 401 });
 
   const requested = (request.nextUrl.searchParams.get("topics") ?? "bus_orders").split(",");
   const topics = requested.filter((t) => TOPICS.has(t));
@@ -67,7 +70,15 @@ export async function GET(request: NextRequest) {
       };
       // Reconnexion automatique du navigateur après 3 s si le flux se coupe.
       send("retry: 3000\n\n");
-      const heartbeat = setInterval(() => send(": ping\n\n"), HEARTBEAT_MS);
+      let beats = 0;
+      const heartbeat = setInterval(() => {
+        send(": ping\n\n");
+        // Toutes les ~2 min : la session est-elle toujours ouverte ? Sinon, le flux est coupé.
+        if (++beats % 5 === 0)
+          void sessionAlive(token).then((alive) => {
+            if (!alive) upstreamAbort.abort();
+          });
+      }, HEARTBEAT_MS);
 
       try {
         for (;;) {

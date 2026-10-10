@@ -137,3 +137,42 @@ routerAdd('POST', '/api/csm/session/rotate', (e) => {
 	$app.saveNoValidate(user);
 	return e.json(200, { token: user.newAuthToken() });
 });
+
+// Ouverture d'une session (connexion réussie côté Next) : 20 sessions au plus par agent, les plus anciennes fermées.
+routerAdd('POST', '/api/csm/session/open', (e) => {
+	const secret = String($os.getenv('CSM_INTERNAL_SECRET') || '');
+	const given = String(e.request.header.get('x-csm-internal') || '');
+	if (secret.length < 32 || !$security.equal(given, secret)) return e.json(404, { message: 'Not found.' });
+	const body = e.requestInfo().body || {};
+	let user;
+	try {
+		user = $app.findRecordById('users', String(body.user || ''));
+	} catch (err) {
+		return e.json(404, { message: 'Compte introuvable.' });
+	}
+	if (user.getString('role') === 'disabled') return e.json(403, { message: 'Compte désactivé.' });
+	const sid = String(body.sid || '');
+	if (!/^[a-f0-9]{32,64}$/.test(sid)) return e.json(400, { message: 'Identifiant de session invalide.' });
+	const old = $app.findRecordsByFilter('user_sessions', 'user = {:u}', '-last_seen', 200, 0, { u: user.id });
+	for (let i = 19; i < old.length; i++) $app.delete(old[i]);
+	const r = new Record($app.findCollectionByNameOrId('user_sessions'));
+	r.set('user', user.id);
+	r.set('sid', sid);
+	r.set('method', body.method === 'passkey' ? 'passkey' : 'password');
+	r.set('user_agent', String(body.user_agent || '').slice(0, 300));
+	r.set('ip', String(body.ip || '').slice(0, 64));
+	r.set('last_seen', new Date().toISOString().replace('T', ' '));
+	$app.save(r);
+	return e.json(200, { id: r.id });
+});
+
+// Purge quotidienne : sessions sans activité depuis 30 jours (le jeton PocketBase expire de toute façon avant).
+cronAdd('user-sessions-purge', '40 3 * * *', () => {
+	const limit = new Date(Date.now() - 30 * 86400000).toISOString().replace('T', ' ');
+	try {
+		const old = $app.findRecordsByFilter('user_sessions', 'last_seen < {:d}', '', 2000, 0, { d: limit });
+		for (const r of old) $app.delete(r);
+	} catch (err) {
+		console.log('user-sessions-purge :', String(err));
+	}
+});

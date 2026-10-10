@@ -152,9 +152,11 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
   `/token` et `/register` (création : aucune règle `createRule`), en-tête `x-csm-internal` = `CSM_INTERNAL_SECRET` (404 sinon), compteur qui ne recule pas, compte désactivé refusé.
 - **Profil** (`1760002400_profile.js`) : `users.avatar` protégé (jpeg/png/webp, 2 Mo, miniatures 96x96 / 256x256), `users.work_phone` (40) ; modifiables par l'agent lui-même (`updateRule` inchangée).
 - **Statut, sessions, campagnes** (`1760002700_status_sessions_campaigns.js`) : `users.status` / `status_day` ;
-  `user_sessions` (création pour soi, seule `last_seen` modifiable, lecture / suppression propriétaire ou admin) ;
-  `mail_campaigns` (admin / sysop, `created_by` forcé). Routes internes : `POST /api/csm/mail/send` (`mail.pb.js`, 503 sans
-  SMTP) et `/api/csm/session/rotate` (`passkeys.pb.js` : `refreshTokenKey` + `newAuthToken`). 261 contrôles.
+  `user_sessions` (**aucune création par l'API** : route interne `/api/csm/session/open`, 20 par agent au plus, purge cron
+  `user-sessions-purge` après 30 j ; seule `last_seen` modifiable, lecture / suppression propriétaire ou admin) ;
+  `mail_campaigns` (admin / sysop, `created_by` forcé, verrou `envoi` posé seulement sur un brouillon). Routes internes :
+  `POST /api/csm/mail/send` (`mail.pb.js`, 503 sans SMTP, sujet sans CR/LF) et `/api/csm/session/rotate` (`passkeys.pb.js` :
+  `refreshTokenKey` + `newAuthToken`). 261 contrôles.
 - **Prod** (`pb-csm.fs0ciety.org`, 10 oct.) : base construite en local (`migrate up`, `superuser upsert`, `csm-import` d'une
   sauvegarde Supabase fraîche + empreintes, script des référentiels, compte `connector`), zip `POST /api/backups` puis
   `upload` + `restore` sur la prod. Ne jamais lancer `test-rules.mjs` ni d'E2E contre la prod.
