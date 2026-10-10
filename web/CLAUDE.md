@@ -310,3 +310,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `components/admin/campaigns.tsx`, page `/admin/campagnes`. Destinataires filtrés en JS (PocketBase refuse le filtre sur
   `email`).
 - **Prod** : `middleware.ts` pose `Cache-Control: … no-transform` sur les pages (Cloudflare réécrivait les e-mails du HTML).
+- **Indexation / partage** : outil interne jamais indexé : `X-Robots-Tag: noindex, nofollow` (middleware + `next.config.ts`),
+  `robots: { index: false }` dans le layout racine, `app/robots.ts` (`Disallow: /`, public dans `PUBLIC` ; robots d'aperçu
+  de lien autorisés sur `/`, `/connexion` et l'image), pas de sitemap. Carte de partage sur `/connexion` (Open Graph +
+  Twitter, `metadataBase` = `CSM_PUBLIC_URL`) ; image `public/brand/og-csm.png` régénérée par `node scripts/og-image.mjs`.

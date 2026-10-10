@@ -9,8 +9,10 @@ import { isExpired } from "@/server/token";
 const SESSION_COOKIE = "csm_session";
 // `/brand` : logos statiques (pied de page de la page de connexion), sans donnée.
 // PWA : manifeste, icônes, service worker et page hors connexion (chargés sans cookie par le navigateur).
+// `/robots.txt` : lu par les robots sans cookie (redirigé vers /connexion, il était illisible).
 const PUBLIC = [
   "/connexion",
+  "/robots.txt",
   "/brand",
   "/icons",
   "/manifest.webmanifest",
@@ -18,6 +20,8 @@ const PUBLIC = [
   "/offline.html",
 ];
 const REFRESH_MARGIN_S = 24 * 3600;
+// Outil interne : aucune réponse ne doit être indexée (aussi posé par next.config.ts et la balise meta du layout).
+const ROBOTS = "noindex, nofollow";
 
 /**
  * Content-Security-Policy avec nonce par requête (Next l'applique à ses propres scripts) :
@@ -56,6 +60,7 @@ export async function middleware(request: NextRequest) {
     url.pathname = "/connexion";
     url.search = pathname === "/" ? "" : `?suite=${encodeURIComponent(pathname + search)}`;
     const res = NextResponse.redirect(url);
+    res.headers.set("x-robots-tag", ROBOTS);
     if (token) res.cookies.delete(SESSION_COOKIE);
     return res;
   }
@@ -65,6 +70,7 @@ export async function middleware(request: NextRequest) {
   requestHeaders.set("content-security-policy", csp);
   const res = NextResponse.next({ request: { headers: requestHeaders } });
   res.headers.set("content-security-policy", csp);
+  res.headers.set("x-robots-tag", ROBOTS);
   // Cloudflare réécrit les adresses e-mail du HTML (« Email Address Obfuscation ») : le texte ne correspond plus au rendu
   // React → erreur d'hydratation (Journal, Annuaire, Admin) et liens mailto cassés (10 oct. 2026). `no-transform` lui
   // interdit toute réécriture du contenu.

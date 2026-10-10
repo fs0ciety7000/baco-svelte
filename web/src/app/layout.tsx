@@ -13,6 +13,7 @@ import type { ReactNode } from "react";
 
 import { parseUiCookie, UI_COOKIE } from "@/design/preferences";
 import { themeById } from "@/design/tokens";
+import { env } from "@/server/env";
 
 import { Providers } from "./providers";
 import "./globals.css";
@@ -54,9 +55,21 @@ const plexMono = IBM_Plex_Mono({
   preload: false,
 });
 
+// Base des URL absolues (image de partage) : l'URL publique de l'instance, jamais déduite des en-têtes.
+function siteUrl(): URL {
+  try {
+    return new URL(env.CSM_PUBLIC_URL || "https://csm.fs0ciety.org");
+  } catch {
+    return new URL("https://csm.fs0ciety.org");
+  }
+}
+
 export const metadata: Metadata = {
+  metadataBase: siteUrl(),
   title: "CSM",
   applicationName: "CSM",
+  // Outil interne : jamais indexé (même consigne en en-tête X-Robots-Tag et dans robots.txt).
+  robots: { index: false, follow: false },
   appleWebApp: { capable: true, title: "CSM", statusBarStyle: "black-translucent" },
   icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
 };
