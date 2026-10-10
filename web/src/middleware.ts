@@ -65,6 +65,14 @@ export async function middleware(request: NextRequest) {
   requestHeaders.set("content-security-policy", csp);
   const res = NextResponse.next({ request: { headers: requestHeaders } });
   res.headers.set("content-security-policy", csp);
+  // Cloudflare réécrit les adresses e-mail du HTML (« Email Address Obfuscation ») : le texte ne correspond plus au rendu
+  // React → erreur d'hydratation (Journal, Annuaire, Admin) et liens mailto cassés (10 oct. 2026). `no-transform` lui
+  // interdit toute réécriture du contenu.
+  if (!isApi && !/\.[a-z0-9]+$/i.test(pathname))
+    res.headers.set(
+      "cache-control",
+      "private, no-cache, no-store, max-age=0, must-revalidate, no-transform",
+    );
   if (valid && isExpired(token, Date.now(), REFRESH_MARGIN_S)) {
     try {
       const pbUrl = process.env.PB_URL ?? "http://127.0.0.1:8090";
