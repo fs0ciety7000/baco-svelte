@@ -90,6 +90,13 @@ transitoire. L'ancien service `stalwart` (`h7vpjks3…`, `mail.tandem-agenda.app
   Ajouter un MX (ou tout autre enregistrement) sur ce nom fait cesser le joker pour lui → **prod hors service**. Toujours
   poser d'abord `A csm.fs0ciety.org 152.53.176.13` (non proxifié, comme le joker), vérifier `/api/health`, puis le MX.
   `eat`, `privatix` (proxifiés) et `taupe` (non proxifié) sont des CNAME → les remplacer par un A équivalent avant le MX.
+- **DNS posé le 10 oct. (2e lot)** : `A csm.fs0ciety.org` explicite (non proxifié), `eat` / `privatix` (proxifiés) et
+  `taupe` (non proxifié) passés de CNAME à A 152.53.176.13 (sites vérifiés 200, santé prod 200) ; **MX** `csm`, `eat`,
+  `privatix`, `taupe` et **`tandem-agenda.app`** (ex-Tutanota) → `mail.fs0ciety.org` ; SPF `v=spf1 mx ~all` sur `csm`,
+  `eat`, `privatix`, `taupe`, `empire` ; SPF `tasks.tandem-agenda.app` `v=spf1 ip4:152.53.176.13 ~all`.
+  **Encore à poser par l'utilisateur** (refusé au garde-fou) : SPF `cardormedia.com` `v=spf1 mx include:spf.brevo.com ~all`
+  et SPF `tandem-agenda.app` → `v=spf1 mx include:spf.tutanota.de -all` (aujourd'hui le serveur n'y figure pas : les envois
+  Stalwart de tandem ne passent DMARC que par DKIM). MX `tasks.tandem-agenda.app` laissé sur Amazon SES (agenda).
 - **CSM branché le 10 oct.** sur `csm-pocketbase` puis `csm-pocketbase-prod` (variables runtime) :
   `CSM_SMTP_HOST=mail.fs0ciety.org`, `CSM_SMTP_PORT=587`, `CSM_SMTP_USER=csm@fs0ciety.org`, `CSM_SMTP_PASSWORD`,
   `CSM_MAIL_SENDER=csm@fs0ciety.org`, `CSM_MAIL_SENDER_NAME=CSM · Client Solutions` (+ `CSM_APP_URL` déjà présent).

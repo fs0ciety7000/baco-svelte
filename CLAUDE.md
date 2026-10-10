@@ -816,7 +816,8 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - 2026-10-10 — **Boîtes mail** (demande de l'utilisateur) : compte Stalwart `nicolas` avec `contact@fs0ciety.org` et les
   alias `contact@` de `eat` / `privatix` / `csm` / `taupe`, `contact@` + `hello@cardormedia.com`, `support@empire.fs0ciety.org`
   (« .com » lu comme une coquille), `support@tandem-agenda.app` ; 4 sous-domaines ajoutés à Stalwart (DKIM automatique).
-  MX des sous-domaines, MX `tandem-agenda.app` et SPF : refusés au garde-fou, liste remise à l'utilisateur.
+  Puis DNS posé (A explicite `csm`, CNAME → A pour `eat` / `privatix` / `taupe`, MX des 4 sous-domaines et de
+  `tandem-agenda.app`, SPF) ; restent à l'utilisateur les SPF de `cardormedia.com` et `tandem-agenda.app` (refusés).
 
 ---
 
