@@ -827,6 +827,10 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - 2026-10-10 — **Webmail Roundcube** sur https://webmail.fs0ciety.org (service Coolify `webmail`, projet Dev), branché sur
   Stalwart (IMAP 993, SMTP 587, Sieve 4190) ; connexion et envoi / réception vérifiés avec la boîte `nicolas@`.
 
+- 2026-10-10 — **OCC Studios désactivé** (remplacé par interactive.cardormedia.com) : application Coolify `OCC MONS Studios`
+  arrêtée (pas supprimée), CNAME `studios.fs0ciety.org` retiré (le nom résout encore par le joker `*.fs0ciety.org` → 503).
+  **Cosmic Empires** : déploiements Vercel coupés (`vercel.json` `git.deploymentEnabled: false`, ogame-like `7556af4`).
+
 ---
 
 ## Annexe — stack v1 SvelteKit (référence gelée)
