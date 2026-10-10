@@ -26,7 +26,8 @@ routerAdd('POST', '/api/csm/passkey/lookup', (e) => {
 	} catch (err) {
 		return e.json(404, { message: 'Passkey inconnue.' });
 	}
-	if (user.getString('role') === 'disabled') return e.json(403, { message: 'Compte désactivé.' });
+	// Même réponse qu'une passkey inconnue : ne pas révéler qu'un compte est désactivé.
+	if (user.getString('role') === 'disabled') return e.json(404, { message: 'Passkey inconnue.' });
 	return e.json(200, {
 		publicKey: pk.getString('public_key'),
 		counter: pk.getInt('counter'),
@@ -58,3 +59,62 @@ routerAdd('POST', '/api/csm/passkey/token', (e) => {
 	$app.saveNoValidate(pk);
 	return e.json(200, { token: user.newAuthToken() });
 });
+
+// Enregistrement d'une passkey, après vérification de l'attestation par Next (revue sécurité du 10 oct. 2026 : plus de
+// création directe par l'agent). 10 par compte au plus ; compte actif seulement.
+routerAdd('POST', '/api/csm/passkey/register', (e) => {
+	const secret = String($os.getenv('CSM_INTERNAL_SECRET') || '');
+	const given = String(e.request.header.get('x-csm-internal') || '');
+	if (secret.length < 32 || !$security.equal(given, secret)) return e.json(404, { message: 'Not found.' });
+	const body = e.requestInfo().body || {};
+	const userId = String(body.user || '');
+	let user;
+	try {
+		user = $app.findRecordById('users', userId);
+	} catch (err) {
+		return e.json(404, { message: 'Compte introuvable.' });
+	}
+	if (user.getString('role') === 'disabled' || user.getString('role') === 'connector')
+		return e.json(403, { message: 'Compte non autorisé.' });
+	const count = $app.countRecords('passkeys', $dbx.hashExp({ user: userId }));
+	if (count >= 10) return e.json(409, { message: '10 passkeys au plus : supprimes-en une.' });
+	const col = $app.findCollectionByNameOrId('passkeys');
+	const r = new Record(col);
+	r.set('user', userId);
+	r.set('credential_id', String(body.credentialId || '').slice(0, 1400));
+	r.set('public_key', String(body.publicKey || '').slice(0, 4000));
+	r.set('counter', Math.max(0, parseInt(body.counter, 10) || 0));
+	r.set('transports', Array.isArray(body.transports) ? body.transports.slice(0, 8).map(String) : []);
+	r.set('device_type', String(body.deviceType || '').slice(0, 40));
+	r.set('backed_up', body.backedUp === true);
+	r.set('name', String(body.name || 'Passkey').slice(0, 80));
+	try {
+		$app.save(r);
+	} catch (err) {
+		return e.json(409, { message: 'Passkey déjà enregistrée.' });
+	}
+	return e.json(200, { id: r.id });
+});
+
+// Mot de passe réinitialisé (compte peut-être compromis) : ses passkeys sont supprimées.
+onRecordConfirmPasswordResetRequest((e) => {
+	e.next();
+	try {
+		const list = $app.findRecordsByFilter('passkeys', 'user = {:u}', '', 50, 0, { u: e.record.id });
+		for (const pk of list) $app.delete(pk);
+	} catch (err) {
+		console.log('passkeys : nettoyage après réinitialisation impossible :', String(err));
+	}
+}, 'users');
+
+// Compte désactivé : ses passkeys sont supprimées (comme ses jetons de connecteur).
+onRecordAfterUpdateSuccess((e) => {
+	e.next();
+	if (e.record.getString('role') !== 'disabled') return;
+	try {
+		const list = $app.findRecordsByFilter('passkeys', 'user = {:u}', '', 50, 0, { u: e.record.id });
+		for (const pk of list) $app.delete(pk);
+	} catch (err) {
+		console.log('passkeys : nettoyage après désactivation impossible :', String(err));
+	}
+}, 'users');

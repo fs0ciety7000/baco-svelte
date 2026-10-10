@@ -24,6 +24,13 @@ onBootstrap((e) => {
 		const settings = e.app.settings().clone();
 		if (appUrl) settings.meta.appURL = appUrl;
 		settings.meta.appName = 'CSM';
+		// Débit des demandes de réinitialisation (revue sécurité du 10 oct. 2026 : la route reste joignable sur le
+		// PocketBase public). Par adresse IP : derrière Next, toutes les demandes partagent une adresse (borne globale,
+		// Next limite aussi par agent). La connexion par mot de passe n'est PAS limitée ici pour la même raison.
+		// SEULE règle : les règles par défaut de PocketBase (`*:create`, `/api/`, `*:auth`…) brideraient toute l'équipe,
+		// dont les requêtes arrivent toutes de l'adresse de csm-web.
+		settings.rateLimits.enabled = true;
+		settings.rateLimits.rules = [{ label: '*:requestPasswordReset', maxRequests: 10, duration: 600 }];
 		if (complete) {
 			settings.meta.senderAddress = sender;
 			settings.meta.senderName = env('CSM_MAIL_SENDER_NAME') || 'CSM · Client Solutions';

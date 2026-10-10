@@ -22,8 +22,8 @@ const schema = z.object({
   CSM_DICOS_PB_EMAIL: z.string().default(""),
   CSM_DICOS_PB_PASSWORD: z.string().default(""),
   // Passkeys (10 oct. 2026) : secret partagé avec csm-pocketbase pour ses routes internes (clé publique, jeton de
-  // session). Moins de 32 caractères = passkeys désactivées. Adresse publique du site (identifiant WebAuthn) : sinon
-  // déduite de la requête.
+  // session). Moins de 32 caractères = passkeys désactivées. CSM_PUBLIC_URL (https://test-csm.fs0ciety.org) : identifiant
+  // WebAuthn, obligatoire pour les passkeys (jamais déduit des en-têtes).
   CSM_INTERNAL_SECRET: z.string().default(""),
   CSM_PUBLIC_URL: z.string().default(""),
 });

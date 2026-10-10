@@ -653,11 +653,16 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   `CSM_MAIL_SENDER` (+ `_NAME`) et `CSM_APP_URL` (sinon coupé, la page renvoie vers un admin) ; modèle d'e-mail français,
   lien vers `/connexion/nouveau-mot-de-passe?token=` (30 min, usage unique ; migration `1760002500`) ; même réponse que le
   compte existe ou non, débit borné (IP, boîte). **Variables SMTP à fournir par l'utilisateur.** **Passkeys** (WebAuthn,
-  `@simplewebauthn` 13.3, choix de l'utilisateur) : collection `passkeys` (`1760002600` : l'agent crée les siennes sans
-  compteur, ne modifie que le nom ; admin / sysop lisent et suppriment), vérification par le serveur Next, défis à usage
+  `@simplewebauthn` 13.3, choix de l'utilisateur) : collection `passkeys` (`1760002600` : **aucune création directe**, enregistrement par la route
+  interne `/api/csm/passkey/register` après vérification par Next ; l'agent ne modifie que le nom ; admin / sysop lisent
+  et suppriment ; supprimées à la réinitialisation du mot de passe et à la désactivation), vérification par le serveur Next, défis à usage
   unique 5 min ; connexion : routes internes PocketBase `/api/csm/passkey/lookup` et `/token` (compteur anti-clonage,
   compte désactivé refusé, jeton `newAuthToken`) protégées par **`CSM_INTERNAL_SECRET`** (≥ 32 caractères, posé sur
-  `csm-web` et `csm-pocketbase` par l'API Coolify le 10 oct. ; sans lui, passkeys masquées). Profil : « Passkeys »
+  `csm-web` et `csm-pocketbase` par l'API Coolify le 10 oct.) + **`CSM_PUBLIC_URL`** sur `csm-web` (identifiant WebAuthn, jamais
+  tiré des en-têtes) ; sans eux, passkeys masquées. Vérification de l'utilisateur exigée (PIN / biométrie). Revue sécurité
+  passée (0 critique ; corrigés : passkey écrite directement dans PocketBase, rpID tiré de `x-forwarded-host`, compte désactivé
+  révélé, UV facultative, débit de `request-password-reset` sur le PocketBase public : **seule** règle du limiteur, ses règles
+  par défaut brideraient toute l'équipe derrière la même IP). Profil : « Passkeys »
   (ajout, liste, suppression) ; fiche admin : passkeys de l'agent. Une passkey est liée au domaine : à recréer après le
   passage sur `csm.fs0ciety.org`. 249 contrôles de règles.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),

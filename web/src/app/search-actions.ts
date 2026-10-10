@@ -3,14 +3,15 @@
 import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 
+import { plainText } from "@/lib/ops/chat-markdown";
 import { can } from "@/lib/permissions";
-import { formatDay, isValidDay } from "@/lib/orders/time";
+import { addDays, brusselsDay, formatDay, isValidDay, pbDate } from "@/lib/orders/time";
 import { requireUser } from "@/server/auth";
 import { pbForRequest } from "@/server/data/orders";
 import { allow } from "@/server/rate-limit";
 
 export type SearchHit = {
-  kind: "contact" | "bus" | "ptcar" | "train";
+  kind: "contact" | "bus" | "ptcar" | "train" | "journal" | "pmr" | "groupe";
   label: string;
   meta: string;
   href: string;
@@ -112,6 +113,117 @@ export async function paletteSearch(input: string): Promise<SearchHit[]> {
                 meta: `PtCar ${p.abbr}`,
                 href: `/referentiels/ptcar?q=${encodeURIComponent(String(p.abbr))}`,
               });
+          })
+          .catch(() => undefined),
+      );
+
+    // Journal (10 oct. 2026) : messages actifs dont le texte contient la recherche, les plus récents d'abord.
+    if (can(user, "journal:read"))
+      tasks.push(
+        pb
+          .collection("ops_log")
+          .getList(1, 5, {
+            filter: pb.filter('status = "active" && (body ~ {:q} || train ~ {:q})', { q }),
+            sort: "-created",
+            expand: "author",
+            fields: "id,body,created,source,expand.author.name",
+            skipTotal: true,
+          })
+          .then((r) => {
+            for (const m of r.items) {
+              const at = pbDate(String(m.created ?? ""));
+              const author =
+                m.source === "irail"
+                  ? "iRail"
+                  : String(
+                      (m.expand as { author?: { name?: string } } | undefined)?.author?.name ?? "",
+                    );
+              hits.push({
+                kind: "journal",
+                label:
+                  plainText(String(m.body ?? ""))
+                    .replace(/\s+/g, " ")
+                    .slice(0, 90) || "Message",
+                meta: ["Journal", at ? formatDay(brusselsDay(at)) : "", author]
+                  .filter(Boolean)
+                  .join(" · "),
+                href: `/operations/journal?entree=${m.id}`,
+              });
+            }
+          })
+          .catch(() => undefined),
+      );
+
+    // Missions PMR et groupes (10 oct. 2026) : n° de dossier, gare ou train ; aucun nom de voyageur. 30 jours autour
+    // d'aujourd'hui.
+    const today = brusselsDay();
+    const range = pb.filter("day >= {:a} && day <= {:b}", {
+      a: addDays(today, -30),
+      b: addDays(today, 30),
+    });
+    const missionQ = pb.filter(
+      "(dicos_ref ~ {:q} || station ~ {:q} || other_station ~ {:q} || train ~ {:q})",
+      {
+        q,
+      },
+    );
+    if (can(user, "deplacements:read"))
+      tasks.push(
+        pb
+          .collection("pmr_assists")
+          .getList(1, 5, {
+            filter: `${range} && ${missionQ} && status != "annulee"`,
+            sort: "-day,time",
+            fields: "id,day,time,train,station,other_station,dicos_ref,pmr_type,pax",
+            skipTotal: true,
+          })
+          .then((r) => {
+            for (const m of r.items) {
+              const day = String(m.day ?? "");
+              hits.push({
+                kind: "pmr",
+                label: `${m.train || "?"} · ${m.station || "?"} → ${m.other_station || "?"}`,
+                meta: [
+                  "Mission PMR",
+                  isValidDay(day) ? formatDay(day) : "",
+                  m.time,
+                  m.dicos_ref ? `dossier ${m.dicos_ref}` : "",
+                ]
+                  .filter(Boolean)
+                  .join(" · "),
+                href: `/pmr?du=${day}&au=${day}&q=${encodeURIComponent(String(m.dicos_ref || m.train || q))}`,
+              });
+            }
+          })
+          .catch(() => undefined),
+      );
+    if (can(user, "pmr:read"))
+      tasks.push(
+        pb
+          .collection("group_missions")
+          .getList(1, 3, {
+            filter: `${range} && ${missionQ} && status != "annulee"`,
+            sort: "-day,time",
+            fields: "id,day,time,train,station,other_station,dicos_ref",
+            skipTotal: true,
+          })
+          .then((r) => {
+            for (const m of r.items) {
+              const day = String(m.day ?? "");
+              hits.push({
+                kind: "groupe",
+                label: `${m.train || "?"} · ${m.station || "?"} → ${m.other_station || "?"}`,
+                meta: [
+                  "Groupe",
+                  isValidDay(day) ? formatDay(day) : "",
+                  m.time,
+                  m.dicos_ref ? `dossier ${m.dicos_ref}` : "",
+                ]
+                  .filter(Boolean)
+                  .join(" · "),
+                href: `/groupes?du=${day}&au=${day}&q=${encodeURIComponent(String(m.dicos_ref || m.train || q))}`,
+              });
+            }
           })
           .catch(() => undefined),
       );

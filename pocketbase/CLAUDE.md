@@ -148,6 +148,6 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
 - **Mot de passe oublié** (`1760002500_password_reset.js`, `pb_hooks/mail.pb.js`) : modèle d'e-mail français, lien vers le
   site (`{APP_URL}/connexion/nouveau-mot-de-passe?token=`), 30 min ; SMTP depuis `CSM_SMTP_*` / `CSM_MAIL_SENDER` /
   `CSM_APP_URL` ; `GET /api/csm/password-reset` → `{ enabled }`.
-- **Passkeys** (`1760002600_passkeys.js`, `pb_hooks/passkeys.pb.js`) : routes internes `POST /api/csm/passkey/lookup` et
-  `/token`, en-tête `x-csm-internal` = `CSM_INTERNAL_SECRET` (404 sinon), compteur qui ne recule pas, compte désactivé refusé.
+- **Passkeys** (`1760002600_passkeys.js`, `pb_hooks/passkeys.pb.js`) : routes internes `POST /api/csm/passkey/lookup`,
+  `/token` et `/register` (création : aucune règle `createRule`), en-tête `x-csm-internal` = `CSM_INTERNAL_SECRET` (404 sinon), compteur qui ne recule pas, compte désactivé refusé.
 - **Profil** (`1760002400_profile.js`) : `users.avatar` protégé (jpeg/png/webp, 2 Mo, miniatures 96x96 / 256x256), `users.work_phone` (40) ; modifiables par l'agent lui-même (`updateRule` inchangée).

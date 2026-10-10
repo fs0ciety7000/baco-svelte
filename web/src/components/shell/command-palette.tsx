@@ -1,7 +1,18 @@
 "use client";
 
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Bus, CornerDownLeft, MapPin, Monitor, Palette, TrainFront, UserRound } from "lucide-react";
+import {
+  Accessibility,
+  Bus,
+  CornerDownLeft,
+  MapPin,
+  MessageSquare,
+  Monitor,
+  Palette,
+  TrainFront,
+  UserRound,
+  Users,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -97,9 +108,15 @@ export function CommandPalette() {
               {hits.length > 0 ? (
                 <CommandGroup heading="Résultats">
                   {hits.map((h, i) => {
-                    const Icon = { contact: UserRound, bus: Bus, ptcar: MapPin, train: TrainFront }[
-                      h.kind
-                    ];
+                    const Icon = {
+                      contact: UserRound,
+                      bus: Bus,
+                      ptcar: MapPin,
+                      train: TrainFront,
+                      journal: MessageSquare,
+                      pmr: Accessibility,
+                      groupe: Users,
+                    }[h.kind];
                     return (
                       <CommandItem
                         key={`${i}-${h.href}`}

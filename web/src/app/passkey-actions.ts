@@ -96,7 +96,7 @@ export async function passkeyRegistrationOptions(): Promise<
         id: String(c.credential_id),
         transports: Array.isArray(c.transports) ? c.transports : undefined,
       })),
-      authenticatorSelection: { residentKey: "required", userVerification: "preferred" },
+      authenticatorSelection: { residentKey: "required", userVerification: "required" },
     });
     storeChallenge(`reg:${user.id}`, options.challenge);
     return { ok: true, data: options };
@@ -119,20 +119,23 @@ export async function registerPasskey(
       expectedChallenge,
       expectedOrigin: origin,
       expectedRPID: rpID,
-      requireUserVerification: false,
+      requireUserVerification: true,
     });
     if (!v.verified || !v.registrationInfo) throw new Error("DROIT:Passkey non vérifiée.");
     const { credential, credentialDeviceType, credentialBackedUp } = v.registrationInfo;
-    const pb = await pbForRequest();
-    await pb.collection("passkeys").create({
+    // Enregistrement par la route interne seulement (la règle PocketBase refuse toute création directe).
+    const saved = await internal<{ message?: string }>("register", {
       user: user.id,
-      credential_id: credential.id,
-      public_key: isoBase64URL.fromBuffer(credential.publicKey),
+      credentialId: credential.id,
+      publicKey: isoBase64URL.fromBuffer(credential.publicKey),
+      counter: credential.counter,
       transports: credential.transports ?? [],
-      device_type: credentialDeviceType,
-      backed_up: credentialBackedUp,
+      deviceType: credentialDeviceType,
+      backedUp: credentialBackedUp,
       name: z.string().trim().max(80).catch("").parse(name) || "Passkey",
     });
+    if (saved.status !== 200)
+      throw new Error(`DROIT:${saved.data.message ?? "Enregistrement refusé."}`);
     return { ok: true, data: undefined };
   } catch (e) {
     return fail(e, "Enregistrement de la passkey refusé.");
@@ -164,7 +167,7 @@ export async function passkeyLoginOptions(): Promise<
   try {
     if (!passkeysEnabled()) throw new Error("DROIT:Passkeys non activées sur ce serveur.");
     const { rpID } = await relyingParty();
-    const options = await generateAuthenticationOptions({ rpID, userVerification: "preferred" });
+    const options = await generateAuthenticationOptions({ rpID, userVerification: "required" });
     const key = crypto.randomUUID();
     storeChallenge(`auth:${key}`, options.challenge);
     (await cookies()).set(PK_COOKIE, key, {
@@ -196,7 +199,6 @@ export async function passkeyLogin(response: AuthenticationResponseJSON): Promis
       "lookup",
       { credentialId: response.id },
     );
-    if (found.status === 403) return { ok: false, error: "Compte désactivé." };
     if (found.status !== 200 || !found.data.publicKey) return refused;
     const { rpID, origin } = await relyingParty();
     const v = await verifyAuthenticationResponse({
@@ -204,7 +206,7 @@ export async function passkeyLogin(response: AuthenticationResponseJSON): Promis
       expectedChallenge,
       expectedOrigin: origin,
       expectedRPID: rpID,
-      requireUserVerification: false,
+      requireUserVerification: true,
       credential: {
         id: response.id,
         publicKey: isoBase64URL.toBuffer(found.data.publicKey),

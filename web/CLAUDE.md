@@ -289,5 +289,5 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   PocketBase), pages `/connexion/mot-de-passe-oublie` et `/connexion/nouveau-mot-de-passe` (publiques par le préfixe
   `/connexion`). **Passkeys** : `server/passkeys.ts` (identité WebAuthn, défis, routes internes), `app/passkey-actions.ts`,
   `components/team/passkeys.tsx` (`PasskeyLoginButton`, `PasskeysCard`), `components/admin/user-passkeys.tsx`. Variables :
-  `CSM_INTERNAL_SECRET`, `CSM_PUBLIC_URL` (facultative). E2E : le bouton de connexion se vise par
+  `CSM_INTERNAL_SECRET` et `CSM_PUBLIC_URL` (obligatoires pour les passkeys ; en local `http://localhost:3000`). E2E : le bouton de connexion se vise par
   `{ name: "Se connecter", exact: true }` (le bouton passkey contient « Connexion »).

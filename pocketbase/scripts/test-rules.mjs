@@ -825,23 +825,24 @@ try {
 	check('otto_agent ne lit pas les missions de groupe', gmOtto.status === 404, `HTTP ${gmOtto.status}`);
 	if (gm.json?.id) await api('DELETE', `/api/collections/group_missions/records/${gm.json.id}`, { token: root });
 
-	// Passkeys (10 oct. 2026) : l'agent crée les siennes seulement, sans compteur ; personne d'autre ne les lit (sauf
-	// admin) ; routes internes fermées sans secret.
+	// Passkeys (10 oct. 2026) : aucune création directe (route interne après vérification par Next) ; personne d'autre ne
+	// les lit (sauf admin) ; routes internes fermées sans secret.
 	const pkBody = { user: u.id, credential_id: `cred-${suffix}`, public_key: 'pk', name: 'Test' };
-	const pk = await api('POST', '/api/collections/passkeys/records', { token: u.token, body: pkBody });
-	check('agent ajoute sa passkey', pk.status === 200, `HTTP ${pk.status}`);
-	const pkOther = await api('POST', '/api/collections/passkeys/records', { token: u.token, body: { ...pkBody, credential_id: `x-${suffix}`, user: roles.reader.id } });
-	check("agent n'ajoute pas de passkey à un autre", pkOther.status >= 400, `HTTP ${pkOther.status}`);
-	const pkCounter = await api('POST', '/api/collections/passkeys/records', { token: u.token, body: { ...pkBody, credential_id: `y-${suffix}`, counter: 99 } });
-	check("agent ne fixe pas le compteur d'une passkey", pkCounter.status >= 400, `HTTP ${pkCounter.status}`);
+	const pkDirect = await api('POST', '/api/collections/passkeys/records', { token: u.token, body: pkBody });
+	check("agent n'écrit pas de passkey directement (clé non vérifiée)", pkDirect.status >= 400, `HTTP ${pkDirect.status}`);
+	const pk = await api('POST', '/api/collections/passkeys/records', { token: root, body: pkBody });
 	const pkKey = await api('PATCH', `/api/collections/passkeys/records/${pk.json?.id}`, { token: u.token, body: { public_key: 'autre' } });
 	check("agent ne change pas la clé publique d'une passkey", pkKey.status >= 400, `HTTP ${pkKey.status}`);
+	const pkName = await api('PATCH', `/api/collections/passkeys/records/${pk.json?.id}`, { token: u.token, body: { name: 'Portable' } });
+	check('agent renomme sa passkey', pkName.status === 200, `HTTP ${pkName.status}`);
 	const pkRead = await api('GET', `/api/collections/passkeys/records/${pk.json?.id}`, { token: roles.reader.token });
 	check("un autre agent ne lit pas la passkey", pkRead.status === 404, `HTTP ${pkRead.status}`);
 	const pkAdmin = await api('DELETE', `/api/collections/passkeys/records/${pk.json?.id}`, { token: roles.admin.token });
 	check('admin supprime une passkey', pkAdmin.status === 204, `HTTP ${pkAdmin.status}`);
-	const pkInternal = await api('POST', '/api/csm/passkey/token', { body: { credentialId: `cred-${suffix}`, counter: 1 } });
-	check('route interne passkey fermée sans secret', pkInternal.status === 404, `HTTP ${pkInternal.status}`);
+	for (const route of ['lookup', 'token', 'register']) {
+		const r = await api('POST', `/api/csm/passkey/${route}`, { body: { credentialId: `cred-${suffix}`, user: u.id, counter: 1 } });
+		check(`route interne passkey ${route} fermée sans secret`, r.status === 404, `HTTP ${r.status}`);
+	}
 
 	// Admin : supprime.
 	const adel = await api('DELETE', `/api/collections/bus_orders/records/${order.json.id}`, { token: roles.admin.token });

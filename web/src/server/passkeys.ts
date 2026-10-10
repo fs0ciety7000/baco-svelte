@@ -1,26 +1,21 @@
 import "server-only";
 
-import { headers } from "next/headers";
-
 import { env } from "./env";
 
 // Passkeys (décision du 10 oct. 2026) : identité WebAuthn du site, défis à usage unique (mémoire d'une instance, 5 min,
 // suffisant pour un seul conteneur web) et appels aux routes internes de PocketBase (secret partagé).
 
-export const passkeysEnabled = () => env.CSM_INTERNAL_SECRET.length >= 32;
+/**
+ * Passkeys actives : secret interne (≥ 32 caractères) ET adresse publique du site posée. L'identité WebAuthn ne vient
+ * jamais des en-têtes de la requête (`x-forwarded-host` falsifiable : revue sécurité du 10 oct. 2026).
+ */
+export const passkeysEnabled = () =>
+  env.CSM_INTERNAL_SECRET.length >= 32 && /^https?:\/\/[^/]+/.test(env.CSM_PUBLIC_URL);
 
-/** Origine et identifiant WebAuthn : CSM_PUBLIC_URL s'il est posé, sinon l'hôte de la requête (derrière Coolify). */
+/** Origine et identifiant WebAuthn, tirés de CSM_PUBLIC_URL. */
 export async function relyingParty(): Promise<{ rpID: string; origin: string }> {
-  if (env.CSM_PUBLIC_URL) {
-    const u = new URL(env.CSM_PUBLIC_URL);
-    return { rpID: u.hostname, origin: u.origin };
-  }
-  const h = await headers();
-  const host = (h.get("x-forwarded-host") ?? h.get("host") ?? "localhost").split(",")[0]!.trim();
-  const proto = (h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https"))
-    .split(",")[0]!
-    .trim();
-  return { rpID: host.replace(/:\d+$/, ""), origin: `${proto}://${host}` };
+  const u = new URL(env.CSM_PUBLIC_URL);
+  return { rpID: u.hostname, origin: u.origin };
 }
 
 const challenges = new Map<string, { challenge: string; exp: number }>();
