@@ -263,9 +263,9 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   joker `*.fs0ciety.org` est joint directement, Access ou non. Proxifier avant de protéger (zone en SSL « Full ») ; jamais
   `mail.fs0ciety.org` (SMTP / IMAP exigent le DNS seul). Un service avec clients non navigateur (API, webhooks, appli mobile)
   casse derrière Access sauf jeton de service ou chemin limité (`base.fs0ciety.org/_` = admin PocketBase seul).
-  **Un domaine avec chemin (`base.fs0ciety.org/_`) dans une application Access à plusieurs domaines** renvoie, après la
-  connexion, vers `/cdn-cgi/access/authorized` d'un **autre** domaine de l'application (boucle) → application Access à part
-  pour chaque entrée avec chemin (« Admin PocketBase Cosmic Empires », 10 oct.).
+  **Une application Access à plusieurs domaines** renvoie, après la connexion, vers `/cdn-cgi/access/authorized` d'un
+  **autre** domaine de l'application (boucle : base → tools, puis webmail → tools, 10 oct.) → **une application Access par
+  nom d'hôte ou par chemin**, jamais de regroupement.
 - (v2) **Les services envoient avec le mot de passe d'application** du compte Stalwart `nicolas`, jamais son mot de passe
   personnel (le changer coupe tous les envois : 10 oct.).
 - (v2) Playwright : un libellé avec astérisque requis (`Arrivée *`) ne répond pas à `getByLabel(…, { exact: true })` ;

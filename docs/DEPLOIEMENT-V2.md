@@ -116,10 +116,10 @@ transitoire. L'ancien service `stalwart` (`h7vpjks3…`, `mail.tandem-agenda.app
   `tls://mail.fs0ciety.org:587` avec l'identifiant de la boîte, filtres Sieve sur 4190, SQLite en volume, réglages dans
   `custom.inc.php` (compose). Aucun secret dans le service. Vérifié le 10 oct. : connexion `nicolas@fs0ciety.org`, envoi vers
   `contact@fs0ciety.org` reçu dans la boîte.
-- **Cloudflare Access (10 oct.)**, Allow = occmons@gmail.com + nico.dessenius@gmail.com + nd.managment@gmail.com, 24 h, une application par entrée
-  avec chemin (sinon boucle de connexion) :
+- **Cloudflare Access (10 oct.)**, Allow = occmons@gmail.com + nico.dessenius@gmail.com + nd.managment@gmail.com, 24 h, **une application par nom
+  d'hôte ou par chemin** (un regroupement provoque une boucle de connexion) :
   - « PocketBase CSM » (pb-csm, pb-test-csm) ; admins PocketBase `/_` : `base`, `devblog`, `eat`, `test`, `base-test` ;
-  - « Outils internes fs0ciety » : convert, img, link, profilarr, surrealist, tools, search, webmail ;
+  - outils internes (une application chacun) : convert, img, link, profilarr, surrealist, tools, search, webmail ;
   - **Coolify** (`coolify.fs0ciety.org`, proxifié) : tableau de bord protégé, **`/api` et `/webhooks` en Bypass** (API
     protégée par jeton, webhooks GitHub des déploiements automatiques) ;
   - Termix `ssh.fs0ciety.org`, Immich `photos.fs0ciety.org` (tunnel Cloudflare ; l'appli mobile Immich exige alors un
