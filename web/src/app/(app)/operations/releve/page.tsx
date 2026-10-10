@@ -47,6 +47,14 @@ export default async function Page({
         >
           Écran commun (TV)
         </a>
+        <a
+          href={`/tv?theme=rail${district ? `&district=${district}` : ""}`}
+          target="_blank"
+          rel="noopener"
+          className="link text-small"
+        >
+          (thème Rail)
+        </a>
         <LiveRefresh
           topics={[
             "bus_orders",

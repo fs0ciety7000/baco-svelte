@@ -675,6 +675,9 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   chaque agent peut être filtrée par gares) ; **écran commun `/tv`** (hors shell, plein écran, horloge, prises en charge
   des 3 h, trains en retard, urgences / consignes, bons ouverts, ALEA à encoder ; relu en direct + toutes les 60 s ;
   aucun nom ; lien depuis la Relève). E2E carte PN rendu indépendant du parallélisme (PN de test cherché par son adresse).
+- 2026-10-10 — **Écran commun** : départs et arrivées iRail **de Mons** en temps réel (`?gare=` pour une autre gare,
+  relu toutes les 60 s, voie, retard, suppression) ; **thèmes Forêt (défaut) et Rail** (`?theme=rail`, `data-theme` posé sur
+  le `<main>` de `/tv`, indépendant du thème de l'agent connecté sur le poste). Liens depuis la Relève.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

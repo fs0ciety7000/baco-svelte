@@ -1,11 +1,20 @@
 "use client";
 
-import { Bus, Megaphone, TrainFront, TriangleAlert, Users } from "lucide-react";
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  Bus,
+  Megaphone,
+  TrainFront,
+  TriangleAlert,
+  Users,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { gsap, MOTION_OK, useGSAP } from "@/lib/motion";
 import type { Handover, HandoverLeg } from "@/lib/ops/handover";
+import type { BoardRow } from "@/lib/ops/irail";
 import { cn, pl } from "@/lib/utils";
 
 // Écran commun (demande du 10 oct. 2026) : lisible à 3 m (texte ≥ 20 px), contraste fort, rien à cliquer. Heure qui
@@ -13,6 +22,69 @@ import { cn, pl } from "@/lib/utils";
 // Relu toutes les 60 s en plus du direct (un écran resté allumé toute la nuit ne doit jamais rester figé).
 
 const H3 = 3 * 60;
+
+export type TvStationBoards = {
+  station: string;
+  departures: BoardRow[] | null;
+  arrivals: BoardRow[] | null;
+};
+
+const hm = (ms: number) =>
+  new Intl.DateTimeFormat("fr-BE", {
+    timeZone: "Europe/Brussels",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(ms));
+
+/** Tableau des départs ou des arrivées (iRail) : heure, train, destination / origine, voie, retard. */
+function StationBoard({ rows, kind }: { rows: BoardRow[] | null; kind: "departure" | "arrival" }) {
+  if (!rows)
+    return <p className="text-[1.15rem] text-fg-muted">iRail indisponible pour l&apos;instant.</p>;
+  const shown = rows.filter((r) => !r.left).slice(0, 8);
+  if (!shown.length)
+    return <p className="text-[1.15rem] text-fg-muted">Aucun train dans l&apos;heure.</p>;
+  return (
+    <ul data-testid={kind === "departure" ? "tv-departures" : "tv-arrivals"}>
+      {shown.map((r) => (
+        <li
+          key={`${r.train}-${r.at}`}
+          className={cn(
+            "flex items-baseline gap-3 border-b border-border py-1 text-[1.15rem] last:border-b-0",
+            r.cancelled && "text-danger",
+          )}
+        >
+          <span className={cn("w-14 shrink-0 font-mono tabular", r.cancelled && "line-through")}>
+            {hm(r.at)}
+          </span>
+          <span className="w-20 shrink-0 truncate font-mono font-bold tabular">{r.label}</span>
+          <span className="min-w-0 flex-1 truncate">{r.other}</span>
+          <span
+            className={cn(
+              "w-10 shrink-0 text-right font-mono tabular",
+              r.platformChanged ? "font-bold text-warn" : "text-fg-muted",
+            )}
+            title="Voie"
+          >
+            {r.platform || "–"}
+          </span>
+          <span
+            className={cn(
+              "w-28 shrink-0 text-right font-mono font-bold whitespace-nowrap tabular",
+              r.cancelled || r.delayMin >= 15
+                ? "text-danger"
+                : r.delayMin >= 5
+                  ? "text-warn"
+                  : "text-ok",
+            )}
+          >
+            {r.cancelled ? "Supprimé" : r.delayMin ? `+${r.delayMin} min` : "à l'heure"}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 function useClock() {
   const fmt = () => {
@@ -64,7 +136,10 @@ function Panel({
   return (
     <section
       data-tv-panel
-      className={cn("flex min-h-0 min-w-0 flex-col gap-3 border border-border bg-surface p-4", className)}
+      className={cn(
+        "flex min-h-0 min-w-0 flex-col gap-3 border border-border bg-surface p-4",
+        className,
+      )}
       aria-label={title}
     >
       <h2 className="flex min-w-0 items-center gap-2 text-[1.35rem] font-semibold text-fg">
@@ -114,7 +189,15 @@ function Leg({ l }: { l: HandoverLeg }) {
   );
 }
 
-export function TvBoard({ data, scope }: { data: Handover; scope: string }) {
+export function TvBoard({
+  data,
+  boards,
+  scope,
+}: {
+  data: Handover;
+  boards: TvStationBoards;
+  scope: string;
+}) {
   const router = useRouter();
   const clock = useClock();
   const scopeRef = useRef<HTMLDivElement>(null);
@@ -168,11 +251,11 @@ export function TvBoard({ data, scope }: { data: Handover; scope: string }) {
           icon={<TrainFront aria-hidden className="size-6" />}
           title="Prochaines prises en charge (3 h)"
           count={next.length}
-          className="lg:col-span-2 lg:row-span-2"
+          className="lg:col-span-2"
         >
           {next.length ? (
             <ul data-testid="tv-upcoming">
-              {next.slice(0, 16).map((l) => (
+              {next.slice(0, 9).map((l) => (
                 <Leg key={l.id} l={l} />
               ))}
             </ul>
@@ -190,13 +273,25 @@ export function TvBoard({ data, scope }: { data: Handover; scope: string }) {
         >
           {data.delays.length ? (
             <ul>
-              {data.delays.slice(0, 6).map((l) => (
+              {data.delays.slice(0, 7).map((l) => (
                 <Leg key={l.id} l={l} />
               ))}
             </ul>
           ) : (
             <p className="text-[1.25rem] text-fg-muted">Tout est à l&apos;heure.</p>
           )}
+        </Panel>
+        <Panel
+          icon={<ArrowUpRight aria-hidden className="size-6" />}
+          title={`Départs · ${boards.station}`}
+        >
+          <StationBoard rows={boards.departures} kind="departure" />
+        </Panel>
+        <Panel
+          icon={<ArrowDownRight aria-hidden className="size-6" />}
+          title={`Arrivées · ${boards.station}`}
+        >
+          <StationBoard rows={boards.arrivals} kind="arrival" />
         </Panel>
         <div className="grid min-h-0 min-w-0 gap-4">
           <Panel
