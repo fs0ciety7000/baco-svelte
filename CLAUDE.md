@@ -602,7 +602,7 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   une frontière de mot (« Ath » ≠ « Athus ») ; compteurs de réponses par paquets de 50 ; widget sans lecture nominative ;
   reclassement BACO qui ne touche ni les consignes ni une catégorie d'origine autre qu'« info » par la règle par défaut ;
   double coche ALEA simultanée tolérée. **E2E Admin en CI** (compte admin de test `E2E_ADMIN_*`, `e2e/admin.spec.ts` :
-  écrans 1440 + 390, création / désactivation / réactivation). Laissé : mentions de district ouvertes à tout agent qui écrit.
+  écrans 1440 + 390, création / désactivation / réactivation). **Mentions de district ouvertes à tout agent qui écrit au Journal** (décision de l'utilisateur du 10 oct. : pas de restriction aux coordinateurs).
 - 2026-10-10 — **Finition** : continuité animée ligne → panneau (`ghostFlip`, tous les panneaux `Sheet`), widgets
   « Aujourd'hui en PMR » (volumes, prochaines prises en charge des districts du jour avec retard du train, fraîcheur DICOS)
   et « Mentions et alertes », **impression** soignée (listes, Journal ; B201 garde son PDF), **E2E Admin** en CI. Corrigé en
