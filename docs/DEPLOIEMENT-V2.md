@@ -111,11 +111,16 @@ transitoire. L'ancien service `stalwart` (`h7vpjks3…`, `mail.tandem-agenda.app
   `tasks.tandem-agenda.app` `v=spf1 ip4:152.53.176.13 ~all`. MX `tandem-agenda.app` (Tutanota) : **après** création des
   boîtes dans Stalwart (sinon le courrier est refusé) ; MX `tasks.tandem-agenda.app` (Amazon SES, réception entrante
   d'agenda) : **après** adaptation du code d'agenda (`INBOUND_EMAIL_*`).
-- Autres services à basculer ensuite (noms de variables relevés le 10 oct., valeurs jamais lues) : OCC Deliveries
-  (`OCC_SMTP_*`, `OCC_MAIL_FROM*`), agenda / Tandem (`SMTP_*`, `RESEND_*`, `INBOUND_EMAIL_*`), rail-cards (`SMTP_*`,
-  `EMAIL_FROM`), elo (`RESEND_*`), fs0ciety (`RESEND_API_KEY`), documenso (`NEXT_PRIVATE_SMTP_*`,
-  `NEXT_PRIVATE_RESEND_API_KEY`), ntfy (`NTFY_SMTP_SENDER_*`). **Un compte d'envoi par service** (mot de passe propre,
-  révocable). Code à adapter quand le service n'envoie que par l'API Resend.
+- **Services basculés le 10 oct.** (décision : **un seul compte d'envoi, `nicolas@fs0ciety.org`**, pas de compte par
+  service ; expéditeurs = alias du compte : `noreply@fs0ciety.org`, `noreply@eat.fs0ciety.org`, `noreply@empire.fs0ciety.org`,
+  `no-reply@tandem-agenda.app`) : OCC Deliveries (`OCC_SMTP_*` port 465, `OCC_MAIL_FROM=noreply@eat…`), agenda / Tandem
+  (`SMTP_*`, `EMAIL_FROM`, `PRIVACY_CONTACT_EMAIL=support@tandem-agenda.app` ; réception `tasks` toujours par SES / Resend),
+  RailCards (client SMTP ajouté), elo / HumaScan et fs0ciety (Resend API → SMTP dans le code), documenso (`NEXT_PRIVATE_SMTP_*`),
+  ntfy (`NTFY_SMTP_SENDER_*`). Adresses de contact affichées : `contact@eat`, `support@tandem-agenda.app`, `contact@fs0ciety.org`
+  (elo, fs0ciety, RailCards, studios), `contact@privatix`, `contact@taupe`, `contact@cardormedia.com` (divisions ; `hello@`
+  pour la holding), `support@empire.fs0ciety.org`. Variables `RESEND_*` gardées le temps de confirmer les premiers envois.
+  **Reste** : SMTP de Cosmic Empires réglé à la main dans l'admin PocketBase du jeu (hôte `mail.fs0ciety.org`, 587,
+  `nicolas@fs0ciety.org`, expéditeur `noreply@empire.fs0ciety.org`).
 
 ### Preview (environnement `production` historique, branche de session)
 

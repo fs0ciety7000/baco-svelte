@@ -819,6 +819,11 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   Puis DNS posé (A explicite `csm`, CNAME → A pour `eat` / `privatix` / `taupe`, MX des 4 sous-domaines et de
   `tandem-agenda.app`, SPF) ; restent à l'utilisateur les SPF de `cardormedia.com` et `tandem-agenda.app` (refusés).
 
+- 2026-10-10 — **Services sur Stalwart** : un seul compte d'envoi `nicolas@fs0ciety.org` (choix de l'utilisateur, les 5
+  comptes par service créés puis supprimés), expéditeurs en alias ; variables SMTP posées sur OCC Deliveries, agenda, RailCards,
+  elo, fs0ciety, documenso, ntfy ; adresses de contact ajoutées / remplacées dans 10 dépôts (agents par dépôt, relus, poussés
+  sur les branches déployées). SPF `cardormedia.com` et `tandem-agenda.app` posés. CSM garde `csm@fs0ciety.org`.
+
 ---
 
 ## Annexe — stack v1 SvelteKit (référence gelée)
