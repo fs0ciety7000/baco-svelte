@@ -270,6 +270,9 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   personnel (le changer coupe tous les envois : 10 oct.).
 - (v2) **Tests d'envoi d'e-mail : uniquement vers `nd.managment@gmail.com`** (demande de l'utilisateur du 10 oct.), jamais
   vers d'autres adresses ni vers les joueurs / agents ; jamais d'envoi de campagne à tous pour un test.
+- (v2) **Vercel (projet « baco ») ne construit plus les branches de CSM** : `vercel.json` à la racine, `git.deploymentEnabled:
+  false` (10 oct., demande de l'utilisateur ; échecs « script.sh introuvable » sur chaque push). `main` (BACO en production)
+  n'est pas touché ; pour couper Vercel entièrement, déconnecter le dépôt dans le tableau de bord Vercel.
 - (v2) Playwright : un libellé avec astérisque requis (`Arrivée *`) ne répond pas à `getByLabel(…, { exact: true })` ;
   passer par `getByRole(…, { name, exact: true })`.
 
