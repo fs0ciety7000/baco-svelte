@@ -868,6 +868,12 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - 2026-10-10 — **Access retiré** de convert, img, link, profilarr, tools, search (décision de l'utilisateur : publics), remis en
   DNS seul ; restent protégés : Coolify, ssh, Immich, mailadmin, webmail, Surrealist, admins PocketBase.
 
+- 2026-10-10 — **Hub `services.fs0ciety.org`** (dépôt `fs0ciety7000/coolify`, dossier `hub`) : pied de page « Développé par CM
+  Interactive · une division de CARDOR Media » (emblèmes animés), mention Coolify retirée, **page GitHub** (`/admin/github` :
+  PR, CI, alertes, fusion / approbation / relance de workflow, `GITHUB_TOKEN` à fournir par l'utilisateur), annuaire remis à
+  jour (sites CARDOR, CSM prod, webmail, Coolify, Immich ; OCC Studios retiré) et **hôte entier derrière Cloudflare Access**
+  (application « fs0ciety Hub » `b1f29c62-07d0-428b-8bce-823f6e1e43e7`, mêmes e-mails que Coolify).
+
 ---
 
 ## Annexe — stack v1 SvelteKit (référence gelée)
