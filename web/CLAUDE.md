@@ -229,6 +229,9 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   et `by` de `dicosSyncState()`. `isNewer()` dans `lib/pmr/extension-releases.ts`.
 - Pied de page : `StudioCredit` (`components/shell/studio-credit.tsx`) dans `AppShell` (le `footer` porte la marge basse
   de la barre d'onglets mobile, plus `main`) et sur `/connexion`.
+  Mention « OCC Interactive · une division de CARDOR Media » ; emblèmes animés `BrandMark` (`brand-mark.tsx` : Dragon
+  `public/brand/occ-interactive.svg`, roue `cardor-monogram.svg`, repris du dépôt `mons-corp`) chargés puis insérés,
+  glitch / tour au survol de `[data-brand-host]`, monochromes au repos et couleurs de la charte au survol (`globals.css`).
 - Filtres PMR / Groupes : `hideCancelled(f)` (`components/pmr/filter-bar.tsx`, `?annulees=masquees`) → option
   `hideCancelled` de `listAssists` / `listGroups`. Fichiers statiques publics sans session : `public/brand/`
   (`PUBLIC` dans `middleware.ts`).

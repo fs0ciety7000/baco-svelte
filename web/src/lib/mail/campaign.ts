@@ -143,7 +143,7 @@ ${htmlBlocks}
 <p style="margin:0 0 16px;font-size:13px;color:${C.muted}">Adresse : <a href="${esc(url)}" style="color:${C.muted}">${esc(url.replace(/\/$/, ""))}</a></p>
 </td></tr>
 <tr><td style="background:${C.panel};padding:14px 24px 20px;border:1px solid ${C.border};border-top:1px solid ${C.border};font-size:12px;line-height:1.5;color:${C.muted}">
-E-mail interne de l'équipe Client Solutions, envoyé depuis CSM. Développé par OCC MONS Studios.
+E-mail interne de l'équipe Client Solutions, envoyé depuis CSM. Développé par OCC Interactive, une division de CARDOR Media.
 </td></tr>
 </table></td></tr></table>
 </body></html>`;
