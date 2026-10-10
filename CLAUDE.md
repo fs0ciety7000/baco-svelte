@@ -255,6 +255,9 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - (v2) **Traefik (Coolify) intercepte `/.well-known/acme-challenge/` sur le port 80** : un service derrière Traefik ne peut
   pas obtenir son certificat en HTTP-01 (404 vide), ni en TLS-ALPN-01 (443 tenu par Traefik). Stalwart : DNS-01 (jeton
   Cloudflare limité) ou passthrough TCP. API Stalwart v0.16 = JMAP (`/jmap/`, `urn:stalwart:jmap`), plus de `/api/principal`.
+- (v2) **`csm.fs0ciety.org` résout par le joker `*.fs0ciety.org`** (aucun enregistrement propre) : y ajouter un MX / TXT
+  fait cesser le joker pour ce nom → prod hors service. Poser d'abord un `A` explicite (152.53.176.13, non proxifié),
+  vérifier `/api/health`, puis le reste. Un CNAME n'admet pas de MX : le remplacer par un A équivalent (même proxy).
 - (v2) Playwright : un libellé avec astérisque requis (`Arrivée *`) ne répond pas à `getByLabel(…, { exact: true })` ;
   passer par `getByRole(…, { name, exact: true })`.
 
@@ -805,6 +808,11 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   `csm@fs0ciety.org` + alias `dmarc@`, DKIM des 5 domaines, MX `cardormedia.com` / `empire` (CNAME → A proxifié).
   **CSM branché** (preview puis prod, santé 200, test de campagne envoyé depuis la preview). Reste à l'utilisateur : SPF de
   4 domaines, MX `tandem-agenda.app` (après création des boîtes) et `tasks.tandem-agenda.app` (après adaptation d'agenda).
+
+- 2026-10-10 — **Boîtes mail** (demande de l'utilisateur) : compte Stalwart `nicolas` avec `contact@fs0ciety.org` et les
+  alias `contact@` de `eat` / `privatix` / `csm` / `taupe`, `contact@` + `hello@cardormedia.com`, `support@empire.fs0ciety.org`
+  (« .com » lu comme une coquille), `support@tandem-agenda.app` ; 4 sous-domaines ajoutés à Stalwart (DKIM automatique).
+  MX des sous-domaines, MX `tandem-agenda.app` et SPF : refusés au garde-fou, liste remise à l'utilisateur.
 
 ---
 

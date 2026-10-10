@@ -81,6 +81,15 @@ transitoire. L'ancien service `stalwart` (`h7vpjks3…`, `mail.tandem-agenda.app
 - Comptes : `admin@fs0ciety.org` (alias **`dmarc@fs0ciety.org`**, destinataire des rapports DMARC) ;
   **`csm@fs0ciety.org`** (rôle User, envoi de CSM ; mot de passe dans `/home/user/csm-secrets/smtp-csm-password` de
   l'environnement cloud, mode 600, et dans les variables Coolify ; jamais dans Git).
+- **Boîte `contact@` (10 oct.)** : compte **`nicolas`** (`nicolas@fs0ciety.org`) ; alias livrés dans sa boîte :
+  `contact@fs0ciety.org`, `contact@{eat,privatix,csm,taupe}.fs0ciety.org`, `contact@cardormedia.com`,
+  `hello@cardormedia.com`, `support@empire.fs0ciety.org`, `support@tandem-agenda.app`. Domaines Stalwart ajoutés :
+  `eat`, `privatix`, `csm`, `taupe` `.fs0ciety.org` (DKIM publié automatiquement, comme `fs0ciety.org`). Mot de passe
+  initial remis à l'utilisateur hors dépôt.
+- **Piège DNS** : `csm.fs0ciety.org` n'a **pas** d'enregistrement propre, il résout par le **joker `*.fs0ciety.org`**.
+  Ajouter un MX (ou tout autre enregistrement) sur ce nom fait cesser le joker pour lui → **prod hors service**. Toujours
+  poser d'abord `A csm.fs0ciety.org 152.53.176.13` (non proxifié, comme le joker), vérifier `/api/health`, puis le MX.
+  `eat`, `privatix` (proxifiés) et `taupe` (non proxifié) sont des CNAME → les remplacer par un A équivalent avant le MX.
 - **CSM branché le 10 oct.** sur `csm-pocketbase` puis `csm-pocketbase-prod` (variables runtime) :
   `CSM_SMTP_HOST=mail.fs0ciety.org`, `CSM_SMTP_PORT=587`, `CSM_SMTP_USER=csm@fs0ciety.org`, `CSM_SMTP_PASSWORD`,
   `CSM_MAIL_SENDER=csm@fs0ciety.org`, `CSM_MAIL_SENDER_NAME=CSM · Client Solutions` (+ `CSM_APP_URL` déjà présent).
