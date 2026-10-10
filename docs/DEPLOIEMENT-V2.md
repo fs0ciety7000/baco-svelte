@@ -61,7 +61,7 @@ Journal de démarrage : « e-mail : SMTP smtp.resend.com:587 ».
 **Serveur mail Stalwart (en service depuis le 10 oct.)** : **tous les envois et réceptions** des services hébergés
 passent (ou passeront) par le serveur auto-hébergé **Stalwart v0.16.13**, service Coolify `smtp-fs0ciety`
 (`s7rxizvqhtvgib6cs2rqqd9g`, projet **Dev**, hôte 152.53.176.13, DNS inverse `mail.fs0ciety.org`, ports 25 / 465 /
-587 / 993 / 4190, interface + API derrière Traefik sur `https://mail.fs0ciety.org` → conteneur 8080). Resend devient
+587 / 993 / 4190, interface + API derrière Traefik sur `https://mailadmin.fs0ciety.org` → conteneur 8080, derrière Cloudflare Access depuis le 10 oct.). Resend devient
 transitoire. L'ancien service `stalwart` (`h7vpjks3…`, `mail.tandem-agenda.app`) est **arrêté** (aucun conflit de ports).
 - API v0.16 = **JMAP** (`POST /jmap/`, `using: urn:stalwart:jmap`, compte `b`, objets `x:Domain`, `x:Account`,
   `x:NetworkListener`, `x:AcmeProvider`, `x:Certificate`, `x:DnsServer`, `x:SystemSettings` id `singleton`, `x:Task`,
@@ -116,9 +116,18 @@ transitoire. L'ancien service `stalwart` (`h7vpjks3…`, `mail.tandem-agenda.app
   `tls://mail.fs0ciety.org:587` avec l'identifiant de la boîte, filtres Sieve sur 4190, SQLite en volume, réglages dans
   `custom.inc.php` (compose). Aucun secret dans le service. Vérifié le 10 oct. : connexion `nicolas@fs0ciety.org`, envoi vers
   `contact@fs0ciety.org` reçu dans la boîte.
-- **Cloudflare Access (10 oct.)** : « PocketBase CSM » (pb-csm, pb-test-csm) ; « Outils internes fs0ciety »
-  (`bdd4ba85-…`, convert, img, link, profilarr, surrealist, tools, search, webmail, tous proxifiés) ; « Admin PocketBase
-  Cosmic Empires » (`3ac94e48-…`, `base.fs0ciety.org/_` seul). Allow = occmons@gmail.com + nico.dessenius@gmail.com, 24 h.
+- **Cloudflare Access (10 oct.)**, Allow = occmons@gmail.com + nico.dessenius@gmail.com, 24 h, une application par entrée
+  avec chemin (sinon boucle de connexion) :
+  - « PocketBase CSM » (pb-csm, pb-test-csm) ; admins PocketBase `/_` : `base`, `devblog`, `eat`, `test`, `base-test` ;
+  - « Outils internes fs0ciety » : convert, img, link, profilarr, surrealist, tools, search, webmail ;
+  - **Coolify** (`coolify.fs0ciety.org`, proxifié) : tableau de bord protégé, **`/api` et `/webhooks` en Bypass** (API
+    protégée par jeton, webhooks GitHub des déploiements automatiques) ;
+  - Termix `ssh.fs0ciety.org`, Immich `photos.fs0ciety.org` (tunnel Cloudflare ; l'appli mobile Immich exige alors un
+    jeton de service Access en en-têtes personnalisés) ;
+  - **Stalwart** : interface web déplacée de `mail.fs0ciety.org` (doit rester en DNS seul pour SMTP / IMAP, plus de route
+    HTTPS → 503) vers **`mailadmin.fs0ciety.org`** (proxifié, protégé ; `/api`, `/jmap`, `/.well-known` en Bypass). L'API
+    Stalwart s'appelle désormais sur `https://mailadmin.fs0ciety.org/jmap/`.
+  - `base-test.fs0ciety.org` : enregistrement DNS sans service (503 avant comme après).
 - **Mot de passe d'application « Services hébergés (SMTP) »** sur le compte `nicolas` (`x:AppPassword` créé dans le compte
   `d` avec la clé admin ; secret généré par Stalwart, dans `/home/user/csm-secrets/smtp-services-app-password` de
   l'environnement cloud et dans les variables Coolify) : **tous les services l'utilisent** (CSM preview + prod, OCC Deliveries,

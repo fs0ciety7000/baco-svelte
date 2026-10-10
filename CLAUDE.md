@@ -254,7 +254,8 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   problème. Trouvé par l'E2E shell en local.
 - (v2) **Traefik (Coolify) intercepte `/.well-known/acme-challenge/` sur le port 80** : un service derrière Traefik ne peut
   pas obtenir son certificat en HTTP-01 (404 vide), ni en TLS-ALPN-01 (443 tenu par Traefik). Stalwart : DNS-01 (jeton
-  Cloudflare limité) ou passthrough TCP. API Stalwart v0.16 = JMAP (`/jmap/`, `urn:stalwart:jmap`), plus de `/api/principal`.
+  Cloudflare limité) ou passthrough TCP. API Stalwart v0.16 = JMAP (`/jmap/`, `urn:stalwart:jmap`), plus de `/api/principal`,
+  appelée sur `https://mailadmin.fs0ciety.org` depuis le 10 oct. (`mail.fs0ciety.org` n'a plus de route HTTPS).
 - (v2) **`csm.fs0ciety.org` résout par le joker `*.fs0ciety.org`** (aucun enregistrement propre) : y ajouter un MX / TXT
   fait cesser le joker pour ce nom → prod hors service. Poser d'abord un `A` explicite (152.53.176.13, non proxifié),
   vérifier `/api/health`, puis le reste. Un CNAME n'admet pas de MX : le remplacer par un A équivalent (même proxy).
@@ -846,6 +847,11 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   occmons@gmail.com + nico.dessenius@gmail.com) sur convert, img, link, profilarr, surrealist, tools, search, webmail
   (passés en proxifié) ; `base.fs0ciety.org/_` (admin PocketBase de Cosmic Empires, API publique gardée) dans sa propre
   application « Admin PocketBase Cosmic Empires » (`3ac94e48-518f-4a43-902c-a50b874583ea`) après une boucle de connexion.
+
+- 2026-10-10 — **Cloudflare Access étendu** (demande : Coolify, ssh, PocketBase, mail, Immich) : Coolify (tableau de bord ;
+  `/api` et `/webhooks` en Bypass), Termix, Immich, admins PocketBase `/_` (eat, devblog, test, base-test), **interface
+  Stalwart déplacée sur `mailadmin.fs0ciety.org`** (protégée ; `mail.fs0ciety.org` reste en DNS seul pour SMTP / IMAP).
+  Vérifié : redirections Access, API Coolify et webhooks 200, sites publics et API du jeu 200, envoi SMTP CSM OK.
 
 ---
 
