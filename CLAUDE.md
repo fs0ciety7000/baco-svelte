@@ -193,7 +193,7 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   9 oct.) ; rétabli par un nouveau push. Journal de démarrage dans `/pb_data/startup.log` ; `PB_DEBUG_HOLD=1` (variable
   runtime, à retirer ensuite) garde le conteneur en vie après un échec pour l'examiner par tâche planifiée.
 - (v2) **Les PocketBase publics (`pb-csm`, `pb-test-csm`) sont derrière Cloudflare Access depuis le 10 oct.** (application
-  « PocketBase CSM », e-mail du propriétaire seulement, `docs/DEPLOIEMENT-V2.md`) : depuis l'environnement cloud, tout appel
+  « PocketBase CSM », e-mails autorisés seulement, `docs/DEPLOIEMENT-V2.md`) : depuis l'environnement cloud, tout appel
   direct (contrôle « collection présente » ci-dessous, restauration par l'API, réglages, `CSM_PB_URL`) reçoit un 302 vers
   `cinecode.cloudflareaccess.com`. Passer par une tâche planifiée Coolify exécutée une fois, ou demander à l'utilisateur un
   jeton de service Access posé en variables d'environnement. L'appli web n'est pas concernée (réseau Docker interne).
@@ -730,6 +730,7 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   application « PocketBase CSM » (`85ccd53d-4528-43ce-a653-96214a9c6a77`) sur `pb-csm` et `pb-test-csm`, One-time PIN
   existant, session 24 h, politique Allow = `occmons@gmail.com`, pas de jeton de service. Vérifié : PocketBase → 302 vers
   Access ; web prod et preview → santé 200 (`pocketbase: true`), connexion 200. Clôt le « Reste (infra) » du 9 oct.
+  Puis, à la demande du propriétaire, `nico.dessenius@gmail.com` ajouté à la politique Allow.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

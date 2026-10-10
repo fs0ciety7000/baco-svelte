@@ -35,7 +35,7 @@ l'environnement cloud, compte `CLOUDFLARE_ACCOUNT_ID`, organisation Zero Trust e
 | Destinations | `pb-csm.fs0ciety.org` (prod) et `pb-test-csm.fs0ciety.org` (preview) — rien d'autre |
 | Session | 24 h, redirection directe vers le fournisseur, masquée du lanceur d'applications |
 | Fournisseur | One-time PIN (déjà présent, id `8a62d92a-75c8-458c-969b-43e5b50c81fc`, code reçu par e-mail) |
-| Politique | « Propriétaire CSM », **Allow**, include e-mail `occmons@gmail.com` (id `f1527b0c-f4d9-4e2e-99a3-5a8c9f15b215`) |
+| Politique | « Propriétaire CSM », **Allow**, include e-mails `occmons@gmail.com` et `nico.dessenius@gmail.com` (ajoutée le 10 oct. à la demande du propriétaire) (id `f1527b0c-f4d9-4e2e-99a3-5a8c9f15b215`) |
 | Jeton de service | aucun (son secret ne peut pas être remis sans l'afficher) |
 
 Vérifié : `pb-csm` et `pb-test-csm` `/api/health` → 302 vers `cinecode.cloudflareaccess.com` ; `csm` et `test-csm`
