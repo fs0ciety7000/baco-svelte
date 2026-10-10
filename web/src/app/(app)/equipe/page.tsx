@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { pl } from "@/lib/utils";
 import { FilterForm } from "@/components/ui/filter-form";
+import { PhoneLink } from "@/components/pmr/phone-link";
 import { Avatar } from "@/components/shell/avatar";
 import { Button } from "@/components/ui/button";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
@@ -78,12 +79,23 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
               key={m.id}
               className="flex min-w-0 items-center gap-3 border border-border bg-surface px-3 py-3"
             >
-              <Avatar name={m.name} email={m.username} className="size-10" />
+              <Avatar
+                name={m.name}
+                email={m.username}
+                id={m.id}
+                avatar={m.avatar}
+                className="size-10"
+              />
               <div className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate text-body font-medium text-fg">{m.name}</span>
                 <span className="truncate text-small text-fg-muted">
                   {m.fonction || ROLE_LABEL[m.role] || "—"}
                 </span>
+                {m.workPhone ? (
+                  <span className="text-small">
+                    <PhoneLink phone={m.workPhone} />
+                  </span>
+                ) : null}
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1">
                 {m.district ? (

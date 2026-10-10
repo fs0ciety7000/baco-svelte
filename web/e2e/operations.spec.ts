@@ -45,8 +45,12 @@ test.beforeAll(async () => {
     `/api/collections/users/records?filter=${encodeURIComponent(`email="${identity}"`)}`,
   );
   agentId = agent.items[0].id;
-  // Préférences propres (pas de gare favorite au départ).
-  await pb("PATCH", `/api/collections/users/records/${agentId}`, { preferences: {} });
+  // Préférences propres (pas de gare favorite au départ) et districts du jour pas encore choisis.
+  await pb("PATCH", `/api/collections/users/records/${agentId}`, {
+    preferences: {},
+    duty_day: "",
+    duty_districts: [],
+  });
   const pn = await pb("POST", "/api/collections/level_crossings/records", {
     line: "L.999",
     number: "7 bis",

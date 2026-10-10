@@ -44,6 +44,8 @@ export type LogEntry = {
   retiredReason: string;
   authorId: string;
   authorName: string;
+  /** Fichier d'avatar de l'auteur (vide = initiales). */
+  authorAvatar: string;
   /** « irail » : message repris automatiquement d'iRail (perturbation, travaux), sans auteur. */
   source: "agent" | "irail";
   editedAt: string;
@@ -129,6 +131,7 @@ function entry(r: RecordModel, readers: Map<string, { id: string; name: string }
       str(r.source) === "irail"
         ? "iRail · SNCB"
         : str(e.author?.name) || str(e.author?.username) || "Agent",
+    authorAvatar: str(r.source) === "irail" ? "" : str(e.author?.avatar),
     source: str(r.source) === "irail" ? "irail" : "agent",
     editedAt: str(r.edited_at),
     created: str(r.created),

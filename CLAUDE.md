@@ -634,6 +634,16 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   (`mergeAleaBlocks`), règle « mixed » = la décision la plus exigeante des deux logigrammes ; la coche « encodé » d'un
   bloc commun coche ses parties PMR et groupes (`alea_marks` inchangé). Revient sur la réponse du 9 oct. (« pas pour
   l'instant ») : demandé explicitement le 10 oct.
+- 2026-10-10 — **Profil enrichi** (demande de l'utilisateur) : photo de profil **visible de tous les agents** (choix de
+  l'utilisateur), recadrée en carré et réduite à 512 px dans le navigateur, type revérifié côté serveur (signature du
+  fichier), champ `users.avatar` **protégé** (images seulement, 2 Mo, miniatures 96 / 256 ; migration `1760002400`) servi
+  par `GET /api/avatar/<id>` avec un jeton de fichier ; affichée dans la barre du haut, l'annuaire Équipe et le Journal ;
+  **téléphone professionnel** (`work_phone`, annuaire Équipe avec lien etrali / tel) ; districts du jour modifiables
+  depuis le profil ; préférences d'affichage et notifications intégrées ; lien « Appareils connectés » ; **Mon activité**
+  (30 jours : messages au Journal, bons créés, blocs ALEA encodés). 242 contrôles de règles. Décisions prises : **mot de
+  passe oublié par e-mail (SMTP)**, **passkeys (WebAuthn, `@simplewebauthn`)** ; **passage en production demandé ensuite**
+  : `csm.fs0ciety.org` = prod, `test-csm.fs0ciety.org` = preview, réimport complet des données BACO (Supabase) à date
+  fraîche.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

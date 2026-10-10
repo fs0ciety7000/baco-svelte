@@ -282,3 +282,6 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   du matériel) + `roadmapPdf` (`server/pdf/order-pdf.ts`, `gridTable` générique). **ALEA commun** : `mergeAleaBlocks`
   (`lib/pmr/model.ts`, `parts` / `totalLabel`, testé), `AleaButton kind="commun"` (marques chargées par liste, clé
   `liste|bloc`).
+- **Avatar** : fichier protégé, jamais d'URL PocketBase au navigateur : `/api/avatar/<id>?v=<fichier>[&t=256]` (jeton de
+  fichier de l'agent, `Cache-Control: private`, CSP sandbox). `Avatar` (`components/shell/avatar.tsx`) prend `id` + `avatar`
+  (repli initiales) ; `TeamMember.avatar` / `workPhone`, `LogEntry.authorAvatar`, `ShellUser.avatar`.

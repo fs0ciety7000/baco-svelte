@@ -145,3 +145,4 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
   irail|baco, match, category }] }`), appliqué par `journalCategory` aux messages iRail (perturbations → `perturbation`) ;
   reclassement des messages BACO (`legacy_id > 0`) depuis Administration › Tri du Journal. Un changement de catégorie
   seul ne pose plus `edited_at` (pas de « modifié »).
+- **Profil** (`1760002400_profile.js`) : `users.avatar` protégé (jpeg/png/webp, 2 Mo, miniatures 96x96 / 256x256), `users.work_phone` (40) ; modifiables par l'agent lui-même (`updateRule` inchangée).

@@ -19,9 +19,11 @@ export type TeamMember = {
   fonction: string;
   district: string;
   role: string;
+  avatar: string;
+  workPhone: string;
 };
 
-const MEMBER_FIELDS = "id,name,username,fonction,district,role";
+const MEMBER_FIELDS = "id,name,username,fonction,district,role,avatar,work_phone";
 
 function member(r: RecordModel): TeamMember {
   return {
@@ -31,6 +33,8 @@ function member(r: RecordModel): TeamMember {
     fonction: str(r.fonction),
     district: str(r.district),
     role: str(r.role),
+    avatar: str(r.avatar),
+    workPhone: str(r.work_phone),
   };
 }
 
@@ -99,5 +103,41 @@ export async function listChangelog(page = 1) {
       author: str(r.expand?.author?.name) || str(r.expand?.author?.username),
       created: str(r.created),
     })),
+  };
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Mon activité (profil enrichi, 10 oct. 2026) : compteurs des 30 derniers jours, lus avec le jeton de l'agent (une
+// collection illisible pour lui donne « null », pas une erreur).
+
+export type MyActivity = {
+  journal: number | null;
+  orders: number | null;
+  alea: number | null;
+};
+
+export async function getMyActivity(id: string): Promise<MyActivity> {
+  const pb = await pbForRequest();
+  const since = new Date(Date.now() - 30 * 86_400_000).toISOString().replace("T", " ");
+  const count = (collection: string, field: string) =>
+    pb
+      .collection(collection)
+      .getList(1, 1, {
+        filter: pb.filter(`${field} = {:id} && created >= {:since}`, { id, since }),
+        fields: "id",
+        skipTotal: false,
+      })
+      .then((r) => r.totalItems)
+      .catch(() => null);
+  const [journal, bus, taxi, alea] = await Promise.all([
+    count("ops_log", "author"),
+    count("bus_orders", "created_by"),
+    count("taxi_orders", "created_by"),
+    count("alea_marks", "marked_by"),
+  ]);
+  return {
+    journal,
+    orders: bus === null && taxi === null ? null : (bus ?? 0) + (taxi ?? 0),
+    alea,
   };
 }

@@ -5,6 +5,8 @@ export type ShellUser = {
   id: string;
   name: string;
   email: string;
+  /** Nom du fichier d'avatar (vide = initiales). */
+  avatar: string;
   role: Role;
   grants: string[];
   denies: string[];

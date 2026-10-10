@@ -104,6 +104,10 @@ try {
 	check("agent ne s'attribue pas un district (droit B201)", selfDistrict.status >= 400, `HTTP ${selfDistrict.status}`);
 	const me = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: u.token, body: { fonction: 'Opérateur' } });
 	check('agent modifie sa fonction', me.status === 200, `HTTP ${me.status}`);
+	const phone = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: u.token, body: { work_phone: '065 00 00 00' } });
+	check('agent modifie son téléphone pro', phone.status === 200, `HTTP ${phone.status}`);
+	const avatarField = (await api('GET', '/api/collections/users', { token: root })).json?.fields?.find((f) => f.name === 'avatar');
+	check('avatar : fichier protégé, images seulement', avatarField?.protected === true && avatarField?.mimeTypes?.includes('image/webp') && !avatarField?.mimeTypes?.includes('image/svg+xml'), JSON.stringify(avatarField?.mimeTypes));
 	const other = await api('PATCH', `/api/collections/users/records/${roles.reader.id}`, { token: u.token, body: { name: 'X' } });
 	check("agent ne modifie pas le profil d'un autre", other.status >= 400, `HTTP ${other.status}`);
 

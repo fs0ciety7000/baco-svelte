@@ -28,7 +28,7 @@ export function UserMenu({ compact }: { compact?: boolean }) {
           className="flex h-control cursor-pointer items-center gap-2 px-1 text-left hover:bg-surface-2 md:px-2"
           aria-label={`Menu de ${user.name || user.email}`}
         >
-          <Avatar name={user.name} email={user.email} />
+          <Avatar name={user.name} email={user.email} id={user.id} avatar={user.avatar} />
           {!compact ? (
             <span className="hidden min-w-0 flex-col lg:flex">
               <span className="truncate text-small font-medium text-fg">

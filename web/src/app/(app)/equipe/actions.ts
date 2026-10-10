@@ -43,10 +43,63 @@ export async function saveMyProfile(input: unknown): Promise<Result> {
       .object({
         name: z.string().trim().min(1, "Nom requis").max(200),
         fonction: z.string().trim().max(200).default(""),
+        workPhone: z
+          .string()
+          .trim()
+          .max(40)
+          .regex(/^[0-9+().\/ -]*$/, "Téléphone : chiffres, espaces, + ( ) . / - seulement")
+          .default(""),
       })
       .parse(input);
     const pb = await pbForRequest();
-    await pb.collection("users").update(user.id, p);
+    await pb
+      .collection("users")
+      .update(user.id, { name: p.name, fonction: p.fonction, work_phone: p.workPhone });
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+/**
+ * Photo du profil (visible de tous les agents, 10 oct. 2026). Le navigateur la recadre en carré et la réduit avant
+ * l'envoi ; le serveur revérifie le type (signature du fichier, pas seulement l'extension) et la taille (2 Mo).
+ */
+export async function uploadMyAvatar(form: FormData): Promise<Result> {
+  try {
+    const user = await requireUser();
+    const file = form.get("avatar");
+    if (!(file instanceof File) || file.size === 0) throw new Error("DROIT:Aucune image reçue.");
+    if (file.size > 2 * 1024 * 1024) throw new Error("DROIT:Image trop lourde (2 Mo au plus).");
+    const head = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+    const type =
+      head[0] === 0xff && head[1] === 0xd8
+        ? "image/jpeg"
+        : head[0] === 0x89 && head[1] === 0x50 && head[2] === 0x4e && head[3] === 0x47
+          ? "image/png"
+          : String.fromCharCode(...head.slice(0, 4)) === "RIFF" &&
+              String.fromCharCode(...head.slice(8, 12)) === "WEBP"
+            ? "image/webp"
+            : "";
+    if (!AVATAR_TYPES.includes(type)) throw new Error("DROIT:Formats acceptés : JPEG, PNG, WebP.");
+    const ext = type.split("/")[1];
+    const body = new FormData();
+    body.set("avatar", new File([await file.arrayBuffer()], `avatar.${ext}`, { type }));
+    const pb = await pbForRequest();
+    await pb.collection("users").update(user.id, body);
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function removeMyAvatar(): Promise<Result> {
+  try {
+    const user = await requireUser();
+    const pb = await pbForRequest();
+    await pb.collection("users").update(user.id, { avatar: null });
     return { ok: true };
   } catch (e) {
     return fail(e);

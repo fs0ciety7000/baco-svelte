@@ -385,7 +385,7 @@ export function JournalChat({
           <span
             aria-hidden
             className={cn(
-              "grid size-7 shrink-0 place-items-center border font-mono text-hint font-semibold sm:size-9 sm:text-small",
+              "grid size-7 shrink-0 place-items-center overflow-hidden border font-mono text-hint font-semibold sm:size-9 sm:text-small",
               mine
                 ? "border-accent bg-accent-soft text-fg"
                 : irail
@@ -393,7 +393,20 @@ export function JournalChat({
                   : "border-border-strong bg-surface text-fg-muted",
             )}
           >
-            {irail ? "iR" : initials(r.authorName)}
+            {irail ? (
+              "iR"
+            ) : r.authorAvatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={`/api/avatar/${r.authorId}?v=${encodeURIComponent(r.authorAvatar)}`}
+                alt=""
+                className="size-full object-cover"
+                loading="lazy"
+                decoding="async"
+              />
+            ) : (
+              initials(r.authorName)
+            )}
           </span>
           <div
             className={cn(
