@@ -262,6 +262,9 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   joker `*.fs0ciety.org` est joint directement, Access ou non. Proxifier avant de protéger (zone en SSL « Full ») ; jamais
   `mail.fs0ciety.org` (SMTP / IMAP exigent le DNS seul). Un service avec clients non navigateur (API, webhooks, appli mobile)
   casse derrière Access sauf jeton de service ou chemin limité (`base.fs0ciety.org/_` = admin PocketBase seul).
+  **Un domaine avec chemin (`base.fs0ciety.org/_`) dans une application Access à plusieurs domaines** renvoie, après la
+  connexion, vers `/cdn-cgi/access/authorized` d'un **autre** domaine de l'application (boucle) → application Access à part
+  pour chaque entrée avec chemin (« Admin PocketBase Cosmic Empires », 10 oct.).
 - (v2) **Les services envoient avec le mot de passe d'application** du compte Stalwart `nicolas`, jamais son mot de passe
   personnel (le changer coupe tous les envois : 10 oct.).
 - (v2) Playwright : un libellé avec astérisque requis (`Arrivée *`) ne répond pas à `getByLabel(…, { exact: true })` ;
@@ -841,7 +844,8 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   ayant été changé, **mot de passe d'application** dédié aux services, posé partout et vérifié (test de campagne preview OK).
   **Cloudflare Access** : application « Outils internes fs0ciety » (`bdd4ba85-8fd8-4af2-8852-7b661ef4807f`, 24 h, Allow =
   occmons@gmail.com + nico.dessenius@gmail.com) sur convert, img, link, profilarr, surrealist, tools, search, webmail
-  (passés en proxifié) et `base.fs0ciety.org/_` (admin PocketBase de Cosmic Empires ; API publique gardée).
+  (passés en proxifié) ; `base.fs0ciety.org/_` (admin PocketBase de Cosmic Empires, API publique gardée) dans sa propre
+  application « Admin PocketBase Cosmic Empires » (`3ac94e48-518f-4a43-902c-a50b874583ea`) après une boucle de connexion.
 
 ---
 

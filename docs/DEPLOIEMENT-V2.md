@@ -116,6 +116,9 @@ transitoire. L'ancien service `stalwart` (`h7vpjks3…`, `mail.tandem-agenda.app
   `tls://mail.fs0ciety.org:587` avec l'identifiant de la boîte, filtres Sieve sur 4190, SQLite en volume, réglages dans
   `custom.inc.php` (compose). Aucun secret dans le service. Vérifié le 10 oct. : connexion `nicolas@fs0ciety.org`, envoi vers
   `contact@fs0ciety.org` reçu dans la boîte.
+- **Cloudflare Access (10 oct.)** : « PocketBase CSM » (pb-csm, pb-test-csm) ; « Outils internes fs0ciety »
+  (`bdd4ba85-…`, convert, img, link, profilarr, surrealist, tools, search, webmail, tous proxifiés) ; « Admin PocketBase
+  Cosmic Empires » (`3ac94e48-…`, `base.fs0ciety.org/_` seul). Allow = occmons@gmail.com + nico.dessenius@gmail.com, 24 h.
 - **Mot de passe d'application « Services hébergés (SMTP) »** sur le compte `nicolas` (`x:AppPassword` créé dans le compte
   `d` avec la clé admin ; secret généré par Stalwart, dans `/home/user/csm-secrets/smtp-services-app-password` de
   l'environnement cloud et dans les variables Coolify) : **tous les services l'utilisent** (CSM preview + prod, OCC Deliveries,
