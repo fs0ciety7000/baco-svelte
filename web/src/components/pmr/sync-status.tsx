@@ -4,7 +4,7 @@ import { RefreshCw, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { pbDate } from "@/lib/orders/time";
+import { formatShortDay, pbDate } from "@/lib/orders/time";
 import { cn } from "@/lib/utils";
 
 const STALE_MIN = 60;
@@ -27,12 +27,15 @@ export function SyncStatus({
   covered,
   partialAt = null,
   by = null,
+  missing = [],
 }: {
   lastAt: string | null;
   covered: boolean;
   /** Dernier envoi de la période sans son dernier lot : synchro en cours ou interrompue. */
   partialAt?: string | null;
   by?: string | null;
+  /** Jours de la période sans synchro complète. */
+  missing?: string[];
 }) {
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
@@ -76,7 +79,9 @@ export function SyncStatus({
           : interrupted
             ? `Synchro DICOS incomplète (arrêtée ${partialMin === null ? "" : ago(partialMin)}${byText}) : relance-la`
             : !covered
-              ? `Période pas encore synchronisée (dernière synchro DICOS ${min === null ? "" : ago(min)})`
+              ? missing.length && missing.length <= 3
+                ? `Pas encore synchronisé : ${missing.map((d) => formatShortDay(d)).join(", ")}`
+                : `Période pas encore entièrement synchronisée${missing.length ? ` (${missing.length} jours manquants)` : ""}`
               : `Synchronisé avec DICOS ${min === null ? "" : ago(min)}${byText}`}
       {stale ? (
         <Link href="/pmr/extension" className="link ml-1">

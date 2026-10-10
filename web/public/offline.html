@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hors connexion · CSM</title>
+    <style>
+      :root { color-scheme: dark; }
+      body { margin: 0; min-height: 100dvh; display: grid; place-items: center; background: #0d0b09; color: #ede7dc;
+        font: 16px/1.5 system-ui, sans-serif; padding: 16px; }
+      main { max-width: 26rem; }
+      h1 { font-size: 1.4rem; margin: 0 0 .5rem; }
+      p { color: #b1aa9e; margin: 0 0 1rem; }
+      button { min-height: 44px; padding: 0 1rem; background: #fac13b; color: #0d0b09; border: 0; font-weight: 600; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Pas de connexion</h1>
+      <p>CSM n'est pas joignable pour l'instant (réseau ou serveur). Les données ne sont jamais gardées sur cet appareil.</p>
+      <button type="button" onclick="location.reload()">Réessayer</button>
+    </main>
+  </body>
+</html>

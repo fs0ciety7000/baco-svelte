@@ -6,6 +6,7 @@ import { z } from "zod";
 import { ASSIST_STATUSES, type AssistStatus, type EquipmentState } from "@/lib/pmr/model";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
 import type { TrainState, TrainStates } from "@/lib/pmr/train-delay";
+import { syncSummary, type SyncRow } from "@/lib/pmr/sync-state";
 
 import { pbForRequest } from "./orders";
 
@@ -475,10 +476,12 @@ export function historyRange(today = brusselsDay()) {
 }
 
 export type DicosSync = {
-  /** Dernière synchro reçue (tous jours confondus), ISO, ou null. */
+  /** Fraîcheur de la période : dernière synchro complète du jour le moins récent ; sinon dernière synchro reçue. */
   lastAt: string | null;
-  /** Au moins une synchro COMPLÈTE pour un jour de la période affichée. */
+  /** Chaque jour de la période a reçu une synchro COMPLÈTE (14 jours au plus examinés). */
   covered: boolean;
+  /** Jours de la période sans synchro complète. */
+  missing: string[];
   /** Dernier envoi de la période sans son dernier lot (synchro en cours ou interrompue), ISO, ou null. */
   partialAt: string | null;
   /** Agent dont l'extension a fait le dernier envoi de la période (jeton personnel), ou null. */
@@ -515,36 +518,15 @@ export async function dicosSyncState(
         skipTotal: true,
       }),
     ]);
-    type Row = {
-      day: string;
-      kind: string;
-      created: string;
-      complete: boolean;
-      expand?: { synced_by?: { name?: string } };
-    };
+    type Row = SyncRow & { expand?: { synced_by?: { name?: string } } };
     const rows = inRange.items as unknown as Row[];
-    // Jour par jour (plusieurs agents synchronisent, chacun ses jours) : le dernier envoi du jour décide « en cours /
-    // interrompu » ; un jour est couvert s'il a reçu un dernier lot. Groupes : les fiches « groups » du jour si elles
-    // existent, sinon celles des missions (jours sans groupe).
-    const byDay = new Map<string, Row[]>();
-    for (const r of rows) byDay.set(r.day, [...(byDay.get(r.day) ?? []), r]);
-    let covered = false;
-    let partialAt: string | null = null;
-    for (const list of byDay.values()) {
-      const own =
-        kind === "groups" && list.some((r) => r.kind === "groups")
-          ? list.filter((r) => r.kind === "groups")
-          : list.filter((r) => r.kind === "missions");
-      if (!own.length) continue;
-      if (own.some((r) => r.complete)) covered = true;
-      const latest = own[0]; // trié du plus récent au plus ancien
-      if (latest && !latest.complete && (!partialAt || latest.created > partialAt))
-        partialAt = latest.created;
-    }
+    const sum = syncSummary(rows, from, to, kind);
     return {
-      lastAt: (last.items[0]?.created as string | undefined) ?? null,
-      covered,
-      partialAt,
+      // Fraîcheur de la période affichée (jour le moins récemment synchronisé) ; à défaut, la dernière synchro reçue.
+      lastAt: sum.freshness ?? (last.items[0]?.created as string | undefined) ?? null,
+      covered: sum.missing.length === 0,
+      missing: sum.missing,
+      partialAt: sum.partialAt,
       by: rows[0]?.expand?.synced_by?.name || null,
     };
   } catch {

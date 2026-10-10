@@ -291,3 +291,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `components/team/passkeys.tsx` (`PasskeyLoginButton`, `PasskeysCard`), `components/admin/user-passkeys.tsx`. Variables :
   `CSM_INTERNAL_SECRET` et `CSM_PUBLIC_URL` (obligatoires pour les passkeys ; en local `http://localhost:3000`). E2E : le bouton de connexion se vise par
   `{ name: "Se connecter", exact: true }` (le bouton passkey contient « Connexion »).
+- **PWA** : `app/manifest.ts`, `public/sw.js` (navigation : réseau puis `offline.html` ; jamais de cache de données),
+  `components/pwa-register.tsx` (production seulement). Tout nouveau fichier statique chargé sans cookie (manifeste,
+  icônes) doit être ajouté à `PUBLIC` dans `middleware.ts`. **Écran commun** : `app/tv/page.tsx` (hors `(app)`, donc sans
+  shell ; `requireUser` + `journal:read`), `components/ops/tv-board.tsx` (réutilise `buildHandover`).

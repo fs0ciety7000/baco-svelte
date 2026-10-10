@@ -8,7 +8,15 @@ import { isExpired } from "@/server/token";
 
 const SESSION_COOKIE = "csm_session";
 // `/brand` : logos statiques (pied de page de la page de connexion), sans donnée.
-const PUBLIC = ["/connexion", "/brand"];
+// PWA : manifeste, icônes, service worker et page hors connexion (chargés sans cookie par le navigateur).
+const PUBLIC = [
+  "/connexion",
+  "/brand",
+  "/icons",
+  "/manifest.webmanifest",
+  "/sw.js",
+  "/offline.html",
+];
 const REFRESH_MARGIN_S = 24 * 3600;
 
 /**

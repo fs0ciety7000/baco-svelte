@@ -63,7 +63,7 @@ export async function showBrowserNotification(item: Item, onOpen: () => void) {
   const options: NotificationOptions = {
     body: notificationBody(item),
     tag: item.id,
-    icon: "/icon-192.png",
+    icon: "/icons/icon-192.png",
     data: { link: item.link },
   };
   try {

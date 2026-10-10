@@ -8,6 +8,7 @@ import {
   Saira_Condensed,
 } from "next/font/google";
 import { cookies } from "next/headers";
+import { PwaRegister } from "@/components/pwa-register";
 import type { ReactNode } from "react";
 
 import { parseUiCookie, UI_COOKIE } from "@/design/preferences";
@@ -55,12 +56,16 @@ const plexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: "CSM",
+  applicationName: "CSM",
+  appleWebApp: { capable: true, title: "CSM", statusBarStyle: "black-translucent" },
+  icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#0D0B09",
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
@@ -78,6 +83,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     >
       <body>
         <Providers>{children}</Providers>
+        <PwaRegister />
       </body>
     </html>
   );

@@ -216,7 +216,8 @@ test("carte PN : recherche, fiche, itinéraire, tuiles relayées", async ({ page
   const tiles: number[] = [];
   page.on("response", (r) => r.url().includes("/api/operations/tuiles/") && tiles.push(r.status()));
   await login(page, "/operations/carte-pn");
-  await page.getByTestId("pn-search").fill("7 bis L.999");
+  // Recherche par l'adresse (propre à chaque worker : desktop et mobile créent chacun leur PN « 7 bis » de la L.999).
+  await page.getByTestId("pn-search").fill(`Essai ${suffix}`);
   await expect(page.getByTestId("pn-count")).toContainText("1");
   await page.getByRole("button", { name: "Ouvrir le PN 7 bis de la L.999" }).click();
   await expect(page.getByTestId("pn-panel")).toContainText("12.345");
@@ -276,6 +277,11 @@ test("ma journée et relève : frise du jour, filtre de gare, synthèse", async 
   await expect(page.getByRole("link", { name: new RegExp(`E2E ${suffix}`) })).toHaveCount(0);
   await page.goto("/operations/releve?district=tous");
   await expect(page.getByText("Missions et groupes à venir").first()).toBeVisible();
+  await noHorizontalScroll(page);
+  // Écran commun : plein écran, sans menus, aucun nom de voyageur.
+  await page.goto("/tv?district=tous");
+  await expect(page.getByTestId("tv-clock")).not.toHaveText("--:--");
+  await expect(page.getByRole("region", { name: /Prochaines prises en charge/ })).toBeVisible();
   await noHorizontalScroll(page);
 });
 

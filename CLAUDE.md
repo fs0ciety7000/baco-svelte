@@ -665,6 +665,16 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   par défaut brideraient toute l'équipe derrière la même IP). Profil : « Passkeys »
   (ajout, liste, suppression) ; fiche admin : passkeys de l'agent. Une passkey est liée au domaine : à recréer après le
   passage sur `csm.fs0ciety.org`. 249 contrôles de règles.
+- 2026-10-10 — **Fin du lot « suite »** : **⌘K** cherche aussi dans le Journal (messages actifs) et les missions PMR /
+  groupes (gare, train, n° de dossier, ±30 jours, sans nom) ; **PWA installable** (`app/manifest.ts`, icônes
+  `public/icons/`, service worker `public/sw.js` **sans aucune donnée mise en cache** : page hors connexion + clic sur
+  notification ; enregistré en production seulement ; manifeste, icônes, `sw.js` et `offline.html` publics dans le
+  middleware) ; **synchro DICOS** : fraîcheur affichée = celle du **jour le moins récemment synchronisé** de la période
+  (et non la dernière synchro tous jours confondus), période couverte seulement si **chaque** jour l'est, jours manquants
+  nommés (`lib/pmr/sync-state.ts`, testé) — pas de suppression des missions absentes d'une synchro (la vue DICOS de
+  chaque agent peut être filtrée par gares) ; **écran commun `/tv`** (hors shell, plein écran, horloge, prises en charge
+  des 3 h, trains en retard, urgences / consignes, bons ouverts, ALEA à encoder ; relu en direct + toutes les 60 s ;
+  aucun nom ; lien depuis la Relève). E2E carte PN rendu indépendant du parallélisme (PN de test cherché par son adresse).
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

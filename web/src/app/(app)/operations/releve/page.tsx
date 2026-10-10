@@ -38,6 +38,15 @@ export default async function Page({
           {HANDOVER_CODES.map((c) => chip(c, c, district === c))}
           {chip("Tous", "tous", district === "tous")}
         </ChipRow>
+        <a
+          href={district ? `/tv?district=${district}` : "/tv"}
+          target="_blank"
+          rel="noopener"
+          className="link text-small"
+          data-testid="tv-link"
+        >
+          Écran commun (TV)
+        </a>
         <LiveRefresh
           topics={[
             "bus_orders",
