@@ -853,6 +853,11 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   Stalwart déplacée sur `mailadmin.fs0ciety.org`** (protégée ; `mail.fs0ciety.org` reste en DNS seul pour SMTP / IMAP).
   Vérifié : redirections Access, API Coolify et webhooks 200, sites publics et API du jeu 200, envoi SMTP CSM OK.
 
+- 2026-10-10 — **Tests « mot de passe oublié »** avec nd.managment@gmail.com et nico.dessenius@gmail.com : CSM prod + preview,
+  OCC Deliveries, Tandem (en-tête `X-Requested-With: tandem` exigé), RailCards, fs0ciety, HumaScan → demandes acceptées, file
+  Stalwart vide, aucun avis de non-distribution ; réception depuis Gmail et Outlook vérifiée. Non testés : Cosmic Empires
+  (SMTP à régler à la main dans PocketBase), documenso (403). `nd.managment@gmail.com` ajouté aux politiques Access.
+
 ---
 
 ## Annexe — stack v1 SvelteKit (référence gelée)

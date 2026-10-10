@@ -116,7 +116,7 @@ transitoire. L'ancien service `stalwart` (`h7vpjks3…`, `mail.tandem-agenda.app
   `tls://mail.fs0ciety.org:587` avec l'identifiant de la boîte, filtres Sieve sur 4190, SQLite en volume, réglages dans
   `custom.inc.php` (compose). Aucun secret dans le service. Vérifié le 10 oct. : connexion `nicolas@fs0ciety.org`, envoi vers
   `contact@fs0ciety.org` reçu dans la boîte.
-- **Cloudflare Access (10 oct.)**, Allow = occmons@gmail.com + nico.dessenius@gmail.com, 24 h, une application par entrée
+- **Cloudflare Access (10 oct.)**, Allow = occmons@gmail.com + nico.dessenius@gmail.com + nd.managment@gmail.com, 24 h, une application par entrée
   avec chemin (sinon boucle de connexion) :
   - « PocketBase CSM » (pb-csm, pb-test-csm) ; admins PocketBase `/_` : `base`, `devblog`, `eat`, `test`, `base-test` ;
   - « Outils internes fs0ciety » : convert, img, link, profilarr, surrealist, tools, search, webmail ;
