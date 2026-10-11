@@ -1,16 +1,18 @@
 "use client";
 
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, MailWarning } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { loadOrderPanel, type OrderPanel } from "@/app/(app)/commandes/actions";
+import { loadOrderPanel, remindSupplier, type OrderPanel } from "@/app/(app)/commandes/actions";
 import { Button } from "@/components/ui/button";
 import { EmptyState, Kbd, Skeleton } from "@/components/ui/misc";
 import { Sheet } from "@/components/ui/sheet";
 import { Badge, StatusBadge, statusColor } from "@/components/ui/status-badge";
 import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
+import { toast } from "@/components/ui/toast";
+import { safeCall } from "@/lib/orders/safe-call";
 import { isClosable, STATUS_LABEL } from "@/lib/orders/status";
 import { brusselsDay, formatDay, pbDate, sinceLabel } from "@/lib/orders/time";
 import type { OrderRow } from "@/server/data/orders";
@@ -30,11 +32,14 @@ export function TrackingBoard({
   rows,
   coordinator,
   showSince,
+  canRemind = { bus: false, taxi: false },
 }: {
   rows: OrderRow[];
   coordinator: boolean;
   /** Vue « À confirmer » : ancienneté de l'envoi. */
   showSince: boolean;
+  /** Relance du fournisseur (droit de modification du bon : `otto:update` / `generate_taxi:update`). */
+  canRemind?: { bus: boolean; taxi: boolean };
 }) {
   const today = brusselsDay();
   const router = useRouter();
@@ -43,6 +48,20 @@ export function TrackingBoard({
   const [panel, setPanel] = useState<OrderPanel | null>(null);
   const [error, setError] = useState<string | null>(null);
   const rowRefs = useRef<(HTMLElement | null)[]>([]);
+  const [reminding, setReminding] = useState(false);
+
+  // Relance en un geste : la relance est notée dans l'historique, puis le brouillon .eml est téléchargé.
+  const remind = async (r: OrderRow) => {
+    setReminding(true);
+    const res = await safeCall(remindSupplier({ kind: r.kind, id: r.id }));
+    setReminding(false);
+    if (!res.ok) return void toast.error(res.error);
+    window.location.assign(res.data.emlUrl);
+    toast.success(
+      `Relance n° ${res.data.count} notée : vérifie l'expéditeur (boîte fonctionnelle) puis envoie le brouillon.`,
+    );
+    void load(r);
+  };
 
   // Dernière commande demandée : une réponse arrivée en retard pour une autre ligne est ignorée (sinon
   // « Confirmer » enverrait les bus d'une commande sur une autre).
@@ -259,6 +278,17 @@ export function TrackingBoard({
                   router.refresh();
                 }}
               />
+              {panel.meta.status === "envoye" && canRemind[open.kind] ? (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  loading={reminding}
+                  onClick={() => void remind(open)}
+                  data-testid="order-remind"
+                >
+                  <MailWarning aria-hidden /> Relancer le fournisseur
+                </Button>
+              ) : null}
               <Button asChild size="sm" variant="ghost" className="ml-auto">
                 <Link href={href(open)}>
                   Ouvrir <ArrowUpRight aria-hidden />

@@ -8,6 +8,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/status-badge";
 import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
 import { formatDay } from "@/lib/orders/time";
+import { inDistricts, districtsLabel } from "@/lib/pmr/district-filter";
 import { DISTRICT_LABEL } from "@/lib/pmr/districts";
 import { aleaGroupBlocks } from "@/lib/pmr/model";
 import { groupEnds, groupLegOf, groupTotal, groupTrain } from "@/lib/pmr/legs";
@@ -36,7 +37,7 @@ const total = groupTotal;
 function Route({ g, district }: { g: GroupMission; district: string }) {
   const l = legOf(g);
   const end = (name: string, time: string, assisted: boolean, d: string) => (
-    <span className={assisted && (!district || d === district) ? HIGHLIGHT : ""}>
+    <span className={assisted && inDistricts(d, district) ? HIGHLIGHT : ""}>
       {time ? <span className="font-mono tabular text-fg-muted">{time} </span> : null}
       <span className={assisted ? "font-medium text-fg" : ""}>{name}</span>
     </span>
@@ -79,7 +80,7 @@ export function GroupBoard({
           canMark={canMark}
           disabled={!rows.length}
           eyebrow="// Groupes"
-          description={`Par train et par gare, une ligne par groupe${district ? ` (district ${district})` : ""}. Missions annulées exclues.`}
+          description={`Par train et par gare, une ligne par groupe${district ? ` (district ${districtsLabel(district)})` : ""}. Missions annulées exclues.`}
           compute={() => aleaGroupBlocks(groupEnds(rows, district))}
         />
       </div>

@@ -5,9 +5,10 @@ import type { Timeline, TimelineItem } from "@/lib/ops/timeline";
 import { brusselsDay } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
 import { groupLegOf, groupTotal, legOf } from "@/lib/pmr/legs";
-import { stationKey } from "@/lib/pmr/model";
+import { stationMatchesAny } from "@/lib/stations/search";
 import { missionImpact, type TrainStates } from "@/lib/pmr/train-delay";
 import type { SessionUser } from "@/server/auth";
+import { resolveStationTerms } from "@/server/stations";
 
 import { listGroups, type GroupMission } from "./groups";
 import { listOrders } from "./orders";
@@ -16,11 +17,8 @@ import { listAssists, listTrainStates, type Assist } from "./pmr";
 // Frise « Ma journée » (demande du 10 oct. 2026) : un élément par prise en charge (embarquement à la gare de départ,
 // débarquement à l'arrivée) et par bon de bus / taxi du jour, avec les droits de l'agent. Aucun nom de voyageur.
 
-const matches = (station: string, q: string) => {
-  if (!q) return true;
-  const k = stationKey(station);
-  return k === q || k.startsWith(`${q} `) || k.startsWith(q);
-};
+// Gare filtrée : recherche tolérante (accents, casse, abréviation PtCar), voir `lib/stations/search.ts`.
+const matches = (station: string, terms: string[]) => stationMatchesAny(station, terms);
 
 export async function buildTimeline(
   user: SessionUser,
@@ -32,7 +30,7 @@ export async function buildTimeline(
   const canGroups = can(user, "pmr:read");
   const canBus = can(user, "otto:read");
   const canTaxi = can(user, "taxi:read");
-  const q = stationKey(gare);
+  const q = await resolveStationTerms(gare);
 
   const [assists, groups, states, orders] = await Promise.all([
     canPmr
@@ -106,7 +104,7 @@ export async function buildTimeline(
       "pmr",
       legOf(a),
       `${a.pax} × ${a.pmrType || "PMR"}${a.status === "realisee" ? " · réalisée" : ""}`,
-      `/pmr?du=${day}&au=${day}&q=${q4(a.train, a.station)}`,
+      `/pmr?district=tous&du=${day}&au=${day}&q=${q4(a.train, a.station)}`,
     );
   for (const g of groups)
     legItems(
@@ -114,7 +112,7 @@ export async function buildTimeline(
       "groupe",
       groupLegOf(g),
       `Groupe · ${groupTotal(g)} pers.`,
-      `/groupes?du=${day}&au=${day}&q=${q4(g.train, g.station)}`,
+      `/groupes?district=tous&du=${day}&au=${day}&q=${q4(g.train, g.station)}`,
     );
 
   for (const o of orders) {
@@ -122,7 +120,7 @@ export async function buildTimeline(
     const district = DUTY_SHORT[o.district] ?? "";
     if (codes.length && district && !codes.includes(district)) continue;
     if (o.origin) stations.add(o.origin);
-    if (q && !matches(o.origin, q) && !matches(o.destination, q)) continue;
+    if (q.length && !matches(o.origin, q) && !matches(o.destination, q)) continue;
     const planned = o.buses
       .filter((b) => !b.cancelled && b.planned)
       .map((b) => b.planned!)

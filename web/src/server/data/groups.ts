@@ -3,10 +3,12 @@ import "server-only";
 import type { RecordModel } from "pocketbase";
 import { z } from "zod";
 
+import { normalizeDistricts } from "@/lib/pmr/district-filter";
 import { brusselsDay, isValidDay } from "@/lib/orders/time";
 
 import { isAbsentFromDicos } from "@/lib/pmr/sync-state";
 
+import { districtFilter, resolveStationTerms, stationFilter } from "../stations";
 import { pbForRequest } from "./orders";
 import { dicosSessions } from "./pmr";
 
@@ -80,10 +82,11 @@ function row(r: RecordModel): GroupMission {
 export const groupListSchema = z.object({
   from: z.string().refine(isValidDay).optional().catch(undefined),
   to: z.string().refine(isValidDay).optional().catch(undefined),
+  /** Un ou plusieurs codes (« DSO », « DSO,DSE ») ; vide = tous les districts. */
   district: z
     .string()
     .optional()
-    .transform((v) => (["DCE", "DSE", "DSO"] as const).find((x) => x === v)),
+    .transform((v) => normalizeDistricts(v)),
   q: z.string().trim().max(60).default(""),
   hideCancelled: z.boolean().default(false),
   status: z
@@ -99,18 +102,20 @@ export async function listGroups(input: z.input<typeof groupListSchema>) {
   const parts = [
     pb.filter("day >= {:a} && day <= {:b}", { a: p.from ?? today, b: p.to ?? p.from ?? today }),
   ];
-  if (p.district)
-    parts.push(pb.filter("(district = {:d} || arr_district = {:d})", { d: p.district }));
+  if (p.district) parts.push(districtFilter(pb, p.district));
   if (p.status) parts.push(pb.filter("status = {:s}", { s: p.status }));
   // « Masquer les annulées » (sans effet si un statut précis est demandé).
   else if (p.hideCancelled) parts.push('status != "annulee"');
-  if (p.q)
+  if (p.q) {
+    // Gare tolérante (accents, abréviation PtCar) ; train, groupe et n° de dossier sur la saisie brute.
+    const terms = await resolveStationTerms(p.q);
     parts.push(
-      pb.filter(
-        "(station ~ {:q} || other_station ~ {:q} || train ~ {:q} || group_name ~ {:q} || dicos_ref ~ {:q})",
-        { q: p.q },
-      ),
+      stationFilter(pb, ["station", "other_station"], terms, {
+        fields: ["train", "group_name", "dicos_ref"],
+        q: p.q,
+      }),
     );
+  }
   const res = await pb.collection("group_missions").getList(1, 500, {
     filter: parts.join(" && "),
     sort: "day,time",

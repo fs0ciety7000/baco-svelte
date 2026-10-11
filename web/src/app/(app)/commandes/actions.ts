@@ -323,6 +323,32 @@ export async function transitionOrder(
   }
 }
 
+/**
+ * Relance du fournisseur (11 oct. 2026) : bon envoyé non confirmé. Note la relance dans l'historique (`order_events`,
+ * route PocketBase `/api/csm/orders/{kind}/{id}/reminder` : droits de modification du bon, 2 min entre deux relances)
+ * puis le navigateur télécharge le brouillon `.eml` (`/eml?relance=1`). Aucun envoi par CSM (contrainte e-mail).
+ */
+export async function remindSupplier(input: {
+  kind: OrderKind;
+  id: string;
+}): Promise<ActionResult<{ count: number; emlUrl: string }>> {
+  try {
+    const kind = kindSchema.parse(input.kind);
+    const id = idSchema.parse(input.id);
+    await writer(kind, "update");
+    const pb = await pbForRequest();
+    const res = (await pb.send(`/api/csm/orders/${kind}/${id}/reminder`, { method: "POST" })) as {
+      count?: number;
+    };
+    return {
+      ok: true,
+      data: { count: Number(res.count) || 1, emlUrl: `/api/commandes/${kind}/${id}/eml?relance=1` },
+    };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
 // ---------------------------------------------------------------------------------------------------
 // Duplication et modèles
 

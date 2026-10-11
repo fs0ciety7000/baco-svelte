@@ -371,3 +371,31 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `/tv` (« Absente DICOS »).
 - **Notifications `dicos`** (changement DICOS de dernière minute, sans nom) : icône dans la cloche, notification du
   navigateur avec le corps (gare, heure, train, type). Logique pure miroir du hook : `lib/pmr/dicos-changes.ts` (testée).
+- **Fournisseurs** (Commandes › Fournisseurs, `/commandes/fournisseurs?type=bus|taxi&q=`, 11 oct. 2026) :
+  `server/data/suppliers.ts` (liste filtrée en mémoire, fiches avec chauffeurs / contacts / lignes et nombre de bons),
+  actions `commandes/fournisseurs/actions.ts` (création `:write`, modification `:update`, suppression `:delete`, listes
+  taxi saisies une valeur par ligne), composant `components/orders/supplier-board.tsx` (liste, panneau, dialogues). Le
+  bouton Supprimer est grisé si un bon cite la société (le hook PocketBase refuse de toute façon).
+- **Relance en un geste** (Suivi, panneau d'un bon « envoyé ») : action `remindSupplier` (route PocketBase
+  `/api/csm/orders/{kind}/{id}/reminder` avec le jeton de l'agent : droit de modification, événement `order_events`
+  « envoyé → envoyé ») puis téléchargement de `/api/commandes/{kind}/{id}/eml?relance=1` (même `.eml` X-Unsent, PDF
+  joint, texte de relance au vouvoiement : `MailOptions.reminder`, `reminderSubject`, `reminderIntro` dans
+  `lib/orders/mail.ts`, testés). `OrderHistory` affiche « Relance du fournisseur » quand `from === to`.
+- **Supervision** (Admin › Santé) : `server/supervision.ts` (`readSupervision` → route interne PocketBase
+  `/api/csm/health`, secret `CSM_INTERNAL_SECRET`, page `requireAdmin()` seulement), verdicts purs `lib/supervision.ts`
+  (`cronVerdict` : en retard au-delà de 2 périodes + 5 min, `backupVerdict` : < 26 h / < 50 h, `archivesVerdict` ;
+  testés). Cartes : dernière sauvegarde, SMTP, archives en attente de R2, Journal (conservation), tâches planifiées
+  (tableau desktop, liste mobile), versions de l'extension (comparées à `release.json` par `isNewer`).
+- **Recherche de gare tolérante** (11 oct. 2026) : `lib/stations/search.ts` (pur, testé : `foldStation`, `stationMatches`,
+  `stationCandidates` — abréviation PtCar exacte, puis préfixe, puis contenu —, `stationTerms`, `stationMatchesAny`) et
+  `server/stations.ts` (`resolveStationTerms(q)` : saisie + noms candidats tirés de `ptcar` (avec `ptcar:read`) et de
+  `line_stations`, référentiels gardés 10 min en mémoire ; `stationFilter(pb, champs, termes, { fields, q })` : OU lié
+  `~` sur chaque terme + champs « bruts » comme le train ou le n° de dossier). Le `~` de PocketBase est sensible aux
+  accents : toujours passer par ces deux fonctions pour un champ de gare (Missions PMR, Groupes, Commandes bus / taxi,
+  Ma journée, ⌘K, Ressources › PtCar et Lignes `?gare=`).
+- **Filtres par défaut** : Missions PMR et Groupes filtrent sans `?district=` sur les districts du jour de l'agent
+  (`effectiveDistricts`, `lib/pmr/district-filter.ts` ; plusieurs codes « DSO,DSE » acceptés partout : `inDistricts`
+  dans `legs.ts` et les tableaux, `districtFilter` côté serveur) ; `?district=tous` (ou vide) lève le filtre, puce
+  « Tous les districts » / « Mes districts » (`PmrFilterBar myDistricts`). Un lien vers UNE mission précise (⌘K, Ma
+  journée, Journal) porte `district=tous`. Bons bus : période par défaut J-1 → J+6 sans `du` ni `au`
+  (`resolveBusPeriod`, `lib/orders/period.ts`), puces « Semaine » et « Toutes les dates » (`?du=&au=`).

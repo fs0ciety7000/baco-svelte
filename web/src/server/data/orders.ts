@@ -23,6 +23,7 @@ import {
 } from "@/lib/orders/time";
 
 import { createPb } from "../pocketbase";
+import { resolveStationTerms } from "../stations";
 import { readSessionToken } from "../session";
 
 // Accès aux commandes bus et taxi, toujours avec le jeton de l'agent (règles PocketBase).
@@ -386,6 +387,7 @@ function buildFilter(
   p: z.infer<typeof listSchema>,
   userId: string,
   canPmr = false,
+  stationTerms: string[] = [],
 ): string {
   const parts: string[] = [];
   const dateField = kind === "bus" ? "order_date" : "trip_at";
@@ -423,18 +425,18 @@ function buildFilter(
   if (p.from || p.to) parts.push(bounds(p.from ?? "2000-01-01", p.to ?? "2100-01-01"));
   if (p.district) parts.push(pb.filter("district = {:d}", { d: p.district }));
   if (p.q) {
+    // Gares : recherche tolérante (accents, abréviation PtCar : `stationTerms`) ; le reste sur la saisie brute.
+    const stations = kind === "bus" ? ["origin", "destination"] : ["from_station", "to_station"];
     const fields =
       kind === "bus"
-        ? ["origin", "destination", "relation", "reason", "company.name"]
-        : [
-            "from_station",
-            "to_station",
-            "relation_number",
-            "taxi_name",
-            ...(canPmr ? ["pmr_last_name"] : []),
-          ];
+        ? ["relation", "reason", "company.name"]
+        : ["relation_number", "taxi_name", ...(canPmr ? ["pmr_last_name"] : [])];
     const n = Number.parseInt(p.q, 10);
-    const ors = fields.map((f) => pb.filter(`${f} ~ {:q}`, { q: p.q }));
+    const terms = stationTerms.length ? stationTerms : [p.q];
+    const ors = [
+      ...terms.flatMap((t) => stations.map((f) => pb.filter(`${f} ~ {:t}`, { t }))),
+      ...fields.map((f) => pb.filter(`${f} ~ {:q}`, { q: p.q })),
+    ];
     if (String(n) === p.q) ors.push(pb.filter("number = {:n}", { n }));
     parts.push(`(${ors.join(" || ")})`);
   }
@@ -459,10 +461,11 @@ export async function listOrders(
   const kinds: OrderKind[] = (p.kind === "all" ? (["bus", "taxi"] as const) : [p.kind]).filter(
     (k) => (k === "bus" ? ctx.canBus : ctx.canTaxi),
   );
+  const terms = p.q ? await resolveStationTerms(p.q) : [];
   const results = await Promise.all(
     kinds.map(async (kind) => {
       const res = await pb.collection(COLLECTION[kind]).getList(1, p.limit, {
-        filter: buildFilter(pb, kind, p, ctx.userId, ctx.canPmr),
+        filter: buildFilter(pb, kind, p, ctx.userId, ctx.canPmr, terms),
         sort: sortFor(kind, p.view),
         expand: kind === "bus" ? "company,created_by" : "taxi_company,created_by",
         fields:

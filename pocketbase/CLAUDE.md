@@ -183,6 +183,30 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
   R2 : `$filesystem.s3` avec les variables `CSM_BACKUP_S3_*` (dossier `bons/`), `CSM_ARCHIVE_R2=off` pour couper ; sans
   variables : volume seul. Cron `order-pdf-backup` (1 h UTC) : zip « stocké » écrit dans un `Uint8Array` préalloué
   (CRC32 maison, ~2 s/Mo en JSVM, mémoire bornée ; refus au-delà de 200 Mo par mois), 6 mois au plus, chacun isolé.
+- **Fournisseurs** (`1760003100_suppliers.js`, 11 oct. 2026 : Commandes › Fournisseurs) : `bus_companies`,
+  `taxi_companies`, `bus_drivers`, `bus_contacts`, `bus_company_lines` gardent les règles des rôles v2 (création
+  `otto:write` / `generate_taxi:write`, modification `:update`, suppression `:delete`) ; `legacy_id` **refusé dans le
+  corps** (création et modification) ; `bus_companies.notes` (2000). Hook `orders.pb.js` : une société citée par un bon
+  ne se supprime pas (400, `companyUses` dans `lib/orders.js`).
+- **Relance d'un fournisseur** : route `POST /api/csm/orders/{kind}/{id}/reminder` (`$apis.requireAuth('users')`,
+  `lib/orders.js` → `remind`) : bon visible ET modifiable par l'appelant (`$app.canAccessRecord` avec `viewRule` puis
+  `updateRule` de la collection : un refus = 404), statut `envoye` seulement, 2 min entre deux relances ; écrit
+  `order_events` de `envoye` à `envoye` (note « Relance n° N »). Aucun e-mail envoyé : Next produit le `.eml`.
+- **Battements des tâches planifiées** (`1760003110_cron_runs.js`, `lib/heartbeat.js`) : **tout `cronAdd` passe par
+  `require(lib/heartbeat.js).run($app, '<nom>', () => { … })`** (erreur capturée, journalisée, notée ; jamais relancée)
+  → fiche `cron_runs` (nom unique, début, fin, durée, `ok`, erreur, nombre de passages), lue par admin / sysop, jamais
+  écrite par l'API. Nouvelle tâche : l'ajouter à `EXPECTED` (périodicité en minutes, sert au « en retard »). Ne pas
+  avaler une erreur dans le corps d'une tâche (sinon elle paraît OK).
+- **Supervision** (`supervision.pb.js`) : route interne `GET /api/csm/health` (secret `CSM_INTERNAL_SECRET`) →
+  sauvegardes (`$app.newBackupsFilesystem().list('')`, la plus récente, volume ou S3), battements + `EXPECTED`, SMTP
+  (`settings().smtp.enabled`), archives en attente / en erreur de copie R2, versions d'extension (`connector_tokens`
+  groupés par `last_version`), conservation du Journal. `POST /api/csm/journal/retention` : purge à la demande.
+- **Conservation du Journal** (11 oct. 2026, **24 mois, à valider DPO**) : cron `journal-retention` (3 h 50 UTC,
+  `lib/operations.js` → `journalRetention`) : messages `ops_log` créés il y a plus de `CSM_JOURNAL_RETENTION_MONTHS`
+  mois (24 ; `off` coupe) supprimés par `$app.delete` (pièces jointes effacées, lectures et historique en cascade,
+  notifications par le hook) + lignes `audit_log` ; réponses d'abord, message d'origine gardé tant qu'une réponse reste,
+  consigne encore épinglée gardée ; 500 messages et 50 s par passage. Testé en local sur des données fictives antidatées
+  (SQL direct sur `created`).
 
 - **Rôle « Écran »** (`1760003000_screen_role.js`, 11 oct. 2026) : `screen` = compte d'affichage du poste partagé, qui ne voit
   que `/tv`. La migration a ajouté `&& @request.auth.role != "screen"` à **toutes** les règles (lecture, écriture,

@@ -6,6 +6,8 @@ import { hideCancelled, PmrFilterBar, type PmrFilters } from "@/components/pmr/f
 import { can } from "@/lib/permissions";
 import { pl } from "@/lib/utils";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
+import { effectiveDistricts } from "@/lib/pmr/district-filter";
+import { userDistricts } from "@/lib/team";
 import { requirePermission } from "@/server/auth";
 import { listGroups } from "@/server/data/groups";
 import { resolveCancelledPref } from "@/server/pmr-prefs";
@@ -23,13 +25,16 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
   const today = brusselsDay();
   const du = isValidDay(f.du) ? f.du : today;
   const au = isValidDay(f.au) && f.au >= du ? f.au : du;
+  // District : paramètre d'URL s'il est présent, sinon les districts du jour de l'agent (11 oct. 2026).
+  const myDistricts = effectiveDistricts(undefined, userDistricts(user, today));
+  const district = effectiveDistricts(sp.district, userDistricts(user, today));
   const canPmr = can(user, "pmr:read");
   const [{ rows, total }, sync, delays, groups] = await Promise.all([
     listAssists(
       {
         from: du,
         to: au,
-        district: f.district,
+        district,
         q: f.q,
         status: f.statut,
         hideCancelled: hideCancelled(f),
@@ -40,7 +45,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
     listTrainStates(du, au),
     // Export ALEA commun PMR + groupes (10 oct. 2026) : groupes de la même période et du même district.
     canPmr
-      ? listGroups({ from: du, to: au, district: f.district, hideCancelled: true })
+      ? listGroups({ from: du, to: au, district, hideCancelled: true })
           .then((r) => r.rows)
           .catch(() => [])
       : Promise.resolve([]),
@@ -60,7 +65,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
       </div>
       <PmrFilterBar
         action="/pmr"
-        filters={{ ...f, du, au }}
+        filters={{ ...f, du, au, district: district || "tous" }}
+        myDistricts={myDistricts}
         shortcuts={[
           { label: "Aujourd'hui", du: today, au: today },
           { label: "Demain", du: addDays(today, 1), au: addDays(today, 1) },
@@ -71,7 +77,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
         rows={rows}
         canPmr={canPmr}
         groupByDay
-        district={f.district ?? ""}
+        district={district}
         notSynced={sync ? !sync.covered : false}
         delays={delays}
         canMark={can(user, "deplacements:write")}

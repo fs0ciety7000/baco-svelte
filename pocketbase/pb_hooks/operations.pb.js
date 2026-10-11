@@ -96,96 +96,102 @@ onRecordCreateRequest((e) => {
 // Toutes les 2 minutes : état iRail des trains suivis du jour → notification au passage du seuil de retard
 // (puis par paliers de 10 min) et à la suppression. Une requête par train distinct, délai 5 s.
 cronAdd('train-watches', '*/2 * * * *', () => {
-	const ops = require(`${__hooks}/lib/operations.js`);
-	const today = ops.brusselsDay();
-	$app.db().newQuery('DELETE FROM train_watches WHERE day < {:d}').bind({ d: today }).execute();
-	const watches = $app.findRecordsByFilter('train_watches', 'day = {:d}', '', 500, 0, { d: today });
-	if (!watches.length) return;
-	const byTrain = {};
-	for (const w of watches) (byTrain[w.getString('train')] = byTrain[w.getString('train')] || []).push(w);
-	const ddmmyy = `${today.slice(8, 10)}${today.slice(5, 7)}${today.slice(2, 4)}`;
-	// Budget : 40 trains et 90 s par passage (le cron tourne toutes les 2 min), 350 ms entre deux appels iRail
-	// (règle d'usage : 3 requêtes par seconde au plus).
-	const started = Date.now();
-	const trains = Object.keys(byTrain).slice(0, 40);
-	for (let k = 0; k < trains.length; k++) {
-		const train = trains[k];
-		if (Date.now() - started > 90000) break;
-		if (k > 0) sleep(350);
-		let state;
-		try {
-			const res = $http.send({
-				url: `https://api.irail.be/v1/vehicle/?id=BE.NMBS.${encodeURIComponent(train)}&date=${ddmmyy}&format=json&lang=fr`,
-				method: 'GET',
-				headers: { 'User-Agent': 'CSM/1.0 (Client Solutions Management Tool; contact: exploitation)' },
-				timeout: 5
-			});
-			if (res.statusCode !== 200 || !res.json || !res.json.stops) continue;
-			const stops = res.json.stops.stop || [];
-			let delay = 0;
-			let cancelled = false;
-			for (const s of stops) if (s.canceled === '1' || s.canceled === 1) cancelled = true;
-			// Retard du prochain arrêt pas encore quitté (sinon du dernier).
-			const next = stops.filter((s) => s.left !== '1' && s.left !== 1)[0] || stops[stops.length - 1];
-			if (next) delay = Math.round(parseInt(next.delay || '0', 10) / 60);
-			state = { delay: delay, cancelled: cancelled };
-		} catch (_) {
-			continue;
+	require(`${__hooks}/lib/heartbeat.js`).run($app, 'train-watches', () => {
+		const ops = require(`${__hooks}/lib/operations.js`);
+		const today = ops.brusselsDay();
+		$app.db().newQuery('DELETE FROM train_watches WHERE day < {:d}').bind({ d: today }).execute();
+		const watches = $app.findRecordsByFilter('train_watches', 'day = {:d}', '', 500, 0, { d: today });
+		if (!watches.length) return;
+		const byTrain = {};
+		for (const w of watches) (byTrain[w.getString('train')] = byTrain[w.getString('train')] || []).push(w);
+		const ddmmyy = `${today.slice(8, 10)}${today.slice(5, 7)}${today.slice(2, 4)}`;
+		// Budget : 40 trains et 90 s par passage (le cron tourne toutes les 2 min), 350 ms entre deux appels iRail
+		// (règle d'usage : 3 requêtes par seconde au plus).
+		const started = Date.now();
+		const trains = Object.keys(byTrain).slice(0, 40);
+		for (let k = 0; k < trains.length; k++) {
+			const train = trains[k];
+			if (Date.now() - started > 90000) break;
+			if (k > 0) sleep(350);
+			let state;
+			try {
+				const res = $http.send({
+					url: `https://api.irail.be/v1/vehicle/?id=BE.NMBS.${encodeURIComponent(train)}&date=${ddmmyy}&format=json&lang=fr`,
+					method: 'GET',
+					headers: { 'User-Agent': 'CSM/1.0 (Client Solutions Management Tool; contact: exploitation)' },
+					timeout: 5
+				});
+				if (res.statusCode !== 200 || !res.json || !res.json.stops) continue;
+				const stops = res.json.stops.stop || [];
+				let delay = 0;
+				let cancelled = false;
+				for (const s of stops) if (s.canceled === '1' || s.canceled === 1) cancelled = true;
+				// Retard du prochain arrêt pas encore quitté (sinon du dernier).
+				const next = stops.filter((s) => s.left !== '1' && s.left !== 1)[0] || stops[stops.length - 1];
+				if (next) delay = Math.round(parseInt(next.delay || '0', 10) / 60);
+				state = { delay: delay, cancelled: cancelled };
+			} catch (_) {
+				continue;
+			}
+			for (const w of byTrain[train]) {
+				const last = (() => {
+					try {
+						return JSON.parse(w.getString('last_state') || '{}') || {};
+					} catch (_) {
+						return {};
+					}
+				})();
+				const threshold = w.getInt('threshold_min') || 5;
+				const notified = last.notifiedDelay || 0;
+				const label = w.getString('label') || train;
+				const link = `/operations?train=${encodeURIComponent(train)}`;
+				let msg = '';
+				if (state.cancelled && !last.cancelled) msg = `${label} : suppression signalée`;
+				else if (state.delay >= threshold && state.delay >= notified + (notified ? 10 : 0)) msg = `${label} : +${state.delay} min`;
+				if (msg) ops.notify($app, w.getString('user'), 'train', msg, 'Train suivi (iRail)', link, 'train_watches', w.id);
+				w.set('last_state', { delay: state.delay, cancelled: state.cancelled, notifiedDelay: msg && msg.indexOf('+') !== -1 ? state.delay : notified, at: ops.now() });
+				$app.save(w);
+			}
 		}
-		for (const w of byTrain[train]) {
-			const last = (() => {
-				try {
-					return JSON.parse(w.getString('last_state') || '{}') || {};
-				} catch (_) {
-					return {};
-				}
-			})();
-			const threshold = w.getInt('threshold_min') || 5;
-			const notified = last.notifiedDelay || 0;
-			const label = w.getString('label') || train;
-			const link = `/operations?train=${encodeURIComponent(train)}`;
-			let msg = '';
-			if (state.cancelled && !last.cancelled) msg = `${label} : suppression signalée`;
-			else if (state.delay >= threshold && state.delay >= notified + (notified ? 10 : 0)) msg = `${label} : +${state.delay} min`;
-			if (msg) ops.notify($app, w.getString('user'), 'train', msg, 'Train suivi (iRail)', link, 'train_watches', w.id);
-			w.set('last_state', { delay: state.delay, cancelled: state.cancelled, notifiedDelay: msg && msg.indexOf('+') !== -1 ? state.delay : notified, at: ops.now() });
-			$app.save(w);
-		}
-	}
+	});
 });
 
 // Notifications : lues depuis 30 jours ou créées depuis 90 jours, supprimées (chaque nuit à 3 h 30 UTC).
 cronAdd('notifications-purge', '30 3 * * *', () => {
-	const day = (n) => `${new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)} 00:00:00.000Z`;
-	$app.db().newQuery("DELETE FROM notifications WHERE (read_at != '' AND read_at < {:r}) OR created < {:c}").bind({ r: day(30), c: day(90) }).execute();
+	require(`${__hooks}/lib/heartbeat.js`).run($app, 'notifications-purge', () => {
+		const day = (n) => `${new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)} 00:00:00.000Z`;
+		$app.db().newQuery("DELETE FROM notifications WHERE (read_at != '' AND read_at < {:r}) OR created < {:c}").bind({ r: day(30), c: day(90) }).execute();
+	});
+});
+
+// Conservation du Journal (11 oct. 2026, à valider avec le DPO) : chaque nuit à 3 h 50 UTC, messages de plus de 24 mois
+// (`CSM_JOURNAL_RETENTION_MONTHS`) supprimés avec leurs pièces jointes, lectures, historique et audit.
+cronAdd('journal-retention', '50 3 * * *', () => {
+	require(`${__hooks}/lib/heartbeat.js`).run($app, 'journal-retention', () => {
+		require(`${__hooks}/lib/operations.js`).journalRetention($app);
+	});
 });
 
 // Toutes les 5 minutes : perturbations et travaux iRail → Journal (une entrée par message, dédupliquée), notification
 // aux agents qui travaillent aujourd'hui dans un district cité (demande du 9 oct. 2026).
 cronAdd('irail-journal', '*/5 * * * *', () => {
-	try {
+	require(`${__hooks}/lib/heartbeat.js`).run($app, 'irail-journal', () => {
 		require(`${__hooks}/lib/operations.js`).irailJournal($app);
-	} catch (err) {
-		console.log('irail-journal', String(err));
-	}
+	});
 });
 
 // Toutes les 10 minutes : alerte dans la cloche si aucune synchro DICOS depuis plus d'une heure pendant le service
 // (`CSM_DICOS_ALERT_HOURS`, défaut 6-22 h à Bruxelles ; « off » = coupée). Une notification par épisode et par agent.
 cronAdd('dicos-stale', '*/10 * * * *', () => {
-	try {
+	require(`${__hooks}/lib/heartbeat.js`).run($app, 'dicos-stale', () => {
 		require(`${__hooks}/lib/operations.js`).dicosStaleAlert($app);
-	} catch (err) {
-		console.log('dicos-stale', String(err));
-	}
+	});
 });
 
 // Toutes les 3 minutes (5 h - minuit à Bruxelles) : état iRail des trains portant une mission PMR ou un groupe du jour
 // (`mission_trains`) et notification aux agents du district au-delà de 5 min de retard ou à la suppression.
 cronAdd('mission-trains', '*/3 * * * *', () => {
-	try {
+	require(`${__hooks}/lib/heartbeat.js`).run($app, 'mission-trains', () => {
 		require(`${__hooks}/lib/operations.js`).missionTrains($app);
-	} catch (err) {
-		console.log('mission-trains', String(err));
-	}
+	});
 });

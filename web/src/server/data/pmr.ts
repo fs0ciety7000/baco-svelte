@@ -3,11 +3,13 @@ import "server-only";
 import type { RecordModel } from "pocketbase";
 import { z } from "zod";
 
+import { normalizeDistricts } from "@/lib/pmr/district-filter";
 import { ASSIST_STATUSES, type AssistStatus, type EquipmentState } from "@/lib/pmr/model";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
 import type { TrainState, TrainStates } from "@/lib/pmr/train-delay";
 import { isAbsentFromDicos, latestSessions, syncSummary, type SyncRow } from "@/lib/pmr/sync-state";
 
+import { districtFilter, resolveStationTerms, stationFilter } from "../stations";
 import { pbForRequest } from "./orders";
 
 // Accès aux données PMR, avec le jeton de l'agent (règles PocketBase). Le nom d'un client n'est développé que si
@@ -215,10 +217,11 @@ async function withAbsence(rows: Assist[]): Promise<Assist[]> {
 export const assistListSchema = z.object({
   from: z.string().refine(isValidDay).optional().catch(undefined),
   to: z.string().refine(isValidDay).optional().catch(undefined),
+  /** Un ou plusieurs codes (« DSO », « DSO,DSE ») ; vide = tous les districts. */
   district: z
     .string()
     .optional()
-    .transform((v) => (["DCE", "DSE", "DSO"] as const).find((x) => x === v)),
+    .transform((v) => normalizeDistricts(v)),
   q: z.string().trim().max(60).default(""),
   hideCancelled: z.boolean().default(false),
   status: z
@@ -239,17 +242,17 @@ export async function listAssists(
     pb.filter("day >= {:a} && day <= {:b}", { a: p.from ?? today, b: p.to ?? p.from ?? today }),
   ];
   // Un trajet concerne un district si sa gare de départ OU d'arrivée y est.
-  if (p.district)
-    parts.push(pb.filter("(district = {:d} || arr_district = {:d})", { d: p.district }));
+  if (p.district) parts.push(districtFilter(pb, p.district));
   if (p.status) parts.push(pb.filter("status = {:s}", { s: p.status }));
   // « Masquer les annulées » (sans effet si un statut précis est demandé).
   else if (p.hideCancelled) parts.push('status != "annulee"');
   if (p.q) {
-    const ors = ["station ~ {:q}", "other_station ~ {:q}", "train ~ {:q}", "dicos_ref ~ {:q}"];
+    // Gare tolérante (accents, abréviation PtCar) ; train, n° de dossier et nom du voyageur sur la saisie brute.
     // Nom du voyageur : BACO (client lié) et DICOS (détail nominatif), avec `pmr:read` seulement.
-    if (ctx.canPmr)
-      ors.push("client.last_name ~ {:q}", "pmr_mission_via_assist.client_last ~ {:q}");
-    parts.push(pb.filter(`(${ors.join(" || ")})`, { q: p.q }));
+    const extra = ["train", "dicos_ref"];
+    if (ctx.canPmr) extra.push("client.last_name", "pmr_mission_via_assist.client_last");
+    const terms = await resolveStationTerms(p.q);
+    parts.push(stationFilter(pb, ["station", "other_station"], terms, { fields: extra, q: p.q }));
   }
   const options = {
     filter: parts.join(" && "),

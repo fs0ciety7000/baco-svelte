@@ -23,16 +23,23 @@ export function OrderHistory({ events }: { events: OrderEvent[] }) {
         return {
           id: e.id,
           color: statusColor(e.to),
-          title: e.from ? (
-            <>
-              {STATUS_LABEL[e.from as keyof typeof STATUS_LABEL] ?? e.from} →{" "}
-              <strong className="font-semibold">{STATUS_LABEL[e.to]}</strong>
-            </>
-          ) : (
-            <>
-              Création · <strong className="font-semibold">{STATUS_LABEL[e.to]}</strong>
-            </>
-          ),
+          // Relance du fournisseur : événement « envoyé → envoyé » (11 oct. 2026).
+          title:
+            e.from === e.to ? (
+              <>
+                <strong className="font-semibold">Relance du fournisseur</strong> · bon toujours{" "}
+                {STATUS_LABEL[e.to].toLowerCase()}
+              </>
+            ) : e.from ? (
+              <>
+                {STATUS_LABEL[e.from as keyof typeof STATUS_LABEL] ?? e.from} →{" "}
+                <strong className="font-semibold">{STATUS_LABEL[e.to]}</strong>
+              </>
+            ) : (
+              <>
+                Création · <strong className="font-semibold">{STATUS_LABEL[e.to]}</strong>
+              </>
+            ),
           meta: `${e.by}${d ? ` · ${at.format(d)}` : ""}${e.legacy ? " · repris de BACO" : ""}`,
           note: e.note || undefined,
         };

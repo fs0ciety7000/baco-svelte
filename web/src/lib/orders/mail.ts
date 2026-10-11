@@ -99,7 +99,30 @@ export type OrderMail = {
   filename: string;
 };
 
-export type MailOptions = { agentName: string };
+export type MailOptions = {
+  agentName: string;
+  /**
+   * Relance du fournisseur (11 oct. 2026) : bon envoyé jamais confirmé. `sentDay` = jour de l'envoi initial
+   * (AAAA-MM-JJ, Bruxelles) ; le corps rappelle la demande et redemande la confirmation (vouvoiement).
+   */
+  reminder?: { sentDay: string };
+};
+
+/** Objet d'une relance : « Relance – » devant l'objet d'origine (une seule fois). */
+export function reminderSubject(subject: string): string {
+  return subject.startsWith("Relance – ") ? subject : `Relance – ${subject}`;
+}
+
+/** Phrase d'introduction d'une relance. */
+export function reminderIntro(what: string, sentDay: string): string {
+  const when = sentDay ? ` le ${formatLongDay(sentDay)}` : "";
+  return `Nous vous avons transmis${when} ${what}. Sauf erreur de notre part, nous n'avons pas encore reçu votre confirmation.`;
+}
+
+const REMINDER_OUTRO = [
+  "Le bon de commande est de nouveau joint en PDF.",
+  "Pourriez-vous nous confirmer la prise en charge par retour d'e-mail dans les meilleurs délais ? Si la demande ne peut être honorée, merci de nous en informer au plus vite.",
+];
 
 function signature(agentName: string, office: PacoOffice): string[] {
   return [
@@ -114,11 +137,12 @@ function signature(agentName: string, office: PacoOffice): string[] {
 
 const CELL = "padding:4px 12px 4px 0;vertical-align:top;border-bottom:1px solid #e5e5e5";
 
-function render(intro: string, rows: Row[], sign: string[]) {
-  const outro = [
-    "Le bon de commande est joint en PDF.",
-    "Merci de nous confirmer la prise en charge par retour d'e-mail.",
-  ];
+const OUTRO = [
+  "Le bon de commande est joint en PDF.",
+  "Merci de nous confirmer la prise en charge par retour d'e-mail.",
+];
+
+function render(intro: string, rows: Row[], sign: string[], outro: string[] = OUTRO) {
   const text = [
     "Bonjour,",
     "",
@@ -209,12 +233,18 @@ export function busMail(detail: BusMailDetail, opts: MailOptions): OrderMail {
     ...(d.pmr_count ? [["Dont PMR", String(d.pmr_count)] as Row] : []),
     ["Horaires prévus", schedule.length ? schedule.join("\n") : "—"],
   ];
-  const intro = `Veuillez trouver ci-dessous notre demande de bus de remplacement (réquisitoire C3 n° ${detail.meta.number}).`;
+  const r = opts.reminder;
+  const intro = r
+    ? reminderIntro(
+        `notre demande de bus de remplacement (réquisitoire C3 n° ${detail.meta.number}) pour le ${formatLongDay(d.order_date)}`,
+        r.sentDay,
+      )
+    : `Veuillez trouver ci-dessous notre demande de bus de remplacement (réquisitoire C3 n° ${detail.meta.number}).`;
   return {
     to,
     cc: ccFor(office, to),
-    subject,
-    ...render(intro, rows, signature(opts.agentName, office)),
+    subject: r ? reminderSubject(subject) : subject,
+    ...render(intro, rows, signature(opts.agentName, office), r ? REMINDER_OUTRO : OUTRO),
     filename: busFilename(d),
   };
 }
@@ -266,12 +296,18 @@ export function taxiMail(detail: TaxiMailDetail, opts: MailOptions): OrderMail {
     ...(d.reason ? [["Motif", d.reason] as Row] : []),
     ["Facturation", `À charge de ${d.billing || "SNCB"}`],
   ];
-  const intro = `Veuillez trouver ci-dessous notre commande de taxi n° ${detail.meta.number}.`;
+  const r = opts.reminder;
+  const intro = r
+    ? reminderIntro(
+        `notre commande de taxi n° ${detail.meta.number} pour le ${at(d.trip_day, d.trip_time)}`,
+        r.sentDay,
+      )
+    : `Veuillez trouver ci-dessous notre commande de taxi n° ${detail.meta.number}.`;
   return {
     to,
     cc: ccFor(office, to),
-    subject,
-    ...render(intro, rows, signature(opts.agentName, office)),
+    subject: r ? reminderSubject(subject) : subject,
+    ...render(intro, rows, signature(opts.agentName, office), r ? REMINDER_OUTRO : OUTRO),
     filename: taxiFilename(d),
   };
 }

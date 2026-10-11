@@ -95,7 +95,7 @@ function links(r: RecordModel): LinkedObject[] {
       kind: "pmr",
       id: assist.id,
       label: `Prestation ${str(assist.time) || "--:--"} · ${str(assist.station) || "?"}${str(assist.train) ? ` · ${str(assist.train)}` : ""}`,
-      href: `/pmr?du=${str(assist.day)}&au=${str(assist.day)}`,
+      href: `/pmr?district=tous&du=${str(assist.day)}&au=${str(assist.day)}`,
     });
   else if (str(r.pmr_assist))
     out.push({

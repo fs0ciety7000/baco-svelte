@@ -6,6 +6,8 @@ import { FilterBar, OrderList, type ListFilters } from "@/components/orders/orde
 import { Button } from "@/components/ui/button";
 import { can } from "@/lib/permissions";
 import { requirePermission } from "@/server/auth";
+import { resolveBusPeriod, defaultBusPeriod } from "@/lib/orders/period";
+import { brusselsDay } from "@/lib/orders/time";
 import { listOrders } from "@/server/data/orders";
 
 import { LiveRefresh } from "./live-refresh";
@@ -18,14 +20,17 @@ export default async function CommandesBusPage({
   searchParams: Promise<ListFilters>;
 }) {
   const user = await requirePermission("otto:read");
-  const filters = await searchParams;
+  const sp = await searchParams;
+  // Période par défaut J-1 → J+6 quand l'URL ne donne aucune borne (11 oct. 2026) ; `?du=&au=` = toutes les dates.
+  const period = resolveBusPeriod(sp, brusselsDay());
+  const filters: ListFilters = { ...sp, du: period.du, au: period.au };
   const { rows, total } = await listOrders(
     {
       kind: "bus",
       q: filters.q,
       status: filters.statut,
-      from: filters.du,
-      to: filters.au,
+      from: filters.du || undefined,
+      to: filters.au || undefined,
       district: filters.district,
     },
     { userId: user.id, canBus: true, canTaxi: false },
@@ -47,7 +52,11 @@ export default async function CommandesBusPage({
           ) : null}
         </div>
       </div>
-      <FilterBar action="/commandes" filters={filters} />
+      <FilterBar
+        action="/commandes"
+        filters={filters}
+        defaultPeriod={defaultBusPeriod(brusselsDay())}
+      />
       <OrderList
         rows={rows}
         total={total}

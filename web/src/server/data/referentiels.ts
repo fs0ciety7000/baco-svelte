@@ -3,6 +3,9 @@ import "server-only";
 import type { RecordModel } from "pocketbase";
 import { z } from "zod";
 
+import { stationMatchesAny } from "@/lib/stations/search";
+
+import { resolveStationTerms, stationFilter } from "../stations";
 import { pbForRequest } from "./orders";
 
 // Accès aux données Référentiels, avec le jeton de l'agent (règles PocketBase). Tout est lu côté serveur : le
@@ -153,6 +156,29 @@ export async function listLines(): Promise<LineRef[]> {
     .sort((a, b) => a.line.localeCompare(b.line, "fr", { numeric: true }));
 }
 
+/** Lignes qui desservent une gare (recherche tolérante : accents, casse, abréviation PtCar). */
+export async function linesForStation(
+  gare: string,
+): Promise<{ line: string; stations: string[] }[]> {
+  const terms = await resolveStationTerms(gare);
+  if (!terms.length) return [];
+  const pb = await pbForRequest();
+  const items = await pb
+    .collection("line_stations")
+    .getFullList({ fields: "line,station", batch: 1000 });
+  const by = new Map<string, Set<string>>();
+  for (const i of items) {
+    const station = str(i.station);
+    if (!stationMatchesAny(station, terms)) continue;
+    const set = by.get(str(i.line)) ?? new Set<string>();
+    set.add(station);
+    by.set(str(i.line), set);
+  }
+  return [...by.entries()]
+    .map(([line, set]) => ({ line, stations: [...set].sort((a, b) => a.localeCompare(b, "fr")) }))
+    .sort((a, b) => a.line.localeCompare(b.line, "fr", { numeric: true }));
+}
+
 export type LineDetail = {
   line: string;
   district: string;
@@ -221,8 +247,12 @@ export type PtcarRow = { id: string; abbr: string; nameFr: string; nameNl: strin
 export async function listPtcar(input: z.input<typeof refTableSchema>) {
   const p = refTableSchema.parse(input);
   const pb = await pbForRequest();
+  // Nom tolérant (accents, casse) et abréviation : « liege » trouve « Liège », « FMS » trouve Mons.
   const filter = p.q
-    ? pb.filter("(abbr ~ {:q} || name_fr ~ {:q} || name_nl ~ {:q})", { q: p.q })
+    ? stationFilter(pb, ["name_fr", "name_nl"], await resolveStationTerms(p.q), {
+        fields: ["abbr"],
+        q: p.q,
+      })
     : "";
   const res = await pb.collection("ptcar").getList(p.page, 20, { filter, sort: "abbr" });
   return {

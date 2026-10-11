@@ -39,9 +39,26 @@ onRecordAfterDeleteSuccess((e) => {
 // Toutes les 5 minutes (heures de Bruxelles) : bon bus envoyé mais pas confirmé dont le premier départ est dans 2 h au plus
 // (ou passé depuis 1 h au plus) → notification aux agents du district, une fois par bon (lib/alerts.js, 11 oct. 2026).
 cronAdd('bus-h2', '*/5 * * * *', () => {
-	try {
+	require(`${__hooks}/lib/heartbeat.js`).run($app, 'bus-h2', () => {
 		require(`${__hooks}/lib/alerts.js`).busH2Alert($app);
-	} catch (err) {
-		console.log('bus-h2', String(err));
-	}
+	});
 });
+// Société citée par un bon : suppression refusée (le bon et son PDF garderaient un fournisseur vide). Fournisseurs gérés
+// dans CSM depuis le 11 oct. 2026 (Commandes › Fournisseurs).
+onRecordDeleteRequest((e) => {
+	const orders = require(`${__hooks}/lib/orders.js`);
+	const n = orders.companyUses(e.app, e.record.collection().name, e.record.id);
+	if (n > 0) throw new BadRequestError(`Société citée par ${n} bon${n > 1 ? 's' : ''} : suppression impossible.`);
+	e.next();
+}, 'bus_companies', 'taxi_companies');
+
+// Relance d'un fournisseur pour un bon envoyé non confirmé : note l'événement dans l'historique (aucun e-mail envoyé
+// par CSM : l'agent télécharge le brouillon .eml). Droits : ceux de la modification du bon (règles de la collection).
+routerAdd('POST', '/api/csm/orders/{kind}/{id}/reminder', (e) => {
+	const kind = e.request.pathValue('kind');
+	const id = e.request.pathValue('id');
+	if ((kind !== 'bus' && kind !== 'taxi') || !/^[a-z0-9-]{15,36}$/.test(id)) return e.json(404, { message: 'Not found.' });
+	const orders = require(`${__hooks}/lib/orders.js`);
+	const count = orders.remind(e.app, kind, id, e.auth, e.requestInfo());
+	return e.json(200, { count: count });
+}, $apis.requireAuth('users'));

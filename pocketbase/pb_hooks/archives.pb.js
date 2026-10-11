@@ -80,29 +80,28 @@ onRecordAfterDeleteSuccess((e) => {
 
 // Toutes les 5 minutes : copies R2 en attente (20 PDF et 2 zips au plus par passage, par ancienneté d'essai).
 cronAdd('order-pdf-r2', '*/5 * * * *', () => {
-	const a = require(`${__hooks}/lib/archives.js`);
-	try {
-		a.syncR2($app, 20, 2);
-	} catch (err) {
-		console.log('archives : rattrapage R2 en échec :', String(err));
-	}
+	require(`${__hooks}/lib/heartbeat.js`).run($app, 'order-pdf-r2', () => {
+		require(`${__hooks}/lib/archives.js`).syncR2($app, 20, 2);
+	});
 });
 
 // Chaque nuit (1 h UTC, 2-3 h à Bruxelles) : zip des mois à refaire, 6 au plus, chacun isolé (un mois en échec ne
 // bloque pas les autres).
 cronAdd('order-pdf-backup', '0 1 * * *', () => {
-	const a = require(`${__hooks}/lib/archives.js`);
-	let months = [];
-	try {
-		months = a.staleMonths($app, 6);
-	} catch (err) {
-		console.log('archives : liste des mois en échec :', String(err));
-	}
-	for (const m of months) {
+	require(`${__hooks}/lib/heartbeat.js`).run($app, 'order-pdf-backup', () => {
+		const a = require(`${__hooks}/lib/archives.js`);
+		let months = [];
 		try {
-			console.log(`archives : sauvegarde ${m} (${a.backupMonth($app, m)} PDF)`);
+			months = a.staleMonths($app, 6);
 		} catch (err) {
-			console.log(`archives : sauvegarde ${m} en échec :`, String(err));
+			console.log('archives : liste des mois en échec :', String(err));
 		}
-	}
+		for (const m of months) {
+			try {
+				console.log(`archives : sauvegarde ${m} (${a.backupMonth($app, m)} PDF)`);
+			} catch (err) {
+				console.log(`archives : sauvegarde ${m} en échec :`, String(err));
+			}
+		}
+	});
 });

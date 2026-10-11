@@ -9,6 +9,7 @@ import { addDays, brusselsDay, formatDay, isValidDay, pbDate } from "@/lib/order
 import { requireUser } from "@/server/auth";
 import { pbForRequest } from "@/server/data/orders";
 import { allow } from "@/server/rate-limit";
+import { resolveStationTerms, stationFilter } from "@/server/stations";
 
 export type SearchHit = {
   kind: "contact" | "bus" | "ptcar" | "train" | "journal" | "pmr" | "groupe";
@@ -32,6 +33,8 @@ export async function paletteSearch(input: string): Promise<SearchHit[]> {
     if (!allow(`palette:${user.id}`, 120, 60_000)) return [];
     const q = parsed.data;
     const pb = await pbForRequest();
+    // Gares : recherche tolérante (accents, casse, abréviation PtCar → nom), 6 noms candidats au plus.
+    const terms = await resolveStationTerms(q, 6);
     const hits: SearchHit[] = [];
     const tasks: Promise<void>[] = [];
 
@@ -73,7 +76,7 @@ export async function paletteSearch(input: string): Promise<SearchHit[]> {
         pb
           .collection("bus_orders")
           .getList(1, 5, {
-            filter: `${byNumber}${pb.filter("(relation ~ {:q} || origin ~ {:q} || destination ~ {:q})", { q })}`,
+            filter: `${byNumber}${stationFilter(pb, ["origin", "destination"], terms, { fields: ["relation"], q })}`,
             sort: "-order_date,-created",
             fields: "id,number,origin,destination,order_date,relation",
             skipTotal: true,
@@ -100,7 +103,7 @@ export async function paletteSearch(input: string): Promise<SearchHit[]> {
         pb
           .collection("ptcar")
           .getList(1, 5, {
-            filter: pb.filter("(abbr ~ {:q} || name_fr ~ {:q} || name_nl ~ {:q})", { q }),
+            filter: stationFilter(pb, ["name_fr", "name_nl"], terms, { fields: ["abbr"], q }),
             sort: "name_fr",
             fields: "abbr,name_fr",
             skipTotal: true,
@@ -161,12 +164,10 @@ export async function paletteSearch(input: string): Promise<SearchHit[]> {
       a: addDays(today, -30),
       b: addDays(today, 30),
     });
-    const missionQ = pb.filter(
-      "(dicos_ref ~ {:q} || station ~ {:q} || other_station ~ {:q} || train ~ {:q})",
-      {
-        q,
-      },
-    );
+    const missionQ = stationFilter(pb, ["station", "other_station"], terms, {
+      fields: ["dicos_ref", "train"],
+      q,
+    });
     if (can(user, "deplacements:read"))
       tasks.push(
         pb
@@ -191,7 +192,7 @@ export async function paletteSearch(input: string): Promise<SearchHit[]> {
                 ]
                   .filter(Boolean)
                   .join(" · "),
-                href: `/pmr?du=${day}&au=${day}&q=${encodeURIComponent(String(m.dicos_ref || m.train || q))}`,
+                href: `/pmr?district=tous&du=${day}&au=${day}&q=${encodeURIComponent(String(m.dicos_ref || m.train || q))}`,
               });
             }
           })
@@ -221,7 +222,7 @@ export async function paletteSearch(input: string): Promise<SearchHit[]> {
                 ]
                   .filter(Boolean)
                   .join(" · "),
-                href: `/groupes?du=${day}&au=${day}&q=${encodeURIComponent(String(m.dicos_ref || m.train || q))}`,
+                href: `/groupes?district=tous&du=${day}&au=${day}&q=${encodeURIComponent(String(m.dicos_ref || m.train || q))}`,
               });
             }
           })
