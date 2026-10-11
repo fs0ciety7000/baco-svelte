@@ -245,7 +245,7 @@ export function PnBoard({
       <Sheet
         open={!!sel}
         onOpenChange={(o) => (o ? null : select(null))}
-        eyebrow={sel ? `// Passage à niveau · ${sel.line}` : undefined}
+        eyebrow={sel ? `Passage à niveau · ${sel.line}` : undefined}
         title={sel ? `PN ${sel.number}` : "PN"}
         description={sel?.address || (sel ? "Adresse non renseignée" : undefined)}
         footer={

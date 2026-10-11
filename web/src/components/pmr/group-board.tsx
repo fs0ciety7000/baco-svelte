@@ -79,7 +79,7 @@ export function GroupBoard({
           kind="groupe"
           canMark={canMark}
           disabled={!rows.length}
-          eyebrow="// Groupes"
+          eyebrow="Groupes"
           description={`Par train et par gare, une ligne par groupe${district ? ` (district ${districtsLabel(district)})` : ""}. Missions annulées exclues.`}
           compute={() => aleaGroupBlocks(groupEnds(rows, district))}
         />

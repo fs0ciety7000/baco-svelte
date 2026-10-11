@@ -135,7 +135,7 @@ export function PasskeysCard() {
     });
   return (
     <Card>
-      <CardHeader eyebrow="// Sécurité" title="Passkeys" />
+      <CardHeader eyebrow="Sécurité" title="Passkeys" />
       <CardContent className="flex flex-col gap-3">
         <p className="text-small text-fg-muted">
           Connexion sans mot de passe avec Windows Hello, Touch ID, Face ID ou ton téléphone. Ton

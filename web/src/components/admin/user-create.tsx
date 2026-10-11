@@ -23,7 +23,7 @@ export function PasswordReveal({ password, onClose }: { password: string; onClos
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent
-        eyebrow="// Compte"
+        eyebrow="Compte"
         title="Mot de passe provisoire"
         description="Il ne sera plus affiché. Transmets-le à l'agent, qui le changera dans « Mon profil »."
       >
@@ -80,7 +80,7 @@ export function UserCreate() {
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
-          eyebrow="// Administration"
+          eyebrow="Administration"
           title="Nouveau compte"
           description="Un mot de passe provisoire est généré et affiché une seule fois."
         >

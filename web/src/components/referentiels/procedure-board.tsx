@@ -139,7 +139,7 @@ export function ProcedureBoard({
             wanted.current = null;
           }
         }}
-        eyebrow="// Procédure"
+        eyebrow="Procédure"
         title={data?.procedure.title ?? "Procédure"}
         description={data?.procedure.category || undefined}
         footer={

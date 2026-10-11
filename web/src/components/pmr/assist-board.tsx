@@ -247,7 +247,7 @@ export function AssistBoard({
               label="ALEA PMR + groupes"
               canMark={canMark}
               disabled={!rows.length && !groups.length}
-              eyebrow="// Missions PMR et groupes"
+              eyebrow="Missions PMR et groupes"
               description={`Un bloc par train, gare et sens : PMR et groupes réunis${district ? ` (district ${districtsLabel(district)})` : ""}, la règle la plus exigeante décide. Missions annulées exclues.`}
               compute={() =>
                 mergeAleaBlocks(
@@ -409,7 +409,7 @@ export function AssistBoard({
             wanted.current = null;
           }
         }}
-        eyebrow={open ? `// Mission PMR · ${formatDay(open.day)}` : undefined}
+        eyebrow={open ? `Mission PMR · ${formatDay(open.day)}` : undefined}
         title={
           open ? `${open.time || "--:--"} · ${legOf(open).dep} → ${legOf(open).arr}` : "Mission PMR"
         }
@@ -645,7 +645,7 @@ function AleaExport({
       kind="pmr"
       canMark={canMark}
       disabled={!rows.length}
-      eyebrow="// Missions PMR"
+      eyebrow="Missions PMR"
       description={`Par train, gare et sens : les PMR de tous les dossiers additionnées par type${district ? ` (district ${districtsLabel(district)})` : ""}. Missions annulées exclues.`}
       compute={() => aleaGroups(aleaEnds(rows, district))}
     />

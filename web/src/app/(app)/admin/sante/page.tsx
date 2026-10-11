@@ -77,7 +77,7 @@ export default async function Page() {
   return (
     <section className="grid gap-4 lg:grid-cols-2" aria-label="Santé">
       <Card>
-        <CardHeader eyebrow="// Services" title="État" />
+        <CardHeader eyebrow="Services" title="État" />
         <CardContent>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-body">
             <dt className="text-fg-muted">Application web</dt>
@@ -164,7 +164,7 @@ export default async function Page() {
         </CardContent>
       </Card>
       <Card>
-        <CardHeader eyebrow="// Bascule" title="Mode maintenance" />
+        <CardHeader eyebrow="Bascule" title="Mode maintenance" />
         <CardContent>
           <MaintenanceToggle
             on={!!maintenance?.value?.on}
@@ -175,7 +175,7 @@ export default async function Page() {
 
       <Card className="lg:col-span-2">
         <CardHeader
-          eyebrow="// Tâches planifiées"
+          eyebrow="Tâches planifiées"
           title={
             cronIssues
               ? `${cronIssues} tâche${cronIssues > 1 ? "s" : ""} à vérifier`
@@ -262,7 +262,7 @@ export default async function Page() {
       </Card>
 
       <Card>
-        <CardHeader eyebrow="// Extension DICOS" title="Versions en circulation" />
+        <CardHeader eyebrow="Extension DICOS" title="Versions en circulation" />
         <CardContent>
           {!sup || sup.extension.length === 0 ? (
             <p className="text-small text-fg-muted">Aucun appareil connecté.</p>
@@ -296,7 +296,7 @@ export default async function Page() {
       </Card>
 
       <Card>
-        <CardHeader eyebrow="// Activité" title="Fiches créées sur 30 jours" />
+        <CardHeader eyebrow="Activité" title="Fiches créées sur 30 jours" />
         <CardContent>
           <ul className="grid gap-2 sm:grid-cols-3">
             {volumes.map((v) => (

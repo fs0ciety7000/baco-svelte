@@ -225,7 +225,7 @@ export function EquipmentBoard({
             wanted.current = null;
           }
         }}
-        eyebrow="// Rampe et matériel"
+        eyebrow="Rampe et matériel"
         title={
           current
             ? `${current.station}${current.platform ? ` · quai ${current.platform}` : ""}`

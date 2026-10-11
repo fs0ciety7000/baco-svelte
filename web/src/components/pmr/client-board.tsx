@@ -154,7 +154,7 @@ export function ClientBoard({
             wanted.current = null;
           }
         }}
-        eyebrow="// Client PMR"
+        eyebrow="Client PMR"
         title={detail ? `${detail.client.lastName} ${detail.client.firstName}` : "Client"}
         description={detail ? typeLabel(detail.client) : undefined}
       >

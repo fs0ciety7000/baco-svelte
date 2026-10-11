@@ -740,7 +740,7 @@ function TrainPanel({
     <Sheet
       open={!!trainId}
       onOpenChange={(o) => (o ? null : onClose())}
-      eyebrow="// Train · iRail"
+      eyebrow="Train · iRail"
       title={train?.label ?? trainId ?? "Train"}
       description={first && last ? `${first.station} → ${last.station}` : undefined}
       footer={

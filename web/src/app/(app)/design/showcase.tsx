@@ -220,7 +220,7 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
       className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-6 md:px-6 md:py-8"
     >
       <PageHeader
-        eyebrow={`// Design system · ${THEMES.length} thèmes · AA vérifié`}
+        eyebrow={`Design system · ${THEMES.length} thèmes · AA vérifié`}
         title="Bibliothèque CSM"
         description="Chaque composant de web/src/components/ui, dans le thème choisi. Données fictives."
         actions={

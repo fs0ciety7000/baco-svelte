@@ -40,7 +40,7 @@ export function StatusCard({ initial }: { initial: string }) {
     });
   return (
     <Card>
-      <CardHeader eyebrow="// Aujourd'hui" title="Mon statut" />
+      <CardHeader eyebrow="Aujourd'hui" title="Mon statut" />
       <CardContent className="flex flex-col gap-3">
         <p className="text-small text-fg-muted">
           Affiché à côté de ton nom dans le Journal et l&apos;annuaire, pour la journée.
@@ -100,7 +100,7 @@ export function HomeCard({ initial }: { initial: string }) {
   const [pending, start] = useTransition();
   return (
     <Card>
-      <CardHeader eyebrow="// Préférences" title="Page d'accueil" />
+      <CardHeader eyebrow="Préférences" title="Page d'accueil" />
       <CardContent className="flex flex-col gap-2">
         <label className="flex min-w-0 flex-col gap-1">
           <span className="text-small text-fg-muted">Après la connexion, ouvrir :</span>
@@ -147,7 +147,7 @@ export function SessionsCard() {
   const others = (items ?? []).filter((s) => !s.current).length;
   return (
     <Card>
-      <CardHeader eyebrow="// Sécurité" title="Sessions ouvertes" />
+      <CardHeader eyebrow="Sécurité" title="Sessions ouvertes" />
       <CardContent className="flex flex-col gap-3">
         {items === null ? null : items.length === 0 ? (
           <p className="text-small text-fg-muted">

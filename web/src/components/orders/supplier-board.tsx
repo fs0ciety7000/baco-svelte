@@ -161,7 +161,7 @@ export function SupplierBoard({
         onOpenChange={(o) => {
           if (!o) close();
         }}
-        eyebrow={kind === "bus" ? "// Société de bus" : "// Société de taxi"}
+        eyebrow={kind === "bus" ? "Société de bus" : "Société de taxi"}
         title={detail?.name ?? "Fournisseur"}
         description={
           detail

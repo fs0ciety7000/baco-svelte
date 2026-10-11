@@ -115,7 +115,7 @@ export function ChangelogBoard({ items, canEdit }: { items: ChangelogEntry[]; ca
       )}
       <Dialog open={!!draft} onOpenChange={(o) => !o && setDraft(null)}>
         <DialogContent
-          eyebrow="// Nouveautés"
+          eyebrow="Nouveautés"
           title={draft?.id ? "Modifier la nouveauté" : "Publier une nouveauté"}
           description="Texte en Markdown simple (titres, listes, gras, liens)."
         >

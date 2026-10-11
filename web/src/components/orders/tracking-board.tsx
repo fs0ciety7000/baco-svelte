@@ -249,7 +249,7 @@ export function TrackingBoard({
         }}
         eyebrow={
           open
-            ? `// ${open.kind === "bus" ? "Bus C3" : open.isPmr ? "Taxi PMR" : "Taxi"} n° ${open.number}`
+            ? `${open.kind === "bus" ? "Bus C3" : open.isPmr ? "Taxi PMR" : "Taxi"} n° ${open.number}`
             : undefined
         }
         title={open ? `${open.origin || "?"} → ${open.destination || "?"}` : "Commande"}

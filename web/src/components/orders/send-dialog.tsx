@@ -97,7 +97,7 @@ export function SendDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        eyebrow="// Envoi au fournisseur"
+        eyebrow="Envoi au fournisseur"
         title="Préparer l'envoi"
         description={
           noMail

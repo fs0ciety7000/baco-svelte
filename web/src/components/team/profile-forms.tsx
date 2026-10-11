@@ -156,7 +156,7 @@ function DutyCard({ initial }: { initial: string[] }) {
   };
   return (
     <Card>
-      <CardHeader eyebrow="// Aujourd'hui" title="Mes districts du jour" />
+      <CardHeader eyebrow="Aujourd'hui" title="Mes districts du jour" />
       <CardContent className="flex flex-col gap-3">
         <p className="text-small text-fg-muted">
           Urgences, perturbations iRail et retards des missions de ces districts te sont notifiés,
@@ -201,7 +201,7 @@ function ActivityCard({ activity }: { activity: MyActivity }) {
   if (!shown.length) return null;
   return (
     <Card>
-      <CardHeader eyebrow="// 30 derniers jours" title="Mon activité" />
+      <CardHeader eyebrow="30 derniers jours" title="Mon activité" />
       <CardContent>
         <dl className="grid grid-cols-3 gap-3" data-testid="my-activity">
           {shown.map(([label, n]) => (
@@ -268,7 +268,7 @@ export function ProfileForms({
     <div className="grid gap-4 lg:grid-cols-2">
       <PhotoCard profile={profile} />
       <Card>
-        <CardHeader eyebrow="// Profil" title="Mes informations" />
+        <CardHeader eyebrow="Profil" title="Mes informations" />
         <CardContent className="flex flex-col gap-3">
           <Field label="Nom affiché" required>
             <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={200} />
@@ -317,13 +317,13 @@ export function ProfileForms({
         <ActivityCard activity={activity} />
       </div>
       <Card className="lg:col-span-2">
-        <CardHeader eyebrow="// Préférences" title="Affichage et notifications" />
+        <CardHeader eyebrow="Préférences" title="Affichage et notifications" />
         <CardContent>
           <ThemeSwitcher value={ui} onChange={setUi} />
         </CardContent>
       </Card>
       <Card>
-        <CardHeader eyebrow="// Sécurité" title="Mot de passe" />
+        <CardHeader eyebrow="Sécurité" title="Mot de passe" />
         <CardContent className="flex flex-col gap-3">
           <Field label="Mot de passe actuel" required>
             <Input
@@ -365,7 +365,7 @@ export function ProfileForms({
       <SessionsCard />
       {canExtension ? (
         <Card>
-          <CardHeader eyebrow="// Sécurité" title="Appareils connectés" />
+          <CardHeader eyebrow="Sécurité" title="Appareils connectés" />
           <CardContent className="flex flex-col gap-3">
             <p className="text-small text-fg-muted">
               Navigateurs où l&apos;extension DICOS est reliée à ton compte : dernière synchro,

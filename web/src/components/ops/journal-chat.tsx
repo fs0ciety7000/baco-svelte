@@ -775,7 +775,7 @@ export function JournalChat({
       <Sheet
         open={!!openId}
         onOpenChange={(o) => (o ? null : close())}
-        eyebrow="// Journal"
+        eyebrow="Journal"
         title={e ? `${CATEGORY[e.category].label} · ${e.authorName}` : "Message"}
         description={e?.status === "retiree" ? "Message retiré" : undefined}
         footer={

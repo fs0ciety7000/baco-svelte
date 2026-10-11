@@ -86,7 +86,7 @@ export function UserEditor({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader eyebrow="// Compte" title="Identité et rôle" />
+          <CardHeader eyebrow="Compte" title="Identité et rôle" />
           <CardContent className="grid gap-3 sm:grid-cols-2">
             <Field label="Nom affiché" required>
               <Input
@@ -147,7 +147,7 @@ export function UserEditor({
         </Card>
 
         <Card>
-          <CardHeader eyebrow="// Sécurité" title="Accès" />
+          <CardHeader eyebrow="Sécurité" title="Accès" />
           <CardContent className="flex flex-col gap-3">
             <p className="text-small text-fg-muted">
               Un compte désactivé ne peut plus se connecter ; son rôle est gardé pour la
@@ -204,7 +204,7 @@ export function UserEditor({
 
       <Card>
         <CardHeader
-          eyebrow="// Droits"
+          eyebrow="Droits"
           title="Droits par module"
           actions={
             <Button size="sm" onClick={savePerms} loading={pending} disabled={disabled}>

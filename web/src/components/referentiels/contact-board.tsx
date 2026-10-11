@@ -169,7 +169,7 @@ export function ContactBoard({
             wanted.current = null;
           }
         }}
-        eyebrow="// Annuaire"
+        eyebrow="Annuaire"
         title={detail?.name ?? "Contact"}
         description={
           detail ? [detail.category, detail.zone].filter(Boolean).join(" · ") : undefined
