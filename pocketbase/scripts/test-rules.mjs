@@ -1035,6 +1035,23 @@ try {
 	check('modérateur supprime une société de taxi sans bon', spTaxiDelMod.status === 204, `HTTP ${spTaxiDelMod.status}`);
 	for (const id of [spBus.json?.id, spTaxi.json?.id, spDrv.json?.id, spLine.json?.id]) if (id) auditIds.push(id);
 
+	// Supervision (1760003110, 11 oct. 2026) : battements des tâches planifiées lus par les admins seulement, jamais
+	// écrits par l'API ; routes internes fermées sans le secret.
+	const crPaco = await api('GET', '/api/collections/cron_runs/records', { token: u.token });
+	check('PACO ne lit pas les battements des tâches', crPaco.status !== 200 || crPaco.json.totalItems === 0, `HTTP ${crPaco.status}`);
+	const crMod = await api('GET', '/api/collections/cron_runs/records', { token: roles.modo.token });
+	check('modérateur ne lit pas les battements des tâches', crMod.status !== 200 || crMod.json.totalItems === 0, `HTTP ${crMod.status}`);
+	const crAdmin = await api('GET', '/api/collections/cron_runs/records', { token: roles.admin.token });
+	check('admin lit les battements des tâches', crAdmin.status === 200, `HTTP ${crAdmin.status}`);
+	const crCreate = await api('POST', '/api/collections/cron_runs/records', { token: roles.admin.token, body: { name: `faux-${suffix}`, ok: true } });
+	check("admin n'écrit pas de battement par l'API", crCreate.status >= 400, `HTTP ${crCreate.status}`);
+	for (const [method, route] of [['GET', '/api/csm/health'], ['POST', '/api/csm/journal/retention']]) {
+		const r = await api(method, route, { token: roles.admin.token });
+		check(`route interne ${route} fermée sans secret (même admin)`, r.status === 404, `HTTP ${r.status}`);
+		const w = await fetch(`${PB}${route}`, { method, headers: { 'x-csm-internal': 'mauvais-secret-mauvais-secret-mauvais' } });
+		check(`route interne ${route} fermée avec un mauvais secret`, w.status === 404, `HTTP ${w.status}`);
+	}
+
 	// Admin : supprime.
 	const adel = await api('DELETE', `/api/collections/bus_orders/records/${order.json.id}`, { token: roles.admin.token });
 	check('admin supprime', adel.status === 204, `HTTP ${adel.status}`);

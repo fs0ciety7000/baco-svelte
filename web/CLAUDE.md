@@ -349,6 +349,11 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   « envoyé → envoyé ») puis téléchargement de `/api/commandes/{kind}/{id}/eml?relance=1` (même `.eml` X-Unsent, PDF
   joint, texte de relance au vouvoiement : `MailOptions.reminder`, `reminderSubject`, `reminderIntro` dans
   `lib/orders/mail.ts`, testés). `OrderHistory` affiche « Relance du fournisseur » quand `from === to`.
+- **Supervision** (Admin › Santé) : `server/supervision.ts` (`readSupervision` → route interne PocketBase
+  `/api/csm/health`, secret `CSM_INTERNAL_SECRET`, page `requireAdmin()` seulement), verdicts purs `lib/supervision.ts`
+  (`cronVerdict` : en retard au-delà de 2 périodes + 5 min, `backupVerdict` : < 26 h / < 50 h, `archivesVerdict` ;
+  testés). Cartes : dernière sauvegarde, SMTP, archives en attente de R2, Journal (conservation), tâches planifiées
+  (tableau desktop, liste mobile), versions de l'extension (comparées à `release.json` par `isNewer`).
 - **Recherche de gare tolérante** (11 oct. 2026) : `lib/stations/search.ts` (pur, testé : `foldStation`, `stationMatches`,
   `stationCandidates` — abréviation PtCar exacte, puis préfixe, puis contenu —, `stationTerms`, `stationMatchesAny`) et
   `server/stations.ts` (`resolveStationTerms(q)` : saisie + noms candidats tirés de `ptcar` (avec `ptcar:read`) et de

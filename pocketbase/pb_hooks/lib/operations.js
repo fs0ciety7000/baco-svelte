@@ -645,7 +645,74 @@ function journalCategory(app, source, text, fixed, fallback, rules) {
 	return plain ? plain.category : fallback;
 }
 
+// Conservation du Journal (11 oct. 2026, durée à valider avec le DPO) : messages de plus de N mois (24 par défaut,
+// `CSM_JOURNAL_RETENTION_MONTHS` de 1 à 120, « off » coupe la purge) supprimés avec leurs pièces jointes (fichiers
+// effacés par PocketBase), lectures et historique (relations en cascade), notifications (hook de suppression) et lignes
+// d'audit. Un message d'origine reste tant qu'une de ses réponses est plus récente ; une consigne encore épinglée reste.
+// Borné : `max` messages (500) et 50 s par passage (le reste part la nuit suivante).
+function journalRetentionMonths() {
+	const raw = String($os.getenv('CSM_JOURNAL_RETENTION_MONTHS') || '').trim().toLowerCase();
+	if (raw === 'off') return 0;
+	const n = parseInt(raw, 10);
+	return n >= 1 && n <= 120 ? n : 24;
+}
+
+/** Limite de conservation : maintenant moins `months` mois (format PocketBase). */
+function journalCutoff(months, nowMs) {
+	const d = new Date(nowMs);
+	d.setUTCMonth(d.getUTCMonth() - months);
+	return d.toISOString().replace('T', ' ');
+}
+
+function journalRetention(app, opts) {
+	const o = opts || {};
+	const months = o.months !== undefined ? o.months : journalRetentionMonths();
+	if (!months) return { months: 0, deleted: 0, kept: 0 };
+	const cutoff = journalCutoff(months, o.nowMs || Date.now());
+	const nowStr = now();
+	const max = o.max || 500;
+	const started = Date.now();
+	const ids = (sql) => {
+		const rows = arrayOf(new DynamicModel({ id: '' }));
+		app.db().newQuery(sql).bind({ c: cutoff, n: nowStr, max: max }).all(rows);
+		return rows.map((r) => r.id);
+	};
+	const notPinned = "(COALESCE(pinned_until, '') = '' OR pinned_until < {:n})";
+	let deleted = 0;
+	let kept = 0;
+	const drop = (id) => {
+		try {
+			app.delete(app.findRecordById('ops_log', id));
+			app.db().newQuery("DELETE FROM audit_log WHERE collection = 'ops_log' AND record = {:id}").bind({ id: id }).execute();
+			deleted++;
+		} catch (err) {
+			console.log(`journal-retention : ${id} non supprimé :`, String(err));
+		}
+	};
+	// 1. Réponses anciennes.
+	for (const id of ids(`SELECT id FROM ops_log WHERE created < {:c} AND COALESCE(reply_to, '') != '' AND ${notPinned} ORDER BY created LIMIT {:max}`)) {
+		if (Date.now() - started > 50000 || deleted >= max) break;
+		drop(id);
+	}
+	// 2. Messages d'origine anciens sans réponse restante (une réponse restante est forcément récente).
+	for (const id of ids(`SELECT id FROM ops_log WHERE created < {:c} AND COALESCE(reply_to, '') = '' AND ${notPinned} ORDER BY created LIMIT {:max}`)) {
+		if (Date.now() - started > 50000 || deleted >= max) break;
+		const row = new DynamicModel({ n: 0 });
+		app.db().newQuery('SELECT COUNT(*) AS n FROM ops_log WHERE reply_to = {:id}').bind({ id: id }).one(row);
+		if (row.n > 0) {
+			kept++;
+			continue;
+		}
+		drop(id);
+	}
+	if (deleted) console.log(`journal-retention : ${deleted} message(s) de plus de ${months} mois supprimé(s)`);
+	return { months: months, deleted: deleted, kept: kept, cutoff: cutoff };
+}
+
 module.exports = {
+	journalRetention,
+	journalRetentionMonths,
+	journalCutoff,
 	journalCategory,
 	journalRules,
 	districtTagsIn,

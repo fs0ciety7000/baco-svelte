@@ -104,39 +104,41 @@ onRecordAfterUpdateSuccess((e) => {
 // remarque, motif, texte BACO, notes d'historique, journal d'audit ; copies PMR des commandes taxi. Les compteurs
 // (date, gare, type, nombre, statut) restent. Fiches sans activité depuis 24 mois : archivées.
 cronAdd('pmr-retention', '15 3 * * *', () => {
-	const day = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
-	const q = (sql, params) => $app.db().newQuery(sql).bind(params || {}).execute();
-	const limit = day(365);
-	q(
-		"UPDATE pmr_assists SET client = '', dicos_ref = '', note = '', cancel_reason = '', anonymized = 1 WHERE anonymized = 0 AND day < {:limit}",
-		{ limit: limit }
-	);
-	q("DELETE FROM pmr_assist_legacy WHERE assist IN (SELECT id FROM pmr_assists WHERE anonymized = 1)");
-	// Détail nominatif des missions DICOS (client, contacts, accompagnement) : supprimé à l'anonymisation.
-	q("DELETE FROM pmr_mission WHERE assist IN (SELECT id FROM pmr_assists WHERE anonymized = 1)");
-	// Horaires ATMS (temps d'arrêt pour l'ALEA) : utiles quelques jours seulement, gardés 60 jours.
-	q("DELETE FROM train_schedules WHERE day < {:d}", { d: day(60) });
-	q("DELETE FROM mission_trains WHERE day < {:d}", { d: day(7) });
-	q("DELETE FROM alea_marks WHERE day < {:d}", { d: day(30) });
-	q("DELETE FROM dicos_syncs WHERE day < {:d}", { d: day(60) });
-	q("UPDATE pmr_events SET note = '', \"from\" = CASE WHEN field IN ('status') THEN \"from\" ELSE '' END, \"to\" = CASE WHEN field IN ('status') THEN \"to\" ELSE '' END WHERE kind = 'assist' AND record IN (SELECT id FROM pmr_assists WHERE anonymized = 1)");
-	q("DELETE FROM audit_log WHERE collection = 'pmr_assists' AND record IN (SELECT id FROM pmr_assists WHERE anonymized = 1)");
-	// Missions de groupe (9 oct. 2026) : contact du groupe effacé après 12 mois (les comptages restent).
-	q(
-		"UPDATE group_missions SET contact_first = '', contact_last = '', contact_phone = '', contact_email = '', meeting_point = '' WHERE day < {:limit} AND (contact_first != '' OR contact_last != '' OR contact_phone != '' OR contact_email != '')",
-		{ limit: limit }
-	);
-	// Taxis PMR de plus de 12 mois : copie nominative et lien vers la fiche effacés.
-	q(
-		"UPDATE taxi_orders SET pmr_client = '', pmr_last_name = '', pmr_first_name = '', pmr_phone = '', pmr_file = '', pmr_reason = '', passenger_name = '' WHERE is_pmr = 1 AND trip_at != '' AND trip_at < {:at} AND (pmr_client != '' OR pmr_last_name != '' OR pmr_phone != '')",
-		{ at: `${limit} 00:00:00.000Z` }
-	);
-	q("DELETE FROM audit_log WHERE collection = 'taxi_orders' AND at < {:at} AND record IN (SELECT id FROM taxi_orders WHERE is_pmr = 1)", { at: `${limit} 00:00:00.000Z` });
-	// Fiches sans activité (prestation ou taxi) depuis 24 mois : archivées ; leur journal d'audit de plus de 24 mois purgé.
-	const old = `${day(730)} 00:00:00.000Z`;
-	q(
-		"UPDATE pmr_clients SET archived = 1 WHERE archived = 0 AND ((last_activity != '' AND last_activity < {:old}) OR (last_activity = '' AND created < {:old}))",
-		{ old: old }
-	);
-	q("DELETE FROM audit_log WHERE collection = 'pmr_clients' AND at < {:old} AND record IN (SELECT id FROM pmr_clients WHERE archived = 1)", { old: old });
+	require(`${__hooks}/lib/heartbeat.js`).run($app, 'pmr-retention', () => {
+		const day = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+		const q = (sql, params) => $app.db().newQuery(sql).bind(params || {}).execute();
+		const limit = day(365);
+		q(
+			"UPDATE pmr_assists SET client = '', dicos_ref = '', note = '', cancel_reason = '', anonymized = 1 WHERE anonymized = 0 AND day < {:limit}",
+			{ limit: limit }
+		);
+		q("DELETE FROM pmr_assist_legacy WHERE assist IN (SELECT id FROM pmr_assists WHERE anonymized = 1)");
+		// Détail nominatif des missions DICOS (client, contacts, accompagnement) : supprimé à l'anonymisation.
+		q("DELETE FROM pmr_mission WHERE assist IN (SELECT id FROM pmr_assists WHERE anonymized = 1)");
+		// Horaires ATMS (temps d'arrêt pour l'ALEA) : utiles quelques jours seulement, gardés 60 jours.
+		q("DELETE FROM train_schedules WHERE day < {:d}", { d: day(60) });
+		q("DELETE FROM mission_trains WHERE day < {:d}", { d: day(7) });
+		q("DELETE FROM alea_marks WHERE day < {:d}", { d: day(30) });
+		q("DELETE FROM dicos_syncs WHERE day < {:d}", { d: day(60) });
+		q("UPDATE pmr_events SET note = '', \"from\" = CASE WHEN field IN ('status') THEN \"from\" ELSE '' END, \"to\" = CASE WHEN field IN ('status') THEN \"to\" ELSE '' END WHERE kind = 'assist' AND record IN (SELECT id FROM pmr_assists WHERE anonymized = 1)");
+		q("DELETE FROM audit_log WHERE collection = 'pmr_assists' AND record IN (SELECT id FROM pmr_assists WHERE anonymized = 1)");
+		// Missions de groupe (9 oct. 2026) : contact du groupe effacé après 12 mois (les comptages restent).
+		q(
+			"UPDATE group_missions SET contact_first = '', contact_last = '', contact_phone = '', contact_email = '', meeting_point = '' WHERE day < {:limit} AND (contact_first != '' OR contact_last != '' OR contact_phone != '' OR contact_email != '')",
+			{ limit: limit }
+		);
+		// Taxis PMR de plus de 12 mois : copie nominative et lien vers la fiche effacés.
+		q(
+			"UPDATE taxi_orders SET pmr_client = '', pmr_last_name = '', pmr_first_name = '', pmr_phone = '', pmr_file = '', pmr_reason = '', passenger_name = '' WHERE is_pmr = 1 AND trip_at != '' AND trip_at < {:at} AND (pmr_client != '' OR pmr_last_name != '' OR pmr_phone != '')",
+			{ at: `${limit} 00:00:00.000Z` }
+		);
+		q("DELETE FROM audit_log WHERE collection = 'taxi_orders' AND at < {:at} AND record IN (SELECT id FROM taxi_orders WHERE is_pmr = 1)", { at: `${limit} 00:00:00.000Z` });
+		// Fiches sans activité (prestation ou taxi) depuis 24 mois : archivées ; leur journal d'audit de plus de 24 mois purgé.
+		const old = `${day(730)} 00:00:00.000Z`;
+		q(
+			"UPDATE pmr_clients SET archived = 1 WHERE archived = 0 AND ((last_activity != '' AND last_activity < {:old}) OR (last_activity = '' AND created < {:old}))",
+			{ old: old }
+		);
+		q("DELETE FROM audit_log WHERE collection = 'pmr_clients' AND at < {:old} AND record IN (SELECT id FROM pmr_clients WHERE archived = 1)", { old: old });
+	});
 });

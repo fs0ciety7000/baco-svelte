@@ -168,11 +168,13 @@ routerAdd('POST', '/api/csm/session/open', (e) => {
 
 // Purge quotidienne : sessions sans activité depuis 30 jours (le jeton PocketBase expire de toute façon avant).
 cronAdd('user-sessions-purge', '40 3 * * *', () => {
-	const limit = new Date(Date.now() - 30 * 86400000).toISOString().replace('T', ' ');
-	try {
-		const old = $app.findRecordsByFilter('user_sessions', 'last_seen < {:d}', '', 2000, 0, { d: limit });
-		for (const r of old) $app.delete(r);
-	} catch (err) {
-		console.log('user-sessions-purge :', String(err));
-	}
+	require(`${__hooks}/lib/heartbeat.js`).run($app, 'user-sessions-purge', () => {
+		const limit = new Date(Date.now() - 30 * 86400000).toISOString().replace('T', ' ');
+		try {
+			const old = $app.findRecordsByFilter('user_sessions', 'last_seen < {:d}', '', 2000, 0, { d: limit });
+			for (const r of old) $app.delete(r);
+		} catch (err) {
+			console.log('user-sessions-purge :', String(err));
+		}
+	});
 });

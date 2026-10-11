@@ -1,8 +1,8 @@
 # CSM — note pour le DPO : données personnelles et durées de conservation
 
 > Rédigée le 9 octobre 2026 pour validation par le délégué à la protection des données (DPO). Les durées ci-dessous
-> sont **appliquées automatiquement** dans CSM (tâche nocturne `pmr-retention`, 3 h 15 UTC), mais restent **à
-> confirmer**. Chaque point marqué « À valider » appelle une réponse.
+> sont **appliquées automatiquement** dans CSM (tâches nocturnes `pmr-retention`, 3 h 15 UTC, et `journal-retention`,
+> 3 h 50 UTC, ajoutée le 11 oct. 2026), mais restent **à confirmer**. Chaque point marqué « À valider » appelle une réponse.
 
 ## 1. Contexte
 
@@ -39,6 +39,7 @@ le code source, ni présente dans les captures d'écran ou les documents de trav
 | Contact d'un groupe | **12 mois** après le jour du trajet | effacé ; restent les comptages (adultes, enfants, seniors) | ☐ |
 | Fiche client PMR sans activité | **24 mois** sans mission ni taxi | **archivée** (masquée des listes, données conservées) ; journal d'audit de plus de 24 mois purgé | ☐ **Archiver ou supprimer ?** |
 | Notifications aux agents | 30 jours après lecture, 90 jours au plus | supprimées | ☐ |
+| Journal d'exploitation (messages des agents et messages iRail, pièces jointes, lectures, historique des modifications) | **24 mois** après la publication du message (tâche `journal-retention`, chaque nuit à 3 h 50 UTC ; réglable par `CSM_JOURNAL_RETENTION_MONTHS`) | supprimés, pièces jointes comprises, avec leurs lignes du journal d'audit ; un message reste tant qu'une de ses réponses est plus récente, une consigne encore épinglée reste | ☐ **À valider** |
 | Journal des synchronisations DICOS, horaires ATMS | 60 jours | supprimés (aucune donnée personnelle) | — |
 | Jetons de connecteur des agents | jusqu'à révocation par l'agent ou désactivation du compte | supprimés | ☐ |
 | Sauvegardes de la base | 1 par nuit, 14 conservées (réglable, `CSM_BACKUP_KEEP`) ; copie hors serveur sur Cloudflare R2 une fois activée + copie locale du volume | écrasées ; une donnée effacée disparaît des sauvegardes après la dernière conservée (14 jours par défaut) | ☐ |
@@ -65,3 +66,8 @@ le code source, ni présente dans les captures d'écran ou les documents de trav
    sauvegardes hors serveur chez **Cloudflare R2** (sous-traitant, emplacement UE demandé) : à valider.
 6. Élargissement de l'accès au nominatif PMR aux agents C3 (rôles v2, voir §4) : à valider au regard du besoin
    d'en connaître.
+7. Journal d'exploitation (ajouté le 11 oct. 2026) : les messages peuvent citer un voyageur, un agent ou un incident
+   et porter des pièces jointes (photos, PDF). Durée proposée et appliquée : **24 mois** après la publication, puis
+   suppression définitive (messages, pièces jointes, lectures, historique, audit). Cette durée couvre-t-elle le besoin
+   (suivi des incidents, réclamations, retours d'expérience) sans excéder la finalité ? Une durée plus courte pour les
+   pièces jointes est-elle souhaitable ?
