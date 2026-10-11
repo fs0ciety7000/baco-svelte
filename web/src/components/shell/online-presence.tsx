@@ -54,7 +54,7 @@ export function OnlinePresence() {
   }, [refresh]);
 
   const count = agents?.length ?? 0;
-  const label = agents ? `${pl(count, "agent")} en ligne` : "Agents en ligne";
+  const label = agents ? `${count} ${pl(count, "agent")} en ligne` : "Agents en ligne";
 
   return (
     <Menu.Root onOpenChange={(open) => open && void refresh()}>

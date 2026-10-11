@@ -4,6 +4,7 @@ vi.mock("server-only", () => ({}));
 
 const load = async () => {
   vi.resetModules();
+  delete (globalThis as Record<symbol, unknown>)[Symbol.for("csm.presence")];
   return import("./presence");
 };
 

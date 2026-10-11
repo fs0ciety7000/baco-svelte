@@ -9,9 +9,21 @@ const GRACE_MS = 20_000;
 
 type Entry = { tabs: number; since: number; leftAt: number | null };
 
-const entries = new Map<string, Entry>();
-const listeners = new Set<() => void>();
-const timers = new Map<string, ReturnType<typeof setTimeout>>();
+// Next charge la route /api/events et les actions serveur dans des copies distinctes de ce module : le registre vit sur
+// globalThis pour être partagé (sinon la liste restait vide, constaté sur la préversion le 11 oct.).
+type Registry = {
+  entries: Map<string, Entry>;
+  listeners: Set<() => void>;
+  timers: Map<string, ReturnType<typeof setTimeout>>;
+};
+const KEY = Symbol.for("csm.presence");
+const g = globalThis as typeof globalThis & { [KEY]?: Registry };
+const registry: Registry = (g[KEY] ??= {
+  entries: new Map(),
+  listeners: new Set(),
+  timers: new Map(),
+});
+const { entries, listeners, timers } = registry;
 
 function notify() {
   for (const fn of listeners) fn();
