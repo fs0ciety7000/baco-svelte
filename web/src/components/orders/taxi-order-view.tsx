@@ -47,7 +47,9 @@ export async function TaxiOrderView({
         statusBeforeCancel={meta.statusBeforeCancel}
         updated={meta.updated}
         initial={order.draft}
-        canWrite={can(user, "generate_taxi:write")}
+        canWrite={
+          can(user, "generate_taxi:update") && (!!meta.id || can(user, "generate_taxi:write"))
+        }
         canPmr={can(user, "pmr:read")}
         coordinator={isCoordinator(user.role)}
         client={client}

@@ -136,6 +136,7 @@ export function JournalChat({
   me,
   coordinator,
   canWrite,
+  canUpdate = canWrite,
   agents,
   linkKinds,
   showDay,
@@ -149,6 +150,8 @@ export function JournalChat({
   me: string;
   coordinator: boolean;
   canWrite: boolean;
+  /** Modifier, retirer, rétablir une entrée (`journal:update`, rôles v2). */
+  canUpdate?: boolean;
   agents: Agent[];
   linkKinds: LinkedObject["kind"][];
   showDay: boolean;
@@ -253,10 +256,10 @@ export function JournalChat({
 
   const e = panel?.entry;
   const isAuthor = !!e && e.authorId === me;
-  const canEdit = !!e && canWrite && e.status === "active" && (isAuthor || coordinator);
+  const canEdit = !!e && canUpdate && e.status === "active" && (isAuthor || coordinator);
   const withinWindow = !!e && Date.now() - (pbDate(e.created)?.getTime() ?? 0) < RETIRE_WINDOW_MS;
   const canRetire =
-    !!e && canWrite && e.status === "active" && (coordinator || (isAuthor && withinWindow));
+    !!e && canUpdate && e.status === "active" && (coordinator || (isAuthor && withinWindow));
 
   // --- Fil façon messagerie -------------------------------------------------------------------
   const list = [...rows].reverse(); // le serveur trie du plus récent au plus ancien
@@ -793,7 +796,7 @@ export function JournalChat({
                   <XCircle aria-hidden /> Retirer
                 </Button>
               ) : null}
-              {e.status === "retiree" && coordinator && canWrite ? (
+              {e.status === "retiree" && coordinator && canUpdate ? (
                 <Button
                   size="sm"
                   onClick={() =>

@@ -128,6 +128,14 @@ export function isCoordinator(user: PermissionSubject | null | undefined): boole
   return isAdmin(user) || user?.role === "moderator" || user?.role === "paco";
 }
 
+/**
+ * Modération du Journal (messages retirés, textes des autres, retrait tardif, rétablissement) : modérateurs et
+ * administrateurs seulement (audit sécurité du 11 oct. 2026). Miroir de `COORD_ROLES` (hooks) et des règles `ops_log`.
+ */
+export function isJournalModerator(user: PermissionSubject | null | undefined): boolean {
+  return isAdmin(user) || user?.role === "moderator";
+}
+
 /** Nouveautés de l'application : administrateurs et modérateurs. */
 export function canEditChangelog(user: PermissionSubject | null | undefined): boolean {
   return isAdmin(user) || user?.role === "moderator";

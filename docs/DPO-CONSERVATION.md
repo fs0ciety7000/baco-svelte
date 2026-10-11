@@ -46,7 +46,10 @@ le code source, ni présente dans les captures d'écran ou les documents de trav
 ## 4. Mesures de protection
 
 - Accès par compte nominatif ; droits vérifiés côté serveur et dans les règles de la base, pas seulement à l'écran.
-- Les données nominatives PMR ne sont lues **que** par les agents qui ont le droit `pmr:read`.
+- Les données nominatives PMR ne sont lues **que** par les agents qui ont le droit `pmr:read`. Depuis les rôles v2
+  (11 oct. 2026), ce droit est donné par défaut aux rôles **PACO/RCCA** et **Modérateur** : les 14 anciens agents
+  Otto (C3), qui n'y avaient pas accès dans BACO, y accèdent désormais (décision confirmée de l'utilisateur). L'admin
+  peut le retirer compte par compte (droit « PMR nominatif : Lecture » retiré). L'**Invité** n'y a jamais accès.
 - Le navigateur ne parle qu'au serveur CSM (HTTPS, cookie de session `httpOnly`) ; la base n'est pas appelée directement.
 - Compte désactivé : sessions et jetons de l'extension révoqués immédiatement.
 - Journal d'audit des modifications (lecture réservée aux administrateurs, sans le détail des collections nominatives à l'export).
@@ -60,3 +63,5 @@ le code source, ni présente dans les captures d'écran ou les documents de trav
 4. Faut-il une mention d'information aux voyageurs PMR sur ce traitement (en complément de celle de DICOS) ?
 5. Hébergement : serveur auto-hébergé (Coolify) — lieu d'hébergement et sous-traitance à documenter dans le registre ;
    sauvegardes hors serveur chez **Cloudflare R2** (sous-traitant, emplacement UE demandé) : à valider.
+6. Élargissement de l'accès au nominatif PMR aux agents C3 (rôles v2, voir §4) : à valider au regard du besoin
+   d'en connaître.

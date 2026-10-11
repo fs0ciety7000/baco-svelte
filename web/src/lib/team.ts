@@ -34,6 +34,11 @@ export function userDistricts(
   return user.district ? [user.district] : [];
 }
 
+/** District principal (bons de commande, feuille de route) : le premier des districts permanents, sinon `district`. */
+export function primaryDistrict(user: { districts?: string[] | null; district?: string }): string {
+  return user.districts?.[0] || user.district || "";
+}
+
 /** Statuts du jour proposés (Journal, Équipe ; demande du 10 oct. 2026). Saisie libre possible (40 caractères). */
 export const STATUS_PRESETS = [
   "EXTRA",

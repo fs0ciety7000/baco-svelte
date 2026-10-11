@@ -7,7 +7,7 @@ import { z } from "zod";
 import { normalizeTrain, parseFavorites, stationId } from "@/lib/ops/irail";
 import { DUTY_DISTRICTS, entrySchema, RETIRE_WINDOW_MS } from "@/lib/ops/log";
 import { brusselsDay, brusselsTime, brusselsToUtc, pbDate } from "@/lib/orders/time";
-import { can, isCoordinator } from "@/lib/permissions";
+import { can, isJournalModerator } from "@/lib/permissions";
 import { requireUser, type SessionUser } from "@/server/auth";
 import {
   getLogEntry,
@@ -56,7 +56,7 @@ async function need(perm: string): Promise<SessionUser> {
   return user;
 }
 
-const coordinator = (u: SessionUser) => isCoordinator(u);
+const coordinator = (u: SessionUser) => isJournalModerator(u);
 
 function entryBody(p: z.output<typeof entrySchema>) {
   return {
@@ -101,7 +101,7 @@ export async function updateEntry(input: {
   entry: unknown;
 }): Promise<Result> {
   try {
-    await need("journal:write");
+    await need("journal:update");
     const id = pbId.parse(input.id);
     const p = entrySchema.parse(input.entry);
     const pb = await pbForRequest();
@@ -120,7 +120,7 @@ export async function updateEntry(input: {
 
 export async function retireEntry(input: { id: string; reason: string }): Promise<Result> {
   try {
-    const user = await need("journal:write");
+    const user = await need("journal:update");
     const p = z
       .object({ id: pbId, reason: z.string().trim().min(1, "Le motif est obligatoire.").max(500) })
       .parse(input);
@@ -138,9 +138,9 @@ export async function retireEntry(input: { id: string; reason: string }): Promis
 
 export async function restoreEntry(id: string): Promise<Result> {
   try {
-    const user = await need("journal:write");
+    const user = await need("journal:update");
     if (!coordinator(user))
-      return { ok: false, error: "Seul un coordinateur peut rétablir une entrée." };
+      return { ok: false, error: "Seul un modérateur peut rétablir une entrée." };
     const pb = await pbForRequest();
     await pb.collection("ops_log").update(pbId.parse(id), { status: "active" });
     return { ok: true };
@@ -151,7 +151,7 @@ export async function restoreEntry(id: string): Promise<Result> {
 
 export async function removeAttachment(input: { id: string; name: string }): Promise<Result> {
   try {
-    await need("journal:write");
+    await need("journal:update");
     const p = z.object({ id: pbId, name: z.string().regex(/^[\w.-]{1,200}$/) }).parse(input);
     const pb = await pbForRequest();
     await pb.collection("ops_log").update(p.id, { "attachments-": [p.name] });
@@ -390,7 +390,7 @@ export async function saveCrossing(input: {
   data: unknown;
 }): Promise<Result<{ id: string }>> {
   try {
-    const user = await need("carte_pn:write");
+    const user = await need(input.id ? "carte_pn:update" : "carte_pn:write");
     const d = crossingSchema.parse(input.data);
     const pb = await pbForRequest();
     if (input.id) {

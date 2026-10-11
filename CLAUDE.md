@@ -771,10 +771,13 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   rôles **Administrateur / Sysop** (tout), **Modérateur** (`moderator` : PACO/RCCA + suppression partout et Nouveautés,
   pas d'administration ; ajouté à la demande de l'utilisateur), **PACO/RCCA** (`paco` : lecture partout, écriture et modification, pas de
   suppression ; districts DSO / DSE / DCE en combinaison libre = filtres et alertes, pas de limite d'écriture), **Invité**
-  (`guest` : lecture bus et taxis) ; **tous les comptes BACO deviennent PACO/RCCA** (choix de l'utilisateur), les deux
-  invités sont à régler par l'admin dans l'interface (aucun nom dans le dépôt). Droits par module en **4 actions**
+  (`guest` : lecture bus et taxis) ; comptes BACO : **moderator → Modérateur**, user et **agents Otto → PACO/RCCA**
+  (confirmé par l'utilisateur après l'alerte des relectures : les 14 agents C3 accèdent au nominatif PMR, note DPO §4-5),
+  les deux invités sont à régler par l'admin dans l'interface (aucun nom dans le dépôt). Modération du Journal (messages
+  retirés, textes des autres) : modérateur et admin seulement ; matériel / zones PMR soumis à `pmr:write` / `pmr:update` ;
+  invité sans zones PMR, points SPI, Nouveautés ni liste des agents en ligne ; `audit:read` repris de BACO retiré. Droits par module en **4 actions**
   (lecture, écriture, modification, suppression) avec héritage (grants / denies), matrice dans la fiche d'un compte ;
-  migration `1760002800` (règles réécrites, comptes convertis, `X:write` → `X:update`), 290 contrôles de règles. Les
+  migration `1760002800` (règles réécrites, comptes convertis, `X:write` → `X:update`), 292 contrôles de règles. Les
   Nouveautés : admin et modérateur. **Bordure d'avatar** par rôle (accent doublé pour admin / sysop). **Documents** : envoi
   jusqu'à 30 Mo par route (la Server Action était limitée à 1 Mo : l'envoi de vrais documents échouait), depuis la
   bibliothèque **et depuis une procédure** ; **visionneuse** PDF / image + téléchargement (Word, Excel… en téléchargement :

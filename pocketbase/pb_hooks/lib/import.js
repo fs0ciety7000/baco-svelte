@@ -78,8 +78,8 @@ function legacyEvent(app, kind, id, from, to, at, by) {
 	app.save(ev);
 }
 
-// Rôles BACO → rôles v2 (11 oct. 2026) : admin et sysop gardés, les autres deviennent PACO/RCCA, l'inconnu invité.
-const ROLE_MAP = { admin: 'admin', sysop: 'sysop', moderator: 'paco', otto_agent: 'paco', user: 'paco', reader: 'paco' };
+// Rôles BACO → rôles v2 (11 oct. 2026) : admin, sysop et moderator gardés, les autres deviennent PACO/RCCA, l'inconnu invité.
+const ROLE_MAP = { admin: 'admin', sysop: 'sysop', moderator: 'moderator', otto_agent: 'paco', user: 'paco', reader: 'paco' };
 
 // Droit d'écriture BACO = création et modification (`X:update`, rôles v2).
 function withUpdate(list) {

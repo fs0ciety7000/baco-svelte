@@ -58,11 +58,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         "content-disposition": `${inline ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(downloadName)}`,
         "cache-control": "private, no-store",
         "x-content-type-options": "nosniff",
-        // Visionneuse PDF : pas de `sandbox` ni d'`object-src 'none'` (le lecteur PDF de Chrome ne s'ouvrirait pas),
+        // Visionneuse PDF : pas de `sandbox`, `object-src 'self'` explicite (sinon `default-src 'none'` s'y applique et le
+        // lecteur PDF de Chrome ne s'ouvre pas),
         // aucune autre ressource permise ; affichable seulement dans une page CSM (cadre même origine). Le type est
         // garanti PDF par la détection à l'envoi et `nosniff`.
         "content-security-policy": pdfView
-          ? "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; frame-ancestors 'self'"
+          ? "default-src 'none'; object-src 'self'; img-src 'self' data:; style-src 'unsafe-inline'; frame-ancestors 'self'"
           : "sandbox; default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'self'",
         "x-frame-options": "SAMEORIGIN",
       },

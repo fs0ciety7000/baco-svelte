@@ -8,6 +8,7 @@ import { can } from "@/lib/permissions";
 import { officeFor } from "@/lib/orders/mail";
 import { DISTRICTS, taxiDraftSchema } from "@/lib/orders/schemas";
 import { brusselsDay, brusselsTime, formatShortDay } from "@/lib/orders/time";
+import { primaryDistrict } from "@/lib/team";
 import { requirePermission } from "@/server/auth";
 import {
   getTemplateData,
@@ -43,7 +44,9 @@ export default async function Page({
   ]);
   const fromTemplate = modele ? await getTemplateData("taxi", modele).catch(() => null) : null;
   const base = taxiDraftSchema.safeParse(fromTemplate ?? {});
-  const district = (DISTRICTS as readonly string[]).includes(user.district) ? user.district : "";
+  const district = (DISTRICTS as readonly string[]).includes(primaryDistrict(user))
+    ? primaryDistrict(user)
+    : "";
   const draft = base.success ? base.data : taxiDraftSchema.parse({});
   const initial = {
     ...draft,

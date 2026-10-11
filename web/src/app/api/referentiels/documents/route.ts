@@ -16,6 +16,14 @@ export const dynamic = "force-dynamic";
 const MAX = 30 * 1024 * 1024;
 const LIMIT = MAX + 64 * 1024;
 
+function sameHost(origin: string, host: string | null): boolean {
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false; // `Origin: null` ou illisible : refusé
+  }
+}
+
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return Response.json({ error: "Non connecté" }, { status: 401 });
@@ -23,7 +31,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Droit manquant" }, { status: 403 });
   // Même origine seulement (le cookie est SameSite=Lax, contrôle en plus).
   const origin = request.headers.get("origin");
-  if (origin && new URL(origin).host !== request.headers.get("host"))
+  if (origin && !sameHost(origin, request.headers.get("host")))
     return Response.json({ error: "Origine refusée" }, { status: 403 });
   if (Number(request.headers.get("content-length") ?? 0) > LIMIT)
     return Response.json({ error: "Fichier trop lourd (30 Mo au maximum)." }, { status: 413 });

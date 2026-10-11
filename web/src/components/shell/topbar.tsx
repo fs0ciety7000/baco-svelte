@@ -19,7 +19,7 @@ import { UserMenu } from "./user-menu";
  * Mobile : 48 px collante, marque + module courant, recherche, menu utilisateur.
  */
 export function Topbar() {
-  const { modules, actions, setPaletteOpen } = useShell();
+  const { modules, actions, setPaletteOpen, user } = useShell();
   const pathname = usePathname();
   const mod = activeModule(pathname, modules);
   const tab = mod ? activeTab(pathname, mod) : undefined;
@@ -89,7 +89,8 @@ export function Topbar() {
             </Menu.Portal>
           </Menu.Root>
         ) : null}
-        <OnlinePresence />
+        {/* Invité : pas de liste des agents en ligne (audit sécurité du 11 oct. 2026). */}
+        {user.role !== "guest" ? <OnlinePresence /> : null}
         <NotificationBell />
         <UserMenu />
       </div>

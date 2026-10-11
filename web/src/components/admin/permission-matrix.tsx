@@ -93,6 +93,17 @@ export function PermissionMatrix({
                       const copy = { ...value };
                       if (next === "defaut") delete copy[key];
                       else copy[key] = next;
+                      // Écriture accordée sans modification : inutilisable (un bon, un message ou une fiche créés sont
+                      // ensuite enregistrés par modification) → la modification est accordée avec.
+                      const upd = `${m.key}:update`;
+                      if (
+                        a === "write" &&
+                        next === "accorde" &&
+                        m.actions.includes("update") &&
+                        !roleHas(role, upd) &&
+                        copy[upd] !== "accorde"
+                      )
+                        copy[upd] = "accorde";
                       onChange(copy);
                     }}
                   />

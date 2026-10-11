@@ -506,13 +506,15 @@ try {
 	const hid = await api('GET', `/api/collections/ops_log/records/${lid}`, { token: roles.reader.token });
 	check("entrée retirée masquée à l'invité", hid.status === 404, `HTTP ${hid.status}`);
 	const hidEv = await api('GET', `/api/collections/ops_log_events/records?filter=${encodeURIComponent(`entry="${lid}"`)}`, { token: roles.denied.token });
-	check("historique d'une entrée retirée visible des coordinateurs (PACO/RCCA)", hidEv.json?.items?.length > 0, `${hidEv.json?.items?.length}`);
+	check("historique d'une entrée retirée masqué aux PACO/RCCA (modération)", hidEv.json?.items?.length === 0, `${hidEv.json?.items?.length}`);
 	const hidRd = await api('POST', '/api/collections/ops_log_reads/records', { token: roles.denied.token, body: { entry: lid, user: roles.denied.id } });
 	check('« Lu » impossible sur une entrée retirée', hidRd.status >= 400, `HTTP ${hidRd.status}`);
 	const nGone = await api('GET', `/api/collections/notifications/records?filter=${encodeURIComponent(`source_id="${lid}"`)}`, { token: roles.moderator.token });
 	check('notifications de l entrée retirée supprimées', nGone.json?.items?.length === 0, `${nGone.json?.items?.length}`);
 	lr = await lp({ status: 'active' });
-	check("l'auteur PACO/RCCA rétablit (coordinateur)", lr.status === 200 && lr.json.retired_reason === '', `HTTP ${lr.status}`);
+	check("l'auteur PACO/RCCA ne rétablit pas (modérateur)", lr.status >= 400, `HTTP ${lr.status}`);
+	lr = await lp({ status: 'active' }, roles.modo.token);
+	check('modérateur rétablit', lr.status === 200 && lr.json.retired_reason === '', `HTTP ${lr.status}`);
 	lr = await lp({ status: 'retiree', retired_reason: 'x' }, roles.reader.token);
 	check("l'invité ne retire pas", lr.status >= 400, `HTTP ${lr.status}`);
 	const lev = await api('GET', `/api/collections/ops_log_events/records?sort=at&perPage=50&filter=${encodeURIComponent(`entry="${lid}"`)}`, { token: roles.denied.token });
@@ -813,7 +815,9 @@ try {
 	});
 	check('admin publie une nouveauté', clAdm.status === 200, `HTTP ${clAdm.status}`);
 	const clRead = await api('GET', `/api/collections/changelog/records/${clAdm.json?.id}`, { token: roles.reader.token });
-	check('Nouveautés lisibles par un invité', clRead.status === 200, `HTTP ${clRead.status}`);
+	check("Nouveautés masquées à l'invité", clRead.status === 404, `HTTP ${clRead.status}`);
+	const clPaco = await api('GET', `/api/collections/changelog/records/${clAdm.json?.id}`, { token: u.token });
+	check('Nouveautés lisibles par un PACO/RCCA', clPaco.status === 200, `HTTP ${clPaco.status}`);
 	for (const c of [clMod, clAdm]) if (c.json?.id) await api('DELETE', `/api/collections/changelog/records/${c.json.id}`, { token: root });
 
 	const stUser = await api('POST', '/api/collections/app_settings/records', { token: u.token, body: { key: `t_${suffix}`, value: true, updated_by: u.id } });

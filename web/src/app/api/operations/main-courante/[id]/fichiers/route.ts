@@ -33,14 +33,23 @@ const EXT: Record<string, string> = {
   "application/pdf": "pdf",
 };
 
+function sameHost(origin: string, host: string | null): boolean {
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
   if (!user) return Response.json({ error: "Non connecté" }, { status: 401 });
-  if (!can(user, "journal:write"))
+  // Pièce jointe = modification de l'entrée (journal:update, rôles v2).
+  if (!can(user, "journal:update"))
     return Response.json({ error: "Droit manquant" }, { status: 403 });
-  // Même origine seulement (le cookie est SameSite=Lax, contrôle en plus).
+  // Même origine seulement (le cookie est SameSite=Lax, contrôle en plus ; `Origin: null` refusé).
   const origin = request.headers.get("origin");
-  if (origin && new URL(origin).host !== request.headers.get("host"))
+  if (origin && !sameHost(origin, request.headers.get("host")))
     return Response.json({ error: "Origine refusée" }, { status: 403 });
   const LIMIT = 3 * ATTACHMENT_MAX + 64 * 1024;
   if (Number(request.headers.get("content-length") ?? 0) > LIMIT)

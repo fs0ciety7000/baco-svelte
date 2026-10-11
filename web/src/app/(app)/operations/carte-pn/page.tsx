@@ -20,7 +20,7 @@ export default async function Page() {
       <PnBoard
         crossings={crossings}
         depots={depots}
-        canEdit={can(user, "carte_pn:write")}
+        canEdit={can(user, "carte_pn:write") && can(user, "carte_pn:update")}
         canReadLog={can(user, "journal:read")}
       />
     </section>

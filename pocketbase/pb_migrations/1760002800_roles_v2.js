@@ -1,8 +1,9 @@
 /// <reference path="../pb_data/types.d.ts" />
 // Rôles v2 (demande du 11 oct. 2026) : Administrateur et Sysop (tout), Modérateur (PACO/RCCA + suppression partout et
 // Nouveautés, sans l'administration), PACO/RCCA (lecture partout, écriture et modification, jamais de suppression),
-// Invité (lecture des commandes bus et taxi). Les comptes moderator, user, otto_agent et reader existants deviennent
-// PACO/RCCA (choix de l'utilisateur ; l'admin rend le rôle Modérateur à qui doit l'avoir).
+// Invité (lecture des commandes bus et taxi). Les comptes moderator gardent le rôle Modérateur ; user, otto_agent et
+// reader deviennent PACO/RCCA (choix confirmé de l'utilisateur, agents Otto compris : accès au nominatif PMR, voir la
+// note DPO).
 //
 // Droits par module en quatre actions : `X:read` (lecture), `X:write` (écriture = création), `X:update`
 // (modification), `X:delete` (suppression). Le rôle donne les droits par défaut ; `grants` / `denies` les ajoutent ou
@@ -125,10 +126,11 @@ migrate(
 		for (let i = 0; i < records.length; i++) {
 			const r = records[i];
 			const cur = r.getString('role');
-			if (OLD_ROLES.indexOf(cur) !== -1) r.set('role', 'paco');
+			if (cur !== 'moderator' && OLD_ROLES.indexOf(cur) !== -1) r.set('role', 'paco');
 			const dr = r.getString('disabled_role');
-			if (OLD_ROLES.indexOf(dr) !== -1) r.set('disabled_role', 'paco');
-			r.set('grants', withUpdate(parseList(r.getString('grants'))));
+			if (dr !== 'moderator' && OLD_ROLES.indexOf(dr) !== -1) r.set('disabled_role', 'paco');
+			// `audit:read` (repris de BACO) donnait le journal d'audit, nominatif PMR compris : retiré (audit du 11 oct.).
+			r.set('grants', withUpdate(parseList(r.getString('grants'))).filter((g) => g !== 'audit:read'));
 			r.set('denies', withUpdate(parseList(r.getString('denies'))));
 			const d = r.getString('district');
 			if (d && DISTRICTS.indexOf(d) !== -1) r.set('districts', [d]);
@@ -156,6 +158,26 @@ migrate(
 			c.deleteRule = Object.prototype.hasOwnProperty.call(DELETE_RULES, c.name)
 				? DELETE_RULES[c.name]
 				: rewrite(c.deleteRule, 'delete');
+			// Modération du Journal (messages retirés, textes des autres) : modérateurs et administrateurs seulement,
+			// pas tout PACO/RCCA (audit sécurité du 11 oct. 2026).
+			if (c.name === 'ops_log' || c.name === 'ops_log_reads' || c.name === 'ops_log_events') {
+				const all = '|| (@request.auth.role = "paco" || @request.auth.role = "moderator"))';
+				const mod = `|| ${MODERATOR})`;
+				for (const k of ['listRule', 'viewRule', 'createRule', 'updateRule']) if (c[k]) c[k] = c[k].split(all).join(mod);
+			}
+			// Matériel et zones PMR : un vrai droit (pmr:write / pmr:update), plus seulement le rôle.
+			if (c.name === 'pmr_equipment') {
+				c.createRule = `(${ACTIVE} && (${ADMIN} || ((@request.auth.role = "paco" || ${MODERATOR}) && @request.auth.denies !~ '"pmr:write"') || @request.auth.grants ~ '"pmr:write"')) && @request.body.updated_by = @request.auth.id`;
+			}
+			if (c.name === 'pmr_zones') {
+				c.createRule = `${ACTIVE} && (${ADMIN} || ((@request.auth.role = "paco" || ${MODERATOR}) && @request.auth.denies !~ '"pmr:write"') || @request.auth.grants ~ '"pmr:write"')`;
+				c.updateRule = `${ACTIVE} && (${ADMIN} || ((@request.auth.role = "paco" || ${MODERATOR}) && @request.auth.denies !~ '"pmr:update"') || @request.auth.grants ~ '"pmr:update"')`;
+			}
+			// Invité : bus et taxis seulement, pas les référentiels internes ni les Nouveautés.
+			if (c.name === 'pmr_zones' || c.name === 'spi_points' || c.name === 'changelog') {
+				c.listRule = `${c.listRule} && @request.auth.role != "guest"`;
+				c.viewRule = `${c.viewRule} && @request.auth.role != "guest"`;
+			}
 			if (c.name === 'changelog') {
 				// Nouveautés de l'application : administrateurs et modérateurs.
 				c.createRule = `${ACTIVE} && (${ADMIN} || ${MODERATOR}) && @request.body.author = @request.auth.id`;
@@ -164,23 +186,9 @@ migrate(
 			app.save(c);
 		}
 	},
-	(app) => {
-		// Retour arrière partiel : PACO/RCCA → agent (user), invité → lecteur ; les règles ne sont pas restaurées
-		// (restaurer une sauvegarde pour revenir réellement en arrière).
-		const users = app.findCollectionByNameOrId('users');
-		const role = users.fields.getByName('role');
-		role.values = ROLES.concat(OLD_ROLES.filter((r) => r !== 'moderator'));
-		const disabledRole = users.fields.getByName('disabled_role');
-		disabledRole.values = ACTIVE_ROLES.concat(OLD_ROLES.filter((r) => r !== 'moderator'));
-		app.save(users);
-		const records = app.findAllRecords('users');
-		for (let i = 0; i < records.length; i++) {
-			const r = records[i];
-			if (r.getString('role') === 'paco') r.set('role', 'user');
-			if (r.getString('role') === 'guest') r.set('role', 'reader');
-			if (r.getString('disabled_role') === 'paco') r.set('disabled_role', 'user');
-			if (r.getString('disabled_role') === 'guest') r.set('disabled_role', 'reader');
-			app.saveNoValidate(r);
-		}
+	() => {
+		// Pas de retour arrière : les règles réécrites testent les nouveaux rôles ; revenir aux anciens rôles couperait
+		// l'accès à tout le monde. Restaurer une sauvegarde à la place.
+		throw new Error('1760002800_roles_v2 : retour arrière impossible, restaurer une sauvegarde PocketBase.');
 	}
 );

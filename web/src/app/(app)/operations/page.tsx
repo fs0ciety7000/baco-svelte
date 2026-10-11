@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { LiveBoard } from "@/components/ops/live-board";
 import { can } from "@/lib/permissions";
+import { primaryDistrict } from "@/lib/team";
 import { requirePermission } from "@/server/auth";
 import { districtStations, favoritesOf, listWatches } from "@/server/data/ops";
 
@@ -11,7 +12,7 @@ export default async function Page() {
   const user = await requirePermission("live:read");
   const [watches, stations] = await Promise.all([
     listWatches(user.id),
-    districtStations(user.district),
+    districtStations(primaryDistrict(user)),
   ]);
   return (
     <section aria-label="Trains en direct">

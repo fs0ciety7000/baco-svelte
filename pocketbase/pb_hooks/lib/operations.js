@@ -1,7 +1,7 @@
 // Module Opérations : logique partagée par les hooks (les callbacks JSVM sont isolés, voir operations.pb.js).
 
-// Rôles v2 (11 oct. 2026) : modérateur et PACO/RCCA = coordinateurs ; l'invité ne lit que les commandes bus et taxi.
-const COORD_ROLES = ['admin', 'sysop', 'moderator', 'paco'];
+// Rôles v2 (11 oct. 2026) : la modération du Journal (retrait tardif, rétablissement) reste aux modérateurs et admins ; l'invité ne lit que les commandes bus et taxi.
+const COORD_ROLES = ['admin', 'sysop', 'moderator'];
 // Rôles qui lisent le Journal par défaut (journal:read).
 const LOG_READERS = ['admin', 'sysop', 'moderator', 'paco'];
 const MAX_WATCHES = 10;
