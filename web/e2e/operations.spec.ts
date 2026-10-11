@@ -227,6 +227,14 @@ test("carte PN : recherche, fiche, itinéraire, tuiles relayées", async ({ page
 
 test("cloche et statistiques", async ({ page }, info) => {
   test.skip(info.project.name !== "desktop", "parcours en desktop");
+  // Repart d'une cloche vide : d'autres tests (bons envoyés proches du départ, missions DICOS) déclenchent désormais des
+  // alertes H-2 / DICOS pour l'agent de test (11 oct. 2026).
+  const old = (await pb(
+    "GET",
+    `/api/collections/notifications/records?perPage=200&filter=${encodeURIComponent(`user="${agentId}"`)}`,
+  )) as { items?: { id: string }[] };
+  for (const n of old.items ?? [])
+    await pb("DELETE", `/api/collections/notifications/records/${n.id}`);
   await pb("POST", "/api/collections/notifications/records", {
     user: agentId,
     kind: "systeme",

@@ -64,6 +64,7 @@ test("navigation principale et onglets en routes", async ({ page, isMobile }, te
     "Bus",
     "Taxi",
     "Suivi",
+    "Fournisseurs",
     "Archives",
     "Remise B201",
   ]);

@@ -100,7 +100,9 @@ test("mission : panneau en lecture seule, libellé à copier", async ({ page }, 
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   // Lecture seule (synchro DICOS, aucune édition) : on ouvre la mission de démo créée en amont.
+  // Gare de démo hors des trois districts : filtre « Tous les districts » (défaut = districts du jour depuis le 11 oct.).
   await login(page, "/pmr");
+  await page.goto("/pmr?district=tous");
   const row = page.getByRole("button", { name: `Ouvrir la mission de 08:15 à ${STATION}` });
   await row.click();
   await expect(page.getByTestId("assist-panel")).toContainText("1 × NV");
@@ -167,7 +169,7 @@ for (const t of ["nuit", "jour"] as const) {
       },
     ]);
     const p = info.project.name;
-    await page.goto("/pmr");
+    await page.goto("/pmr?district=tous");
     await snap(page, `${t}-prestations`, p);
     await (
       p === "desktop"
