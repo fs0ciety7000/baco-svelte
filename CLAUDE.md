@@ -267,6 +267,11 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   n'est pas touché ; pour couper Vercel entièrement, déconnecter le dépôt dans le tableau de bord Vercel.
 - (v2) **Server Actions limitées à 1 Mo** (défaut de Next) : un envoi de fichier passe par une route (`POST /api/…`,
   lecture bornée du corps) — les documents de la bibliothèque ne partaient pas au-delà de 1 Mo (11 oct.).
+- (v2) **Webhook de la GitHub App de Coolify** : son adresse était `http://152.53.176.13:8000/…` (fixée à la création de l'App) ;
+  la fermeture du port 8000 (pare-feu netcup, 11 oct.) a coupé tous les déploiements automatiques. Remise sur
+  `https://coolify.fs0ciety.org/webhooks/source/github/events` depuis le hub (GitHub › « Déploiements automatiques », qui montre
+  aussi les livraisons). Les sites CARDOR (`mons-corp`) sont en source « Public GitHub » : sans webhook, sauf webhook manuel
+  sur le dépôt. **Pare-feu netcup** : la politique se termine par un « Drop all » implicite → une règle ACCEPT tout en dernier.
 - (v2) Playwright : un libellé avec astérisque requis (`Arrivée *`) ne répond pas à `getByLabel(…, { exact: true })` ;
   passer par `getByRole(…, { name, exact: true })`.
 
@@ -921,6 +926,12 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   `@`), 10 gardées par stockage. OCC : route `POST /api/occ/admin/backups/restore` ajoutée (superusers sous MFA). Cosmic :
   superuser dédié au hub + jeton R2 lecture/écriture limité au bucket `cosmic`. Testé en local (PocketBase et OCC) ; en prod,
   liste + une sauvegarde Cosmic seulement, **aucune restauration**.
+
+- 2026-10-11 — **Pages d'erreur de tous les services** (dépôt `coolify`, dossier `error-pages`, service Coolify du même nom) : pages
+  404 / 502 / 503 / 504 / maintenance par marque (CARDOR, CSM, OCC, Privatix, hub, Tandem, Cosmic, RailCards, Taupe, générique
+  fs0ciety), route Traefik de secours de priorité 1 (service arrêté → 503 de la marque, adresse inconnue → 404). CSM : pages
+  « introuvable » de l'appli (globale + dans le shell), en préversion. Pages Cloudflare « serveur injoignable » prêtes mais
+  **impossibles en offre gratuite**. Taupe passé derrière le proxy Cloudflare (IP joueur par `CF-Connecting-IP`, liste blanche).
 
 ---
 
