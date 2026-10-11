@@ -250,6 +250,14 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   **Une application Access à plusieurs domaines** renvoie, après la connexion, vers `/cdn-cgi/access/authorized` d'un
   **autre** domaine de l'application (boucle : base → tools, puis webmail → tools, 10 oct.) → **une application Access par
   nom d'hôte ou par chemin**, jamais de regroupement.
+- (v2) **Access se contourne par l'IP du serveur** (Traefik route sur l'en-tête Host ; vérifié le 11 oct. : le hub répondait 200
+  par `https://152.53.176.13` + `Host: services.fs0ciety.org`). Parades posées : signature Access vérifiée par le hub ; étiquette
+  Traefik `ipallowlist` des IP Cloudflare (`cf-only-*`) sur webmail, Stalwart, Surrealist, PocketBase CSM (prod + preview),
+  PocketBase de Cosmic Empires, préprod Cosmic et OCC Deliveries. Services compose : une étiquette
+  `traefik.http.middlewares.<nom>.ipallowlist.sourcerange=…` dans le compose suffit (Coolify l'ajoute à ses routeurs).
+  Applications : `custom_labels` complètes modifiées par l'API (« Readonly labels » reste coché et n'est pas modifiable par
+  l'API : **si quelqu'un change le domaine dans l'interface, Coolify régénère les étiquettes et la liste blanche saute** →
+  l'audit `/admin/access` du hub le signale). Le tableau de bord Coolify reste joignable par l'IP (sa connexion protège).
 - (v2) **Les services envoient avec le mot de passe d'application** du compte Stalwart `nicolas`, jamais son mot de passe
   personnel (le changer coupe tous les envois : 10 oct.).
 - (v2) **Tests d'envoi d'e-mail : uniquement vers `nd.managment@gmail.com`** (demande de l'utilisateur du 10 oct.), jamais
@@ -882,6 +890,13 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   PR, CI, alertes, fusion / approbation / relance de workflow, `GITHUB_TOKEN` à fournir par l'utilisateur), annuaire remis à
   jour (sites CARDOR, CSM prod, webmail, Coolify, Immich ; OCC Studios retiré) et **hôte entier derrière Cloudflare Access**
   (application « fs0ciety Hub » `b1f29c62-07d0-428b-8bce-823f6e1e43e7`, mêmes e-mails que Coolify).
+
+- 2026-10-11 — **Sauvegardes hors serveur de Cosmic Empires et OCC Deliveries** : déjà en place (OCC : sauvegardes PocketBase
+  vers R2 `occ-deliveries-backups` avec vérification de restauration, ajoutées le matin par une autre session ; Cosmic : copie
+  quotidienne des sauvegardes PocketBase vers R2 `cosmic` par le workflow GitHub `r2-backup.yml`, heure variable). Première
+  sauvegarde OCC lancée et vérifiée ; le hub suit les deux (clé R2 en lecture seule limitée au bucket `cosmic`). **Tableau de
+  bord Coolify** : `coolify.yaml` est régénéré par Coolify (nom réservé) → fichier séparé `hub/docs/cloudflare-only.yaml`
+  (dépôt `coolify`, routeurs prioritaires + liste blanche Cloudflare) à poser par l'utilisateur dans Proxy › Dynamic configurations.
 
 ---
 
