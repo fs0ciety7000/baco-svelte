@@ -973,6 +973,12 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   Restes : onglet Fournisseurs visible seulement avec `otto:read` (un agent « taxi seul » ne le voit pas) ; urgences et
   consignes du Journal affichées sur l'écran commun (choix fonctionnel, à confirmer DPO).
 
+- 2026-10-11 — **Arrêts au choix** dans le bon bus (« Toutes les gares des lignes cochées », direct compris, arrêts d'un direct
+  imprimés). **Lot du 11 oct. poussé en production** (accord de l'utilisateur, `csm-prod` = fd09365, santé 200). Référentiel
+  des lignes : **Schaerbeek retiré de la L.161** (placé avant Namur, faussait les itinéraires ; il est sur la L.26, absente du
+  référentiel, et reste sur la L.36) en préversion et en production par Admin › Lignes et arrêts (accord de l'utilisateur).
+  À refaire si le référentiel des lignes est réimporté depuis BACO.
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)
