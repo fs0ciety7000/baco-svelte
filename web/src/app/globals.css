@@ -297,12 +297,13 @@
   }
 
   /* Libellé mono en capitales (eyebrows, en-têtes de tableau, badges). */
+  /* Thèmes de référence (Jour, Nuit, Contraste élevé) : libellé en Geist casse normale (`--label-*`). */
   .label-mono {
-    font-family: var(--font-mono);
+    font-family: var(--label-font, var(--font-mono));
     font-size: var(--text-label);
     line-height: var(--text-label--line-height);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    letter-spacing: var(--label-track, 0.06em);
+    text-transform: var(--label-case, uppercase);
   }
 
   /* Titres : police, casse et approche propres au thème (Saira capitales, Geist serré, Plex condensé). */

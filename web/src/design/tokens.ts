@@ -34,8 +34,10 @@ export type ModuleId = (typeof MODULE_IDS)[number];
 
 export type ColorToken = (typeof COLOR_TOKENS)[number];
 export type Scheme = "dark" | "light";
-export type Shape = "angle" | "soft" | "pill";
-export type TypeSet = "saira" | "geist" | "plex";
+export type Shape = "angle" | "soft" | "pill" | "net";
+export type TypeSet = "saira" | "geist" | "plex" | "pro";
+/** « reference » : thèmes mis en avant (Jour, Nuit, Contraste élevé, 11 oct. 2026) ; « other » : sous « Autres thèmes ». */
+export type ThemeGroup = "reference" | "other";
 export type Theme = {
   id: ThemeId;
   label: string;
@@ -43,11 +45,15 @@ export type Theme = {
   scheme: Scheme;
   shape: Shape;
   type: TypeSet;
+  group?: ThemeGroup;
   colors: Record<ColorToken, string>;
   modules?: Record<ModuleId, string>;
 };
 
 export const THEME_IDS = [
+  "jour",
+  "nuit",
+  "net-contraste",
   "commandement",
   "craie",
   "craie-jour",
@@ -61,13 +67,94 @@ export const THEME_IDS = [
   "contraste",
 ] as const;
 export type ThemeId = (typeof THEME_IDS)[number];
-/** Choix possibles de l'agent : un thème fixe, ou « auto » (Commandement / Ivoire selon le système). */
+/** Choix possibles de l'agent : un thème fixe, ou « auto » (Nuit / Jour selon le système). */
 export type ThemeChoice = ThemeId | "auto";
-export const AUTO_THEMES: Record<Scheme, ThemeId> = { dark: "commandement", light: "ivoire" };
+export const AUTO_THEMES: Record<Scheme, ThemeId> = { dark: "nuit", light: "jour" };
 
 // Rôles : `fg-subtle` = texte d'appoint (placeholder, désactivé) ; `progress` = statut « confirmé / en cours de
 // traitement », distinct de l'accent (réservé à l'action : bouton primaire, sélection, focus).
 export const THEMES: Theme[] = [
+  // --- Thèmes de référence (évolution « poste d'exploitation » validée le 11 oct. 2026) : une seule voix (Geist en
+  // casse normale, libellés sans mono), rayon 4 px sans chanfrein. Les 11 thèmes du 9 oct. restent intacts.
+  {
+    id: "jour",
+    label: "Jour",
+    description: "Clair et sobre, pour la journée au bureau",
+    scheme: "light",
+    shape: "net",
+    type: "pro",
+    group: "reference",
+    colors: {
+      bg: "#F2F3F1",
+      surface: "#FFFFFF",
+      "surface-2": "#EBEDEA",
+      border: "#D8DBD6",
+      "border-strong": "#7E837D",
+      fg: "#15181A",
+      "fg-muted": "#4E555A",
+      "fg-subtle": "#6A7076",
+      accent: "#0B5F66",
+      "accent-fg": "#FFFFFF",
+      ok: "#2B6A12",
+      warn: "#8A5A00",
+      danger: "#B3261E",
+      info: "#2F55A4",
+      progress: "#7A3E8E",
+    },
+  },
+  {
+    id: "nuit",
+    label: "Nuit",
+    description: "Sombre, accent ambre, pour les écrans de soirée",
+    scheme: "dark",
+    shape: "net",
+    type: "pro",
+    group: "reference",
+    colors: {
+      bg: "#0F1012",
+      surface: "#16181B",
+      "surface-2": "#1F2226",
+      border: "#2D3137",
+      "border-strong": "#6E747C",
+      fg: "#E9E7E2",
+      "fg-muted": "#ABAFB4",
+      "fg-subtle": "#878C92",
+      accent: "#F7BE45",
+      "accent-fg": "#121212",
+      ok: "#62CD80",
+      warn: "#F68C36",
+      danger: "#FD7277",
+      info: "#6CB8EC",
+      progress: "#D78ADB",
+    },
+  },
+  {
+    id: "net-contraste",
+    label: "Contraste élevé",
+    description: "Accessibilité : noir, blanc, jaune vif",
+    scheme: "dark",
+    shape: "net",
+    type: "pro",
+    group: "reference",
+    colors: {
+      bg: "#000000",
+      surface: "#0A0A0A",
+      "surface-2": "#141414",
+      border: "#8A8A8A",
+      "border-strong": "#BDBDBD",
+      fg: "#FFFFFF",
+      "fg-muted": "#D9D9D9",
+      "fg-subtle": "#BDBDBD",
+      accent: "#FFD400",
+      "accent-fg": "#000000",
+      ok: "#3DFF8C",
+      warn: "#FF9A1F",
+      danger: "#FF5C5C",
+      info: "#4CC9FF",
+      progress: "#E59BFF",
+    },
+  },
+  // --- Autres thèmes (catalogue du 9 oct. 2026, inchangés).
   {
     id: "commandement",
     label: "Commandement",
@@ -336,7 +423,7 @@ export const THEMES: Theme[] = [
   },
   {
     id: "contraste",
-    label: "Contraste élevé",
+    label: "Contraste élevé (angles)",
     description: "Accessibilité : noir, blanc, jaune vif",
     scheme: "dark",
     shape: "angle",
@@ -369,6 +456,7 @@ export const SHAPES: Record<
   angle: { box: "0px", control: "0px", chamfer: "8px", chamferSm: "6px" },
   soft: { box: "8px", control: "6px", chamfer: "0px", chamferSm: "0px" },
   pill: { box: "12px", control: "999px", chamfer: "0px", chamferSm: "0px" },
+  net: { box: "4px", control: "4px", chamfer: "0px", chamferSm: "0px" },
 };
 
 const SANS_FALLBACK = "ui-sans-serif, system-ui, sans-serif";
@@ -377,7 +465,16 @@ const MONO_FALLBACK = "ui-monospace, SFMono-Regular, Menlo, monospace";
 /** Typographie : texte, titres (display), mono ; casse et approche des titres. */
 export const TYPESETS: Record<
   TypeSet,
-  { ui: string; title: string; code: string; case: string; track: string; weight: string }
+  {
+    ui: string;
+    title: string;
+    code: string;
+    case: string;
+    track: string;
+    weight: string;
+    /** Libellés (`.label-mono` : sourcils, en-têtes de tableau) : police, casse, approche. */
+    label?: { font: string; case: string; track: string };
+  }
 > = {
   saira: {
     ui: `var(--font-geist), ${SANS_FALLBACK}`,
@@ -394,6 +491,16 @@ export const TYPESETS: Record<
     case: "none",
     track: "-0.02em",
     weight: "600",
+  },
+  // Une seule voix : la mono ne sert plus qu'aux n° de train, heures, références et chiffres (`font-mono`).
+  pro: {
+    ui: `var(--font-geist), ${SANS_FALLBACK}`,
+    title: `var(--font-geist), ${SANS_FALLBACK}`,
+    code: `var(--font-geist-mono), ${MONO_FALLBACK}`,
+    case: "none",
+    track: "-0.01em",
+    weight: "600",
+    label: { font: `var(--font-geist), ${SANS_FALLBACK}`, case: "none", track: "0" },
   },
   plex: {
     ui: `var(--font-plex), ${SANS_FALLBACK}`,
@@ -434,6 +541,9 @@ function block(selector: string, theme: Theme, indent = ""): string {
     `--display-case: ${type.case};`,
     `--display-track: ${type.track};`,
     `--display-weight: ${type.weight};`,
+    `--label-font: ${type.label?.font ?? "var(--font-code)"};`,
+    `--label-case: ${type.label?.case ?? "uppercase"};`,
+    `--label-track: ${type.label?.track ?? "0.06em"};`,
   ];
   return `${indent}${selector} {\n${lines.map((l) => `${indent}  ${l}`).join("\n")}\n${indent}}`;
 }
@@ -442,8 +552,8 @@ function block(selector: string, theme: Theme, indent = ""): string {
 export function themesCss(): string {
   const parts = [
     "/* Fichier généré par `npm run tokens` depuis src/design/tokens.ts : ne pas modifier à la main. */",
-    block(':root,\n[data-theme="commandement"]', themeById("commandement")),
-    ...THEMES.filter((t) => t.id !== "commandement").map((t) => block(`[data-theme="${t.id}"]`, t)),
+    block(':root,\n[data-theme="nuit"]', themeById("nuit")),
+    ...THEMES.filter((t) => t.id !== "nuit").map((t) => block(`[data-theme="${t.id}"]`, t)),
     block('[data-theme="auto"]', themeById(AUTO_THEMES.dark)),
     `@media (prefers-color-scheme: light) {\n${block('[data-theme="auto"]', themeById(AUTO_THEMES.light), "  ")}\n}`,
   ];

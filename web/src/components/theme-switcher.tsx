@@ -12,7 +12,7 @@ import {
 } from "@/lib/browser-notify";
 import { Switch } from "@/components/ui/checkbox";
 import type { UiPreferences } from "@/design/preferences";
-import { type ThemeId, THEMES, themeById } from "@/design/tokens";
+import { AUTO_THEMES, type ThemeChoice, type ThemeId, THEMES, themeById } from "@/design/tokens";
 import { cn } from "@/lib/utils";
 
 /** Aperçu d'un thème : ses propres variables (data-theme sur l'élément), fond, accent et statuts. */
@@ -59,50 +59,65 @@ export function ThemeSwitcher({
     startTransition(() => saveUiPreferences(next));
   };
 
-  const choices = [
-    {
-      id: "auto" as const,
-      label: "Automatique",
-      description: "Commandement ou Ivoire selon le système",
-    },
-    ...THEMES,
+  type Choice = { id: ThemeChoice; label: string; description: string };
+  const reference: Choice[] = [
+    { id: "auto", label: "Automatique", description: "Jour ou Nuit selon le système" },
+    ...THEMES.filter((t) => t.group === "reference"),
   ];
+  const others: Choice[] = THEMES.filter((t) => t.group !== "reference");
+  const otherActive = others.some((t) => t.id === value.theme);
+
+  const card = (t: Choice) => {
+    const checked = value.theme === t.id;
+    return (
+      <button
+        key={t.id}
+        type="button"
+        role="radio"
+        aria-checked={checked}
+        onClick={() => apply({ ...value, theme: t.id })}
+        className={cn(
+          "flex min-w-0 cursor-pointer flex-col gap-1.5 rounded-box border p-2 text-left transition-colors",
+          checked
+            ? "border-accent bg-surface-2"
+            : "border-border-strong bg-surface hover:border-fg-muted",
+        )}
+      >
+        {t.id === "auto" ? (
+          <span aria-hidden className="grid h-12 grid-cols-2 overflow-hidden rounded-box">
+            <ThemePreview id={AUTO_THEMES.dark} />
+            <ThemePreview id={AUTO_THEMES.light} />
+          </span>
+        ) : (
+          <ThemePreview id={t.id} className="h-12" />
+        )}
+        <span className="flex items-center gap-1.5 text-body font-medium text-fg">
+          {t.id === "auto" ? <Monitor className="size-4" aria-hidden /> : null}
+          {t.label}
+        </span>
+        <span className="line-clamp-2 text-small text-fg-muted">{t.description}</span>
+      </button>
+    );
+  };
+
   return (
     <div className="flex flex-col gap-4">
-      <div role="radiogroup" aria-label="Thème" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {choices.map((t) => {
-          const checked = value.theme === t.id;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              role="radio"
-              aria-checked={checked}
-              onClick={() => apply({ ...value, theme: t.id })}
-              className={cn(
-                "flex min-w-0 cursor-pointer flex-col gap-1.5 rounded-box border p-2 text-left transition-colors",
-                checked
-                  ? "border-accent bg-surface-2"
-                  : "border-border-strong bg-surface hover:border-fg-muted",
-              )}
-            >
-              {t.id === "auto" ? (
-                <span aria-hidden className="grid h-12 grid-cols-2 overflow-hidden rounded-box">
-                  <ThemePreview id="commandement" />
-                  <ThemePreview id="ivoire" />
-                </span>
-              ) : (
-                <ThemePreview id={t.id} className="h-12" />
-              )}
-              <span className="flex items-center gap-1.5 text-body font-medium text-fg">
-                {t.id === "auto" ? <Monitor className="size-4" aria-hidden /> : null}
-                {t.label}
-              </span>
-              <span className="line-clamp-2 text-small text-fg-muted">{t.description}</span>
-            </button>
-          );
-        })}
+      <div role="radiogroup" aria-label="Thème" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {reference.map(card)}
       </div>
+      {/* Catalogue du 9 oct. 2026, inchangé (formes, typographies) : replié sauf si l'un d'eux est choisi. */}
+      <details open={otherActive} className="group">
+        <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-body font-medium text-fg-muted hover:text-fg">
+          Autres thèmes <span className="text-small">({others.length})</span>
+        </summary>
+        <div
+          role="radiogroup"
+          aria-label="Autres thèmes"
+          className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3"
+        >
+          {others.map(card)}
+        </div>
+      </details>
       <ShortcutsToggle />
       <BrowserNotifyToggle />
       <div role="radiogroup" aria-label="Densité" className="flex gap-2">

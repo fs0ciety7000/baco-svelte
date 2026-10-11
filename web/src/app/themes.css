@@ -1,6 +1,120 @@
 /* Fichier généré par `npm run tokens` depuis src/design/tokens.ts : ne pas modifier à la main. */
 
 :root,
+[data-theme="nuit"] {
+  color-scheme: dark;
+  --bg: #0F1012;
+  --surface: #16181B;
+  --surface-2: #1F2226;
+  --border: #2D3137;
+  --border-strong: #6E747C;
+  --fg: #E9E7E2;
+  --fg-muted: #ABAFB4;
+  --fg-subtle: #878C92;
+  --accent: #F7BE45;
+  --accent-fg: #121212;
+  --ok: #62CD80;
+  --warn: #F68C36;
+  --danger: #FD7277;
+  --info: #6CB8EC;
+  --progress: #D78ADB;
+  --mod-commandes: var(--accent);
+  --mod-pmr: var(--accent);
+  --mod-operations: var(--accent);
+  --mod-referentiels: var(--accent);
+  --mod-equipe: var(--accent);
+  --mod-admin: var(--accent);
+  --r-box: 4px;
+  --r-control: 4px;
+  --chamfer: 0px;
+  --chamfer-sm: 0px;
+  --font-ui: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-title: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-code: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --display-case: none;
+  --display-track: -0.01em;
+  --display-weight: 600;
+  --label-font: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --label-case: none;
+  --label-track: 0;
+}
+
+[data-theme="jour"] {
+  color-scheme: light;
+  --bg: #F2F3F1;
+  --surface: #FFFFFF;
+  --surface-2: #EBEDEA;
+  --border: #D8DBD6;
+  --border-strong: #7E837D;
+  --fg: #15181A;
+  --fg-muted: #4E555A;
+  --fg-subtle: #6A7076;
+  --accent: #0B5F66;
+  --accent-fg: #FFFFFF;
+  --ok: #2B6A12;
+  --warn: #8A5A00;
+  --danger: #B3261E;
+  --info: #2F55A4;
+  --progress: #7A3E8E;
+  --mod-commandes: var(--accent);
+  --mod-pmr: var(--accent);
+  --mod-operations: var(--accent);
+  --mod-referentiels: var(--accent);
+  --mod-equipe: var(--accent);
+  --mod-admin: var(--accent);
+  --r-box: 4px;
+  --r-control: 4px;
+  --chamfer: 0px;
+  --chamfer-sm: 0px;
+  --font-ui: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-title: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-code: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --display-case: none;
+  --display-track: -0.01em;
+  --display-weight: 600;
+  --label-font: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --label-case: none;
+  --label-track: 0;
+}
+
+[data-theme="net-contraste"] {
+  color-scheme: dark;
+  --bg: #000000;
+  --surface: #0A0A0A;
+  --surface-2: #141414;
+  --border: #8A8A8A;
+  --border-strong: #BDBDBD;
+  --fg: #FFFFFF;
+  --fg-muted: #D9D9D9;
+  --fg-subtle: #BDBDBD;
+  --accent: #FFD400;
+  --accent-fg: #000000;
+  --ok: #3DFF8C;
+  --warn: #FF9A1F;
+  --danger: #FF5C5C;
+  --info: #4CC9FF;
+  --progress: #E59BFF;
+  --mod-commandes: var(--accent);
+  --mod-pmr: var(--accent);
+  --mod-operations: var(--accent);
+  --mod-referentiels: var(--accent);
+  --mod-equipe: var(--accent);
+  --mod-admin: var(--accent);
+  --r-box: 4px;
+  --r-control: 4px;
+  --chamfer: 0px;
+  --chamfer-sm: 0px;
+  --font-ui: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-title: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-code: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --display-case: none;
+  --display-track: -0.01em;
+  --display-weight: 600;
+  --label-font: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --label-case: none;
+  --label-track: 0;
+}
+
 [data-theme="commandement"] {
   color-scheme: dark;
   --bg: #0D0B09;
@@ -34,6 +148,9 @@
   --display-case: uppercase;
   --display-track: 0.02em;
   --display-weight: 700;
+  --label-font: var(--font-code);
+  --label-case: uppercase;
+  --label-track: 0.06em;
 }
 
 [data-theme="craie"] {
@@ -69,6 +186,9 @@
   --display-case: none;
   --display-track: -0.02em;
   --display-weight: 600;
+  --label-font: var(--font-code);
+  --label-case: uppercase;
+  --label-track: 0.06em;
 }
 
 [data-theme="craie-jour"] {
@@ -104,6 +224,9 @@
   --display-case: none;
   --display-track: -0.02em;
   --display-weight: 600;
+  --label-font: var(--font-code);
+  --label-case: uppercase;
+  --label-track: 0.06em;
 }
 
 [data-theme="ivoire"] {
@@ -139,6 +262,9 @@
   --display-case: uppercase;
   --display-track: 0.02em;
   --display-weight: 700;
+  --label-font: var(--font-code);
+  --label-case: uppercase;
+  --label-track: 0.06em;
 }
 
 [data-theme="porcelaine"] {
@@ -174,6 +300,9 @@
   --display-case: none;
   --display-track: -0.02em;
   --display-weight: 600;
+  --label-font: var(--font-code);
+  --label-case: uppercase;
+  --label-track: 0.06em;
 }
 
 [data-theme="rail"] {
@@ -209,6 +338,9 @@
   --display-case: none;
   --display-track: -0.01em;
   --display-weight: 600;
+  --label-font: var(--font-code);
+  --label-case: uppercase;
+  --label-track: 0.06em;
 }
 
 [data-theme="nocturne"] {
@@ -244,6 +376,9 @@
   --display-case: none;
   --display-track: -0.02em;
   --display-weight: 600;
+  --label-font: var(--font-code);
+  --label-case: uppercase;
+  --label-track: 0.06em;
 }
 
 [data-theme="graphite"] {
@@ -279,6 +414,9 @@
   --display-case: none;
   --display-track: -0.02em;
   --display-weight: 600;
+  --label-font: var(--font-code);
+  --label-case: uppercase;
+  --label-track: 0.06em;
 }
 
 [data-theme="prune"] {
@@ -314,6 +452,9 @@
   --display-case: none;
   --display-track: -0.02em;
   --display-weight: 600;
+  --label-font: var(--font-code);
+  --label-case: uppercase;
+  --label-track: 0.06em;
 }
 
 [data-theme="foret"] {
@@ -349,6 +490,9 @@
   --display-case: none;
   --display-track: -0.01em;
   --display-weight: 600;
+  --label-font: var(--font-code);
+  --label-case: uppercase;
+  --label-track: 0.06em;
 }
 
 [data-theme="contraste"] {
@@ -384,24 +528,27 @@
   --display-case: none;
   --display-track: -0.02em;
   --display-weight: 600;
+  --label-font: var(--font-code);
+  --label-case: uppercase;
+  --label-track: 0.06em;
 }
 
 [data-theme="auto"] {
   color-scheme: dark;
-  --bg: #0D0B09;
-  --surface: #161310;
-  --surface-2: #1F1B17;
-  --border: #37322C;
-  --border-strong: #7C766E;
-  --fg: #EDE7DC;
-  --fg-muted: #B1AA9E;
-  --fg-subtle: #8C857C;
-  --accent: #FAC13B;
-  --accent-fg: #0D0B09;
-  --ok: #64CF80;
+  --bg: #0F1012;
+  --surface: #16181B;
+  --surface-2: #1F2226;
+  --border: #2D3137;
+  --border-strong: #6E747C;
+  --fg: #E9E7E2;
+  --fg-muted: #ABAFB4;
+  --fg-subtle: #878C92;
+  --accent: #F7BE45;
+  --accent-fg: #121212;
+  --ok: #62CD80;
   --warn: #F68C36;
   --danger: #FD7277;
-  --info: #68B7ED;
+  --info: #6CB8EC;
   --progress: #D78ADB;
   --mod-commandes: var(--accent);
   --mod-pmr: var(--accent);
@@ -409,51 +556,57 @@
   --mod-referentiels: var(--accent);
   --mod-equipe: var(--accent);
   --mod-admin: var(--accent);
-  --r-box: 0px;
-  --r-control: 0px;
-  --chamfer: 8px;
-  --chamfer-sm: 6px;
+  --r-box: 4px;
+  --r-control: 4px;
+  --chamfer: 0px;
+  --chamfer-sm: 0px;
   --font-ui: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
-  --font-title: var(--font-saira), var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-title: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
   --font-code: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
-  --display-case: uppercase;
-  --display-track: 0.02em;
-  --display-weight: 700;
+  --display-case: none;
+  --display-track: -0.01em;
+  --display-weight: 600;
+  --label-font: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --label-case: none;
+  --label-track: 0;
 }
 
 @media (prefers-color-scheme: light) {
   [data-theme="auto"] {
     color-scheme: light;
-    --bg: #F5F1E8;
-    --surface: #FBF8F1;
-    --surface-2: #EFE9DC;
-    --border: #D8CFBF;
-    --border-strong: #857B6C;
-    --fg: #1A1714;
-    --fg-muted: #5C554B;
-    --fg-subtle: #6E665B;
+    --bg: #F2F3F1;
+    --surface: #FFFFFF;
+    --surface-2: #EBEDEA;
+    --border: #D8DBD6;
+    --border-strong: #7E837D;
+    --fg: #15181A;
+    --fg-muted: #4E555A;
+    --fg-subtle: #6A7076;
     --accent: #0B5F66;
-    --accent-fg: #FBF8F1;
-    --ok: #2A6B2E;
-    --warn: #855A00;
-    --danger: #B0262B;
+    --accent-fg: #FFFFFF;
+    --ok: #2B6A12;
+    --warn: #8A5A00;
+    --danger: #B3261E;
     --info: #2F55A4;
-    --progress: #8A3A7E;
+    --progress: #7A3E8E;
     --mod-commandes: var(--accent);
     --mod-pmr: var(--accent);
     --mod-operations: var(--accent);
     --mod-referentiels: var(--accent);
     --mod-equipe: var(--accent);
     --mod-admin: var(--accent);
-    --r-box: 0px;
-    --r-control: 0px;
-    --chamfer: 8px;
-    --chamfer-sm: 6px;
+    --r-box: 4px;
+    --r-control: 4px;
+    --chamfer: 0px;
+    --chamfer-sm: 0px;
     --font-ui: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
-    --font-title: var(--font-saira), var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+    --font-title: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
     --font-code: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
-    --display-case: uppercase;
-    --display-track: 0.02em;
-    --display-weight: 700;
+    --display-case: none;
+    --display-track: -0.01em;
+    --display-weight: 600;
+    --label-font: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+    --label-case: none;
+    --label-track: 0;
   }
 }

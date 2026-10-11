@@ -36,7 +36,7 @@ const STATUSES: ColorToken[] = ["ok", "warn", "danger", "info", "progress"];
 describe.each(THEMES)("thème $label", (theme) => {
   const c = theme.colors;
   // Texte courant : AAA (7:1) exigé pour le thème Contraste élevé, AA (4,5:1) ailleurs.
-  const bodyMin = theme.id === "contraste" ? 7 : 4.5;
+  const bodyMin = theme.id === "contraste" || theme.id === "net-contraste" ? 7 : 4.5;
 
   it.each(TEXTS.flatMap((t) => SURFACES.map((s) => [t, s] as const)))(
     "%s lisible sur %s",

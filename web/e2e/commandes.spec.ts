@@ -248,7 +248,7 @@ test("taxi : création liée à une société, aller-retour pré-inversé", asyn
   ).toBe(true);
 });
 
-for (const t of ["commandement", "ivoire"] as const) {
+for (const t of ["nuit", "jour"] as const) {
   test(`captures ${t}`, async ({ page }, info) => {
     await login(page);
     await theme(page, t);

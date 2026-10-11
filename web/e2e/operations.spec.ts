@@ -291,7 +291,7 @@ async function snap(page: Page, name: string, project: string, full = true) {
   await page.screenshot({ path: `test-results/operations-${name}-${project}.png`, fullPage: full });
 }
 
-for (const t of ["commandement", "ivoire"] as const) {
+for (const t of ["nuit", "jour"] as const) {
   test(`captures ${t}`, async ({ page, context }, info) => {
     await login(page);
     await context.addCookies([
