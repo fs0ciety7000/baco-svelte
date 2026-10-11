@@ -43,6 +43,7 @@ import { useAutosave } from "@/lib/orders/use-autosave";
 import { PdfLink, SendDialog } from "./send-dialog";
 import { StartPanel, type StartPanelProps } from "./start-panel";
 import { TransitionButtons } from "./transitions";
+import { lineLabel } from "@/lib/lines";
 
 export type BusFormProps = {
   /** Identifiant de l'écran « nouveau » (clé React + URL), pour qu'un 2e « Nouveau » reparte de zéro. */
@@ -340,7 +341,7 @@ export function BusForm(props: BusFormProps) {
                       onPressedChange={(on) => toggleLine(l, on)}
                       disabled={!editable}
                     >
-                      L.{l}
+                      {lineLabel(l)}
                     </ToggleChip>
                   ))}
                 </div>

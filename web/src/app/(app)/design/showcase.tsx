@@ -50,6 +50,7 @@ import { contrast } from "@/design/contrast";
 import type { UiPreferences } from "@/design/preferences";
 import { AUTO_THEMES, COLOR_TOKENS, THEMES, themeById } from "@/design/tokens";
 import { useStaggerIn } from "@/lib/motion";
+import { lineLabel } from "@/lib/lines";
 
 // Données fictives uniquement (aucune donnée réelle sur cette page).
 const ORDERS: {
@@ -663,7 +664,7 @@ function FormKitDemo() {
               pressed={lines.includes(l)}
               onPressedChange={(on) => setLines((x) => (on ? [...x, l] : x.filter((y) => y !== l)))}
             >
-              L.{l}
+              {lineLabel(l)}
             </ToggleChip>
           ))}
         </div>

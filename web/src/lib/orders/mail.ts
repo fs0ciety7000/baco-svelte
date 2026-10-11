@@ -1,5 +1,6 @@
 import { parseEmails, PMR_TYPES, type BusDraft, type TaxiDraft } from "./schemas";
 import { formatLongDay, formatShortDay } from "./time";
+import { lineLabel } from "@/lib/lines";
 
 // Composition des e-mails de commande (bus C3 et taxi). Le corps reprend tout l'essentiel du bon : le
 // fournisseur ne doit pas dépendre du PDF joint. Tout texte saisi passe par `escapeHtml`.
@@ -226,7 +227,7 @@ export function busMail(detail: BusMailDetail, opts: MailOptions): OrderMail {
     ["Arrêts", d.direct ? "Direct (sans arrêt)" : stops.length ? stops.join(" – ") : "—"],
     ["Destination", d.destination || "—"],
     ["Trajet", d.round_trip ? "Aller-retour (deux sens)" : "Aller simple"],
-    ...(d.lines.length ? [["Lignes concernées", d.lines.join(", ")] as Row] : []),
+    ...(d.lines.length ? [["Lignes concernées", d.lines.map(lineLabel).join(", ")] as Row] : []),
     ["Nombre de bus", String(active.length)],
     ["Capacité par bus", `${d.bus_capacity} places`],
     ...(d.passengers ? [["Voyageurs estimés", String(d.passengers)] as Row] : []),

@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";
 import { DISTRICT_SHORT } from "@/lib/team";
 import type { LineStation } from "@/server/data/admin";
+import { lineLabel } from "@/lib/lines";
 
 type Line = { line: string; district: string; stations: LineStation[] };
 const DISTRICTS = ["", "Sud-Ouest", "Sud-Est", "Centre"];
@@ -110,7 +111,7 @@ export function LineBoard({ lines }: { lines: Line[] }) {
                 aria-expanded={open === l.line}
                 onClick={() => setOpen(open === l.line ? null : l.line)}
               >
-                <span className="font-mono text-body font-semibold">L.{l.line}</span>
+                <span className="font-mono text-body font-semibold">{lineLabel(l.line)}</span>
                 <span className="text-small text-fg-muted">
                   {l.stations.length} {pl(l.stations.length, "gare")}
                 </span>
@@ -178,8 +179,9 @@ export function LineBoard({ lines }: { lines: Line[] }) {
                         aria-label={`Retirer ${s.station}`}
                         disabled={pending}
                         onClick={() =>
-                          window.confirm(`Retirer ${s.station} de la ligne ${l.line} ?`) &&
-                          run(() => deleteStation(s.id), "Gare retirée.")
+                          window.confirm(
+                            `Retirer ${s.station} de la ligne ${lineLabel(l.line)} ?`,
+                          ) && run(() => deleteStation(s.id), "Gare retirée.")
                         }
                       >
                         <Trash2 />

@@ -17,6 +17,7 @@ import { brusselsDay, brusselsTime, formatLongDay, formatShortDay } from "@/lib/
 import type { OrderMeta, PmrClient, TaxiCompany } from "@/server/data/orders";
 
 import { SNCB_LOGO_PNG_BASE64, SNCB_LOGO_RATIO } from "./sncb-logo";
+import { lineLabel } from "@/lib/lines";
 
 // Bons de commande PDF (bus C3 et taxi), vectoriels, A4 portrait, lisibles en noir et blanc.
 // Polices standard (Helvetica) : encodage WinAnsi, d'où `safe()` sur tout texte dessiné.
@@ -444,7 +445,7 @@ export async function busOrderPdf(detail: BusPdfDetail, ctx: PdfContext): Promis
   if (!d.direct) l.field("Arrêts intermédiaires", stops.join(", "));
   l.field("Destination", d.destination, { bold: true });
   l.field("Deux sens", d.round_trip ? "OUI" : "NON");
-  l.field("Lignes concernées", d.lines.join(", "));
+  l.field("Lignes concernées", d.lines.map(lineLabel).join(", "));
   l.field(
     "Voyageurs",
     `${d.passengers || "non communiqué"} · dont PMR : ${d.pmr_count} · capacité par bus : ${d.bus_capacity} places`,
