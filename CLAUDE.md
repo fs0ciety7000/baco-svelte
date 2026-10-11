@@ -250,6 +250,14 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   **Une application Access à plusieurs domaines** renvoie, après la connexion, vers `/cdn-cgi/access/authorized` d'un
   **autre** domaine de l'application (boucle : base → tools, puis webmail → tools, 10 oct.) → **une application Access par
   nom d'hôte ou par chemin**, jamais de regroupement.
+- (v2) **Access se contourne par l'IP du serveur** (Traefik route sur l'en-tête Host ; vérifié le 11 oct. : le hub répondait 200
+  par `https://152.53.176.13` + `Host: services.fs0ciety.org`). Parades posées : signature Access vérifiée par le hub ; étiquette
+  Traefik `ipallowlist` des IP Cloudflare (`cf-only-*`) sur webmail, Stalwart, Surrealist, PocketBase CSM (prod + preview),
+  PocketBase de Cosmic Empires, préprod Cosmic et OCC Deliveries. Services compose : une étiquette
+  `traefik.http.middlewares.<nom>.ipallowlist.sourcerange=…` dans le compose suffit (Coolify l'ajoute à ses routeurs).
+  Applications : `custom_labels` complètes modifiées par l'API (« Readonly labels » reste coché et n'est pas modifiable par
+  l'API : **si quelqu'un change le domaine dans l'interface, Coolify régénère les étiquettes et la liste blanche saute** →
+  l'audit `/admin/access` du hub le signale). Le tableau de bord Coolify reste joignable par l'IP (sa connexion protège).
 - (v2) **Les services envoient avec le mot de passe d'application** du compte Stalwart `nicolas`, jamais son mot de passe
   personnel (le changer coupe tous les envois : 10 oct.).
 - (v2) **Tests d'envoi d'e-mail : uniquement vers `nd.managment@gmail.com`** (demande de l'utilisateur du 10 oct.), jamais
