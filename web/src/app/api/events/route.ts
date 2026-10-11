@@ -76,7 +76,6 @@ export async function GET(request: NextRequest) {
       // Reconnexion automatique du navigateur après 3 s si le flux se coupe.
       send("retry: 3000\n\n");
       // Présence : cet onglet compte tant que le flux est ouvert ; les arrivées / départs sont poussés à qui suit « presence ».
-      const leave = userId ? joinPresence(userId) : () => {};
       let presenceTimer: ReturnType<typeof setTimeout> | null = null;
       const stopPresence = topics.includes("presence")
         ? onPresenceChange(() => {
@@ -87,6 +86,8 @@ export async function GET(request: NextRequest) {
             }, 1000);
           })
         : () => {};
+      // Après l'écoute : l'arrivée de cet onglet est aussi poussée à lui-même.
+      const leave = userId ? joinPresence(userId) : () => {};
       let beats = 0;
       const heartbeat = setInterval(() => {
         send(": ping\n\n");
