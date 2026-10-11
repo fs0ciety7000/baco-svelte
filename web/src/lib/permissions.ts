@@ -1,68 +1,100 @@
-// Permissions CSM, reprises de la v1 (src/lib/permissions.js) : rôle par défaut + grants / denies par agent.
+// Permissions CSM : rôle par défaut + grants / denies par agent (héritage : « Accordé » et « Retiré » s'imposent au rôle).
 // Le contrôle réel est fait par les règles PocketBase ; ce module sert à l'affichage (menus, boutons).
+//
+// Rôles v2 (11 oct. 2026) : Administrateur et Sysop (tout), Modérateur (PACO/RCCA + suppression et Nouveautés, sans
+// l'administration), PACO/RCCA (lecture partout, écriture et modification, pas de suppression), Invité (lecture des commandes bus et taxi). Chaque module a jusqu'à quatre actions : `X:read`
+// (lecture), `X:write` (écriture = création), `X:update` (modification), `X:delete` (suppression).
 
-export type Role = "admin" | "sysop" | "moderator" | "otto_agent" | "user" | "reader" | "disabled";
+export type Role = "admin" | "sysop" | "moderator" | "paco" | "guest" | "disabled";
 
-const READ_ALL = [
-  "planning:read",
-  "journal:read",
-  "documents:read",
-  "repertoire:read",
-  "bus:read",
-  "taxi:read",
-  "otto:read",
-  "ptcar:read",
-  "b201:read",
-  "ebp:read",
-  "ops:read",
-  "carte_pn:read",
-  "pmr:read",
-  "generate_taxi:read",
-  "stats:read",
-  "deplacements:read",
-  "live:read",
+export type Action = "read" | "write" | "update" | "delete";
+
+export const ACTIONS: Action[] = ["read", "write", "update", "delete"];
+
+export const ACTION_LABEL: Record<Action, string> = {
+  read: "Lecture",
+  write: "Écriture",
+  update: "Modification",
+  delete: "Suppression",
+};
+
+export type PermissionModule = { key: string; label: string; actions: Action[]; hint?: string };
+
+const ALL: Action[] = ["read", "write", "update", "delete"];
+
+/**
+ * Catalogue des droits (Admin › Utilisateurs), groupé comme la navigation. Clés réellement testées par les règles
+ * PocketBase, la navigation et les pages (`permissions.test.ts` vérifie que la navigation est couverte).
+ * « audit:read » volontairement absent : le journal contient du nominatif PMR (audit du 9 oct. 2026).
+ */
+export const PERMISSION_MODULES: { group: string; modules: PermissionModule[] }[] = [
+  {
+    group: "Commandes",
+    modules: [
+      { key: "otto", label: "Bus", actions: ALL },
+      { key: "generate_taxi", label: "Taxis", actions: ALL },
+      { key: "b201", label: "B201", actions: ALL },
+    ],
+  },
+  {
+    group: "PMR",
+    modules: [
+      { key: "deplacements", label: "Missions PMR et groupes", actions: ALL },
+      {
+        key: "pmr",
+        label: "PMR nominatif, clients et matériel",
+        actions: ALL,
+        hint: "Lecture : noms et coordonnées des voyageurs.",
+      },
+    ],
+  },
+  {
+    group: "Opérations",
+    modules: [
+      { key: "live", label: "Trains en direct", actions: ["read"] },
+      { key: "journal", label: "Journal", actions: ALL },
+      { key: "carte_pn", label: "Carte PN", actions: ALL },
+      { key: "stats", label: "Statistiques", actions: ["read"] },
+    ],
+  },
+  {
+    group: "Ressources",
+    modules: [
+      { key: "repertoire", label: "Annuaire", actions: ALL },
+      { key: "documents", label: "Procédures et documents", actions: ALL },
+      { key: "ptcar", label: "PtCar", actions: ALL },
+      { key: "ebp", label: "EBP", actions: ALL },
+      { key: "lignes", label: "Lignes et arrêts", actions: ["write", "update", "delete"] },
+    ],
+  },
 ];
+
+/** Toutes les clés du catalogue (« otto:read »…). */
+export const PERMISSION_KEYS: string[] = PERMISSION_MODULES.flatMap((g) =>
+  g.modules.flatMap((m) => m.actions.map((a) => `${m.key}:${a}`)),
+);
+
+/** Ancienne forme (liste à plat), gardée pour les contrôles de couverture. */
+export const PERMISSION_CATALOG: { group: string; items: { key: string; label: string }[] }[] =
+  PERMISSION_MODULES.map((g) => ({
+    group: g.group,
+    items: g.modules.flatMap((m) =>
+      m.actions.map((a) => ({ key: `${m.key}:${a}`, label: `${m.label} : ${ACTION_LABEL[a]}` })),
+    ),
+  }));
+
+// Lectures historiques (BACO) encore citées par quelques écrans : accordées comme les autres lectures.
+const LEGACY_READ = ["planning:read", "bus:read", "taxi:read", "ops:read", "lignes:read"];
 
 const ROLE_DEFAULTS: Record<Role, string[]> = {
   admin: ["*"],
   sysop: ["*"],
-  // b201:read : la remise B201 est écrite par tous les agents du district (décision du 8 octobre 2026).
-  otto_agent: ["otto:read", "otto:write", "stats:read", "b201:read"],
-  moderator: [
-    ...READ_ALL,
-    "users:manage",
-    "planning:write",
-    "journal:write",
-    "documents:write",
-    "repertoire:write",
-    "bus:write",
-    "taxi:write",
-    "otto:write",
-    "ptcar:write",
-    "b201:write", // B201 : la règle réelle est canWriteB201 (agents rattachés à un district)
-    "ebp:write",
-    "ops:write",
-    "carte_pn:write",
-    "pmr:write",
-    "generate_taxi:write",
-    "lignes:read",
-    "lignes:write",
-    "deplacements:write",
-  ],
-  user: [
-    ...READ_ALL,
-    "planning:write",
-    "journal:write",
-    "documents:write",
-    "bus:write",
-    "taxi:write",
-    "otto:write",
-    "ops:write",
-    "generate_taxi:write",
-    "pmr:write",
-    "deplacements:write",
-  ],
-  reader: READ_ALL,
+  // Modérateur : tout le catalogue, suppression comprise ; pas l'administration (comptes, réglages).
+  moderator: [...PERMISSION_KEYS, ...LEGACY_READ],
+  // PACO/RCCA : tout sauf la suppression (décision du 11 oct. 2026).
+  paco: [...PERMISSION_KEYS.filter((k) => !k.endsWith(":delete")), ...LEGACY_READ],
+  // Invité : lecture des commandes bus et taxi.
+  guest: ["otto:read", "generate_taxi:read"],
   disabled: [],
 };
 
@@ -73,28 +105,32 @@ export function can(user: PermissionSubject | null | undefined, permission: stri
   if (user.role === "admin" || user.role === "sysop") return true;
   if (user.grants?.includes(permission)) return true;
   if (user.denies?.includes(permission)) return false;
-  return ROLE_DEFAULTS[user.role].includes(permission);
+  return (ROLE_DEFAULTS[user.role] ?? []).includes(permission);
 }
 
 /**
- * Remise B201 (décision du 8 octobre 2026) : écrite par tout agent (user) rattaché à un district, par les moderators,
- * par un admin, ou sur permission accordée. Miroir de la règle PocketBase `1760000300`.
+ * Remise B201 : écrite et modifiée par tout PACO/RCCA (rôles v2 : son district ne limite plus l'écriture), par un
+ * admin, ou sur droit accordé. Miroir des règles PocketBase (`1760002800`).
  */
-export function canWriteB201(
-  user: (PermissionSubject & { district?: string | null }) | null | undefined,
-): boolean {
-  if (!user || user.role === "disabled") return false;
-  if (user.role === "admin" || user.role === "sysop") return true;
-  if (user.grants?.includes("b201:write")) return true;
-  if (user.denies?.includes("b201:write")) return false;
-  return (
-    user.role === "moderator" ||
-    ((user.role === "user" || user.role === "otto_agent") && !!user.district)
-  );
+export function canWriteB201(user: PermissionSubject | null | undefined): boolean {
+  return can(user, "b201:write") || can(user, "b201:update");
 }
 
 export function isAdmin(user: PermissionSubject | null | undefined): boolean {
   return user?.role === "admin" || user?.role === "sysop";
+}
+
+/**
+ * « Coordinateur » des anciens écrans (annulations, rétablissements, matériel complet, entrées du Journal des autres) :
+ * depuis les rôles v2, tout PACO/RCCA, plus les administrateurs. Miroir des hooks PocketBase.
+ */
+export function isCoordinator(user: PermissionSubject | null | undefined): boolean {
+  return isAdmin(user) || user?.role === "moderator" || user?.role === "paco";
+}
+
+/** Nouveautés de l'application : administrateurs et modérateurs. */
+export function canEditChangelog(user: PermissionSubject | null | undefined): boolean {
+  return isAdmin(user) || user?.role === "moderator";
 }
 
 /** Droit accordé par le seul rôle (sans grants / denies) : sert à la matrice « défaut du rôle » de l'admin. */
@@ -102,57 +138,3 @@ export function roleHas(role: Role, permission: string): boolean {
   if (role === "admin" || role === "sysop") return true;
   return (ROLE_DEFAULTS[role] ?? []).includes(permission);
 }
-
-/** Catalogue des droits affichés dans la fiche d'un compte (Admin › Utilisateurs), groupés par module. */
-export const PERMISSION_CATALOG: { group: string; items: { key: string; label: string }[] }[] = [
-  // Clés réellement testées par les règles PocketBase, la navigation et les pages (revue du 9 oct. 2026 ;
-  // `permissions.test.ts` vérifie que la navigation est couverte).
-  {
-    group: "Commandes",
-    items: [
-      { key: "otto:read", label: "Bus : lire" },
-      { key: "otto:write", label: "Bus : écrire" },
-      { key: "otto:delete", label: "Bus : supprimer" },
-      { key: "generate_taxi:read", label: "Taxi : lire" },
-      { key: "generate_taxi:write", label: "Taxi : écrire" },
-      { key: "generate_taxi:delete", label: "Taxi : supprimer" },
-      { key: "b201:read", label: "B201 : lire" },
-      { key: "b201:write", label: "B201 : écrire (sinon : selon le district)" },
-    ],
-  },
-  {
-    group: "PMR",
-    items: [
-      { key: "deplacements:read", label: "Missions PMR et groupes : écran" },
-      { key: "deplacements:write", label: "Missions PMR : écrire" },
-      { key: "pmr:read", label: "PMR et groupes (nominatif) : lire" },
-      { key: "pmr:write", label: "Clients PMR, matériel : écrire" },
-    ],
-  },
-  {
-    group: "Opérations",
-    items: [
-      { key: "live:read", label: "Trains en direct" },
-      { key: "journal:read", label: "Journal : lire" },
-      { key: "journal:write", label: "Journal : écrire" },
-      { key: "carte_pn:read", label: "Carte PN : lire" },
-      { key: "carte_pn:write", label: "Carte PN : écrire" },
-      { key: "stats:read", label: "Statistiques" },
-    ],
-  },
-  {
-    group: "Annuaire et données",
-    items: [
-      { key: "repertoire:read", label: "Annuaire : lire" },
-      { key: "repertoire:write", label: "Annuaire : écrire" },
-      { key: "documents:read", label: "Procédures et documents : lire" },
-      { key: "documents:write", label: "Procédures et documents : écrire" },
-      { key: "ptcar:read", label: "PtCar : lire" },
-      { key: "ptcar:write", label: "PtCar : écrire" },
-      { key: "ebp:read", label: "EBP : lire" },
-      { key: "ebp:write", label: "EBP : écrire" },
-      { key: "lignes:write", label: "Lignes et arrêts : écrire" },
-    ],
-  },
-  // « audit:read » volontairement absent : le journal contient du nominatif PMR (audit du 9 oct. 2026).
-];

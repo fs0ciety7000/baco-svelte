@@ -7,7 +7,7 @@ import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { EquipmentBoard } from "@/components/pmr/equipment-board";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
-import { can, isAdmin } from "@/lib/permissions";
+import { can, isCoordinator } from "@/lib/permissions";
 import { brusselsDay } from "@/lib/orders/time";
 import { cn } from "@/lib/utils";
 import { requirePermission } from "@/server/auth";
@@ -108,7 +108,7 @@ export default async function Page({
         zones={zones}
         today={brusselsDay()}
         canWrite={can(user, "pmr:write")}
-        coordinator={isAdmin(user) || user.role === "moderator"}
+        coordinator={isCoordinator(user)}
       />
     </section>
   );

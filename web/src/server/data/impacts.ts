@@ -3,6 +3,7 @@ import "server-only";
 import { brusselsDay } from "@/lib/orders/time";
 import { DUTY_SHORT } from "@/lib/ops/log";
 import { can } from "@/lib/permissions";
+import { userDistricts } from "@/lib/team";
 import { missionImpact, type Impact } from "@/lib/pmr/train-delay";
 import type { SessionUser } from "@/server/auth";
 
@@ -25,12 +26,7 @@ export type ImpactedMission = {
 };
 
 function myDistrictCodes(user: SessionUser, today: string): string[] {
-  const names =
-    user.duty_day === today && user.duty_districts?.length
-      ? user.duty_districts
-      : user.district
-        ? [user.district]
-        : [];
+  const names = userDistricts(user, today);
   return names.map((n) => DUTY_SHORT[n]).filter((c): c is string => Boolean(c));
 }
 

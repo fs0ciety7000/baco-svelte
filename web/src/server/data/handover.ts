@@ -20,6 +20,7 @@ import {
   pbDate,
 } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
+import { userDistricts } from "@/lib/team";
 import { aleaEnds, groupEnds, groupLegOf, groupTotal, legOf } from "@/lib/pmr/legs";
 import { aleaGroupBlocks, aleaGroups, type AleaGroup } from "@/lib/pmr/model";
 import { missionImpact, type TrainStates } from "@/lib/pmr/train-delay";
@@ -44,12 +45,7 @@ export function handoverDistricts(user: SessionUser, param?: string): string[] {
   if (param === "tous") return [];
   if (param && (HANDOVER_CODES as readonly string[]).includes(param)) return [param];
   const today = brusselsDay();
-  const names =
-    user.duty_day === today && user.duty_districts?.length
-      ? user.duty_districts
-      : user.district
-        ? [user.district]
-        : [];
+  const names = userDistricts(user, today);
   return names.map((n) => NAME_TO_CODE[n]).filter((c): c is string => Boolean(c));
 }
 

@@ -98,6 +98,7 @@ function PhotoCard({ profile }: { profile: MyProfile }) {
           email={profile.email}
           id={profile.id}
           avatar={profile.avatar}
+          role={profile.role}
           large
           className="size-20 text-h3"
         />

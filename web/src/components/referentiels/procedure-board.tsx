@@ -1,6 +1,18 @@
 "use client";
 
-import { FileText, History, Pencil, Plus, Save, Trash2 } from "lucide-react";
+import {
+  Download,
+  Eye,
+  FileText,
+  History,
+  Image as ImageIcon,
+  Pencil,
+  Plus,
+  Save,
+  Trash2,
+  Upload,
+} from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
@@ -21,6 +33,7 @@ import { ListCard } from "@/components/ui/table";
 import { toast } from "@/components/ui/toast";
 import { safeCall } from "@/lib/orders/safe-call";
 import { pbDate } from "@/lib/orders/time";
+import { previewKind } from "@/lib/referentiels/detect";
 import type { ProcedureInput } from "@/lib/referentiels/model";
 import type { Procedure, ProcedureVersion } from "@/server/data/referentiels";
 
@@ -56,13 +69,16 @@ export function ProcedureBoard({
   categories,
   documents,
   canWrite,
-  canManage,
+  canUpdate = canWrite,
+  canDelete = false,
 }: {
   procedures: Procedure[];
   categories: string[];
   documents: DocOption[];
+  /** Création (`documents:write`), modification (`documents:update`), suppression (`documents:delete`). */
   canWrite: boolean;
-  canManage: boolean;
+  canUpdate?: boolean;
+  canDelete?: boolean;
 }) {
   const router = useRouter();
   const [openId, setOpenId] = useState<string | null>(null);
@@ -127,12 +143,14 @@ export function ProcedureBoard({
         title={data?.procedure.title ?? "Procédure"}
         description={data?.procedure.category || undefined}
         footer={
-          data && canWrite ? (
+          data && (canUpdate || canDelete) ? (
             <div className="flex w-full flex-wrap gap-2">
-              <Button size="sm" variant="secondary" onClick={() => setEditOpen(true)}>
-                <Pencil aria-hidden className="size-4" /> Modifier
-              </Button>
-              {canManage ? (
+              {canUpdate ? (
+                <Button size="sm" variant="secondary" onClick={() => setEditOpen(true)}>
+                  <Pencil aria-hidden className="size-4" /> Modifier
+                </Button>
+              ) : null}
+              {canDelete ? (
                 <Button
                   size="sm"
                   variant="danger"
@@ -166,22 +184,9 @@ export function ProcedureBoard({
             {data.procedure.attachments.length ? (
               <section className="flex flex-col gap-2" aria-label="Pièces jointes">
                 <h3 className="label-mono text-fg-muted">Pièces jointes</h3>
-                <ul className="flex flex-col gap-1.5">
+                <ul className="flex flex-col gap-1.5" data-testid="procedure-attachments">
                   {data.procedure.attachments.map((a) => (
-                    <li key={a.id}>
-                      <a
-                        href={`/api/referentiels/documents/${a.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex min-h-11 items-center gap-2 border border-border px-2 py-1 hover:bg-surface-2 md:min-h-0"
-                      >
-                        <FileText aria-hidden className="size-4 text-fg-muted" />
-                        <span className="min-w-0 flex-1 truncate">{a.name}</span>
-                        {a.category ? (
-                          <span className="text-small text-fg-muted">{a.category}</span>
-                        ) : null}
-                      </a>
-                    </li>
+                    <AttachmentRow key={a.id} doc={a} />
                   ))}
                 </ul>
               </section>
@@ -206,7 +211,7 @@ export function ProcedureBoard({
                         {d ? at.format(d) : ""}
                       </span>
                       <span className="min-w-0 flex-1 truncate">{v.by || "Import BACO"}</span>
-                      {canManage ? (
+                      {canUpdate ? (
                         <Button
                           size="sm"
                           variant="ghost"
@@ -287,7 +292,36 @@ function ProcedureForm({
   onSaved: (id: string) => void;
 }) {
   const [f, setF] = useState(initial);
+  const [docs, setDocs] = useState(documents);
   const [pending, start] = useTransition();
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  // Envoi d'un fichier depuis la procédure (route dédiée : 30 Mo) ; le document rejoint la bibliothèque et est coché.
+  const upload = async (file: File) => {
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.set("file", file);
+      fd.set("name", file.name.replace(/\.[^.]+$/, ""));
+      fd.set("category", f.category);
+      const res = await fetch("/api/referentiels/documents", { method: "POST", body: fd });
+      const body = (await res.json().catch(() => ({}))) as {
+        id?: string;
+        name?: string;
+        error?: string;
+      };
+      if (!res.ok || !body.id) return void toast.error(body.error ?? "Envoi refusé.");
+      const id = body.id;
+      setDocs((d) => [{ id, name: body.name || file.name }, ...d]);
+      setF((s) => ({ ...s, attachments: [...s.attachments, id] }));
+      toast.success("Document ajouté et lié à la procédure.");
+    } catch {
+      toast.error("Envoi impossible (réseau).");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
   const toggle = (docId: string) =>
     setF((s) => ({
       ...s,
@@ -341,10 +375,39 @@ function ProcedureForm({
           className="font-mono text-small"
         />
       </Field>
-      {documents.length ? (
-        <Field label="Documents liés">
-          <div className="flex max-h-40 flex-col gap-1 overflow-auto border border-border p-2">
-            {documents.map((d) => (
+      <div className="flex flex-col gap-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-small font-medium text-fg">Documents liés</span>
+          <input
+            ref={fileRef}
+            type="file"
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden
+            accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void upload(file);
+            }}
+          />
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            loading={uploading}
+            onClick={() => fileRef.current?.click()}
+            data-testid="procedure-upload"
+          >
+            <Upload aria-hidden /> Envoyer un fichier
+          </Button>
+        </div>
+        <p className="text-hint text-fg-muted">
+          PDF, image, Word, Excel, PowerPoint, texte (30 Mo au plus). Le fichier rejoint la
+          bibliothèque des documents.
+        </p>
+        {docs.length ? (
+          <div className="flex max-h-48 flex-col gap-1 overflow-auto border border-border p-2">
+            {docs.map((d) => (
               <label key={d.id} className="flex min-h-11 items-center gap-2 md:min-h-0">
                 <input
                   type="checkbox"
@@ -355,13 +418,48 @@ function ProcedureForm({
               </label>
             ))}
           </div>
-        </Field>
-      ) : null}
+        ) : null}
+      </div>
       <DialogFooter className={id ? "mx-0 mb-0 border-0 px-0" : undefined}>
         <Button type="submit" variant="primary" loading={pending} data-testid="procedure-save">
           <Save aria-hidden /> {id ? "Enregistrer" : "Créer la procédure"}
         </Button>
       </DialogFooter>
     </form>
+  );
+}
+
+/** Pièce jointe d'une procédure : visionneuse (PDF, image) et téléchargement. */
+function AttachmentRow({ doc }: { doc: Procedure["attachments"][number] }) {
+  const kind = previewKind(doc.fileName);
+  const Icon = kind === "image" ? ImageIcon : FileText;
+  return (
+    <li className="flex min-w-0 flex-wrap items-center gap-2 border border-border px-2 py-1.5">
+      <Icon aria-hidden className="size-4 shrink-0 text-fg-muted" />
+      <Link
+        href={`/referentiels/documents/voir/${doc.id}`}
+        className="link min-w-0 flex-1 truncate"
+        title={doc.name}
+      >
+        {doc.name}
+      </Link>
+      {doc.category ? <span className="text-small text-fg-muted">{doc.category}</span> : null}
+      <span className="flex gap-1">
+        <Button asChild size="sm" variant="ghost" className="border border-border">
+          <Link href={`/referentiels/documents/voir/${doc.id}`} aria-label={`Voir ${doc.name}`}>
+            <Eye aria-hidden className="size-4" /> Voir
+          </Link>
+        </Button>
+        <Button asChild size="sm" variant="ghost" className="border border-border">
+          <a
+            href={`/api/referentiels/documents/${doc.id}?dl=1`}
+            download
+            aria-label={`Télécharger ${doc.name}`}
+          >
+            <Download aria-hidden className="size-4" />
+          </a>
+        </Button>
+      </span>
+    </li>
   );
 }

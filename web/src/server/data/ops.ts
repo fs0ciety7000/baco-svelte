@@ -47,6 +47,8 @@ export type LogEntry = {
   authorName: string;
   /** Fichier d'avatar de l'auteur (vide = initiales). */
   authorAvatar: string;
+  /** Rôle de l'auteur : bordure d'avatar distincte pour les administrateurs. */
+  authorRole: string;
   /** Statut du jour de l'auteur (« EXTRA »…), vide sinon. */
   authorStatus: string;
   /** « irail » : message repris automatiquement d'iRail (perturbation, travaux), sans auteur. */
@@ -135,6 +137,7 @@ function entry(r: RecordModel, readers: Map<string, { id: string; name: string }
         ? "iRail · SNCB"
         : str(e.author?.name) || str(e.author?.username) || "Agent",
     authorAvatar: str(r.source) === "irail" ? "" : str(e.author?.avatar),
+    authorRole: str(r.source) === "irail" ? "" : str(e.author?.role),
     authorStatus:
       str(r.source) === "irail"
         ? ""
@@ -359,11 +362,11 @@ export async function listLogEvents(id: string): Promise<LogEvent[]> {
 
 export type Agent = { id: string; name: string; username: string };
 
-/** Agents mentionnables (actifs, hors otto_agent). */
+/** Agents mentionnables (actifs, hors invités et compte de service). */
 export async function listMentionable(): Promise<Agent[]> {
   const pb = await pbForRequest();
   const items = await pb.collection("users").getFullList({
-    filter: 'role != "disabled" && role != "otto_agent" && username != ""',
+    filter: 'role != "disabled" && role != "guest" && role != "connector" && username != ""',
     sort: "name",
     fields: "id,name,username",
   });

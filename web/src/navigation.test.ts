@@ -15,32 +15,45 @@ describe("navigation", () => {
     expect(MODULES.filter((m) => m.mobile).length).toBe(5);
   });
 
-  it("filtre selon les permissions : l'agent C3 voit les commandes bus, la B201 et les stats", () => {
-    const mods = visibleModules({ role: "otto_agent" });
-    // « Équipe » : seulement « Mon profil » (changer son mot de passe) pour l'agent Otto.
-    expect(mods.map((m) => m.id)).toEqual(["accueil", "commandes", "operations", "equipe"]);
+  it("filtre selon les permissions : l'invité ne voit que les commandes bus et taxi (rôles v2)", () => {
+    const mods = visibleModules({ role: "guest" });
+    // « Équipe » : seulement « Mon profil » (changer son mot de passe) pour l'invité.
+    expect(mods.map((m) => m.id)).toEqual(["accueil", "commandes", "equipe"]);
     expect(mods.find((m) => m.id === "equipe")?.href).toBe("/equipe/profil");
     expect(mods.find((m) => m.id === "commandes")?.tabs.map((t) => t.label)).toEqual([
       "Bus",
+      "Taxi",
       "Suivi",
-      "Remise B201",
     ]);
-    // Le module pointe vers le premier onglet autorisé.
-    expect(mods.find((m) => m.id === "operations")?.href).toBe("/operations/statistiques");
+  });
+
+  it("PACO/RCCA voit tous les modules, sauf l'administration", () => {
+    const mods = visibleModules({ role: "paco" });
+    expect(mods.map((m) => m.id)).toEqual([
+      "accueil",
+      "commandes",
+      "pmr",
+      "operations",
+      "referentiels",
+      "equipe",
+    ]);
+    expect(adminModule({ role: "paco" })).toBeNull();
+    expect(adminModule({ role: "moderator" })).toBeNull();
+    expect(visibleModules({ role: "moderator" }).map((m) => m.id)).toHaveLength(6);
   });
 
   it("administration réservée à l'admin", () => {
-    expect(adminModule({ role: "user" })).toBeNull();
+    expect(adminModule({ role: "guest" })).toBeNull();
     expect(adminModule({ role: "admin" })?.href).toBe("/admin");
   });
 
   it("actions rapides selon les droits d'écriture", () => {
-    expect(quickActions({ role: "reader" })).toEqual([]);
-    expect(quickActions({ role: "user" }).length).toBe(3);
+    expect(quickActions({ role: "guest" })).toEqual([]);
+    expect(quickActions({ role: "paco" }).length).toBe(3);
   });
 
   it("module et onglet actifs", () => {
-    const mods = visibleModules({ role: "user" });
+    const mods = visibleModules({ role: "paco" });
     const m = activeModule("/commandes/taxi/42", mods);
     expect(m?.id).toBe("commandes");
     expect(activeTab("/commandes/taxi/42", m!)?.label).toBe("Taxi");

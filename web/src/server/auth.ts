@@ -12,15 +12,8 @@ import { readSessionToken } from "./session";
 import { sessionAlive } from "./sessions";
 import { isExpired, tokenPayload } from "./token";
 
-export const ROLES = [
-  "admin",
-  "sysop",
-  "moderator",
-  "otto_agent",
-  "user",
-  "reader",
-  "disabled",
-] as const;
+// Rôles v2 (11 oct. 2026) : Administrateur, Sysop, PACO/RCCA, Invité.
+export const ROLES = ["admin", "sysop", "moderator", "paco", "guest", "disabled"] as const;
 
 const userSchema = z.object({
   id: z.string(),
@@ -31,6 +24,8 @@ const userSchema = z.object({
   grants: z.array(z.string()).nullable().default([]),
   denies: z.array(z.string()).nullable().default([]),
   district: z.string().default(""),
+  // Districts permanents (un, deux ou les trois), réglés par l'admin : filtres et alertes par défaut.
+  districts: z.array(z.string()).nullable().default([]),
   // Districts du jour cochés par l'agent (valables le jour `duty_day`, Europe/Brussels).
   duty_day: z.string().default(""),
   duty_districts: z.array(z.string()).nullable().default([]),

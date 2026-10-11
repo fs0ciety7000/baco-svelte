@@ -1,8 +1,9 @@
 // Module Opérations : logique partagée par les hooks (les callbacks JSVM sont isolés, voir operations.pb.js).
 
-const COORD_ROLES = ['admin', 'sysop', 'moderator'];
-// Rôles qui lisent la main courante par défaut (journal:read) ; otto_agent exclu (décision du 8 octobre 2026).
-const LOG_READERS = ['admin', 'sysop', 'moderator', 'user', 'reader'];
+// Rôles v2 (11 oct. 2026) : modérateur et PACO/RCCA = coordinateurs ; l'invité ne lit que les commandes bus et taxi.
+const COORD_ROLES = ['admin', 'sysop', 'moderator', 'paco'];
+// Rôles qui lisent le Journal par défaut (journal:read).
+const LOG_READERS = ['admin', 'sysop', 'moderator', 'paco'];
 const MAX_WATCHES = 10;
 
 function isCoord(auth) {
@@ -157,13 +158,18 @@ function dutyDistricts(u, today) {
 		if (v) for (let i = 0; i < v.length; i++) if (v[i]) out.push(String(v[i]));
 		if (out.length) return out;
 	}
+	// Districts permanents du compte (rôles v2), sinon l'ancien district unique.
+	const fixed = u.get('districts');
+	const out = [];
+	if (fixed) for (let i = 0; i < fixed.length; i++) if (fixed[i]) out.push(String(fixed[i]));
+	if (out.length) return out;
 	return u.getString('district') ? [u.getString('district')] : [];
 }
 
 // Destinataires d'une entrée urgente : agents qui lisent le journal et travaillent aujourd'hui dans le district de
 // l'entrée (entrée sans district, ou agent sans district connu : tous).
 function urgentRecipients(app, district, exclude) {
-	const list = app.findRecordsByFilter('users', 'role != "disabled" && role != "otto_agent"', '', 500, 0);
+	const list = app.findRecordsByFilter('users', 'role != "disabled" && role != "connector"', '', 500, 0);
 	const today = brusselsDay();
 	const out = [];
 	for (const u of list) {
@@ -225,7 +231,7 @@ function irailJournal(app) {
 	let items = res.json.disturbance || [];
 	if (!Array.isArray(items)) items = [items];
 	const index = stationIndex(app);
-	const users = app.findRecordsByFilter('users', 'role != "disabled" && role != "otto_agent"', '', 500, 0).filter(hasJournalRead);
+	const users = app.findRecordsByFilter('users', 'role != "disabled" && role != "connector"', '', 500, 0).filter(hasJournalRead);
 	const today = brusselsDay();
 	const collection = app.findCollectionByNameOrId('ops_log');
 	let created = 0;
@@ -327,7 +333,7 @@ function districtTagsIn(body) {
 // Agents qui lisent le journal et travaillent aujourd'hui dans ce district (districts du jour, sinon du profil).
 function districtRecipients(app, tag, exclude) {
 	const name = DISTRICT_TAGS[tag];
-	const list = app.findRecordsByFilter('users', 'role != "disabled" && role != "otto_agent"', '', 500, 0);
+	const list = app.findRecordsByFilter('users', 'role != "disabled" && role != "connector"', '', 500, 0);
 	const today = brusselsDay();
 	return list.filter((u) => exclude.indexOf(u.id) === -1 && hasJournalRead(u) && dutyDistricts(u, today).indexOf(name) !== -1).map((u) => u.id);
 }
@@ -488,7 +494,7 @@ function missionTrains(app, at) {
 	const ddmmyy = `${today.slice(8, 10)}${today.slice(5, 7)}${today.slice(2, 4)}`;
 	const users = app
 		.findRecordsByFilter('users', 'role != "disabled" && role != "connector"', '', 500, 0)
-		.filter((u) => hasPerm(u, 'deplacements:read', ['moderator', 'user', 'reader']));
+		.filter((u) => hasPerm(u, 'deplacements:read', ['moderator', 'paco']));
 	const collection = app.findCollectionByNameOrId('mission_trains');
 	const started = Date.now();
 	const trains = Object.keys(byTrain).slice(0, 60);

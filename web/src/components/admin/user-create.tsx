@@ -12,15 +12,10 @@ import { Input, Select } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 import { ROLE_LABEL } from "@/lib/team";
 
-export const ROLE_CHOICES = [
-  "user",
-  "moderator",
-  "otto_agent",
-  "reader",
-  "admin",
-  "sysop",
-] as const;
-export const DISTRICT_CHOICES = ["", "Sud-Ouest", "Sud-Est", "Centre"] as const;
+import { DistrictPicker } from "./district-picker";
+
+// Rôles v2 (11 oct. 2026).
+export const ROLE_CHOICES = ["paco", "moderator", "guest", "admin", "sysop"] as const;
 
 /** Mot de passe provisoire affiché une seule fois, à transmettre à l'agent (il le change dans « Mon profil »). */
 export function PasswordReveal({ password, onClose }: { password: string; onClose: () => void }) {
@@ -66,8 +61,8 @@ export function UserCreate() {
     name: "",
     username: "",
     fonction: "",
-    role: "user",
-    district: "",
+    role: "paco",
+    districts: [] as string[],
   });
   const submit = () =>
     start(async () => {
@@ -75,7 +70,7 @@ export function UserCreate() {
       if (!r.ok) return void toast.error(r.error);
       setOpen(false);
       setCreated(r.data);
-      setF({ email: "", name: "", username: "", fonction: "", role: "user", district: "" });
+      setF({ email: "", name: "", username: "", fonction: "", role: "paco", districts: [] });
     });
   return (
     <>
@@ -120,14 +115,15 @@ export function UserCreate() {
                 ))}
               </Select>
             </Field>
-            <Field label="District" hint="Donne le droit d'écrire la B201.">
-              <Select value={f.district} onChange={(e) => setF({ ...f, district: e.target.value })}>
-                {DISTRICT_CHOICES.map((d) => (
-                  <option key={d} value={d}>
-                    {d || "Aucun"}
-                  </option>
-                ))}
-              </Select>
+            <Field
+              label="Districts"
+              hint="Filtres et alertes par défaut."
+              className="sm:col-span-2"
+            >
+              <DistrictPicker
+                value={f.districts}
+                onChange={(districts) => setF({ ...f, districts })}
+              />
             </Field>
             <Field label="Fonction" className="sm:col-span-2">
               <Input

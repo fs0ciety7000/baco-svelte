@@ -4,7 +4,7 @@ import { unstable_rethrow } from "next/navigation";
 import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 
-import { can, isAdmin } from "@/lib/permissions";
+import { can, isCoordinator } from "@/lib/permissions";
 import { normalizeTrain, type Train } from "@/lib/ops/irail";
 import {
   ASSIST_STATUSES,
@@ -61,7 +61,7 @@ async function need(perm: string): Promise<SessionUser> {
 }
 
 function coordinator(user: SessionUser) {
-  return isAdmin(user) || user.role === "moderator";
+  return isCoordinator(user);
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -303,7 +303,7 @@ const dwellSchema = z
   )
   .max(300);
 
-/** Abréviation PtCar → nom français (référentiel « Annuaire et données »), gardé une heure en mémoire. */
+/** Abréviation PtCar → nom français (référentiel, module « Ressources »), gardé une heure en mémoire. */
 let ptcarNames: { at: number; map: Map<string, string> } | null = null;
 async function ptcarMap(
   pb: Awaited<ReturnType<typeof pbForRequest>>,

@@ -12,7 +12,7 @@ pocketbase migrate up $P                                   # appliquer les migra
 pocketbase superuser upsert <email> <mot de passe> $P      # compte superuser local
 pocketbase serve --http 127.0.0.1:8090 $P                  # serveur local
 CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P   # import de la sauvegarde Supabase (hors Git)
-PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (149 contrôles)
+PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (290 contrôles)
 CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # Commandes + PMR, comptes gardés
 CSM_IMPORT_SCOPE=pmr CSM_IMPORT_RESET=1 pocketbase csm-import … $P        # PMR seul (zones, matériel, prestations)
 CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # main courante + 211 PN de BACO
@@ -22,7 +22,19 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
 
 - **Migrations JS** dans `pb_migrations/` (`<horodatage>_<nom>.js`, `migrate(up, down)`), appliquées au démarrage.
   Jamais de modification de schéma par l'interface admin sans la reporter en migration.
-- **Règles** : construites avec `can(perm, rôles)` (rôle par défaut de la v1, `grants` / `denies` par agent).
+- **Rôles v2** (`1760002800_roles_v2.js`, 11 oct. 2026) : `admin`, `sysop` (tout), **`moderator`** (Modérateur : tout ce
+  qu'a `paco` + suppression partout — `canDelete` : admin, modérateur sauf droit retiré, ou droit accordé — et Nouveautés ;
+  ni comptes ni réglages), **`paco`** (PACO/RCCA : lecture partout,
+  écriture et modification, **jamais de suppression** ; a les pouvoirs des anciens coordinateurs dans les hooks), **`guest`**
+  (invité : lecture bus et taxi), `disabled`, `connector`. Les anciens `moderator` / `user` / `otto_agent` / `reader` sont
+  convertis en `paco` et **refusés** ensuite. Droits par module : `X:read`, `X:write` (**création**), `X:update`
+  (**modification** : toutes les `updateRule` testent `:update`, sauf `dicos:write` du connecteur), `X:delete`
+  (suppression : `deleteRule` = admin ou droit accordé ; restent permis à leur propriétaire : notifications, trains suivis,
+  passkeys, sessions, jetons, coche ALEA). Un `X:write` accordé / retiré avant la migration l'est aussi en `X:update`.
+  Nouveautés (`changelog`) : admin, sysop, modérateur. Les règles réécrites testent `(paco || moderator)`. `users.districts` (1 à 3, admin seul) : filtres et alertes
+  (`dutyDistricts` : jour coché → districts permanents → `district`). La migration réécrit les règles en place par
+  remplacement de motifs : toute nouvelle collection doit écrire directement `paco` / `guest`.
+- **Règles** : construites avec `can(perm, rôles)` (rôle par défaut, `grants` / `denies` par agent).
   `users.role`, `grants`, `denies`, `banned_until`, `email` ne sont modifiables que par un admin.
 - **Identifiants** : les UUID Supabase sont conservés (`users.id` accepte 15 à 36 caractères `[a-z0-9-]`) ;
   les tables à clé numérique gardent l'ancienne clé dans `legacy_id`.
@@ -52,7 +64,7 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
   `legacy_id`) ne sont pas forgeables.
 - **Piège des index** : un champ nombre vide vaut **0**, pas NULL → un index unique `WHERE legacy_id IS NOT NULL`
   bloque la 2e fiche créée dans CSM. Toujours `WHERE legacy_id > 0`.
-- **Accès** : taxi, sociétés de taxi et clients PMR ne sont pas lisibles par `otto_agent` (comme la v1) ; modèles
+- **Accès** (avant les rôles v2) : taxi, sociétés de taxi et clients PMR n'étaient pas lisibles par `otto_agent` ; modèles
   `order_templates` tous partagés (décision du 8 oct.) ; `b201_reports` une fiche par `day`, non modifiable, écrite par
   les agents (user, otto_agent) rattachés à un district et les moderators (`1760000300`) ; `users.district` réservé à l'admin.
 - **Module PMR** (`1760000400_pmr.js`, `pmr.pb.js`, `lib/pmr.js`) : pas de « journée » (abandonnée) ; `pmr_assists`

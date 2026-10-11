@@ -25,6 +25,8 @@ export type AdminUser = {
   role: string;
   disabledRole: string;
   district: string;
+  /** Districts permanents (rôles v2) ; repli sur `district` pour une fiche ancienne. */
+  districts: string[];
   fonction: string;
   grants: string[];
   denies: string[];
@@ -41,6 +43,11 @@ function adminUser(r: RecordModel): AdminUser {
     role: str(r.role),
     disabledRole: str(r.disabled_role),
     district: str(r.district),
+    districts: arr(r.districts).length
+      ? arr(r.districts)
+      : str(r.district)
+        ? [str(r.district)]
+        : [],
     fonction: str(r.fonction),
     grants: arr(r.grants),
     denies: arr(r.denies),
@@ -50,7 +57,7 @@ function adminUser(r: RecordModel): AdminUser {
 }
 
 const USER_FIELDS =
-  "id,name,username,email,role,disabled_role,district,fonction,grants,denies,created,updated";
+  "id,name,username,email,role,disabled_role,district,districts,fonction,grants,denies,created,updated";
 
 export const userListSchema = z.object({
   q: z.string().trim().max(60).default(""),
@@ -63,7 +70,7 @@ export async function listUsers(input: z.input<typeof userListSchema>): Promise<
   const pb = await pbForRequest();
   const parts: string[] = [];
   if (p.role) parts.push(pb.filter("role = {:r}", { r: p.role }));
-  if (p.district) parts.push(pb.filter("district = {:d}", { d: p.district }));
+  if (p.district) parts.push(pb.filter("(district = {:d} || districts ~ {:d})", { d: p.district }));
   if (p.q)
     parts.push(
       pb.filter("(name ~ {:q} || username ~ {:q} || email ~ {:q} || fonction ~ {:q})", { q: p.q }),

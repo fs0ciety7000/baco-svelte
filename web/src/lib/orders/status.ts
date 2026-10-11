@@ -96,7 +96,8 @@ export function isStatus(v: unknown): v is Status {
 }
 
 export function isCoordinator(role: string): boolean {
-  return role === "admin" || role === "sysop" || role === "moderator";
+  // Rôles v2 (11 oct. 2026) : les PACO/RCCA ont les droits des anciens coordinateurs (miroir de `lib/orders.js`).
+  return role === "admin" || role === "sysop" || role === "moderator" || role === "paco";
 }
 
 /** Une commande se modifie jusqu'à « terminé » sans « déverrouiller » ; annulée = lecture seule. */

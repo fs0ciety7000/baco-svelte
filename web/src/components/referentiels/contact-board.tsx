@@ -42,10 +42,15 @@ export function ContactBoard({
   rows,
   facets,
   canWrite,
+  canUpdate = canWrite,
+  canDelete = false,
 }: {
   rows: Contact[];
   facets: Facets;
   canWrite: boolean;
+  /** Modification (`repertoire:update`) et suppression (`repertoire:delete`), rôles v2. */
+  canUpdate?: boolean;
+  canDelete?: boolean;
 }) {
   const router = useRouter();
   const [openId, setOpenId] = useState<string | null>(null);
@@ -197,9 +202,11 @@ export function ContactBoard({
                 </>
               ) : null}
             </dl>
-            {canWrite ? (
+            {canUpdate || canDelete ? (
               <ContactActions
                 contact={detail}
+                canUpdate={canUpdate}
+                canDelete={canDelete}
                 facets={facets}
                 onSaved={() => {
                   void load(detail.id);
@@ -244,11 +251,15 @@ export function ContactBoard({
 function ContactActions({
   contact,
   facets,
+  canUpdate,
+  canDelete,
   onSaved,
   onDeleted,
 }: {
   contact: Contact;
   facets: Facets;
+  canUpdate: boolean;
+  canDelete: boolean;
   onSaved: () => void;
   onDeleted: () => void;
 }) {
@@ -257,12 +268,16 @@ function ContactActions({
   const [pending, start] = useTransition();
   return (
     <div className="flex flex-wrap gap-2">
-      <Button size="sm" variant="secondary" onClick={() => setEditOpen(true)}>
-        <Pencil aria-hidden className="size-4" /> Modifier
-      </Button>
-      <Button size="sm" variant="danger" onClick={() => setConfirmDel(true)}>
-        <Trash2 aria-hidden className="size-4" /> Supprimer
-      </Button>
+      {canUpdate ? (
+        <Button size="sm" variant="secondary" onClick={() => setEditOpen(true)}>
+          <Pencil aria-hidden className="size-4" /> Modifier
+        </Button>
+      ) : null}
+      {canDelete ? (
+        <Button size="sm" variant="danger" onClick={() => setConfirmDel(true)}>
+          <Trash2 aria-hidden className="size-4" /> Supprimer
+        </Button>
+      ) : null}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent title="Modifier le contact">
           <ContactForm

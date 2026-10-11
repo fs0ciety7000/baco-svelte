@@ -69,7 +69,9 @@ export async function middleware(request: NextRequest) {
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("content-security-policy", csp);
   const res = NextResponse.next({ request: { headers: requestHeaders } });
-  res.headers.set("content-security-policy", csp);
+  // Fichiers de la bibliothèque : la route pose sa propre CSP (visionneuse PDF, cadre même origine).
+  if (!pathname.startsWith("/api/referentiels/documents/"))
+    res.headers.set("content-security-policy", csp);
   res.headers.set("x-robots-tag", ROBOTS);
   // Cloudflare réécrit les adresses e-mail du HTML (« Email Address Obfuscation ») : le texte ne correspond plus au rendu
   // React → erreur d'hydratation (Journal, Annuaire, Admin) et liens mailto cassés (10 oct. 2026). `no-transform` lui

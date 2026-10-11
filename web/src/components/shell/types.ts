@@ -14,11 +14,10 @@ export type ShellUser = {
 
 export const ROLE_LABEL: Record<Role, string> = {
   admin: "Administrateur",
-  sysop: "SysOp",
-  moderator: "Coordinateur",
-  otto_agent: "Agent C3",
-  user: "Agent",
-  reader: "Lecture seule",
+  sysop: "Sysop",
+  moderator: "Modérateur",
+  paco: "PACO/RCCA",
+  guest: "Invité",
   disabled: "Désactivé",
 };
 

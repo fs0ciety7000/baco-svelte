@@ -1,10 +1,11 @@
 "use client";
 
-import { Download, Trash2, Upload } from "lucide-react";
+import { Download, Eye, Trash2, Upload } from "lucide-react";
+import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
-import { deleteDocument, uploadDocument } from "@/app/(app)/referentiels/actions";
+import { deleteDocument } from "@/app/(app)/referentiels/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
@@ -21,12 +22,13 @@ export function DocumentBoard({
   documents,
   categories,
   canWrite,
-  canManage,
+  canDelete = false,
 }: {
   documents: DocumentRow[];
   categories: string[];
+  /** Envoi (`documents:write`) et suppression (`documents:delete`), rôles v2. */
   canWrite: boolean;
-  canManage: boolean;
+  canDelete?: boolean;
 }) {
   const router = useRouter();
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -69,15 +71,20 @@ export function DocumentBoard({
                     <Td>
                       <div className="flex gap-1">
                         <Button asChild size="sm" variant="ghost" className="border border-border">
+                          <Link href={`/referentiels/documents/voir/${d.id}?retour=documents`}>
+                            <Eye aria-hidden className="size-4" /> Voir
+                          </Link>
+                        </Button>
+                        <Button asChild size="sm" variant="ghost" className="border border-border">
                           <a
-                            href={`/api/referentiels/documents/${d.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            href={`/api/referentiels/documents/${d.id}?dl=1`}
+                            download
+                            aria-label={`Télécharger ${d.name}`}
                           >
-                            <Download aria-hidden className="size-4" /> Ouvrir
+                            <Download aria-hidden className="size-4" />
                           </a>
                         </Button>
-                        {canManage ? (
+                        {canDelete ? (
                           <Button
                             size="sm"
                             variant="ghost"
@@ -98,18 +105,16 @@ export function DocumentBoard({
           <ul className="flex flex-col gap-2 md:hidden" data-testid="documents-cards">
             {documents.map((d) => (
               <li key={d.id}>
-                <a
-                  href={`/api/referentiels/documents/${d.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link
+                  href={`/referentiels/documents/voir/${d.id}?retour=documents`}
                   className="block"
                 >
                   <ListCard
                     title={d.name}
                     meta={`${d.category || "—"} · ${formatShortDay(dayOf(d.created))}`}
-                    aside={<Download aria-hidden className="size-4 text-fg-muted" />}
+                    aside={<Eye aria-hidden className="size-4 text-fg-muted" />}
                   />
-                </a>
+                </Link>
               </li>
             ))}
           </ul>
@@ -179,11 +184,17 @@ function UploadForm({ categories, onDone }: { categories: string[]; onDone: () =
         fd.set("name", name || file.name.replace(/\.[^.]+$/, ""));
         fd.set("category", category);
         fd.set("file", file);
+        // Route dédiée et non Server Action : une action est limitée à 1 Mo, un document va jusqu'à 30 Mo.
         start(async () => {
-          const res = await safeCall(uploadDocument(fd));
-          if (!res.ok) return void toast.error(res.error);
-          toast.success("Document importé.");
-          onDone();
+          try {
+            const res = await fetch("/api/referentiels/documents", { method: "POST", body: fd });
+            const body = (await res.json().catch(() => ({}))) as { error?: string };
+            if (!res.ok) return void toast.error(body.error ?? "Envoi refusé.");
+            toast.success("Document importé.");
+            onDone();
+          } catch {
+            toast.error("Envoi impossible (réseau).");
+          }
         });
       }}
     >
@@ -197,6 +208,7 @@ function UploadForm({ categories, onDone }: { categories: string[]; onDone: () =
           ref={fileRef}
           type="file"
           required
+          accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
           className="block w-full text-small file:mr-3 file:min-h-11 file:rounded file:border file:border-border file:bg-surface-2 file:px-3 file:text-fg"
           onChange={(e) => {
             if (!name && e.target.files?.[0])

@@ -17,17 +17,17 @@ import { Field } from "@/components/ui/field";
 import { Input, Select } from "@/components/ui/input";
 import { Badge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";
-import { PERMISSION_CATALOG, roleHas, type Role } from "@/lib/permissions";
-
-const KNOWN = new Set(PERMISSION_CATALOG.flatMap((g) => g.items.map((i) => i.key)));
+import { PERMISSION_KEYS, type Role } from "@/lib/permissions";
 import { ROLE_LABEL } from "@/lib/team";
 import type { AdminUser } from "@/server/data/admin";
 
-import { DISTRICT_CHOICES, PasswordReveal, ROLE_CHOICES } from "./user-create";
+import { DistrictPicker } from "./district-picker";
+import { PermissionMatrix, type Tri } from "./permission-matrix";
+import { PasswordReveal, ROLE_CHOICES } from "./user-create";
 
-type Tri = "defaut" | "accorde" | "retire";
+const KNOWN = new Set(PERMISSION_KEYS);
 
-/** Fiche d'un compte : identité, rôle et district, droits à 3 états, activation, mot de passe. */
+/** Fiche d'un compte : identité, rôle et districts, droits par module (4 actions, 3 états), activation, mot de passe. */
 export function UserEditor({
   user,
   isSelf,
@@ -44,8 +44,8 @@ export function UserEditor({
     name: user.name,
     username: user.username,
     fonction: user.fonction,
-    district: user.district,
-    role: disabled ? user.disabledRole || "user" : user.role,
+    districts: user.districts,
+    role: disabled ? user.disabledRole || "paco" : user.role,
   });
   const [perm, setPerm] = useState<Record<string, Tri>>(() => {
     const m: Record<string, Tri> = {};
@@ -56,7 +56,7 @@ export function UserEditor({
   });
   const [pending, start] = useTransition();
   const [password, setPassword] = useState<string | null>(null);
-  const role = (f.role || "user") as Role;
+  const role = (f.role || "paco") as Role;
 
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>, done: string) =>
     start(async () => {
@@ -118,14 +118,14 @@ export function UserEditor({
                 ))}
               </Select>
             </Field>
-            <Field label="District" hint="Donne le droit d'écrire la B201.">
-              <Select value={f.district} onChange={(e) => setF({ ...f, district: e.target.value })}>
-                {DISTRICT_CHOICES.map((d) => (
-                  <option key={d} value={d}>
-                    {d || "Aucun"}
-                  </option>
-                ))}
-              </Select>
+            <Field
+              label="Districts"
+              hint="Filtres et alertes par défaut ; n'importe quelle combinaison."
+            >
+              <DistrictPicker
+                value={f.districts}
+                onChange={(districts) => setF({ ...f, districts })}
+              />
             </Field>
             <Field label="Fonction" className="sm:col-span-2">
               <Input
@@ -213,43 +213,7 @@ export function UserEditor({
           }
         />
         <CardContent className="flex flex-col gap-4">
-          <p className="text-small text-fg-muted">
-            « Rôle » suit le défaut du rôle {ROLE_LABEL[role]} (indiqué entre parenthèses) ; «
-            Accordé » et « Retiré » s&apos;imposent à lui. Les administrateurs et sysops ont tous
-            les droits.
-          </p>
-          {PERMISSION_CATALOG.map((g) => (
-            <fieldset key={g.group} className="flex flex-col gap-1">
-              <legend className="label-mono pb-1 text-fg-muted">{g.group}</legend>
-              {g.items.map((it) => {
-                const value = perm[it.key] ?? "defaut";
-                const byRole = roleHas(role, it.key);
-                return (
-                  <div
-                    key={it.key}
-                    className="flex flex-wrap items-center justify-between gap-2 border-b border-border py-1.5"
-                  >
-                    <span className="text-body">
-                      {it.label}{" "}
-                      <span className="text-small text-fg-muted">
-                        ({byRole ? "oui" : "non"} par le rôle)
-                      </span>
-                    </span>
-                    <Select
-                      aria-label={`Droit ${it.label}`}
-                      className="w-40"
-                      value={value}
-                      onChange={(e) => setPerm({ ...perm, [it.key]: e.target.value as Tri })}
-                    >
-                      <option value="defaut">Rôle</option>
-                      <option value="accorde">Accordé</option>
-                      <option value="retire">Retiré</option>
-                    </Select>
-                  </div>
-                );
-              })}
-            </fieldset>
-          ))}
+          <PermissionMatrix role={role} value={perm} onChange={setPerm} />
         </CardContent>
       </Card>
       {password ? <PasswordReveal password={password} onClose={() => setPassword(null)} /> : null}
