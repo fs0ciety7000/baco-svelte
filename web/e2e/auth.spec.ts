@@ -74,7 +74,8 @@ test("connexion par cookie httpOnly, données et temps réel via le seul domaine
       reason: `E2E ${testInfo.project.name}`,
       origin: "Mons",
       destination: "Charleroi",
-      order_date: "2099-01-01 00:00:00.000Z",
+      // Jour de service dans la semaine affichée par défaut (J-1 → J+6, 11 oct. 2026).
+      order_date: `${new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Brussels" })} 00:00:00.000Z`,
     }),
   });
   const { id } = (await created.json()) as { id: string };

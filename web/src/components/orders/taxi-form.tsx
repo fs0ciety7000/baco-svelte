@@ -45,6 +45,7 @@ import { TemplateDialog } from "./bus-form";
 import { PdfLink, SendDialog } from "./send-dialog";
 import { StartPanel, type StartPanelProps } from "./start-panel";
 import { TransitionButtons } from "./transitions";
+import { StationInput, useStationRefs } from "./station-input";
 
 export type Client = {
   id: string;
@@ -70,15 +71,15 @@ export type TaxiFormProps = {
   reference: {
     companies: { id: string; name: string; emails: string[]; phones: string[]; places: string[] }[];
     stations: string[];
+    abbrs: { abbr: string; name: string }[];
   };
   officeEmail: string;
   start?: Omit<StartPanelProps, "kind">;
 };
 
-const STATION_LIST = "gares-taxi";
-
 export function TaxiForm(props: TaxiFormProps) {
   const { reference, canWrite } = props;
+  const stationRefs = useStationRefs(reference.stations, reference.abbrs);
   const router = useRouter();
   const [d, setD] = useState<TaxiDraft>(props.initial);
   const [client, setClient] = useState<Client | null>(props.client);
@@ -157,11 +158,6 @@ export function TaxiForm(props: TaxiFormProps) {
 
   return (
     <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,45rem)_minmax(16rem,1fr)] lg:items-start lg:gap-6">
-      <datalist id={STATION_LIST}>
-        {reference.stations.map((s) => (
-          <option key={s} value={s} />
-        ))}
-      </datalist>
       <form
         className="flex min-w-0 flex-col gap-3"
         aria-label="Bon de commande taxi"
@@ -226,27 +222,30 @@ export function TaxiForm(props: TaxiFormProps) {
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               <Field label="Départ" required error={err("from_station")}>
-                <Input
-                  list={STATION_LIST}
+                <StationInput
                   value={d.from_station}
-                  onChange={(e) => set("from_station", e.target.value)}
-                  autoComplete="off"
+                  onChange={(v) => set("from_station", v)}
+                  stations={reference.stations}
+                  abbrs={reference.abbrs}
+                  refs={stationRefs}
                 />
               </Field>
               <Field label="Via">
-                <Input
-                  list={STATION_LIST}
+                <StationInput
                   value={d.via_station}
-                  onChange={(e) => set("via_station", e.target.value)}
-                  autoComplete="off"
+                  onChange={(v) => set("via_station", v)}
+                  stations={reference.stations}
+                  abbrs={reference.abbrs}
+                  refs={stationRefs}
                 />
               </Field>
               <Field label="Arrivée" required error={err("to_station")}>
-                <Input
-                  list={STATION_LIST}
+                <StationInput
                   value={d.to_station}
-                  onChange={(e) => set("to_station", e.target.value)}
-                  autoComplete="off"
+                  onChange={(v) => set("to_station", v)}
+                  stations={reference.stations}
+                  abbrs={reference.abbrs}
+                  refs={stationRefs}
                 />
               </Field>
             </div>
@@ -279,17 +278,21 @@ export function TaxiForm(props: TaxiFormProps) {
                     />
                   </Field>
                   <Field label="Départ du retour">
-                    <Input
-                      list={STATION_LIST}
+                    <StationInput
                       value={d.return_from}
-                      onChange={(e) => set("return_from", e.target.value)}
+                      onChange={(v) => set("return_from", v)}
+                      stations={reference.stations}
+                      abbrs={reference.abbrs}
+                      refs={stationRefs}
                     />
                   </Field>
                   <Field label="Arrivée du retour">
-                    <Input
-                      list={STATION_LIST}
+                    <StationInput
                       value={d.return_to}
-                      onChange={(e) => set("return_to", e.target.value)}
+                      onChange={(v) => set("return_to", v)}
+                      stations={reference.stations}
+                      abbrs={reference.abbrs}
+                      refs={stationRefs}
                     />
                   </Field>
                 </div>

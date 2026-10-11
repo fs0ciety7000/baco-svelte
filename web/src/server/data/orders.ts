@@ -563,6 +563,22 @@ export type BusCompany = { id: string; name: string; email: string; phone: strin
 export type Driver = { id: string; company: string; name: string; phone: string };
 export type LineInfo = { line: string; stations: string[] };
 
+/** Abréviations PtCar des gares connues (« FMS » → Mons) pour le champ de gare ; vide sans droit `ptcar:read`. */
+async function stationAbbrs(
+  pb: PocketBase,
+  names: string[],
+): Promise<{ abbr: string; name: string }[]> {
+  const known = new Set(names);
+  try {
+    const rows = await pb.collection("ptcar").getFullList({ fields: "abbr,name_fr", batch: 1000 });
+    return rows
+      .map((r) => ({ abbr: str(r.abbr), name: str(r.name_fr) }))
+      .filter((a) => a.abbr && known.has(a.name));
+  } catch {
+    return [];
+  }
+}
+
 export const busReference = cache(async () => {
   const pb = await pbForRequest();
   const [companies, drivers, stations, companyLines] = await Promise.all([
@@ -582,6 +598,9 @@ export const busReference = cache(async () => {
   const lineList: LineInfo[] = [...lines.entries()]
     .map(([line, st]) => ({ line, stations: st }))
     .sort((a, b) => a.line.localeCompare(b.line, "fr", { numeric: true }));
+  const stationNames = [...new Set(stations.map((s) => str(s.station)))].sort((a, b) =>
+    a.localeCompare(b, "fr"),
+  );
   return {
     companies: companies.map((c) => ({
       id: c.id,
@@ -596,9 +615,8 @@ export const busReference = cache(async () => {
       phone: str(d.phone),
     })) satisfies Driver[],
     lines: lineList,
-    stations: [...new Set(stations.map((s) => str(s.station)))].sort((a, b) =>
-      a.localeCompare(b, "fr"),
-    ),
+    stations: stationNames,
+    abbrs: await stationAbbrs(pb, stationNames),
     companyLines: companyLines.map((l) => ({ company: str(l.company), line: str(l.line) })),
   };
 });
@@ -610,11 +628,13 @@ export const taxiReference = cache(async () => {
     pb.collection("taxi_companies").getFullList({ sort: "name" }),
     pb.collection("line_stations").getFullList({ fields: "station" }),
   ]);
+  const stationNames = [...new Set(stations.map((s) => str(s.station)))].sort((a, b) =>
+    a.localeCompare(b, "fr"),
+  );
   return {
     companies: companies.map(taxiCompany),
-    stations: [...new Set(stations.map((s) => str(s.station)))].sort((a, b) =>
-      a.localeCompare(b, "fr"),
-    ),
+    stations: stationNames,
+    abbrs: await stationAbbrs(pb, stationNames),
   };
 });
 export type TaxiReference = Awaited<ReturnType<typeof taxiReference>>;

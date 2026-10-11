@@ -399,3 +399,8 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   « Tous les districts » / « Mes districts » (`PmrFilterBar myDistricts`). Un lien vers UNE mission précise (⌘K, Ma
   journée, Journal) porte `district=tous`. Bons bus : période par défaut J-1 → J+6 sans `du` ni `au`
   (`resolveBusPeriod`, `lib/orders/period.ts`), puces « Semaine » et « Toutes les dates » (`?du=&au=`).
+- **Champ de gare** (`components/orders/station-input.tsx`, 11 oct. 2026, bons bus et taxi) : `StationInput` remplace les
+  `datalist` natives (rien de visible pour l'utilisateur) : liste filtrée à la frappe (`stationCandidates`, accents / casse
+  / tirets ignorés, abréviation PtCar via `reference.abbrs`), clavier (flèches, Entrée, Échap), nom corrigé vers celui du
+  référentiel à la sortie du champ (`canonicalStation`) : lignes et arrêts intermédiaires (`lib/orders/stops.ts`, comparaison
+  sans accents ni tirets) se trouvent alors. Lignes affichées par `lineLabel()` (`lib/lines.ts`) : jamais « L.L.132 ».

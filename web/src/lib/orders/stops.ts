@@ -2,12 +2,13 @@
 
 export type LineInfo = { line: string; stations: string[] };
 
+// Comparaison tolérante (11 oct. 2026) : accents, casse, tirets et espaces ignorés (« bruxelles midi » = « Bruxelles-Midi »).
 const norm = (s: string) =>
   s
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
-    .trim()
-    .toLowerCase();
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
 
 function indexOf(stations: string[], name: string): number {
   const n = norm(name);

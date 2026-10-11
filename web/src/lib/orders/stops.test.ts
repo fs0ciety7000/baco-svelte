@@ -23,3 +23,17 @@ describe("lignes et arrêts", () => {
     expect(stopsBetween(lines, ["78"], "Hal", "Mons")).toEqual([]);
   });
 });
+
+describe("correspondance tolérante des gares", () => {
+  const lines = [
+    { line: "L.96", stations: ["Bruxelles-Midi", "Hal", "Braine-le-Comte", "Soignies", "Mons"] },
+  ];
+  it("trouve lignes et arrêts malgré casse, accents et tirets", () => {
+    expect(suggestLines(lines, "bruxelles midi", "MONS")).toEqual(["L.96"]);
+    expect(stopsBetween(lines, ["L.96"], "mons", "Bruxelles Midi")).toEqual([
+      "Soignies",
+      "Braine-le-Comte",
+      "Hal",
+    ]);
+  });
+});

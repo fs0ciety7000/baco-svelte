@@ -44,6 +44,7 @@ import { PdfLink, SendDialog } from "./send-dialog";
 import { StartPanel, type StartPanelProps } from "./start-panel";
 import { TransitionButtons } from "./transitions";
 import { lineLabel } from "@/lib/lines";
+import { StationInput, useStationRefs } from "./station-input";
 
 export type BusFormProps = {
   /** Identifiant de l'écran « nouveau » (clé React + URL), pour qu'un 2e « Nouveau » reparte de zéro. */
@@ -61,16 +62,16 @@ export type BusFormProps = {
     drivers: { id: string; company: string; name: string; phone: string }[];
     lines: LineInfo[];
     stations: string[];
+    abbrs: { abbr: string; name: string }[];
     companyLines: { company: string; line: string }[];
   };
   officeEmail: string;
   start?: Omit<StartPanelProps, "kind">;
 };
 
-const STATION_LIST = "gares-bus";
-
 export function BusForm(props: BusFormProps) {
   const { reference, canWrite } = props;
+  const stationRefs = useStationRefs(reference.stations, reference.abbrs);
   const router = useRouter();
   const [d, setD] = useState<BusDraft>(props.initial);
   const [sendOpen, setSendOpen] = useState(false);
@@ -194,12 +195,6 @@ export function BusForm(props: BusFormProps) {
 
   return (
     <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,45rem)_minmax(16rem,1fr)] lg:items-start lg:gap-6">
-      <datalist id={STATION_LIST}>
-        {reference.stations.map((s) => (
-          <option key={s} value={s} />
-        ))}
-      </datalist>
-
       <form
         className="flex min-w-0 flex-col gap-3"
         aria-label="Bon de commande bus"
@@ -292,19 +287,23 @@ export function BusForm(props: BusFormProps) {
           >
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Origine" required error={err("origin")}>
-                <Input
-                  list={STATION_LIST}
+                <StationInput
                   value={d.origin}
-                  onChange={(e) => setPlace("origin", e.target.value)}
-                  autoComplete="off"
+                  onChange={(v) => setPlace("origin", v)}
+                  stations={reference.stations}
+                  abbrs={reference.abbrs}
+                  refs={stationRefs}
+                  disabled={!editable}
                 />
               </Field>
               <Field label="Destination" required error={err("destination")}>
-                <Input
-                  list={STATION_LIST}
+                <StationInput
                   value={d.destination}
-                  onChange={(e) => setPlace("destination", e.target.value)}
-                  autoComplete="off"
+                  onChange={(v) => setPlace("destination", v)}
+                  stations={reference.stations}
+                  abbrs={reference.abbrs}
+                  refs={stationRefs}
+                  disabled={!editable}
                 />
               </Field>
             </div>
@@ -563,17 +562,23 @@ export function BusForm(props: BusFormProps) {
                   {b.specific_route ? (
                     <div className="grid gap-3 sm:grid-cols-2">
                       <Field label="Origine de ce bus">
-                        <Input
-                          list={STATION_LIST}
+                        <StationInput
                           value={b.origin}
-                          onChange={(e) => setBus(i, { origin: e.target.value })}
+                          onChange={(v) => setBus(i, { origin: v })}
+                          stations={reference.stations}
+                          abbrs={reference.abbrs}
+                          refs={stationRefs}
+                          disabled={!editable}
                         />
                       </Field>
                       <Field label="Destination de ce bus">
-                        <Input
-                          list={STATION_LIST}
+                        <StationInput
                           value={b.destination}
-                          onChange={(e) => setBus(i, { destination: e.target.value })}
+                          onChange={(v) => setBus(i, { destination: v })}
+                          stations={reference.stations}
+                          abbrs={reference.abbrs}
+                          refs={stationRefs}
+                          disabled={!editable}
                         />
                       </Field>
                     </div>
