@@ -73,7 +73,7 @@ export async function transitionAssist(input: {
   reason?: string;
 }): Promise<Result> {
   try {
-    const user = await need("deplacements:write");
+    const user = await need("deplacements:update");
     const p = z
       .object({
         id: pbId,
@@ -116,7 +116,7 @@ export async function saveClient(
   input: unknown,
 ): Promise<Result<{ id: string; duplicates?: { id: string; name: string }[] }>> {
   try {
-    const user = await need("pmr:write");
+    const user = await need(id ? "pmr:update" : "pmr:write");
     const c = clientSchema.parse(input);
     const pb = await pbForRequest();
     const body = {
@@ -165,7 +165,7 @@ export async function findDuplicates(input: {
 
 export async function setClientArchived(id: string, archived: boolean): Promise<Result> {
   try {
-    const user = await need("pmr:write");
+    const user = await need("pmr:update");
     const pb = await pbForRequest();
     await pb
       .collection("pmr_clients")
@@ -201,7 +201,7 @@ export async function setEquipmentState(input: {
   repair?: boolean;
 }): Promise<Result> {
   try {
-    const user = await need("pmr:write");
+    const user = await need("pmr:update");
     const p = z
       .object({
         id: pbId,
@@ -229,7 +229,7 @@ export async function saveEquipment(
   input: unknown,
 ): Promise<Result<{ id: string }>> {
   try {
-    const user = await need("pmr:write");
+    const user = await need(id ? "pmr:update" : "pmr:write");
     if (!coordinator(user)) throw new Error("DROIT:Réservé aux coordinateurs.");
     const eq = equipmentSchema.parse(input);
     const pb = await pbForRequest();

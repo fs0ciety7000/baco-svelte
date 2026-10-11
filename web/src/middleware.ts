@@ -70,7 +70,7 @@ export async function middleware(request: NextRequest) {
   requestHeaders.set("content-security-policy", csp);
   const res = NextResponse.next({ request: { headers: requestHeaders } });
   // Fichiers de la bibliothèque : la route pose sa propre CSP (visionneuse PDF, cadre même origine).
-  if (!pathname.startsWith("/api/referentiels/documents/"))
+  if (!/^\/api\/referentiels\/documents\/[a-z0-9]{15}$/.test(pathname))
     res.headers.set("content-security-policy", csp);
   res.headers.set("x-robots-tag", ROBOTS);
   // Cloudflare réécrit les adresses e-mail du HTML (« Email Address Obfuscation ») : le texte ne correspond plus au rendu

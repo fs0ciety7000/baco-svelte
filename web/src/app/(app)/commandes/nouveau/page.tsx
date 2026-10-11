@@ -7,6 +7,7 @@ import { BusForm } from "@/components/orders/bus-form";
 import { officeFor } from "@/lib/orders/mail";
 import { busDraftSchema } from "@/lib/orders/schemas";
 import { brusselsDay, brusselsTime, formatShortDay } from "@/lib/orders/time";
+import { primaryDistrict } from "@/lib/team";
 import { requirePermission } from "@/server/auth";
 import {
   busReference,
@@ -48,7 +49,7 @@ export default async function Page({
     ...(base.success ? base.data : busDraftSchema.parse({})),
     order_date: brusselsDay(),
     call_time: brusselsTime(),
-    district: busDraftSchema.shape.district.catch("").parse(user.district),
+    district: busDraftSchema.shape.district.catch("").parse(primaryDistrict(user)),
   };
   // Pré-remplissage depuis les trains en direct (« Commander un bus de substitution »).
   const pre = (v: string | undefined, max: number) =>

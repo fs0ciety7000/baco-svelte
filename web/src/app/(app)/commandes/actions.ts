@@ -17,6 +17,8 @@ import {
 } from "@/lib/orders/schemas";
 import { isStatus, type OrderKind } from "@/lib/orders/status";
 import { brusselsDay, brusselsToUtc, brusselsTime, formatShortDay } from "@/lib/orders/time";
+import { primaryDistrict } from "@/lib/team";
+import { archiveOrder } from "@/server/archives";
 import { requireUser, type SessionUser } from "@/server/auth";
 import { manualEntrySchema, notesSchema } from "@/server/data/b201";
 import {
@@ -60,11 +62,18 @@ function fail(e: unknown): { ok: false; error: string } {
   return { ok: false, error: "Erreur inattendue, réessaie." };
 }
 
-async function writer(kind: OrderKind): Promise<SessionUser> {
+/** Droit du module bus / taxi pour l'action : création (`write`), modification (`update`), suppression (`delete`). */
+async function writer(
+  kind: OrderKind,
+  action: "write" | "update" | "delete" = "write",
+): Promise<SessionUser> {
   const user = await requireUser();
-  if (!can(user, kind === "bus" ? "otto:write" : "generate_taxi:write")) {
+  if (!can(user, `${kind === "bus" ? "otto" : "generate_taxi"}:${action}`)) {
+    const label = { write: "d'écriture", update: "de modification", delete: "de suppression" }[
+      action
+    ];
     throw new z.ZodError([
-      { code: "custom", message: "Droit d'écriture manquant.", path: [], input: null },
+      { code: "custom", message: `Droit ${label} manquant.`, path: [], input: null },
     ]);
   }
   return user;
@@ -86,7 +95,8 @@ async function assertUnchanged(
 class ConflictError extends Error {}
 
 function userDistrict(user: SessionUser): string {
-  return ["Sud-Ouest", "Sud-Est", "Centre"].includes(user.district) ? user.district : "";
+  const d = primaryDistrict(user);
+  return ["Sud-Ouest", "Sud-Est", "Centre"].includes(d) ? d : "";
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -98,7 +108,7 @@ export async function saveBusOrder(
   expectedUpdated?: string,
 ): Promise<ActionResult<{ id: string; number: number; updated: string }>> {
   try {
-    const user = await writer("bus");
+    const user = await writer("bus", id ? "update" : "write");
     const draft = busDraftSchema.parse(input);
     const pb = await pbForRequest();
     const body = busDraftToRecord({
@@ -181,7 +191,7 @@ export async function saveTaxiOrder(
   expectedUpdated?: string,
 ): Promise<ActionResult<{ id: string; number: number; updated: string }>> {
   try {
-    const user = await writer("taxi");
+    const user = await writer("taxi", id ? "update" : "write");
     const draft = taxiDraftSchema.parse(input);
     const pb = await pbForRequest();
     const body = await taxiBody(draft, user, !id);
@@ -251,7 +261,7 @@ export async function transitionOrder(
 ): Promise<ActionResult> {
   try {
     const p = transitionSchema.parse(input);
-    await writer(p.kind);
+    await writer(p.kind, "update");
     const pb = await pbForRequest();
     const col = pb.collection(COLLECTION[p.kind]);
     const current = await col.getOne(p.id, {
@@ -296,6 +306,12 @@ export async function transitionOrder(
       body.confirmed_time = p.details.confirmed_time;
 
     await col.update(p.id, body);
+    // Bon terminé : PDF archivé (volume + R2). Un échec n'annule pas la clôture : rattrapé depuis la page Archives.
+    if (p.to === "termine" && current.status !== "termine") {
+      const user = await requireUser();
+      const a = await archiveOrder(p.kind, p.id, user.id);
+      if (!a.ok) console.warn(`archives : bon ${p.kind} ${p.id} non archivé : ${a.error}`);
+    }
     return { ok: true };
   } catch (e) {
     return fail(e);
@@ -413,7 +429,7 @@ export async function deleteTemplate(input: {
   id: string;
 }): Promise<ActionResult> {
   try {
-    await writer(kindSchema.parse(input.kind));
+    await writer(kindSchema.parse(input.kind), "delete");
     const pb = await pbForRequest();
     await pb.collection("order_templates").delete(idSchema.parse(input.id));
     return { ok: true };
@@ -623,7 +639,7 @@ export async function saveB201(
     const p = b201Schema.parse(input);
     const user = await requireUser();
     if (!canWriteB201(user))
-      return { ok: false, error: "Remise B201 : réservée aux agents rattachés à un district." };
+      return { ok: false, error: "Remise B201 : droit d'écriture manquant." };
     const pb = await pbForRequest();
     const current = await pb
       .collection("b201_reports")
@@ -631,6 +647,8 @@ export async function saveB201(
       .catch(() => null);
     // Verrou optimiste : deux agents sur la même B201 (le jour n'est jamais modifiable : bug B1 de BACO).
     if (current && current.updated !== p.expectedUpdated) throw new ConflictError();
+    if (!can(user, current ? "b201:update" : "b201:write"))
+      return { ok: false, error: "Remise B201 : droit manquant pour cette action." };
     const body = { notes: p.notes, manual: p.manual, updated_by: user.id };
     const r = current
       ? await pb.collection("b201_reports").update(current.id, body)

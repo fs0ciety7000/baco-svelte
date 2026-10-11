@@ -506,13 +506,15 @@ try {
 	const hid = await api('GET', `/api/collections/ops_log/records/${lid}`, { token: roles.reader.token });
 	check("entrée retirée masquée à l'invité", hid.status === 404, `HTTP ${hid.status}`);
 	const hidEv = await api('GET', `/api/collections/ops_log_events/records?filter=${encodeURIComponent(`entry="${lid}"`)}`, { token: roles.denied.token });
-	check("historique d'une entrée retirée visible des coordinateurs (PACO/RCCA)", hidEv.json?.items?.length > 0, `${hidEv.json?.items?.length}`);
+	check("historique d'une entrée retirée masqué aux PACO/RCCA (modération)", hidEv.json?.items?.length === 0, `${hidEv.json?.items?.length}`);
 	const hidRd = await api('POST', '/api/collections/ops_log_reads/records', { token: roles.denied.token, body: { entry: lid, user: roles.denied.id } });
 	check('« Lu » impossible sur une entrée retirée', hidRd.status >= 400, `HTTP ${hidRd.status}`);
 	const nGone = await api('GET', `/api/collections/notifications/records?filter=${encodeURIComponent(`source_id="${lid}"`)}`, { token: roles.moderator.token });
 	check('notifications de l entrée retirée supprimées', nGone.json?.items?.length === 0, `${nGone.json?.items?.length}`);
 	lr = await lp({ status: 'active' });
-	check("l'auteur PACO/RCCA rétablit (coordinateur)", lr.status === 200 && lr.json.retired_reason === '', `HTTP ${lr.status}`);
+	check("l'auteur PACO/RCCA ne rétablit pas (modérateur)", lr.status >= 400, `HTTP ${lr.status}`);
+	lr = await lp({ status: 'active' }, roles.modo.token);
+	check('modérateur rétablit', lr.status === 200 && lr.json.retired_reason === '', `HTTP ${lr.status}`);
 	lr = await lp({ status: 'retiree', retired_reason: 'x' }, roles.reader.token);
 	check("l'invité ne retire pas", lr.status >= 400, `HTTP ${lr.status}`);
 	const lev = await api('GET', `/api/collections/ops_log_events/records?sort=at&perPage=50&filter=${encodeURIComponent(`entry="${lid}"`)}`, { token: roles.denied.token });
@@ -813,7 +815,9 @@ try {
 	});
 	check('admin publie une nouveauté', clAdm.status === 200, `HTTP ${clAdm.status}`);
 	const clRead = await api('GET', `/api/collections/changelog/records/${clAdm.json?.id}`, { token: roles.reader.token });
-	check('Nouveautés lisibles par un invité', clRead.status === 200, `HTTP ${clRead.status}`);
+	check("Nouveautés masquées à l'invité", clRead.status === 404, `HTTP ${clRead.status}`);
+	const clPaco = await api('GET', `/api/collections/changelog/records/${clAdm.json?.id}`, { token: u.token });
+	check('Nouveautés lisibles par un PACO/RCCA', clPaco.status === 200, `HTTP ${clPaco.status}`);
 	for (const c of [clMod, clAdm]) if (c.json?.id) await api('DELETE', `/api/collections/changelog/records/${c.json.id}`, { token: root });
 
 	const stUser = await api('POST', '/api/collections/app_settings/records', { token: u.token, body: { key: `t_${suffix}`, value: true, updated_by: u.id } });
@@ -886,6 +890,32 @@ try {
 		check('admin règle plusieurs districts', dAdm.status === 200 && dAdm.json.districts?.length === 2, `HTTP ${dAdm.status}`);
 		const oldRole = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: roles.admin.token, body: { role: 'user' } });
 		check('anciens rôles refusés', oldRole.status >= 400, `HTTP ${oldRole.status}`);
+	}
+
+	// --- Archives des bons (1760002900) : écriture par les routes internes seulement ---
+	{
+		const fd = new FormData();
+		fd.set('kind', 'bus');
+		fd.set('order_id', `arch${suffix}xxxxxxxxx`.slice(0, 15));
+		fd.set('file', new Blob(['%PDF-1.4\n%%EOF\n'], { type: 'application/pdf' }), 'test.pdf');
+		const mk = await fetch(`${PB}/api/collections/order_pdfs/records`, { method: 'POST', headers: { authorization: roles.admin.token }, body: fd });
+		check('même un admin ne crée pas d archive par l API', mk.status >= 400, `HTTP ${mk.status}`);
+		const fd2 = new FormData();
+		for (const [k, v] of fd.entries()) fd2.set(k, v);
+		const ar = await fetch(`${PB}/api/collections/order_pdfs/records`, { method: 'POST', headers: { authorization: root }, body: fd2 });
+		const arj = await ar.json();
+		const arPaco = await api('GET', `/api/collections/order_pdfs/records/${arj.id}`, { token: u.token });
+		check('PACO/RCCA lit une archive', arPaco.status === 200, `HTTP ${arPaco.status}`);
+		const arGuest = await api('GET', `/api/collections/order_pdfs/records/${arj.id}`, { token: roles.reader.token });
+		check("l'invité ne lit pas les archives", arGuest.status === 404, `HTTP ${arGuest.status}`);
+		const arDelPaco = await api('DELETE', `/api/collections/order_pdfs/records/${arj.id}`, { token: u.token });
+		check('PACO/RCCA ne supprime pas une archive', arDelPaco.status >= 400, `HTTP ${arDelPaco.status}`);
+		const arUpd = await api('PATCH', `/api/collections/order_pdfs/records/${arj.id}`, { token: roles.admin.token, body: { reference: 'x' } });
+		check('archive non modifiable par l API', arUpd.status >= 400, `HTTP ${arUpd.status}`);
+		const arDelModo = await api('DELETE', `/api/collections/order_pdfs/records/${arj.id}`, { token: roles.modo.token });
+		check('modérateur supprime une archive', arDelModo.status === 204, `HTTP ${arDelModo.status}`);
+		const st = await api('POST', '/api/csm/archives/store', { body: { kind: 'bus', order_id: 'x' } });
+		check('route interne d archivage fermée sans secret', st.status === 404, `HTTP ${st.status}`);
 	}
 
 	// --- Missions de groupe DICOS (1760001500) ---

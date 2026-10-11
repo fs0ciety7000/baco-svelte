@@ -12,7 +12,7 @@ pocketbase migrate up $P                                   # appliquer les migra
 pocketbase superuser upsert <email> <mot de passe> $P      # compte superuser local
 pocketbase serve --http 127.0.0.1:8090 $P                  # serveur local
 CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P   # import de la sauvegarde Supabase (hors Git)
-PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (290 contrôles)
+PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (299 contrôles)
 CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # Commandes + PMR, comptes gardés
 CSM_IMPORT_SCOPE=pmr CSM_IMPORT_RESET=1 pocketbase csm-import … $P        # PMR seul (zones, matériel, prestations)
 CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # main courante + 211 PN de BACO
@@ -172,3 +172,15 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
 - **Prod** (`pb-csm.fs0ciety.org`, 10 oct.) : base construite en local (`migrate up`, `superuser upsert`, `csm-import` d'une
   sauvegarde Supabase fraîche + empreintes, script des référentiels, compte `connector`), zip `POST /api/backups` puis
   `upload` + `restore` sur la prod. Ne jamais lancer `test-rules.mjs` ni d'E2E contre la prod.
+- **Archives des bons** (`1760002900_order_archives.js`, `archives.pb.js`, `lib/archives.js`) : `order_pdfs` (kind, order_id,
+  reference, route, service_day, district, file PDF protégé 10 Mo, generated_by, r2_key / r2_at / r2_error ; unique
+  (kind, order_id)) et `order_pdf_backups` (month AAAA-MM unique, count, zip protégé 500 Mo). **Aucune écriture par l'API** :
+  routes internes `POST /api/csm/archives/store` (multipart, upsert, rend la main sans attendre R2 ; ancienne copie R2
+  retirée si la clé change) et `/api/csm/archives/backup` (**un mois par appel**) (secret `CSM_INTERNAL_SECRET`).
+  `1760002910` : `content_at` (contenu, seul repère des zips à refaire), `r2_tried_at`, `as_of` du zip. Copie R2 par le
+  cron `order-pdf-r2` (5 min, 20 PDF + 2 zips, par ancienneté d'essai) ; archive supprimée → copie R2 retirée et mois
+  refait (nombre de PDF ≠ zip). Lecture `archives:read` (paco, moderator), suppression `archives:delete` (moderator) / admin.
+  R2 : `$filesystem.s3` avec les variables `CSM_BACKUP_S3_*` (dossier `bons/`), `CSM_ARCHIVE_R2=off` pour couper ; sans
+  variables : volume seul. Cron `order-pdf-backup` (1 h UTC) : zip « stocké » écrit dans un `Uint8Array` préalloué
+  (CRC32 maison, ~2 s/Mo en JSVM, mémoire bornée ; refus au-delà de 200 Mo par mois), 6 mois au plus, chacun isolé.
+

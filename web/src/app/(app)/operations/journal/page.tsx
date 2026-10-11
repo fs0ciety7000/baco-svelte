@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CATEGORY, LOG_CATEGORIES, type LogCategory } from "@/lib/ops/log";
 import { addDays, brusselsDay } from "@/lib/orders/time";
-import { can, isCoordinator } from "@/lib/permissions";
+import { can, isJournalModerator } from "@/lib/permissions";
 import { requirePermission } from "@/server/auth";
 
 import {
@@ -35,7 +35,7 @@ export default async function Page({
 }) {
   const user = await requirePermission("journal:read");
   const raw = await searchParams;
-  const coordinator = isCoordinator(user);
+  const coordinator = isJournalModerator(user);
   const f = logListSchema.parse(raw);
   const canWrite = can(user, "journal:write");
   const [{ rows, total, search, hasMore, limit }, pinned, agents] = await Promise.all([
@@ -213,6 +213,7 @@ export default async function Page({
         me={user.id}
         coordinator={coordinator}
         canWrite={canWrite}
+        canUpdate={can(user, "journal:update")}
         agents={agents}
         linkKinds={linkKinds}
         showDay={search}

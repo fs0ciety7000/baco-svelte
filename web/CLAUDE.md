@@ -336,4 +336,8 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   Chrome ne s'ouvre pas), `?dl=1` téléchargement. Visionneuse `/referentiels/documents/voir/<id>` (cadre même origine) :
   `next.config.ts` ne pose pas `X-Frame-Options: DENY` et le middleware ne pose pas sa CSP sur ce seul chemin (la route
   pose `SAMEORIGIN` + `frame-ancestors 'self'`). Envoi possible depuis le formulaire d'une procédure (document lié).
+- **Archives des bons** : `server/archives.ts` (`archiveOrder` appelé par `transitionOrder` quand le bon passe « terminé » ;
+  ne bloque jamais la clôture ; taxi archivé avec `redactPmr`), page `/commandes/archives` (`archives:read`), routes de
+  téléchargement `/api/commandes/archives/<id>` (`?dl=1`) et `/api/commandes/archives/sauvegardes/<id>`, actions admin
+  `archivePending` / `backupNow`, suppression `archives:delete`.
 

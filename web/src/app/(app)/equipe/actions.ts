@@ -326,6 +326,7 @@ export async function onlineAgents(): Promise<
 > {
   try {
     const me = await requireUser();
+    if (me.role === "guest") return { ok: true, data: { me: me.id, agents: [] } };
     return { ok: true, data: { me: me.id, agents: await listOnline(onlineUsers()) } };
   } catch (e) {
     return fail(e);

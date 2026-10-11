@@ -20,7 +20,8 @@ const userSchema = z.object({
   email: z.string(),
   name: z.string().default(""),
   username: z.string().default(""),
-  role: z.enum(ROLES),
+  // Rôle inconnu (déploiement web et PocketBase décalés, ancien rôle) : invité, plutôt qu'une déconnexion de tous.
+  role: z.enum(ROLES).catch("guest"),
   grants: z.array(z.string()).nullable().default([]),
   denies: z.array(z.string()).nullable().default([]),
   district: z.string().default(""),

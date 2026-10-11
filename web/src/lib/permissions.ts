@@ -34,6 +34,12 @@ export const PERMISSION_MODULES: { group: string; modules: PermissionModule[] }[
       { key: "otto", label: "Bus", actions: ALL },
       { key: "generate_taxi", label: "Taxis", actions: ALL },
       { key: "b201", label: "B201", actions: ALL },
+      {
+        key: "archives",
+        label: "Archives des bons (PDF)",
+        actions: ["read", "delete"],
+        hint: "Bons terminés et leurs sauvegardes.",
+      },
     ],
   },
   {
@@ -126,6 +132,14 @@ export function isAdmin(user: PermissionSubject | null | undefined): boolean {
  */
 export function isCoordinator(user: PermissionSubject | null | undefined): boolean {
   return isAdmin(user) || user?.role === "moderator" || user?.role === "paco";
+}
+
+/**
+ * Modération du Journal (messages retirés, textes des autres, retrait tardif, rétablissement) : modérateurs et
+ * administrateurs seulement (audit sécurité du 11 oct. 2026). Miroir de `COORD_ROLES` (hooks) et des règles `ops_log`.
+ */
+export function isJournalModerator(user: PermissionSubject | null | undefined): boolean {
+  return isAdmin(user) || user?.role === "moderator";
 }
 
 /** Nouveautés de l'application : administrateurs et modérateurs. */

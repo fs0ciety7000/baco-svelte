@@ -35,7 +35,7 @@ export async function BusOrderView({
         statusBeforeCancel={meta.statusBeforeCancel}
         updated={meta.updated}
         initial={order.draft}
-        canWrite={can(user, "otto:write")}
+        canWrite={can(user, "otto:update") && (!!meta.id || can(user, "otto:write"))}
         coordinator={isCoordinator(user.role)}
         reference={reference}
         officeEmail={officeFor(order.draft.district).email}

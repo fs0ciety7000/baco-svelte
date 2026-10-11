@@ -41,7 +41,7 @@ test("navigation principale et onglets en routes", async ({ page, isMobile }, te
     // « Ressources » est dans la barre du bas depuis le 9 oct. 2026 : plus dans « Plus ».
     await expect(sheet.getByRole("link", { name: "Ressources", exact: true })).toHaveCount(0);
     await expect(sheet.getByRole("link", { name: "Équipe", exact: true })).toBeVisible();
-    // Agent (rôle user) : pas d'administration.
+    // PACO/RCCA : pas d'administration.
     await expect(sheet.getByRole("link", { name: "Administration" })).toHaveCount(0);
     await page.screenshot({ path: `test-results/shell-plus-${testInfo.project.name}.png` });
     await sheet.getByRole("link", { name: "Mon profil" }).click();
@@ -61,7 +61,13 @@ test("navigation principale et onglets en routes", async ({ page, isMobile }, te
   }
   await page.goto("/commandes");
   const tabs = page.getByRole("navigation", { name: "Onglets Commandes" });
-  await expect(tabs.getByRole("link")).toHaveText(["Bus", "Taxi", "Suivi", "Remise B201"]);
+  await expect(tabs.getByRole("link")).toHaveText([
+    "Bus",
+    "Taxi",
+    "Suivi",
+    "Archives",
+    "Remise B201",
+  ]);
   await expect(tabs.getByRole("link", { name: "Bus" })).toHaveAttribute("aria-current", "page");
   await tabs.getByRole("link", { name: "Suivi" }).click();
   await expect(page).toHaveURL(/\/commandes\/suivi$/);

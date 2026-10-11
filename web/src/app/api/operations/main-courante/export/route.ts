@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { CATEGORY } from "@/lib/ops/log";
 import { addDays, brusselsTime, dayOf, isValidDay, pbDate } from "@/lib/orders/time";
-import { can, isCoordinator } from "@/lib/permissions";
+import { can, isJournalModerator } from "@/lib/permissions";
 import { getCurrentUser } from "@/server/auth";
 import { listLog } from "@/server/data/ops";
 
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   const au = z.string().refine(isValidDay).safeParse(sp.get("au"));
   if (!du.success || !au.success || au.data < du.data || au.data > addDays(du.data, 30))
     return new Response("Période invalide (31 jours au plus)", { status: 400 });
-  const coordinator = isCoordinator(user);
+  const coordinator = isJournalModerator(user);
   const lines = [
     [
       "Date",

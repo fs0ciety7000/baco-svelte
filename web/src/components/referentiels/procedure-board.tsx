@@ -248,6 +248,7 @@ export function ProcedureBoard({
             initial={toInput(null)}
             categories={categories}
             documents={documents}
+            canUpload={canWrite}
             onSaved={(id) => {
               setCreateOpen(false);
               setOpenId(id);
@@ -265,6 +266,7 @@ export function ProcedureBoard({
               initial={toInput(data.procedure)}
               categories={categories}
               documents={documents}
+              canUpload={canWrite}
               onSaved={() => {
                 setEditOpen(false);
                 void load(data.procedure.id);
@@ -283,12 +285,15 @@ function ProcedureForm({
   initial,
   categories,
   documents,
+  canUpload,
   onSaved,
 }: {
   id: string | null;
   initial: ProcedureInput;
   categories: string[];
   documents: DocOption[];
+  /** Envoi d'un fichier : `documents:write`. */
+  canUpload: boolean;
   onSaved: (id: string) => void;
 }) {
   const [f, setF] = useState(initial);
@@ -390,16 +395,18 @@ function ProcedureForm({
               if (file) void upload(file);
             }}
           />
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            loading={uploading}
-            onClick={() => fileRef.current?.click()}
-            data-testid="procedure-upload"
-          >
-            <Upload aria-hidden /> Envoyer un fichier
-          </Button>
+          {canUpload ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              loading={uploading}
+              onClick={() => fileRef.current?.click()}
+              data-testid="procedure-upload"
+            >
+              <Upload aria-hidden /> Envoyer un fichier
+            </Button>
+          ) : null}
         </div>
         <p className="text-hint text-fg-muted">
           PDF, image, Word, Excel, PowerPoint, texte (30 Mo au plus). Le fichier rejoint la

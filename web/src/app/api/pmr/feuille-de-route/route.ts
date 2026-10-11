@@ -2,6 +2,7 @@ import { contentDisposition } from "@/lib/orders/eml";
 import { DUTY_SHORT } from "@/lib/ops/log";
 import { brusselsDay, isValidDay } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
+import { primaryDistrict } from "@/lib/team";
 import { getCurrentUser } from "@/server/auth";
 import { buildRoadmap } from "@/server/data/roadmap";
 import { roadmapPdf } from "@/server/pdf/order-pdf";
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
   const day = isValidDay(jour) ? jour : brusselsDay();
   if (!gare) return new Response("Gare manquante", { status: 400, headers: HEADERS });
   const data = await buildRoadmap(user, day, gare);
-  const district = CODE_TO_NAME[sp.get("district") ?? ""] ?? user.district ?? "";
+  const district = CODE_TO_NAME[sp.get("district") ?? ""] ?? primaryDistrict(user);
   const pdf = await roadmapPdf({ ...data, district }, { agentName: user.name || user.username });
   return new Response(new Blob([pdf as Uint8Array<ArrayBuffer>]), {
     headers: {
