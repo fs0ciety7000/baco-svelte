@@ -37,7 +37,7 @@ import {
 } from "@/lib/orders/schemas";
 import { safeCall } from "@/lib/orders/safe-call";
 import { isEditable, type Status } from "@/lib/orders/status";
-import { stopsBetween, suggestLines, type LineInfo } from "@/lib/orders/stops";
+import { routeBetween, stopsBetween, suggestLines, type LineInfo } from "@/lib/orders/stops";
 import { useAutosave } from "@/lib/orders/use-autosave";
 
 import { PdfLink, SendDialog } from "./send-dialog";
@@ -116,38 +116,46 @@ export function BusForm(props: BusFormProps) {
   const err = (field: string) =>
     showErrors ? missing.find((m) => m.field === field)?.message : undefined;
 
-  // Lignes : celles de la société d'abord, puis celles qui desservent O et D.
-  const suggested = useMemo(
-    () => suggestLines(reference.lines, d.origin, d.destination),
+  // Lignes : celles de l'itinéraire d'abord, puis celles qui desservent O ou D, puis celles de la société.
+  const route = useMemo(
+    () => routeBetween(reference.lines, d.origin, d.destination),
     [reference.lines, d.origin, d.destination],
+  );
+  const suggested = useMemo(
+    () => [...(route?.lines ?? []), ...suggestLines(reference.lines, d.origin, d.destination)],
+    [route, reference.lines, d.origin, d.destination],
   );
   const lineChoices = useMemo(() => {
     const own = reference.companyLines.filter((l) => l.company === d.company).map((l) => l.line);
     return [...new Set([...d.lines, ...suggested, ...own])].slice(0, 24);
   }, [reference.companyLines, d.company, d.lines, suggested]);
+
+  // Arrêts intermédiaires (11 oct. 2026) : itinéraire à travers le réseau, sur plusieurs lignes au besoin (Mons →
+  // Charleroi-Central = L.118 puis L.124…), limité aux lignes cochées s'il y en a ; repli sur une ligne unique.
+  const stopsFor = (lines: string[], origin: string, destination: string) =>
+    routeBetween(reference.lines, origin, destination, lines)?.stops ??
+    stopsBetween(reference.lines, lines, origin, destination);
   const autoStops = useMemo(
-    () => stopsBetween(reference.lines, d.lines, d.origin, d.destination),
+    () => stopsFor(d.lines, d.origin, d.destination),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [reference.lines, d.lines, d.origin, d.destination],
   );
 
-  // Origine / destination : lignes déduites des deux gares (pré-cochées si aucune ligne choisie), arrêts recalculés.
+  // Origine / destination : itinéraire recalculé, lignes empruntées cochées d'office, arrêts déduits.
   const setPlace = (field: "origin" | "destination", value: string) =>
     setD((x) => {
       const next = { ...x, [field]: value };
-      const both = reference.lines.filter(
-        (l) => stopsBetween([l], [l.line], next.origin, next.destination).length > 0,
-      );
-      const lines = x.lines.length ? x.lines : both.map((l) => l.line);
-      return {
-        ...next,
-        lines,
-        stops: stopsBetween(reference.lines, lines, next.origin, next.destination),
-      };
+      const r = routeBetween(reference.lines, next.origin, next.destination);
+      if (!r) return next;
+      return { ...next, lines: r.lines, stops: r.stops };
     });
 
+  // Cocher / décocher une ligne : itinéraire limité aux lignes cochées (aucune cochée : itinéraire libre).
   const toggleLine = (line: string, on: boolean) => {
     const lines = on ? [...d.lines, line] : d.lines.filter((l) => l !== line);
-    const stops = stopsBetween(reference.lines, lines, d.origin, d.destination);
+    const stops = lines.length
+      ? stopsFor(lines, d.origin, d.destination)
+      : (routeBetween(reference.lines, d.origin, d.destination)?.stops ?? []);
     setD((x) => ({ ...x, lines, stops }));
   };
   const setBus = (i: number, patch: Partial<BusLine>) =>

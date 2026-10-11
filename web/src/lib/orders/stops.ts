@@ -44,3 +44,83 @@ export function stopsBetween(
   }
   return out;
 }
+
+export type Route = { lines: string[]; stops: string[] };
+
+// Coût d'un changement de ligne (en arrêts) : à longueur proche, l'itinéraire avec le moins de changements gagne.
+const TRANSFER_COST = 4;
+
+/**
+ * Itinéraire à travers le réseau (retour utilisateur du 11 oct. 2026 : Mons → Charleroi-Central n'est desservi par aucune
+ * ligne unique, il faut enchaîner L.118 puis L.124). Plus court chemin sur le graphe des gares voisines de chaque ligne
+ * (1 par arrêt, `TRANSFER_COST` par changement de ligne). `allowed` limite aux lignes cochées. Renvoie les lignes
+ * empruntées, dans l'ordre, et les gares strictement entre l'origine et la destination ; null si aucun chemin.
+ */
+export function routeBetween(
+  lines: LineInfo[],
+  origin: string,
+  destination: string,
+  allowed?: string[],
+): Route | null {
+  const from = norm(origin);
+  const to = norm(destination);
+  if (!from || !to || from === to) return null;
+  const pool = allowed?.length ? lines.filter((l) => allowed.includes(l.line)) : lines;
+  const label = new Map<string, string>();
+  const adj = new Map<string, { to: string; line: string }[]>();
+  const link = (a: string, b: string, line: string) => {
+    const list = adj.get(a) ?? [];
+    list.push({ to: b, line });
+    adj.set(a, list);
+  };
+  for (const l of pool) {
+    let prev = "";
+    for (const s of l.stations) {
+      const k = norm(s);
+      if (!k) continue;
+      if (!label.has(k)) label.set(k, s);
+      if (prev && prev !== k) {
+        link(prev, k, l.line);
+        link(k, prev, l.line);
+      }
+      prev = k;
+    }
+  }
+  if (!adj.has(from) || !adj.has(to)) return null;
+
+  // Dijkstra sur les états « gare | ligne d'arrivée » (petit graphe : quelques milliers d'états).
+  type State = { station: string; line: string };
+  const key = (s: State) => `${s.station}|${s.line}`;
+  const dist = new Map<string, number>();
+  const prevOf = new Map<string, State | null>();
+  const queue: { cost: number; state: State }[] = [{ cost: 0, state: { station: from, line: "" } }];
+  dist.set(key(queue[0]!.state), 0);
+  prevOf.set(key(queue[0]!.state), null);
+  let end: State | null = null;
+  while (queue.length) {
+    let best = 0;
+    for (let i = 1; i < queue.length; i++) if (queue[i]!.cost < queue[best]!.cost) best = i;
+    const { cost, state } = queue.splice(best, 1)[0]!;
+    if (cost > (dist.get(key(state)) ?? Infinity)) continue;
+    if (state.station === to) {
+      end = state;
+      break;
+    }
+    for (const e of adj.get(state.station) ?? []) {
+      const next: State = { station: e.to, line: e.line };
+      const c = cost + 1 + (state.line && state.line !== e.line ? TRANSFER_COST : 0);
+      if (c < (dist.get(key(next)) ?? Infinity)) {
+        dist.set(key(next), c);
+        prevOf.set(key(next), state);
+        queue.push({ cost: c, state: next });
+      }
+    }
+  }
+  if (!end) return null;
+  const path: State[] = [];
+  for (let s: State | null = end; s; s = prevOf.get(key(s)) ?? null) path.unshift(s);
+  const used: string[] = [];
+  for (const s of path) if (s.line && used.at(-1) !== s.line) used.push(s.line);
+  const stops = path.slice(1, -1).map((s) => label.get(s.station) ?? s.station);
+  return { lines: [...new Set(used)], stops };
+}

@@ -402,5 +402,6 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - **Champ de gare** (`components/orders/station-input.tsx`, 11 oct. 2026, bons bus et taxi) : `StationInput` remplace les
   `datalist` natives (rien de visible pour l'utilisateur) : liste filtrée à la frappe (`stationCandidates`, accents / casse
   / tirets ignorés, abréviation PtCar via `reference.abbrs`), clavier (flèches, Entrée, Échap), nom corrigé vers celui du
-  référentiel à la sortie du champ (`canonicalStation`) : lignes et arrêts intermédiaires (`lib/orders/stops.ts`, comparaison
-  sans accents ni tirets) se trouvent alors. Lignes affichées par `lineLabel()` (`lib/lines.ts`) : jamais « L.L.132 ».
+  référentiel à la sortie du champ (`canonicalStation`) : lignes et arrêts intermédiaires se trouvent alors : `routeBetween` (`lib/orders/stops.ts`) = plus court chemin à travers
+  le réseau (1 par arrêt, 4 par changement de ligne), sur plusieurs lignes au besoin (Mons → Charleroi-Central = L.118 →
+  L.112 → L.124), lignes empruntées cochées d'office ; cocher / décocher limite l'itinéraire aux lignes cochées. Lignes affichées par `lineLabel()` (`lib/lines.ts`) : jamais « L.L.132 ».
