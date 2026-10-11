@@ -174,7 +174,12 @@ export const logListSchema = z.object({
   jour: z.string().refine(isValidDay).optional().catch(undefined),
   categorie: z.enum(LOG_CATEGORIES).optional().catch(undefined),
   q: z.string().trim().max(80).optional().catch(undefined),
-  auteur: pbId.optional().catch(undefined),
+  // Auteur = compte : identifiant PocketBase ou UUID repris de BACO.
+  auteur: z
+    .string()
+    .regex(/^[a-z0-9-]{15,36}$/)
+    .optional()
+    .catch(undefined),
   pn: pbId.optional().catch(undefined),
   urgentes: z
     .string()

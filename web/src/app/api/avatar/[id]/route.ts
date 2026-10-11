@@ -14,7 +14,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const user = await getCurrentUser();
   if (!user) return new Response("Non connecté", { status: 401, headers: NO });
   const { id } = await params;
-  if (!/^[a-z0-9]{15}$/.test(id)) return new Response("Introuvable", { status: 404, headers: NO });
+  // Identifiant PocketBase ou UUID repris de BACO (comptes importés).
+  if (!/^[a-z0-9-]{15,36}$/.test(id))
+    return new Response("Introuvable", { status: 404, headers: NO });
   const size = new URL(request.url).searchParams.get("t") === "256" ? "256x256" : "96x96";
   const pb = await pbForRequest();
   try {

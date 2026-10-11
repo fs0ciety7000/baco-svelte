@@ -223,6 +223,9 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   `:where(.chamfer)` ; l'E2E commandes vérifie que le dialogue tient dans la fenêtre.
 - (v2) Grille / flex : tout conteneur de champ doit avoir `min-w-0` (`Field` l'a) ; un `<select>` impose sinon la
   largeur de sa plus longue option (débordement horizontal en 390 px).
+- (v2) **Les comptes repris de BACO gardent leur UUID Supabase** (36 caractères avec tirets) : tout contrôle d'un identifiant
+  d'agent doit accepter `/^[a-z0-9-]{15,36}$/`, jamais `{15}` seul (avatars et présence invisibles pour les 29 vrais comptes,
+  11 oct. ; trouvé seulement en préversion, les E2E créant des comptes neufs).
 - (v2) PocketBase : un champ nombre vide vaut 0 → index uniques partiels en `WHERE legacy_id > 0` (voir `pocketbase/CLAUDE.md`).
 - (v2) **Paramètre d'URL d'un panneau** (`?entree=`, `?train=`, `?pn=`) : le synchroniser par `window.history.replaceState`
   (même chemin), jamais par `router.replace` : ce dernier relance le rendu serveur pendant la Server Action qui charge

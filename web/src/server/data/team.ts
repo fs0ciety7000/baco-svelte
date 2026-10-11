@@ -77,7 +77,7 @@ export async function listOnline(online: { id: string; since: number }[]): Promi
   const ids = online
     .map((o) => o.id)
     // Identifiants PocketBase (15 caractères) ou UUID repris de BACO (36 caractères avec tirets).
-    .filter((id) => /^[A-Za-z0-9-]{1,64}$/.test(id))
+    .filter((id) => /^[a-z0-9-]{15,36}$/.test(id))
     .slice(0, 200);
   if (!ids.length) return [];
   const pb = await pbForRequest();
