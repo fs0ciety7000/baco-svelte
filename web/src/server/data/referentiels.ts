@@ -258,7 +258,8 @@ export async function listEbp(input: z.input<typeof refTableSchema>) {
   if (p.incomplete) parts.push('(line = "" || abbr = "" || ebp_view = "")');
   const res = await pb.collection("ebp_views").getList(p.page, 20, {
     filter: parts.join(" && "),
-    sort: "ebp_view,abbr",
+    // Par gare (toujours renseignée) : un tri par vue mettait les 19 fiches sans vue en tête de la première page.
+    sort: "ptcar,abbr",
   });
   return {
     rows: res.items.map((r): EbpRow => ({

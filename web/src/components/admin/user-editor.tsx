@@ -1,10 +1,16 @@
 "use client";
 
-import { KeyRound, Power, Save } from "lucide-react";
+import { KeyRound, Mail, Power, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import { resetPassword, setActive, setPermissions, updateUser } from "@/app/(app)/admin/actions";
+import {
+  resetPassword,
+  sendResetLink,
+  setActive,
+  setPermissions,
+  updateUser,
+} from "@/app/(app)/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
@@ -22,7 +28,16 @@ import { DISTRICT_CHOICES, PasswordReveal, ROLE_CHOICES } from "./user-create";
 type Tri = "defaut" | "accorde" | "retire";
 
 /** Fiche d'un compte : identité, rôle et district, droits à 3 états, activation, mot de passe. */
-export function UserEditor({ user, isSelf }: { user: AdminUser; isSelf: boolean }) {
+export function UserEditor({
+  user,
+  isSelf,
+  resetMail = false,
+}: {
+  user: AdminUser;
+  isSelf: boolean;
+  /** Envoi d'e-mails réglé sur PocketBase (lien de réinitialisation possible). */
+  resetMail?: boolean;
+}) {
   const router = useRouter();
   const disabled = user.role === "disabled";
   const [f, setF] = useState({
@@ -165,6 +180,17 @@ export function UserEditor({ user, isSelf }: { user: AdminUser; isSelf: boolean 
                 }
               >
                 <KeyRound aria-hidden /> Réinitialiser le mot de passe
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={isSelf || pending || disabled || !user.email || !resetMail}
+                title={resetMail ? undefined : "Envoi d'e-mails non configuré"}
+                onClick={() =>
+                  window.confirm(`Envoyer un lien de réinitialisation à ${user.email} ?`) &&
+                  run(() => sendResetLink(user.id), "Lien de réinitialisation envoyé.")
+                }
+              >
+                <Mail aria-hidden /> Envoyer un lien par e-mail
               </Button>
             </div>
             {isSelf ? (

@@ -184,6 +184,25 @@ export async function resetPassword(id: string): Promise<Result<{ password: stri
   }
 }
 
+/** Envoie à l'agent l'e-mail « mot de passe oublié » (lien à usage unique, 30 min) : l'admin ne voit aucun mot de passe. */
+export async function sendResetLink(id: string): Promise<Result> {
+  try {
+    const me = await requireAdmin();
+    const uid = userId.parse(id);
+    if (uid === me.id) throw new Error("DROIT:Change ton mot de passe depuis « Mon profil ».");
+    const pb = await pbForRequest();
+    await managed(pb, uid);
+    const u = await pb.collection("users").getOne(uid, { fields: "email,role" });
+    const email = String(u.email ?? "");
+    if (!email) throw new Error("DROIT:Ce compte n'a pas d'adresse e-mail.");
+    if (u.role === "disabled") throw new Error("DROIT:Réactive d'abord le compte.");
+    await pb.collection("users").requestPasswordReset(email);
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
 // --- Lignes et arrêts -----------------------------------------------------------------------------
 
 const stationSchema = z.object({

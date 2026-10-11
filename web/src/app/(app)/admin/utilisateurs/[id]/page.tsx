@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { passwordResetEnabled } from "@/app/connexion/reset-actions";
 import { UserEditor } from "@/components/admin/user-editor";
 import { UserPasskeys } from "@/components/admin/user-passkeys";
 import { requireAdmin } from "@/server/auth";
@@ -43,7 +44,12 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       <Link href="/admin" className="inline-flex min-h-11 items-center gap-1 text-small link">
         <ArrowLeft aria-hidden className="size-4" /> Retour aux utilisateurs
       </Link>
-      <UserEditor key={`${user.id}-${user.role}`} user={user} isSelf={user.id === me.id} />
+      <UserEditor
+        key={`${user.id}-${user.role}`}
+        user={user}
+        isSelf={user.id === me.id}
+        resetMail={await passwordResetEnabled()}
+      />
       <section
         className="flex flex-col gap-2 rounded-box border border-border bg-surface p-4"
         aria-label="Appareils connectés"

@@ -747,6 +747,9 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   production jusqu'à la transition officielle) et `ccr-5dca0da8-4yg4i6` ; README réécrit. **Branches** : `csm-preview`
   créée (préversion suivie par test-csm), `csm-prod` = branche principale (réglage GitHub par l'utilisateur), anciennes
   branches archivées en tags `archive/<nom>` puis supprimées (choix de l'utilisateur).
+- 2026-10-11 — **Page EBP** triée par gare (le tri par vue mettait les 19 fiches sans vue en tête : « il manque les
+  données de vue ») ; **admin : « Envoyer un lien par e-mail »** sur la fiche d'un agent (e-mail « mot de passe oublié »,
+  `sendResetLink`), à côté du mot de passe provisoire ; grisé sans SMTP. Le « mot de passe oublié » des agents existait déjà.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans
