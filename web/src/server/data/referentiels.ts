@@ -395,6 +395,17 @@ export async function getProcedure(
   };
 }
 
+/** Un document (visionneuse) : null s'il n'existe pas ou n'est pas lisible. */
+export async function getDocument(id: string): Promise<DocumentRow | null> {
+  if (!/^[a-z0-9]{15}$/.test(id)) return null;
+  const pb = await pbForRequest();
+  try {
+    return documentRow(await pb.collection("documents").getOne(id, { expand: "uploaded_by" }));
+  } catch {
+    return null;
+  }
+}
+
 export async function listDocuments(input: { q?: string; category?: string }) {
   const q = z
     .string()

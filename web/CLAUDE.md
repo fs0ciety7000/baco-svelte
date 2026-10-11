@@ -320,3 +320,19 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   chargent deux copies du module) ; sujet SSE **`presence`** produit par Next (jamais
   envoyé à PocketBase), action `onlineAgents()` (`equipe/actions.ts` → `listOnline`, champs de l'annuaire seulement).
   Une seule instance Next par environnement : si un jour plusieurs répliques, passer par PocketBase.
+- **Rôles v2** (11 oct. 2026) : `lib/permissions.ts` = source unique côté web. Rôles `admin`, `sysop`, `paco` (PACO/RCCA),
+  `guest` (Invité) ; `PERMISSION_MODULES` (catalogue : module × actions `read` / `write` = création / `update` =
+  modification / `delete`), `ROLE_DEFAULTS` (paco : tout sauf `:delete` ; guest : `otto:read`, `generate_taxi:read`),
+  `isCoordinator()` remplace les anciens tests `role === "moderator"`. Toujours tester **`X:update`** pour modifier un
+  enregistrement existant et **`X:delete`** pour supprimer (les règles PocketBase le font). Matrice admin :
+  `components/admin/permission-matrix.tsx` (un clic : hérité → accordé → retiré). Districts permanents
+  `users.districts` (`DistrictPicker`) ; `userDistricts()` (`lib/team.ts`) = jour coché → permanents → `district`.
+- **Avatars** : `avatarRing(role)` (`components/shell/avatar.tsx`) : anneau neutre, anneau d'accent doublé pour admin / sysop ;
+  passer `role` à `<Avatar>` partout (Journal compris).
+- **Documents** (Ressources › Procédures et documents) : envoi par **`POST /api/referentiels/documents`** (30 Mo, type
+  détecté par les octets, `lib/referentiels/detect.ts`) — jamais par Server Action (limitée à 1 Mo par Next). Lecture
+  `/api/referentiels/documents/<id>` : image en aperçu, `?vue=1` PDF inline **sans `sandbox`** (sinon le lecteur PDF de
+  Chrome ne s'ouvre pas), `?dl=1` téléchargement. Visionneuse `/referentiels/documents/voir/<id>` (cadre même origine) :
+  `next.config.ts` ne pose pas `X-Frame-Options: DENY` et le middleware ne pose pas sa CSP sur ce seul chemin (la route
+  pose `SAMEORIGIN` + `frame-ancestors 'self'`). Envoi possible depuis le formulaire d'une procédure (document lié).
+

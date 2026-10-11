@@ -24,10 +24,14 @@ const TIME = new Intl.DateTimeFormat("fr-BE", {
 });
 
 function Pulse({ className }: { className?: string }) {
+  // Placement (absolu en mobile, dans le flux en desktop) sur l'enveloppe ; l'anneau reste borné par le `relative`
+  // intérieur (un `md:static` sur le même élément laissait l'anneau couvrir tout le bouton).
   return (
-    <span aria-hidden className={`relative inline-flex size-2.5 ${className ?? ""}`}>
-      <span className="absolute inset-0 scale-[1.9] rounded-full bg-ok/35 animate-pulse-dot" />
-      <span className="relative inline-flex size-2.5 rounded-full bg-ok" />
+    <span aria-hidden className={`inline-flex ${className ?? ""}`}>
+      <span className="relative inline-flex size-2.5">
+        <span className="absolute inset-0 scale-[1.9] rounded-full bg-ok/35 animate-pulse-dot" />
+        <span className="relative inline-flex size-2.5 rounded-full bg-ok" />
+      </span>
     </span>
   );
 }
@@ -91,7 +95,7 @@ export function OnlinePresence() {
               agents.map((a) => (
                 <li key={a.id} className="flex min-h-11 items-center gap-3 px-3 py-1.5">
                   <span className="relative">
-                    <Avatar name={a.name} email="" id={a.id} avatar={a.avatar} />
+                    <Avatar name={a.name} email="" id={a.id} avatar={a.avatar} role={a.role} />
                     <span
                       aria-hidden
                       className="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2 border-surface bg-ok"

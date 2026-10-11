@@ -38,6 +38,7 @@ import {
   retireEntry,
   setRead,
 } from "@/app/(app)/operations/actions";
+import { avatarRing } from "@/components/shell/avatar";
 import { LiveHighlight } from "@/components/ui/live-highlight";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
@@ -385,12 +386,13 @@ export function JournalChat({
           <span
             aria-hidden
             className={cn(
-              "grid size-7 shrink-0 place-items-center overflow-hidden border font-mono text-hint font-semibold sm:size-9 sm:text-small",
-              mine
-                ? "border-accent bg-accent-soft text-fg"
-                : irail
-                  ? "border-info bg-[color-mix(in_oklab,var(--info)_14%,var(--surface))] text-fg"
-                  : "border-border-strong bg-surface text-fg-muted",
+              "grid size-7 shrink-0 place-items-center overflow-hidden font-mono text-hint font-semibold sm:size-9 sm:text-small",
+              irail
+                ? "border border-info bg-[color-mix(in_oklab,var(--info)_14%,var(--surface))] text-fg"
+                : cn(
+                    avatarRing(r.authorRole),
+                    mine ? "bg-accent-soft text-fg" : "bg-surface text-fg-muted",
+                  ),
             )}
           >
             {irail ? (

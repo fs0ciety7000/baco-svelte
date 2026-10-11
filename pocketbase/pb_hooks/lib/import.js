@@ -78,7 +78,19 @@ function legacyEvent(app, kind, id, from, to, at, by) {
 	app.save(ev);
 }
 
-const ROLES = ['admin', 'sysop', 'moderator', 'otto_agent', 'user', 'reader'];
+// Rôles BACO → rôles v2 (11 oct. 2026) : admin et sysop gardés, les autres deviennent PACO/RCCA, l'inconnu invité.
+const ROLE_MAP = { admin: 'admin', sysop: 'sysop', moderator: 'paco', otto_agent: 'paco', user: 'paco', reader: 'paco' };
+
+// Droit d'écriture BACO = création et modification (`X:update`, rôles v2).
+function withUpdate(list) {
+	const out = [];
+	for (const p of list) {
+		if (out.indexOf(p) === -1) out.push(p);
+		const m = /^([a-z0-9_]+):write$/.exec(p);
+		if (m && out.indexOf(`${m[1]}:update`) === -1) out.push(`${m[1]}:update`);
+	}
+	return out;
+}
 
 function importUsers(app, dir, report) {
 	const users = readJson(`${dir}/auth_users.json`);
@@ -102,12 +114,13 @@ function importUsers(app, dir, report) {
 		r.set('verified', !!u.email_confirmed_at);
 		r.set('name', p.full_name || '');
 		r.set('username', p.username || '');
-		r.set('role', ROLES.indexOf(p.role) !== -1 ? p.role : 'reader');
+		r.set('role', ROLE_MAP[p.role] || 'guest');
 		const perms = p.permissions || {};
-		r.set('grants', Object.keys(perms).filter((k) => perms[k] === true));
-		r.set('denies', Object.keys(perms).filter((k) => perms[k] === false));
+		r.set('grants', withUpdate(Object.keys(perms).filter((k) => perms[k] === true)));
+		r.set('denies', withUpdate(Object.keys(perms).filter((k) => perms[k] === false)));
 		r.set('fonction', p.fonction || '');
 		r.set('district', p.district || '');
+		r.set('districts', p.district ? [p.district] : []);
 		r.set('banned_until', toDate(p.banned_until));
 		r.set('preferences', { theme: p.theme || 'default', dashboard: p.dashboard_config || [] });
 		// Mot de passe provisoire (champ obligatoire), remplacé juste après par l'empreinte d'origine.

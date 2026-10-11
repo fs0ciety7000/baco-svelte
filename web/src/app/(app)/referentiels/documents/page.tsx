@@ -8,7 +8,7 @@ import { DocumentBoard } from "@/components/referentiels/document-board";
 import { ProcedureBoard } from "@/components/referentiels/procedure-board";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
-import { can, isAdmin } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 import { requirePermission } from "@/server/auth";
 
 import {
@@ -30,7 +30,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
   const q = (f.q ?? "").trim();
   const categorie = (f.categorie ?? "").trim();
   const canWrite = can(user, "documents:write");
-  const canManage = isAdmin(user) || user.role === "moderator";
+  const canUpdate = can(user, "documents:update");
+  const canDelete = can(user, "documents:delete");
   const categories = vue === "documents" ? await documentCategories() : await procedureCategories();
 
   return (
@@ -110,14 +111,15 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
           categories={categories}
           documents={await listDocumentOptions()}
           canWrite={canWrite}
-          canManage={canManage}
+          canUpdate={canUpdate}
+          canDelete={canDelete}
         />
       ) : (
         <DocumentBoard
           documents={await listDocuments({ q, category: categorie })}
           categories={categories}
           canWrite={canWrite}
-          canManage={canManage}
+          canDelete={canDelete}
         />
       )}
     </section>

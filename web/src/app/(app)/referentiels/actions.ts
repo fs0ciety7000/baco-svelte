@@ -3,8 +3,8 @@
 import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 
-import { can, isAdmin } from "@/lib/permissions";
-import { contactSchema, documentMetaSchema, procedureSchema } from "@/lib/referentiels/model";
+import { can } from "@/lib/permissions";
+import { contactSchema, procedureSchema } from "@/lib/referentiels/model";
 import { requireUser, type SessionUser } from "@/server/auth";
 import { pbForRequest } from "@/server/data/orders";
 import {
@@ -48,9 +48,6 @@ async function need(perm: string): Promise<SessionUser> {
   if (!can(user, perm)) throw new Error("DROIT:Droit manquant pour cette action.");
   return user;
 }
-function coordinator(user: SessionUser) {
-  return isAdmin(user) || user.role === "moderator";
-}
 
 // --- Annuaire -------------------------------------------------------------------------------------
 
@@ -59,7 +56,7 @@ export async function saveContact(
   input: unknown,
 ): Promise<Result<{ id: string }>> {
   try {
-    const user = await need("repertoire:write");
+    const user = await need(id ? "repertoire:update" : "repertoire:write");
     const c = contactSchema.parse(input);
     const pb = await pbForRequest();
     const body = { ...c, updated_by: user.id };
@@ -76,8 +73,7 @@ export async function saveContact(
 
 export async function deleteContact(id: string): Promise<Result> {
   try {
-    const user = await need("repertoire:write");
-    if (!coordinator(user)) throw new Error("DROIT:Suppression réservée aux coordinateurs.");
+    await need("repertoire:delete");
     const pb = await pbForRequest();
     await pb.collection("directory_contacts").delete(pbId.parse(id));
     return { ok: true };
@@ -114,7 +110,8 @@ export async function saveProcedure(
   input: unknown,
 ): Promise<Result<{ id: string }>> {
   try {
-    const user = await need("documents:write");
+    // Rôles v2 : création = documents:write, modification = documents:update.
+    const user = await need(id ? "documents:update" : "documents:write");
     const p = procedureSchema.parse(input);
     const pb = await pbForRequest();
     const body = { ...p, updated_by: user.id };
@@ -131,8 +128,7 @@ export async function saveProcedure(
 
 export async function deleteProcedure(id: string): Promise<Result> {
   try {
-    const user = await need("documents:write");
-    if (!coordinator(user)) throw new Error("DROIT:Suppression réservée aux coordinateurs.");
+    await need("documents:delete");
     const pb = await pbForRequest();
     await pb.collection("procedures").delete(pbId.parse(id));
     return { ok: true };
@@ -147,8 +143,7 @@ export async function restoreProcedureVersion(
   versionId: string,
 ): Promise<Result> {
   try {
-    const user = await need("documents:write");
-    if (!coordinator(user)) throw new Error("DROIT:Restauration réservée aux coordinateurs.");
+    const user = await need("documents:update");
     const pb = await pbForRequest();
     const v = await pb.collection("procedure_versions").getOne(pbId.parse(versionId));
     if (v.procedure !== pbId.parse(procedureId))
@@ -176,34 +171,11 @@ export async function loadProcedure(
   }
 }
 
-export async function uploadDocument(form: FormData): Promise<Result<{ id: string }>> {
-  try {
-    const user = await need("documents:write");
-    const meta = documentMetaSchema.parse({
-      name: form.get("name"),
-      category: form.get("category"),
-    });
-    const file = form.get("file");
-    if (!(file instanceof File) || file.size === 0)
-      throw new Error("DROIT:Aucun fichier sélectionné.");
-    if (file.size > 30 * 1024 * 1024) throw new Error("DROIT:Fichier trop volumineux (max 30 Mo).");
-    const pb = await pbForRequest();
-    const fd = new FormData();
-    fd.set("name", meta.name);
-    fd.set("category", meta.category);
-    fd.set("file", file);
-    fd.set("uploaded_by", user.id);
-    const r = await pb.collection("documents").create(fd);
-    return { ok: true, data: { id: r.id } };
-  } catch (e) {
-    return fail(e);
-  }
-}
+// Envoi d'un document : route `POST /api/referentiels/documents` (une Server Action est limitée à 1 Mo).
 
 export async function deleteDocument(id: string): Promise<Result> {
   try {
-    const user = await need("documents:write");
-    if (!coordinator(user)) throw new Error("DROIT:Suppression réservée aux coordinateurs.");
+    await need("documents:delete");
     const pb = await pbForRequest();
     await pb.collection("documents").delete(pbId.parse(id));
     return { ok: true };

@@ -20,8 +20,10 @@ type Result<T = undefined> =
 
 const userId = z.string().regex(/^[a-z0-9-]{15,36}$/);
 const pbId = z.string().regex(/^[a-z0-9]{15}$/);
-const ROLES = ["admin", "sysop", "moderator", "otto_agent", "user", "reader"] as const;
+// Rôles v2 (11 oct. 2026).
+const ROLES = ["admin", "sysop", "paco", "guest"] as const;
 const DISTRICTS = ["", "Sud-Ouest", "Sud-Est", "Centre"] as const;
+const DISTRICT_NAMES = ["Sud-Ouest", "Sud-Est", "Centre"] as const;
 const KNOWN = new Set(PERMISSION_CATALOG.flatMap((g) => g.items.map((i) => i.key)));
 
 function fail(e: unknown): { ok: false; error: string } {
@@ -70,8 +72,18 @@ const profileSchema = z.object({
     .max(100)
     .regex(/^[a-zA-Z0-9._-]*$/, "Identifiant : lettres, chiffres, . _ - seulement"),
   fonction: z.string().trim().max(200).default(""),
-  district: z.enum(DISTRICTS).default(""),
+  // Districts permanents (un, deux ou les trois) : filtres et alertes. `district` = le premier (compatibilité).
+  districts: z
+    .array(z.enum(DISTRICT_NAMES))
+    .max(3)
+    .default([])
+    .transform((l) => DISTRICT_NAMES.filter((d) => l.includes(d))),
   role: z.enum(ROLES),
+});
+
+const withDistrict = <T extends { districts: string[] }>(p: T) => ({
+  ...p,
+  district: p.districts[0] ?? null,
 });
 
 export async function createUser(
@@ -85,8 +97,7 @@ export async function createUser(
     const password = tempPassword();
     const pb = await pbForRequest();
     const r = await pb.collection("users").create({
-      ...p,
-      district: p.district || null,
+      ...withDistrict(p),
       password,
       passwordConfirm: password,
       verified: true,
@@ -109,7 +120,7 @@ export async function updateUser(id: string, input: unknown): Promise<Result> {
       throw new Error("DROIT:Tu ne peux pas changer ton propre rôle.");
     const pb = await pbForRequest();
     await managed(pb, uid);
-    await pb.collection("users").update(uid, { ...p, district: p.district || null });
+    await pb.collection("users").update(uid, withDistrict(p));
     return { ok: true };
   } catch (e) {
     return fail(e);
@@ -154,13 +165,13 @@ export async function setActive(id: string, active: boolean, role?: string): Pro
       if (cur.role !== "disabled") return { ok: true };
       const back = z
         .enum(ROLES)
-        .catch("user")
+        .catch("paco")
         .parse(role ?? cur.disabled_role);
       await pb.collection("users").update(uid, { role: back, disabled_role: null });
     } else if (cur.role !== "disabled") {
       await pb.collection("users").update(uid, {
         role: "disabled",
-        disabled_role: z.enum(ROLES).catch("user").parse(cur.role),
+        disabled_role: z.enum(ROLES).catch("paco").parse(cur.role),
       });
     }
     return { ok: true };

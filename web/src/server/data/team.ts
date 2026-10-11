@@ -21,6 +21,8 @@ export type TeamMember = {
   username: string;
   fonction: string;
   district: string;
+  /** Districts permanents (rôles v2), sinon le district unique. */
+  districts: string[];
   role: string;
   avatar: string;
   workPhone: string;
@@ -28,7 +30,8 @@ export type TeamMember = {
   status: string;
 };
 
-const MEMBER_FIELDS = "id,name,username,fonction,district,role,avatar,work_phone,status,status_day";
+const MEMBER_FIELDS =
+  "id,name,username,fonction,district,districts,role,avatar,work_phone,status,status_day";
 
 function member(r: RecordModel): TeamMember {
   return {
@@ -37,6 +40,12 @@ function member(r: RecordModel): TeamMember {
     username: str(r.username),
     fonction: str(r.fonction),
     district: str(r.district),
+    districts:
+      Array.isArray(r.districts) && r.districts.length
+        ? r.districts.map(String)
+        : str(r.district)
+          ? [str(r.district)]
+          : [],
     role: str(r.role),
     avatar: str(r.avatar),
     workPhone: str(r.work_phone),
@@ -54,7 +63,7 @@ export async function listTeam(input: z.input<typeof teamListSchema>): Promise<T
   const p = teamListSchema.parse(input);
   const pb = await pbForRequest();
   const parts = ['role != "disabled"', 'role != "connector"'];
-  if (p.district) parts.push(pb.filter("district = {:d}", { d: p.district }));
+  if (p.district) parts.push(pb.filter("(district = {:d} || districts ~ {:d})", { d: p.district }));
   if (p.q) parts.push(pb.filter("(name ~ {:q} || username ~ {:q} || fonction ~ {:q})", { q: p.q }));
   const rows = await pb.collection("users").getFullList({
     filter: parts.join(" && "),
@@ -66,7 +75,7 @@ export async function listTeam(input: z.input<typeof teamListSchema>): Promise<T
 
 export type OnlineMember = Pick<
   TeamMember,
-  "id" | "name" | "district" | "avatar" | "status" | "fonction"
+  "id" | "name" | "district" | "avatar" | "status" | "fonction" | "role"
 > & {
   /** Arrivée (ms depuis l'époque). */
   since: number;
@@ -99,6 +108,7 @@ export async function listOnline(online: { id: string; since: number }[]): Promi
         avatar: m.avatar,
         status: m.status,
         fonction: m.fonction,
+        role: m.role,
         since: since.get(m.id) ?? Date.now(),
       };
     })

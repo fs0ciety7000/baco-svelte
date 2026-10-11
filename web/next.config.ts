@@ -23,7 +23,18 @@ const nextConfig: NextConfig = {
     "/pmr/extension": ["./downloads/dicos-connector/**"],
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      // Fichiers de la bibliothèque : affichables dans la visionneuse de CSM (cadre même origine) ; la route pose
+      // elle-même `X-Frame-Options: SAMEORIGIN` et `frame-ancestors 'self'`.
+      {
+        source: "/:path((?!api/referentiels/documents/).*)",
+        headers: securityHeaders,
+      },
+      {
+        source: "/api/referentiels/documents/:path*",
+        headers: securityHeaders.filter((h) => h.key !== "X-Frame-Options"),
+      },
+    ];
   },
 };
 

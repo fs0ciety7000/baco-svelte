@@ -10,5 +10,5 @@ export const metadata: Metadata = { title: "Nouveautés · CSM" };
 export default async function Page() {
   const user = await requireRoute("/equipe/nouveautes");
   const { items } = await listChangelog(1);
-  return <ChangelogBoard items={items} canEdit={isAdmin(user) || user.role === "moderator"} />;
+  return <ChangelogBoard items={items} canEdit={isAdmin(user)} />;
 }

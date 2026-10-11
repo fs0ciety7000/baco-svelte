@@ -139,8 +139,8 @@ export const MODULES: NavModule[] = [
   {
     id: "referentiels",
     href: "/referentiels",
-    label: "Annuaire et données",
-    shortLabel: "Annuaire",
+    // « Ressources » depuis le 11 oct. 2026 (ex-« Annuaire et données », demande de l'utilisateur).
+    label: "Ressources",
     // Barre du bas en mobile (décision du 9 oct. 2026).
     mobile: true,
     icon: Database,
@@ -151,7 +151,7 @@ export const MODULES: NavModule[] = [
         permission: "repertoire:read",
         keywords: ["répertoire", "sociétés", "taxis", "contacts"],
       },
-      { href: "/referentiels/lignes", label: "Lignes", hideFor: ["otto_agent"] },
+      { href: "/referentiels/lignes", label: "Lignes", hideFor: ["guest"] },
       {
         href: "/referentiels/ptcar",
         label: "PtCar",
@@ -176,14 +176,14 @@ export const MODULES: NavModule[] = [
       {
         href: "/equipe",
         label: "Annuaire de l'équipe",
-        hideFor: ["otto_agent"],
+        hideFor: ["guest"],
         keywords: ["collègues"],
       },
       { href: "/equipe/profil", label: "Mon profil", keywords: ["mot de passe", "compte"] },
       {
         href: "/equipe/nouveautes",
         label: "Nouveautés",
-        hideFor: ["otto_agent"],
+        hideFor: ["guest"],
         keywords: ["changelog"],
       },
     ],

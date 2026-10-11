@@ -19,7 +19,7 @@ import { listUsers } from "@/server/data/admin";
 export const metadata: Metadata = { title: "Utilisateurs · CSM" };
 
 type SP = { q?: string; role?: string; district?: string };
-const ROLES = ["admin", "sysop", "moderator", "user", "otto_agent", "reader", "disabled"];
+const ROLES = ["admin", "sysop", "paco", "guest", "disabled"];
 
 export default async function Page({ searchParams }: { searchParams: Promise<SP> }) {
   // Garde dans la page (pas seulement le layout) : Next rend layout et page en parallèle.
@@ -101,7 +101,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
                   <Th>Agent</Th>
                   <Th>E-mail</Th>
                   <Th>Rôle</Th>
-                  <Th>District</Th>
+                  <Th>Districts</Th>
                   <Th>Droits ajustés</Th>
                   <Th>État</Th>
                 </tr>
@@ -114,13 +114,17 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
                         href={`/admin/utilisateurs/${u.id}`}
                         className="flex items-center gap-2 font-medium link"
                       >
-                        <Avatar name={u.name} email={u.email} />
+                        <Avatar name={u.name} email={u.email} role={u.role} />
                         {u.name || u.username || "—"}
                       </Link>
                     </Td>
                     <Td className="break-all text-fg-muted">{u.email}</Td>
                     <Td>{ROLE_LABEL[u.role === "disabled" ? u.disabledRole : u.role] ?? u.role}</Td>
-                    <Td>{u.district ? (DISTRICT_SHORT[u.district] ?? u.district) : "—"}</Td>
+                    <Td>
+                      {u.districts.length
+                        ? u.districts.map((d) => DISTRICT_SHORT[d] ?? d).join(" · ")
+                        : "—"}
+                    </Td>
                     <Td className="tabular">
                       {u.grants.length || u.denies.length
                         ? `+${u.grants.length} / −${u.denies.length}`
@@ -145,12 +149,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
                   href={`/admin/utilisateurs/${u.id}`}
                   className="flex min-h-14 items-center gap-3 border border-border bg-surface px-3 py-2"
                 >
-                  <Avatar name={u.name} email={u.email} />
+                  <Avatar name={u.name} email={u.email} role={u.role} />
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="truncate font-medium">{u.name || u.username || "—"}</span>
                     <span className="truncate text-small text-fg-muted">
                       {ROLE_LABEL[u.role === "disabled" ? u.disabledRole : u.role] ?? u.role}
-                      {u.district ? ` · ${DISTRICT_SHORT[u.district] ?? u.district}` : ""}
+                      {u.districts.length
+                        ? ` · ${u.districts.map((d) => DISTRICT_SHORT[d] ?? d).join(" · ")}`
+                        : ""}
                     </span>
                   </span>
                   {u.role === "disabled" ? <Badge tone="danger">Désactivé</Badge> : null}

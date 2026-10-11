@@ -95,7 +95,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
           </Button>
         </div>
       </FilterForm>
-      <ContactBoard rows={rows} facets={facets} canWrite={canWrite} />
+      <ContactBoard
+        rows={rows}
+        facets={facets}
+        canWrite={canWrite}
+        canUpdate={can(user, "repertoire:update")}
+        canDelete={can(user, "repertoire:delete")}
+      />
     </section>
   );
 }

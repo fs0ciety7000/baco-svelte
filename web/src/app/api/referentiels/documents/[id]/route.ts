@@ -5,7 +5,8 @@ import { env } from "@/server/env";
 
 // Lecture d'un document de la bibliothèque : fin du bucket public de BACO (BUG-1). La fiche est lue avec le jeton de
 // l'agent (règles PocketBase), le fichier protégé est demandé avec un jeton de fichier à usage court ; jamais d'URL
-// publique ni d'URL PocketBase dans le navigateur. Image / PDF en aperçu, tout le reste en téléchargement.
+// publique ni d'URL PocketBase dans le navigateur. Image en aperçu ; PDF en aperçu seulement pour la visionneuse
+// (`?vue=1`, cadre de la page `/referentiels/documents/voir/<id>`) ; `?dl=1` force le téléchargement.
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,7 +23,10 @@ const TYPES: Record<string, string> = {
 };
 const INLINE = new Set(["png", "jpg", "jpeg", "gif", "webp"]);
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const sp = new URL(request.url).searchParams;
+  const view = sp.get("vue") === "1";
+  const download = sp.get("dl") === "1";
   const user = await getCurrentUser();
   if (!user) return new Response("Non connecté", { status: 401 });
   if (!can(user, "documents:read")) return new Response("Introuvable", { status: 404 });
@@ -35,7 +39,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     if (!file) return new Response("Introuvable", { status: 404 });
     const ext = file.split(".").pop()?.toLowerCase() ?? "";
     const type = TYPES[ext];
-    const inline = INLINE.has(ext);
+    const pdfView = view && ext === "pdf";
+    const inline = !download && (INLINE.has(ext) || pdfView);
     const token = await pb.files.getToken();
     const res = await fetch(
       `${env.PB_URL}/api/files/documents/${id}/${encodeURIComponent(file)}?token=${encodeURIComponent(token)}`,
@@ -50,11 +55,16 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return new Response(res.body, {
       headers: {
         "content-type": type ?? "application/octet-stream",
-        "content-disposition": `${inline ? "inline" : "attachment"}; filename="${downloadName}"`,
+        "content-disposition": `${inline ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(downloadName)}`,
         "cache-control": "private, no-store",
         "x-content-type-options": "nosniff",
-        "content-security-policy":
-          "sandbox; default-src 'none'; img-src 'self'; style-src 'unsafe-inline'",
+        // Visionneuse PDF : pas de `sandbox` ni d'`object-src 'none'` (le lecteur PDF de Chrome ne s'ouvrirait pas),
+        // aucune autre ressource permise ; affichable seulement dans une page CSM (cadre même origine). Le type est
+        // garanti PDF par la détection à l'envoi et `nosniff`.
+        "content-security-policy": pdfView
+          ? "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; frame-ancestors 'self'"
+          : "sandbox; default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'self'",
+        "x-frame-options": "SAMEORIGIN",
       },
     });
   } catch {

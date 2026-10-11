@@ -7,7 +7,7 @@ import { z } from "zod";
 import { normalizeTrain, parseFavorites, stationId } from "@/lib/ops/irail";
 import { DUTY_DISTRICTS, entrySchema, RETIRE_WINDOW_MS } from "@/lib/ops/log";
 import { brusselsDay, brusselsTime, brusselsToUtc, pbDate } from "@/lib/orders/time";
-import { can, isAdmin } from "@/lib/permissions";
+import { can, isCoordinator } from "@/lib/permissions";
 import { requireUser, type SessionUser } from "@/server/auth";
 import {
   getLogEntry,
@@ -56,7 +56,7 @@ async function need(perm: string): Promise<SessionUser> {
   return user;
 }
 
-const coordinator = (u: SessionUser) => isAdmin(u) || u.role === "moderator";
+const coordinator = (u: SessionUser) => isCoordinator(u);
 
 function entryBody(p: z.output<typeof entrySchema>) {
   return {

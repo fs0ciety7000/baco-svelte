@@ -7,6 +7,7 @@ import { AppShell } from "@/components/shell/app-shell";
 import { parseUiCookie, UI_COOKIE } from "@/design/preferences";
 import { brusselsDay } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
+import { userDistricts } from "@/lib/team";
 import { maintenanceState, requireUser } from "@/server/auth";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -39,7 +40,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           administrateurs ont accès à CSM.
         </p>
       ) : null}
-      {askDuty ? <DutyBanner day={today} initial={user.district ? [user.district] : []} /> : null}
+      {askDuty ? (
+        <DutyBanner day={today} initial={userDistricts({ ...user, duty_day: "" }, today)} />
+      ) : null}
       {children}
     </AppShell>
   );

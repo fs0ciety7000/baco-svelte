@@ -84,6 +84,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
                 email={m.username}
                 id={m.id}
                 avatar={m.avatar}
+                role={m.role}
                 className="size-10"
               />
               <div className="flex min-w-0 flex-1 flex-col">
@@ -101,10 +102,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
                 ) : null}
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1">
-                {m.district ? (
-                  <Badge tone="info">{DISTRICT_SHORT[m.district] ?? m.district}</Badge>
+                {m.districts.length ? (
+                  <Badge tone="info">
+                    {m.districts.map((d) => DISTRICT_SHORT[d] ?? d).join(" · ")}
+                  </Badge>
                 ) : null}
-                {m.role === "moderator" || m.role === "admin" || m.role === "sysop" ? (
+                {m.role === "admin" || m.role === "sysop" ? (
                   <span className="label-mono text-fg-muted">{ROLE_LABEL[m.role]}</span>
                 ) : null}
               </div>

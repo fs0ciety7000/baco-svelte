@@ -38,6 +38,9 @@ const root = su.json.token;
 
 const suffix = Math.random().toString(36).slice(2, 8);
 const roles = { admin: null, user: null, reader: null, otto_agent: null, denied: null, moderator: null };
+// Rôles v2 (11 oct. 2026) : les clés historiques des tests désignent désormais PACO/RCCA (user, moderator, denied)
+// ou Invité (reader, otto_agent : lecture des commandes bus et taxi seulement).
+const ROLE_OF = { admin: 'admin', user: 'paco', moderator: 'paco', denied: 'paco', reader: 'guest', otto_agent: 'guest' };
 const created = [];
 // Fiches de test supprimées par le superuser : leurs lignes d'audit sont nettoyées à la fin.
 const auditIds = [];
@@ -53,7 +56,7 @@ try {
 				passwordConfirm: password,
 				name: `Test ${role}`,
 				username: `t${role.replace('_', '')}${suffix}`,
-				role: role === 'denied' ? 'user' : role,
+				role: ROLE_OF[role],
 				// Comptes créés sans grants/denies (comme par l'interface admin) : le hook doit les normaliser.
 				...(role === 'denied' ? { denies: ['otto:write'] } : {}),
 				verified: true
@@ -206,25 +209,26 @@ try {
 	const closed = await api('PATCH', `/api/collections/bus_orders/records/${old.json?.id}`, { token: u.token, body: { status: 'termine' } });
 	check('envoyé → terminé (clôture) après 5 jours', closed.status === 200 && !!closed.json.ended_at, `HTTP ${closed.status} ${JSON.stringify(closed.json).slice(0, 120)}`);
 	t = await patch(roles.otto_agent.token, { status: 'confirme' });
-	check('tout agent confirme (otto_agent)', t.status === 200 && t.json.confirmed_by === roles.otto_agent.id, `HTTP ${t.status}`);
+	check("l'invité ne confirme pas (lecture seule)", t.status >= 400, `HTTP ${t.status}`);
+	t = await patch(u.token, { status: 'confirme' });
+	check('PACO/RCCA confirme', t.status === 200 && t.json.confirmed_by === u.id, `HTTP ${t.status}`);
 	t = await patch(u.token, { status: 'en_cours' });
 	check('confirmé → en cours', t.status === 200 && !!t.json.started_at, `HTTP ${t.status}`);
-	t = await patch(u.token, { status: 'annule', cancel_reason: 'Test' });
-	check('annulation après « en cours » réservée au coordinateur', t.status === 403, `HTTP ${t.status}`);
-	t = await patch(u.token, { status: 'confirme' });
-	check('« en cours → confirmé » réservé au coordinateur (contournement de l\'annulation)', t.status === 403, `HTTP ${t.status}`);
 	t = await patch(u.token, { validated_by: u.id, sent_by_name: 'X' });
 	check('attribution reprise de BACO non modifiable', t.status >= 400, `HTTP ${t.status}`);
-	t = await patch(roles.admin.token, { status: 'annule' });
+	t = await patch(u.token, { status: 'annule' });
 	check('annulation sans motif refusée', t.status === 400, `HTTP ${t.status}`);
-	t = await patch(roles.admin.token, { status: 'annule', cancel_reason: 'Test annulation' });
-	check('coordinateur annule avec motif', t.status === 200 && t.json.status_before_cancel === 'en_cours', `HTTP ${t.status}`);
-	t = await patch(u.token, { reason: 'Modif après annulation' });
-	check('commande annulée non modifiable par un agent', t.status === 400, `HTTP ${t.status}`);
+	// Rôles v2 : les PACO/RCCA ont les transitions des anciens coordinateurs.
+	t = await patch(u.token, { status: 'annule', cancel_reason: 'Test annulation' });
+	check('PACO/RCCA annule après « en cours » avec motif', t.status === 200 && t.json.status_before_cancel === 'en_cours', `HTTP ${t.status}`);
+	t = await patch(roles.otto_agent.token, { reason: 'Modif après annulation' });
+	check("l'invité ne modifie pas une commande annulée", t.status >= 400, `HTTP ${t.status}`);
 	t = await patch(roles.admin.token, { status: 'confirme' });
 	check('rétablir vers un autre statut que le précédent refusé', t.status === 400, `HTTP ${t.status}`);
-	t = await patch(roles.admin.token, { status: 'en_cours' });
-	check('coordinateur rétablit au statut précédent', t.status === 200 && !t.json.cancelled_at, `HTTP ${t.status}`);
+	t = await patch(u.token, { status: 'en_cours' });
+	check('PACO/RCCA rétablit au statut précédent', t.status === 200 && !t.json.cancelled_at, `HTTP ${t.status}`);
+	t = await patch(u.token, { status: 'confirme' });
+	check('PACO/RCCA : « en cours → confirmé » permis (coordinateur)', t.status === 200, `HTTP ${t.status}`);
 	// Numéros de bon : créations simultanées sans doublon.
 	const burst = await Promise.all(
 		Array.from({ length: 12 }, () =>
@@ -241,7 +245,7 @@ try {
 		token: roles.reader.token
 	});
 	const chain = (ev.json?.items ?? []).map((i) => i.to).join(',');
-	check('historique horodaté lisible (lecteur)', chain === 'brouillon,envoye,confirme,en_cours,annule,en_cours', chain);
+	check('historique horodaté lisible (invité)', chain === 'brouillon,envoye,confirme,en_cours,annule,en_cours,confirme', chain);
 	check("historique : auteur de l'envoi", ev.json?.items?.[1]?.by === u.id && ev.json?.items?.[1]?.from === 'brouillon');
 	const evc = await api('POST', '/api/collections/order_events/records', {
 		token: roles.admin.token,
@@ -249,10 +253,10 @@ try {
 	});
 	check("personne n'écrit l'historique à la main", evc.status >= 400, `HTTP ${evc.status}`);
 
-	// Taxi et PMR : otto_agent n'y a pas accès ; un agent crée en son nom seulement.
-	for (const c of ['taxi_orders', 'pmr_clients', 'taxi_companies']) {
+	// PMR : l'invité n'y a pas accès (il lit les taxis) ; un agent crée en son nom seulement.
+	for (const c of ['pmr_clients', 'pmr_assists', 'ops_log', 'directory_contacts', 'documents']) {
 		const r = await api('GET', `/api/collections/${c}/records?perPage=1`, { token: roles.otto_agent.token });
-		check(`otto_agent ne lit pas ${c}`, r.status !== 200 || r.json.totalItems === 0, `HTTP ${r.status}`);
+		check(`l'invité ne lit pas ${c}`, r.status !== 200 || r.json.totalItems === 0, `HTTP ${r.status}`);
 	}
 	const tx = await api('POST', '/api/collections/taxi_orders/records', {
 		token: u.token,
@@ -267,7 +271,11 @@ try {
 	const txe = await api('GET', `/api/collections/order_events/records?filter=${encodeURIComponent(`order="${tx.json.id}"`)}`, {
 		token: roles.otto_agent.token
 	});
-	check("otto_agent ne lit pas l'historique taxi", txe.json?.totalItems === 0, `${txe.json?.totalItems}`);
+	check("l'invité lit l'historique taxi", txe.json?.totalItems === 1, `${txe.json?.totalItems}`);
+	const txg = await api('GET', `/api/collections/taxi_orders/records/${tx.json.id}`, { token: roles.otto_agent.token });
+	check("l'invité lit une commande taxi", txg.status === 200, `HTTP ${txg.status}`);
+	const txw = await api('PATCH', `/api/collections/taxi_orders/records/${tx.json.id}`, { token: roles.otto_agent.token, body: { to_station: 'X' } });
+	check("l'invité ne modifie pas une commande taxi", txw.status >= 400, `HTTP ${txw.status}`);
 	const pc = await api('POST', '/api/collections/pmr_clients/records', { token: u.token, body: { last_name: 'Test', updated_by: u.id, created_by: u.id } });
 	check('agent crée une fiche PMR', pc.status === 200, `HTTP ${pc.status}`);
 	const pd = await api('DELETE', `/api/collections/pmr_clients/records/${pc.json.id}`, { token: u.token });
@@ -287,7 +295,11 @@ try {
 		token: roles.otto_agent.token,
 		body: { name: 'Modifié' }
 	});
-	check("modèle partagé modifiable par un autre agent", tpo.status === 200, `HTTP ${tpo.status}`);
+	check("l'invité ne modifie pas un modèle", tpo.status >= 400, `HTTP ${tpo.status}`);
+	const tpm = await api('PATCH', `/api/collections/order_templates/records/${tp.json.id}`, { token: roles.moderator.token, body: { name: 'Modifié' } });
+	check('modèle partagé modifiable par un autre PACO/RCCA', tpm.status === 200, `HTTP ${tpm.status}`);
+	const tpd = await api('DELETE', `/api/collections/order_templates/records/${tp.json.id}`, { token: roles.moderator.token });
+	check('PACO/RCCA ne supprime pas un modèle (otto:delete)', tpd.status >= 400, `HTTP ${tpd.status}`);
 	const tpk = await api('PATCH', `/api/collections/order_templates/records/${tp.json.id}`, { token: u.token, body: { kind: 'taxi' } });
 	check('type de modèle non modifiable', tpk.status >= 400, `HTTP ${tpk.status}`);
 	const tpr = await api('POST', '/api/collections/order_templates/records', {
@@ -299,32 +311,21 @@ try {
 		token: roles.otto_agent.token,
 		body: { kind: 'taxi', name: 'X', created_by: roles.otto_agent.id }
 	});
-	check('otto_agent ne crée pas de modèle taxi', tpt.status >= 400, `HTTP ${tpt.status}`);
+	check("l'invité ne crée pas de modèle taxi", tpt.status >= 400, `HTTP ${tpt.status}`);
 
-	// B201 : lecture par tous ; écriture par les agents rattachés à un district (décision du 8 octobre 2026).
-	const b2n = await api('POST', '/api/collections/b201_reports/records', { token: u.token, body: { day: '2099-02-01', updated_by: u.id } });
-	check('agent sans district ne crée pas la B201', b2n.status >= 400, `HTTP ${b2n.status}`);
-	await api('PATCH', `/api/collections/users/records/${u.id}`, { token: root, body: { district: 'Centre' } });
+	// B201 (rôles v2) : écrite par tout PACO/RCCA, quel que soit son district ; l'invité ne la lit pas.
 	const b2a = await api('POST', '/api/collections/b201_reports/records', { token: u.token, body: { day: '2099-02-01', updated_by: u.id } });
-	check('agent du district Centre écrit la B201', b2a.status === 200, `HTTP ${b2a.status}`);
-	// otto_agent : refusé sans district, accepté avec ; lecteur refusé même avec un district ; retrait explicite.
+	check('PACO/RCCA sans district écrit la B201', b2a.status === 200, `HTTP ${b2a.status}`);
 	const ox = await api('POST', '/api/collections/b201_reports/records', { token: roles.otto_agent.token, body: { day: '2099-02-02', updated_by: roles.otto_agent.id } });
-	check("otto_agent sans district n'écrit pas la B201", ox.status >= 400, `HTTP ${ox.status}`);
-	for (const r of ['otto_agent', 'reader']) {
-		await api('PATCH', `/api/collections/users/records/${roles[r].id}`, { token: root, body: { district: 'Sud-Est' } });
-	}
-	const oy = await api('POST', '/api/collections/b201_reports/records', { token: roles.otto_agent.token, body: { day: '2099-02-02', updated_by: roles.otto_agent.id } });
-	check('otto_agent du district écrit la B201', oy.status === 200, `HTTP ${oy.status}`);
-	if (oy.json?.id) {
-		await api('DELETE', `/api/collections/b201_reports/records/${oy.json.id}`, { token: root });
-		auditIds.push(oy.json.id);
-	}
-	const rx = await api('POST', '/api/collections/b201_reports/records', { token: roles.reader.token, body: { day: '2099-02-04', updated_by: roles.reader.id } });
-	check("lecteur avec district n'écrit pas la B201", rx.status >= 400, `HTTP ${rx.status}`);
-	await api('PATCH', `/api/collections/users/records/${roles.denied.id}`, { token: root, body: { district: 'Sud-Est', denies: ['otto:write', 'b201:write'] } });
+	check("l'invité n'écrit pas la B201", ox.status >= 400, `HTTP ${ox.status}`);
+	await api('PATCH', `/api/collections/users/records/${roles.denied.id}`, { token: root, body: { denies: ['otto:write', 'b201:write'] } });
 	const xd = await api('POST', '/api/collections/b201_reports/records', { token: roles.denied.token, body: { day: '2099-02-03', updated_by: roles.denied.id } });
-	check('b201:write retiré → pas d\'écriture malgré le district', xd.status >= 400, `HTTP ${xd.status}`);
+	check("b201:write retiré → pas d'écriture", xd.status >= 400, `HTTP ${xd.status}`);
 	if (b2a.json?.id) {
+		const b2u = await api('PATCH', `/api/collections/b201_reports/records/${b2a.json.id}`, { token: roles.denied.token, body: { updated_by: roles.denied.id } });
+		check('b201:write retiré : la modification (b201:update) reste permise', b2u.status === 200, `HTTP ${b2u.status}`);
+		const b2x = await api('DELETE', `/api/collections/b201_reports/records/${b2a.json.id}`, { token: u.token });
+		check('PACO/RCCA ne supprime pas la B201', b2x.status >= 400, `HTTP ${b2x.status}`);
 		await api('DELETE', `/api/collections/b201_reports/records/${b2a.json.id}`, { token: root });
 		auditIds.push(b2a.json.id);
 	}
@@ -333,7 +334,9 @@ try {
 	const b2d = await api('POST', '/api/collections/b201_reports/records', { token: roles.admin.token, body: { day: '2099-01-01', updated_by: roles.admin.id } });
 	check('une seule B201 par jour', b2d.status >= 400, `HTTP ${b2d.status}`);
 	const b2r = await api('GET', `/api/collections/b201_reports/records/${b2.json.id}`, { token: roles.reader.token });
-	check('lecteur lit la B201', b2r.status === 200, `HTTP ${b2r.status}`);
+	check("l'invité ne lit pas la B201", b2r.status >= 400, `HTTP ${b2r.status}`);
+	const b2p = await api('GET', `/api/collections/b201_reports/records/${b2.json.id}`, { token: roles.moderator.token });
+	check('PACO/RCCA lit la B201', b2p.status === 200, `HTTP ${b2p.status}`);
 	const b2m = await api('PATCH', `/api/collections/b201_reports/records/${b2.json.id}`, { token: roles.admin.token, body: { day: '2099-01-02', updated_by: roles.admin.id } });
 	check('jour de la B201 non modifiable (bug B1 de BACO)', b2m.status >= 400, `HTTP ${b2m.status}`);
 
@@ -404,21 +407,21 @@ try {
 	check('annulée → réalisée refusé', pr.status === 400, `HTTP ${pr.status}`);
 	pr = await ap({ status: 'prevue', time: '15:10' });
 	check('rétablie en prévue, motif effacé', pr.status === 200 && pr.json.cancel_reason === '', `HTTP ${pr.status}`);
-	const pev = await api('GET', `/api/collections/pmr_events/records?sort=at&perPage=50&filter=${encodeURIComponent(`record="${aid}"`)}`, { token: roles.reader.token });
+	const pev = await api('GET', `/api/collections/pmr_events/records?sort=at&perPage=50&filter=${encodeURIComponent(`record="${aid}"`)}`, { token: roles.denied.token });
 	const pchain = (pev.json?.items ?? []).map((i) => `${i.field}:${i.to}`).join(',');
 	check('historique de la prestation', pchain === 'status:prevue,status:annulee,status:prevue,time:15:10', pchain);
 	const pew = await api('POST', '/api/collections/pmr_events/records', { token: roles.admin.token, body: { kind: 'assist', record: aid, to: 'x', at: new Date().toISOString() } });
 	check("personne n'écrit l'historique PMR à la main", pew.status >= 400, `HTTP ${pew.status}`);
 
 	// Matériel : création par les coordinateurs, état par tout agent pmr:write.
-	const eq = await api('POST', '/api/collections/pmr_equipment/records', { token: u.token, body: { station: 'XTEST', state: 'ok', updated_by: u.id } });
-	check('agent ne crée pas de matériel', eq.status >= 400, `HTTP ${eq.status}`);
+	const eq = await api('POST', '/api/collections/pmr_equipment/records', { token: roles.otto_agent.token, body: { station: 'XTEST', state: 'ok', updated_by: roles.otto_agent.id } });
+	check("l'invité ne crée pas de matériel", eq.status >= 400, `HTTP ${eq.status}`);
 	const eqa = await api('POST', '/api/collections/pmr_equipment/records', { token: roles.admin.token, body: { station: 'XTEST', state: 'ok', updated_by: roles.admin.id } });
 	check('coordinateur crée une rampe', eqa.status === 200, `HTTP ${eqa.status}`);
 	const equ = await api('PATCH', `/api/collections/pmr_equipment/records/${eqa.json?.id}`, { token: u.token, body: { state: 'hs', state_note: 'Charnière cassée', updated_by: u.id } });
 	check('agent passe une rampe hors service', equ.status === 200 && equ.json.state === 'hs', `HTTP ${equ.status}`);
 	const eqs = await api('PATCH', `/api/collections/pmr_equipment/records/${eqa.json?.id}`, { token: u.token, body: { station: 'AUTRE', updated_by: u.id } });
-	check('agent ne modifie pas la gare d\'une rampe (coordinateurs)', eqs.status >= 400, `HTTP ${eqs.status}`);
+	check('PACO/RCCA modifie la gare d\'une rampe (coordinateur)', eqs.status === 200, `HTTP ${eqs.status}`);
 	const eqd = await api('DELETE', `/api/collections/pmr_equipment/records/${eqa.json?.id}`, { token: u.token });
 	check('agent ne supprime pas une rampe', eqd.status >= 400, `HTTP ${eqd.status}`);
 	const eqo = await api('GET', '/api/collections/pmr_equipment/records?perPage=1', { token: roles.otto_agent.token });
@@ -431,7 +434,7 @@ try {
 
 	// --- Opérations : main courante, notifications, passages à niveau, trains suivis ---
 	const mod = roles.moderator;
-	for (const r of [u, roles.reader, mod]) await api('PATCH', `/api/collections/users/records/${r.id}`, { token: root, body: { district: 'Sud-Ouest' } });
+	for (const r of [u, roles.denied, mod]) await api('PATCH', `/api/collections/users/records/${r.id}`, { token: root, body: { district: 'Sud-Ouest' } });
 	const lg = await api('POST', '/api/collections/ops_log/records', {
 		token: u.token,
 		body: { body: `Essai @tmoderator${suffix} voir le PN`, category: 'info', author: u.id, urgent: true }
@@ -458,17 +461,17 @@ try {
 	const rpBad = await api('POST', '/api/collections/ops_log/records', { token: u.token, body: { body: 'x', category: 'info', author: u.id, reply_to: 'aaaaaaaaaaaaaaa' } });
 	check('réponse à un message inexistant refusée', rpBad.status >= 400, `HTTP ${rpBad.status}`);
 	const lgR = await api('POST', '/api/collections/ops_log/records', { token: roles.reader.token, body: { body: 'x', category: 'info', author: roles.reader.id } });
-	check('lecteur ne publie pas', lgR.status >= 400, `HTTP ${lgR.status}`);
+	check("l'invité ne publie pas", lgR.status >= 400, `HTTP ${lgR.status}`);
 	const lgO = await api('GET', '/api/collections/ops_log/records?perPage=1', { token: roles.otto_agent.token });
-	check('otto_agent ne lit pas la main courante', lgO.status !== 200 || lgO.json.totalItems === 0, `HTTP ${lgO.status}`);
-	const lgRd = await api('GET', `/api/collections/ops_log/records/${lid}`, { token: roles.reader.token });
-	check('lecteur lit une entrée', lgRd.status === 200, `HTTP ${lgRd.status}`);
+	check("l'invité ne lit pas le Journal", lgO.status !== 200 || lgO.json.totalItems === 0, `HTTP ${lgO.status}`);
+	const lgRd = await api('GET', `/api/collections/ops_log/records/${lid}`, { token: roles.denied.token });
+	check('PACO/RCCA lit une entrée', lgRd.status === 200, `HTTP ${lgRd.status}`);
 	const nMod = await api('GET', `/api/collections/notifications/records?filter=${encodeURIComponent(`source_id="${lid}"`)}`, { token: roles.moderator.token });
 	check('mention notifiée (une seule, même si urgente)', nMod.json?.items?.length === 1 && nMod.json.items[0].kind === 'mention' && nMod.json.items[0].link.startsWith('/operations/journal'), JSON.stringify(nMod.json?.items?.map((i) => i.kind)));
-	const nRd = await api('GET', `/api/collections/notifications/records?filter=${encodeURIComponent(`source_id="${lid}"`)}`, { token: roles.reader.token });
-	check('urgence notifiée aux lecteurs du district', nRd.json?.items?.length === 1 && nRd.json.items[0].kind === 'urgent', `${nRd.json?.items?.length}`);
+	const nRd = await api('GET', `/api/collections/notifications/records?filter=${encodeURIComponent(`source_id="${lid}"`)}`, { token: roles.denied.token });
+	check('urgence notifiée aux PACO/RCCA du district', nRd.json?.items?.length === 1 && nRd.json.items[0].kind === 'urgent', `${nRd.json?.items?.length}`);
 	const nOt = await api('GET', `/api/collections/notifications/records?filter=${encodeURIComponent(`source_id="${lid}"`)}`, { token: roles.otto_agent.token });
-	check('otto_agent pas notifié', (nOt.json?.items?.length ?? 0) === 0, `${nOt.json?.items?.length}`);
+	check("l'invité pas notifié", (nOt.json?.items?.length ?? 0) === 0, `${nOt.json?.items?.length}`);
 	const nAll = await api('GET', `/api/collections/notifications/records?perPage=200`, { token: u.token });
 	check("l'agent ne voit que ses notifications", (nAll.json?.items ?? []).every((i) => i.user === u.id), `${nAll.json?.items?.length}`);
 	const nid = nMod.json?.items?.[0]?.id;
@@ -483,11 +486,11 @@ try {
 	const lp = (body, token = u.token) => api('PATCH', `/api/collections/ops_log/records/${lid}`, { token, body });
 	let lr = await lp({ body: 'Essai corrigé' });
 	check('auteur corrige son entrée (edited_at posé)', lr.status === 200 && !!lr.json.edited_at, `HTTP ${lr.status}`);
-	lr = await lp({ body: 'Pas à moi' }, roles.denied.token);
-	check("un agent ne modifie pas l'entrée d'un autre", lr.status >= 400, `HTTP ${lr.status}`);
+	lr = await lp({ body: 'Pas à moi' }, roles.reader.token);
+	check("l'invité ne modifie pas une entrée", lr.status >= 400, `HTTP ${lr.status}`);
 	await lp({ urgent: false });
 	await lp({ urgent: true });
-	const nRd2 = await api('GET', `/api/collections/notifications/records?filter=${encodeURIComponent(`source_id="${lid}"`)}`, { token: roles.reader.token });
+	const nRd2 = await api('GET', `/api/collections/notifications/records?filter=${encodeURIComponent(`source_id="${lid}"`)}`, { token: roles.denied.token });
 	check('urgence diffusée une seule fois par entrée', nRd2.json?.items?.length === 1, `${nRd2.json?.items?.length}`);
 	lr = await lp({ notified: [] });
 	check('liste des notifiés non forgeable', lr.status >= 400, `HTTP ${lr.status}`);
@@ -498,40 +501,40 @@ try {
 	lr = await lp({ status: 'retiree', retired_reason: 'Doublon' });
 	check("l'auteur retire dans les 15 min", lr.status === 200 && lr.json.status === 'retiree', `HTTP ${lr.status}`);
 	const hid = await api('GET', `/api/collections/ops_log/records/${lid}`, { token: roles.reader.token });
-	check('entrée retirée masquée aux autres agents', hid.status === 404, `HTTP ${hid.status}`);
-	const hidEv = await api('GET', `/api/collections/ops_log_events/records?filter=${encodeURIComponent(`entry="${lid}"`)}`, { token: roles.reader.token });
-	check("historique d'une entrée retirée masqué", hidEv.json?.items?.length === 0, `${hidEv.json?.items?.length}`);
-	const hidRd = await api('POST', '/api/collections/ops_log_reads/records', { token: roles.reader.token, body: { entry: lid, user: roles.reader.id } });
+	check("entrée retirée masquée à l'invité", hid.status === 404, `HTTP ${hid.status}`);
+	const hidEv = await api('GET', `/api/collections/ops_log_events/records?filter=${encodeURIComponent(`entry="${lid}"`)}`, { token: roles.denied.token });
+	check("historique d'une entrée retirée visible des coordinateurs (PACO/RCCA)", hidEv.json?.items?.length > 0, `${hidEv.json?.items?.length}`);
+	const hidRd = await api('POST', '/api/collections/ops_log_reads/records', { token: roles.denied.token, body: { entry: lid, user: roles.denied.id } });
 	check('« Lu » impossible sur une entrée retirée', hidRd.status >= 400, `HTTP ${hidRd.status}`);
 	const nGone = await api('GET', `/api/collections/notifications/records?filter=${encodeURIComponent(`source_id="${lid}"`)}`, { token: roles.moderator.token });
 	check('notifications de l entrée retirée supprimées', nGone.json?.items?.length === 0, `${nGone.json?.items?.length}`);
 	lr = await lp({ status: 'active' });
-	check("l'auteur ne rétablit pas (coordinateur)", lr.status === 403, `HTTP ${lr.status}`);
-	lr = await lp({ status: 'active' }, roles.moderator.token);
-	check('coordinateur rétablit', lr.status === 200 && lr.json.retired_reason === '', `HTTP ${lr.status}`);
-	const lev = await api('GET', `/api/collections/ops_log_events/records?sort=at&perPage=50&filter=${encodeURIComponent(`entry="${lid}"`)}`, { token: roles.reader.token });
+	check("l'auteur PACO/RCCA rétablit (coordinateur)", lr.status === 200 && lr.json.retired_reason === '', `HTTP ${lr.status}`);
+	lr = await lp({ status: 'retiree', retired_reason: 'x' }, roles.reader.token);
+	check("l'invité ne retire pas", lr.status >= 400, `HTTP ${lr.status}`);
+	const lev = await api('GET', `/api/collections/ops_log_events/records?sort=at&perPage=50&filter=${encodeURIComponent(`entry="${lid}"`)}`, { token: roles.denied.token });
 	const lchain = (lev.json?.items ?? []).map((i) => `${i.kind}:${i.field}`).join(',');
 	check('historique de l entrée', lchain === 'create:,edit:body,edit:urgent,edit:urgent,retire:status,restore:status', lchain);
 	const levw = await api('POST', '/api/collections/ops_log_events/records', { token: roles.admin.token, body: { entry: lid, kind: 'edit', at: new Date().toISOString() } });
 	check("personne n'écrit l'historique de la main courante", levw.status >= 400, `HTTP ${levw.status}`);
-	const rd = await api('POST', '/api/collections/ops_log_reads/records', { token: roles.reader.token, body: { entry: lid, user: roles.reader.id } });
-	check('lecteur marque « Lu »', rd.status === 200, `HTTP ${rd.status}`);
-	const rd2 = await api('POST', '/api/collections/ops_log_reads/records', { token: roles.reader.token, body: { entry: lid, user: u.id } });
+	const rd = await api('POST', '/api/collections/ops_log_reads/records', { token: roles.denied.token, body: { entry: lid, user: roles.denied.id } });
+	check('PACO/RCCA marque « Lu »', rd.status === 200, `HTTP ${rd.status}`);
+	const rd2 = await api('POST', '/api/collections/ops_log_reads/records', { token: roles.denied.token, body: { entry: lid, user: u.id } });
 	check('« Lu » au nom d un autre refusé', rd2.status >= 400, `HTTP ${rd2.status}`);
 	const ld = await api('DELETE', `/api/collections/ops_log/records/${lid}`, { token: roles.moderator.token });
-	check('coordinateur ne supprime pas (admin seulement)', ld.status >= 400, `HTTP ${ld.status}`);
+	check('PACO/RCCA ne supprime pas (journal:delete)', ld.status >= 400, `HTTP ${ld.status}`);
 
 	// Passages à niveau : lecture large, écriture coordinateurs (BUG-1 de la v1 : UPDATE ouvert à tous).
 	const pn = await api('POST', '/api/collections/level_crossings/records', { token: roles.moderator.token, body: { line: 'L.999', number: '12 bis', zone: 'FMS', active: true, updated_by: roles.moderator.id } });
 	check('coordinateur crée un PN', pn.status === 200, `HTTP ${pn.status} ${JSON.stringify(pn.json?.data ?? '')}`);
 	const pnU = await api('PATCH', `/api/collections/level_crossings/records/${pn.json?.id}`, { token: roles.reader.token, body: { address: '<img src=x onerror=alert(1)>', updated_by: roles.reader.id } });
-	check('lecteur ne modifie pas un PN', pnU.status >= 400, `HTTP ${pnU.status}`);
+	check("l'invité ne modifie pas un PN", pnU.status >= 400, `HTTP ${pnU.status}`);
 	const pnA = await api('PATCH', `/api/collections/level_crossings/records/${pn.json?.id}`, { token: u.token, body: { address: 'x', updated_by: u.id } });
-	check('agent ne modifie pas un PN', pnA.status >= 400, `HTTP ${pnA.status}`);
-	const pnL = await api('GET', `/api/collections/level_crossings/records/${pn.json?.id}`, { token: roles.reader.token });
-	check('lecteur lit un PN', pnL.status === 200, `HTTP ${pnL.status}`);
+	check('PACO/RCCA modifie un PN', pnA.status === 200, `HTTP ${pnA.status}`);
+	const pnL = await api('GET', `/api/collections/level_crossings/records/${pn.json?.id}`, { token: roles.denied.token });
+	check('PACO/RCCA lit un PN', pnL.status === 200, `HTTP ${pnL.status}`);
 	const pnO = await api('GET', '/api/collections/level_crossings/records?perPage=1', { token: roles.otto_agent.token });
-	check('otto_agent ne lit pas les PN', pnO.status !== 200 || pnO.json.totalItems === 0, `HTTP ${pnO.status}`);
+	check("l'invité ne lit pas les PN", pnO.status !== 200 || pnO.json.totalItems === 0, `HTTP ${pnO.status}`);
 	const pnD = await api('POST', '/api/collections/level_crossings/records', { token: roles.moderator.token, body: { line: 'L.999', number: '12 bis', updated_by: roles.moderator.id } });
 	check('PN en double (ligne + n°) refusé', pnD.status >= 400, `HTTP ${pnD.status}`);
 
@@ -641,9 +644,9 @@ try {
 		const amForge = await api('POST', '/api/collections/alea_marks/records', { token: u.token, body: { ...amBody, block: `${amBody.block}x`, marked_by: roles.reader.id } });
 		check('auteur d un bloc ALEA encodé non forgeable', amForge.status >= 400, `HTTP ${amForge.status}`);
 		const amReader = await api('POST', '/api/collections/alea_marks/records', { token: roles.reader.token, body: { ...amBody, block: `${amBody.block}r`, marked_by: roles.reader.id } });
-		check('lecteur ne coche pas ALEA encodé', amReader.status >= 400, `HTTP ${amReader.status}`);
-		const amRead = await api('GET', `/api/collections/alea_marks/records/${am.json?.id}`, { token: roles.reader.token });
-		check('blocs ALEA encodés lisibles avec deplacements:read', amRead.status === 200, `HTTP ${amRead.status}`);
+		check("l'invité ne coche pas ALEA encodé", amReader.status >= 400, `HTTP ${amReader.status}`);
+		const amRead = await api('GET', `/api/collections/alea_marks/records/${am.json?.id}`, { token: roles.denied.token });
+		check('blocs ALEA encodés lisibles par un PACO/RCCA (deplacements:read)', amRead.status === 200, `HTTP ${amRead.status}`);
 		const amDel = await api('DELETE', `/api/collections/alea_marks/records/${am.json?.id}`, { token: u.token });
 		check('agent décoche un bloc ALEA encodé', amDel.status === 204, `HTTP ${amDel.status}`);
 		// Journal des synchros DICOS (1760001900) : écrit par le connecteur, lu avec pmr:read, jamais modifiable.
@@ -692,11 +695,11 @@ try {
 		check('agent révoque son jeton', tkDel.status === 204, `HTTP ${tkDel.status}`);
 		// Désactivation du compte : ses jetons disparaissent.
 		const dpass = `Test-${suffix}-tokdis`;
-		const du = await api('POST', '/api/collections/users/records', { token: root, body: { email: `test-tokdis-${suffix}@csm.invalid`, password: dpass, passwordConfirm: dpass, name: 'Test tokdis', username: `ttokdis${suffix}`, role: 'user', verified: true } });
+		const du = await api('POST', '/api/collections/users/records', { token: root, body: { email: `test-tokdis-${suffix}@csm.invalid`, password: dpass, passwordConfirm: dpass, name: 'Test tokdis', username: `ttokdis${suffix}`, role: 'paco', verified: true } });
 		if (du.json?.id) created.push(du.json.id);
 		const dtok = (await api('POST', '/api/collections/users/auth-with-password', { body: { identity: du.json?.email, password: dpass } })).json?.token;
 		const dk = await api('POST', '/api/collections/connector_tokens/records', { token: dtok, body: { user: du.json?.id, token_hash: hash('f') } });
-		await api('PATCH', `/api/collections/users/records/${du.json?.id}`, { token: root, body: { role: 'disabled', disabled_role: 'user' } });
+		await api('PATCH', `/api/collections/users/records/${du.json?.id}`, { token: root, body: { role: 'disabled', disabled_role: 'paco' } });
 		const dkAfter = await api('GET', `/api/collections/connector_tokens/records/${dk.json?.id}`, { token: root });
 		check('jetons supprimés à la désactivation du compte', dk.status === 200 && dkAfter.status === 404, `HTTP ${dk.status}/${dkAfter.status}`);
 	}
@@ -710,16 +713,18 @@ try {
 	const rfMod = roles.moderator;
 	const rfCt = await api('POST', '/api/collections/directory_contacts/records', { token: rfMod.token, body: { name: 'Contact test', phone: '080012', category: 'MIA', updated_by: rfMod.id } });
 	check('coordinateur crée un contact annuaire', rfCt.status === 200, `HTTP ${rfCt.status} ${JSON.stringify(rfCt.json).slice(0,80)}`);
-	const rfCtForge = await api('POST', '/api/collections/directory_contacts/records', { token: u.token, body: { name: 'X', updated_by: u.id } });
-	check('agent (user) ne crée pas de contact annuaire', rfCtForge.status >= 400, `HTTP ${rfCtForge.status}`);
-	const rfCtRead = await api('GET', '/api/collections/directory_contacts/records?perPage=1', { token: roles.reader.token });
-	check('lecteur lit l annuaire', rfCtRead.status === 200, `HTTP ${rfCtRead.status}`);
+	const rfCtForge = await api('POST', '/api/collections/directory_contacts/records', { token: roles.reader.token, body: { name: 'X', updated_by: roles.reader.id } });
+	check("l'invité ne crée pas de contact annuaire", rfCtForge.status >= 400, `HTTP ${rfCtForge.status}`);
+	const rfCtDel = await api('DELETE', `/api/collections/directory_contacts/records/${rfCt.json?.id}`, { token: u.token });
+	check('PACO/RCCA ne supprime pas un contact (repertoire:delete)', rfCtDel.status >= 400, `HTTP ${rfCtDel.status}`);
+	const rfCtRead = await api('GET', '/api/collections/directory_contacts/records?perPage=1', { token: roles.denied.token });
+	check('PACO/RCCA lit l annuaire', rfCtRead.status === 200, `HTTP ${rfCtRead.status}`);
 	const rfPc = await api('POST', '/api/collections/ptcar/records', { token: rfMod.token, body: { abbr: `ZZ${suffix}`, name_fr: 'Gare test', updated_by: rfMod.id } });
 	check('coordinateur crée un PtCar', rfPc.status === 200, `HTTP ${rfPc.status}`);
 	const rfPcDup = await api('POST', '/api/collections/ptcar/records', { token: rfMod.token, body: { abbr: `ZZ${suffix}`, name_fr: 'Doublon', updated_by: rfMod.id } });
 	check('PtCar abbr en double refusé', rfPcDup.status >= 400, `HTTP ${rfPcDup.status}`);
 	const rfPcOtto = await api('GET', '/api/collections/ptcar/records?perPage=1', { token: roles.otto_agent.token });
-	check('otto_agent ne lit pas PtCar', rfPcOtto.status !== 200 || rfPcOtto.json.totalItems === 0, `HTTP ${rfPcOtto.status} ${rfPcOtto.json?.totalItems}`);
+	check("l'invité ne lit pas PtCar", rfPcOtto.status !== 200 || rfPcOtto.json.totalItems === 0, `HTTP ${rfPcOtto.status} ${rfPcOtto.json?.totalItems}`);
 	// Procédures et documents : un agent (user) écrit (comme la v1 « documents »).
 	const rfDoc = await api('POST', '/api/collections/documents/records', { token: u.token, body: { name: 'Doc test', category: 'PMR', uploaded_by: u.id } });
 	check('agent (user) crée un document', rfDoc.status === 200, `HTTP ${rfDoc.status} ${JSON.stringify(rfDoc.json).slice(0,80)}`);
@@ -732,11 +737,13 @@ try {
 	const rfVersForge = await api('POST', '/api/collections/procedure_versions/records', { token: rfMod.token, body: { procedure: rfPid, title: 'forgé' } });
 	check('personne n écrit les versions à la main', rfVersForge.status >= 400, `HTTP ${rfVersForge.status}`);
 	await api('PATCH', `/api/collections/procedures/records/${rfPid}`, { token: u.token, body: { attachments: [rfDoc.json.id], updated_by: u.id } });
-	const rfDelRef = await api('DELETE', `/api/collections/documents/records/${rfDoc.json.id}`, { token: rfMod.token });
-	check('document référencé non supprimable', rfDelRef.status >= 400, `HTTP ${rfDelRef.status}`);
+	const rfDelRef = await api('DELETE', `/api/collections/documents/records/${rfDoc.json.id}`, { token: roles.admin.token });
+	check('document référencé non supprimable (même par un admin)', rfDelRef.status >= 400, `HTTP ${rfDelRef.status}`);
 	await api('PATCH', `/api/collections/procedures/records/${rfPid}`, { token: u.token, body: { attachments: [], updated_by: u.id } });
-	const rfDelFree = await api('DELETE', `/api/collections/documents/records/${rfDoc.json.id}`, { token: rfMod.token });
-	check('document détaché supprimable', rfDelFree.status === 204, `HTTP ${rfDelFree.status}`);
+	const rfDelPaco = await api('DELETE', `/api/collections/documents/records/${rfDoc.json.id}`, { token: rfMod.token });
+	check('PACO/RCCA ne supprime pas un document (documents:delete)', rfDelPaco.status >= 400, `HTTP ${rfDelPaco.status}`);
+	const rfDelFree = await api('DELETE', `/api/collections/documents/records/${rfDoc.json.id}`, { token: roles.admin.token });
+	check('document détaché supprimable (admin)', rfDelFree.status === 204, `HTTP ${rfDelFree.status}`);
 	for (const [c, id] of [['procedures', rfPid], ['ptcar', rfPc.json?.id], ['directory_contacts', rfCt.json?.id]]) if (id) { await api('DELETE', `/api/collections/${c}/records/${id}`, { token: root }); auditIds.push(id); }
 
 	// --- Équipe et Admin (1760001400) : comptes gérés par admin/sysop seuls, Nouveautés, réglages ---
@@ -744,17 +751,17 @@ try {
 	const eaPass = 'Ea-test-123456';
 	const eaUserCreate = await api('POST', '/api/collections/users/records', {
 		token: u.token,
-		body: { email: eaMail, password: eaPass, passwordConfirm: eaPass, role: 'user' }
+		body: { email: eaMail, password: eaPass, passwordConfirm: eaPass, role: 'paco' }
 	});
 	check('agent ne crée pas de compte', eaUserCreate.status >= 400, `HTTP ${eaUserCreate.status}`);
 	const eaModCreate = await api('POST', '/api/collections/users/records', {
 		token: roles.moderator.token,
-		body: { email: eaMail, password: eaPass, passwordConfirm: eaPass, role: 'user' }
+		body: { email: eaMail, password: eaPass, passwordConfirm: eaPass, role: 'paco' }
 	});
 	check('moderator ne crée pas de compte', eaModCreate.status >= 400, `HTTP ${eaModCreate.status}`);
 	const eaAcc = await api('POST', '/api/collections/users/records', {
 		token: roles.admin.token,
-		body: { email: eaMail, password: eaPass, passwordConfirm: eaPass, role: 'user', name: 'Compte test', verified: true }
+		body: { email: eaMail, password: eaPass, passwordConfirm: eaPass, role: 'paco', name: 'Compte test', verified: true }
 	});
 	check('admin crée un compte', eaAcc.status === 200, `HTTP ${eaAcc.status}`);
 	if (eaAcc.json?.id) created.push(eaAcc.json.id);
@@ -768,7 +775,7 @@ try {
 	const eaTok = (await api('POST', '/api/collections/users/auth-with-password', { body: { identity: eaMail, password: 'Ea-reset-654321' } })).json?.token;
 	await api('PATCH', `/api/collections/users/records/${eaAcc.json?.id}`, {
 		token: roles.admin.token,
-		body: { role: 'disabled', disabled_role: 'user' }
+		body: { role: 'disabled', disabled_role: 'paco' }
 	});
 	const eaOld = await api('PATCH', `/api/collections/users/records/${eaAcc.json?.id}`, { token: eaTok, body: { name: 'Toujours là' } });
 	check('compte désactivé : ancien jeton révoqué', eaOld.status >= 400, `HTTP ${eaOld.status}`);
@@ -796,10 +803,15 @@ try {
 		token: roles.moderator.token,
 		body: { title: 'Nouveauté test', type: 'ameliore', content: '**ok**', author: roles.moderator.id }
 	});
-	check('moderator publie une nouveauté', clMod.status === 200, `HTTP ${clMod.status}`);
-	const clRead = await api('GET', `/api/collections/changelog/records/${clMod.json?.id}`, { token: roles.reader.token });
-	check('Nouveautés lisibles par un lecteur', clRead.status === 200, `HTTP ${clRead.status}`);
-	if (clMod.json?.id) await api('DELETE', `/api/collections/changelog/records/${clMod.json.id}`, { token: root });
+	check("PACO/RCCA n'écrit pas les Nouveautés (administrateurs)", clMod.status >= 400, `HTTP ${clMod.status}`);
+	const clAdm = await api('POST', '/api/collections/changelog/records', {
+		token: roles.admin.token,
+		body: { title: 'Nouveauté test', type: 'ameliore', content: '**ok**', author: roles.admin.id }
+	});
+	check('admin publie une nouveauté', clAdm.status === 200, `HTTP ${clAdm.status}`);
+	const clRead = await api('GET', `/api/collections/changelog/records/${clAdm.json?.id}`, { token: roles.reader.token });
+	check('Nouveautés lisibles par un invité', clRead.status === 200, `HTTP ${clRead.status}`);
+	for (const c of [clMod, clAdm]) if (c.json?.id) await api('DELETE', `/api/collections/changelog/records/${c.json.id}`, { token: root });
 
 	const stUser = await api('POST', '/api/collections/app_settings/records', { token: u.token, body: { key: `t_${suffix}`, value: true, updated_by: u.id } });
 	check('agent ne modifie pas les réglages', stUser.status >= 400, `HTTP ${stUser.status}`);
@@ -812,6 +824,39 @@ try {
 	check('réglages lisibles par tout agent actif', stRead.status === 200, `HTTP ${stRead.status}`);
 	if (stAdmin.json?.id) await api('DELETE', `/api/collections/app_settings/records/${stAdmin.json.id}`, { token: root });
 
+	// --- Rôles v2 (1760002800) : droits L/É/M/S, héritage, districts ---
+	{
+		const g = roles.reader; // invité
+		await api('PATCH', `/api/collections/users/records/${g.id}`, { token: root, body: { grants: ['otto:write'] } });
+		const v2c = await api('POST', '/api/collections/bus_orders/records', { token: g.token, body: { status: 'brouillon', created_by: g.id } });
+		check('invité + otto:write accordé : crée un bon', v2c.status === 200, `HTTP ${v2c.status}`);
+		const v2u = await api('PATCH', `/api/collections/bus_orders/records/${v2c.json?.id}`, { token: g.token, body: { reason: 'x' } });
+		check('invité + otto:write seul : ne modifie pas (otto:update)', v2u.status >= 400, `HTTP ${v2u.status}`);
+		await api('PATCH', `/api/collections/users/records/${g.id}`, { token: root, body: { grants: ['otto:write', 'otto:update', 'otto:delete'] } });
+		const v2u2 = await api('PATCH', `/api/collections/bus_orders/records/${v2c.json?.id}`, { token: g.token, body: { reason: 'x' } });
+		check('otto:update accordé : modifie', v2u2.status === 200, `HTTP ${v2u2.status}`);
+		const v2d = await api('DELETE', `/api/collections/bus_orders/records/${v2c.json?.id}`, { token: g.token });
+		check('otto:delete accordé : supprime', v2d.status === 204, `HTTP ${v2d.status}`);
+		if (v2c.json?.id) auditIds.push(v2c.json.id);
+		await api('PATCH', `/api/collections/users/records/${g.id}`, { token: root, body: { grants: [] } });
+		const pacoBus = await api('POST', '/api/collections/bus_orders/records', { token: u.token, body: { status: 'brouillon', created_by: u.id } });
+		await api('PATCH', `/api/collections/users/records/${roles.moderator.id}`, { token: root, body: { denies: ['otto:update'] } });
+		const v2nu = await api('PATCH', `/api/collections/bus_orders/records/${pacoBus.json?.id}`, { token: roles.moderator.token, body: { reason: 'y' } });
+		check('PACO/RCCA avec otto:update retiré : ne modifie pas', v2nu.status >= 400, `HTTP ${v2nu.status}`);
+		const v2nc = await api('POST', '/api/collections/bus_orders/records', { token: roles.moderator.token, body: { status: 'brouillon', created_by: roles.moderator.id } });
+		check('… mais crée encore (otto:write hérité)', v2nc.status === 200, `HTTP ${v2nc.status}`);
+		const v2pd = await api('DELETE', `/api/collections/bus_orders/records/${pacoBus.json?.id}`, { token: u.token });
+		check('PACO/RCCA ne supprime pas un bon', v2pd.status >= 400, `HTTP ${v2pd.status}`);
+		await api('PATCH', `/api/collections/users/records/${roles.moderator.id}`, { token: root, body: { denies: [] } });
+		for (const r of [pacoBus, v2nc]) if (r.json?.id) { await api('DELETE', `/api/collections/bus_orders/records/${r.json.id}`, { token: root }); auditIds.push(r.json.id); }
+		const dSelf = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: u.token, body: { districts: ['Centre'] } });
+		check('districts réservés à l admin', dSelf.status >= 400, `HTTP ${dSelf.status}`);
+		const dAdm = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: roles.admin.token, body: { districts: ['Sud-Ouest', 'Centre'] } });
+		check('admin règle plusieurs districts', dAdm.status === 200 && dAdm.json.districts?.length === 2, `HTTP ${dAdm.status}`);
+		const oldRole = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: roles.admin.token, body: { role: 'moderator' } });
+		check('anciens rôles refusés', oldRole.status >= 400, `HTTP ${oldRole.status}`);
+	}
+
 	// --- Missions de groupe DICOS (1760001500) ---
 	const gmBody = { dicos_id: `jg-${suffix}`, day: '2026-10-09', status: 'prevue', group_name: 'École test', adults: 3, children: 20 };
 	const gmUser = await api('POST', '/api/collections/group_missions/records', { token: u.token, body: gmBody });
@@ -819,10 +864,10 @@ try {
 	const gmAdminCreate = await api('POST', '/api/collections/group_missions/records', { token: roles.admin.token, body: gmBody });
 	check('même un admin n écrit pas les missions de groupe (connecteur seul)', gmAdminCreate.status >= 400, `HTTP ${gmAdminCreate.status}`);
 	const gm = await api('POST', '/api/collections/group_missions/records', { token: root, body: gmBody });
-	const gmRead = await api('GET', `/api/collections/group_missions/records/${gm.json?.id}`, { token: roles.reader.token });
-	check('missions de groupe lisibles avec pmr:read', gmRead.status === 200, `HTTP ${gmRead.status}`);
+	const gmRead = await api('GET', `/api/collections/group_missions/records/${gm.json?.id}`, { token: roles.moderator.token });
+	check('missions de groupe lisibles par un PACO/RCCA (pmr:read)', gmRead.status === 200, `HTTP ${gmRead.status}`);
 	const gmOtto = await api('GET', `/api/collections/group_missions/records/${gm.json?.id}`, { token: roles.otto_agent.token });
-	check('otto_agent ne lit pas les missions de groupe', gmOtto.status === 404, `HTTP ${gmOtto.status}`);
+	check("l'invité ne lit pas les missions de groupe", gmOtto.status === 404, `HTTP ${gmOtto.status}`);
 	if (gm.json?.id) await api('DELETE', `/api/collections/group_missions/records/${gm.json.id}`, { token: root });
 
 	// Passkeys (10 oct. 2026) : aucune création directe (route interne après vérification par Next) ; personne d'autre ne

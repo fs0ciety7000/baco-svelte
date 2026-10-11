@@ -17,7 +17,7 @@ import { listOnline, type OnlineMember } from "@/server/data/team";
 import { onlineUsers } from "@/server/presence";
 import { currentSid } from "@/server/sessions";
 
-// Écritures du module Équipe : profil de l'agent, mot de passe, Nouveautés (admin, sysop, moderator).
+// Écritures du module Équipe : profil de l'agent, mot de passe, Nouveautés (admin, sysop).
 
 type Result = { ok: true } | { ok: false; error: string };
 const pbId = z.string().regex(/^[a-z0-9]{15}$/);
@@ -159,8 +159,8 @@ const changelogSchema = z.object({
 
 async function editor() {
   const user = await requireUser();
-  if (!isAdmin(user) && user.role !== "moderator")
-    throw new Error("DROIT:Réservé aux administrateurs et coordinateurs.");
+  // Nouveautés : administrateurs seulement depuis les rôles v2 (11 oct. 2026).
+  if (!isAdmin(user)) throw new Error("DROIT:Réservé aux administrateurs.");
   return user;
 }
 
