@@ -437,12 +437,16 @@ export async function busOrderPdf(detail: BusPdfDetail, ctx: PdfContext): Promis
   l.section("Service demandé");
   l.field("Date de circulation", formatLongDay(d.order_date), { bold: true });
   l.field("Heure d'appel", d.call_time || "—");
-  l.field("Type", d.direct ? "DIRECT (sans arrêt)" : "OMNIBUS (avec arrêts)");
+  l.field(
+    "Type",
+    d.direct ? (stops.length ? "DIRECT" : "DIRECT (sans arrêt)") : "OMNIBUS (avec arrêts)",
+  );
   l.field("Motif", d.reason);
   l.field(relationLabel, d.relation);
   l.section("Trajet");
   l.field("Origine", d.origin, { bold: true });
-  if (!d.direct) l.field("Arrêts intermédiaires", stops.join(", "));
+  // Un direct peut s'arrêter aux gares de correspondance (11 oct. 2026) : arrêts listés dès qu'il y en a.
+  if (stops.length || !d.direct) l.field("Arrêts intermédiaires", stops.join(", "));
   l.field("Destination", d.destination, { bold: true });
   l.field("Deux sens", d.round_trip ? "OUI" : "NON");
   l.field("Lignes concernées", d.lines.map(lineLabel).join(", "));

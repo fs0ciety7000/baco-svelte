@@ -114,6 +114,12 @@ describe("busMail", () => {
   it("direct, ou arrêts saisis à la main", () => {
     expect(
       busMail({ ...bus, draft: { ...bus.draft, direct: true } }, { agentName: "A" }).text,
+    ).toMatch(/Arrêts : Direct, arrêts : \S/);
+    expect(
+      busMail(
+        { ...bus, draft: { ...bus.draft, direct: true, stops: [], stops_manual: "" } },
+        { agentName: "A" },
+      ).text,
     ).toContain("Arrêts : Direct (sans arrêt)");
     expect(
       busStops({ ...bus.draft, stops_mode: "manuel", stops_manual: "Ath\nLeuze ; Péruwelz" }),

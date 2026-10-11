@@ -406,4 +406,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   le réseau (1 par arrêt, 4 par changement de ligne), sur plusieurs lignes au besoin (Mons → Charleroi-Central = L.118 →
   L.112 → L.124), lignes empruntées cochées d'office ; cocher / décocher limite l'itinéraire aux lignes cochées. **Bus direct** : seulement
   les gares de correspondance (`Route.transfers` : Mons → Charleroi-Central direct = La Louvière-Sud, Marchienne-au-Pont),
-  les autres arrêts restent en puces pour en ajouter ; basculer Omnibus / Direct recalcule (`setDirect`). Lignes affichées par `lineLabel()` (`lib/lines.ts`) : jamais « L.L.132 ».
+  les autres arrêts restent en puces pour en ajouter ; basculer Omnibus / Direct recalcule (`setDirect`). **Choix libre des arrêts** : section « Toutes les gares des lignes
+  cochées » (`lineStations`, puces par ligne, ouverte d'office sans itinéraire) ; un arrêt coché est rangé dans l'ordre de
+  l'itinéraire puis des lignes (`toggleStop`). Un direct avec arrêts les imprime (PDF « DIRECT », e-mail « Direct, arrêts : … ») ;
+  sans arrêt : « Direct (sans arrêt) ». Lignes affichées par `lineLabel()` (`lib/lines.ts`) : jamais « L.L.132 ».

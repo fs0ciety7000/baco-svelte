@@ -224,7 +224,14 @@ export function busMail(detail: BusMailDetail, opts: MailOptions): OrderMail {
       : []),
     ...(d.call_time ? [["Heure d'appel", d.call_time] as Row] : []),
     ["Origine", d.origin || "—"],
-    ["Arrêts", d.direct ? "Direct (sans arrêt)" : stops.length ? stops.join(" – ") : "—"],
+    [
+      "Arrêts",
+      stops.length
+        ? `${d.direct ? "Direct, arrêts : " : ""}${stops.join(" – ")}`
+        : d.direct
+          ? "Direct (sans arrêt)"
+          : "—",
+    ],
     ["Destination", d.destination || "—"],
     ["Trajet", d.round_trip ? "Aller-retour (deux sens)" : "Aller simple"],
     ...(d.lines.length ? [["Lignes concernées", d.lines.map(lineLabel).join(", ")] as Row] : []),

@@ -45,6 +45,7 @@ import { StartPanel, type StartPanelProps } from "./start-panel";
 import { TransitionButtons } from "./transitions";
 import { lineLabel } from "@/lib/lines";
 import { StationInput, useStationRefs } from "./station-input";
+import { foldStation } from "@/lib/stations/search";
 
 export type BusFormProps = {
   /** Identifiant de l'écran « nouveau » (clé React + URL), pour qu'un 2e « Nouveau » reparte de zéro. */
@@ -148,6 +149,32 @@ export function BusForm(props: BusFormProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [reference.lines, d.lines, d.origin, d.destination],
   );
+
+  // Gares des lignes cochées (origine et destination exclues), dans l'ordre de chaque ligne.
+  const lineStations = useMemo(() => {
+    const ends = new Set([foldStation(d.origin), foldStation(d.destination)]);
+    return reference.lines
+      .filter((l) => d.lines.includes(l.line))
+      .map((l) => ({
+        line: l.line,
+        stations: l.stations.filter((st) => !ends.has(foldStation(st))),
+      }))
+      .filter((l) => l.stations.length);
+  }, [reference.lines, d.lines, d.origin, d.destination]);
+
+  // Ajouter / retirer un arrêt : ordre de l'itinéraire d'abord, puis celui des lignes cochées.
+  const toggleStop = (stop: string, on: boolean) =>
+    setD((x) => {
+      const picked = new Set(on ? [...x.stops, stop] : x.stops.filter((st) => st !== stop));
+      const order = [...autoStops, ...lineStations.flatMap((l) => l.stations), ...x.stops];
+      const seen = new Set<string>();
+      const stops = order.filter((st) => {
+        if (!picked.has(st) || seen.has(foldStation(st))) return false;
+        seen.add(foldStation(st));
+        return true;
+      });
+      return { ...x, stops };
+    });
 
   // Origine / destination : itinéraire recalculé, lignes empruntées cochées d'office, arrêts déduits.
   const setPlace = (field: "origin" | "destination", value: string) =>
@@ -368,57 +395,89 @@ export function BusForm(props: BusFormProps) {
                 Saisis l&apos;origine et la destination pour proposer les lignes.
               </p>
             )}
-            {!d.direct ? (
-              <div className="flex flex-col gap-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-small font-medium text-fg">Arrêts intermédiaires</span>
-                  <Segmented
-                    label="Saisie des arrêts"
-                    value={d.stops_mode}
-                    onChange={(v) => set("stops_mode", v)}
-                    options={[
-                      { value: "auto", label: "Par ligne" },
-                      { value: "manuel", label: "Saisie libre" },
-                    ]}
-                    disabled={!editable}
-                  />
-                </div>
-                {d.stops_mode === "manuel" ? (
-                  <Textarea
-                    aria-label="Arrêts (saisie libre)"
-                    value={d.stops_manual}
-                    onChange={(e) => set("stops_manual", e.target.value)}
-                    placeholder="Un arrêt par ligne"
-                    maxLength={5000}
-                  />
-                ) : autoStops.length ? (
-                  <div className="flex flex-wrap gap-2">
-                    {autoStops.map((s) => (
-                      <ToggleChip
-                        key={s}
-                        pressed={d.stops.includes(s)}
-                        disabled={!editable}
-                        onPressedChange={(on) =>
-                          set(
-                            "stops",
-                            on
-                              ? autoStops.filter((x) => x === s || d.stops.includes(x))
-                              : d.stops.filter((x) => x !== s),
-                          )
-                        }
-                      >
-                        {s}
-                      </ToggleChip>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-small text-fg-muted">
-                    Aucun arrêt trouvé : choisis une ligne qui dessert les deux gares, ou passe en
-                    saisie libre.
-                  </p>
-                )}
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-small font-medium text-fg">
+                  {d.direct ? "Arrêts (direct)" : "Arrêts intermédiaires"}
+                </span>
+                <Segmented
+                  label="Saisie des arrêts"
+                  value={d.stops_mode}
+                  onChange={(v) => set("stops_mode", v)}
+                  options={[
+                    { value: "auto", label: "Par ligne" },
+                    { value: "manuel", label: "Saisie libre" },
+                  ]}
+                  disabled={!editable}
+                />
               </div>
-            ) : null}
+              {d.stops_mode === "manuel" ? (
+                <Textarea
+                  aria-label="Arrêts (saisie libre)"
+                  value={d.stops_manual}
+                  onChange={(e) => set("stops_manual", e.target.value)}
+                  placeholder="Un arrêt par ligne"
+                  maxLength={5000}
+                />
+              ) : (
+                <>
+                  {autoStops.length ? (
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-small text-fg-muted">
+                        Itinéraire {d.direct ? "(direct : correspondances cochées)" : ""}
+                      </span>
+                      <div className="flex flex-wrap gap-2" data-testid="route-stops">
+                        {autoStops.map((st) => (
+                          <ToggleChip
+                            key={st}
+                            pressed={d.stops.includes(st)}
+                            disabled={!editable}
+                            onPressedChange={(on) => toggleStop(st, on)}
+                          >
+                            {st}
+                          </ToggleChip>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-small text-fg-muted">
+                      Aucun itinéraire trouvé : choisis les arrêts dans les gares des lignes
+                      ci-dessous, ou passe en saisie libre.
+                    </p>
+                  )}
+                  {/* Toutes les gares des lignes cochées (demande du 11 oct. 2026) : n'importe quel arrêt, au choix. */}
+                  {lineStations.length ? (
+                    <details
+                      className="group rounded-box border border-border"
+                      open={!autoStops.length}
+                    >
+                      <summary className="flex min-h-11 cursor-pointer items-center px-3 text-small font-medium text-fg">
+                        Toutes les gares des lignes cochées
+                      </summary>
+                      <div className="flex flex-col gap-3 px-3 pb-3" data-testid="line-stations">
+                        {lineStations.map((l) => (
+                          <div key={l.line} className="flex flex-col gap-1.5">
+                            <span className="text-small text-fg-muted">{lineLabel(l.line)}</span>
+                            <div className="flex flex-wrap gap-2">
+                              {l.stations.map((st) => (
+                                <ToggleChip
+                                  key={st}
+                                  pressed={d.stops.includes(st)}
+                                  disabled={!editable}
+                                  onPressedChange={(on) => toggleStop(st, on)}
+                                >
+                                  {st}
+                                </ToggleChip>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  ) : null}
+                </>
+              )}
+            </div>
           </FormSection>
 
           <FormSection
