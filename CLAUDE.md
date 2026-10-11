@@ -902,6 +902,15 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   bord Coolify** : `coolify.yaml` est régénéré par Coolify (nom réservé) → fichier séparé `hub/docs/cloudflare-only.yaml`
   (dépôt `coolify`, routeurs prioritaires + liste blanche Cloudflare) à poser par l'utilisateur dans Proxy › Dynamic configurations.
 
+- 2026-10-11 — **Sauvegardes lancées et restaurées depuis le hub** (section « Sauvegarder et restaurer les services » de
+  `/admin/backups`, variable `BACKUP_SERVICES`) et **scripts shell** `scripts/backups/` du dépôt `coolify` (`csm-prod.sh`,
+  `csm-preview.sh`, `cosmic.sh`, `occ.sh` : list, backup, download, mirror, push, restore, restore-offline). CSM : API PocketBase
+  avec le superuser `PB_ADMIN_*` (jeton de service Access pour `pb-csm`, accès direct au conteneur sur le serveur). Toute
+  restauration commence par une sauvegarde de sécurité ; archives du hub nommées `hub_<app>_<date>.zip` (l'API PocketBase refuse
+  `@`), 10 gardées par stockage. OCC : route `POST /api/occ/admin/backups/restore` ajoutée (superusers sous MFA). Cosmic :
+  superuser dédié au hub + jeton R2 lecture/écriture limité au bucket `cosmic`. Testé en local (PocketBase et OCC) ; en prod,
+  liste + une sauvegarde Cosmic seulement, **aucune restauration**.
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)
