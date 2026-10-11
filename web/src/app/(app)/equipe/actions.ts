@@ -13,6 +13,8 @@ import { brusselsDay } from "@/lib/orders/time";
 import { deviceLabel, maskIp } from "@/lib/sessions";
 import { env } from "@/server/env";
 import { writeSessionToken } from "@/server/session";
+import { listOnline, type OnlineMember } from "@/server/data/team";
+import { onlineUsers } from "@/server/presence";
 import { currentSid } from "@/server/sessions";
 
 // Écritures du module Équipe : profil de l'agent, mot de passe, Nouveautés (admin, sysop, moderator).
@@ -313,6 +315,18 @@ export async function logoutOtherDevices(): Promise<Result> {
     await writeSessionToken(body.token);
     await dropOtherSessions(body.token, user.id);
     return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Agents en ligne maintenant (un onglet CSM ouvert) : barre du haut, pastille verte. */
+export async function onlineAgents(): Promise<
+  { ok: true; data: { me: string; agents: OnlineMember[] } } | { ok: false; error: string }
+> {
+  try {
+    const me = await requireUser();
+    return { ok: true, data: { me: me.id, agents: await listOnline(onlineUsers()) } };
   } catch (e) {
     return fail(e);
   }

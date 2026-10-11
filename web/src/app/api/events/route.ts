@@ -1,10 +1,11 @@
 import { NextRequest } from "next/server";
 
 import { env } from "@/server/env";
+import { joinPresence, onPresenceChange } from "@/server/presence";
 import { readSessionToken } from "@/server/session";
 import { sessionAlive } from "@/server/sessions";
 import { formatSse, SseParser } from "@/server/sse";
-import { isExpired } from "@/server/token";
+import { isExpired, tokenPayload } from "@/server/token";
 
 // Relais temps réel : le navigateur ouvre un EventSource sur le domaine CSM ; le serveur Next s'abonne au
 // temps réel PocketBase (SSE) avec le jeton de l'agent et ne renvoie que { collection, action, id }.
@@ -29,6 +30,8 @@ const TOPICS = new Set([
   "ops_log_reads",
   "notifications",
   "level_crossings",
+  // Présence en direct : produit par ce serveur (server/presence.ts), pas par PocketBase.
+  "presence",
 ]);
 const HEARTBEAT_MS = 25_000;
 
@@ -41,6 +44,8 @@ export async function GET(request: NextRequest) {
   const requested = (request.nextUrl.searchParams.get("topics") ?? "bus_orders").split(",");
   const topics = requested.filter((t) => TOPICS.has(t));
   if (topics.length === 0) return new Response("Sujet inconnu", { status: 400 });
+  const pbTopics = topics.filter((t) => t !== "presence");
+  const userId = tokenPayload(token)?.id ?? "";
 
   const upstreamAbort = new AbortController();
   request.signal.addEventListener("abort", () => upstreamAbort.abort());
@@ -70,6 +75,18 @@ export async function GET(request: NextRequest) {
       };
       // Reconnexion automatique du navigateur après 3 s si le flux se coupe.
       send("retry: 3000\n\n");
+      // Présence : cet onglet compte tant que le flux est ouvert ; les arrivées / départs sont poussés à qui suit « presence ».
+      const leave = userId ? joinPresence(userId) : () => {};
+      let presenceTimer: ReturnType<typeof setTimeout> | null = null;
+      const stopPresence = topics.includes("presence")
+        ? onPresenceChange(() => {
+            if (presenceTimer) return;
+            presenceTimer = setTimeout(() => {
+              presenceTimer = null;
+              send(formatSse("change", { collection: "presence", action: "update" }));
+            }, 1000);
+          })
+        : () => {};
       let beats = 0;
       const heartbeat = setInterval(() => {
         send(": ping\n\n");
@@ -90,7 +107,7 @@ export async function GET(request: NextRequest) {
               const res = await fetch(`${env.PB_URL}/api/realtime`, {
                 method: "POST",
                 headers: { "content-type": "application/json", authorization: token },
-                body: JSON.stringify({ clientId, subscriptions: topics.map((t) => `${t}/*`) }),
+                body: JSON.stringify({ clientId, subscriptions: pbTopics.map((t) => `${t}/*`) }),
                 signal: upstreamAbort.signal,
               });
               if (!res.ok) throw new Error(`abonnement refusé (${res.status})`);
@@ -109,6 +126,9 @@ export async function GET(request: NextRequest) {
         // Flux coupé (navigateur parti, PocketBase redémarré) : le navigateur se reconnectera.
       } finally {
         clearInterval(heartbeat);
+        if (presenceTimer) clearTimeout(presenceTimer);
+        stopPresence();
+        leave();
         upstreamAbort.abort();
         try {
           controller.close();

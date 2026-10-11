@@ -750,6 +750,10 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
 - 2026-10-11 — **Page EBP** triée par gare (le tri par vue mettait les 19 fiches sans vue en tête : « il manque les
   données de vue ») ; **admin : « Envoyer un lien par e-mail »** sur la fiche d'un agent (e-mail « mot de passe oublié »,
   `sendResetLink`), à côté du mot de passe provisoire ; grisé sans SMTP. Le « mot de passe oublié » des agents existait déjà.
+- 2026-10-11 — **« En ligne maintenant »** dans la barre du haut (demande de l'utilisateur ; revient sur le retrait du
+  widget « Présents » du 9 oct.) : pastille verte qui pulse + nombre, liste au clic (avatar, statut du jour, district,
+  heure d'arrivée). Présence = au moins un onglet CSM ouvert, calculée par le serveur Next à partir des flux SSE (rien en
+  base, rien de conservé).
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

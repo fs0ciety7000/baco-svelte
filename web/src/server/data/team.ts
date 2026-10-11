@@ -8,8 +8,8 @@ import { statusOf } from "@/lib/team";
 
 import { pbForRequest } from "./orders";
 
-// Équipe (décisions du 9 oct. 2026 : annuaire léger, profil, Nouveautés ; pas de planning, congés, « présents » ni
-// partie sociale). Lecture côté serveur avec le jeton de l'agent. `users` étant lisible par tout agent actif, on ne
+// Équipe (décisions du 9 oct. 2026 : annuaire léger, profil, Nouveautés ; pas de planning, congés ni partie sociale ;
+// « en ligne maintenant » ajouté le 11 oct. à la demande de l'utilisateur, voir server/presence.ts). Lecture côté serveur avec le jeton de l'agent. `users` étant lisible par tout agent actif, on ne
 // demande QUE les champs affichés (`fields`) : rôle, droits, préférences ou dates de blocage ne quittent jamais le
 // serveur pour l'annuaire (une règle PocketBase ne masque pas un champ).
 
@@ -62,6 +62,46 @@ export async function listTeam(input: z.input<typeof teamListSchema>): Promise<T
     fields: MEMBER_FIELDS,
   });
   return rows.map(member);
+}
+
+export type OnlineMember = Pick<
+  TeamMember,
+  "id" | "name" | "district" | "avatar" | "status" | "fonction"
+> & {
+  /** Arrivée (ms depuis l'époque). */
+  since: number;
+};
+
+/** Agents qui ont un onglet CSM ouvert (registre de présence du serveur), du plus ancien au plus récent. */
+export async function listOnline(online: { id: string; since: number }[]): Promise<OnlineMember[]> {
+  const ids = online
+    .map((o) => o.id)
+    .filter((id) => /^[a-z0-9]{15}$/.test(id))
+    .slice(0, 200);
+  if (!ids.length) return [];
+  const pb = await pbForRequest();
+  const rows = await pb.collection("users").getFullList({
+    filter: pb.filter(
+      `role != "disabled" && role != "connector" && (${ids.map((_, i) => `id = {:i${i}}`).join(" || ")})`,
+      Object.fromEntries(ids.map((id, i) => [`i${i}`, id])),
+    ),
+    fields: MEMBER_FIELDS,
+  });
+  const since = new Map(online.map((o) => [o.id, o.since]));
+  return rows
+    .map((r) => {
+      const m = member(r);
+      return {
+        id: m.id,
+        name: m.name,
+        district: m.district,
+        avatar: m.avatar,
+        status: m.status,
+        fonction: m.fonction,
+        since: since.get(m.id) ?? Date.now(),
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, "fr"));
 }
 
 export type MyProfile = TeamMember & { email: string };

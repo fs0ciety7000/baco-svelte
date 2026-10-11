@@ -314,3 +314,8 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `robots: { index: false }` dans le layout racine, `app/robots.ts` (`Disallow: /`, public dans `PUBLIC` ; robots d'aperçu
   de lien autorisés sur `/`, `/connexion` et l'image), pas de sitemap. Carte de partage sur `/connexion` (Open Graph +
   Twitter, `metadataBase` = `CSM_PUBLIC_URL`) ; image `public/brand/og-csm.png` régénérée par `node scripts/og-image.mjs`.
+- **Présence en direct** (barre du haut, `components/shell/online-presence.tsx`) : registre en mémoire du serveur Next
+  (`server/presence.ts`, testé) alimenté par les flux `/api/events` ouverts (un onglet = un flux, la cloche s'y abonne
+  partout), délai de grâce de 20 s (changement de page = flux rouvert) ; sujet SSE **`presence`** produit par Next (jamais
+  envoyé à PocketBase), action `onlineAgents()` (`equipe/actions.ts` → `listOnline`, champs de l'annuaire seulement).
+  Une seule instance Next par environnement : si un jour plusieurs répliques, passer par PocketBase.
