@@ -71,16 +71,18 @@ export async function listUsers(input: z.input<typeof userListSchema>): Promise<
   const parts: string[] = [];
   if (p.role) parts.push(pb.filter("role = {:r}", { r: p.role }));
   if (p.district) parts.push(pb.filter("(district = {:d} || districts ~ {:d})", { d: p.district }));
-  if (p.q)
-    parts.push(
-      pb.filter("(name ~ {:q} || username ~ {:q} || email ~ {:q} || fonction ~ {:q})", { q: p.q }),
-    );
   const rows = await pb.collection("users").getFullList({
     filter: parts.join(" && "),
     sort: "name,username",
     fields: USER_FIELDS,
   });
-  return rows.map(adminUser);
+  const users = rows.map(adminUser);
+  if (!p.q) return users;
+  // Recherche en JavaScript : PocketBase refuse un filtre sur `email` (champ masqué), même pour un admin (CLAUDE.md §7).
+  const q = fold(p.q);
+  return users.filter((u) =>
+    [u.name, u.username, u.email, u.fonction].some((v) => fold(v ?? "").includes(q)),
+  );
 }
 
 export async function getUser(id: string): Promise<AdminUser> {
@@ -275,4 +277,12 @@ export async function moduleVolumes(): Promise<{ label: string; count: number | 
       }
     }),
   );
+}
+
+/** Minuscules sans accents, pour une recherche tolérante. */
+function fold(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 }

@@ -148,8 +148,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - **Markdown** : `markdown-view.tsx` rend un sous-ensemble SÛR en **éléments React** (aucun `dangerouslySetInnerHTML`,
   liens bornés http(s)) — pas de dépendance ni de surface XSS.
 - **Fichiers** : servis par `GET /api/referentiels/documents/[id]` avec le jeton de l'agent (fichier PocketBase
-  **protégé**, jamais d'URL publique) ; **images en aperçu, PDF et le reste en téléchargement** (CSP `sandbox` → le
-  visionneur PDF de Chrome ne s'ouvre pas en inline, comme la main courante). Upload borné (type/taille, octets).
+  **protégé**, jamais d'URL publique) ; visionneuse PDF / images depuis le 11 oct. (voir « Documents » plus bas).
 - Import des données v1 (contacts 385, SPI 112, PtCar 1148, EBP 466, procédures 8 + 24 versions, 11 documents +
   fichiers, liens par relation) : script `scratchpad/referentiels-import.mjs` (PostgREST plafonne à 1000 lignes →
   paginer PtCar par `offset`).
@@ -175,7 +174,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
     Badge/StatusBadge, Tabs, Dialog, Sheet, Toast, EmptyState, PageHeader, Kbd, Skeleton, Tooltip, Table/ListCard,
     Command) : **aucun style ad hoc dans les pages** ; tout nouveau composant est ajouté à `/design` ;
   - motion : `src/lib/motion.ts` (GSAP + `gsap.matchMedia()`, ease `hud`, `useStaggerIn`) ; budgets de DESIGN-DIRECTION.
-- E2E `e2e/design.spec.ts` : `/design` dans les 5 thèmes × 2 formats (captures `test-results/design-*.png`, pas de
+- E2E `e2e/design.spec.ts` : `/design` dans les thèmes × 2 formats (captures `test-results/design-*.png`, pas de
   défilement horizontal, pas d'erreur console, cibles ≥ 44 px sur mobile).
 
 ## Journal (ex-main courante, 9 oct. 2026)

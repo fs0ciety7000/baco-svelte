@@ -27,7 +27,8 @@ export function MobileTabBar() {
   const others = [...modules.filter((m) => !primary.includes(m)), ...(admin ? [admin] : [])];
   const moreActive = !!active && !primary.some((m) => m.id === active.id);
 
-  const item = "relative flex h-14 flex-1 flex-col items-center justify-center gap-1 text-fg-muted";
+  const item =
+    "relative flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 text-fg-muted";
 
   return (
     <>
@@ -41,7 +42,7 @@ export function MobileTabBar() {
             const isActive = active?.id === m.id;
             const Icon = m.icon;
             return (
-              <li key={m.id} className="flex flex-1">
+              <li key={m.id} className="flex min-w-0 flex-1">
                 <Link
                   href={m.href}
                   aria-current={isActive ? "page" : undefined}
@@ -53,14 +54,14 @@ export function MobileTabBar() {
                     className={cn("absolute inset-x-3 top-0 h-0.5", isActive && "bg-(--mod)")}
                   />
                   <Icon className="size-5" aria-hidden />
-                  <span className="max-w-full truncate text-[0.75rem] leading-4 font-medium">
+                  <span className="max-w-full truncate px-0.5 text-[0.75rem] leading-4 font-medium">
                     {m.shortLabel ?? m.label}
                   </span>
                 </Link>
               </li>
             );
           })}
-          <li className="flex flex-1">
+          <li className="flex min-w-0 flex-1">
             <button
               type="button"
               onClick={() => setMore(true)}

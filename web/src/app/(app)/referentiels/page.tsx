@@ -29,7 +29,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
     <section className="flex flex-col gap-4" aria-label="Annuaire">
       <p className="text-body text-fg-muted" data-testid="contacts-count">
         <span className="font-mono text-fg tabular">{total}</span> {pl(total, "contact")}
-        {total > rows.length ? ` · ${rows.length} affichés : affinez les filtres` : ""}
+        {total > rows.length ? ` · ${rows.length} affichés : affine les filtres` : ""}
       </p>
       <FilterForm
         action="/referentiels"

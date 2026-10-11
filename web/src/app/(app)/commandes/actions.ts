@@ -1,6 +1,7 @@
 "use server";
 
 import { ClientResponseError } from "pocketbase";
+import { after } from "next/server";
 import { z } from "zod";
 
 import { can, canWriteB201 } from "@/lib/permissions";
@@ -306,11 +307,15 @@ export async function transitionOrder(
       body.confirmed_time = p.details.confirmed_time;
 
     await col.update(p.id, body);
-    // Bon terminé : PDF archivé (volume + R2). Un échec n'annule pas la clôture : rattrapé depuis la page Archives.
+    // Bon terminé : PDF archivé (volume + R2) APRÈS la réponse (la clôture n'attend pas la production du PDF). Un échec
+    // n'annule pas la clôture : rattrapé depuis la page Archives (« Archiver les bons terminés »).
     if (p.to === "termine" && current.status !== "termine") {
       const user = await requireUser();
-      const a = await archiveOrder(p.kind, p.id, user.id);
-      if (!a.ok) console.warn(`archives : bon ${p.kind} ${p.id} non archivé : ${a.error}`);
+      const { kind, id } = p;
+      after(async () => {
+        const a = await archiveOrder(kind, id, user.id);
+        if (!a.ok) console.warn(`archives : bon ${kind} ${id} non archivé : ${a.error}`);
+      });
     }
     return { ok: true };
   } catch (e) {

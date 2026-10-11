@@ -52,8 +52,8 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
 - **Module Commandes** (`1760000200_commandes.js`, `orders.pb.js`, `lib/orders.js`) : statut unifié
   `brouillon → envoye → confirme → en_cours → termine`, ou `annule`. Les transitions sont contrôlées par hook
   (table dans `lib/orders.js` ; retour d'un cran permis ; `en_cours → annule`, `termine → en_cours` et « rétablir »
-  réservés aux coordinateurs moderator/admin/sysop ; motif d'annulation obligatoire ; envoi impossible sans e-mail
-  fournisseur). Les horodatages `*_at` / `*_by`, `number` et `status_before_cancel` sont posés par le hook et
+  réservés aux coordinateurs moderator/admin/sysop ; motif d'annulation obligatoire ; envoi permis sans e-mail
+  fournisseur depuis le 9 oct. : PDF seul). Les horodatages `*_at` / `*_by`, `number` et `status_before_cancel` sont posés par le hook et
   **refusés dans le corps des requêtes** (règles). Chaque transition écrit `order_events` (lecture seule pour tous).
   Création toujours en `brouillon`, au nom de l'agent. `number` = n° de bon, attribué par une seule instruction
   SQL atomique sur la table interne `_order_counters` (pas de doublon en création simultanée, testé à 12 requêtes) ;

@@ -53,7 +53,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-body text-fg-muted">
           <span className="font-mono text-fg tabular">{total}</span> {pl(total, "mission")}
-          {total > rows.length ? ` · ${rows.length} affichées : affinez les filtres` : ""}
+          {total > rows.length ? ` · ${rows.length} affichées : affine les filtres` : ""}
         </p>
         <Button asChild variant="secondary">
           <a href={`/api/pmr/export?${exportQuery}`} download>

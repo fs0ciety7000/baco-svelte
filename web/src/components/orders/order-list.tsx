@@ -232,7 +232,7 @@ export function OrderList({
       </ul>
       {total > rows.length ? (
         <p className="text-small text-fg-muted">
-          {rows.length} commandes affichées sur {total} : affinez les filtres pour voir les autres.
+          {rows.length} commandes affichées sur {total} : affine les filtres pour voir les autres.
         </p>
       ) : null}
     </>
