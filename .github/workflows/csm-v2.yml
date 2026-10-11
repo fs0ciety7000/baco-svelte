@@ -1,4 +1,4 @@
-# CI de CSM v2 (web Next.js + PocketBase). La CI v1 (SvelteKit à la racine) reste dans ci.yml.
+# CI de CSM (web Next.js + PocketBase).
 name: CSM v2
 
 on:

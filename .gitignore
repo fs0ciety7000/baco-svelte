@@ -1,16 +1,9 @@
 node_modules
 
-# Output
-.output
-.vercel
-.netlify
-.wrangler
-/.svelte-kit
-/build
-
-# OS
+# OS / éditeurs
 .DS_Store
 Thumbs.db
+.idea/
 
 # Env
 .env
@@ -18,20 +11,9 @@ Thumbs.db
 !.env.example
 !.env.test
 
-# Vite
-vite.config.js.timestamp-*
-vite.config.ts.timestamp-*
-.idea/baco-svelte.iml
-.idea/modules.xml
-.idea/prettier.xml
-.idea/vcs.xml
-.idea/codeStyles/codeStyleConfig.xml
-.idea/codeStyles/Project.xml
-.idea/workspace.xml
+# Vercel (BACO, branche main)
+.vercel
 
-# PWA dev
-dev-dist
-
-# Sauvegardes Supabase (données personnelles) : jamais dans Git
+# Sauvegardes Supabase et PocketBase (données personnelles) : jamais dans Git
 /csm-backup*
 *.tar.gz.age

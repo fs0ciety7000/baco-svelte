@@ -2,7 +2,7 @@
 
 > **Production** (10 octobre 2026) : **https://csm.fs0ciety.org** (web) et **https://pb-csm.fs0ciety.org** (PocketBase,
 > derrière Cloudflare Access), branche **`csm-prod`**, environnement Coolify `prod`.
-> **Preview** : **https://test-csm.fs0ciety.org** (web) et **https://pb-test-csm.fs0ciety.org**, branche de session.
+> **Preview** : **https://test-csm.fs0ciety.org** (web) et **https://pb-test-csm.fs0ciety.org**, branche **`csm-preview`**.
 > Ressources créées par Claude via l'API Coolify (test le 8 octobre, prod le 10 octobre 2026).
 > BACO (Vercel, branche `main`, base Supabase) n'est pas concerné.
 
@@ -148,7 +148,7 @@ transitoire. L'ancien service `stalwart` (`h7vpjks3…`, `mail.tandem-agenda.app
   **Reste** : SMTP de Cosmic Empires réglé à la main dans l'admin PocketBase du jeu (hôte `mail.fs0ciety.org`, 587,
   `nicolas@fs0ciety.org`, expéditeur `noreply@empire.fs0ciety.org`).
 
-### Preview (environnement `production` historique, branche de session)
+### Preview (environnement `production` historique, branche `csm-preview`)
 
 Projet **CSM** (`cqqgszrebw6mm6wyizbzb5i3`), environnement `production`, serveur `localhost` (Coolify 4.4.2,
 proxy Traefik). Source : GitHub App `breakable-bee-gkkc8wwg8sswo044`, dépôt `fs0ciety7000/baco-svelte`.
@@ -158,9 +158,8 @@ proxy Traefik). Source : GitHub App `breakable-bee-gkkc8wwg8sswo044`, dépôt `f
 | `csm-pocketbase` | `ttu45cm7qrgmqgo7dcespp3f` | `/pocketbase` · `/Dockerfile` | 8090 | `pb-test-csm.fs0ciety.org` | `csm-pocketbase` |
 | `csm-web` | `xzhygai7yapefgji83rkgile` | `/web` · `/Dockerfile` | 3000 | `test-csm.fs0ciety.org` (via Cloudflare) | aléatoire (pas besoin de nom fixe) |
 
-- **Branche déployée** : `claude/csm-session-3-2lkadk` (session 3, changée par l'API au début de la session). À chaque nouvelle branche de
-  travail, la changer dans Coolify (Application → Configuration → Git → Branch, ou `PATCH /applications/{uuid}`
-  `git_branch`). Auto-déploiement au push, filtré par `watch_paths` (`web/**`, `pocketbase/**`).
+- **Branche déployée** : **`csm-preview`** (fixe depuis le 11 oct. ; plus de changement de branche à chaque session : la
+  session intègre son travail à `csm-preview`). Changement éventuel : `PATCH /applications/{uuid}` `git_branch`. Auto-déploiement au push, filtré par `watch_paths` (`web/**`, `pocketbase/**`).
 - **Health checks** : `/api/health` sur chaque application. Celui du web renvoie `{ ok, pocketbase }` : `pocketbase:
   false` signifie que le web ne joint pas `http://csm-pocketbase:8090`.
 - **Réseau** : le web appelle PocketBase par le réseau Docker interne de Coolify (`PB_URL=http://csm-pocketbase:8090`,

@@ -9,7 +9,7 @@ name: Connecteur DICOS — release
 on:
   push:
     tags: ["dicos-connector-v*"]
-    branches: ["claude/**"]
+    branches: ["claude/**", "csm-preview"]
   workflow_dispatch:
 
 permissions:

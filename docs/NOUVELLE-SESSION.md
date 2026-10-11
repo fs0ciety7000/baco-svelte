@@ -13,7 +13,8 @@ l'environnement cloud **CSM**.
 ---
 
 Tu reprends **CSM v2**, en **production depuis le 10 octobre 2026** : https://csm.fs0ciety.org (branche `csm-prod`) ;
-la preview https://test-csm.fs0ciety.org suit la branche de session. Lis d'abord `CLAUDE.md` (§1 état, §6 contraintes,
+la preview https://test-csm.fs0ciety.org suit la branche **`csm-preview`** (y intégrer le travail de la session ; `csm-prod`
+avance depuis `csm-preview`, sur demande). Lis d'abord `CLAUDE.md` (§1 état, §6 contraintes,
 §7 pièges — en particulier « deux instances » et « bucket R2 = une instance »), `docs/DEPLOIEMENT-V2.md` (§1 prod),
 `web/CLAUDE.md`, `pocketbase/CLAUDE.md`.
 

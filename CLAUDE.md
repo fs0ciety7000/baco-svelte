@@ -21,8 +21,9 @@ périmé est un bug.
 5. `docs/AUDIT.md`, `docs/PROPOSITION.md` §3-6 — audit, parcours métier, nouveautés.
 
 **BACO (`main`, Vercel, base Supabase) : on n'y touche pas.** Supabase en **lecture seule**.
-Nouveau code dans `/web` (Next.js) et `/pocketbase` ; le SvelteKit à la racine est la **référence métier
-gelée** (v1, branche `ccr-5dca0da8-4yg4i6`) : ne pas le modifier.
+Code dans `/web` (Next.js) et `/pocketbase`. Le SvelteKit v1 (**référence métier gelée**) a été **retiré du dépôt CSM
+le 11 oct.** : il ne vit plus que sur `main` (BACO en production) et la branche `ccr-5dca0da8-4yg4i6` ; ne pas les modifier.
+**Branches** : `csm-prod` (production, branche principale), `csm-preview` (préversion), `main` (BACO, intouchable).
 
 ---
 
@@ -88,7 +89,8 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 
 ## 4. Règles de travail (workflow Claude)
 
-1. **Branche** : travailler sur la branche de session indiquée, commits atomiques, messages
+1. **Branche** : travailler sur la branche de session indiquée, puis intégrer à **`csm-preview`** (préversion,
+   avance rapide ou fusion) ; `csm-prod` n'avance que depuis `csm-preview`, sur demande. Commits atomiques, messages
    conventionnels en français (`feat(bus): …`, `fix(auth): …`, `chore(deps): …`).
 2. **Base de données = PRODUCTION.** Jamais de DDL/DML sur Supabase sans accord explicite.
    Toute modification de schéma passe par un fichier `supabase/migrations/AAAAMMJJHHMMSS_nom.sql`
@@ -115,28 +117,10 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 
 ## 5. Conventions de code
 
-> Les conventions ci-dessous sont celles de la v1 SvelteKit. Les conventions v2 (React/Next) sont dans
-> **`web/CLAUDE.md`** et **`pocketbase/CLAUDE.md`** ; les principes restent : accès données côté serveur
-> uniquement, couleurs par jetons sémantiques, navigation à source unique, imports lourds dynamiques,
-> pas de WebSocket navigateur, `prefers-reduced-motion` respecté.
-
-
-- Svelte 5 **runes uniquement** (`$state`, `$derived`, `$props`, `onclick`), pas de `$:` ni `export let`.
-- Accès données **uniquement** via `src/lib/server/**` (load / form actions) ou `src/lib/services/**`
-  — jamais `supabase.from()` dans un composant de page.
-- Tout HTML rendu via `{@html}` passe par `sanitize()` (DOMPurify). Aucune exception.
-- Les droits se vérifient **côté serveur et en RLS** ; le masquage UI n'est que du confort.
-- Couleurs : utilitaires sémantiques (`bg-canvas`, `bg-surface`, `bg-surface-2`, `border-line`, `text-fg`,
-  `text-muted`, `text-subtle`, `bg-accent`/`text-accent-fg`, `text-ok|warn|danger|info`) — jamais de hex en dur.
-  La palette Tailwind historique (`gray`, `blue`, `white`…) est **remappée sur le thème** dans `app.css` pour
-  que les anciennes pages suivent les 5 thèmes : ne pas l'utiliser dans le nouveau code.
-- Thèmes : `<html data-theme="nocturne|ivoire|rail|contraste|tactique" data-scheme data-density>` ;
-  store `$lib/stores/theme.js` ; script anti-flash dans `app.html` (nonce CSP).
-- Motion : jetons `--d-*` / `--ease-*`, popovers via `.csm-pop` (data-state), transitions de page = View
-  Transitions ; aucune boucle infinie sauf `.live-dot` ; `prefers-reduced-motion` respecté globalement.
-- Navigation : **une seule source** `src/lib/navigation.js` (sidebar, ⌘K, onglets mobiles, raccourcis).
-- Imports lourds (jspdf, exceljs, gridstack, maplibre, chart.js) en `await import()`.
-- Polling : utiliser `src/lib/utils/poller.js` (pause onglet caché) ou le flux SSE serveur (`/api/events`). **Jamais** de client Supabase Realtime/WebSocket côté navigateur : bloqué par le pare-feu de l’entreprise.
+Les conventions sont dans **`web/CLAUDE.md`** et **`pocketbase/CLAUDE.md`**. Principes : accès données côté serveur
+uniquement, droits vérifiés côté serveur et par les règles PocketBase (le masquage UI n'est que du confort), couleurs par
+jetons sémantiques, navigation à source unique (`web/src/navigation.ts`), imports lourds dynamiques, pas de WebSocket
+navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
 
 ## 6. Contraintes métier / infra (non négociables)
 
@@ -158,8 +142,8 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 
 - (v2) `PREPROD_PB_URL` n'est pas l'instance CSM (voir §2).
 - (v2) **Deux instances : prod (`csm.fs0ciety.org`, `pb-csm.fs0ciety.org`, branche `csm-prod`) et preview (`test-csm`,
-  `pb-test-csm`, branche de session).** On développe et on valide sur la preview ; la prod n'avance que par une avance
-  rapide de `csm-prod` (`git push origin HEAD:csm-prod`) **quand l'utilisateur le demande**. Jamais de test destructif ni
+  `pb-test-csm`, branche **`csm-preview`** depuis le 11 oct.).** On développe et on valide sur la preview ; la prod n'avance
+  que par une avance rapide de `csm-prod` depuis `csm-preview` (`git push origin csm-preview:csm-prod`) **quand l'utilisateur le demande**. Jamais de test destructif ni
   de données fictives sur la prod (`pb-csm`) ; les comptes réels y sont.
 - (v2) **Cloudflare « Email Address Obfuscation »** réécrit les e-mails du HTML → erreurs d'hydratation React (#418) et
   `mailto:` cassés : `middleware.ts` pose `Cache-Control: … no-transform` sur les pages (10 oct.). Une nouvelle option
@@ -225,10 +209,7 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 - (v2) Restauration Postgres : colonnes `GENERATED ALWAYS AS IDENTITY` → `overriding system value` ;
   `search_path` doit inclure `extensions` ; `"PUBLIC"` à déguillemeter dans `08_grants_roles.sql`.
 - (v2) Certaines fonctions Supabase sont stockées avec des fins de ligne CRLF.
-- (v1) `.gitignore` liste `vite.config.js` et `src/lib/supabase.js` alors qu'ils sont suivis : les modifs
-  passent quand même (fichiers déjà trackés) mais un nouveau clone sans eux casserait — à nettoyer.
-- `hooks.server.js` exclut `/api*` du « gate » ; le gate lui-même est un cookie base64 non signé.
-- Rôles en base : `admin`, `sysop`, `moderator`, `otto_agent`, `user` (table `profiles.role`),
+- (BACO) Rôles en base Supabase : `admin`, `sysop`, `moderator`, `otto_agent`, `user` (table `profiles.role`),
   recopiés dans `auth.users.raw_user_meta_data.role` par trigger — **ne jamais se fier à
   `user_metadata` pour une décision de sécurité** (modifiable par l'utilisateur).
 
@@ -761,6 +742,11 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
   animés du site Cardor (Dragon : glitch et « boot » à l'apparition ; roue du Car d'Or : un tour au survol), monochromes au
   repos, couleurs de la charte au survol, rien en mouvement réduit. Pied de l'e-mail de campagne mis à jour.
 - 2026-10-10 — Mention de l'éditeur : **« CM Interactive »** au lieu d'« OCC Interactive » (demande de l'utilisateur).
+- 2026-10-11 — **Ménage du dépôt** (demande de l'utilisateur) : SvelteKit v1 retiré de la racine (`src`, `static`,
+  configs, `package.json`, Dockerfile, CI `ci.yml`, `docs/DEPLOIEMENT.md`) — il reste sur `main` (BACO, toujours en
+  production jusqu'à la transition officielle) et `ccr-5dca0da8-4yg4i6` ; README réécrit. **Branches** : `csm-preview`
+  créée (préversion suivie par test-csm), `csm-prod` = branche principale (réglage GitHub par l'utilisateur), anciennes
+  branches archivées en tags `archive/<nom>` puis supprimées (choix de l'utilisateur).
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans
@@ -876,23 +862,8 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
 
 ---
 
-## Annexe — stack v1 SvelteKit (référence gelée)
+## Annexe — BACO / v1 SvelteKit (référence gelée)
 
-
-- SvelteKit 2 + **Svelte 5 runes**, Tailwind CSS 4, JavaScript + JSDoc (TypeScript progressif)
-- Supabase (projet `mgljaheyimizrydazrxh`) — **même base que BACO** (Vercel, branche `main`)
-- Session Supabase en **cookie `csm-auth`** ; navigateur → `/api-proxy/*` (liste blanche) ; login par form action
-- Gardes de route serveur : `src/lib/server/guards.js` + `hooks.server.js` + `+layout.server.js` (relancé à chaque navigation)
-- UI : `bits-ui` (primitives accessibles), `lucide-svelte`, polices `@fontsource-variable` (Inter, Space Grotesk, JetBrains Mono)
-- Exports : `exceljs` (`$lib/utils/excel.js`), `jspdf` ; HTML : `$lib/utils/sanitize.js`
-- Déploiement : Docker (adapter-node) sur Coolify, `csm.fs0ciety.org` — voir `docs/DEPLOIEMENT.md`
-
-### Commandes v1
-
-```bash
-npm install
-npm run dev          # http://localhost:5173
-npm run build        # IS_COOLIFY=true pour adapter-node
-npm run test:run     # vitest
-npm run lint         # prettier --check
-```
+SvelteKit 2 + Svelte 5 + Supabase (projet `mgljaheyimizrydazrxh`), déployé par Vercel depuis `main` ; code de référence
+sur la branche `ccr-5dca0da8-4yg4i6` (et `main`). Retiré du dépôt CSM le 11 oct. 2026 ; fermeture de BACO prévue avec
+la transition officielle (campagne d'e-mail).
