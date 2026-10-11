@@ -63,6 +63,8 @@ export const MODULES: NavModule[] = [
         href: "/commandes/fournisseurs",
         label: "Fournisseurs",
         permission: "otto:read",
+        // L'invité ne voit que les bons (rôles v2) ; il lit les sociétés à travers eux.
+        hideFor: ["guest"],
         keywords: ["sociétés", "transporteurs", "chauffeurs", "taxis", "bus"],
       },
       {
