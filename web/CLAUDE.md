@@ -260,7 +260,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - Continuité ligne → panneau : `ghostFlip` (`lib/motion.ts`) déclenché par `Sheet` à l'ouverture depuis la dernière ligne
   cliquée (< 800 ms) ; rien en mouvement réduit.
 - Widgets d'accueil : `pmr-jour` (« Aujourd'hui en PMR », `todayPmr`) et `mentions` (« Mentions et alertes », même source
-  que la cloche). 10 widgets dans `WIDGET_IDS`, 8 affichés depuis le 11 oct. 2026 (l'E2E shell en compte 8).
+  que la cloche). 11 widgets dans `WIDGET_IDS`, 9 affichés depuis le 11 oct. 2026 (l'E2E shell en compte 9).
 - Impression : `@media print` dans `globals.css` (thème clair forcé, shell / filtres / actions masqués via
   `data-print="hide"`, `FilterForm` et `ChipRow` masqués, vue tableau imprimée, fil du Journal en entier) ; bouton
   « Imprimer » dans le Journal.
@@ -410,3 +410,8 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   cochées » (`lineStations`, puces par ligne, ouverte d'office sans itinéraire) ; un arrêt coché est rangé dans l'ordre de
   l'itinéraire puis des lignes (`toggleStop`). Un direct avec arrêts les imprime (PDF « DIRECT », e-mail « Direct, arrêts : … ») ;
   sans arrêt : « Direct (sans arrêt) ». Lignes affichées par `lineLabel()` (`lib/lines.ts`) : jamais « L.L.132 ».
+- **Widget « Fin de service »** (`service`, 11 oct. 2026) : `lib/shift.ts` (AM 06–14, PM 14–22, Nuit 22–06, Extra 08–16,
+  heures de Bruxelles ; `shiftDayFor` : nuit choisie après minuit = nuit de la veille ; `shiftState`, `isStale` après 6 h ;
+  testés), choix dans `users.preferences.shift` (`saveShift`, `dashboard-actions.ts`), `components/dashboard/shift-widget.tsx`
+  (décompte rendu après montage, chaque seconde, arrêté onglet caché). `normalizeLayout` le place en tête des dispositions
+  existantes ; les autres nouveaux widgets vont à la fin.

@@ -9,13 +9,15 @@ import { favoritesOf, latestLog, listNotifications, listPinned } from "@/server/
 import { brusselsTime, pbDate } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
 
+import { parseShift } from "@/lib/shift";
+
 import { Dashboard } from "./dashboard";
 
 export const metadata: Metadata = { title: "Accueil · CSM" };
 
 export default async function AccueilPage() {
   const user = await requireUser();
-  const prefs = (user.preferences ?? {}) as { dashboard?: unknown };
+  const prefs = (user.preferences ?? {}) as { dashboard?: unknown; shift?: unknown };
   const [stats, pinned, latest, impacts, today, notifs] = await Promise.all([
     can(user, "otto:read") ? dashboardStats() : null,
     can(user, "journal:read") ? listPinned().catch(() => []) : null,
@@ -53,6 +55,7 @@ export default async function AccueilPage() {
         impacts,
         today,
         mentions: notifs ? notifs.items : null,
+        shift: parseShift(prefs.shift),
       }}
       initialLayout={normalizeLayout(prefs.dashboard)}
     />

@@ -32,6 +32,7 @@ import {
   TrainsWidget,
   type LogDigest,
 } from "@/components/ops/dashboard-widgets";
+import { ShiftWidget } from "@/components/dashboard/shift-widget";
 import { KpiStrip, TodoQueue, todoItems } from "@/components/dashboard/todo";
 import { useShell } from "@/components/shell/shell-context";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ import { CLOSE_DAYS } from "@/lib/orders/status";
 import { brusselsDay, daysBetween, formatDay, isValidDay } from "@/lib/orders/time";
 import { cn, pl } from "@/lib/utils";
 import type { FavoriteStation } from "@/lib/ops/irail";
+import type { ShiftChoice } from "@/lib/shift";
 import type { DashboardStats } from "@/server/data/dashboard";
 import type { ImpactedMission, TodayPmr } from "@/server/data/impacts";
 import type { Notification } from "@/server/data/ops";
@@ -55,6 +57,7 @@ import { saveDashboardLayout } from "../dashboard-actions";
 import { LiveRefresh } from "./commandes/live-refresh";
 
 const TITLES: Record<WidgetId, { eyebrow: string; title: string; wide?: boolean }> = {
+  service: { eyebrow: "Mon service", title: "Fin de service" },
   commandes: { eyebrow: "Commandes", title: "Vue du jour", wide: true },
   impacts: { eyebrow: "PMR et groupes", title: "Missions impactées", wide: true },
   "pmr-jour": { eyebrow: "PMR et groupes", title: "Aujourd'hui en PMR" },
@@ -80,6 +83,7 @@ export type OpsDigest = {
   impacts: ImpactedMission[] | null;
   today: TodayPmr | null;
   mentions: Notification[] | null;
+  shift: ShiftChoice | null;
 };
 
 function WidgetBody({
@@ -94,6 +98,8 @@ function WidgetBody({
   const { actions } = useShell();
   const router = useRouter();
   switch (id) {
+    case "service":
+      return <ShiftWidget initial={ops.shift} />;
     case "commandes":
       if (!stats)
         return (

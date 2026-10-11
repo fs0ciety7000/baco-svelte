@@ -3,6 +3,7 @@ import { z } from "zod";
 // Disposition du tableau de bord, mémorisée par agent (users.preferences.dashboard).
 
 export const WIDGET_IDS = [
+  "service",
   "commandes",
   "impacts",
   "pmr-jour",
@@ -36,7 +37,13 @@ export function normalizeLayout(value: unknown): DashboardLayout {
   );
   if (!parsed.success) return DEFAULT_LAYOUT;
   const order = [...new Set(parsed.data.order)];
-  for (const id of WIDGET_IDS) if (!order.includes(id)) order.push(id);
+  // « Fin de service » (11 oct. 2026) apparaît en tête chez les agents qui ont déjà une disposition ; les autres
+  // nouveaux widgets à la fin.
+  for (const id of WIDGET_IDS) {
+    if (order.includes(id)) continue;
+    if (id === "service") order.unshift(id);
+    else order.push(id);
+  }
   return { order, hidden: [...new Set(parsed.data.hidden)] };
 }
 

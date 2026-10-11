@@ -979,6 +979,10 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   référentiel, et reste sur la L.36) en préversion et en production par Admin › Lignes et arrêts (accord de l'utilisateur).
   À refaire si le référentiel des lignes est réimporté depuis BACO.
 
+- 2026-10-11 — **Widget « Fin de service »** (demande de l'utilisateur) : l'agent choisit AM, PM, Nuit ou Extra (8-16), l'accueil
+  décompte le temps restant (barre de progression, heure de fin). Horaires AM 6-14, PM 14-22, Nuit 22-6 **supposés** (à
+  confirmer) ; choix mémorisé dans le profil.
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)
