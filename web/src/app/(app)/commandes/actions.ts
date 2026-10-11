@@ -307,7 +307,7 @@ export async function transitionOrder(
 
     await col.update(p.id, body);
     // Bon terminé : PDF archivé (volume + R2). Un échec n'annule pas la clôture : rattrapé depuis la page Archives.
-    if (p.to === "termine") {
+    if (p.to === "termine" && current.status !== "termine") {
       const user = await requireUser();
       const a = await archiveOrder(p.kind, p.id, user.id);
       if (!a.ok) console.warn(`archives : bon ${p.kind} ${p.id} non archivé : ${a.error}`);

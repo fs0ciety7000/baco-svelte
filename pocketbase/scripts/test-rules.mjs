@@ -892,6 +892,32 @@ try {
 		check('anciens rôles refusés', oldRole.status >= 400, `HTTP ${oldRole.status}`);
 	}
 
+	// --- Archives des bons (1760002900) : écriture par les routes internes seulement ---
+	{
+		const fd = new FormData();
+		fd.set('kind', 'bus');
+		fd.set('order_id', `arch${suffix}xxxxxxxxx`.slice(0, 15));
+		fd.set('file', new Blob(['%PDF-1.4\n%%EOF\n'], { type: 'application/pdf' }), 'test.pdf');
+		const mk = await fetch(`${PB}/api/collections/order_pdfs/records`, { method: 'POST', headers: { authorization: roles.admin.token }, body: fd });
+		check('même un admin ne crée pas d archive par l API', mk.status >= 400, `HTTP ${mk.status}`);
+		const fd2 = new FormData();
+		for (const [k, v] of fd.entries()) fd2.set(k, v);
+		const ar = await fetch(`${PB}/api/collections/order_pdfs/records`, { method: 'POST', headers: { authorization: root }, body: fd2 });
+		const arj = await ar.json();
+		const arPaco = await api('GET', `/api/collections/order_pdfs/records/${arj.id}`, { token: u.token });
+		check('PACO/RCCA lit une archive', arPaco.status === 200, `HTTP ${arPaco.status}`);
+		const arGuest = await api('GET', `/api/collections/order_pdfs/records/${arj.id}`, { token: roles.reader.token });
+		check("l'invité ne lit pas les archives", arGuest.status === 404, `HTTP ${arGuest.status}`);
+		const arDelPaco = await api('DELETE', `/api/collections/order_pdfs/records/${arj.id}`, { token: u.token });
+		check('PACO/RCCA ne supprime pas une archive', arDelPaco.status >= 400, `HTTP ${arDelPaco.status}`);
+		const arUpd = await api('PATCH', `/api/collections/order_pdfs/records/${arj.id}`, { token: roles.admin.token, body: { reference: 'x' } });
+		check('archive non modifiable par l API', arUpd.status >= 400, `HTTP ${arUpd.status}`);
+		const arDelModo = await api('DELETE', `/api/collections/order_pdfs/records/${arj.id}`, { token: roles.modo.token });
+		check('modérateur supprime une archive', arDelModo.status === 204, `HTTP ${arDelModo.status}`);
+		const st = await api('POST', '/api/csm/archives/store', { body: { kind: 'bus', order_id: 'x' } });
+		check('route interne d archivage fermée sans secret', st.status === 404, `HTTP ${st.status}`);
+	}
+
 	// --- Missions de groupe DICOS (1760001500) ---
 	const gmBody = { dicos_id: `jg-${suffix}`, day: '2026-10-09', status: 'prevue', group_name: 'École test', adults: 3, children: 20 };
 	const gmUser = await api('POST', '/api/collections/group_missions/records', { token: u.token, body: gmBody });

@@ -1,3 +1,4 @@
+import { contentDisposition } from "@/lib/orders/eml";
 import { can } from "@/lib/permissions";
 import { getCurrentUser } from "@/server/auth";
 import { pbForRequest } from "@/server/data/orders";
@@ -24,7 +25,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (!file) return new Response("Introuvable", { status: 404 });
     const token = await pb.files.getToken();
     const res = await fetch(
-      `${env.PB_URL}/api/files/order_pdfs/${id}/${encodeURIComponent(file)}?token=${encodeURIComponent(token)}`,
+      `${env.PB_URL.replace(/\/$/, "")}/api/files/order_pdfs/${id}/${encodeURIComponent(file)}?token=${encodeURIComponent(token)}`,
       { cache: "no-store" },
     );
     if (!res.ok || !res.body) return new Response("Introuvable", { status: 404 });
@@ -35,7 +36,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return new Response(res.body, {
       headers: {
         "content-type": "application/pdf",
-        "content-disposition": `${dl ? "attachment" : "inline"}; filename*=UTF-8''${encodeURIComponent(`${name}.pdf`)}`,
+        "content-disposition": contentDisposition(dl ? "attachment" : "inline", `${name}.pdf`),
         "cache-control": "private, no-store",
         "x-content-type-options": "nosniff",
       },

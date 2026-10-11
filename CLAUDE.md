@@ -784,8 +784,8 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   pas de conversion, choix de l'utilisateur). Corrigé en route : halo de la pastille « en ligne » démesuré en desktop.
 - 2026-10-11 — **Archives des bons** (demande de l'utilisateur) : à la clôture d'un bon bus ou taxi (« terminé »), Next produit
   le PDF (taxi **sans** nominatif PMR : l'archive n'a pas de limite de durée) et l'envoie à la route interne PocketBase
-  `/api/csm/archives/store` (secret interne) → collection `order_pdfs` (fichier protégé sur le volume, une fiche par bon)
-  + copie **R2** dans le bucket des sauvegardes, dossier `bons/<bus|taxi>/AAAA/MM/` (prod seulement : la préversion n'a pas
+  `/api/csm/archives/store` (secret interne, délai de 30 s ; seulement au vrai passage à « terminé ») → collection
+  `order_pdfs` (fichier protégé sur le volume, une fiche par bon) + copie **R2** (cron 5 min, la clôture n'attend jamais R2) dans le bucket des sauvegardes, dossier `bons/<bus|taxi>/AAAA/MM/` (prod seulement : la préversion n'a pas
   les variables `CSM_BACKUP_S3_*`, volume seul ; choix de l'utilisateur). Chaque nuit (cron `order-pdf-backup`, 1 h UTC) :
   zip mensuel des PDF des mois modifiés (`order_pdf_backups`, zip « stocké » écrit dans `lib/archives.js`) sur le volume
   + `bons/sauvegardes/` dans R2, rattrapage R2 des PDF en attente. Page **Commandes › Archives** (référence TC_ / n° de

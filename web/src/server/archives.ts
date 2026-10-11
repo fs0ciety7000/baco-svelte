@@ -74,6 +74,8 @@ export async function archiveOrder(
       headers: { "x-csm-internal": env.CSM_INTERNAL_SECRET },
       body: fd,
       cache: "no-store",
+      // Jamais d'attente sans fin à la clôture d'un bon (la copie R2 est faite plus tard par PocketBase).
+      signal: AbortSignal.timeout(30_000),
     });
     const body = (await res.json().catch(() => ({}))) as {
       id?: string;
@@ -87,16 +89,25 @@ export async function archiveOrder(
   }
 }
 
-/** Sauvegarde zip des PDF (mois périmés ou un mois donné), par la route interne de PocketBase. */
-export async function backupArchives(
-  month?: string,
-): Promise<{ months: { month: string; count: number }[]; r2: boolean }> {
+/** Sauvegarde zip d'UN mois (le plus récent à refaire, ou celui demandé) par la route interne de PocketBase. */
+export async function backupArchives(month?: string): Promise<{
+  months: { month: string; count: number }[];
+  remaining: number;
+  r2: boolean;
+}> {
   const res = await fetch(`${env.PB_URL.replace(/\/$/, "")}/api/csm/archives/backup`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-csm-internal": env.CSM_INTERNAL_SECRET },
     body: JSON.stringify(month ? { month } : {}),
     cache: "no-store",
+    signal: AbortSignal.timeout(120_000),
   });
-  if (!res.ok) throw new Error(`Sauvegarde refusée (HTTP ${res.status}).`);
-  return (await res.json()) as { months: { month: string; count: number }[]; r2: boolean };
+  const body = (await res.json().catch(() => ({}))) as {
+    months?: { month: string; count: number }[];
+    remaining?: number;
+    r2?: boolean;
+    message?: string;
+  };
+  if (!res.ok) throw new Error(body.message ?? `Sauvegarde refusée (HTTP ${res.status}).`);
+  return { months: body.months ?? [], remaining: body.remaining ?? 0, r2: !!body.r2 };
 }

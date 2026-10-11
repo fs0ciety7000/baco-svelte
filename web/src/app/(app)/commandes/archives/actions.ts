@@ -52,11 +52,24 @@ export async function archivePending(): Promise<
 }
 
 /** Sauvegarde zip des mois à jour (sans attendre la nuit). */
-export async function backupNow(): Promise<Result<{ months: number; r2: boolean }>> {
+export async function backupNow(): Promise<
+  Result<{ months: number; remaining: number; r2: boolean }>
+> {
   try {
     await admin();
-    const r = await backupArchives();
-    return { ok: true, data: { months: r.months.length, r2: r.r2 } };
+    // Un mois par appel (mémoire de PocketBase bornée) ; au plus 45 s ici, le reste au clic suivant ou la nuit.
+    const start = Date.now();
+    let months = 0;
+    let remaining = 0;
+    let r2 = false;
+    do {
+      const r = await backupArchives();
+      months += r.months.length;
+      remaining = r.remaining;
+      r2 = r.r2;
+      if (!r.months.length) break;
+    } while (remaining > 0 && Date.now() - start < 45_000);
+    return { ok: true, data: { months, remaining, r2 } };
   } catch (e) {
     return fail(e);
   }

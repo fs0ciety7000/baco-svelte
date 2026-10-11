@@ -59,7 +59,7 @@ export function ArchiveAdminBar({ pending, enabled }: { pending: number; enabled
             if (!r.ok) return void toast.error(r.error);
             toast.success(
               r.data.months
-                ? `${r.data.months} ${pl(r.data.months, "mois sauvegardé", "mois sauvegardés")}${r.data.r2 ? " (serveur + R2)" : " (serveur)"}.`
+                ? `${r.data.months} ${pl(r.data.months, "mois sauvegardé", "mois sauvegardés")} sur le serveur${r.data.r2 ? " (copie R2 dans les 5 min)" : ""}${r.data.remaining ? ` — encore ${r.data.remaining}, recliquer.` : "."}`
                 : "Sauvegardes déjà à jour.",
             );
             router.refresh();

@@ -21,7 +21,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     if (!file) return new Response("Introuvable", { status: 404 });
     const token = await pb.files.getToken();
     const res = await fetch(
-      `${env.PB_URL}/api/files/order_pdf_backups/${id}/${encodeURIComponent(file)}?token=${encodeURIComponent(token)}`,
+      `${env.PB_URL.replace(/\/$/, "")}/api/files/order_pdf_backups/${id}/${encodeURIComponent(file)}?token=${encodeURIComponent(token)}`,
       { cache: "no-store" },
     );
     if (!res.ok || !res.body) return new Response("Introuvable", { status: 404 });
