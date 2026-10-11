@@ -3,8 +3,9 @@ import type { ReactNode } from "react";
 import { ModuleTabs } from "./module-tabs";
 
 /**
- * Mise en page d'un module : en-tête compact sur une ligne (titre, information utile, actions) puis onglets en routes.
- * Le fil d'Ariane reste dans la barre du haut (audit UI du 9 oct. 2026 : en-tête répété 4 fois, ≈ 140 px).
+ * Mise en page d'un module. Depuis le 11 oct. 2026 (haut de page sur une ligne), le titre et les onglets sont dans la
+ * barre du haut : ici, le titre reste pour les lecteurs d'écran, la ligne visible ne porte que l'information utile et
+ * les actions (si présentes), et les onglets ne s'affichent que sous 768 px.
  */
 export function ModuleLayout({
   moduleId,
@@ -21,16 +22,22 @@ export function ModuleLayout({
   children: ReactNode;
 }) {
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-4 md:px-6 md:py-5">
-      <header className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div className="flex min-w-0 items-baseline gap-3">
-            <h1 className="display truncate text-h3 text-fg md:text-h2">{title}</h1>
-            {eyebrow ? <p className="truncate text-small text-fg-muted">{eyebrow}</p> : null}
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-3 md:gap-4 md:px-6 md:py-4">
+      <header className="flex flex-col gap-2 empty:hidden">
+        <h1 className="sr-only">{title}</h1>
+        {eyebrow || actions ? (
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            {eyebrow ? (
+              <p className="min-w-0 truncate text-small text-fg-muted">{eyebrow}</p>
+            ) : (
+              <span />
+            )}
+            {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
           </div>
-          {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+        ) : null}
+        <div className="md:hidden">
+          <ModuleTabs moduleId={moduleId} />
         </div>
-        <ModuleTabs moduleId={moduleId} />
       </header>
       <div data-page-body className="flex min-w-0 flex-col gap-4">
         {children}

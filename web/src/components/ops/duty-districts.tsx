@@ -109,7 +109,7 @@ export function DutyChip({ districts, today }: { districts: string[]; today: boo
         onClick={() => setOpen(true)}
         data-testid="duty-chip"
         className={cn(
-          "inline-flex h-control-sm shrink-0 cursor-pointer items-center gap-1.5 border px-2.5 text-small transition-colors",
+          "inline-flex h-control-sm min-w-11 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-control border px-2.5 text-small transition-colors",
           set
             ? "border-border-strong text-fg hover:border-fg-muted"
             : "border-warn bg-[color-mix(in_oklab,var(--warn)_12%,var(--surface))] text-fg",
@@ -121,7 +121,9 @@ export function DutyChip({ districts, today }: { districts: string[]; today: boo
           districts.map((d) => DUTY_SHORT[d] ?? d).join(" · ")
         ) : (
           <>
-            <span className="sm:hidden">Districts ?</span>
+            <span className="sm:hidden" aria-label="Mes districts du jour ?">
+              ?
+            </span>
             <span className="max-sm:hidden">Mes districts du jour ?</span>
           </>
         )}

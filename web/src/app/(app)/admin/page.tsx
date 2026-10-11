@@ -3,11 +3,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { pl } from "@/lib/utils";
+import { ClearFilters, FilterSubmit } from "@/components/ui/filters";
 import { FilterForm } from "@/components/ui/filter-form";
 import { UserCreate } from "@/components/admin/user-create";
 import { Avatar } from "@/components/shell/avatar";
-import { Button } from "@/components/ui/button";
-import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Input, Select } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
@@ -42,7 +41,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         role="search"
         className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
       >
-        <FormAutoSubmit />
         <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-64">
           <span className="text-small text-fg-muted">Recherche</span>
           <span className="relative">
@@ -82,12 +80,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
           </Select>
         </label>
         <div className="col-span-2 flex gap-2">
-          <Button type="submit" variant="secondary">
-            Filtrer
-          </Button>
-          <Button asChild variant="ghost">
-            <Link href="/admin">Effacer</Link>
-          </Button>
+          <FilterSubmit />
+          <ClearFilters href="/admin" />
         </div>
       </FilterForm>
       {rows.length === 0 ? (

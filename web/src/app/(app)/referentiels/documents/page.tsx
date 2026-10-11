@@ -2,8 +2,8 @@ import { Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { FilterSubmit } from "@/components/ui/filters";
 import { FilterForm } from "@/components/ui/filter-form";
-import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { DocumentBoard } from "@/components/referentiels/document-board";
 import { ProcedureBoard } from "@/components/referentiels/procedure-board";
 import { Button } from "@/components/ui/button";
@@ -58,7 +58,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         role="search"
         className="flex flex-wrap items-end gap-2"
       >
-        <FormAutoSubmit />
         {vue === "documents" ? <input type="hidden" name="vue" value="documents" /> : null}
         <label className="flex min-w-0 flex-1 flex-col gap-1 md:max-w-80">
           <span className="text-small text-fg-muted">Recherche</span>
@@ -87,9 +86,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             ))}
           </Select>
         </label>
-        <Button type="submit" variant="secondary">
-          Filtrer
-        </Button>
+        <FilterSubmit />
         {q || categorie ? (
           <Button asChild variant="ghost">
             <Link

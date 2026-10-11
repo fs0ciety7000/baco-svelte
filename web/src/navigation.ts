@@ -40,6 +40,7 @@ export const MODULES: NavModule[] = [
   { id: "accueil", href: "/", label: "Accueil", icon: Home, mobile: true, tabs: [] },
   {
     id: "commandes",
+    shortLabel: "Bons",
     href: "/commandes",
     label: "Commandes",
     icon: Bus,
@@ -104,6 +105,7 @@ export const MODULES: NavModule[] = [
   },
   {
     id: "operations",
+    shortLabel: "Opér.",
     href: "/operations",
     label: "Opérations",
     icon: Train,
@@ -144,6 +146,7 @@ export const MODULES: NavModule[] = [
   },
   {
     id: "referentiels",
+    shortLabel: "Annuaire",
     href: "/referentiels",
     // « Ressources » depuis le 11 oct. 2026 (ex-« Annuaire et données », demande de l'utilisateur).
     label: "Ressources",

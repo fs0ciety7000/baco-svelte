@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ArchiveAdminBar, ArchiveDelete } from "@/components/orders/archive-tools";
+import { ClearFilters, FilterSubmit } from "@/components/ui/filters";
 import { Button } from "@/components/ui/button";
 import { FilterForm } from "@/components/ui/filter-form";
-import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Input, Select } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
@@ -59,7 +59,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         role="search"
         className="flex flex-wrap items-end gap-2"
       >
-        <FormAutoSubmit />
         <label className="flex min-w-0 flex-1 flex-col gap-1 md:max-w-80">
           <span className="text-small text-fg-muted">Recherche</span>
           <span className="relative">
@@ -88,14 +87,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
           <span className="text-small text-fg-muted">Mois</span>
           <Input type="month" name="mois" defaultValue={sp.mois ?? ""} />
         </label>
-        <Button type="submit" variant="secondary">
-          Filtrer
-        </Button>
-        {sp.q || sp.type || sp.mois ? (
-          <Button asChild variant="ghost">
-            <Link href="/commandes/archives">Effacer</Link>
-          </Button>
-        ) : null}
+        <FilterSubmit />
+        {sp.q || sp.type || sp.mois ? <ClearFilters href="/commandes/archives" /> : null}
       </FilterForm>
 
       <p className="text-small text-fg-muted" aria-live="polite">

@@ -12,8 +12,17 @@ import { activeTab } from "@/navigation";
 
 import { useShell } from "./shell-context";
 
-/** Onglets d'un module, sous forme de liens (chaque onglet est une route). Trait accent glissant (GSAP). */
-export function ModuleTabs({ moduleId }: { moduleId: string }) {
+/**
+ * Onglets d'un module, sous forme de liens (chaque onglet est une route). Trait accent glissant (GSAP).
+ * `bar` : dans la barre du haut (desktop, hauteur pleine, sans bordure) ; `page` : sous la barre (mobile).
+ */
+export function ModuleTabs({
+  moduleId,
+  variant = "page",
+}: {
+  moduleId: string;
+  variant?: "page" | "bar";
+}) {
   const { modules, admin } = useShell();
   const pathname = usePathname();
   const mod = [...modules, ...(admin ? [admin] : [])].find((m) => m.id === moduleId);
@@ -36,7 +45,12 @@ export function ModuleTabs({ moduleId }: { moduleId: string }) {
       role="navigation"
       style={{ "--mod": modColor(moduleId) } as CSSProperties}
       aria-label={`Onglets ${mod.label}`}
-      className="relative -mx-4 flex overflow-x-auto border-b border-border px-4 [scrollbar-width:none] md:mx-0 md:px-0"
+      className={cn(
+        "relative flex overflow-x-auto [scrollbar-width:none]",
+        variant === "bar"
+          ? "h-full min-w-0 flex-1"
+          : "-mx-4 border-b border-border px-4 md:mx-0 md:px-0",
+      )}
     >
       {mod.tabs.map((t) => {
         const isActive = current?.href === t.href;
@@ -46,8 +60,9 @@ export function ModuleTabs({ moduleId }: { moduleId: string }) {
             href={t.href}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "inline-flex h-control shrink-0 items-center px-4 text-body font-medium whitespace-nowrap text-fg-muted transition-colors hover:text-fg",
-              isActive && "bg-surface-2 text-fg",
+              "inline-flex shrink-0 items-center text-body font-medium whitespace-nowrap text-fg-muted transition-colors hover:text-fg",
+              variant === "bar" ? "h-full px-3" : "h-control px-4",
+              isActive && (variant === "bar" ? "text-fg" : "bg-surface-2 text-fg"),
             )}
           >
             {t.label}

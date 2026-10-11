@@ -136,22 +136,18 @@ test("journal : publier (Markdown), lu, corriger, pièce jointe, retirer", async
 }, info) => {
   test.skip(info.project.name !== "desktop", "parcours en desktop");
   await login(page, "/operations/journal");
-  // Districts du jour : bandeau du matin (non bloquant), puis puce dans l'en-tête du Journal.
-  const banner = page.getByTestId("duty-banner");
-  // Le bandeau apparaît après l'hydratation (choix « Plus tard » lu dans le navigateur) : on l'attend.
-  const shown = await banner
-    .waitFor({ state: "visible", timeout: 5000 })
-    .then(() => true)
-    .catch(() => false);
-  if (shown) {
-    // Le district du profil est pré-coché : on ne clique que si DSO ne l'est pas déjà.
-    const dso = banner.getByRole("checkbox", { name: /DSO/ });
+  // Districts du jour : puce de la barre du haut (11 oct. 2026, plus de bandeau), ambre tant que le jour n'est pas coché.
+  const chip = page.getByTestId("duty-chip").first();
+  if (!((await chip.textContent()) ?? "").includes("DSO")) {
+    await chip.click();
+    const dialog = page.getByRole("dialog", { name: /Où travailles-tu/ });
+    const dso = dialog.getByRole("checkbox", { name: /DSO/ });
     if ((await dso.getAttribute("aria-checked")) !== "true") await dso.click();
     await expect(dso).toHaveAttribute("aria-checked", "true");
-    await banner.getByTestId("duty-save").click();
-    await expect(banner).toBeHidden();
+    await dialog.getByTestId("duty-save").click();
+    await expect(dialog).toBeHidden();
   }
-  await expect(page.getByTestId("duty-chip")).toContainText("DSO");
+  await expect(page.getByTestId("duty-chip").first()).toContainText("DSO");
   await page.getByRole("radio", { name: "Incident" }).click();
   await page.getByTestId("log-body").fill(`${MARK} **dérangement** de signalisation à Jurbise 🚨`);
   await page.getByTestId("log-options-toggle").click();

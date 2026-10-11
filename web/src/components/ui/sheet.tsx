@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 import * as React from "react";
 import { Drawer } from "vaul";
 
@@ -31,7 +32,8 @@ function lastOrigin(): DOMRect | null {
 
 /**
  * Panneau de détail : bottom sheet avec poignée sur mobile, panneau latéral droit sur desktop (≥ 768 px).
- * Utilisé pour le détail d'une commande sans quitter la liste.
+ * Dès 1280 px (11 oct. 2026), panneau **ancré** : sans voile ni piège du focus, sous la barre du haut, la page se
+ * resserre à sa gauche (`html[data-sheet-docked]`) : la liste reste visible et cliquable pour enchaîner les fiches.
  */
 function Sheet({
   open,
@@ -53,6 +55,19 @@ function Sheet({
   footer?: React.ReactNode;
 }) {
   const desktop = useMediaQuery("(min-width: 768px)");
+  const docked = useMediaQuery("(min-width: 1280px)");
+  // Page resserrée à gauche du panneau ancré (compteur : plusieurs panneaux peuvent exister dans la page).
+  React.useEffect(() => {
+    if (!(open && docked)) return;
+    const root = document.documentElement;
+    const n = Number(root.dataset.sheetDocked ?? 0) + 1;
+    root.dataset.sheetDocked = String(n);
+    return () => {
+      const left = Number(root.dataset.sheetDocked ?? 1) - 1;
+      if (left > 0) root.dataset.sheetDocked = String(left);
+      else delete root.dataset.sheetDocked;
+    };
+  }, [open, docked]);
   // Continuité ligne → panneau : à l'ouverture, cadre fantôme depuis la ligne (ou la carte) qui vient d'être cliquée.
   const wasOpen = React.useRef(open);
   React.useEffect(() => {
@@ -61,17 +76,17 @@ function Sheet({
       if (origin) {
         const w = window.innerWidth;
         const h = window.innerHeight;
-        const width = Math.min(512, w);
+        const width = Math.min(docked ? 448 : 512, w);
         ghostFlip(
           origin,
           desktop
-            ? { left: w - width, top: 0, width, height: h }
+            ? { left: w - width, top: docked ? 48 : 0, width, height: docked ? h - 48 : h }
             : { left: 0, top: h * 0.3, width: w, height: h * 0.7 },
         );
       }
     }
     wasOpen.current = open;
-  }, [open, desktop]);
+  }, [open, desktop, docked]);
   return (
     // handleOnly : seule la poignée (mobile) fait glisser le panneau. Sans cela, sélectionner du texte (clic +
     // glisser) déplaçait le panneau → copier-coller impossible (retour utilisateur du 8 oct. 2026). Sur desktop il n'y
@@ -81,22 +96,35 @@ function Sheet({
       onOpenChange={onOpenChange}
       direction={desktop ? "right" : "bottom"}
       handleOnly
+      modal={!docked}
     >
       {trigger ? <Drawer.Trigger asChild>{trigger}</Drawer.Trigger> : null}
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-50 bg-[color-mix(in_oklab,var(--bg)_65%,transparent)]" />
+        {!docked ? (
+          <Drawer.Overlay className="fixed inset-0 z-50 bg-[color-mix(in_oklab,var(--bg)_65%,transparent)]" />
+        ) : null}
         <Drawer.Content
           className={cn(
             "fixed z-50 flex flex-col border-border bg-surface outline-none",
-            desktop
-              ? "top-0 right-0 bottom-0 w-[min(32rem,100vw)] rounded-l-box border-l"
-              : "right-0 bottom-0 left-0 max-h-[92dvh] rounded-t-box border-t safe-bottom",
+            docked
+              ? "top-12 right-0 bottom-0 z-20 w-[28rem] border-l"
+              : desktop
+                ? "top-0 right-0 bottom-0 w-[min(32rem,100vw)] rounded-l-box border-l"
+                : "right-0 bottom-0 left-0 max-h-[92dvh] rounded-t-box border-t safe-bottom",
           )}
         >
           {!desktop ? (
             <Drawer.Handle className="mx-auto mt-2 h-1.5 w-12 shrink-0 rounded-full bg-border-strong" />
           ) : null}
-          <div className="flex flex-col gap-1 border-b border-border px-5 py-4">
+          <div className="relative flex flex-col gap-1 border-b border-border px-5 py-4 pr-14">
+            {desktop ? (
+              <Drawer.Close
+                aria-label="Fermer le panneau"
+                className="absolute top-3 right-3 grid size-9 cursor-pointer place-items-center rounded-control text-fg-muted hover:bg-surface-2 hover:text-fg"
+              >
+                <X className="size-4" aria-hidden />
+              </Drawer.Close>
+            ) : null}
             {eyebrow ? <p className="label-mono text-fg-muted">{eyebrow}</p> : null}
             <Drawer.Title className="text-h3 font-semibold">{title}</Drawer.Title>
             {description ? (

@@ -7,47 +7,57 @@ import { usePathname } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/misc";
-import { activeModule, activeTab } from "@/navigation";
+import { activeModule } from "@/navigation";
 
+import { DutyChip } from "@/components/ops/duty-districts";
+
+import { ModuleTabs } from "./module-tabs";
 import { useShell } from "./shell-context";
 import { NotificationBell } from "./notification-bell";
 import { OnlinePresence } from "./online-presence";
 import { UserMenu } from "./user-menu";
 
 /**
- * Barre du haut. Desktop : fil (module › onglet), recherche ⌘K, « + Nouveau », menu utilisateur.
- * Mobile : 48 px collante, marque + module courant, recherche, menu utilisateur.
+ * Barre du haut (évolution du 11 oct. 2026 : haut de page sur une ligne). Desktop : module courant + ses onglets,
+ * puce des districts du jour, recherche ⌘K, « + Nouveau », présence, cloche, menu utilisateur.
+ * Mobile : 48 px collante, marque + module courant, puce des districts, recherche, menu utilisateur (onglets sous la barre).
  */
 export function Topbar() {
-  const { modules, actions, setPaletteOpen, user } = useShell();
+  const { modules, admin, actions, setPaletteOpen, user } = useShell();
   const pathname = usePathname();
-  const mod = activeModule(pathname, modules);
-  const tab = mod ? activeTab(pathname, mod) : undefined;
+  const mod = activeModule(pathname, [...modules, ...(admin ? [admin] : [])]);
 
   return (
     <header
       data-print="hide"
-      className="sticky top-0 z-30 flex h-12 shrink-0 items-center gap-2 border-b border-border bg-[color-mix(in_oklab,var(--bg)_88%,transparent)] px-3 backdrop-blur md:h-14 md:px-6"
+      className="sticky top-0 z-30 flex h-12 shrink-0 items-center gap-2 border-b border-border bg-[color-mix(in_oklab,var(--bg)_88%,transparent)] px-3 backdrop-blur md:gap-3 md:px-4"
     >
       <Link href="/" className="flex items-center gap-2 md:hidden" aria-label="Accueil CSM">
         <span aria-hidden className="size-2 bg-accent" />
         <span className="display text-body-lg tracking-wider">CSM</span>
       </Link>
-      <p className="label-mono min-w-0 truncate text-fg-muted">
-        <span className="md:hidden"> · {mod?.label}</span>
-        <span className="hidden md:inline">
-          {mod?.label}
-          {tab && mod?.tabs.length ? ` › ${tab.label}` : ""}
-        </span>
+      <p className="min-w-0 truncate text-body font-semibold text-fg md:shrink-0 md:text-body-lg">
+        <span className="font-normal text-fg-muted md:hidden">· </span>
+        {mod?.label ?? "Accueil"}
       </p>
-      <div className="ml-auto flex items-center gap-1 md:gap-2">
+      {mod && mod.tabs.length > 1 ? (
+        <div className="hidden h-full min-w-0 flex-1 md:flex">
+          <ModuleTabs moduleId={mod.id} variant="bar" />
+        </div>
+      ) : (
+        <div className="hidden flex-1 md:block" />
+      )}
+      <div className="ml-auto flex shrink-0 items-center gap-1 md:ml-0 md:gap-2">
+        {user.duty ? <DutyChip districts={user.duty.districts} today={user.duty.today} /> : null}
         <Button
           variant="ghost"
-          className="hidden w-64 justify-start border border-border text-fg-muted md:inline-flex"
+          className="hidden justify-start border border-border text-fg-muted md:inline-flex md:w-11 md:px-0 xl:w-56 xl:px-3"
+          aria-label="Rechercher, aller à"
           onClick={() => setPaletteOpen(true)}
         >
-          <Search /> Rechercher, aller à…
-          <span className="ml-auto flex gap-1">
+          <Search className="mx-auto xl:mx-0" />
+          <span className="hidden xl:inline">Rechercher…</span>
+          <span className="ml-auto hidden gap-1 xl:flex">
             <Kbd>Ctrl</Kbd>
             <Kbd>K</Kbd>
           </span>
@@ -64,8 +74,8 @@ export function Topbar() {
         {actions.length > 0 ? (
           <Menu.Root>
             <Menu.Trigger asChild>
-              <Button variant="secondary" className="hidden md:inline-flex">
-                <Plus /> Nouveau
+              <Button variant="secondary" className="hidden md:inline-flex" aria-label="Nouveau">
+                <Plus /> <span className="hidden xl:inline">Nouveau</span>
               </Button>
             </Menu.Trigger>
             <Menu.Portal>
@@ -90,7 +100,11 @@ export function Topbar() {
           </Menu.Root>
         ) : null}
         {/* Invité : pas de liste des agents en ligne (audit sécurité du 11 oct. 2026). */}
-        {user.role !== "guest" ? <OnlinePresence /> : null}
+        {user.role !== "guest" ? (
+          <span className="hidden md:inline-flex">
+            <OnlinePresence />
+          </span>
+        ) : null}
         <NotificationBell />
         <UserMenu />
       </div>

@@ -2,9 +2,13 @@ import { EyeOff, Search } from "lucide-react";
 import Link from "next/link";
 
 import { FilterForm } from "@/components/ui/filter-form";
-import { Button } from "@/components/ui/button";
-import { ChipRow, CollapsibleFilters, FilterChip } from "@/components/ui/filters";
-import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
+import {
+  ChipRow,
+  ClearFilters,
+  CollapsibleFilters,
+  FilterChip,
+  FilterSubmit,
+} from "@/components/ui/filters";
 import { Input, Select } from "@/components/ui/input";
 import { DISTRICT_LABEL, DISTRICTS } from "@/lib/pmr/districts";
 import { ASSIST_STATUS, ASSIST_STATUSES } from "@/lib/pmr/model";
@@ -88,7 +92,6 @@ export function PmrFilterBar({
         role="search"
         className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
       >
-        <FormAutoSubmit />
         <input type="hidden" name="annulees" value={hidden ? "masquees" : "affichees"} />
         <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-60">
           <span className="text-small text-fg-muted">Recherche</span>
@@ -138,12 +141,8 @@ export function PmrFilterBar({
             <Input type="date" name="au" defaultValue={filters.au} />
           </label>
           <div className="col-span-2 flex gap-2">
-            <Button type="submit" variant="secondary">
-              Filtrer
-            </Button>
-            <Button asChild variant="ghost">
-              <Link href={action}>Effacer</Link>
-            </Button>
+            <FilterSubmit />
+            <ClearFilters href={action} />
           </div>
         </CollapsibleFilters>
       </FilterForm>

@@ -10,6 +10,8 @@ export type ShellUser = {
   role: Role;
   grants: string[];
   denies: string[];
+  /** Districts du jour (puce de la barre du haut) ; null = l'agent ne lit pas le Journal (pas de puce). */
+  duty?: { districts: string[]; today: boolean } | null;
 };
 
 export const ROLE_LABEL: Record<Role, string> = {

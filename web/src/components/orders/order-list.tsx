@@ -2,9 +2,13 @@ import { Search } from "lucide-react";
 import Link from "next/link";
 
 import { FilterForm } from "@/components/ui/filter-form";
-import { Button } from "@/components/ui/button";
-import { ChipRow, CollapsibleFilters, FilterChip } from "@/components/ui/filters";
-import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
+import {
+  ChipRow,
+  ClearFilters,
+  CollapsibleFilters,
+  FilterChip,
+  FilterSubmit,
+} from "@/components/ui/filters";
 import { Input, Select } from "@/components/ui/input";
 import { LiveHighlight } from "@/components/ui/live-highlight";
 import { EmptyState } from "@/components/ui/misc";
@@ -60,7 +64,6 @@ export function FilterBar({ action, filters }: { action: string; filters: ListFi
         className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
         role="search"
       >
-        <FormAutoSubmit />
         <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-64">
           <span className="text-small text-fg-muted">Recherche</span>
           <span className="relative">
@@ -111,12 +114,8 @@ export function FilterBar({ action, filters }: { action: string; filters: ListFi
             <Input type="date" name="au" defaultValue={filters.au} />
           </label>
           <div className="col-span-2 flex gap-2">
-            <Button type="submit" variant="secondary">
-              Filtrer
-            </Button>
-            <Button asChild variant="ghost">
-              <Link href={action}>Effacer</Link>
-            </Button>
+            <FilterSubmit />
+            <ClearFilters href={action} />
           </div>
         </CollapsibleFilters>
       </FilterForm>

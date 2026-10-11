@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { pl } from "@/lib/utils";
+import { ClearFilters, FilterSubmit } from "@/components/ui/filters";
 import { FilterForm } from "@/components/ui/filter-form";
 import { Button } from "@/components/ui/button";
-import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Input, Select } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
@@ -57,7 +57,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         action="/admin/audit"
         className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
       >
-        <FormAutoSubmit />
         <label className="flex min-w-0 flex-col gap-1 md:w-48">
           <span className="text-small text-fg-muted">Collection</span>
           <Input
@@ -92,12 +91,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         </label>
         {p.user ? <input type="hidden" name="user" value={p.user} /> : null}
         <div className="col-span-2 flex flex-wrap gap-2">
-          <Button type="submit" variant="secondary">
-            Filtrer
-          </Button>
-          <Button asChild variant="ghost">
-            <Link href="/admin/audit">Effacer</Link>
-          </Button>
+          <FilterSubmit />
+          <ClearFilters href="/admin/audit" />
           <Button asChild variant="ghost">
             <a href={`/api/admin/audit/export?${qs({})}`} download>
               <Download aria-hidden /> Export CSV

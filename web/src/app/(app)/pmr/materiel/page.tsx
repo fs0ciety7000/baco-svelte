@@ -2,10 +2,9 @@ import { Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { FilterSubmit } from "@/components/ui/filters";
 import { FilterForm } from "@/components/ui/filter-form";
-import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { EquipmentBoard } from "@/components/pmr/equipment-board";
-import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { can, isCoordinator } from "@/lib/permissions";
 import { brusselsDay } from "@/lib/orders/time";
@@ -70,7 +69,6 @@ export default async function Page({
         role="search"
         className="grid grid-cols-2 gap-2 md:flex md:items-end"
       >
-        <FormAutoSubmit />
         <input type="hidden" name="vue" value={list.view} />
         <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-64">
           <span className="text-small text-fg-muted">Recherche</span>
@@ -99,9 +97,7 @@ export default async function Page({
             ))}
           </Select>
         </label>
-        <Button type="submit" variant="secondary" className="self-end">
-          Filtrer
-        </Button>
+        <FilterSubmit />
       </FilterForm>
       <EquipmentBoard
         rows={list.rows}

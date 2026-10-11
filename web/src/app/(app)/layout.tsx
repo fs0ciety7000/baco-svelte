@@ -2,7 +2,6 @@ import { Wrench } from "lucide-react";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
-import { DutyBanner } from "@/components/ops/duty-districts";
 import { AppShell } from "@/components/shell/app-shell";
 import { parseUiCookie, UI_COOKIE } from "@/design/preferences";
 import { brusselsDay } from "@/lib/orders/time";
@@ -17,7 +16,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const locked = (await maintenanceState()).on;
   // Districts du jour : demandés chaque matin aux agents qui lisent le Journal (notifications par district).
   const today = brusselsDay();
-  const askDuty = can(user, "journal:read") && user.duty_day !== today;
+  // Depuis le 11 oct. 2026 : une puce dans la barre du haut (ambre tant que le jour n'est pas coché) au lieu du bandeau.
+  const duty = can(user, "journal:read")
+    ? {
+        districts: userDistricts(user, today),
+        today: user.duty_day === today,
+      }
+    : null;
   return (
     <AppShell
       ui={ui}
@@ -29,6 +34,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         role: user.role,
         grants: user.grants ?? [],
         denies: user.denies ?? [],
+        duty,
       }}
     >
       {locked ? (
@@ -39,9 +45,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <Wrench aria-hidden className="size-4 text-warn" /> Mode maintenance actif : seuls les
           administrateurs ont accès à CSM.
         </p>
-      ) : null}
-      {askDuty ? (
-        <DutyBanner day={today} initial={userDistricts({ ...user, duty_day: "" }, today)} />
       ) : null}
       {children}
     </AppShell>

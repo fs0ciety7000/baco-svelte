@@ -32,15 +32,16 @@ import {
   TrainsWidget,
   type LogDigest,
 } from "@/components/ops/dashboard-widgets";
+import { KpiStrip, TodoQueue, todoItems } from "@/components/dashboard/todo";
 import { useShell } from "@/components/shell/shell-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { EmptyState, PageHeader } from "@/components/ui/misc";
+import { EmptyState } from "@/components/ui/misc";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge, StatusBadge, statusColor } from "@/components/ui/status-badge";
 import { ListCard } from "@/components/ui/table";
 import { toast } from "@/components/ui/toast";
-import { move, type DashboardLayout, type WidgetId } from "@/design/dashboard-layout";
+import { type DashboardLayout, type WidgetId } from "@/design/dashboard-layout";
 import { useStaggerIn } from "@/lib/motion";
 import { CLOSE_DAYS } from "@/lib/orders/status";
 import { brusselsDay, daysBetween, formatDay, isValidDay } from "@/lib/orders/time";
@@ -221,6 +222,7 @@ function Widget({
   hidden,
   layout,
   onLayout,
+  onMove,
   children,
 }: {
   id: WidgetId;
@@ -230,6 +232,7 @@ function Widget({
   hidden: boolean;
   layout: DashboardLayout;
   onLayout: (l: DashboardLayout) => void;
+  onMove: (id: WidgetId, dir: -1 | 1) => void;
   children: ReactNode;
 }) {
   const {
@@ -270,7 +273,7 @@ function Widget({
                   variant="ghost"
                   aria-label={`Monter « ${meta.title} »`}
                   disabled={index === 0}
-                  onClick={() => onLayout(move(layout, id, -1))}
+                  onClick={() => onMove(id, -1)}
                 >
                   <ArrowUp />
                 </Button>
@@ -279,7 +282,7 @@ function Widget({
                   variant="ghost"
                   aria-label={`Descendre « ${meta.title} »`}
                   disabled={index === count - 1}
-                  onClick={() => onLayout(move(layout, id, 1))}
+                  onClick={() => onMove(id, 1)}
                 >
                   <ArrowDown />
                 </Button>
@@ -312,11 +315,11 @@ function Widget({
                 </Button>
               </>
             ) : id === "commandes" || id === "a-confirmer" ? (
-              <LiveRefresh topics={["bus_orders"]} />
+              <LiveRefresh quiet topics={["bus_orders"]} />
             ) : id === "impacts" || id === "pmr-jour" ? (
-              <LiveRefresh topics={["mission_trains", "pmr_assists"]} />
+              <LiveRefresh quiet topics={["mission_trains", "pmr_assists"]} />
             ) : id === "mentions" ? (
-              <LiveRefresh topics={["notifications"]} />
+              <LiveRefresh quiet topics={["notifications"]} />
             ) : null
           }
         />
@@ -367,18 +370,29 @@ export function Dashboard({
       }
     });
 
-  const shown = editing ? layout.order : layout.order.filter((id) => !layout.hidden.includes(id));
+  // « Vue du jour » et « À confirmer » sont repris par la bande de compteurs et la file « À traiter » (11 oct. 2026).
+  const absorbed = (id: WidgetId) => id === "commandes" || id === "a-confirmer";
+  const shown: WidgetId[] = (
+    editing ? layout.order : layout.order.filter((id) => !layout.hidden.includes(id))
+  ).filter((id) => !absorbed(id));
 
   return (
     <div
       ref={ref}
-      className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 md:px-6 md:py-6"
+      className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-4 md:px-6 md:py-5"
     >
-      <PageHeader
-        eyebrow={`// Accueil · ${dateLabel.format(new Date())}`}
-        title={`Bonjour${firstName ? `, ${firstName}` : ""}`}
-        actions={
-          editing ? (
+      {/* En-tête d'une ligne (11 oct. 2026) : salutation, date, personnalisation. */}
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="flex min-w-0 items-baseline gap-3">
+          <h1 className="display truncate text-h3 text-fg md:text-h2">
+            Bonjour{firstName ? `, ${firstName}` : ""}
+          </h1>
+          <p className="truncate text-small text-fg-muted first-letter:uppercase">
+            {dateLabel.format(new Date())}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {editing ? (
             <>
               <Button
                 variant="ghost"
@@ -394,12 +408,24 @@ export function Dashboard({
               </Button>
             </>
           ) : (
-            <Button onClick={() => setEditing(true)}>
+            <Button variant="ghost" onClick={() => setEditing(true)}>
               <SlidersHorizontal /> Personnaliser
             </Button>
-          )
-        }
-      />
+          )}
+        </div>
+      </header>
+      {!editing ? (
+        <>
+          <KpiStrip
+            stats={stats}
+            today={ops.today}
+            impacted={ops.impacts ? ops.impacts.length : null}
+          />
+          <TodoQueue
+            items={todoItems({ stats, impacts: ops.impacts, mentions: ops.mentions, log: ops.log })}
+          />
+        </>
+      ) : null}
       {editing ? (
         <p className="text-body text-fg-muted" role="status">
           Glisse les widgets par la poignée, ou utilise les flèches. L&apos;œil masque un widget.
@@ -410,6 +436,7 @@ export function Dashboard({
           <div
             className="grid grid-flow-row-dense grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3"
             data-testid="dashboard-grid"
+            data-compact-empty
           >
             {shown.map((id, i) => (
               <Widget
@@ -421,6 +448,17 @@ export function Dashboard({
                 hidden={layout.hidden.includes(id)}
                 layout={layout}
                 onLayout={setLayout}
+                onMove={(wid, dir) => {
+                  // Échange avec le voisin AFFICHÉ (les widgets repris par l'accueil restent dans l'ordre enregistré).
+                  const j = shown.indexOf(wid) + dir;
+                  const other = shown[j];
+                  if (!other) return;
+                  const order = [...layout.order];
+                  const a = order.indexOf(wid);
+                  const b = order.indexOf(other);
+                  [order[a], order[b]] = [order[b]!, order[a]!];
+                  setLayout({ ...layout, order });
+                }}
               >
                 <WidgetBody id={id} stats={stats} ops={ops} />
               </Widget>

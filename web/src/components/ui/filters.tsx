@@ -1,9 +1,12 @@
 "use client";
 
 import { Slot } from "@radix-ui/react-slot";
-import { ChevronDown, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import * as React from "react";
 
+import { FormAutoSubmit as FormAutoSubmitLazy } from "@/components/ui/form-auto-submit";
 import { cn, pl } from "@/lib/utils";
 
 /**
@@ -109,5 +112,40 @@ export function CollapsibleFilters({
         {children}
       </div>
     </>
+  );
+}
+
+// Paramètres d'URL qui ne sont pas des filtres (panneau ouvert, clé de visite, pagination).
+const NOT_FILTERS = new Set(["id", "k", "entree", "train", "pn", "n", "page", "vue"]);
+
+/**
+ * Validation des filtres (11 oct. 2026 : plus de bouton « Filtrer », le filtrage est automatique) : soumission
+ * automatique au changement (`FormAutoSubmit`) et bouton de soumission invisible, pour que la touche Entrée lance
+ * toujours la recherche texte (soumission implicite d'un formulaire à plusieurs champs).
+ */
+export function FilterSubmit() {
+  return (
+    <>
+      <FormAutoSubmitLazy />
+      <button type="submit" tabIndex={-1} aria-hidden className="sr-only">
+        Filtrer
+      </button>
+    </>
+  );
+}
+
+/** « Effacer les filtres » : affiché seulement quand un filtre est actif dans l'URL. */
+export function ClearFilters({ href }: { href: string }) {
+  const params = useSearchParams();
+  const active = [...params.entries()].some(([k, v]) => v !== "" && !NOT_FILTERS.has(k));
+  if (!active) return null;
+  return (
+    <Link
+      href={href}
+      data-testid="clear-filters"
+      className="inline-flex h-control-sm shrink-0 items-center gap-1 self-end rounded-control px-2 text-small text-fg-muted hover:text-fg"
+    >
+      <X aria-hidden className="size-3.5" /> Effacer les filtres
+    </Link>
   );
 }

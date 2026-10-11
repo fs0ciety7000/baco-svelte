@@ -15,7 +15,9 @@ test("tableau de bord, CSP et absence d'erreur", async ({ page }, testInfo) => {
   expect(res?.headers()["content-security-policy"]).toContain("connect-src 'self'");
   await login(page);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Bonjour, Agent/);
-  await expect(page.getByTestId("dashboard-grid").locator("[data-widget]")).toHaveCount(10);
+  await expect(page.getByTestId("dashboard-grid").locator("[data-widget]")).toHaveCount(8);
+  // Accueil « À traiter » (11 oct. 2026) : bande de compteurs + file par gravité.
+  await expect(page.getByTestId("todo-queue")).toBeVisible();
   await page.waitForTimeout(800);
   await noHorizontalScroll(page);
   await page.screenshot({

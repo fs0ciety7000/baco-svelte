@@ -19,16 +19,23 @@ function EmptyState({
 }) {
   return (
     <div
+      data-slot="empty"
       className={cn(
         "flex flex-col items-center gap-3 rounded-box border border-dashed border-border-strong px-6 py-10 text-center",
         className,
       )}
     >
-      <span className="text-fg-muted" aria-hidden>
+      <span data-slot="empty-icon" className="text-fg-muted" aria-hidden>
         {icon ?? <Inbox className="size-6" />}
       </span>
-      <p className="text-body font-semibold text-fg">{title}</p>
-      {description ? <p className="max-w-sm text-body text-fg-muted">{description}</p> : null}
+      <p data-slot="empty-title" className="text-body font-semibold text-fg">
+        {title}
+      </p>
+      {description ? (
+        <p data-slot="empty-desc" className="max-w-sm text-body text-fg-muted">
+          {description}
+        </p>
+      ) : null}
       {action}
     </div>
   );

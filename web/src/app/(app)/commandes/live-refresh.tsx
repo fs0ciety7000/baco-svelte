@@ -7,7 +7,9 @@ import { subscribeLive } from "@/lib/live";
 
 // Abonnement au relais SSE du serveur CSM (/api/events). À chaque changement, la page serveur est
 // relue (router.refresh), regroupé sur 300 ms pour absorber les rafales.
-export function LiveRefresh({ topics }: { topics: string[] }) {
+// `quiet` (accueil, 11 oct. 2026) : rien de visible tant que le flux est en direct (l'état est dans la barre latérale),
+// seulement « Connexion… » / « Hors ligne ».
+export function LiveRefresh({ topics, quiet }: { topics: string[]; quiet?: boolean }) {
   const router = useRouter();
   const [state, setState] = useState<"connexion" | "direct" | "coupé">("connexion");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -31,7 +33,11 @@ export function LiveRefresh({ topics }: { topics: string[] }) {
 
   return (
     <span
-      className="label-mono inline-flex items-center gap-2 text-fg-muted"
+      className={
+        quiet && state === "direct"
+          ? "sr-only"
+          : "label-mono inline-flex items-center gap-2 text-fg-muted"
+      }
       data-testid="live-state"
       aria-live="polite"
     >
