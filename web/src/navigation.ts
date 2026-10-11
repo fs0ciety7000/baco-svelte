@@ -59,6 +59,12 @@ export const MODULES: NavModule[] = [
         keywords: ["kanban", "statut"],
       },
       {
+        href: "/commandes/archives",
+        label: "Archives",
+        permission: "archives:read",
+        keywords: ["PDF", "bons terminés", "sauvegarde", "TC_"],
+      },
+      {
         href: "/commandes/b201",
         label: "Remise B201",
         permission: "b201:read",

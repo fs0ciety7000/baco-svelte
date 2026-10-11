@@ -172,3 +172,12 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
 - **Prod** (`pb-csm.fs0ciety.org`, 10 oct.) : base construite en local (`migrate up`, `superuser upsert`, `csm-import` d'une
   sauvegarde Supabase fraîche + empreintes, script des référentiels, compte `connector`), zip `POST /api/backups` puis
   `upload` + `restore` sur la prod. Ne jamais lancer `test-rules.mjs` ni d'E2E contre la prod.
+- **Archives des bons** (`1760002900_order_archives.js`, `archives.pb.js`, `lib/archives.js`) : `order_pdfs` (kind, order_id,
+  reference, route, service_day, district, file PDF protégé 10 Mo, generated_by, r2_key / r2_at / r2_error ; unique
+  (kind, order_id)) et `order_pdf_backups` (month AAAA-MM unique, count, zip protégé 500 Mo). **Aucune écriture par l'API** :
+  routes internes `POST /api/csm/archives/store` (multipart, upsert, puis copie R2) et `/api/csm/archives/backup` (secret
+  `CSM_INTERNAL_SECRET`). Lecture `archives:read` (paco, moderator), suppression `archives:delete` (moderator) / admin.
+  R2 : `$filesystem.s3` avec les variables `CSM_BACKUP_S3_*` (dossier `bons/`), `CSM_ARCHIVE_R2=off` pour couper ; sans
+  variables : volume seul. Cron `order-pdf-backup` (1 h UTC) : zip « stocké » (CRC32 maison, ~2 s/Mo en JSVM) des mois
+  dont un PDF a changé (6 au plus), rattrapage R2 de 50 PDF.
+

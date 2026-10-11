@@ -34,6 +34,12 @@ export const PERMISSION_MODULES: { group: string; modules: PermissionModule[] }[
       { key: "otto", label: "Bus", actions: ALL },
       { key: "generate_taxi", label: "Taxis", actions: ALL },
       { key: "b201", label: "B201", actions: ALL },
+      {
+        key: "archives",
+        label: "Archives des bons (PDF)",
+        actions: ["read", "delete"],
+        hint: "Bons terminés et leurs sauvegardes.",
+      },
     ],
   },
   {

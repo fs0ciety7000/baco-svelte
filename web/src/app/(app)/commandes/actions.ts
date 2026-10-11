@@ -18,6 +18,7 @@ import {
 import { isStatus, type OrderKind } from "@/lib/orders/status";
 import { brusselsDay, brusselsToUtc, brusselsTime, formatShortDay } from "@/lib/orders/time";
 import { primaryDistrict } from "@/lib/team";
+import { archiveOrder } from "@/server/archives";
 import { requireUser, type SessionUser } from "@/server/auth";
 import { manualEntrySchema, notesSchema } from "@/server/data/b201";
 import {
@@ -305,6 +306,12 @@ export async function transitionOrder(
       body.confirmed_time = p.details.confirmed_time;
 
     await col.update(p.id, body);
+    // Bon terminé : PDF archivé (volume + R2). Un échec n'annule pas la clôture : rattrapé depuis la page Archives.
+    if (p.to === "termine") {
+      const user = await requireUser();
+      const a = await archiveOrder(p.kind, p.id, user.id);
+      if (!a.ok) console.warn(`archives : bon ${p.kind} ${p.id} non archivé : ${a.error}`);
+    }
     return { ok: true };
   } catch (e) {
     return fail(e);

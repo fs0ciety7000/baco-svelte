@@ -782,6 +782,17 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   jusqu'à 30 Mo par route (la Server Action était limitée à 1 Mo : l'envoi de vrais documents échouait), depuis la
   bibliothèque **et depuis une procédure** ; **visionneuse** PDF / image + téléchargement (Word, Excel… en téléchargement :
   pas de conversion, choix de l'utilisateur). Corrigé en route : halo de la pastille « en ligne » démesuré en desktop.
+- 2026-10-11 — **Archives des bons** (demande de l'utilisateur) : à la clôture d'un bon bus ou taxi (« terminé »), Next produit
+  le PDF (taxi **sans** nominatif PMR : l'archive n'a pas de limite de durée) et l'envoie à la route interne PocketBase
+  `/api/csm/archives/store` (secret interne) → collection `order_pdfs` (fichier protégé sur le volume, une fiche par bon)
+  + copie **R2** dans le bucket des sauvegardes, dossier `bons/<bus|taxi>/AAAA/MM/` (prod seulement : la préversion n'a pas
+  les variables `CSM_BACKUP_S3_*`, volume seul ; choix de l'utilisateur). Chaque nuit (cron `order-pdf-backup`, 1 h UTC) :
+  zip mensuel des PDF des mois modifiés (`order_pdf_backups`, zip « stocké » écrit dans `lib/archives.js`) sur le volume
+  + `bons/sauvegardes/` dans R2, rattrapage R2 des PDF en attente. Page **Commandes › Archives** (référence TC_ / n° de
+  taxi, trajet, date, PDF, zips mensuels) ; droit **`archives`** (lecture : PACO/RCCA, Modérateur, admin, sysop ;
+  suppression : Modérateur, admin, sysop) ; admin : « Archiver les bons terminés » (historique, par paquets de 15) et
+  « Sauvegarder maintenant ». Les fichiers `bons/` apparaissent dans la liste des sauvegardes de l'admin PocketBase (même
+  bucket) : ne pas les « restaurer » ; la rotation ne supprime que `@auto_pb_backup_*`.
 - 2026-10-08 — **Types DICOS fiabilisés** (échantillon réel) : `pmr-wc`/fixed-wheelchair → CRF (cause des « AUTRE »),
   `pmr-fw`/folding-wheelchair → CRP ; mapping par **symbole** d'abord. L'extension récupère le détail même sans
   `reservationType`. **Extension Firefox** ajoutée (`manifest.firefox.json`, ≥ 128) ; paquets Chrome + Firefox dans

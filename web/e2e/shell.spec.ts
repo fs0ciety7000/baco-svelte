@@ -61,7 +61,13 @@ test("navigation principale et onglets en routes", async ({ page, isMobile }, te
   }
   await page.goto("/commandes");
   const tabs = page.getByRole("navigation", { name: "Onglets Commandes" });
-  await expect(tabs.getByRole("link")).toHaveText(["Bus", "Taxi", "Suivi", "Remise B201"]);
+  await expect(tabs.getByRole("link")).toHaveText([
+    "Bus",
+    "Taxi",
+    "Suivi",
+    "Archives",
+    "Remise B201",
+  ]);
   await expect(tabs.getByRole("link", { name: "Bus" })).toHaveAttribute("aria-current", "page");
   await tabs.getByRole("link", { name: "Suivi" }).click();
   await expect(page).toHaveURL(/\/commandes\/suivi$/);
