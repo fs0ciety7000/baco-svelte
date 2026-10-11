@@ -17,6 +17,12 @@ onRecordValidate((e) => {
 onRecordCreateRequest((e) => {
 	e.next();
 	require(`${__hooks}/lib/pmr.js`).event(e.app, 'assist', e.record.id, 'status', '', e.record.getString('status'), e.auth, '');
+	// Mission DICOS nouvelle dans les 3 h (après une première synchro complète du jour) : alerte sans nom (lib/alerts.js).
+	try {
+		require(`${__hooks}/lib/alerts.js`).dicosChangeAlert(e.app, null, e.record, 'pmr', e.auth);
+	} catch (err) {
+		console.log('dicos-change', String(err));
+	}
 }, 'pmr_assists');
 
 onRecordUpdateRequest((e) => {
@@ -40,6 +46,7 @@ onRecordUpdateRequest((e) => {
 		}
 		if (to === 'prevue') e.record.set('cancel_reason', '');
 	}
+	const alertBefore = require(`${__hooks}/lib/alerts.js`).snap(before);
 	const watched = ['time', 'station', 'train', 'day', 'client', 'cancel_reason'];
 	// Le motif est déjà dans l'événement de transition : tracé à part seulement s'il change sans transition.
 	const changes = watched.filter((f) => before.getString(f) !== e.record.getString(f) && !(f === 'cancel_reason' && from !== to)).map((f) => [f, before.getString(f), e.record.getString(f)]);
@@ -50,7 +57,44 @@ onRecordUpdateRequest((e) => {
 		const masked = c[0] === 'client' ? [c[1] ? 'lié' : '', c[2] ? 'lié' : ''] : [c[1], c[2]];
 		require(`${__hooks}/lib/pmr.js`).event(e.app, 'assist', e.record.id, c[0], masked[0], masked[1], e.auth, '');
 	}
+	// Mission DICOS annulée ou déplacée dans les 3 h : alerte sans nom (lib/alerts.js).
+	try {
+		require(`${__hooks}/lib/alerts.js`).dicosChangeAlert(e.app, alertBefore, e.record, 'pmr', e.auth);
+	} catch (err) {
+		console.log('dicos-change', String(err));
+	}
 }, 'pmr_assists');
+
+// Groupes DICOS : mêmes alertes de dernière minute (nouveau, annulé, déplacé dans les 3 h).
+onRecordCreateRequest((e) => {
+	e.next();
+	try {
+		require(`${__hooks}/lib/alerts.js`).dicosChangeAlert(e.app, null, e.record, 'groupe', e.auth);
+	} catch (err) {
+		console.log('dicos-change', String(err));
+	}
+}, 'group_missions');
+
+onRecordUpdateRequest((e) => {
+	const before = require(`${__hooks}/lib/alerts.js`).snap(e.record.original());
+	e.next();
+	try {
+		require(`${__hooks}/lib/alerts.js`).dicosChangeAlert(e.app, before, e.record, 'groupe', e.auth);
+	} catch (err) {
+		console.log('dicos-change', String(err));
+	}
+}, 'group_missions');
+
+// Lot DICOS reçu : missions vues (`seen`, consommé puis vidé) marquées `last_seen_sync` / `last_seen_by` ; dernier lot
+// (`complete`) : début de la synchro posé dans `session_start` (base de « Absente de DICOS », 11 oct. 2026).
+onRecordCreateRequest((e) => {
+	const alerts = require(`${__hooks}/lib/alerts.js`);
+	const ids = alerts.seenIds(e.record);
+	e.record.set('seen', []);
+	e.record.set('session_start', e.record.getBool('complete') ? alerts.sessionStart(e.app, e.record) : '');
+	e.next();
+	alerts.markSeen(e.app, e.record.getString('kind'), ids, e.record.getString('created'), e.record.getString('synced_by'));
+}, 'dicos_syncs');
 
 onRecordUpdateRequest((e) => {
 	const before = e.record.original();

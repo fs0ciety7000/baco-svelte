@@ -5,7 +5,7 @@
 // l'administration), PACO/RCCA (lecture partout, écriture et modification, pas de suppression), Invité (lecture des commandes bus et taxi). Chaque module a jusqu'à quatre actions : `X:read`
 // (lecture), `X:write` (écriture = création), `X:update` (modification), `X:delete` (suppression).
 
-export type Role = "admin" | "sysop" | "moderator" | "paco" | "guest" | "disabled";
+export type Role = "admin" | "sysop" | "moderator" | "paco" | "guest" | "screen" | "disabled";
 
 export type Action = "read" | "write" | "update" | "delete";
 
@@ -101,13 +101,17 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
   paco: [...PERMISSION_KEYS.filter((k) => !k.endsWith(":delete")), ...LEGACY_READ],
   // Invité : lecture des commandes bus et taxi.
   guest: ["otto:read", "generate_taxi:read"],
+  // Écran (poste partagé, 11 oct. 2026) : AUCUN droit de module ; il ne voit que `/tv`, dont les lectures passent par
+  // `buildHandover(…, { screen: true })` et par les règles PocketBase propres à ce rôle (1760003000).
+  screen: [],
   disabled: [],
 };
 
 export type PermissionSubject = { role: Role; grants?: string[] | null; denies?: string[] | null };
 
 export function can(user: PermissionSubject | null | undefined, permission: string): boolean {
-  if (!user || user.role === "disabled") return false;
+  // Compte « Écran » : jamais de droit, même accordé (les règles PocketBase le refusent aussi).
+  if (!user || user.role === "disabled" || user.role === "screen") return false;
   if (user.role === "admin" || user.role === "sysop") return true;
   if (user.grants?.includes(permission)) return true;
   if (user.denies?.includes(permission)) return false;
@@ -145,6 +149,11 @@ export function isJournalModerator(user: PermissionSubject | null | undefined): 
 /** Nouveautés de l'application : administrateurs et modérateurs. */
 export function canEditChangelog(user: PermissionSubject | null | undefined): boolean {
   return isAdmin(user) || user?.role === "moderator";
+}
+
+/** Compte d'affichage du poste partagé : ne voit que l'écran commun `/tv`. */
+export function isScreen(user: PermissionSubject | null | undefined): boolean {
+  return user?.role === "screen";
 }
 
 /** Droit accordé par le seul rôle (sans grants / denies) : sert à la matrice « défaut du rôle » de l'admin. */

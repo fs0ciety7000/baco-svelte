@@ -17,6 +17,7 @@ import type { GroupMission } from "@/server/data/groups";
 import { AleaButton } from "./alea-export";
 import { HIGHLIGHT, IoBadges } from "./assist-board";
 import { PhoneLink } from "./phone-link";
+import { AbsentBadge } from "./absent-badge";
 import { DelayBadge, TrainChip } from "./train-chip";
 
 // Missions de GROUPE DICOS (lecture seule, demande du 9 oct. 2026) : même présentation que les missions PMR
@@ -142,7 +143,10 @@ export function GroupBoard({
                       <Td className="tabular">{g.children}</Td>
                       <Td className="tabular">{g.seniors}</Td>
                       <Td>
-                        <Badge tone={STATUS[g.status].tone}>{STATUS[g.status].label}</Badge>
+                        <span className="inline-flex flex-wrap items-center gap-1.5">
+                          <Badge tone={STATUS[g.status].tone}>{STATUS[g.status].label}</Badge>
+                          {g.absent ? <AbsentBadge /> : null}
+                        </span>
                       </Td>
                     </Tr>
                   ))}
@@ -163,6 +167,7 @@ export function GroupBoard({
                         <span className="inline-flex flex-wrap items-center gap-2">
                           <TrainChip train={g.train} taxi={g.transport === "taxi"} />
                           <DelayBadge impact={missionImpact(g, delays)} />
+                          {g.absent ? <AbsentBadge /> : null}
                           <Route g={g} district={district} />
                         </span>
                       }

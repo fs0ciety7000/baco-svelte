@@ -15,12 +15,13 @@ import { useTransition, type ReactNode } from "react";
 
 import { pinHandover } from "@/app/(app)/operations/actions";
 import { CopyIcon, useCopy } from "@/components/pmr/copy";
+import { AbsentBadge } from "@/components/pmr/absent-badge";
 import { DelayBadge, TrainChip } from "@/components/pmr/train-chip";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";
-import { handoverText, type Handover, type HandoverOrder } from "@/lib/ops/handover";
+import { handoverText, urgencyText, type Handover, type HandoverOrder } from "@/lib/ops/handover";
 import { safeCall } from "@/lib/orders/safe-call";
 import { cn, pl } from "@/lib/utils";
 
@@ -72,6 +73,9 @@ function Orders({ items }: { items: HandoverOrder[] }) {
               {o.day}
               {o.time ? ` ${o.time}` : ""}
             </span>
+            {o.minutes !== undefined ? (
+              <span className="shrink-0 text-small text-danger">{urgencyText(o).trim()}</span>
+            ) : null}
             {o.late > 0 ? (
               <span className="shrink-0 text-small text-warn">
                 {o.late} {pl(o.late, "jour")}
@@ -102,7 +106,8 @@ export function HandoverView({
   const copy = useCopy();
   const [pending, start] = useTransition();
   const text = handoverText(data, { author, at, scope });
-  const orders = data.toConfirm.length + data.toClose.length + data.running.length;
+  const orders =
+    data.urgent.length + data.toConfirm.length + data.toClose.length + data.running.length;
   return (
     <div className="flex flex-col gap-4" data-testid="handover">
       <div className="flex flex-wrap items-center gap-2" data-print="hide">
@@ -145,6 +150,14 @@ export function HandoverView({
           empty="Aucun bon à confirmer, à clôturer ni en cours."
         >
           <div className="flex flex-col gap-3">
+            {data.urgent.length ? (
+              <div data-testid="handover-urgent">
+                <p className="label-mono text-danger">
+                  À confirmer d&apos;urgence, départ dans 2 h ({data.urgent.length})
+                </p>
+                <Orders items={data.urgent} />
+              </div>
+            ) : null}
             {data.running.length ? (
               <div>
                 <p className="label-mono text-fg-muted">
@@ -208,6 +221,7 @@ export function HandoverView({
                 <DelayBadge impact={l.impact} />
                 <Badge tone={l.io === "IN" ? "info" : "ok"}>{l.io}</Badge>
                 <span className="min-w-0 flex-1 truncate text-body">{l.station}</span>
+                {l.absent ? <AbsentBadge /> : null}
                 <span className="shrink-0 text-small text-fg-muted max-sm:hidden">{l.detail}</span>
               </li>
             ))}

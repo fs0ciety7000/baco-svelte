@@ -678,6 +678,7 @@ export type RoadmapPdfInput = {
     client: string;
     extra: string;
     cancelled: boolean;
+    absent?: boolean;
   }[];
   equipment: {
     platform: string;
@@ -738,7 +739,10 @@ export async function roadmapPdf(input: RoadmapPdfInput, ctx: PdfContext): Promi
         cells: [
           [r.time || "--:--"],
           [r.train],
-          [r.io === "IN" ? "Embarquement" : "Débarquement", ...(r.cancelled ? ["ANNULÉE"] : [])],
+          [
+            r.io === "IN" ? "Embarquement" : "Débarquement",
+            ...(r.cancelled ? ["ANNULÉE"] : r.absent ? ["ABSENTE DE DICOS", "à vérifier"] : []),
+          ],
           [r.who],
           [r.other],
           [r.dossier, r.client, r.extra],

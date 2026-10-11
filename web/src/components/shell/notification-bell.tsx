@@ -1,7 +1,15 @@
 "use client";
 
 import * as Menu from "@radix-ui/react-dropdown-menu";
-import { AtSign, Bell, CheckCheck, Construction, Train, TriangleAlert } from "lucide-react";
+import {
+  Accessibility,
+  AtSign,
+  Bell,
+  CheckCheck,
+  Construction,
+  Train,
+  TriangleAlert,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -20,6 +28,7 @@ const ICON = {
   train: Train,
   systeme: Bell,
   perturbation: Construction,
+  dicos: Accessibility,
 } as const;
 
 /** Cloche : notifications de l'agent (mentions, urgences, trains suivis), en direct par le relais SSE. */

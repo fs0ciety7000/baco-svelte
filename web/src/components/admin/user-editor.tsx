@@ -213,7 +213,16 @@ export function UserEditor({
           }
         />
         <CardContent className="flex flex-col gap-4">
-          <PermissionMatrix role={role} value={perm} onChange={setPerm} />
+          {role === "screen" ? (
+            <p className="text-body text-fg-muted" data-testid="screen-role-note">
+              Compte « Écran » : aucun droit de module, même accordé. Il ne voit que l&apos;écran
+              commun (/tv) : bons bus ouverts, missions PMR sans nom, trains en retard, ALEA,
+              urgences et consignes ; ni taxis ni groupes. Ses districts règlent ce qu&apos;affiche
+              l&apos;écran.
+            </p>
+          ) : (
+            <PermissionMatrix role={role} value={perm} onChange={setPerm} />
+          )}
         </CardContent>
       </Card>
       {password ? <PasswordReveal password={password} onClose={() => setPassword(null)} /> : null}

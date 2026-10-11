@@ -5,7 +5,10 @@ import { z } from "zod";
 
 import { brusselsDay, isValidDay } from "@/lib/orders/time";
 
+import { isAbsentFromDicos } from "@/lib/pmr/sync-state";
+
 import { pbForRequest } from "./orders";
+import { dicosSessions } from "./pmr";
 
 // Missions de groupe DICOS (lecture seule, droit `pmr:read` — règle PocketBase `1760001500`).
 
@@ -36,6 +39,10 @@ export type GroupMission = {
   contactName: string;
   contactPhone: string;
   contactEmail: string;
+  lastSeenSync?: string;
+  lastSeenBy?: string;
+  /** Encore « prévue » mais absente de la dernière synchro complète de l'agent qui l'avait vue. */
+  absent?: boolean;
 };
 
 function row(r: RecordModel): GroupMission {
@@ -65,6 +72,8 @@ function row(r: RecordModel): GroupMission {
     contactName: `${str(r.contact_last)} ${str(r.contact_first)}`.trim(),
     contactPhone: str(r.contact_phone),
     contactEmail: str(r.contact_email),
+    lastSeenSync: str(r.last_seen_sync),
+    lastSeenBy: str(r.last_seen_by),
   };
 }
 
@@ -106,5 +115,10 @@ export async function listGroups(input: z.input<typeof groupListSchema>) {
     filter: parts.join(" && "),
     sort: "day,time",
   });
-  return { rows: res.items.map(row), total: res.totalItems };
+  let rows = res.items.map(row);
+  if (rows.some((g) => g.status === "prevue" && g.lastSeenBy)) {
+    const sessions = await dicosSessions("groups", [...new Set(rows.map((g) => g.day))]);
+    rows = rows.map((g) => (isAbsentFromDicos(g, sessions) ? { ...g, absent: true } : g));
+  }
+  return { rows, total: res.totalItems };
 }

@@ -366,7 +366,8 @@ export type Agent = { id: string; name: string; username: string };
 export async function listMentionable(): Promise<Agent[]> {
   const pb = await pbForRequest();
   const items = await pb.collection("users").getFullList({
-    filter: 'role != "disabled" && role != "guest" && role != "connector" && username != ""',
+    filter:
+      'role != "disabled" && role != "guest" && role != "connector" && role != "screen" && username != ""',
     sort: "name",
     fields: "id,name,username",
   });
@@ -455,7 +456,8 @@ export async function searchLinkables(kind: LinkedObject["kind"], q: string): Pr
 
 export type Notification = {
   id: string;
-  kind: "mention" | "urgent" | "train" | "systeme" | "perturbation";
+  /** `dicos` : mission DICOS nouvelle, annulée ou déplacée dans les 3 h (11 oct. 2026), sans nom de voyageur. */
+  kind: "mention" | "urgent" | "train" | "systeme" | "perturbation" | "dicos";
   title: string;
   body: string;
   link: string;
@@ -474,7 +476,9 @@ export async function listNotifications(
   return {
     items: res.items.map((n) => ({
       id: n.id,
-      kind: (["mention", "urgent", "train", "systeme", "perturbation"].includes(str(n.kind))
+      kind: (["mention", "urgent", "train", "systeme", "perturbation", "dicos"].includes(
+        str(n.kind),
+      )
         ? str(n.kind)
         : "systeme") as Notification["kind"],
       title: str(n.title),

@@ -20,6 +20,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   moderator: "Modérateur",
   paco: "PACO/RCCA",
   guest: "Invité",
+  screen: "Écran",
   disabled: "Désactivé",
 };
 

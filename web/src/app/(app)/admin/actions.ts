@@ -21,7 +21,7 @@ type Result<T = undefined> =
 const userId = z.string().regex(/^[a-z0-9-]{15,36}$/);
 const pbId = z.string().regex(/^[a-z0-9]{15}$/);
 // Rôles v2 (11 oct. 2026).
-const ROLES = ["admin", "sysop", "moderator", "paco", "guest"] as const;
+const ROLES = ["admin", "sysop", "moderator", "paco", "guest", "screen"] as const;
 const DISTRICTS = ["", "Sud-Ouest", "Sud-Est", "Centre"] as const;
 const DISTRICT_NAMES = ["Sud-Ouest", "Sud-Est", "Centre"] as const;
 const KNOWN = new Set(PERMISSION_CATALOG.flatMap((g) => g.items.map((i) => i.key)));

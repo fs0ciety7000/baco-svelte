@@ -160,7 +160,7 @@ export const MODULES: NavModule[] = [
         permission: "repertoire:read",
         keywords: ["répertoire", "sociétés", "taxis", "contacts"],
       },
-      { href: "/referentiels/lignes", label: "Lignes", hideFor: ["guest"] },
+      { href: "/referentiels/lignes", label: "Lignes", hideFor: ["guest", "screen"] },
       {
         href: "/referentiels/ptcar",
         label: "PtCar",
@@ -185,14 +185,19 @@ export const MODULES: NavModule[] = [
       {
         href: "/equipe",
         label: "Annuaire de l'équipe",
-        hideFor: ["guest"],
+        hideFor: ["guest", "screen"],
         keywords: ["collègues"],
       },
-      { href: "/equipe/profil", label: "Mon profil", keywords: ["mot de passe", "compte"] },
+      {
+        href: "/equipe/profil",
+        label: "Mon profil",
+        keywords: ["mot de passe", "compte"],
+        hideFor: ["screen"],
+      },
       {
         href: "/equipe/nouveautes",
         label: "Nouveautés",
-        hideFor: ["guest"],
+        hideFor: ["guest", "screen"],
         keywords: ["changelog"],
       },
     ],

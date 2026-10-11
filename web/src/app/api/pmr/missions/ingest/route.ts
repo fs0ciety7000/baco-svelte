@@ -75,6 +75,7 @@ async function upsert(
   base: Rec,
   mission: MappedMission,
   c: Counters,
+  seen: string[],
 ) {
   let assistId: string;
   try {
@@ -100,6 +101,7 @@ async function upsert(
       assistId = rec.id;
       c.created++;
     }
+    seen.push(dicosId);
   } catch {
     c.skipped++;
     if (c.errors.length < 5) c.errors.push(dicosId);
@@ -165,6 +167,10 @@ export async function POST(request: Request) {
     errors: [],
   };
   let received = 0;
+  // Identifiants vus dans ce lot (missions et groupes) : envoyés avec la fiche `dicos_syncs`, dont le hook pose
+  // `last_seen_sync` / `last_seen_by` (base de « Absente de DICOS », 11 oct. 2026).
+  const seenMissions: string[] = [];
+  const seenGroups: string[] = [];
 
   // v3 : dossiers complets → une ligne par trajet. Tous les trajets du dossier sont repris (y compris ceux d'un
   // autre jour : retour le 14/10 d'un aller le 08/10), chacun sur son propre jour de service.
@@ -197,7 +203,7 @@ export async function POST(request: Request) {
               ? "arrivee"
               : null,
       };
-      await upsert(pb, svc.id, `j${dicos_id}`, base, mission, c);
+      await upsert(pb, svc.id, `j${dicos_id}`, base, mission, c, seenMissions);
     }
   }
 
@@ -226,7 +232,7 @@ export async function POST(request: Request) {
             ? "arrivee"
             : null,
     };
-    await upsert(pb, svc.id, `j${dicos_id}`, base, mission, c);
+    await upsert(pb, svc.id, `j${dicos_id}`, base, mission, c, seenMissions);
   }
 
   // Groupes : une ligne par trajet dans `group_missions` (dédup `j<journeyId>`), écrite par le compte de service.
@@ -260,6 +266,7 @@ export async function POST(request: Request) {
         await pb.collection("group_missions").create({ ...base, dicos_id: id, updated_by: svc.id });
         g.created++;
       }
+      seenGroups.push(id);
     } catch {
       g.skipped++;
       if (c.errors.length < 5) c.errors.push(`${id} (groupe)`);
@@ -270,6 +277,7 @@ export async function POST(request: Request) {
   const log = (
     kind: "missions" | "groups",
     n: { received: number; created: number; updated: number },
+    seen: string[],
   ) =>
     pb
       .collection("dicos_syncs")
@@ -282,10 +290,11 @@ export async function POST(request: Request) {
         complete: body.final !== false,
         version,
         synced_by: who.kind === "personal" ? who.userId : "",
+        seen: [...new Set(seen)],
       })
       .catch(() => null);
-  if (body.dossiers || body.missions) await log("missions", { received, ...c });
-  if (body.groups) await log("groups", g);
+  if (body.dossiers || body.missions) await log("missions", { received, ...c }, seenMissions);
+  if (body.groups) await log("groups", g, seenGroups);
 
   const release = await readExtensionRelease();
   return Response.json(

@@ -296,7 +296,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - **PWA** : `app/manifest.ts`, `public/sw.js` (navigation : réseau puis `offline.html` ; jamais de cache de données),
   `components/pwa-register.tsx` (production seulement). Tout nouveau fichier statique chargé sans cookie (manifeste,
   icônes) doit être ajouté à `PUBLIC` dans `middleware.ts`. **Écran commun** : `app/tv/page.tsx` (hors `(app)`, donc sans
-  shell ; `requireUser` + `journal:read`), `components/ops/tv-board.tsx` (réutilise `buildHandover`).
+  shell ; `requireUser({ screen: true })` + `journal:read` ou rôle « Écran »), `components/ops/tv-board.tsx` (réutilise `buildHandover`).
 - **Sessions** : `server/sessions.ts` (`startSession` après connexion mot de passe / passkey, `sessionAlive` appelé par
   `getCurrentUser` : cookie `csm_sid` **absent** ou inconnu → déconnecté ; erreur réseau ou collection absente ≠ déconnexion ;
   le flux SSE revérifie la session à l'ouverture puis toutes les ~2 min ; tout est coupé sans `CSM_INTERNAL_SECRET` ≥ 32 car.,
@@ -350,3 +350,24 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   (CSS dans `globals.css`, `EmptyState` porte `data-slot`). Filtres : `FilterSubmit` (soumission auto + bouton invisible
   pour Entrée) et `ClearFilters` (`components/ui/filters.tsx`). `Sheet` : `modal={false}` et ancré (`top-12`, 28 rem)
   dès 1280 px, `html[data-sheet-docked]` resserre `#contenu`. `LiveRefresh quiet` : rien de visible en direct.
+
+- **Rôle « Écran »** (`screen`, 11 oct. 2026) : compte du poste partagé, ne voit que `/tv`. `can()` renvoie toujours faux
+  pour lui (droits accordés compris, `ROLE_DEFAULTS.screen = []`) ; `requireUser()` le renvoie vers `/tv` (307 pour une
+  page, redirection pour une action) sauf `requireUser({ screen: true })`, appelé par `/tv` seul ; la connexion l'envoie
+  sur `/tv`. `/tv` lit avec `buildHandover(user, codes, { screen: true })` (bons bus ouverts, missions PMR sans nom, trains,
+  ALEA, urgences du Journal ; ni taxis ni groupes : règles PocketBase `1760003000`) ; districts = ceux de son compte.
+  Exclu de l'annuaire Équipe, de « En ligne maintenant » (`listOnline` + le flux `/api/events` ne le compte pas), des
+  mentions et des campagnes. Admin : rôle « Écran » dans les listes, matrice des droits remplacée par une note.
+  `isScreen()` dans `lib/permissions.ts`.
+- **À confirmer d'urgence (H-2)** : `lib/orders/urgency.ts` (`busUrgency`, `firstDeparture`, testés ; miroir du cron
+  PocketBase `bus-h2`) ; `Handover.urgent` (bons retirés de `toConfirm` / `running`, `minutes` avant le départ,
+  `urgencyText`), section en tête de la Relève (`handover-urgent`) et du texte copiable, liste « À confirmer d'urgence »
+  dans le panneau « Bons ouverts » de `/tv` (`tv-urgent`).
+- **Absente de DICOS** : l'ingestion envoie les identifiants vus (`seen`) avec chaque `dicos_syncs` ; `isAbsentFromDicos` /
+  `latestSessions` (`lib/pmr/sync-state.ts`, testés) ; `dicosSessions()` + `Assist.absent` / `GroupMission.absent` posés par
+  `listAssists` / `listGroups` (une requête `dicos_syncs` de plus, vide sans `pmr:read`) ; `AbsentBadge`
+  (`components/pmr/absent-badge.tsx`) dans Missions PMR, Groupes et la Relève ; exclues de l'ALEA (`aleaEnds` /
+  `groupEnds`) et des « Trains en retard » ; signalées dans la feuille de route (« ABSENTE DE DICOS, à vérifier ») et sur
+  `/tv` (« Absente DICOS »).
+- **Notifications `dicos`** (changement DICOS de dernière minute, sans nom) : icône dans la cloche, notification du
+  navigateur avec le corps (gare, heure, train, type). Logique pure miroir du hook : `lib/pmr/dicos-changes.ts` (testée).

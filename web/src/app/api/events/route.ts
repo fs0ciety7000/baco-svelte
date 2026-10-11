@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { env } from "@/server/env";
+import { getCurrentUser } from "@/server/auth";
 import { joinPresence, onPresenceChange } from "@/server/presence";
 import { readSessionToken } from "@/server/session";
 import { sessionAlive } from "@/server/sessions";
@@ -46,6 +47,8 @@ export async function GET(request: NextRequest) {
   if (topics.length === 0) return new Response("Sujet inconnu", { status: 400 });
   const pbTopics = topics.filter((t) => t !== "presence");
   const userId = tokenPayload(token)?.id ?? "";
+  // Compte « Écran » (poste partagé) : jamais compté « en ligne ».
+  const countsOnline = userId ? (await getCurrentUser())?.role !== "screen" : false;
 
   const upstreamAbort = new AbortController();
   request.signal.addEventListener("abort", () => upstreamAbort.abort());
@@ -87,7 +90,7 @@ export async function GET(request: NextRequest) {
           })
         : () => {};
       // Après l'écoute : l'arrivée de cet onglet est aussi poussée à lui-même.
-      const leave = userId ? joinPresence(userId) : () => {};
+      const leave = countsOnline ? joinPresence(userId) : () => {};
       let beats = 0;
       const heartbeat = setInterval(() => {
         send(": ping\n\n");

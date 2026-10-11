@@ -975,8 +975,164 @@ try {
 	const st = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: u.token, body: { status: 'EXTRA', status_day: '2026-10-10' } });
 	check('agent pose son statut du jour', st.status === 200, `HTTP ${st.status}`);
 
+	// --- Rôle « Écran » (1760003000, 11 oct. 2026) : ne lit que ce que /tv affiche, rien de nominatif, n'écrit rien ---
+	const brussels = (() => {
+		const p = Object.fromEntries(
+			new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Brussels', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+				.formatToParts(new Date())
+				.map((x) => [x.type, x.value])
+		);
+		return { day: `${p.year}-${p.month}-${p.day}`, min: +p.hour * 60 + +p.minute };
+	})();
+	const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+	// Heure « dans N minutes » à Bruxelles, aujourd'hui (le test des alertes est sauté s'il déborde sur demain).
+	const inMin = (n) => (brussels.min + n < 1440 ? hhmm(brussels.min + n) : null);
+	const scCo = await api('POST', '/api/collections/bus_companies/records', { token: roles.admin.token, body: { name: `Écran ${suffix}`, email: 'ecran@csm.invalid' } });
+	const spass = `Test-${suffix}-screen`;
+	const sc = await api('POST', '/api/collections/users/records', {
+		token: root,
+		body: { email: `test-screen-${suffix}@csm.invalid`, password: spass, passwordConfirm: spass, name: 'Écran test', username: `tscreen${suffix}`, role: 'screen', verified: true }
+	});
+	check('compte « Écran » créé', sc.status === 200 && sc.json.role === 'screen', `HTTP ${sc.status} ${JSON.stringify(sc.json).slice(0, 80)}`);
+	if (sc.status === 200) {
+		created.push(sc.json.id);
+		const stok = (await api('POST', '/api/collections/users/auth-with-password', { body: { identity: sc.json.email, password: spass } })).json?.token;
+		check('écran : connexion', !!stok);
+		const sMe = await api('GET', `/api/collections/users/records/${sc.json.id}`, { token: stok });
+		check('écran lit sa propre fiche', sMe.status === 200, `HTTP ${sMe.status}`);
+		const sUsers = await api('GET', '/api/collections/users/records?perPage=50', { token: stok });
+		check("écran ne liste pas les agents (sa fiche seule)", sUsers.status === 200 && sUsers.json.totalItems === 1, `${sUsers.json?.totalItems}`);
+		const sOther = await api('GET', `/api/collections/users/records/${u.id}`, { token: stok });
+		check("écran ne lit pas la fiche d'un agent", sOther.status === 404, `HTTP ${sOther.status}`);
+		const sSelf = await api('PATCH', `/api/collections/users/records/${sc.json.id}`, { token: stok, body: { fonction: 'x' } });
+		check('écran ne modifie pas sa fiche', sSelf.status >= 400, `HTTP ${sSelf.status}`);
+		// Lectures nominatives ou hors /tv : refusées, même avec un droit accordé.
+		await api('PATCH', `/api/collections/users/records/${sc.json.id}`, { token: root, body: { grants: ['pmr:read', 'generate_taxi:read', 'repertoire:read', 'dicos:write'] } });
+		const stok2 = (await api('POST', '/api/collections/users/auth-with-password', { body: { identity: sc.json.email, password: spass } })).json?.token;
+		for (const c of ['taxi_orders', 'group_missions', 'pmr_mission', 'pmr_clients', 'pmr_assist_legacy', 'directory_contacts', 'audit_log', 'line_stations', 'changelog', 'order_events', 'pmr_events', 'connector_tokens', 'train_schedules', 'b201_reports', 'level_crossings']) {
+			const r = await api('GET', `/api/collections/${c}/records?perPage=1`, { token: stok2 });
+			check(`écran ne lit pas ${c} (même avec un droit accordé)`, r.status !== 200 || r.json.totalItems === 0, `HTTP ${r.status} ${r.json?.totalItems}`);
+		}
+		// Bons bus : ouverts seulement (envoyés / en cours), pas les brouillons.
+		const draft = await api('POST', '/api/collections/bus_orders/records', { token: u.token, body: { status: 'brouillon', created_by: u.id, reason: 'Brouillon écran' } });
+		const sDraft = await api('GET', `/api/collections/bus_orders/records/${draft.json?.id}`, { token: stok2 });
+		check("écran ne lit pas un brouillon de bon", sDraft.status === 404, `HTTP ${sDraft.status}`);
+		const sent = await api('PATCH', `/api/collections/bus_orders/records/${draft.json?.id}`, { token: u.token, body: { status: 'envoye', company: scCo.json?.id } });
+		const sSent = await api('GET', `/api/collections/bus_orders/records/${draft.json?.id}`, { token: stok2 });
+		check('écran lit un bon envoyé', sent.status === 200 && sSent.status === 200, `HTTP ${sent.status}/${sSent.status} ${JSON.stringify(sent.json).slice(0, 160)}`);
+		const sCreate = await api('POST', '/api/collections/bus_orders/records', { token: stok2, body: { status: 'brouillon', created_by: sc.json.id } });
+		check("écran ne crée pas de bon", sCreate.status >= 400, `HTTP ${sCreate.status}`);
+		const sConfirm = await api('PATCH', `/api/collections/bus_orders/records/${draft.json?.id}`, { token: stok2, body: { status: 'confirme' } });
+		check("écran ne confirme pas de bon", sConfirm.status >= 400, `HTTP ${sConfirm.status}`);
+		if (draft.json?.id) await api('DELETE', `/api/collections/bus_orders/records/${draft.json.id}`, { token: root });
+		// Journal : urgences, épinglés, iRail seulement.
+		const plain = await api('POST', '/api/collections/ops_log/records', { token: u.token, body: { body: 'Message ordinaire écran', category: 'info', author: u.id } });
+		const urgentLog = await api('POST', '/api/collections/ops_log/records', { token: u.token, body: { body: 'Urgence écran', category: 'incident', author: u.id, urgent: true } });
+		const sPlain = await api('GET', `/api/collections/ops_log/records/${plain.json?.id}`, { token: stok2 });
+		check("écran ne lit pas un message ordinaire du Journal", sPlain.status === 404, `HTTP ${sPlain.status}`);
+		const sUrgent = await api('GET', `/api/collections/ops_log/records/${urgentLog.json?.id}`, { token: stok2 });
+		check('écran lit une urgence du Journal', sUrgent.status === 200, `HTTP ${sUrgent.status}`);
+		const sWrite = await api('POST', '/api/collections/ops_log/records', { token: stok2, body: { body: 'x', category: 'info', author: sc.json.id } });
+		check("écran n'écrit pas au Journal", sWrite.status >= 400, `HTTP ${sWrite.status}`);
+		for (const id of [plain.json?.id, urgentLog.json?.id]) if (id) await api('DELETE', `/api/collections/ops_log/records/${id}`, { token: root });
+		for (const c of ['pmr_assists', 'mission_trains', 'alea_marks', 'dicos_syncs']) {
+			const r = await api('GET', `/api/collections/${c}/records?perPage=1`, { token: stok2 });
+			check(`écran lit ${c} (données d'exploitation de /tv)`, r.status === 200, `HTTP ${r.status}`);
+		}
+		const sNotif = await api('GET', '/api/collections/notifications/records?perPage=1', { token: stok2 });
+		check("écran n'a aucune notification", sNotif.status === 200 && sNotif.json.totalItems === 0, `${sNotif.json?.totalItems}`);
+		const sTok = await api('POST', '/api/collections/connector_tokens/records', { token: stok2, body: { user: sc.json.id, token_hash: 'e'.repeat(64) } });
+		check("écran ne crée pas de jeton de connecteur", sTok.status >= 400, `HTTP ${sTok.status}`);
+		const mt = await api('POST', '/api/collections/app_settings/records', { token: roles.admin.token, body: { key: `maint_${suffix}`, value: true, updated_by: roles.admin.id } });
+		const sSet = await api('GET', `/api/collections/app_settings/records/${mt.json?.id}`, { token: stok2 });
+		check("écran ne lit que le réglage « maintenance »", sSet.status === 404, `HTTP ${sSet.status}`);
+		if (mt.json?.id) await api('DELETE', `/api/collections/app_settings/records/${mt.json.id}`, { token: root });
+		// Pas de session ouverte directement non plus (route interne seule) ; ses sessions restent les siennes.
+		const sSess = await api('GET', '/api/collections/user_sessions/records?perPage=1', { token: stok2 });
+		check('écran liste ses sessions (déconnexion à distance)', sSess.status === 200, `HTTP ${sSess.status}`);
+	}
+
+	// --- Missions vues par la synchro DICOS, alertes de dernière minute (1760003010, 11 oct. 2026) ---
+	const kpass = `Test-${suffix}-conn2`;
+	const k = await api('POST', '/api/collections/users/records', {
+		token: root,
+		body: { email: `test-conn2-${suffix}@csm.invalid`, password: kpass, passwordConfirm: kpass, name: 'Connecteur 2', username: `tconn2${suffix}`, role: 'connector', grants: ['dicos:write'], verified: true }
+	});
+	if (k.status === 200) {
+		created.push(k.json.id);
+		const ktok = (await api('POST', '/api/collections/users/auth-with-password', { body: { identity: k.json.email, password: kpass } })).json?.token;
+		const gForge = await api('POST', '/api/collections/group_missions/records', { token: ktok, body: { dicos_id: `jf-${suffix}`, day: '2099-01-01', status: 'prevue', last_seen_sync: '2099-01-01 10:00:00.000Z' } });
+		check('last_seen_sync non forgeable (groupe)', gForge.status >= 400, `HTTP ${gForge.status}`);
+		const pmrForge = await api('POST', '/api/collections/pmr_assists/records', { token: ktok, body: { day: '2099-01-01', station: 'X', status: 'prevue', source: 'dicos', dicos_id: `jp-${suffix}`, created_by: k.json.id, updated_by: k.json.id, last_seen_by: u.id } });
+		check('last_seen_by non forgeable (mission PMR)', pmrForge.status >= 400, `HTTP ${pmrForge.status}`);
+		const gm = await api('POST', '/api/collections/group_missions/records', { token: ktok, body: { dicos_id: `js-${suffix}`, day: '2099-01-02', status: 'prevue', adults: 3 } });
+		const syncForge = await api('POST', '/api/collections/dicos_syncs/records', { token: ktok, body: { day: '2099-01-02', kind: 'groups', complete: true, session_start: '2000-01-01 00:00:00.000Z' } });
+		check('session_start non forgeable', syncForge.status >= 400, `HTTP ${syncForge.status}`);
+		const sync = await api('POST', '/api/collections/dicos_syncs/records', { token: ktok, body: { day: '2099-01-02', kind: 'groups', complete: true, seen: [`js-${suffix}`] } });
+		check('synchro complète : session_start posé, liste vidée', sync.status === 200 && !!sync.json.session_start && (!sync.json.seen || sync.json.seen.length === 0), `HTTP ${sync.status} ${JSON.stringify(sync.json).slice(0, 120)}`);
+		const gSeen = (await api('GET', `/api/collections/group_missions/records/${gm.json?.id}`, { token: root })).json;
+		check('mission vue par la synchro (last_seen_sync posé, sans changer « updated »)', !!gSeen?.last_seen_sync && gSeen.last_seen_sync === sync.json?.created && gSeen.updated === gm.json?.updated, `${gSeen?.last_seen_sync} / ${sync.json?.created}`);
+		const userSeen = await api('PATCH', `/api/collections/pmr_assists/records/${did}`, { token: u.token, body: { last_seen_sync: '2099-01-01 10:00:00.000Z', updated_by: u.id } });
+		check("agent ne pose pas last_seen_sync", userSeen.status >= 400, `HTTP ${userSeen.status}`);
+		for (const id of [gm.json?.id]) if (id) await api('DELETE', `/api/collections/group_missions/records/${id}`, { token: root });
+		for (const id of [sync.json?.id]) if (id) await api('DELETE', `/api/collections/dicos_syncs/records/${id}`, { token: root });
+
+		// Alertes DICOS de dernière minute : agent PACO avec Sud-Ouest pour aujourd'hui.
+		await api('PATCH', `/api/collections/users/records/${u.id}`, { token: u.token, body: { duty_day: brussels.day, duty_districts: ['Sud-Ouest'] } });
+		const t30 = inMin(30);
+		const t50 = inMin(50);
+		if (t30 && t50 && brussels.min >= 30) {
+			const notes = async (src) =>
+				(await api('GET', `/api/collections/notifications/records?perPage=50&filter=${encodeURIComponent(`user = "${u.id}" && source = "${src}"`)}`, { token: root })).json?.items ?? [];
+			const g1 = await api('POST', '/api/collections/group_missions/records', { token: ktok, body: { dicos_id: `jd-${suffix}`, day: brussels.day, time: t30, station: 'Mons', district: 'DSO', in_assist: true, train: '1234', status: 'prevue', adults: 10 } });
+			check('premier passage du jour : pas d alerte « nouveau » sans synchro complète', g1.status === 200 && (await notes('dicos')).length === 0, `${(await notes('dicos')).length}`);
+			const prior = await api('POST', '/api/collections/dicos_syncs/records', { token: ktok, body: { day: brussels.day, kind: 'groups', complete: true } });
+			const g2 = await api('POST', '/api/collections/group_missions/records', { token: ktok, body: { dicos_id: `je-${suffix}`, day: brussels.day, time: t30, station: 'Mons', district: 'DSO', in_assist: true, train: '1235', status: 'prevue', adults: 4, group_name: 'École Nom Privé' } });
+			let n = await notes('dicos');
+			check('groupe nouveau dans les 3 h → alerte au district (sans nom)', g2.status === 200 && n.length === 1 && n[0].kind === 'dicos' && !/Privé/.test(`${n[0].title} ${n[0].body}`), `${n.length} ${n[0]?.title}`);
+			await api('PATCH', `/api/collections/group_missions/records/${g2.json?.id}`, { token: ktok, body: { time: t50 } });
+			n = await notes('dicos');
+			check('groupe déplacé dans les 3 h → alerte', n.length === 2 && n.some((x) => /déplacé/.test(x.title)), n.map((x) => x.title).join(' | '));
+			await api('PATCH', `/api/collections/group_missions/records/${g2.json?.id}`, { token: ktok, body: { status: 'annulee' } });
+			n = await notes('dicos');
+			check('groupe annulé dans les 3 h → alerte', n.length === 3 && n.some((x) => /annulé/.test(x.title)), n.map((x) => x.title).join(' | '));
+			// Mission PMR : même règle (synchro complète des missions du jour, puis nouvelle mission dans les 3 h).
+			const priorM = await api('POST', '/api/collections/dicos_syncs/records', { token: ktok, body: { day: brussels.day, kind: 'missions', complete: true } });
+			const pm = await api('POST', '/api/collections/pmr_assists/records', { token: ktok, body: { day: brussels.day, time: t30, station: 'Mons', district: 'DSO', in_assist: true, train: '4321', pmr_type: 'CRF', pax: 1, status: 'prevue', source: 'dicos', dicos_id: `jm-${suffix}`, created_by: k.json.id, updated_by: k.json.id } });
+			n = await notes('dicos');
+			check('mission PMR nouvelle dans les 3 h → alerte (type, train, gare)', pm.status === 200 && n.length === 4 && n.some((x) => /nouvelle mission à Mons/.test(x.title) && /4321/.test(x.body) && /CRF/.test(x.body)), `HTTP ${pm.status} ${n.length}`);
+			for (const id of [pm.json?.id]) if (id) await api('DELETE', `/api/collections/pmr_assists/records/${id}`, { token: root });
+			if (priorM.json?.id) await api('DELETE', `/api/collections/dicos_syncs/records/${priorM.json.id}`, { token: root });
+			await api('PATCH', `/api/collections/group_missions/records/${g1.json?.id}`, { token: u.token, body: { status: 'annulee' } });
+			check("agent ne déclenche pas d'alerte DICOS", (await notes('dicos')).length === 4);
+			for (const id of [g1.json?.id, g2.json?.id]) if (id) await api('DELETE', `/api/collections/group_missions/records/${id}`, { token: root });
+			if (prior.json?.id) await api('DELETE', `/api/collections/dicos_syncs/records/${prior.json.id}`, { token: root });
+			for (const x of await notes('dicos')) await api('DELETE', `/api/collections/notifications/records/${x.id}`, { token: root });
+		}
+
+		// Bus non confirmé à H-2 : cron `bus-h2` lancé à la main (superuser).
+		const t60 = inMin(60);
+		if (t60) {
+			const h2 = await api('POST', '/api/collections/bus_orders/records', {
+				token: u.token,
+				body: { status: 'brouillon', created_by: u.id, reason: 'Test H-2', company: scCo.json?.id, district: 'Sud-Ouest', order_date: `${brussels.day} 00:00:00.000Z`, buses: [{ planned: t60 }, { planned: '00:01', cancelled: true }] }
+			});
+			await api('PATCH', `/api/collections/bus_orders/records/${h2.json?.id}`, { token: u.token, body: { status: 'envoye' } });
+			// Le cron lancé par l'API tourne en arrière-plan : on attend sa fin avant de relancer et de compter.
+			const run1 = await api('POST', '/api/crons/bus-h2', { token: root });
+			await new Promise((r) => setTimeout(r, 1500));
+			await api('POST', '/api/crons/bus-h2', { token: root });
+			await new Promise((r) => setTimeout(r, 1500));
+			const hn = (await api('GET', `/api/collections/notifications/records?perPage=50&filter=${encodeURIComponent(`source = "bus-h2" && source_id = "${h2.json?.id}"`)}`, { token: root })).json?.items ?? [];
+			check('bus envoyé non confirmé à H-2 → une alerte par agent, une seule fois', run1.status === 204 && hn.filter((x) => x.user === u.id).length === 1 && !hn.some((x) => x.user === sc.json?.id || x.user === roles.reader.id), `HTTP ${run1.status} ${hn.length}`);
+			for (const x of hn) await api('DELETE', `/api/collections/notifications/records/${x.id}`, { token: root });
+			if (h2.json?.id) await api('DELETE', `/api/collections/bus_orders/records/${h2.json.id}`, { token: root });
+		}
+	}
+	if (scCo.json?.id) await api('DELETE', `/api/collections/bus_companies/records/${scCo.json.id}`, { token: root });
+
 	// Admin : supprime.
-	const adel = await api('DELETE', `/api/collections/bus_orders/records/${order.json.id}`, { token: roles.admin.token });
+	const adel =await api('DELETE', `/api/collections/bus_orders/records/${order.json.id}`, { token: roles.admin.token });
 	check('admin supprime', adel.status === 204, `HTTP ${adel.status}`);
 } finally {
 	for (const id of created) await api('DELETE', `/api/collections/users/records/${id}`, { token: root });

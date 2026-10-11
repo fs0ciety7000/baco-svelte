@@ -11,6 +11,8 @@ export type HandoverOrder = {
   time: string;
   late: number;
   href: string;
+  /** Bon « à confirmer d'urgence » : minutes avant le premier départ (négatif = passé). */
+  minutes?: number;
 };
 
 export type HandoverLeg = {
@@ -23,6 +25,8 @@ export type HandoverLeg = {
   io: "IN" | "OUT";
   detail: string;
   impact: Impact | null;
+  /** Encore « prévue » mais absente de la dernière synchro DICOS complète (à vérifier dans DICOS). */
+  absent?: boolean;
 };
 
 export type HandoverAlea = {
@@ -46,6 +50,8 @@ export type Handover = {
   /** Jour de service (Bruxelles) de la relève. */
   today: string;
   districts: string[];
+  /** Bons bus envoyés, pas confirmés, premier départ dans 2 h au plus (ou passé depuis 1 h) : `busUrgency`. */
+  urgent: HandoverOrder[];
   toConfirm: HandoverOrder[];
   toClose: HandoverOrder[];
   running: HandoverOrder[];
@@ -57,6 +63,12 @@ export type Handover = {
   log: HandoverLog[];
   disturbances: HandoverLog[];
 };
+
+/** « dans 45 min » / « passé de 10 min » (bon à confirmer d'urgence). */
+export function urgencyText(o: Pick<HandoverOrder, "minutes">): string {
+  if (o.minutes === undefined) return "";
+  return o.minutes >= 0 ? ` (dans ${o.minutes} min)` : ` (passé de ${-o.minutes} min)`;
+}
 
 const io = (v: "IN" | "OUT") => (v === "IN" ? "embarquement" : "débarquement");
 const delayText = (i: Impact) => (i.cancelled ? "supprimé" : `+${i.delay} min`);
@@ -72,6 +84,11 @@ export function handoverText(
     out.push("", `**${title}**`, ...lines.map((l) => `- ${l}`));
     if (more > 0) out.push(`- … et ${more} de plus`);
   };
+  section(
+    `Bons à confirmer d'urgence (${h.urgent.length})`,
+    h.urgent.slice(0, 8).map((o) => `${o.label} · départ ${o.time}${urgencyText(o)}`),
+    h.urgent.length - 8,
+  );
   section(
     `Bons à confirmer (${h.toConfirm.length})`,
     h.toConfirm.slice(0, 8).map((o) => `${o.label} · ${o.day}${o.time ? ` ${o.time}` : ""}`),
@@ -100,7 +117,7 @@ export function handoverText(
       .slice(0, 12)
       .map(
         (l) =>
-          `${l.day !== h.today ? "demain " : ""}${l.time || "--:--"} ${l.train} · ${io(l.io)} à ${l.station} · ${l.detail}`,
+          `${l.day !== h.today ? "demain " : ""}${l.time || "--:--"} ${l.train} · ${io(l.io)} à ${l.station} · ${l.detail}${l.absent ? " · ABSENTE DE DICOS" : ""}`,
       ),
     h.upcomingTotal - Math.min(12, h.upcoming.length),
   );

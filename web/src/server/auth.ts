@@ -12,8 +12,16 @@ import { readSessionToken } from "./session";
 import { sessionAlive } from "./sessions";
 import { isExpired, tokenPayload } from "./token";
 
-// Rôles v2 (11 oct. 2026) : Administrateur, Sysop, PACO/RCCA, Invité.
-export const ROLES = ["admin", "sysop", "moderator", "paco", "guest", "disabled"] as const;
+// Rôles v2 (11 oct. 2026) : Administrateur, Sysop, Modérateur, PACO/RCCA, Invité, Écran (poste partagé, `/tv` seul).
+export const ROLES = [
+  "admin",
+  "sysop",
+  "moderator",
+  "paco",
+  "guest",
+  "screen",
+  "disabled",
+] as const;
 
 const userSchema = z.object({
   id: z.string(),
@@ -80,9 +88,14 @@ export const maintenanceState = cache(async (): Promise<{ on: boolean; message: 
   }
 });
 
-export async function requireUser(): Promise<SessionUser> {
+/**
+ * Agent connecté, sinon connexion. Un compte « Écran » (poste partagé) est renvoyé vers `/tv` depuis toute page ou
+ * Server Action qui ne le déclare pas (`{ screen: true }`, seul `/tv` le fait) : il ne voit rien d'autre.
+ */
+export async function requireUser(opts?: { screen?: boolean }): Promise<SessionUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/connexion");
+  if (user.role === "screen" && !opts?.screen) redirect("/tv");
   if (!isAdmin(user) && (await maintenanceState()).on) redirect("/maintenance");
   return user;
 }

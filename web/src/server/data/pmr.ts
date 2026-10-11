@@ -6,7 +6,7 @@ import { z } from "zod";
 import { ASSIST_STATUSES, type AssistStatus, type EquipmentState } from "@/lib/pmr/model";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
 import type { TrainState, TrainStates } from "@/lib/pmr/train-delay";
-import { syncSummary, type SyncRow } from "@/lib/pmr/sync-state";
+import { isAbsentFromDicos, latestSessions, syncSummary, type SyncRow } from "@/lib/pmr/sync-state";
 
 import { pbForRequest } from "./orders";
 
@@ -96,6 +96,11 @@ export type Assist = {
   legacyText: string;
   anonymized: boolean;
   updated: string;
+  /** Dernier lot DICOS qui contenait la mission et propriétaire du jeton (vide = jamais vue / secret partagé). */
+  lastSeenSync?: string;
+  lastSeenBy?: string;
+  /** Encore « prévue » mais absente de la dernière synchro complète de l'agent qui l'avait vue (`isAbsentFromDicos`). */
+  absent?: boolean;
 };
 
 function assist(r: RecordModel, canPmr: boolean): Assist {
@@ -163,7 +168,48 @@ function assist(r: RecordModel, canPmr: boolean): Assist {
     legacyText: "",
     anonymized: !!r.anonymized,
     updated: str(r.updated),
+    lastSeenSync: str(r.last_seen_sync),
+    lastSeenBy: str(r.last_seen_by),
   };
+}
+
+/**
+ * Débuts des dernières synchros complètes par « jour|agent » (base de « Absente de DICOS »). Vide si `dicos_syncs` n'est
+ * pas lisible (droit `pmr:read` retiré) ou si la collection n'a pas encore les champs : rien n'est alors signalé.
+ */
+export async function dicosSessions(
+  kind: "missions" | "groups",
+  days: string[],
+): Promise<Map<string, string>> {
+  const valid = days.filter(isValidDay).sort();
+  if (!valid.length) return new Map();
+  const pb = await pbForRequest();
+  try {
+    const rows = await pb.collection("dicos_syncs").getFullList({
+      filter: pb.filter(
+        'kind = {:k} && complete = true && session_start != "" && day >= {:a} && day <= {:b}',
+        { k: kind, a: valid[0]!, b: valid[valid.length - 1]! },
+      ),
+      sort: "-created",
+      fields: "day,synced_by,session_start",
+      batch: 500,
+    });
+    return latestSessions(
+      rows.map((r) => ({
+        day: str(r.day),
+        syncedBy: str(r.synced_by),
+        sessionStart: str(r.session_start),
+      })),
+    );
+  } catch {
+    return new Map();
+  }
+}
+
+async function withAbsence(rows: Assist[]): Promise<Assist[]> {
+  if (!rows.some((a) => a.status === "prevue" && a.lastSeenBy)) return rows;
+  const sessions = await dicosSessions("missions", [...new Set(rows.map((a) => a.day))]);
+  return rows.map((a) => (isAbsentFromDicos(a, sessions) ? { ...a, absent: true } : a));
 }
 
 export const assistListSchema = z.object({
@@ -213,10 +259,16 @@ export async function listAssists(
   // Export : toutes les lignes (PocketBase plafonne une page à 1000).
   if (ctx.all) {
     const items = await pb.collection("pmr_assists").getFullList({ ...options, batch: 1000 });
-    return { rows: items.map((r) => assist(r, ctx.canPmr)), total: items.length };
+    return {
+      rows: await withAbsence(items.map((r) => assist(r, ctx.canPmr))),
+      total: items.length,
+    };
   }
   const res = await pb.collection("pmr_assists").getList(1, p.limit, options);
-  return { rows: res.items.map((r) => assist(r, ctx.canPmr)), total: res.totalItems };
+  return {
+    rows: await withAbsence(res.items.map((r) => assist(r, ctx.canPmr))),
+    total: res.totalItems,
+  };
 }
 
 export async function getAssist(id: string, canPmr: boolean) {
