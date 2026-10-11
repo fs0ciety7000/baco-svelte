@@ -45,7 +45,8 @@ export function stopsBetween(
   return out;
 }
 
-export type Route = { lines: string[]; stops: string[] };
+/** `transfers` : gares de correspondance (changement de ligne), les seuls arrêts d'un bus « direct ». */
+export type Route = { lines: string[]; stops: string[]; transfers: string[] };
 
 // Coût d'un changement de ligne (en arrêts) : à longueur proche, l'itinéraire avec le moins de changements gagne.
 const TRANSFER_COST = 4;
@@ -122,5 +123,10 @@ export function routeBetween(
   const used: string[] = [];
   for (const s of path) if (s.line && used.at(-1) !== s.line) used.push(s.line);
   const stops = path.slice(1, -1).map((s) => label.get(s.station) ?? s.station);
-  return { lines: [...new Set(used)], stops };
+  // Correspondance : la ligne d'arrivée à la gare diffère de celle qui en repart.
+  const transfers: string[] = [];
+  for (let i = 1; i < path.length - 1; i++)
+    if (path[i]!.line !== path[i + 1]!.line)
+      transfers.push(label.get(path[i]!.station) ?? path[i]!.station);
+  return { lines: [...new Set(used)], stops, transfers };
 }

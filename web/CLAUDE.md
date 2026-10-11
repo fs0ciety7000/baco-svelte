@@ -404,4 +404,6 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   / tirets ignorés, abréviation PtCar via `reference.abbrs`), clavier (flèches, Entrée, Échap), nom corrigé vers celui du
   référentiel à la sortie du champ (`canonicalStation`) : lignes et arrêts intermédiaires se trouvent alors : `routeBetween` (`lib/orders/stops.ts`) = plus court chemin à travers
   le réseau (1 par arrêt, 4 par changement de ligne), sur plusieurs lignes au besoin (Mons → Charleroi-Central = L.118 →
-  L.112 → L.124), lignes empruntées cochées d'office ; cocher / décocher limite l'itinéraire aux lignes cochées. Lignes affichées par `lineLabel()` (`lib/lines.ts`) : jamais « L.L.132 ».
+  L.112 → L.124), lignes empruntées cochées d'office ; cocher / décocher limite l'itinéraire aux lignes cochées. **Bus direct** : seulement
+  les gares de correspondance (`Route.transfers` : Mons → Charleroi-Central direct = La Louvière-Sud, Marchienne-au-Pont),
+  les autres arrêts restent en puces pour en ajouter ; basculer Omnibus / Direct recalcule (`setDirect`). Lignes affichées par `lineLabel()` (`lib/lines.ts`) : jamais « L.L.132 ».

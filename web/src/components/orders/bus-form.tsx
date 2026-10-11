@@ -131,12 +131,20 @@ export function BusForm(props: BusFormProps) {
   }, [reference.companyLines, d.company, d.lines, suggested]);
 
   // Arrêts intermédiaires (11 oct. 2026) : itinéraire à travers le réseau, sur plusieurs lignes au besoin (Mons →
-  // Charleroi-Central = L.118 puis L.124…), limité aux lignes cochées s'il y en a ; repli sur une ligne unique.
-  const stopsFor = (lines: string[], origin: string, destination: string) =>
-    routeBetween(reference.lines, origin, destination, lines)?.stops ??
-    stopsBetween(reference.lines, lines, origin, destination);
+  // Charleroi-Central = L.118 puis L.112 puis L.124), limité aux lignes cochées s'il y en a ; repli sur une ligne unique.
+  // Bus direct : seulement les gares de correspondance (La Louvière-Sud, Marchienne-au-Pont) ; les autres arrêts restent
+  // proposés en puces pour en ajouter à la main.
+  const routeFor = (lines: string[], origin: string, destination: string) =>
+    routeBetween(reference.lines, origin, destination, lines.length ? lines : undefined);
+  const stopsFor = (lines: string[], origin: string, destination: string, direct: boolean) => {
+    const r = routeFor(lines, origin, destination);
+    if (r) return direct ? r.transfers : r.stops;
+    return direct ? [] : stopsBetween(reference.lines, lines, origin, destination);
+  };
   const autoStops = useMemo(
-    () => stopsFor(d.lines, d.origin, d.destination),
+    () =>
+      routeFor(d.lines, d.origin, d.destination)?.stops ??
+      stopsBetween(reference.lines, d.lines, d.origin, d.destination),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [reference.lines, d.lines, d.origin, d.destination],
   );
@@ -147,15 +155,17 @@ export function BusForm(props: BusFormProps) {
       const next = { ...x, [field]: value };
       const r = routeBetween(reference.lines, next.origin, next.destination);
       if (!r) return next;
-      return { ...next, lines: r.lines, stops: r.stops };
+      return { ...next, lines: r.lines, stops: x.direct ? r.transfers : r.stops };
     });
+
+  // Omnibus / direct : arrêts recalculés (direct = correspondances seulement).
+  const setDirect = (direct: boolean) =>
+    setD((x) => ({ ...x, direct, stops: stopsFor(x.lines, x.origin, x.destination, direct) }));
 
   // Cocher / décocher une ligne : itinéraire limité aux lignes cochées (aucune cochée : itinéraire libre).
   const toggleLine = (line: string, on: boolean) => {
     const lines = on ? [...d.lines, line] : d.lines.filter((l) => l !== line);
-    const stops = lines.length
-      ? stopsFor(lines, d.origin, d.destination)
-      : (routeBetween(reference.lines, d.origin, d.destination)?.stops ?? []);
+    const stops = stopsFor(lines, d.origin, d.destination, d.direct);
     setD((x) => ({ ...x, lines, stops }));
   };
   const setBus = (i: number, patch: Partial<BusLine>) =>
@@ -319,7 +329,7 @@ export function BusForm(props: BusFormProps) {
               <Segmented
                 label="Desserte"
                 value={d.direct ? "direct" : "omnibus"}
-                onChange={(v) => set("direct", v === "direct")}
+                onChange={(v) => setDirect(v === "direct")}
                 options={[
                   { value: "omnibus", label: "Omnibus" },
                   { value: "direct", label: "Direct" },

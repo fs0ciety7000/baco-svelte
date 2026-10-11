@@ -71,6 +71,8 @@ describe("routeBetween (itinéraire sur plusieurs lignes)", () => {
   it("enchaîne les lignes quand aucune ne dessert les deux gares", () => {
     const r = routeBetween(net, "Mons", "charleroi central");
     expect(r?.lines).toEqual(["L.118", "L.117", "L.124"]);
+    // Bus direct : seulement les gares de correspondance.
+    expect(r?.transfers).toEqual(["La Louvière-Centre", "Luttre"]);
     expect(r?.stops).toEqual([
       "Nimy",
       "Obourg",
@@ -87,6 +89,9 @@ describe("routeBetween (itinéraire sur plusieurs lignes)", () => {
     expect(r?.stops.slice(0, 2)).toEqual(["Jurbise", "Soignies"]);
     expect(r?.stops).toContain("Bruxelles-Midi");
     expect(routeBetween(net, "Mons", "Charleroi-Central", ["L.118"])).toBeNull();
+  });
+  it("une seule ligne : aucune correspondance", () => {
+    expect(routeBetween(net, "Mons", "Bruxelles-Midi")?.transfers).toEqual([]);
   });
   it("une seule ligne : mêmes arrêts que stopsBetween", () => {
     expect(routeBetween(net, "Mons", "Bruxelles-Midi")?.stops).toEqual([
