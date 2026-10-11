@@ -1,2 +1,3 @@
 # Données locales PocketBase (base, fichiers, sauvegardes) : jamais dans Git
 pb_data/
+pb_data_*/

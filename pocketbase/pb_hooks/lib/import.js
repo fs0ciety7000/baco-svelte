@@ -92,6 +92,104 @@ function withUpdate(list) {
 	return out;
 }
 
+// --- Correspondances ligne BACO → champs CSM, une fonction par table (partagées avec l'import différentiel,
+// lib/import-delta.js). `r` est une fiche PocketBase (ou tout objet doté de set()).
+
+function fillUser(r, u, p) {
+	r.set('id', u.id);
+	r.set('email', u.email);
+	r.set('emailVisibility', true);
+	r.set('verified', !!u.email_confirmed_at);
+	r.set('name', p.full_name || '');
+	r.set('username', p.username || '');
+	r.set('role', ROLE_MAP[p.role] || 'guest');
+	const perms = p.permissions || {};
+	r.set('grants', withUpdate(Object.keys(perms).filter((k) => perms[k] === true)));
+	r.set('denies', withUpdate(Object.keys(perms).filter((k) => perms[k] === false)));
+	r.set('fonction', p.fonction || '');
+	r.set('district', p.district || '');
+	r.set('districts', p.district ? [p.district] : []);
+	r.set('banned_until', toDate(p.banned_until));
+	r.set('preferences', { theme: p.theme || 'default', dashboard: p.dashboard_config || [] });
+}
+
+function setAvatar(r, dir, p) {
+	const m = /\/avatars\/(.+)$/.exec(p.avatar_url || '');
+	if (!m) return false;
+	const path = `${dir}/storage/avatars/${decodeURIComponent(m[1])}`;
+	if (!exists(path)) return false;
+	r.set('avatar', $filesystem.fileFromPath(path));
+	return true;
+}
+
+// Empreinte bcrypt de Supabase recopiée par SQL (setPassword la rehacherait).
+function setPasswordHash(app, id, hash) {
+	if (!hash || !/^\$2[aby]\$\d{2}\$/.test(hash)) return false;
+	app.db().newQuery('UPDATE users SET password = {:hash} WHERE id = {:id}').bind({ hash: hash, id: id }).execute();
+	return true;
+}
+
+function companyName(s) {
+	return (s.nom || '').trim();
+}
+
+function fillCompany(r, s) {
+	r.set('legacy_id', s.id);
+	r.set('name', companyName(s) || `Société sans nom n°${s.id}`);
+	r.set('address', s.adresse || '');
+	r.set('phone', s.telephone || '');
+	r.set('email', s.email || '');
+}
+
+// Tables filles d'une société de bus : [collection, table BACO, correspondance] (la société est posée à part).
+const COMPANY_CHILDREN = [
+	['bus_drivers', 'chauffeurs_bus', (r, x) => { r.set('name', (x.nom || '').trim() || '?'); r.set('phone', x.tel || ''); }],
+	['bus_contacts', 'contacts_bus', (r, x) => { r.set('name', (x.nom || '').trim() || '?'); r.set('phone', x.tel || ''); }],
+	['bus_company_lines', 'lignes_bus', (r, x) => r.set('line', String(x.ligne || '').trim() || '?')]
+];
+
+const strList = (v) => (Array.isArray(v) ? v.map((x) => String(x).trim()).filter(Boolean) : []);
+
+function fillTaxiCompany(r, t) {
+	r.set('legacy_id', t.id);
+	r.set('name', (t.nom || '').trim() || `Taxi sans nom n°${t.id}`);
+	r.set('places', strList(t.lieux));
+	r.set('phones', strList(t.contacts));
+	r.set('emails', strList(t.mail));
+	r.set('addresses', strList(t.adresse));
+	r.set('notes', strList(t.remarques));
+}
+
+function fillPmrClient(r, c, userIds) {
+	r.set('legacy_id', c.id);
+	r.set('last_name', c.nom || '');
+	r.set('first_name', c.prenom || '');
+	r.set('phone', c.telephone || '');
+	// Type normalisé (NV, CRF…) ; un libellé libre devient AUTRE + détail.
+	const t = String(c.type || '').trim();
+	const code = t.replace(/^\d+\s*/, '').toUpperCase();
+	if (['NV', 'CRF', 'CRE', 'CRP', 'MR'].indexOf(code) !== -1) r.set('type', code);
+	else if (t) {
+		r.set('type', 'AUTRE');
+		r.set('type_detail', t.slice(0, 200));
+	}
+	r.set('notes', c.remarques || '');
+	if (c.updated_by && userIds[c.updated_by]) r.set('updated_by', c.updated_by);
+}
+
+// Ligne sans nom de ligne ou sans gare : non reprise.
+function lineStationValid(l) {
+	return !!(l.ligne_nom && l.gare);
+}
+
+function fillLineStation(r, l) {
+	r.set('legacy_id', l.id);
+	r.set('line', String(l.ligne_nom).trim());
+	r.set('station', String(l.gare).trim());
+	r.set('position', l.ordre || 0);
+	if (DISTRICT_CODES[l.district]) r.set('district', DISTRICT_CODES[l.district]);
+}
+
 function importUsers(app, dir, report) {
 	const users = readJson(`${dir}/auth_users.json`);
 	const hashes = {};
@@ -108,43 +206,13 @@ function importUsers(app, dir, report) {
 	for (const u of users) {
 		const p = profiles[u.id] || {};
 		const r = new Record(col);
-		r.set('id', u.id);
-		r.set('email', u.email);
-		r.set('emailVisibility', true);
-		r.set('verified', !!u.email_confirmed_at);
-		r.set('name', p.full_name || '');
-		r.set('username', p.username || '');
-		r.set('role', ROLE_MAP[p.role] || 'guest');
-		const perms = p.permissions || {};
-		r.set('grants', withUpdate(Object.keys(perms).filter((k) => perms[k] === true)));
-		r.set('denies', withUpdate(Object.keys(perms).filter((k) => perms[k] === false)));
-		r.set('fonction', p.fonction || '');
-		r.set('district', p.district || '');
-		r.set('districts', p.district ? [p.district] : []);
-		r.set('banned_until', toDate(p.banned_until));
-		r.set('preferences', { theme: p.theme || 'default', dashboard: p.dashboard_config || [] });
+		fillUser(r, u, p);
 		// Mot de passe provisoire (champ obligatoire), remplacé juste après par l'empreinte d'origine.
 		r.setPassword($security.randomString(40));
-
-		const m = /\/avatars\/(.+)$/.exec(p.avatar_url || '');
-		if (m) {
-			const path = `${dir}/storage/avatars/${decodeURIComponent(m[1])}`;
-			if (exists(path)) {
-				r.set('avatar', $filesystem.fileFromPath(path));
-				report.avatars++;
-			}
-		}
+		if (setAvatar(r, dir, p)) report.avatars++;
 		app.save(r);
 		keepCreated(app, 'users', u.id, u.created_at);
-
-		const hash = hashes[u.id];
-		if (hash && /^\$2[aby]\$\d{2}\$/.test(hash)) {
-			app.db()
-				.newQuery('UPDATE users SET password = {:hash} WHERE id = {:id}')
-				.bind({ hash: hash, id: u.id })
-				.execute();
-			report.password_hashes++;
-		}
+		if (setPasswordHash(app, u.id, hashes[u.id])) report.password_hashes++;
 		report.users++;
 	}
 }
@@ -154,13 +222,8 @@ function importCompanies(app, dir, report) {
 	const map = {};
 	for (const s of readJson(`${dir}/data/societes_bus.json`)) {
 		const r = new Record(col);
-		r.set('legacy_id', s.id);
-		const name = (s.nom || '').trim();
-		if (!name) report.anomalies.push(`societes_bus ${s.id} : nom vide`);
-		r.set('name', name || `Société sans nom n°${s.id}`);
-		r.set('address', s.adresse || '');
-		r.set('phone', s.telephone || '');
-		r.set('email', s.email || '');
+		if (!companyName(s)) report.anomalies.push(`societes_bus ${s.id} : nom vide`);
+		fillCompany(r, s);
 		app.save(r);
 		map[s.id] = r.id;
 		report.bus_companies++;
@@ -170,12 +233,7 @@ function importCompanies(app, dir, report) {
 
 function importCompanyChildren(app, dir, companies, report) {
 	const drivers = {};
-	const specs = [
-		['bus_drivers', 'chauffeurs_bus', (r, x) => { r.set('name', (x.nom || '').trim() || '?'); r.set('phone', x.tel || ''); }],
-		['bus_contacts', 'contacts_bus', (r, x) => { r.set('name', (x.nom || '').trim() || '?'); r.set('phone', x.tel || ''); }],
-		['bus_company_lines', 'lignes_bus', (r, x) => r.set('line', String(x.ligne || '').trim() || '?')]
-	];
-	for (const [name, table, fill] of specs) {
+	for (const [name, table, fill] of COMPANY_CHILDREN) {
 		const col = app.findCollectionByNameOrId(name);
 		report[name] = 0;
 		for (const x of readJson(`${dir}/data/${table}.json`)) {
@@ -199,16 +257,9 @@ function importTaxiCompanies(app, dir, report) {
 	const col = app.findCollectionByNameOrId('taxi_companies');
 	const byName = {};
 	report.taxi_companies = 0;
-	const arr = (v) => (Array.isArray(v) ? v.map((x) => String(x).trim()).filter(Boolean) : []);
 	for (const t of readJson(`${dir}/data/taxis.json`)) {
 		const r = new Record(col);
-		r.set('legacy_id', t.id);
-		r.set('name', (t.nom || '').trim() || `Taxi sans nom n°${t.id}`);
-		r.set('places', arr(t.lieux));
-		r.set('phones', arr(t.contacts));
-		r.set('emails', arr(t.mail));
-		r.set('addresses', arr(t.adresse));
-		r.set('notes', arr(t.remarques));
+		fillTaxiCompany(r, t);
 		app.save(r);
 		keepCreated(app, 'taxi_companies', r.id, t.created_at);
 		byName[(t.nom || '').trim().toLowerCase()] = r.id;
@@ -222,20 +273,7 @@ function importPmrClients(app, dir, userIds, report) {
 	report.pmr_clients = 0;
 	for (const c of readJson(`${dir}/data/pmr_clients.json`)) {
 		const r = new Record(col);
-		r.set('legacy_id', c.id);
-		r.set('last_name', c.nom || '');
-		r.set('first_name', c.prenom || '');
-		r.set('phone', c.telephone || '');
-		// Type normalisé (NV, CRF…) ; un libellé libre devient AUTRE + détail.
-		const t = String(c.type || '').trim();
-		const code = t.replace(/^\d+\s*/, '').toUpperCase();
-		if (['NV', 'CRF', 'CRE', 'CRP', 'MR'].indexOf(code) !== -1) r.set('type', code);
-		else if (t) {
-			r.set('type', 'AUTRE');
-			r.set('type_detail', t.slice(0, 200));
-		}
-		r.set('notes', c.remarques || '');
-		if (c.updated_by && userIds[c.updated_by]) r.set('updated_by', c.updated_by);
+		fillPmrClient(r, c, userIds);
 		app.save(r);
 		keepCreated(app, 'pmr_clients', r.id, c.created_at);
 		report.pmr_clients++;
@@ -246,13 +284,9 @@ function importLineStations(app, dir, report) {
 	const col = app.findCollectionByNameOrId('line_stations');
 	report.line_stations = 0;
 	for (const l of readJson(`${dir}/data/ligne_data.json`)) {
-		if (!l.ligne_nom || !l.gare) continue;
+		if (!lineStationValid(l)) continue;
 		const r = new Record(col);
-		r.set('legacy_id', l.id);
-		r.set('line', String(l.ligne_nom).trim());
-		r.set('station', String(l.gare).trim());
-		r.set('position', l.ordre || 0);
-		if (DISTRICT_CODES[l.district]) r.set('district', DISTRICT_CODES[l.district]);
+		fillLineStation(r, l);
 		app.save(r);
 		report.line_stations++;
 	}
@@ -296,38 +330,11 @@ function importPmr(app, dir, report) {
 	report.pmr_zones = ZONES.length;
 
 	const ecol = app.findCollectionByNameOrId('pmr_equipment');
-	const MONTHS = { janv: 1, jan: 1, fevr: 2, fev: 2, feb: 2, mars: 3, mar: 3, avr: 4, apr: 4, mai: 5, may: 5, juin: 6, jun: 6, juil: 7, jul: 7, aout: 8, aug: 8, sept: 9, sep: 9, oct: 10, nov: 11, dec: 12 };
-	const validUntil = (v) => {
-		const m = /^([a-zéû]+)\.?-(\d{2}|\d{4})$/i.exec(String(v || '').trim());
-		if (!m) return '';
-		const mo = MONTHS[pmr.norm(m[1]).toLowerCase()];
-		if (!mo) return '';
-		const y = m[2].length === 2 ? 2000 + parseInt(m[2], 10) : parseInt(m[2], 10);
-		const last = new Date(Date.UTC(y, mo, 0)).getUTCDate();
-		return `${y}-${String(mo).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
-	};
-	const STATE = { OK: 'ok', HS: 'hs', 'En attente': 'en_attente' };
 	report.pmr_equipment = 0;
 	report.pmr_equipment_validity_unread = 0;
 	for (const d of data) {
 		const r = new Record(ecol);
-		r.set('legacy_id', d.id);
-		r.set('station', String(d.gare || '?').trim().toUpperCase());
-		r.set('platform', d.quai && d.quai !== 'N/A' ? String(d.quai) : '');
-		if (zoneIds[d.zone]) r.set('zone', zoneIds[d.zone]);
-		const a = String(d.type_assistance || '').toLowerCase();
-		if (['3h', 'full', 'light', 'taxi'].indexOf(a) !== -1) r.set('assistance', a);
-		r.set('ramp_type', d.type_rampe && d.type_rampe !== 'N/A' ? d.type_rampe : '');
-		r.set('ramp_id', d.rampe_id && d.rampe_id !== '000' && d.rampe_id !== 'N/A' ? String(d.rampe_id) : '');
-		r.set('state', STATE[d.etat_rampe] || 'ok');
-		r.set('repair_requested', !!d.reparation_demandee);
-		r.set('padlock', d.cadenas && d.cadenas !== 'N/A' ? String(d.cadenas) : '');
-		const v = validUntil(d.validite);
-		r.set('valid_until', v);
-		if (!v && d.validite && d.validite !== '000') report.pmr_equipment_validity_unread++;
-		r.set('ramp_note', d.remarque_rampe || '');
-		r.set('station_restrictions', d.restrictions_gare || '');
-		r.set('station_info', d.remarque_gare || '');
+		if (!fillEquipment(r, d, zoneIds)) report.pmr_equipment_validity_unread++;
 		app.save(r);
 		keepCreated(app, 'pmr_equipment', r.id, d.created_at);
 		report.pmr_equipment++;
@@ -336,39 +343,98 @@ function importPmr(app, dir, report) {
 	// Prestations : une par segment IN / OUT du texte DICOS ; sans segment lisible, une prestation « à vérifier ».
 	const days = {};
 	for (const m of moves) days[m.id] = String(m.date).slice(0, 10);
-	const acol = app.findCollectionByNameOrId('pmr_assists');
 	report.pmr_assists = 0;
 	report.pmr_interventions_unparsed = 0;
 	for (const i of inter) {
 		const day = days[i.movement_id];
 		if (!day) continue;
-		const p = pmr.parseDicos(i.pmr_details);
-		const segs = p.segments.length ? p.segments : [{ direction: '', train: '', time: '' }];
-		if (!p.segments.length) report.pmr_interventions_unparsed++;
-		for (const seg of segs) {
-			const r = new Record(acol);
-			r.set('day', day);
-			r.set('time', seg.time);
-			r.set('period', seg.time ? pmr.periodOf(seg.time) : i.period === 'afternoon' ? 'apres_midi' : 'matin');
-			r.set('direction', seg.direction);
-			r.set('train', seg.train);
-			r.set('station', String(i.station || '').trim().toUpperCase());
-			if (zoneIds[i.zone]) r.set('zone', zoneIds[i.zone]);
-			r.set('dicos_ref', p.ref);
-			r.set('pax', p.pax);
-			if (p.type) r.set('pmr_type', p.type);
-			r.set('status', day < new Date().toISOString().slice(0, 10) ? 'realisee' : 'prevue');
-			r.set('legacy_id', String(i.id));
-			app.save(r);
-			// Texte d'origine (peut contenir un nom) : collection à part, lisible avec pmr:read seulement.
-			const lg = new Record(app.findCollectionByNameOrId('pmr_assist_legacy'));
-			lg.set('assist', r.id);
-			lg.set('text', String(i.pmr_details || '').slice(0, 2000));
-			app.save(lg);
-			keepCreated(app, 'pmr_assists', r.id, i.created_at);
+		const segs = assistSegments(i, day);
+		if (!segs.parsed) report.pmr_interventions_unparsed++;
+		for (const s of segs.list) {
+			saveAssist(app, i, s, zoneIds);
 			report.pmr_assists++;
 		}
 	}
+}
+
+const MONTHS = { janv: 1, jan: 1, fevr: 2, fev: 2, feb: 2, mars: 3, mar: 3, avr: 4, apr: 4, mai: 5, may: 5, juin: 6, jun: 6, juil: 7, jul: 7, aout: 8, aug: 8, sept: 9, sep: 9, oct: 10, nov: 11, dec: 12 };
+const STATE = { OK: 'ok', HS: 'hs', 'En attente': 'en_attente' };
+
+function validUntil(v) {
+	const pmr = require(`${__hooks}/lib/pmr.js`);
+	const m = /^([a-zéû]+)\.?-(\d{2}|\d{4})$/i.exec(String(v || '').trim());
+	if (!m) return '';
+	const mo = MONTHS[pmr.norm(m[1]).toLowerCase()];
+	if (!mo) return '';
+	const y = m[2].length === 2 ? 2000 + parseInt(m[2], 10) : parseInt(m[2], 10);
+	const last = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+	return `${y}-${String(mo).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
+}
+
+// Rend false si une validité était saisie mais n'a pas pu être lue.
+function fillEquipment(r, d, zoneIds) {
+	r.set('legacy_id', d.id);
+	r.set('station', String(d.gare || '?').trim().toUpperCase());
+	r.set('platform', d.quai && d.quai !== 'N/A' ? String(d.quai) : '');
+	if (zoneIds[d.zone]) r.set('zone', zoneIds[d.zone]);
+	const a = String(d.type_assistance || '').toLowerCase();
+	if (['3h', 'full', 'light', 'taxi'].indexOf(a) !== -1) r.set('assistance', a);
+	r.set('ramp_type', d.type_rampe && d.type_rampe !== 'N/A' ? d.type_rampe : '');
+	r.set('ramp_id', d.rampe_id && d.rampe_id !== '000' && d.rampe_id !== 'N/A' ? String(d.rampe_id) : '');
+	r.set('state', STATE[d.etat_rampe] || 'ok');
+	r.set('repair_requested', !!d.reparation_demandee);
+	r.set('padlock', d.cadenas && d.cadenas !== 'N/A' ? String(d.cadenas) : '');
+	const v = validUntil(d.validite);
+	r.set('valid_until', v);
+	r.set('ramp_note', d.remarque_rampe || '');
+	r.set('station_restrictions', d.restrictions_gare || '');
+	r.set('station_info', d.remarque_gare || '');
+	return !!v || !d.validite || d.validite === '000';
+}
+
+// Prestations d'une intervention BACO : une par segment IN / OUT du texte DICOS ; sans segment lisible, une « à vérifier ».
+function assistSegments(i, day) {
+	const pmr = require(`${__hooks}/lib/pmr.js`);
+	const p = pmr.parseDicos(i.pmr_details);
+	const segs = p.segments.length ? p.segments : [{ direction: '', train: '', time: '' }];
+	return { parsed: p.segments.length > 0, list: segs.map((seg) => ({ day: day, seg: seg, p: p })) };
+}
+
+function fillAssist(r, i, s, zoneIds) {
+	const pmr = require(`${__hooks}/lib/pmr.js`);
+	const seg = s.seg;
+	const p = s.p;
+	r.set('day', s.day);
+	r.set('time', seg.time);
+	r.set('period', seg.time ? pmr.periodOf(seg.time) : i.period === 'afternoon' ? 'apres_midi' : 'matin');
+	r.set('direction', seg.direction);
+	r.set('train', seg.train);
+	r.set('station', String(i.station || '').trim().toUpperCase());
+	if (zoneIds[i.zone]) r.set('zone', zoneIds[i.zone]);
+	r.set('dicos_ref', p.ref);
+	r.set('pax', p.pax);
+	if (p.type) r.set('pmr_type', p.type);
+	r.set('status', s.day < new Date().toISOString().slice(0, 10) ? 'realisee' : 'prevue');
+	r.set('legacy_id', String(i.id));
+}
+
+function saveAssist(app, i, s, zoneIds) {
+	const r = new Record(app.findCollectionByNameOrId('pmr_assists'));
+	fillAssist(r, i, s, zoneIds);
+	app.save(r);
+	// Texte d'origine (peut contenir un nom) : collection à part, lisible avec pmr:read seulement.
+	const lg = new Record(app.findCollectionByNameOrId('pmr_assist_legacy'));
+	lg.set('assist', r.id);
+	lg.set('text', String(i.pmr_details || '').slice(0, 2000));
+	app.save(lg);
+	keepCreated(app, 'pmr_assists', r.id, i.created_at);
+	return r;
+}
+
+function fillB201(r, b, userIds) {
+	r.set('day', String(b.report_date).slice(0, 10));
+	r.set('legacy', b.report_data || {});
+	if (b.created_by && userIds[b.created_by]) r.set('updated_by', b.created_by);
 }
 
 function importB201(app, dir, userIds, report) {
@@ -376,11 +442,9 @@ function importB201(app, dir, userIds, report) {
 	report.b201_reports = 0;
 	for (const b of readJson(`${dir}/data/b201_reports.json`)) {
 		const r = new Record(col);
-		r.set('day', String(b.report_date).slice(0, 10));
 		r.set('notes', {});
 		r.set('manual', []);
-		r.set('legacy', b.report_data || {});
-		if (b.created_by && userIds[b.created_by]) r.set('updated_by', b.created_by);
+		fillB201(r, b, userIds);
 		app.save(r);
 		keepCreated(app, 'b201_reports', r.id, b.created_at);
 		report.b201_reports++;
@@ -393,45 +457,59 @@ function importBusOrders(app, dir, companies, drivers, users, report) {
 	for (const o of readJson(`${dir}/data/otto_commandes.json`)) {
 		const r = new Record(col);
 		const status = busStatus(o, today);
-		r.set('legacy_id', o.id);
-		r.set('number', o.id);
-		r.set('status', status);
-		r.set('c3_type', o.c3_type);
-		r.set('reason', o.motif || '');
-		r.set('order_date', toDate(o.date_commande));
-		r.set('call_time', o.heure_appel ? o.heure_appel.slice(0, 5) : '');
-		r.set('lines', o.lignes || []);
-		r.set('stops', o.arrets || []);
-		r.set('stops_mode', o.arrets_mode === 'manuel' ? 'manuel' : 'auto');
-		r.set('stops_manual', o.arrets_manuel || '');
-		r.set('relation', o.relation || '');
-		r.set('origin', o.origine || '');
-		r.set('destination', o.destination || '');
-		r.set('round_trip', !!o.is_aller_retour);
-		r.set('direct', o.is_direct !== false);
-		r.set('bus_count', o.nombre_bus || 0);
-		r.set('bus_capacity', o.capacite_bus || 0);
-		r.set('passengers', o.nombre_voyageurs || 0);
-		r.set('pmr_count', o.nombre_pmr || 0);
-		// Les anciennes colonnes à plat (plaque, heures, plaques[]) sont déjà reprises dans bus_data.
-		r.set('buses', mapBuses(o.bus_data, drivers));
-		if (o.societe_id && companies[o.societe_id]) r.set('company', companies[o.societe_id]);
-		const author = o.user_id && users[o.user_id];
-		if (author) {
-			r.set('created_by', o.user_id);
-			if (DISTRICTS.indexOf(author.district) !== -1) r.set('district', author.district);
-		}
-		if (o.validated_by && users[o.validated_by]) r.set('validated_by', o.validated_by);
-		const sentAt = toDate(o.sent_at) || (status !== 'brouillon' ? toDate(o.created_at) : '');
-		r.set('sent_at', status !== 'brouillon' ? sentAt : '');
-		if (status !== 'brouillon' && o.validated_by && users[o.validated_by]) r.set('sent_by', o.validated_by);
-		r.set('sent_by_name', o.sent_by_name || '');
+		fillBusOrder(r, o, status, companies, drivers, users);
 		app.save(r);
 		keepCreated(app, 'bus_orders', r.id, o.created_at);
-		legacyEvent(app, 'bus', r.id, '', 'brouillon', toDate(o.created_at), author ? o.user_id : '');
-		if (status !== 'brouillon') legacyEvent(app, 'bus', r.id, 'brouillon', status, sentAt, '');
+		busOrderEvents(app, r, o, status, users);
 		report.bus_orders++;
 	}
+}
+
+// Attribution BACO et horodatage d'envoi compris ; `status` = busStatus(o, aujourd'hui).
+function fillBusOrder(r, o, status, companies, drivers, users) {
+	r.set('legacy_id', o.id);
+	r.set('number', o.id);
+	r.set('status', status);
+	r.set('c3_type', o.c3_type);
+	r.set('reason', o.motif || '');
+	r.set('order_date', toDate(o.date_commande));
+	r.set('call_time', o.heure_appel ? o.heure_appel.slice(0, 5) : '');
+	r.set('lines', o.lignes || []);
+	r.set('stops', o.arrets || []);
+	r.set('stops_mode', o.arrets_mode === 'manuel' ? 'manuel' : 'auto');
+	r.set('stops_manual', o.arrets_manuel || '');
+	r.set('relation', o.relation || '');
+	r.set('origin', o.origine || '');
+	r.set('destination', o.destination || '');
+	r.set('round_trip', !!o.is_aller_retour);
+	r.set('direct', o.is_direct !== false);
+	r.set('bus_count', o.nombre_bus || 0);
+	r.set('bus_capacity', o.capacite_bus || 0);
+	r.set('passengers', o.nombre_voyageurs || 0);
+	r.set('pmr_count', o.nombre_pmr || 0);
+	// Les anciennes colonnes à plat (plaque, heures, plaques[]) sont déjà reprises dans bus_data.
+	r.set('buses', mapBuses(o.bus_data, drivers));
+	if (o.societe_id && companies[o.societe_id]) r.set('company', companies[o.societe_id]);
+	const author = o.user_id && users[o.user_id];
+	if (author) {
+		r.set('created_by', o.user_id);
+		if (DISTRICTS.indexOf(author.district) !== -1) r.set('district', author.district);
+	}
+	if (o.validated_by && users[o.validated_by]) r.set('validated_by', o.validated_by);
+	r.set('sent_at', status !== 'brouillon' ? busSentAt(o, status) : '');
+	if (status !== 'brouillon' && o.validated_by && users[o.validated_by]) r.set('sent_by', o.validated_by);
+	r.set('sent_by_name', o.sent_by_name || '');
+}
+
+function busSentAt(o, status) {
+	return toDate(o.sent_at) || (status !== 'brouillon' ? toDate(o.created_at) : '');
+}
+
+// Historique d'une commande reprise : création, puis passage direct au statut calculé.
+function busOrderEvents(app, r, o, status, users) {
+	const author = o.user_id && users[o.user_id];
+	legacyEvent(app, 'bus', r.id, '', 'brouillon', toDate(o.created_at), author ? o.user_id : '');
+	if (status !== 'brouillon') legacyEvent(app, 'bus', r.id, 'brouillon', status, busSentAt(o, status), '');
 }
 
 function importTaxiOrders(app, dir, taxiByName, usersByName, report) {
@@ -441,41 +519,7 @@ function importTaxiOrders(app, dir, taxiByName, usersByName, report) {
 	for (const t of rows) {
 		const r = new Record(col);
 		r.set('number', ++n);
-		const company = taxiByName[(t.taxi_nom || '').trim().toLowerCase()];
-		if (company) r.set('taxi_company', company);
-		const author = usersByName[(t.redacteur || '').trim().toLowerCase()];
-		if (author) {
-			r.set('created_by', author.id);
-			if (DISTRICTS.indexOf(author.district) !== -1) r.set('district', author.district);
-		}
-		r.set('status', ['brouillon', 'envoye', 'confirme', 'en_cours', 'termine', 'annule'].indexOf(t.status) !== -1 ? t.status : 'brouillon');
-		r.set('author', t.redacteur || '');
-		r.set('trip_at', toDate(t.date_trajet));
-		r.set('return_at', toDate(t.date_retour));
-		r.set('trip_type', t.type_trajet || '');
-		r.set('from_station', t.gare_origine || '');
-		r.set('to_station', t.gare_arrivee || '');
-		r.set('via_station', t.gare_via || '');
-		r.set('return_from', t.gare_retour_origine || '');
-		r.set('return_to', t.gare_retour_arrivee || '');
-		r.set('taxi_name', t.taxi_nom || '');
-		r.set('taxi_email', t.taxi_email || '');
-		r.set('taxi_phone', t.taxi_tel || '');
-		r.set('taxi_address', t.taxi_adresse || '');
-		r.set('is_pmr', !!t.is_pmr);
-		r.set('pmr_type', t.pmr_type || '');
-		r.set('pmr_last_name', t.pmr_nom || '');
-		r.set('pmr_first_name', t.pmr_prenom || '');
-		r.set('pmr_phone', t.pmr_tel || '');
-		r.set('pmr_file', t.pmr_dossier || '');
-		r.set('pmr_reason', t.pmr_motif || '');
-		r.set('passenger_name', t.passager_nom || '');
-		r.set('relation_number', t.relation_number || '');
-		r.set('billing', t.facturation || '');
-		r.set('reason', t.motif || '');
-		r.set('passengers', t.nombre_passagers || 0);
-		r.set('pmr_count', t.nombre_pmr || 0);
-		r.set('vehicles', t.nombre_vehicules || 0);
+		const author = fillTaxiOrder(r, t, taxiByName, usersByName);
 		app.save(r);
 		keepCreated(app, 'taxi_orders', r.id, t.created_at);
 		legacyEvent(app, 'taxi', r.id, '', r.getString('status'), toDate(t.created_at), author ? author.id : '');
@@ -483,19 +527,64 @@ function importTaxiOrders(app, dir, taxiByName, usersByName, report) {
 	}
 }
 
+// Rend l'auteur retrouvé par son nom (ou undefined). Le numéro est posé à part.
+function fillTaxiOrder(r, t, taxiByName, usersByName) {
+	const company = taxiByName[(t.taxi_nom || '').trim().toLowerCase()];
+	if (company) r.set('taxi_company', company);
+	const author = usersByName[(t.redacteur || '').trim().toLowerCase()];
+	if (author) {
+		r.set('created_by', author.id);
+		if (DISTRICTS.indexOf(author.district) !== -1) r.set('district', author.district);
+	}
+	r.set('status', ['brouillon', 'envoye', 'confirme', 'en_cours', 'termine', 'annule'].indexOf(t.status) !== -1 ? t.status : 'brouillon');
+	r.set('author', t.redacteur || '');
+	r.set('trip_at', toDate(t.date_trajet));
+	r.set('return_at', toDate(t.date_retour));
+	r.set('trip_type', t.type_trajet || '');
+	r.set('from_station', t.gare_origine || '');
+	r.set('to_station', t.gare_arrivee || '');
+	r.set('via_station', t.gare_via || '');
+	r.set('return_from', t.gare_retour_origine || '');
+	r.set('return_to', t.gare_retour_arrivee || '');
+	r.set('taxi_name', t.taxi_nom || '');
+	r.set('taxi_email', t.taxi_email || '');
+	r.set('taxi_phone', t.taxi_tel || '');
+	r.set('taxi_address', t.taxi_adresse || '');
+	r.set('is_pmr', !!t.is_pmr);
+	r.set('pmr_type', t.pmr_type || '');
+	r.set('pmr_last_name', t.pmr_nom || '');
+	r.set('pmr_first_name', t.pmr_prenom || '');
+	r.set('pmr_phone', t.pmr_tel || '');
+	r.set('pmr_file', t.pmr_dossier || '');
+	r.set('pmr_reason', t.pmr_motif || '');
+	r.set('passenger_name', t.passager_nom || '');
+	r.set('relation_number', t.relation_number || '');
+	r.set('billing', t.facturation || '');
+	r.set('reason', t.motif || '');
+	r.set('passengers', t.nombre_passagers || 0);
+	r.set('pmr_count', t.nombre_pmr || 0);
+	r.set('vehicles', t.nombre_vehicules || 0);
+	return author;
+}
+
 // Historique d'audit de la v1 (audit_logs, avec différentiel) conservé en lecture, marqué « legacy ».
+const AUDIT_ACTIONS = { INSERT: 'create', UPDATE: 'update', DELETE: 'delete' };
+
+function fillAudit(r, a) {
+	r.set('action', AUDIT_ACTIONS[a.action_type] || 'update');
+	r.set('collection', a.table_name || '?');
+	r.set('record', String(a.record_id || '?'));
+	r.set('user', a.user_id || '');
+	r.set('changes', a.changes || {});
+	r.set('legacy', true);
+	r.set('at', toDate(a.timestamp));
+}
+
 function importAudit(app, dir, report) {
 	const col = app.findCollectionByNameOrId('audit_log');
-	const actions = { INSERT: 'create', UPDATE: 'update', DELETE: 'delete' };
 	for (const a of readJson(`${dir}/data/audit_logs.json`)) {
 		const r = new Record(col);
-		r.set('action', actions[a.action_type] || 'update');
-		r.set('collection', a.table_name || '?');
-		r.set('record', String(a.record_id || '?'));
-		r.set('user', a.user_id || '');
-		r.set('changes', a.changes || {});
-		r.set('legacy', true);
-		r.set('at', toDate(a.timestamp));
+		fillAudit(r, a);
 		app.save(r);
 		report.audit_legacy++;
 	}
@@ -505,7 +594,6 @@ function importAudit(app, dir, report) {
 // PN : seulement ceux de BACO (pn_data, avec leur adresse) ; les positions seules de temp_geo_data ne sont pas reprises
 // (décision du 8 octobre 2026, Q6 révisée).
 function importOperations(app, dir, report) {
-	const ops = require(`${__hooks}/lib/operations.js`);
 	const districtOf = {};
 	for (const u of app.findAllRecords('users')) districtOf[u.id] = u.getString('district');
 
@@ -514,25 +602,14 @@ function importOperations(app, dir, report) {
 	report.ops_log = 0;
 	report.ops_log_skipped = 0;
 	for (const m of readJson(`${dir}/data/main_courante.json`)) {
-		if (!m.user_id || districtOf[m.user_id] === undefined || !String(m.message_content || '').trim()) {
+		if (!opsLogValid(m, districtOf)) {
 			report.ops_log_skipped++;
 			continue;
 		}
 		const r = new Record(lcol);
-		r.set('legacy_id', m.id);
-		r.set('body', String(m.message_content).slice(0, 4000));
 		r.set('category', 'info');
-		r.set('occurred_at', toDate(m.created_at));
-		r.set('urgent', !!m.is_urgent);
-		r.set('district', districtOf[m.user_id] || '');
 		r.set('status', 'active');
-		r.set('author', m.user_id);
-		const mentioned = ops.mentionsFrom(app, m.message_content, m.user_id);
-		r.set('mentions', mentioned);
-		// Messages repris : déjà lus à l'époque, jamais renotifiés (mentions, urgence, districts cités).
-		r.set('notified', mentioned.concat(m.is_urgent ? ['*urgent'] : [], ops.districtTagsIn(m.message_content).map((t) => `*@${t}`)));
-		const edited = m.updated_at && new Date(m.updated_at).getTime() - new Date(m.created_at).getTime() > 60000;
-		if (edited) r.set('edited_at', toDate(m.updated_at));
+		fillOpsLog(app, r, m, districtOf);
 		app.save(r);
 		keepCreated(app, 'ops_log', r.id, m.created_at);
 		entryIds[m.id] = r.id;
@@ -564,34 +641,74 @@ function importOperations(app, dir, report) {
 	report.level_crossings_no_zone = 0;
 	report.level_crossings_rejected = 0;
 	for (const p of readJson(`${dir}/data/pn_data.json`)) {
-		const number = ops.pnNumber(p.pn);
-		const line = String(p.ligne_nom || '').trim().toUpperCase().replace(/^L\.?\s*/, 'L.');
-		if (!number || !/^L\.[0-9]{1,3}[A-Z]?$/.test(line) || keys[`${line}|${number}`]) {
+		const key = pnKey(p);
+		if (!key || keys[key]) {
 			report.level_crossings_rejected++;
 			continue;
 		}
-		keys[`${line}|${number}`] = true;
+		keys[key] = true;
 		const r = new Record(pcol);
-		r.set('legacy_id', p.id);
-		r.set('line', line);
-		r.set('number', number);
-		r.set('bk', ops.bkValue(p.bk));
-		r.set('address', String(p.adresse || '').trim().slice(0, 500));
-		const pos = ops.latLon(p.geo);
-		if (pos) {
-			r.set('lat', pos.lat);
-			r.set('lon', pos.lon);
-			points.push(pos);
-		} else report.level_crossings_no_position++;
-		const zone = String(p.zone || '').trim().toUpperCase();
-		if (/^[A-Z0-9]{2,10}$/.test(zone)) r.set('zone', zone);
-		else report.level_crossings_no_zone++;
 		r.set('active', true);
-		r.set('source', 'baco');
+		const f = fillLevelCrossing(r, p);
+		if (f.position) points.push(f.position);
+		else report.level_crossings_no_position++;
+		if (!f.zone) report.level_crossings_no_zone++;
 		app.save(r);
 		keepCreated(app, 'level_crossings', r.id, p.created_at);
 		report.level_crossings++;
 	}
+}
+
+// Message repris seulement s'il a un auteur connu et un texte.
+function opsLogValid(m, districtOf) {
+	return !!(m.user_id && districtOf[m.user_id] !== undefined && String(m.message_content || '').trim());
+}
+
+// Catégorie, statut et autres réglages de CSM (reclassement, retrait) posés seulement à la création.
+function fillOpsLog(app, r, m, districtOf) {
+	const ops = require(`${__hooks}/lib/operations.js`);
+	r.set('legacy_id', m.id);
+	r.set('body', String(m.message_content).slice(0, 4000));
+	r.set('occurred_at', toDate(m.created_at));
+	r.set('urgent', !!m.is_urgent);
+	r.set('district', districtOf[m.user_id] || '');
+	r.set('author', m.user_id);
+	const mentioned = ops.mentionsFrom(app, m.message_content, m.user_id);
+	r.set('mentions', mentioned);
+	// Messages repris : déjà lus à l'époque, jamais renotifiés (mentions, urgence, districts cités).
+	r.set('notified', mentioned.concat(m.is_urgent ? ['*urgent'] : [], ops.districtTagsIn(m.message_content).map((t) => `*@${t}`)));
+	const edited = m.updated_at && new Date(m.updated_at).getTime() - new Date(m.created_at).getTime() > 60000;
+	if (edited) r.set('edited_at', toDate(m.updated_at));
+}
+
+// Clé « L.xx|numéro » d'un PN de BACO, ou '' s'il est inexploitable.
+function pnKey(p) {
+	const ops = require(`${__hooks}/lib/operations.js`);
+	const number = ops.pnNumber(p.pn);
+	const line = String(p.ligne_nom || '').trim().toUpperCase().replace(/^L\.?\s*/, 'L.');
+	if (!number || !/^L\.[0-9]{1,3}[A-Z]?$/.test(line)) return '';
+	return `${line}|${number}`;
+}
+
+// Adresse et zone reprises telles quelles ; rend la position et la zone lues.
+function fillLevelCrossing(r, p) {
+	const ops = require(`${__hooks}/lib/operations.js`);
+	const key = pnKey(p).split('|');
+	r.set('legacy_id', p.id);
+	r.set('line', key[0]);
+	r.set('number', key[1]);
+	r.set('bk', ops.bkValue(p.bk));
+	r.set('address', String(p.adresse || '').trim().slice(0, 500));
+	const pos = ops.latLon(p.geo);
+	if (pos) {
+		r.set('lat', pos.lat);
+		r.set('lon', pos.lon);
+	}
+	const zone = String(p.zone || '').trim().toUpperCase();
+	const zoneOk = /^[A-Z0-9]{2,10}$/.test(zone);
+	if (zoneOk) r.set('zone', zone);
+	r.set('source', 'baco');
+	return { position: pos, zone: zoneOk };
 }
 
 const OPS_COLLECTIONS = ['notifications', 'train_watches', 'ops_log_events', 'ops_log_reads', 'ops_log', 'level_crossings'];
@@ -684,4 +801,39 @@ function run(app, dir, reset, scope) {
 	return report;
 }
 
-module.exports = { run, toDate, busStatus, mapBuses };
+module.exports = {
+	run,
+	toDate,
+	busStatus,
+	mapBuses,
+	readJson,
+	exists,
+	keepCreated,
+	legacyEvent,
+	withUpdate,
+	ROLE_MAP,
+	DISTRICTS,
+	fillUser,
+	setAvatar,
+	setPasswordHash,
+	fillCompany,
+	COMPANY_CHILDREN,
+	fillTaxiCompany,
+	fillPmrClient,
+	lineStationValid,
+	fillLineStation,
+	fillEquipment,
+	assistSegments,
+	fillAssist,
+	saveAssist,
+	fillB201,
+	fillBusOrder,
+	busSentAt,
+	busOrderEvents,
+	fillTaxiOrder,
+	fillAudit,
+	opsLogValid,
+	fillOpsLog,
+	pnKey,
+	fillLevelCrossing
+};
