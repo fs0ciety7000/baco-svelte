@@ -6,6 +6,7 @@ import { AssistBoard } from "@/components/pmr/assist-board";
 import { hideCancelled, PmrFilterBar, type PmrFilters } from "@/components/pmr/filter-bar";
 import { Button } from "@/components/ui/button";
 import { can } from "@/lib/permissions";
+import { normalizeDistricts } from "@/lib/pmr/district-filter";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
 import { requirePermission } from "@/server/auth";
 import { resolveCancelledPref } from "@/server/pmr-prefs";
@@ -70,7 +71,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
           { label: "Depuis janvier", du: `${today.slice(0, 4)}-01-01`, au: today },
         ]}
       />
-      <AssistBoard rows={rows} canPmr={canPmr} groupByDay={false} district={f.district ?? ""} />
+      <AssistBoard
+        rows={rows}
+        canPmr={canPmr}
+        groupByDay={false}
+        district={normalizeDistricts(f.district)}
+      />
     </section>
   );
 }

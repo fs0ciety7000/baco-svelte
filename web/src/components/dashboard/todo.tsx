@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/misc";
 import type { LogDigest } from "@/components/ops/dashboard-widgets";
 import { CLOSE_DAYS } from "@/lib/orders/status";
+import { busUrgency } from "@/lib/orders/urgency";
 import { brusselsDay, daysBetween, formatDay, isValidDay } from "@/lib/orders/time";
 import { cn, pl } from "@/lib/utils";
 import type { DashboardStats } from "@/server/data/dashboard";
@@ -43,8 +44,11 @@ export function todoItems(input: {
   mentions: Notification[] | null;
   log: LogDigest[] | null;
   today?: string;
+  /** Minutes depuis minuit à Bruxelles (bons à confirmer d'urgence, H-2). */
+  nowMin?: number;
 }): TodoItem[] {
   const today = input.today ?? brusselsDay();
+  const nowMin = input.nowMin ?? brusselsMinutes();
   const out: TodoItem[] = [];
   for (const m of input.impacts ?? []) {
     const cancelled = m.impact.cancelled;
@@ -62,10 +66,14 @@ export function todoItems(input: {
     const day = o.order_date.slice(0, 10);
     const late = isValidDay(day) ? daysBetween(day, today) : 0;
     const closable = late >= CLOSE_DAYS;
+    // Départ dans 2 h au plus sans confirmation : rouge, comme l'alerte « bus-h2 » de la cloche.
+    const urgent = busUrgency({ status: o.status, day, callTime: o.call_time }, today, nowMin);
     out.push({
       key: `bus-${o.id}`,
-      severity: "warn",
-      title: `Bon bus ${closable ? "à clôturer" : "non confirmé"}`,
+      severity: urgent ? "danger" : "warn",
+      title: urgent
+        ? `Bon bus à confirmer d'urgence (départ ${urgent.time})`
+        : `Bon bus ${closable ? "à clôturer" : "non confirmé"}`,
       detail: [
         `${o.origin || "?"} → ${o.destination || "?"}`,
         isValidDay(day) ? `service ${formatDay(day)}` : "",
@@ -79,12 +87,17 @@ export function todoItems(input: {
     });
   }
   for (const n of input.mentions ?? []) {
-    if (n.readAt || (n.kind !== "mention" && n.kind !== "urgent")) continue;
+    if (n.readAt || (n.kind !== "mention" && n.kind !== "urgent" && n.kind !== "dicos")) continue;
     out.push({
       key: `notif-${n.id}`,
-      severity: n.kind === "urgent" ? "danger" : "info",
+      severity: n.kind === "urgent" ? "danger" : n.kind === "dicos" ? "warn" : "info",
       title: n.title,
-      detail: n.kind === "urgent" ? "Urgence au Journal" : "Mention au Journal",
+      detail:
+        n.kind === "urgent"
+          ? "Urgence au Journal"
+          : n.kind === "dicos"
+            ? "Changement DICOS de dernière minute"
+            : "Mention au Journal",
       when: hhmm(n.created),
       href: n.link || "/operations/journal",
       action: "Lire",
@@ -103,6 +116,19 @@ export function todoItems(input: {
     });
   }
   return out.sort((a, b) => RANK[a.severity] - RANK[b.severity]);
+}
+
+function brusselsMinutes(now = new Date()): number {
+  const [h, m] = new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: "Europe/Brussels",
+  })
+    .format(now)
+    .split(":")
+    .map(Number);
+  return (h ?? 0) * 60 + (m ?? 0);
 }
 
 function hhmm(iso: string): string {

@@ -3,12 +3,9 @@
 À copier tel quel dans une nouvelle session Claude Code, sur le dépôt `fs0ciety7000/baco-svelte`, dans
 l'environnement cloud **CSM**.
 
-**Avant de lancer** (côté utilisateur) :
-- **Cloudflare Access** sur `pb-csm.fs0ciety.org` (PocketBase de production) ;
-- **SMTP** (Brevo conseillé) : variables `CSM_SMTP_HOST`, `CSM_SMTP_PORT`, `CSM_SMTP_USER`, `CSM_SMTP_PASSWORD`,
-  `CSM_MAIL_SENDER` (+ `CSM_MAIL_SENDER_NAME`) sur `csm-pocketbase-prod` (et sur `csm-pocketbase` pour la preview), puis
-  redéploiement ; domaine d'envoi authentifié (DKIM / SPF / DMARC dans Cloudflare) ;
-- domaines autorisés de l'environnement : ceux de `docs/ENVIRONNEMENT-CLOUD.md` + `csm.fs0ciety.org`, `pb-csm.fs0ciety.org`.
+**Avant de lancer** (côté utilisateur) : rien d'obligatoire. Cloudflare Access et SMTP (Stalwart) sont en place
+depuis le 10 oct. ; pour la bascule, garder l'archive chiffrée de la sauvegarde Supabase du 10 oct. (base de
+`csm-import-delta`).
 
 ---
 
@@ -23,8 +20,8 @@ l'utilisateur ; jamais de test destructif, de données fictives, de `test-rules.
 reste en lecture seule ; BACO n'est plus mis à jour (gel à confirmer par l'utilisateur).
 
 À faire / en attente :
-1. **Après le SMTP** : envoi test puis envoi de la campagne « BACO devient CSM » (Administration › Campagnes) — décision
-   de l'utilisateur ; tester le « mot de passe oublié » en prod.
+1. **Bascule** : date de gel de BACO à fixer par l'utilisateur, puis import différentiel (`docs/DEPLOIEMENT-V2.md` §7 :
+   sauvegarde Supabase en GET seuls, essai à blanc, revue, import réel sur accord) et campagne « BACO devient CSM ».
 2. Accompagner les agents : reconnexion de l'extension DICOS (nouveaux jetons en prod), passkeys à recréer sur
    `csm.fs0ciety.org`.
 3. **Lot suivant proposé : Quinyx** (tableau de service → qui est en poste) : cadrer l'accès (API Quinyx avec

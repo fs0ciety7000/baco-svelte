@@ -67,13 +67,14 @@ export const groupTrain = (g: GroupMission) =>
   g.transport === "taxi" ? `Taxi${g.train ? ` ${g.train}` : ""}` : g.train || "—";
 
 /**
- * Bouts d'assistance des trajets affichés (annulés et « absents de DICOS » exclus ; avec un filtre district, ses gares
+ * Bouts d'assistance des trajets affichés (annulés exclus ; les « absents de DICOS » restent : un faux « absent » ne doit jamais faire disparaître un ALEA
+ * obligatoire, audit du 11 oct. 2026 ; avec un filtre district, ses gares
  * seulement).
  */
 export function aleaEnds(rows: Assist[], district: string): AleaEnd[] {
   const ends: AleaEnd[] = [];
   for (const a of rows) {
-    if (a.status === "annulee" || a.absent) continue;
+    if (a.status === "annulee") continue;
     const l = legOf(a);
     const train = a.transport === "taxi" ? `Taxi${a.train ? ` ${a.train}` : ""}` : a.train || "—";
     const base = {
@@ -93,11 +94,11 @@ export function aleaEnds(rows: Assist[], district: string): AleaEnd[] {
   return ends;
 }
 
-/** Bouts d'assistance des trajets de groupe (annulés et « absents de DICOS » exclus ; filtre district : ses gares). */
+/** Bouts d'assistance des trajets de groupe (annulés exclus, « absents de DICOS » gardés ; filtre district : ses gares). */
 export function groupEnds(rows: GroupMission[], district: string): GroupEnd[] {
   const ends: GroupEnd[] = [];
   for (const g of rows) {
-    if (g.status === "annulee" || g.absent) continue;
+    if (g.status === "annulee") continue;
     const l = groupLegOf(g);
     const base = {
       day: g.day,

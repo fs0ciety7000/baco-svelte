@@ -17,6 +17,8 @@ routerAdd('GET', '/api/csm/health', (e) => {
 	try {
 		const fsys = $app.newBackupsFilesystem();
 		try {
+			// Sauvegardes PocketBase seulement (`@auto_pb_backup_*`, manuelles à la racine) : le bucket R2 contient aussi les
+			// archives des bons (`bons/…`) et les sauvegardes du hub (`hub_*`), à ne pas prendre pour la dernière sauvegarde.
 			const files = fsys.list('') || [];
 			const list = files
 				.map((f) => {
@@ -28,7 +30,7 @@ routerAdd('GET', '/api/csm/health', (e) => {
 					}
 					return { key: String(f.key), size: Number(f.size) || 0, modified: modified };
 				})
-				.filter((f) => /\.zip$/i.test(f.key));
+				.filter((f) => /\.zip$/i.test(f.key) && f.key.indexOf('/') === -1 && !/^hub_/.test(f.key));
 			list.sort((a, b) => (a.modified < b.modified ? 1 : -1));
 			out.backups = { count: list.length, last: list[0] || null, s3: !!$app.settings().backups.s3.enabled };
 		} finally {

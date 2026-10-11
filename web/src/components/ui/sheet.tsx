@@ -104,10 +104,13 @@ function Sheet({
           <Drawer.Overlay className="fixed inset-0 z-50 bg-[color-mix(in_oklab,var(--bg)_65%,transparent)]" />
         ) : null}
         <Drawer.Content
+          // Ancré : la liste reste utilisable ; fermeture par la croix ou Échap seulement (sinon un clic sur un bouton de
+          // la liste fermait le panneau et la page se réagençait sous le curseur).
+          onInteractOutside={docked ? (e) => e.preventDefault() : undefined}
           className={cn(
             "fixed z-50 flex flex-col border-border bg-surface outline-none",
             docked
-              ? "top-12 right-0 bottom-0 z-20 w-[28rem] border-l"
+              ? "top-12 right-0 bottom-0 w-[28rem] border-l"
               : desktop
                 ? "top-0 right-0 bottom-0 w-[min(32rem,100vw)] rounded-l-box border-l"
                 : "right-0 bottom-0 left-0 max-h-[92dvh] rounded-t-box border-t safe-bottom",

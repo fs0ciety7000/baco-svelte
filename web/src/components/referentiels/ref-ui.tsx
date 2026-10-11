@@ -47,7 +47,7 @@ export function RefSearchBar({
       </label>
       {children}
       <FilterSubmit />
-      {q ? <ClearFilters href={action} /> : null}
+      <ClearFilters href={action} />
     </FilterForm>
   );
 }

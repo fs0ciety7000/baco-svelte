@@ -16,6 +16,7 @@ describe("todoItems", () => {
   it("trie par gravité et marque les bons à clôturer", () => {
     const items = todoItems({
       today: "2026-10-11",
+      nowMin: 12 * 60,
       stats: {
         active: 2,
         toConfirm: 2,
@@ -72,6 +73,19 @@ describe("todoItems", () => {
     expect(items.find((i) => i.key === "bus-b2")!.action).toBe("Clôturer");
     expect(items.find((i) => i.key === "bus-b1")!.action).toBe("Confirmer");
     expect(items.some((i) => i.key === "notif-n2")).toBe(false);
+  });
+
+  it("bon envoyé dont le départ est dans moins de 2 h : rouge", () => {
+    const items = todoItems({
+      today: "2026-10-11",
+      nowMin: 5 * 60,
+      stats: { pending: [bus("b3", "2026-10-11")] } as never,
+      impacts: null,
+      mentions: null,
+      log: null,
+    });
+    expect(items[0]!.severity).toBe("danger");
+    expect(items[0]!.title).toContain("d'urgence (départ 06:10)");
   });
 
   it("vide sans données", () => {

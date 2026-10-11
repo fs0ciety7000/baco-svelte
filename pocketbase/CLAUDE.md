@@ -12,7 +12,7 @@ pocketbase migrate up $P                                   # appliquer les migra
 pocketbase superuser upsert <email> <mot de passe> $P      # compte superuser local
 pocketbase serve --http 127.0.0.1:8090 $P                  # serveur local
 CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P   # import de la sauvegarde Supabase (hors Git)
-PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (380 contrôles)
+PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (384 contrôles)
 CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # Commandes + PMR, comptes gardés
 CSM_IMPORT_SCOPE=pmr CSM_IMPORT_RESET=1 pocketbase csm-import … $P        # PMR seul (zones, matériel, prestations)
 CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # main courante + 211 PN de BACO
@@ -234,8 +234,8 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   groupés par `last_version`), conservation du Journal. `POST /api/csm/journal/retention` : purge à la demande.
 - **Conservation du Journal** (11 oct. 2026, **24 mois, à valider DPO**) : cron `journal-retention` (3 h 50 UTC,
   `lib/operations.js` → `journalRetention`) : messages `ops_log` créés il y a plus de `CSM_JOURNAL_RETENTION_MONTHS`
-  mois (24 ; `off` coupe) supprimés par `$app.delete` (pièces jointes effacées, lectures et historique en cascade,
-  notifications par le hook) + lignes `audit_log` ; réponses d'abord, message d'origine gardé tant qu'une réponse reste,
+  mois (**coupée tant que la variable n'est pas posée** ; `24` = durée proposée) supprimés par `$app.delete` (pièces
+  jointes effacées, lectures et historique en cascade, notifications par le hook), journal d'audit **gardé** ; réponses d'abord, message d'origine gardé tant qu'une réponse reste,
   consigne encore épinglée gardée ; 500 messages et 50 s par passage. Testé en local sur des données fictives antidatées
   (SQL direct sur `created`).
 

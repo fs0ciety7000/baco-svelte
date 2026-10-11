@@ -186,3 +186,13 @@ cronAdd('pmr-retention', '15 3 * * *', () => {
 		q("DELETE FROM audit_log WHERE collection = 'pmr_clients' AND at < {:old} AND record IN (SELECT id FROM pmr_clients WHERE archived = 1)", { old: old });
 	});
 });
+
+// Compte « Écran » (poste partagé, /tv) : une règle ne masque pas un champ. Les champs qui peuvent porter un nom ou une
+// information de santé ne lui sont jamais renvoyés, quelle que soit la requête (audit sécurité du 11 oct. 2026).
+onRecordEnrich((e) => {
+	const auth = e.requestInfo && e.requestInfo.auth;
+	if (auth && auth.getString('role') === 'screen') {
+		e.record.hide('note', 'dicos_ref', 'client', 'cancel_reason', 'created_by', 'updated_by', 'legacy_id', 'last_seen_by');
+	}
+	e.next();
+}, 'pmr_assists');

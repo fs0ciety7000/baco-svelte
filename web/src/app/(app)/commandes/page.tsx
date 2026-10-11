@@ -22,15 +22,26 @@ export default async function CommandesBusPage({
   const user = await requirePermission("otto:read");
   const sp = await searchParams;
   // Période par défaut J-1 → J+6 quand l'URL ne donne aucune borne (11 oct. 2026) ; `?du=&au=` = toutes les dates.
-  const period = resolveBusPeriod(sp, brusselsDay());
+  // Recherche ou statut demandés (liens « à confirmer », « en cours », n° de bon) : toutes les dates, sinon un bon
+  // ancien n'était plus trouvé (relecture du 11 oct. 2026). Les champs de date affichent la semaine par défaut et sont
+  // renvoyés avec la recherche : la semaine par défaut est alors ignorée, une autre période est respectée.
+  const today = brusselsDay();
+  const week = defaultBusPeriod(today);
+  const searching = !!(sp.q || sp.statut);
+  const resolved = resolveBusPeriod(sp, today);
+  const period =
+    searching && (resolved.isDefault || (sp.du === week.du && sp.au === week.au))
+      ? { du: "", au: "", isDefault: false }
+      : resolved;
+  // Champs de date = période réellement appliquée (vides avec une recherche : toutes les dates).
   const filters: ListFilters = { ...sp, du: period.du, au: period.au };
   const { rows, total } = await listOrders(
     {
       kind: "bus",
       q: filters.q,
       status: filters.statut,
-      from: filters.du || undefined,
-      to: filters.au || undefined,
+      from: period.du || undefined,
+      to: period.au || undefined,
       district: filters.district,
     },
     { userId: user.id, canBus: true, canTaxi: false },

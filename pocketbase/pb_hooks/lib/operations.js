@@ -653,15 +653,22 @@ function journalCategory(app, source, text, fixed, fallback, rules) {
 // Borné : `max` messages (500) et 50 s par passage (le reste part la nuit suivante).
 function journalRetentionMonths() {
 	const raw = String($os.getenv('CSM_JOURNAL_RETENTION_MONTHS') || '').trim().toLowerCase();
-	if (raw === 'off') return 0;
+	// Coupée tant que la variable n'est pas posée (audit sécurité du 11 oct. 2026 : suppression définitive, durée à
+	// valider avec le DPO). `24` pour la durée proposée.
+	if (raw === '' || raw === 'off') return 0;
 	const n = parseInt(raw, 10);
-	return n >= 1 && n <= 120 ? n : 24;
+	return n >= 1 && n <= 120 ? n : 0;
 }
 
 /** Limite de conservation : maintenant moins `months` mois (format PocketBase). */
 function journalCutoff(months, nowMs) {
 	const d = new Date(nowMs);
+	const day = d.getUTCDate();
+	// Jour borné au dernier jour du mois visé (31 août − 6 mois = 28/29 février, pas 3 mars).
+	d.setUTCDate(1);
 	d.setUTCMonth(d.getUTCMonth() - months);
+	const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+	d.setUTCDate(Math.min(day, last));
 	return d.toISOString().replace('T', ' ');
 }
 
@@ -683,8 +690,8 @@ function journalRetention(app, opts) {
 	let kept = 0;
 	const drop = (id) => {
 		try {
+			// Journal d'audit gardé (trace de modération ; audit sécurité du 11 oct. 2026).
 			app.delete(app.findRecordById('ops_log', id));
-			app.db().newQuery("DELETE FROM audit_log WHERE collection = 'ops_log' AND record = {:id}").bind({ id: id }).execute();
 			deleted++;
 		} catch (err) {
 			console.log(`journal-retention : ${id} non supprimé :`, String(err));

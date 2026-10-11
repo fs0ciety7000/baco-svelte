@@ -78,6 +78,9 @@ async function upsert(
   seen: string[],
 ) {
   let assistId: string;
+  // Vue dans DICOS, même si l'écriture échoue ensuite : une erreur passagère ne doit pas la faire passer « absente »
+  // (audit sécurité du 11 oct. 2026).
+  seen.push(dicosId);
   try {
     const existing = await pb
       .collection("pmr_assists")
@@ -101,7 +104,6 @@ async function upsert(
       assistId = rec.id;
       c.created++;
     }
-    seen.push(dicosId);
   } catch {
     c.skipped++;
     if (c.errors.length < 5) c.errors.push(dicosId);
@@ -252,6 +254,7 @@ export async function POST(request: Request) {
       arr_district: grp.arr_district || null,
     };
     const id = `j${dicos_id}`;
+    seenGroups.push(id);
     try {
       const cur = await pb
         .collection("group_missions")
@@ -266,7 +269,6 @@ export async function POST(request: Request) {
         await pb.collection("group_missions").create({ ...base, dicos_id: id, updated_by: svc.id });
         g.created++;
       }
-      seenGroups.push(id);
     } catch {
       g.skipped++;
       if (c.errors.length < 5) c.errors.push(`${id} (groupe)`);
@@ -287,7 +289,8 @@ export async function POST(request: Request) {
         received: n.received,
         created_count: n.created,
         updated_count: n.updated,
-        complete: body.final !== false,
+        // Lot en erreur : synchro jamais « complète », donc aucune mission jugée « absente » sur cette base.
+        complete: body.final !== false && c.errors.length === 0,
         version,
         synced_by: who.kind === "personal" ? who.userId : "",
         seen: [...new Set(seen)],

@@ -1039,6 +1039,17 @@ try {
 			const r = await api('GET', `/api/collections/${c}/records?perPage=1`, { token: stok2 });
 			check(`écran lit ${c} (données d'exploitation de /tv)`, r.status === 200, `HTTP ${r.status}`);
 		}
+		// Champs pouvant porter un nom ou une information de santé : jamais renvoyés à l'écran (hook onRecordEnrich).
+		const noted = await api('POST', '/api/collections/pmr_assists/records', { token: root, body: { day: '2026-01-02', station: 'Mons', time: '10:00', pmr_type: 'CRF', status: 'prevue', note: 'Note confidentielle écran', dicos_ref: '2026-01-02-0001' } });
+		const sNoted = await api('GET', `/api/collections/pmr_assists/records/${noted.json?.id}`, { token: stok2 });
+		check(
+			"écran : note, réf. DICOS et client masqués sur pmr_assists",
+			noted.status === 200 && sNoted.status === 200 && !('note' in sNoted.json) && !('dicos_ref' in sNoted.json) && !('client' in sNoted.json),
+			`HTTP ${noted.status}/${sNoted.status} ${Object.keys(sNoted.json ?? {}).join(',').slice(0, 120)}`
+		);
+		const aNoted = await api('GET', `/api/collections/pmr_assists/records/${noted.json?.id}`, { token: u.token });
+		check("agent : la note reste lisible", aNoted.status === 200 && aNoted.json.note === 'Note confidentielle écran', `HTTP ${aNoted.status}`);
+		if (noted.json?.id) await api('DELETE', `/api/collections/pmr_assists/records/${noted.json.id}`, { token: root });
 		const sNotif = await api('GET', '/api/collections/notifications/records?perPage=1', { token: stok2 });
 		check("écran n'a aucune notification", sNotif.status === 200 && sNotif.json.totalItems === 0, `${sNotif.json?.totalItems}`);
 		const sTok = await api('POST', '/api/collections/connector_tokens/records', { token: stok2, body: { user: sc.json.id, token_hash: 'e'.repeat(64) } });
@@ -1050,6 +1061,16 @@ try {
 		// Pas de session ouverte directement non plus (route interne seule) ; ses sessions restent les siennes.
 		const sSess = await api('GET', '/api/collections/user_sessions/records?perPage=1', { token: stok2 });
 		check('écran liste ses sessions (déconnexion à distance)', sSess.status === 200, `HTTP ${sSess.status}`);
+	}
+
+	// --- Registre de l'import différentiel : admin / sysop seulement (1760003200) ---
+	{
+		const reg = await api('POST', '/api/collections/app_settings/records', { token: root, body: { key: 'import_delta', value: { test: suffix } } });
+		const asAgent = await api('GET', `/api/collections/app_settings/records/${reg.json?.id}`, { token: u.token });
+		check("registre d'import : invisible pour un agent", reg.status === 200 && asAgent.status === 404, `HTTP ${reg.status}/${asAgent.status}`);
+		const asAdmin = await api('GET', `/api/collections/app_settings/records/${reg.json?.id}`, { token: roles.admin.token });
+		check("registre d'import : lisible par un admin", asAdmin.status === 200, `HTTP ${asAdmin.status}`);
+		if (reg.json?.id) await api('DELETE', `/api/collections/app_settings/records/${reg.json.id}`, { token: root });
 	}
 
 	// --- Missions vues par la synchro DICOS, alertes de dernière minute (1760003010, 11 oct. 2026) ---

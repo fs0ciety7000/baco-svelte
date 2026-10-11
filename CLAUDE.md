@@ -956,6 +956,23 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   fraîche (GET seuls) : 1 commande bus créée dans BACO depuis le 10 oct. Procédure de bascule : DEPLOIEMENT-V2 §7 ; rien
   exécuté sur la prod.
 
+- 2026-10-11 — **Fusion des lots parallèles + relectures.** Intégrés : rôle **Écran** (`/tv` seul), alerte **bus H-2**,
+  missions **« absentes de DICOS »**, alertes **DICOS de dernière minute** ; recherche de gare tolérante (accents, PtCar),
+  filtres par défaut (districts du jour, semaine des bons), **Commandes › Fournisseurs** + relance `.eml`, **Admin › Santé**
+  (sauvegardes, tâches planifiées via `cron_runs` / `lib/heartbeat.js`, SMTP, R2, extensions), conservation du Journal ;
+  **import différentiel BACO** (`csm-import-delta`, jamais lancé sur la prod). Audit sécurité (0 critique / élevé) et revue
+  adversariale ; corrigés : une mission présente ne passe plus « absente » sur une erreur d'écriture (vue avant l'upsert,
+  lot en erreur = synchro non complète) et les « absentes » **restent dans l'ALEA** (un faux « absent » ne doit pas faire
+  disparaître un ALEA obligatoire) ; champs sensibles de `pmr_assists` (note, réf. DICOS, client…) **masqués au compte
+  Écran** par `onRecordEnrich` ; **purge du Journal coupée par défaut** (`CSM_JOURNAL_RETENTION_MONTHS` à poser après avis
+  du DPO), journal d'audit gardé, mois borné (31 → fin de mois) ; registre de l'import (`app_settings.import_delta`) réservé
+  aux admins (`1760003200`) ; Santé ne prend plus un zip `bons/` ou `hub_*` pour la dernière sauvegarde ; panneau ancré au
+  premier plan du Journal plein écran et fermé seulement par la croix / Échap ; période par défaut des bons ignorée avec une
+  recherche ou un statut ; district « tous » de l'historique ; bons à H-2 en rouge et alertes DICOS dans « À traiter ».
+  384 contrôles de règles, 827 tests unitaires, E2E 88 / 89 (le dernier, « palette sans glisser », passe seul : charge).
+  Restes : onglet Fournisseurs visible seulement avec `otto:read` (un agent « taxi seul » ne le voit pas) ; urgences et
+  consignes du Journal affichées sur l'écran commun (choix fonctionnel, à confirmer DPO).
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)

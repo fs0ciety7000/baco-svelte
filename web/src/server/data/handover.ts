@@ -260,7 +260,7 @@ export async function buildHandover(
     .sort((a, b) => a.day.localeCompare(b.day) || a.time.localeCompare(b.time));
   // Trains en retard : missions du jour (pas encore passées à la gare assistée).
   const delays = allLegs
-    .filter((l) => l.day === today && l.impact && !l.impact.left && !l.absent)
+    .filter((l) => l.day === today && l.impact && !l.impact.left)
     .sort(
       (a, b) =>
         Number(b.impact!.cancelled) - Number(a.impact!.cancelled) ||

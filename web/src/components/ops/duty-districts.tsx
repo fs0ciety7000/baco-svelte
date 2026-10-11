@@ -107,7 +107,7 @@ export function DutyChip({ districts, today }: { districts: string[]; today: boo
         onClick={() => setOpen(true)}
         data-testid="duty-chip"
         className={cn(
-          "inline-flex h-control-sm min-w-11 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-control border px-2.5 text-small transition-colors",
+          "inline-flex h-11 min-w-11 md:h-control-sm shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-control border px-2.5 text-small transition-colors",
           set
             ? "border-border-strong text-fg hover:border-fg-muted"
             : "border-warn bg-[color-mix(in_oklab,var(--warn)_12%,var(--surface))] text-fg",
