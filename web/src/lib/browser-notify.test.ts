@@ -18,5 +18,9 @@ describe("notifications du navigateur", () => {
     expect(shouldNotify({ kind: "train" }, false, true)).toBe(false);
     expect(shouldNotify({ kind: "mention" }, true, false)).toBe(false);
     expect(shouldNotify({ kind: "perturbation" }, true, true)).toBe(false);
+    expect(shouldNotify({ kind: "dicos" }, true, true)).toBe(true);
+    expect(notificationBody({ kind: "dicos", body: "Embarquement · train 1234 · 1 × CRF" })).toBe(
+      "Embarquement · train 1234 · 1 × CRF",
+    );
   });
 });

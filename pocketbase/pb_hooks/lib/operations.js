@@ -77,7 +77,7 @@ function dicosStaleAlert(app, at) {
 		} catch (_) {
 			continue;
 		}
-		if (u.getString('role') === 'disabled' || u.getString('role') === 'connector') continue;
+		if (u.getString('role') === 'disabled' || u.getString('role') === 'connector' || u.getString('role') === 'screen') continue;
 		all.push(uid);
 		if (u.getString('duty_day') === today) onDuty.push(uid);
 	}
@@ -122,7 +122,8 @@ function ids(record, field) {
 function hasJournalRead(u) {
 	const denies = u.getString('denies');
 	const grants = u.getString('grants');
-	if (u.getString('role') === 'disabled') return false;
+	// Compte « Écran » (poste partagé) : jamais destinataire, même avec un droit accordé.
+	if (u.getString('role') === 'disabled' || u.getString('role') === 'screen') return false;
 	if (grants.indexOf('"journal:read"') !== -1) return true;
 	if (LOG_READERS.indexOf(u.getString('role')) === -1) return false;
 	return u.getString('role') === 'admin' || u.getString('role') === 'sysop' || denies.indexOf('"journal:read"') === -1;
@@ -439,7 +440,7 @@ function findStop(stops, station) {
 
 function hasPerm(u, perm, roles) {
 	const role = u.getString('role');
-	if (role === 'disabled') return false;
+	if (role === 'disabled' || role === 'screen' || role === 'connector') return false;
 	if (role === 'admin' || role === 'sysop') return true;
 	if (u.getString('grants').indexOf(`"${perm}"`) !== -1) return true;
 	return roles.indexOf(role) !== -1 && u.getString('denies').indexOf(`"${perm}"`) === -1;
@@ -646,6 +647,10 @@ function journalCategory(app, source, text, fixed, fallback, rules) {
 }
 
 module.exports = {
+	hasPerm,
+	brusselsHHMM,
+	minutesOf,
+	DISTRICT_NAME,
 	journalCategory,
 	journalRules,
 	districtTagsIn,

@@ -6,6 +6,7 @@ const empty: Handover = {
   generatedAt: "2026-10-10T18:00:00Z",
   today: "2026-10-10",
   districts: ["DSO"],
+  urgent: [],
   toConfirm: [],
   toClose: [],
   running: [],
@@ -54,5 +55,27 @@ describe("texte de la relève", () => {
     expect(t).toContain("IC 2108 +12 min à Mons");
     expect(t).toContain("… et 2 de plus");
     expect(t).not.toContain("Rien d'ouvert");
+  });
+  it("bons à confirmer d'urgence en tête", () => {
+    const o = {
+      id: "b1",
+      kind: "bus" as const,
+      label: "Bus n° 12 Mons → Ath",
+      day: "dim. 11/10",
+      time: "14:00",
+      late: 0,
+      href: "/commandes/bus/b1",
+    };
+    const t = handoverText(
+      {
+        ...empty,
+        urgent: [{ ...o, minutes: 45 }],
+        toConfirm: [{ ...o, id: "b2", label: "Bus n° 13" }],
+      },
+      { author: "A", at: "13:15", scope: "DSO" },
+    );
+    expect(t).toContain("**Bons à confirmer d'urgence (1)**");
+    expect(t).toContain("Bus n° 12 Mons → Ath · départ 14:00 (dans 45 min)");
+    expect(t.indexOf("d'urgence")).toBeLessThan(t.indexOf("**Bons à confirmer (1)**"));
   });
 });

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { TvBoard, type TvStationBoards } from "@/components/ops/tv-board";
 import { brusselsDay, brusselsTime } from "@/lib/orders/time";
-import { can } from "@/lib/permissions";
+import { can, isScreen } from "@/lib/permissions";
 import { requireUser } from "@/server/auth";
 import { buildHandover, handoverDistricts } from "@/server/data/handover";
 import { board, stations } from "@/server/irail";
@@ -17,18 +17,21 @@ export const dynamic = "force-dynamic";
  * Écran commun du bureau (demande du 10 oct. 2026) : grand tableau de bord plein écran, sans menus, rafraîchi en direct.
  * Écran partagé : AUCUN nom de voyageur (même synthèse que la relève). `?district=DSO|DSE|DCE|tous`, `?gare=` (départs et
  * arrivées iRail, Mons par défaut), `?theme=foret|rail` (Forêt par défaut ; demande du 10 oct. 2026).
+ * Compte « Écran » (poste partagé, 11 oct. 2026) : seule page qu'il voit ; lectures bornées par ses règles PocketBase
+ * (ni taxis ni groupes), districts = ceux de son compte (réglés par l'admin) sauf `?district=`.
  */
 export default async function Page({
   searchParams,
 }: {
   searchParams: Promise<{ district?: string; gare?: string; theme?: string }>;
 }) {
-  const user = await requireUser();
-  if (!can(user, "journal:read")) notFound();
+  const user = await requireUser({ screen: true });
+  const screen = isScreen(user);
+  if (!screen && !can(user, "journal:read")) notFound();
   const { district, gare, theme } = await searchParams;
   const codes = handoverDistricts(user, district);
   const [data, boards] = await Promise.all([
-    buildHandover(user, codes),
+    buildHandover(user, codes, { screen }),
     stationBoards((gare ?? "Mons").trim().slice(0, 60) || "Mons"),
   ]);
   return (
@@ -44,15 +47,27 @@ export default async function Page({
       />
       <div className="fixed right-4 bottom-3 opacity-70">
         <LiveRefresh
-          topics={[
-            "bus_orders",
-            "taxi_orders",
-            "pmr_assists",
-            "group_missions",
-            "ops_log",
-            "mission_trains",
-            "alea_marks",
-          ]}
+          topics={
+            screen
+              ? [
+                  "bus_orders",
+                  "pmr_assists",
+                  "ops_log",
+                  "mission_trains",
+                  "alea_marks",
+                  "dicos_syncs",
+                ]
+              : [
+                  "bus_orders",
+                  "taxi_orders",
+                  "pmr_assists",
+                  "group_missions",
+                  "ops_log",
+                  "mission_trains",
+                  "alea_marks",
+                  "dicos_syncs",
+                ]
+          }
         />
       </div>
     </main>

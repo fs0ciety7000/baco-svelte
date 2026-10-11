@@ -12,7 +12,7 @@ pocketbase migrate up $P                                   # appliquer les migra
 pocketbase superuser upsert <email> <mot de passe> $P      # compte superuser local
 pocketbase serve --http 127.0.0.1:8090 $P                  # serveur local
 CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P   # import de la sauvegarde Supabase (hors Git)
-PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (299 contrôles)
+PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (348 contrôles)
 CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # Commandes + PMR, comptes gardés
 CSM_IMPORT_SCOPE=pmr CSM_IMPORT_RESET=1 pocketbase csm-import … $P        # PMR seul (zones, matériel, prestations)
 CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # main courante + 211 PN de BACO
@@ -184,3 +184,35 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
   variables : volume seul. Cron `order-pdf-backup` (1 h UTC) : zip « stocké » écrit dans un `Uint8Array` préalloué
   (CRC32 maison, ~2 s/Mo en JSVM, mémoire bornée ; refus au-delà de 200 Mo par mois), 6 mois au plus, chacun isolé.
 
+- **Rôle « Écran »** (`1760003000_screen_role.js`, 11 oct. 2026) : `screen` = compte d'affichage du poste partagé, qui ne voit
+  que `/tv`. La migration a ajouté `&& @request.auth.role != "screen"` à **toutes** les règles (lecture, écriture,
+  suppression) puis rouvert des lectures bornées : sa fiche `users`, `app_settings` clé `maintenance`, `bus_orders` envoyés /
+  en cours, `pmr_assists` non anonymisées, `mission_trains`, `alea_marks`, `dicos_syncs`, `ops_log` actifs urgents / épinglés
+  / iRail ; `user_sessions` inchangée. Rien de nominatif (ni `taxi_orders`, ni `group_missions`, ni `pmr_mission`,
+  `pmr_clients`…) et **aucun droit accordé (`grants`) ne s'applique**. **Toute nouvelle collection** doit écrire elle-même
+  `&& @request.auth.role != "screen"` dans ses règles. Hooks : `hasJournalRead` / `hasPerm` (lib/operations.js) refusent
+  `screen` (jamais destinataire d'une notification).
+- **Alertes et fiabilité DICOS** (`1760003010_dicos_presence_alerts.js`, `lib/alerts.js`, 11 oct. 2026) :
+  - cron **`bus-h2`** (`orders.pb.js`, toutes les 5 min) : bon bus `envoye` dont le premier départ prévu (plus petite heure
+    `buses[].planned` non annulée, sinon `call_time`, jour = `order_date`) est dans 2 h au plus ou passé depuis 1 h au plus →
+    notification `systeme` (`source = "bus-h2"`, `source_id` = id du bon, **une fois par bon** tous destinataires
+    confondus) aux agents `otto:update` du district du bon (districts du jour → permanents ; bon sans district ou agent
+    sans district : tous). Miroir web testé : `web/src/lib/orders/urgency.ts`.
+  - **changements DICOS de dernière minute** (hooks `pmr_assists` / `group_missions` de `pmr.pb.js`, écriture du compte
+    `dicos:write` seulement) : mission nouvelle (seulement si une synchro complète du jour existe déjà, sinon la première
+    synchro du matin alerterait tout), annulée, rétablie, déplacée ou bout IN / OUT ajouté / retiré, **aujourd'hui et dans
+    les 3 h** → notification de type **`dicos`** (nouveau) aux agents `deplacements:read` (groupes : `pmr:read`) dont les
+    districts du jour contiennent celui de la gare (pas de diffusion sans district) ; texte : gare, heure, train, type
+    PMR ou taille du groupe, **jamais de nom**. Dédup `source = "dicos"`, `source_id = <id>:<new|can|tim>:<IN|OUT>:<heure>`
+    par agent. Miroir web testé : `web/src/lib/pmr/dicos-changes.ts`.
+  - **missions vues** : l'ingestion envoie dans chaque `dicos_syncs` la liste `seen` (`j<journeyId>` du lot) ; le hook la
+    vide et pose en SQL `last_seen_sync` (= `created` du lot) et `last_seen_by` (= `synced_by`) sur `pmr_assists` /
+    `group_missions` (pas d'audit, pas d'événement temps réel, `updated` inchangé). Sur le dernier lot (`complete`), il pose
+    `session_start` = `created` du premier lot de la même synchro (même jour, type et agent depuis sa synchro complète
+    précédente). `last_seen_*` et `session_start` sont refusés dans les requêtes. L'écran « Absente de DICOS » est calculé
+    côté web (`isAbsentFromDicos`). Limite : CSM ne connaît pas le périmètre de gares de la vue DICOS de l'agent, donc une
+    mission n'est jugée que par la synchro du MÊME agent que celle qui l'a vue en dernier ; secret partagé (sans agent) et
+    missions jamais vues depuis la mise en service : jamais signalées ; un jour sans aucun groupe n'envoie pas de lot
+    « groups » (groupes disparus d'un coup non signalés).
+  - Contrôles : `/api/crons/<id>` (superuser) lance un cron **en arrière-plan** (réponse 204 avant la fin) : attendre avant de
+    compter ses effets (`test-rules.mjs`).

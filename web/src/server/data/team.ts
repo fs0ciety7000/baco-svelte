@@ -62,7 +62,7 @@ export const teamListSchema = z.object({
 export async function listTeam(input: z.input<typeof teamListSchema>): Promise<TeamMember[]> {
   const p = teamListSchema.parse(input);
   const pb = await pbForRequest();
-  const parts = ['role != "disabled"', 'role != "connector"'];
+  const parts = ['role != "disabled"', 'role != "connector"', 'role != "screen"'];
   if (p.district) parts.push(pb.filter("(district = {:d} || districts ~ {:d})", { d: p.district }));
   if (p.q) parts.push(pb.filter("(name ~ {:q} || username ~ {:q} || fonction ~ {:q})", { q: p.q }));
   const rows = await pb.collection("users").getFullList({
@@ -92,7 +92,7 @@ export async function listOnline(online: { id: string; since: number }[]): Promi
   const pb = await pbForRequest();
   const rows = await pb.collection("users").getFullList({
     filter: pb.filter(
-      `role != "disabled" && role != "connector" && (${ids.map((_, i) => `id = {:i${i}}`).join(" || ")})`,
+      `role != "disabled" && role != "connector" && role != "screen" && (${ids.map((_, i) => `id = {:i${i}}`).join(" || ")})`,
       Object.fromEntries(ids.map((id, i) => [`i${i}`, id])),
     ),
     fields: MEMBER_FIELDS,

@@ -15,7 +15,8 @@ import { ROLE_LABEL } from "@/lib/team";
 import { DistrictPicker } from "./district-picker";
 
 // Rôles v2 (11 oct. 2026).
-export const ROLE_CHOICES = ["paco", "moderator", "guest", "admin", "sysop"] as const;
+// « Écran » : compte d'affichage du poste partagé (`/tv` seul, aucun droit de module).
+export const ROLE_CHOICES = ["paco", "moderator", "guest", "screen", "admin", "sysop"] as const;
 
 /** Mot de passe provisoire affiché une seule fois, à transmettre à l'agent (il le change dans « Mon profil »). */
 export function PasswordReveal({ password, onClose }: { password: string; onClose: () => void }) {

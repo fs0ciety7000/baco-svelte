@@ -35,6 +35,7 @@ import type { Assist, PmrEvent } from "@/server/data/pmr";
 import { AleaButton } from "./alea-export";
 import { CopyButton } from "./copy";
 import { PhoneLink } from "./phone-link";
+import { AbsentBadge } from "./absent-badge";
 import { DelayBadge, TrainChip } from "./train-chip";
 
 const toneVar = {
@@ -336,7 +337,10 @@ export function AssistBoard({
                       </Td>
                       <Td className="font-mono text-small text-fg-muted">{a.dicosRef || "—"}</Td>
                       <Td>
-                        <AssistBadge status={a.status} />
+                        <span className="inline-flex flex-wrap items-center gap-1.5">
+                          <AssistBadge status={a.status} />
+                          {a.absent ? <AbsentBadge /> : null}
+                        </span>
                       </Td>
                       <Td>
                         <CopyButton text={copyTextOf(a, district)} />
@@ -367,6 +371,7 @@ export function AssistBoard({
                     <span className="flex items-center gap-2 pr-0">
                       <TrainChip train={a.train} taxi={a.transport === "taxi"} />
                       <DelayBadge impact={missionImpact(a, delays)} />
+                      {a.absent ? <AbsentBadge /> : null}
                       <span className="font-mono tabular">{a.time || "--:--"}</span>
                       <span className="-mr-11 ml-auto">
                         <AssistBadge status={a.status} />

@@ -51,3 +51,39 @@ export function syncSummary(
   }
   return { missing, freshness, partialAt };
 }
+
+// --- « Absente de DICOS » (11 oct. 2026) ---
+// Chaque lot DICOS marque les missions qu'il contient (`last_seen_sync`, `last_seen_by` = propriétaire du jeton, hook
+// PocketBase) ; le dernier lot d'une synchro porte `session_start`. Une mission encore « prévue » est absente de DICOS
+// si la dernière synchro complète de SON jour faite par le MÊME agent a commencé après la dernière fois qu'elle a été vue.
+// Pourquoi le même agent : la vue DICOS d'un agent peut être filtrée par gares et CSM ne connaît pas ce périmètre (les
+// identifiants de gares DICOS restent dans l'extension) ; seule la synchro de celui qui l'a vue prouve sa disparition.
+// Jamais signalée : mission vue par le secret partagé (pas d'agent), jamais vue depuis la mise en service, ou statut autre
+// que « prévue ».
+
+export type CompleteSync = { day: string; syncedBy: string; sessionStart: string };
+
+const instant = (v: string) => Date.parse(v.includes("T") ? v : v.replace(" ", "T"));
+
+/** Début de la dernière synchro complète par « jour|agent ». `rows` triées de la plus récente à la plus ancienne. */
+export function latestSessions(rows: CompleteSync[]): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const r of rows) {
+    if (!r.syncedBy || !r.sessionStart) continue;
+    const key = `${r.day}|${r.syncedBy}`;
+    if (!out.has(key)) out.set(key, r.sessionStart);
+  }
+  return out;
+}
+
+export function isAbsentFromDicos(
+  m: { status: string; day: string; lastSeenSync?: string; lastSeenBy?: string },
+  sessions: Map<string, string>,
+): boolean {
+  if (m.status !== "prevue" || !m.lastSeenSync || !m.lastSeenBy) return false;
+  const start = sessions.get(`${m.day}|${m.lastSeenBy}`);
+  if (!start) return false;
+  const a = instant(start);
+  const b = instant(m.lastSeenSync);
+  return Number.isFinite(a) && Number.isFinite(b) && a > b;
+}

@@ -31,18 +31,21 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   const { identity, password, next } = parsed.data;
   const pb = pbFor();
   let home = "/";
+  let redirectTo: string | null = null;
   try {
     const auth = await pb.collection("users").authWithPassword(identity, password);
     if (auth.record.role === "disabled") return { error: "Compte désactivé.", identity };
     await writeSessionToken(auth.token);
     await startSession(auth.token, "password");
-    home = homeOf(auth.record.preferences);
+    // Compte « Écran » (poste partagé) : toujours l'écran commun, quel que soit le lien demandé.
+    if (auth.record.role === "screen") redirectTo = "/tv";
+    else home = homeOf(auth.record.preferences);
   } catch {
     // Message identique que l'identifiant existe ou non.
     return { error: "Identifiant ou mot de passe incorrect.", identity };
   }
   // Lien demandé (suite) d'abord, sinon la page d'accueil choisie par l'agent.
-  redirect(next ? safeNext(next) : home);
+  redirect(redirectTo ?? (next ? safeNext(next) : home));
 }
 
 export async function logout(): Promise<void> {

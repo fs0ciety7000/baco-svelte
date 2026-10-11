@@ -5,7 +5,8 @@
 // d'une urgence n'est jamais affiché sur l'écran du système (il peut citer un voyageur) : titre seul.
 
 export const BROWSER_NOTIFY_KEY = "csm-notifications-navigateur";
-export const BROWSER_NOTIFY_KINDS = ["urgent", "mention", "train"] as const;
+// `dicos` (11 oct. 2026) : changement DICOS de dernière minute ; le texte ne cite que gare, heure, train et type PMR.
+export const BROWSER_NOTIFY_KINDS = ["urgent", "mention", "train", "dicos"] as const;
 
 type Item = { id: string; kind: string; title: string; body: string; link: string };
 
@@ -47,9 +48,9 @@ function claim(id: string): boolean {
   }
 }
 
-/** Corps affiché : retards de train seulement (gares, minutes) ; jamais le texte d'une mention ou d'une urgence. */
+/** Corps affiché : retards de train et changements DICOS (gares, heures, sans nom) ; jamais le texte d'une mention ou d'une urgence. */
 export function notificationBody(item: Pick<Item, "kind" | "body">): string {
-  if (item.kind === "train") return item.body.slice(0, 160);
+  if (item.kind === "train" || item.kind === "dicos") return item.body.slice(0, 160);
   return item.kind === "urgent" ? "Urgence au Journal" : "Mention au Journal";
 }
 

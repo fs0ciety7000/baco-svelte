@@ -65,11 +65,14 @@ export const groupTotal = (g: GroupMission) => g.adults + g.children + g.seniors
 export const groupTrain = (g: GroupMission) =>
   g.transport === "taxi" ? `Taxi${g.train ? ` ${g.train}` : ""}` : g.train || "—";
 
-/** Bouts d'assistance des trajets affichés (annulés exclus ; avec un filtre district, ses gares seulement). */
+/**
+ * Bouts d'assistance des trajets affichés (annulés et « absents de DICOS » exclus ; avec un filtre district, ses gares
+ * seulement).
+ */
 export function aleaEnds(rows: Assist[], district: string): AleaEnd[] {
   const ends: AleaEnd[] = [];
   for (const a of rows) {
-    if (a.status === "annulee") continue;
+    if (a.status === "annulee" || a.absent) continue;
     const l = legOf(a);
     const train = a.transport === "taxi" ? `Taxi${a.train ? ` ${a.train}` : ""}` : a.train || "—";
     const base = {
@@ -89,11 +92,11 @@ export function aleaEnds(rows: Assist[], district: string): AleaEnd[] {
   return ends;
 }
 
-/** Bouts d'assistance des trajets de groupe (annulés exclus ; avec un filtre district, ses gares seulement). */
+/** Bouts d'assistance des trajets de groupe (annulés et « absents de DICOS » exclus ; filtre district : ses gares). */
 export function groupEnds(rows: GroupMission[], district: string): GroupEnd[] {
   const ends: GroupEnd[] = [];
   for (const g of rows) {
-    if (g.status === "annulee") continue;
+    if (g.status === "annulee" || g.absent) continue;
     const l = groupLegOf(g);
     const base = {
       day: g.day,

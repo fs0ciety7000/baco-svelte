@@ -174,7 +174,16 @@ function Leg({ l }: { l: HandoverLeg }) {
       <span className="min-w-0 flex-1 truncate">
         <span className="text-fg-muted">{l.io === "IN" ? "Embarq." : "Débarq."}</span> {l.station}
       </span>
-      <span className="hidden shrink-0 text-fg-muted xl:inline">{l.detail}</span>
+      {l.absent ? (
+        <span
+          className="shrink-0 font-semibold text-warn"
+          title="Absente de la dernière synchro DICOS : à vérifier"
+        >
+          Absente DICOS
+        </span>
+      ) : (
+        <span className="hidden shrink-0 text-fg-muted xl:inline">{l.detail}</span>
+      )}
       {l.impact ? (
         <span
           className={cn(
@@ -229,7 +238,7 @@ export function TvBoard({
     const m = minutes(l.time);
     return nowMin === null || m === null || m - nowMin <= H3;
   });
-  const orders = data.toConfirm.length + data.toClose.length;
+  const orders = data.urgent.length + data.toConfirm.length + data.toClose.length;
   return (
     <div ref={scopeRef} className="grid gap-4 lg:h-[calc(100dvh-3rem)] lg:grid-rows-[auto_1fr]">
       <header className="flex flex-wrap items-end gap-x-6 gap-y-1">
@@ -319,8 +328,23 @@ export function TvBoard({
             icon={<Bus aria-hidden className="size-6" />}
             title="Bons ouverts"
             count={orders + data.running.length}
-            tone={data.toClose.length ? "warn" : "neutral"}
+            tone={data.urgent.length ? "danger" : data.toClose.length ? "warn" : "neutral"}
           >
+            {data.urgent.length ? (
+              <ul className="mb-2 flex flex-col gap-1" data-testid="tv-urgent">
+                <li className="text-[1.15rem] font-semibold text-danger">
+                  À confirmer d&apos;urgence ({data.urgent.length})
+                </li>
+                {data.urgent.slice(0, 3).map((o) => (
+                  <li key={o.id} className="flex items-baseline gap-2 text-[1.15rem]">
+                    <span className="w-14 shrink-0 font-mono font-bold text-danger tabular">
+                      {o.time}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">{o.label}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
             <p className="text-[1.15rem]">
               <span className="font-mono tabular">{data.toConfirm.length}</span> à confirmer ·{" "}
               <span className="font-mono tabular">{data.running.length}</span> en cours

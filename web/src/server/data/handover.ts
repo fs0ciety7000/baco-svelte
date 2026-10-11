@@ -11,6 +11,7 @@ import type {
   HandoverOrder,
 } from "@/lib/ops/handover";
 import { CLOSE_DAYS } from "@/lib/orders/status";
+import { busUrgency } from "@/lib/orders/urgency";
 import {
   addDays,
   brusselsDay,
@@ -57,21 +58,27 @@ const hhmm = (v: string) => {
 
 async function orders(
   user: SessionUser,
-): Promise<Pick<Handover, "toConfirm" | "toClose" | "running">> {
+  screen: boolean,
+): Promise<Pick<Handover, "urgent" | "toConfirm" | "toClose" | "running">> {
   const out = {
+    urgent: [] as HandoverOrder[],
     toConfirm: [] as HandoverOrder[],
     toClose: [] as HandoverOrder[],
     running: [] as HandoverOrder[],
   };
   const pb = await pbForRequest();
-  const today = brusselsDay();
-  if (can(user, "otto:read")) {
+  const now = new Date();
+  const today = brusselsDay(now);
+  const [h, m] = brusselsTime(now).split(":").map(Number);
+  const nowMin = (h ?? 0) * 60 + (m ?? 0);
+  // Écran (poste partagé) : bons bus ouverts seulement (règle PocketBase), jamais les taxis (copie nominative PMR).
+  if (screen || can(user, "otto:read")) {
     const rows = await pb
       .collection("bus_orders")
       .getFullList({
         filter: 'status = "envoye" || status = "en_cours"',
         sort: "order_date",
-        fields: "id,status,number,order_date,call_time,origin,destination,relation",
+        fields: "id,status,number,order_date,call_time,origin,destination,relation,buses",
         batch: 200,
       })
       .catch(() => [] as RecordModel[]);
@@ -87,12 +94,25 @@ async function orders(
         late,
         href: `/commandes/bus/${r.id}`,
       };
-      if (r.status === "en_cours") out.running.push(o);
+      const urgency = busUrgency(
+        {
+          status: str(r.status),
+          day,
+          callTime: str(r.call_time),
+          buses: Array.isArray(r.buses)
+            ? (r.buses as { planned?: string; cancelled?: boolean }[])
+            : [],
+        },
+        today,
+        nowMin,
+      );
+      if (urgency) out.urgent.push({ ...o, time: urgency.time, minutes: urgency.minutes });
+      else if (r.status === "en_cours") out.running.push(o);
       else if (late >= CLOSE_DAYS) out.toClose.push(o);
       else out.toConfirm.push(o);
     }
   }
-  if (can(user, "taxi:read")) {
+  if (!screen && can(user, "taxi:read")) {
     const rows = await pb
       .collection("taxi_orders")
       .getFullList({
@@ -131,7 +151,14 @@ function legsOf(
 ): HandoverLeg[] {
   const legs: HandoverLeg[] = [];
   const add = (
-    m: { id: string; day: string; train: string; transport: string; status: string },
+    m: {
+      id: string;
+      day: string;
+      train: string;
+      transport: string;
+      status: string;
+      absent?: boolean;
+    },
     kind: "pmr" | "groupe",
     l: ReturnType<typeof legOf>,
     detail: string,
@@ -151,6 +178,7 @@ function legsOf(
         io,
         detail,
         impact,
+        ...(m.absent ? { absent: true } : {}),
       });
     };
     if (l.inA) push("IN", l.dep, l.depTime, l.depDistrict);
@@ -163,18 +191,27 @@ function legsOf(
   return legs;
 }
 
-export async function buildHandover(user: SessionUser, codes: string[]): Promise<Handover> {
+/**
+ * `opts.screen` : compte « Écran » du poste partagé (`/tv`), sans droit de module : bons bus ouverts, missions PMR (sans
+ * nom), trains, ALEA et urgences du Journal, lus selon les règles PocketBase propres à ce rôle ; ni taxis ni groupes.
+ */
+export async function buildHandover(
+  user: SessionUser,
+  codes: string[],
+  opts: { screen?: boolean } = {},
+): Promise<Handover> {
+  const screen = opts.screen === true && user.role === "screen";
   const now = new Date();
   const today = brusselsDay(now);
   const tomorrow = addDays(today, 1);
   const nowHm = brusselsTime(now);
-  const canPmr = can(user, "deplacements:read");
-  const canGroups = can(user, "pmr:read");
+  const canPmr = screen || can(user, "deplacements:read");
+  const canGroups = !screen && can(user, "pmr:read");
   const pb = await pbForRequest();
   const since = toPbInstant(new Date(now.getTime() - 12 * 3600_000).toISOString());
 
   const [orderParts, assists, groups, states, marks, logRows] = await Promise.all([
-    orders(user),
+    orders(user, screen),
     canPmr
       ? listAssists({ from: today, to: tomorrow, hideCancelled: true }, { canPmr: false })
           .then((r) => r.rows)
@@ -196,7 +233,7 @@ export async function buildHandover(user: SessionUser, codes: string[]): Promise
           })
           .catch(() => [] as RecordModel[])
       : Promise.resolve([] as RecordModel[]),
-    can(user, "journal:read")
+    screen || can(user, "journal:read")
       ? pb
           .collection("ops_log")
           .getFullList({
@@ -223,7 +260,7 @@ export async function buildHandover(user: SessionUser, codes: string[]): Promise
     .sort((a, b) => a.day.localeCompare(b.day) || a.time.localeCompare(b.time));
   // Trains en retard : missions du jour (pas encore passées à la gare assistée).
   const delays = allLegs
-    .filter((l) => l.day === today && l.impact && !l.impact.left)
+    .filter((l) => l.day === today && l.impact && !l.impact.left && !l.absent)
     .sort(
       (a, b) =>
         Number(b.impact!.cancelled) - Number(a.impact!.cancelled) ||

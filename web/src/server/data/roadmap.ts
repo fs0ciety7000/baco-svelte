@@ -26,6 +26,8 @@ export type RoadmapRow = {
   client: string;
   extra: string;
   cancelled: boolean;
+  /** Encore « prévue » mais absente de la dernière synchro DICOS complète : signalée « à vérifier ». */
+  absent?: boolean;
 };
 
 export type Roadmap = {
@@ -88,6 +90,7 @@ export async function buildRoadmap(user: SessionUser, day: string, gare: string)
         .filter(Boolean)
         .join(" · "),
       cancelled: a.status === "annulee",
+      absent: !!a.absent,
     };
     if (l.inA && sameStation(l.dep, k))
       rows.push({ ...base, time: l.depTime, io: "IN", other: `vers ${l.arr}` });
@@ -105,6 +108,7 @@ export async function buildRoadmap(user: SessionUser, day: string, gare: string)
         .filter(Boolean)
         .join(" · "),
       cancelled: g.status === "annulee",
+      absent: !!g.absent,
     };
     if (l.inA && sameStation(l.dep, k))
       rows.push({ ...base, time: l.depTime, io: "IN", other: `vers ${l.arr}` });

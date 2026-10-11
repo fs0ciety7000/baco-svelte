@@ -35,3 +35,13 @@ onRecordAfterDeleteSuccess((e) => {
 	e.app.db().newQuery('DELETE FROM order_events WHERE kind = {:kind} AND "order" = {:id}').bind({ kind: kind, id: e.record.id }).execute();
 	e.next();
 }, 'bus_orders', 'taxi_orders');
+
+// Toutes les 5 minutes (heures de Bruxelles) : bon bus envoyé mais pas confirmé dont le premier départ est dans 2 h au plus
+// (ou passé depuis 1 h au plus) → notification aux agents du district, une fois par bon (lib/alerts.js, 11 oct. 2026).
+cronAdd('bus-h2', '*/5 * * * *', () => {
+	try {
+		require(`${__hooks}/lib/alerts.js`).busH2Alert($app);
+	} catch (err) {
+		console.log('bus-h2', String(err));
+	}
+});

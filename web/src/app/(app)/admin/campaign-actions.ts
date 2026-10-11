@@ -103,7 +103,7 @@ export async function sendCampaignTest(id: string): Promise<Result<{ to: string 
 async function recipients() {
   const pb = await pbForRequest();
   const rows = await pb.collection("users").getFullList({
-    filter: 'role != "disabled" && role != "connector"',
+    filter: 'role != "disabled" && role != "connector" && role != "screen"',
     fields: "id,name,email",
     sort: "name",
   });
