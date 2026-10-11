@@ -46,6 +46,8 @@ export function MobileTabBar() {
                 <Link
                   href={m.href}
                   aria-current={isActive ? "page" : undefined}
+                  // Libellé court affiché (« Bons »), nom complet annoncé (« Commandes »).
+                  aria-label={m.shortLabel ? m.label : undefined}
                   style={{ "--mod": modColor(m.id) } as React.CSSProperties}
                   className={cn(item, isActive && "text-(--mod)")}
                 >

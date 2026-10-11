@@ -11,8 +11,6 @@ import { toast } from "@/components/ui/toast";
 import { DUTY_DISTRICTS, DUTY_SHORT } from "@/lib/ops/log";
 import { cn } from "@/lib/utils";
 
-const DISMISS_KEY = "csm-districts-plus-tard";
-
 function DutyDialog({
   open,
   onOpenChange,
@@ -130,87 +128,5 @@ export function DutyChip({ districts, today }: { districts: string[]; today: boo
       </button>
       <DutyDialog open={open} onOpenChange={setOpen} initial={today ? districts : []} />
     </>
-  );
-}
-
-/**
- * Bandeau du matin (non bloquant) : tant que l'agent n'a pas coché ses districts du jour. « Plus tard » le masque
- * jusqu'au lendemain (navigateur seulement).
- */
-export function DutyBanner({ day, initial }: { day: string; initial: string[] }) {
-  const router = useRouter();
-  const [hidden, setHidden] = useState(true);
-  const [picked, setPicked] = useState<string[]>(initial);
-  const [pending, start] = useTransition();
-  useEffect(() => {
-    try {
-      if (window.localStorage.getItem(DISMISS_KEY) === day) return;
-    } catch {}
-    setHidden(false);
-  }, [day]);
-  if (hidden) return null;
-  const later = () => {
-    setHidden(true);
-    try {
-      window.localStorage.setItem(DISMISS_KEY, day);
-    } catch {}
-  };
-  return (
-    <div
-      role="region"
-      data-print="hide"
-      aria-label="Districts du jour"
-      data-testid="duty-banner"
-      className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-accent-faint px-4 py-2 md:px-6"
-    >
-      <span className="inline-flex items-center gap-1.5 text-small font-medium text-fg">
-        <MapPin aria-hidden className="size-4 text-accent" /> Où travailles-tu aujourd&apos;hui ?
-      </span>
-      <span className="flex flex-wrap gap-1.5">
-        {DUTY_DISTRICTS.map((d) => {
-          const on = picked.includes(d);
-          return (
-            <button
-              key={d}
-              type="button"
-              role="checkbox"
-              aria-checked={on}
-              onClick={() => setPicked(on ? picked.filter((x) => x !== d) : [...picked, d])}
-              className={cn(
-                "h-control-sm min-w-11 cursor-pointer border px-3 text-small transition-colors",
-                on
-                  ? "border-accent bg-accent-soft text-fg"
-                  : "border-border-strong bg-surface text-fg-muted hover:text-fg",
-              )}
-              title={d}
-            >
-              {DUTY_SHORT[d]} <span className="max-sm:hidden">· {d}</span>
-            </button>
-          );
-        })}
-      </span>
-      <span className="ml-auto flex gap-1.5">
-        <Button size="sm" variant="ghost" onClick={later}>
-          Plus tard
-        </Button>
-        <Button
-          size="sm"
-          variant="primary"
-          disabled={pending || !picked.length}
-          data-testid="duty-save"
-          onClick={() =>
-            start(async () => {
-              const res = await setDutyDistricts(picked);
-              if (!res.ok) return void toast.error(res.error);
-              toast.success(`Districts du jour : ${picked.map((d) => DUTY_SHORT[d]).join(", ")}.`);
-              setHidden(true);
-              router.refresh();
-            })
-          }
-        >
-          Valider
-        </Button>
-      </span>
-    </div>
   );
 }

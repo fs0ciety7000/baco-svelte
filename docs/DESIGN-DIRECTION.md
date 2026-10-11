@@ -205,3 +205,26 @@ Validés par l'utilisateur après l'audit (`docs/design/AUDIT-INTERFACE.md`) et 
   (14 en compact). Badges, en-têtes de tableau, titres de toast et d'état vide en **casse normale** ; les capitales
   mono restent pour les sourcils et horodatages.
 - Bande arc-en-ciel des StatCards **retirée** (décorative).
+
+## Écarts validés — évolution « poste d'exploitation » (11 oct. 2026)
+
+Validés par l'utilisateur après le verdict design et l'ébauche (artefact privé « Ébauche CSM v3 ») ; les 11 thèmes du
+9 oct. restent **intacts** (formes, typographies, couleurs), sous « Autres thèmes » dans le sélecteur.
+
+- **Trois thèmes de référence mis en avant** : **Jour** (clair, accent pétrole), **Nuit** (sombre, accent ambre) et
+  **Contraste élevé** (noir / blanc / jaune, AAA). « Automatique » = Nuit / Jour. Forme **`net`** (rayon 4 px, sans
+  chanfrein) et typographie **`pro`** : une seule voix, Geist en casse normale pour les titres **et les libellés**
+  (`.label-mono` suit `--label-font` / `--label-case` / `--label-track`) ; la mono ne sert plus qu'aux n° de train,
+  heures, références et colonnes de chiffres. L'ancien « Contraste élevé » (angles) reste disponible.
+- **Haut de page sur une ligne** (barre de 48 px) : module courant + onglets dans la barre du haut en desktop (onglets
+  sous la barre en mobile), titre de page gardé pour les lecteurs d'écran, districts du jour en **puce** (ambre tant que
+  le jour n'est pas coché) au lieu du bandeau pleine largeur.
+- **Barre latérale utile** : compteur par module (bons à confirmer en `warn`, missions impactées en `danger`, non lus du
+  Journal en `info`) et **état des flux** en pied (temps réel, DICOS) ; « En direct » n'est plus répété sur les cartes.
+- **Accueil « À traiter »** : bande de compteurs compacte (un cadre, séparateurs) et file d'actions triée par gravité
+  (bande de couleur à gauche) ; les widgets restent personnalisables dessous ; états vides d'une ligne.
+- **Listes** : plus de bouton « Filtrer » (filtrage automatique, Entrée conservée) ; « Effacer les filtres » seulement si
+  un filtre est actif.
+- **Panneau de détail ancré** à droite dès 1280 px (28 rem, sans voile, la page se resserre) ; en dessous, panneau
+  modal comme avant.
+- **Barre d'onglets mobile** : libellés courts (« Bons », « Opér. », « Annuaire »), nom complet annoncé.

@@ -933,6 +933,19 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   « introuvable » de l'appli (globale + dans le shell), en préversion. Pages Cloudflare « serveur injoignable » prêtes mais
   **impossibles en offre gratuite**. Taupe passé derrière le proxy Cloudflare (IP joueur par `CF-Connecting-IP`, liste blanche).
 
+- 2026-10-11 — **Évolution du design « poste d'exploitation »** (demande : « le design est-il en phase avec le but et
+  le côté professionnel ? ») : verdict d'un agent design (interface vue en local), ébauche publiée en artefact privé, audit
+  produit (top 8). **Validé par l'utilisateur**, avec deux réserves : **les PACO/RCCA gardent la réouverture des bons**
+  (pas de réservation au modérateur) et **les 11 thèmes du 9 oct. restent intacts** (sous « Autres thèmes »). Livré :
+  thèmes de référence **Jour / Nuit / Contraste élevé** (Geist, rayon 4 px, libellés sans mono ; « Automatique » =
+  Nuit / Jour), barre du haut sur une ligne avec onglets et **puce des districts du jour** (le bandeau est retiré),
+  **compteurs** dans la barre latérale et état des flux, **accueil « À traiter »** (bande de compteurs + file par gravité ;
+  « Vue du jour » et « À confirmer » y sont repris), filtres sans bouton « Filtrer », **panneau ancré** dès 1280 px.
+  Correctifs : barre d'onglets mobile qui se chevauchait, recherche Admin (filtre `email` refusé par PocketBase →
+  JavaScript), PDF d'archive produit **après** la clôture (`after()`). Lancés en parallèle (agents) : alertes H-2 /
+  rôle Écran / synchro DICOS, recherche de gare / fournisseurs / supervision / conservation du Journal, import
+  différentiel BACO pour le gel.
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)

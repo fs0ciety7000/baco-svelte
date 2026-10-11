@@ -31,13 +31,9 @@ test("navigation principale et onglets en routes", async ({ page, isMobile }, te
   await login(page);
   if (isMobile) {
     const bar = page.getByRole("navigation", { name: "Navigation principale" });
-    await expect(bar.getByRole("link")).toHaveText([
-      "Accueil",
-      "Commandes",
-      "PMR",
-      "Opérations",
-      "Ressources",
-    ]);
+    // Libellés courts affichés (11 oct. 2026), noms complets annoncés.
+    await expect(bar.getByRole("link")).toHaveText(["Accueil", "Bons", "PMR", "Opér.", "Annuaire"]);
+    await expect(bar.getByRole("link", { name: "Commandes", exact: true })).toBeVisible();
     await bar.getByRole("button", { name: "Plus" }).click();
     const sheet = page.getByRole("dialog", { name: "Plus" });
     // « Ressources » est dans la barre du bas depuis le 9 oct. 2026 : plus dans « Plus ».
@@ -50,13 +46,14 @@ test("navigation principale et onglets en routes", async ({ page, isMobile }, te
     await expect(page).toHaveURL(/\/equipe\/profil$/);
   } else {
     const side = page.getByRole("navigation", { name: "Navigation principale" });
+    // Les compteurs (non lus, à confirmer…) suivent le libellé du module.
     await expect(side.getByRole("list").getByRole("link")).toHaveText([
-      "Accueil",
-      "Commandes",
-      "PMR",
-      "Opérations",
-      "Ressources",
-      "Équipe",
+      /^Accueil/,
+      /^Commandes/,
+      /^PMR/,
+      /^Opérations/,
+      /^Ressources/,
+      /^Équipe/,
     ]);
     await side.getByRole("link", { name: "Commandes" }).click();
     await expect(page).toHaveURL(/\/commandes$/);

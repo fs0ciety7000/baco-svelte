@@ -260,7 +260,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - Continuité ligne → panneau : `ghostFlip` (`lib/motion.ts`) déclenché par `Sheet` à l'ouverture depuis la dernière ligne
   cliquée (< 800 ms) ; rien en mouvement réduit.
 - Widgets d'accueil : `pmr-jour` (« Aujourd'hui en PMR », `todayPmr`) et `mentions` (« Mentions et alertes », même source
-  que la cloche). 10 widgets (`WIDGET_IDS`) : l'E2E shell en compte 10.
+  que la cloche). 10 widgets dans `WIDGET_IDS`, 8 affichés depuis le 11 oct. 2026 (l'E2E shell en compte 8).
 - Impression : `@media print` dans `globals.css` (thème clair forcé, shell / filtres / actions masqués via
   `data-print="hide"`, `FilterForm` et `ChipRow` masqués, vue tableau imprimée, fil du Journal en entier) ; bouton
   « Imprimer » dans le Journal.
@@ -339,4 +339,14 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   ne bloque jamais la clôture ; taxi archivé avec `redactPmr`), page `/commandes/archives` (`archives:read`), routes de
   téléchargement `/api/commandes/archives/<id>` (`?dl=1`) et `/api/commandes/archives/sauvegardes/<id>`, actions admin
   `archivePending` / `backupNow`, suppression `archives:delete`.
-
+- **Shell v3 (11 oct. 2026)** : `Topbar` affiche le module courant et `ModuleTabs variant="bar"` (desktop) ; `ModuleLayout`
+  garde le `h1` en `sr-only`, n'affiche qu'une ligne `eyebrow` / `actions` si présentes et les onglets sous 768 px.
+  Puce des districts : `DutyChip` dans la barre du haut (`ShellUser.duty`, calculé dans `(app)/layout.tsx`) ; `DutyBanner`
+  n'est plus monté. Compteurs et état des flux : `ShellStatusProvider` / `useShellStatus()` (`components/shell/shell-status.tsx`,
+  relu au changement en direct, toutes les 60 s, onglet visible seulement) → action `shellStatus()` (`app/shell-actions.ts`,
+  droits de l'agent, débit 40/min, `null` si dépassé). Accueil : `components/dashboard/todo.tsx` (`todoItems` testé,
+  `TodoQueue`, `KpiStrip`) ; widgets `commandes` / `a-confirmer` gardés dans `WIDGET_IDS` mais non affichés (8 widgets) ;
+  « Monter / Descendre » échangent avec le voisin affiché. États vides compacts : `data-compact-empty` sur un parent
+  (CSS dans `globals.css`, `EmptyState` porte `data-slot`). Filtres : `FilterSubmit` (soumission auto + bouton invisible
+  pour Entrée) et `ClearFilters` (`components/ui/filters.tsx`). `Sheet` : `modal={false}` et ancré (`top-12`, 28 rem)
+  dès 1280 px, `html[data-sheet-docked]` resserre `#contenu`. `LiveRefresh quiet` : rien de visible en direct.

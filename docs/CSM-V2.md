@@ -129,7 +129,7 @@ Dans Coolify, deux ressources :
 
 ## 7. Feuille de route v2
 
-> Mise à jour le 9 octobre 2026. L'état détaillé et le journal des décisions sont dans `CLAUDE.md` §1 et §8.
+> Mise à jour le 11 octobre 2026. L'état détaillé et le journal des décisions sont dans `CLAUDE.md` §1 et §8.
 
 | # | Étape | État |
 |---|---|---|
@@ -137,16 +137,16 @@ Dans Coolify, deux ressources :
 | 1 | Prototype PocketBase + squelette Next | ✅ 8 oct. (PocketBase 0.40.4 retenu, `docs/BACKEND-DECISION.md`) |
 | 2 | Design system, `/design` | ✅ 8 oct. |
 | 3 | Shell (6 modules, onglets, ⌘K, mobile) + tableau de bord | ✅ 8 oct. |
-| 4 | Données : schéma, règles, import | 🔄 données BACO importées sur l'instance de test ; **migration réelle à la bascule** |
-| 5 | Modules | ✅ Commandes, PMR, Opérations, DICOS / Missions PMR et Groupes, Annuaire et données validés · **Équipe et Admin livrés, à valider** |
-| 6 | Déploiement test-csm.fs0ciety.org, CI | ✅ 8 oct. (`docs/DEPLOIEMENT-V2.md`) ; sauvegardes hors serveur R2 prêtes (variables à poser) |
-| 7 | Finition de l'interface (11 thèmes, motion, UX) | ✅ 9 oct. (lots 0 à 4 + GSAP) |
+| 4 | Données : schéma, règles, import | ✅ prod construite le 10 oct. depuis Supabase ; **import différentiel des saisies BACO postérieures au gel** à faire (procédure dans `docs/DEPLOIEMENT-V2.md`) |
+| 5 | Modules | ✅ Commandes, PMR, Opérations, DICOS / Missions PMR et Groupes, Ressources, Équipe et Admin validés ; rôles v2 et archives des bons (11 oct.) |
+| 6 | Déploiement, CI | ✅ prod `csm.fs0ciety.org` (10 oct.) + preview `test-csm` ; sauvegardes R2 (prod) ; PocketBase derrière Cloudflare Access |
+| 7 | Finition de l'interface (11 thèmes, motion, UX) | ✅ 9 oct. (lots 0 à 4 + GSAP) ; évolution « poste d'exploitation » le 11 oct. (thèmes Jour / Nuit / Contraste élevé, shell sur une ligne, accueil « À traiter ») |
 | 8 | Extension DICOS (Chrome / Edge / Firefox), jetons personnels | ✅ 9 oct. (v1.7.0, Firefox signé ; Chrome Web Store abandonné le 9 oct. : compte payant, Chrome / Edge restent en `.zip`) |
-| 9 | **Bascule** : import des référentiels reproductible, répétition, liste de contrôle, domaine de production, gel de BACO | ⏳ à planifier avec l'utilisateur |
+| 9 | **Bascule** : gel de BACO, import différentiel, campagne « BACO devient CSM », fermeture de BACO | 🔄 production en ligne ; date de gel à fixer par l'utilisateur |
 
-Restent ouverts hors code : validation d'Équipe et Admin, réponses du DPO (`docs/DPO-CONSERVATION.md`), accès à
-`pb-test-csm` à restreindre (Cloudflare Access / IP), retrait de `CSM_DICOS_TOKEN` quand toutes les extensions sont en
-1.7.0, correctifs SQL BACO non appliqués (`20261008130000`, `20261008140000`).
+Restent ouverts hors code : réponses du DPO (`docs/DPO-CONSERVATION.md`), retrait de `CSM_DICOS_TOKEN` quand toutes les
+extensions sont en 1.7.0, date de gel de BACO (les correctifs SQL BACO `20261008130000` / `20261008140000` deviennent
+sans objet après le gel).
 
 
 **10 octobre 2026 : mise en production** sur `csm.fs0ciety.org` (branche `csm-prod`, données BACO importées) ; `test-csm` devient la preview. Prochain lot proposé : synchronisation du tableau de service Quinyx (qui est en poste).
