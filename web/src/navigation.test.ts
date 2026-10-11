@@ -38,6 +38,8 @@ describe("navigation", () => {
       "equipe",
     ]);
     expect(adminModule({ role: "paco" })).toBeNull();
+    expect(adminModule({ role: "moderator" })).toBeNull();
+    expect(visibleModules({ role: "moderator" }).map((m) => m.id)).toHaveLength(6);
   });
 
   it("administration réservée à l'admin", () => {

@@ -1,9 +1,9 @@
 // Module Opérations : logique partagée par les hooks (les callbacks JSVM sont isolés, voir operations.pb.js).
 
-// Rôles v2 (11 oct. 2026) : PACO/RCCA = coordinateurs ; l'invité ne lit que les commandes bus et taxi.
-const COORD_ROLES = ['admin', 'sysop', 'paco'];
+// Rôles v2 (11 oct. 2026) : modérateur et PACO/RCCA = coordinateurs ; l'invité ne lit que les commandes bus et taxi.
+const COORD_ROLES = ['admin', 'sysop', 'moderator', 'paco'];
 // Rôles qui lisent le Journal par défaut (journal:read).
-const LOG_READERS = ['admin', 'sysop', 'paco'];
+const LOG_READERS = ['admin', 'sysop', 'moderator', 'paco'];
 const MAX_WATCHES = 10;
 
 function isCoord(auth) {
@@ -494,7 +494,7 @@ function missionTrains(app, at) {
 	const ddmmyy = `${today.slice(8, 10)}${today.slice(5, 7)}${today.slice(2, 4)}`;
 	const users = app
 		.findRecordsByFilter('users', 'role != "disabled" && role != "connector"', '', 500, 0)
-		.filter((u) => hasPerm(u, 'deplacements:read', ['paco']));
+		.filter((u) => hasPerm(u, 'deplacements:read', ['moderator', 'paco']));
 	const collection = app.findCollectionByNameOrId('mission_trains');
 	const started = Date.now();
 	const trains = Object.keys(byTrain).slice(0, 60);

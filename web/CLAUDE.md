@@ -320,7 +320,8 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   chargent deux copies du module) ; sujet SSE **`presence`** produit par Next (jamais
   envoyé à PocketBase), action `onlineAgents()` (`equipe/actions.ts` → `listOnline`, champs de l'annuaire seulement).
   Une seule instance Next par environnement : si un jour plusieurs répliques, passer par PocketBase.
-- **Rôles v2** (11 oct. 2026) : `lib/permissions.ts` = source unique côté web. Rôles `admin`, `sysop`, `paco` (PACO/RCCA),
+- **Rôles v2** (11 oct. 2026) : `lib/permissions.ts` = source unique côté web. Rôles `admin`, `sysop`, `moderator` (Modérateur : tout le catalogue, suppression comprise, Nouveautés via
+  `canEditChangelog`, pas l'administration), `paco` (PACO/RCCA),
   `guest` (Invité) ; `PERMISSION_MODULES` (catalogue : module × actions `read` / `write` = création / `update` =
   modification / `delete`), `ROLE_DEFAULTS` (paco : tout sauf `:delete` ; guest : `otto:read`, `generate_taxi:read`),
   `isCoordinator()` remplace les anciens tests `role === "moderator"`. Toujours tester **`X:update`** pour modifier un

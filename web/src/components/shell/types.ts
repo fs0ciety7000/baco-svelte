@@ -15,6 +15,7 @@ export type ShellUser = {
 export const ROLE_LABEL: Record<Role, string> = {
   admin: "Administrateur",
   sysop: "Sysop",
+  moderator: "Modérateur",
   paco: "PACO/RCCA",
   guest: "Invité",
   disabled: "Désactivé",

@@ -19,7 +19,7 @@ import { listUsers } from "@/server/data/admin";
 export const metadata: Metadata = { title: "Utilisateurs · CSM" };
 
 type SP = { q?: string; role?: string; district?: string };
-const ROLES = ["admin", "sysop", "paco", "guest", "disabled"];
+const ROLES = ["admin", "sysop", "moderator", "paco", "guest", "disabled"];
 
 export default async function Page({ searchParams }: { searchParams: Promise<SP> }) {
   // Garde dans la page (pas seulement le layout) : Next rend layout et page en parallèle.

@@ -4,7 +4,7 @@ import { unstable_rethrow } from "next/navigation";
 import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 
-import { isAdmin } from "@/lib/permissions";
+import { canEditChangelog } from "@/lib/permissions";
 import { requireUser } from "@/server/auth";
 import { pbForRequest } from "@/server/data/orders";
 import { createPb } from "@/server/pocketbase";
@@ -17,7 +17,7 @@ import { listOnline, type OnlineMember } from "@/server/data/team";
 import { onlineUsers } from "@/server/presence";
 import { currentSid } from "@/server/sessions";
 
-// Écritures du module Équipe : profil de l'agent, mot de passe, Nouveautés (admin, sysop).
+// Écritures du module Équipe : profil de l'agent, mot de passe, Nouveautés (admin, sysop, modérateur).
 
 type Result = { ok: true } | { ok: false; error: string };
 const pbId = z.string().regex(/^[a-z0-9]{15}$/);
@@ -159,8 +159,8 @@ const changelogSchema = z.object({
 
 async function editor() {
   const user = await requireUser();
-  // Nouveautés : administrateurs seulement depuis les rôles v2 (11 oct. 2026).
-  if (!isAdmin(user)) throw new Error("DROIT:Réservé aux administrateurs.");
+  // Nouveautés : administrateurs et modérateurs (rôles v2, 11 oct. 2026).
+  if (!canEditChangelog(user)) throw new Error("DROIT:Réservé aux administrateurs et modérateurs.");
   return user;
 }
 

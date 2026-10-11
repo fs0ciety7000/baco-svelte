@@ -13,7 +13,7 @@ import { sessionAlive } from "./sessions";
 import { isExpired, tokenPayload } from "./token";
 
 // Rôles v2 (11 oct. 2026) : Administrateur, Sysop, PACO/RCCA, Invité.
-export const ROLES = ["admin", "sysop", "paco", "guest", "disabled"] as const;
+export const ROLES = ["admin", "sysop", "moderator", "paco", "guest", "disabled"] as const;
 
 const userSchema = z.object({
   id: z.string(),

@@ -3,6 +3,7 @@
 export const ROLE_LABEL: Record<string, string> = {
   admin: "Administrateur",
   sysop: "Sysop",
+  moderator: "Modérateur",
   paco: "PACO/RCCA",
   guest: "Invité",
   disabled: "Désactivé",

@@ -768,13 +768,14 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   heure d'arrivée). Présence = au moins un onglet CSM ouvert, calculée par le serveur Next à partir des flux SSE (rien en
   base, rien de conservé).
 - 2026-10-11 — **Rôles v2, Ressources, documents** (demande de l'utilisateur) : menu « Annuaire et données » → **« Ressources »** ;
-  rôles **Administrateur / Sysop** (tout), **PACO/RCCA** (`paco` : lecture partout, écriture et modification, pas de
+  rôles **Administrateur / Sysop** (tout), **Modérateur** (`moderator` : PACO/RCCA + suppression partout et Nouveautés,
+  pas d'administration ; ajouté à la demande de l'utilisateur), **PACO/RCCA** (`paco` : lecture partout, écriture et modification, pas de
   suppression ; districts DSO / DSE / DCE en combinaison libre = filtres et alertes, pas de limite d'écriture), **Invité**
   (`guest` : lecture bus et taxis) ; **tous les comptes BACO deviennent PACO/RCCA** (choix de l'utilisateur), les deux
   invités sont à régler par l'admin dans l'interface (aucun nom dans le dépôt). Droits par module en **4 actions**
   (lecture, écriture, modification, suppression) avec héritage (grants / denies), matrice dans la fiche d'un compte ;
-  migration `1760002800` (règles réécrites, comptes convertis, `X:write` → `X:update`), 280 contrôles de règles. Les
-  Nouveautés passent à l'admin seul. **Bordure d'avatar** par rôle (accent doublé pour admin / sysop). **Documents** : envoi
+  migration `1760002800` (règles réécrites, comptes convertis, `X:write` → `X:update`), 290 contrôles de règles. Les
+  Nouveautés : admin et modérateur. **Bordure d'avatar** par rôle (accent doublé pour admin / sysop). **Documents** : envoi
   jusqu'à 30 Mo par route (la Server Action était limitée à 1 Mo : l'envoi de vrais documents échouait), depuis la
   bibliothèque **et depuis une procédure** ; **visionneuse** PDF / image + téléchargement (Word, Excel… en téléchargement :
   pas de conversion, choix de l'utilisateur). Corrigé en route : halo de la pastille « en ligne » démesuré en desktop.

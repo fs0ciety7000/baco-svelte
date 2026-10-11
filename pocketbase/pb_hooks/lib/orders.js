@@ -18,7 +18,7 @@ const TRANSITIONS = {
 // Délai avant de pouvoir clôturer un bon envoyé jamais confirmé (jours après la date de service).
 const CLOSE_DAYS = 5;
 
-// Transitions réservées aux coordinateurs : admin, sysop et PACO/RCCA (rôles v2 du 11 oct. 2026).
+// Transitions réservées aux coordinateurs : admin, sysop, modérateur et PACO/RCCA (rôles v2 du 11 oct. 2026).
 // « en cours → confirmé » aussi : sinon un agent contournerait l'annulation réservée (en cours → confirmé → annulé).
 const COORDINATOR = {
 	en_cours: ['confirme', 'annule'],
@@ -38,7 +38,7 @@ function isCoordinator(auth) {
 	if (!auth) return false;
 	if (auth.isSuperuser()) return true;
 	const role = auth.getString('role');
-	return role === 'admin' || role === 'sysop' || role === 'paco';
+	return role === 'admin' || role === 'sysop' || role === 'moderator' || role === 'paco';
 }
 
 function now() {

@@ -37,10 +37,10 @@ if (!su.json?.token) throw new Error(`Connexion superuser impossible (${su.statu
 const root = su.json.token;
 
 const suffix = Math.random().toString(36).slice(2, 8);
-const roles = { admin: null, user: null, reader: null, otto_agent: null, denied: null, moderator: null };
+const roles = { admin: null, user: null, reader: null, otto_agent: null, denied: null, moderator: null, modo: null };
 // Rôles v2 (11 oct. 2026) : les clés historiques des tests désignent désormais PACO/RCCA (user, moderator, denied)
 // ou Invité (reader, otto_agent : lecture des commandes bus et taxi seulement).
-const ROLE_OF = { admin: 'admin', user: 'paco', moderator: 'paco', denied: 'paco', reader: 'guest', otto_agent: 'guest' };
+const ROLE_OF = { admin: 'admin', user: 'paco', moderator: 'paco', denied: 'paco', reader: 'guest', otto_agent: 'guest', modo: 'moderator' };
 const created = [];
 // Fiches de test supprimées par le superuser : leurs lignes d'audit sont nettoyées à la fin.
 const auditIds = [];
@@ -362,8 +362,11 @@ try {
 	}
 	const zone = await api('POST', '/api/collections/pmr_zones/records', { token: roles.admin.token, body: { code: `Z${suffix.toUpperCase().slice(0, 4)}`, district: 'Sud-Ouest', stations: ['XTEST'] } });
 	check('coordinateur crée une zone', zone.status === 200, `HTTP ${zone.status}`);
-	const zu = await api('POST', '/api/collections/pmr_zones/records', { token: u.token, body: { code: 'ZZZ' } });
-	check('agent ne crée pas de zone', zu.status >= 400, `HTTP ${zu.status}`);
+	const zu = await api('POST', '/api/collections/pmr_zones/records', { token: roles.reader.token, body: { code: `G${suffix.toUpperCase().slice(0, 4)}` } });
+	check("l'invité ne crée pas de zone", zu.status >= 400, `HTTP ${zu.status}`);
+	const zp = await api('POST', '/api/collections/pmr_zones/records', { token: u.token, body: { code: `P${suffix.toUpperCase().slice(0, 4)}` } });
+	check('PACO/RCCA crée une zone (coordinateur)', zp.status === 200, `HTTP ${zp.status}`);
+	if (zp.json?.id) { await api('DELETE', `/api/collections/pmr_zones/records/${zp.json.id}`, { token: root }); auditIds.push(zp.json.id); }
 	const as = await api('POST', '/api/collections/pmr_assists/records', {
 		token: u.token,
 		body: { day: '2099-03-01', time: '14:30', station: 'xtest', status: 'prevue', created_by: u.id, updated_by: u.id, pax: 1 }
@@ -849,11 +852,39 @@ try {
 		check('PACO/RCCA ne supprime pas un bon', v2pd.status >= 400, `HTTP ${v2pd.status}`);
 		await api('PATCH', `/api/collections/users/records/${roles.moderator.id}`, { token: root, body: { denies: [] } });
 		for (const r of [pacoBus, v2nc]) if (r.json?.id) { await api('DELETE', `/api/collections/bus_orders/records/${r.json.id}`, { token: root }); auditIds.push(r.json.id); }
+		// Modérateur : PACO/RCCA + suppression partout et Nouveautés ; ni comptes ni réglages.
+		const md = roles.modo;
+		const mdBus = await api('POST', '/api/collections/bus_orders/records', { token: md.token, body: { status: 'brouillon', created_by: md.id } });
+		check('modérateur crée un bon', mdBus.status === 200, `HTTP ${mdBus.status}`);
+		const mdUpd = await api('PATCH', `/api/collections/bus_orders/records/${mdBus.json?.id}`, { token: md.token, body: { reason: 'm' } });
+		check('modérateur modifie un bon', mdUpd.status === 200, `HTTP ${mdUpd.status}`);
+		const mdDel = await api('DELETE', `/api/collections/bus_orders/records/${mdBus.json?.id}`, { token: md.token });
+		check('modérateur supprime un bon', mdDel.status === 204, `HTTP ${mdDel.status}`);
+		if (mdBus.json?.id) auditIds.push(mdBus.json.id);
+		const mdCt = await api('POST', '/api/collections/directory_contacts/records', { token: md.token, body: { name: 'Contact modo', updated_by: md.id } });
+		const mdCtDel = await api('DELETE', `/api/collections/directory_contacts/records/${mdCt.json?.id}`, { token: md.token });
+		check('modérateur supprime un contact', mdCt.status === 200 && mdCtDel.status === 204, `HTTP ${mdCt.status}/${mdCtDel.status}`);
+		if (mdCt.json?.id) auditIds.push(mdCt.json.id);
+		const mdCl = await api('POST', '/api/collections/changelog/records', { token: md.token, body: { title: 'Modo', type: 'nouveau', author: md.id } });
+		check('modérateur publie une nouveauté', mdCl.status === 200, `HTTP ${mdCl.status}`);
+		if (mdCl.json?.id) await api('DELETE', `/api/collections/changelog/records/${mdCl.json.id}`, { token: md.token });
+		await api('PATCH', `/api/collections/users/records/${md.id}`, { token: root, body: { denies: ['otto:delete'] } });
+		const mdBus2 = await api('POST', '/api/collections/bus_orders/records', { token: md.token, body: { status: 'brouillon', created_by: md.id } });
+		const mdDel2 = await api('DELETE', `/api/collections/bus_orders/records/${mdBus2.json?.id}`, { token: md.token });
+		check('modérateur avec otto:delete retiré : ne supprime pas', mdDel2.status >= 400, `HTTP ${mdDel2.status}`);
+		if (mdBus2.json?.id) { await api('DELETE', `/api/collections/bus_orders/records/${mdBus2.json.id}`, { token: root }); auditIds.push(mdBus2.json.id); }
+		await api('PATCH', `/api/collections/users/records/${md.id}`, { token: root, body: { denies: [] } });
+		const mdRole = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: md.token, body: { role: 'admin' } });
+		check('modérateur ne gère pas les comptes', mdRole.status >= 400, `HTTP ${mdRole.status}`);
+		const mdSelf = await api('PATCH', `/api/collections/users/records/${md.id}`, { token: md.token, body: { role: 'admin' } });
+		check('modérateur ne change pas son rôle', mdSelf.status >= 400, `HTTP ${mdSelf.status}`);
+		const mdSet = await api('POST', '/api/collections/app_settings/records', { token: md.token, body: { key: `m_${suffix}`, value: true, updated_by: md.id } });
+		check('modérateur ne modifie pas les réglages', mdSet.status >= 400, `HTTP ${mdSet.status}`);
 		const dSelf = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: u.token, body: { districts: ['Centre'] } });
 		check('districts réservés à l admin', dSelf.status >= 400, `HTTP ${dSelf.status}`);
 		const dAdm = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: roles.admin.token, body: { districts: ['Sud-Ouest', 'Centre'] } });
 		check('admin règle plusieurs districts', dAdm.status === 200 && dAdm.json.districts?.length === 2, `HTTP ${dAdm.status}`);
-		const oldRole = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: roles.admin.token, body: { role: 'moderator' } });
+		const oldRole = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: roles.admin.token, body: { role: 'user' } });
 		check('anciens rôles refusés', oldRole.status >= 400, `HTTP ${oldRole.status}`);
 	}
 

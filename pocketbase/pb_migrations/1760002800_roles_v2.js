@@ -1,7 +1,8 @@
 /// <reference path="../pb_data/types.d.ts" />
-// Rôles v2 (demande du 11 oct. 2026) : Administrateur et Sysop (tout), PACO/RCCA (lecture partout, écriture et
-// modification, jamais de suppression), Invité (lecture des commandes bus et taxi). Les comptes moderator, user,
-// otto_agent et reader deviennent PACO/RCCA (choix de l'utilisateur).
+// Rôles v2 (demande du 11 oct. 2026) : Administrateur et Sysop (tout), Modérateur (PACO/RCCA + suppression partout et
+// Nouveautés, sans l'administration), PACO/RCCA (lecture partout, écriture et modification, jamais de suppression),
+// Invité (lecture des commandes bus et taxi). Les comptes moderator, user, otto_agent et reader existants deviennent
+// PACO/RCCA (choix de l'utilisateur ; l'admin rend le rôle Modérateur à qui doit l'avoir).
 //
 // Droits par module en quatre actions : `X:read` (lecture), `X:write` (écriture = création), `X:update`
 // (modification), `X:delete` (suppression). Le rôle donne les droits par défaut ; `grants` / `denies` les ajoutent ou
@@ -19,17 +20,22 @@
 const ACTIVE = '@request.auth.id != "" && @request.auth.role != "disabled"';
 const ADMIN = '(@request.auth.role = "admin" || @request.auth.role = "sysop")';
 const OLD_ROLES = ['moderator', 'user', 'otto_agent', 'reader'];
-const ROLES = ['admin', 'sysop', 'paco', 'guest', 'disabled', 'connector'];
+const ROLES = ['admin', 'sysop', 'moderator', 'paco', 'guest', 'disabled', 'connector'];
+const ACTIVE_ROLES = ['admin', 'sysop', 'moderator', 'paco', 'guest'];
+const MODERATOR = '@request.auth.role = "moderator"';
 const DISTRICTS = ['Sud-Ouest', 'Sud-Est', 'Centre'];
 // Lecture accordée à l'invité par défaut.
 const GUEST_READ = ['otto:read', 'generate_taxi:read'];
 
+// Suppression : admin, sysop, modérateur (sauf droit retiré) ou droit accordé.
 function canDelete(perm) {
-	return `${ACTIVE} && (${ADMIN} || @request.auth.grants ~ '"${perm}"')`;
+	return `${ACTIVE} && (${ADMIN} || (${MODERATOR} && @request.auth.denies !~ '"${perm}"') || @request.auth.grants ~ '"${perm}"')`;
 }
 
 // Suppressions : droit `X:delete` (les anciennes règles « admin seul » et « coordinateurs » s'y rangent).
 const DELETE_RULES = {
+	bus_orders: canDelete('otto:delete'),
+	taxi_orders: canDelete('generate_taxi:delete'),
 	bus_companies: canDelete('otto:delete'),
 	bus_drivers: canDelete('otto:delete'),
 	bus_contacts: canDelete('otto:delete'),
@@ -49,7 +55,7 @@ const DELETE_RULES = {
 	ebp_views: canDelete('ebp:delete'),
 	documents: canDelete('documents:delete'), // refus si référencé par une procédure : hook referentiels.pb.js
 	procedures: canDelete('documents:delete'),
-	changelog: `${ACTIVE} && ${ADMIN}`
+	changelog: `${ACTIVE} && (${ADMIN} || ${MODERATOR})`
 };
 
 function rolesFor(perm) {
@@ -76,6 +82,8 @@ function rewrite(rule, kind) {
 	s = s.replace(/@request\.auth\.role = "paco"(?: \|\| @request\.auth\.role = "paco")+/g, '@request.auth.role = "paco"');
 	// Modification : droit `X:update` (le connecteur DICOS garde `dicos:write`).
 	if (kind === 'update') s = s.replace(/'"((?!dicos:)[a-z0-9_]+):write"'/g, `'"$1:update"'`);
+	// Le modérateur a tout ce qu'a un PACO/RCCA (parenthèses : l'atome peut être dans un « et »).
+	s = s.split('@request.auth.role = "paco"').join(`(@request.auth.role = "paco" || ${MODERATOR})`);
 	return s;
 }
 
@@ -104,9 +112,9 @@ migrate(
 		// 1. Valeurs de rôle : anciennes + nouvelles le temps de convertir les comptes.
 		const users = app.findCollectionByNameOrId('users');
 		const role = users.fields.getByName('role');
-		role.values = ROLES.concat(OLD_ROLES);
+		role.values = ROLES.concat(OLD_ROLES.filter((r) => r !== 'moderator'));
 		const disabledRole = users.fields.getByName('disabled_role');
-		disabledRole.values = ['admin', 'sysop', 'paco', 'guest'].concat(OLD_ROLES);
+		disabledRole.values = ACTIVE_ROLES.concat(OLD_ROLES.filter((r) => r !== 'moderator'));
 		if (!users.fields.getByName('districts')) {
 			users.fields.add(new SelectField({ name: 'districts', maxSelect: 3, values: DISTRICTS }));
 		}
@@ -129,7 +137,7 @@ migrate(
 
 		// 3. Valeurs définitives ; districts réservés à l'admin (comme `district`).
 		role.values = ROLES;
-		disabledRole.values = ['admin', 'sysop', 'paco', 'guest'];
+		disabledRole.values = ACTIVE_ROLES;
 		users.updateRule = users.updateRule.replace(
 			'@request.body.district:isset = false',
 			'@request.body.district:isset = false && @request.body.districts:isset = false'
@@ -149,9 +157,9 @@ migrate(
 				? DELETE_RULES[c.name]
 				: rewrite(c.deleteRule, 'delete');
 			if (c.name === 'changelog') {
-				// Nouveautés de l'application : administrateurs seulement (les coordinateurs n'existent plus).
-				c.createRule = `${ACTIVE} && ${ADMIN} && @request.body.author = @request.auth.id`;
-				c.updateRule = `${ACTIVE} && ${ADMIN} && @request.body.author:isset = false`;
+				// Nouveautés de l'application : administrateurs et modérateurs.
+				c.createRule = `${ACTIVE} && (${ADMIN} || ${MODERATOR}) && @request.body.author = @request.auth.id`;
+				c.updateRule = `${ACTIVE} && (${ADMIN} || ${MODERATOR}) && @request.body.author:isset = false`;
 			}
 			app.save(c);
 		}
@@ -161,9 +169,9 @@ migrate(
 		// (restaurer une sauvegarde pour revenir réellement en arrière).
 		const users = app.findCollectionByNameOrId('users');
 		const role = users.fields.getByName('role');
-		role.values = ROLES.concat(OLD_ROLES);
+		role.values = ROLES.concat(OLD_ROLES.filter((r) => r !== 'moderator'));
 		const disabledRole = users.fields.getByName('disabled_role');
-		disabledRole.values = ['admin', 'sysop', 'paco', 'guest'].concat(OLD_ROLES);
+		disabledRole.values = ACTIVE_ROLES.concat(OLD_ROLES.filter((r) => r !== 'moderator'));
 		app.save(users);
 		const records = app.findAllRecords('users');
 		for (let i = 0; i < records.length; i++) {

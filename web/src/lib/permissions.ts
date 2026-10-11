@@ -1,11 +1,11 @@
 // Permissions CSM : rôle par défaut + grants / denies par agent (héritage : « Accordé » et « Retiré » s'imposent au rôle).
 // Le contrôle réel est fait par les règles PocketBase ; ce module sert à l'affichage (menus, boutons).
 //
-// Rôles v2 (11 oct. 2026) : Administrateur et Sysop (tout), PACO/RCCA (lecture partout, écriture et modification, pas
-// de suppression), Invité (lecture des commandes bus et taxi). Chaque module a jusqu'à quatre actions : `X:read`
+// Rôles v2 (11 oct. 2026) : Administrateur et Sysop (tout), Modérateur (PACO/RCCA + suppression et Nouveautés, sans
+// l'administration), PACO/RCCA (lecture partout, écriture et modification, pas de suppression), Invité (lecture des commandes bus et taxi). Chaque module a jusqu'à quatre actions : `X:read`
 // (lecture), `X:write` (écriture = création), `X:update` (modification), `X:delete` (suppression).
 
-export type Role = "admin" | "sysop" | "paco" | "guest" | "disabled";
+export type Role = "admin" | "sysop" | "moderator" | "paco" | "guest" | "disabled";
 
 export type Action = "read" | "write" | "update" | "delete";
 
@@ -89,6 +89,8 @@ const LEGACY_READ = ["planning:read", "bus:read", "taxi:read", "ops:read", "lign
 const ROLE_DEFAULTS: Record<Role, string[]> = {
   admin: ["*"],
   sysop: ["*"],
+  // Modérateur : tout le catalogue, suppression comprise ; pas l'administration (comptes, réglages).
+  moderator: [...PERMISSION_KEYS, ...LEGACY_READ],
   // PACO/RCCA : tout sauf la suppression (décision du 11 oct. 2026).
   paco: [...PERMISSION_KEYS.filter((k) => !k.endsWith(":delete")), ...LEGACY_READ],
   // Invité : lecture des commandes bus et taxi.
@@ -123,7 +125,12 @@ export function isAdmin(user: PermissionSubject | null | undefined): boolean {
  * depuis les rôles v2, tout PACO/RCCA, plus les administrateurs. Miroir des hooks PocketBase.
  */
 export function isCoordinator(user: PermissionSubject | null | undefined): boolean {
-  return isAdmin(user) || user?.role === "paco";
+  return isAdmin(user) || user?.role === "moderator" || user?.role === "paco";
+}
+
+/** Nouveautés de l'application : administrateurs et modérateurs. */
+export function canEditChangelog(user: PermissionSubject | null | undefined): boolean {
+  return isAdmin(user) || user?.role === "moderator";
 }
 
 /** Droit accordé par le seul rôle (sans grants / denies) : sert à la matrice « défaut du rôle » de l'admin. */
