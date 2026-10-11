@@ -281,6 +281,65 @@ répétition de la bascule. Le zip reste dans `/pb_data/backups` comme point de 
 - Variables Coolify créées par l'API : forcer `is_buildtime: false` pour les secrets, sinon elles sont aussi passées
   au build.
 
+## 7. Bascule finale : import différentiel BACO → CSM
+
+La production CSM a été construite le **10 octobre 2026** depuis la sauvegarde Supabase `/home/user/csm-backup-prod`
+(prise à **2026-10-10T12:36:11Z**, base construite vers 12:40Z). BACO reste ouvert jusqu'à son gel : ce qui y est saisi
+après cette sauvegarde doit être rapatrié dans CSM **sans écraser** ce que les agents ont fait dans CSM. Outil :
+`pocketbase csm-import-delta` (`pocketbase/pb_hooks/lib/import-delta.js`, détails dans `pocketbase/CLAUDE.md`).
+
+**Règles** : ligne BACO nouvelle et absente de CSM → créée ; présente et identique → rien ; présente, différente et non
+modifiée dans CSM depuis l'import → mise à jour (champs repris de BACO seulement) ; modifiée dans CSM → **conflit, non
+écrasé**, listé ; **jamais de suppression** (supprimé dans BACO → gardé dans CSM ; supprimé dans CSM → pas recréé).
+Comptes : seuls les comptes BACO nouveaux sont créés, **désactivés** (`role = disabled`, rôle rendu à la réactivation :
+`paco`), à valider par un admin ; aucun rôle, mot de passe ni profil existant n'est touché. Une transaction par table ;
+relancer ne duplique rien ; `--dry-run` produit le rapport sans rien écrire.
+
+**La sauvegarde de base `/home/user/csm-backup-prod` est indispensable** (`--base`) : sans elle, les modifications des
+tables sans horodatage (commandes bus, sociétés, annuaire, lignes, PN, SPI…) ne se voient que par le journal d'audit de
+BACO, et les vues EBP ne sont pas traitées. Elle contient des données personnelles et vit dans un environnement éphémère :
+**la garder en archive chiffrée `age` hors dépôt** jusqu'à la bascule.
+
+### Procédure (sur accord de l'utilisateur, à chaque étape touchant la prod)
+
+1. **Gel de BACO** à la date fixée par l'utilisateur (message aux agents, BACO en lecture seule ou fermé ; Vercel n'est
+   pas modifié par Claude). Noter l'heure du gel.
+2. **Sauvegarde Supabase** en lecture seule (GET seuls, inventaire Storage par SELECT) après le gel :
+   `BACKUP_OBJECTS_FILE=objets.json NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt node scripts/supabase-backup.mjs /home/user/csm-backup-gel`
+   (voir `docs/SAUVEGARDE-SUPABASE.md` ; `auth_password_hashes.json` seulement si de nouveaux comptes existent et avec
+   l'accord de l'utilisateur, sinon ils recevront un lien « mot de passe oublié »).
+3. **Mode maintenance de CSM** (Administration › Santé) : les agents ne peuvent plus écrire pendant la fenêtre ; couper la
+   synchro DICOS de l'extension pendant ce temps (l'ingestion n'est pas bloquée par la maintenance). Les écritures
+   automatiques (iRail, retards) faites pendant la fenêtre seront perdues et se referont seules.
+4. **Copie de la base prod** : sauvegarde PocketBase de la prod (`POST /api/backups`, puis téléchargement), par le hub
+   (`scripts/backups/csm-prod.sh backup` / `download` du dépôt `coolify`) ou une tâche planifiée Coolify exécutée une fois
+   (`pb-csm` est derrière Cloudflare Access : jeton de service ou tâche). La restaurer dans un dossier local vierge.
+5. **Essai à blanc** sur cette copie :
+   ```bash
+   P="--dir /home/user/csm-prod-copie --migrationsDir pb_migrations --hooksDir pb_hooks"
+   pocketbase migrate up $P
+   pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-backup-prod --dry-run \
+     --report /home/user/csm-delta/essai.json $P
+   ```
+   `--since` vaut par défaut la date de `report.json` de `--base`, `--imported-at auto` la date de construction de la base
+   (dernière fiche importée + 1 min ; vérifier qu'elle vaut ~2026-10-10T12:40Z dans le rapport).
+6. **Revue du rapport** avec l'utilisateur (`essai.txt` : compteurs, conflits, comptes nouveaux ; identifiants et noms de
+   champs seulement). Conflits : à reprendre à la main dans CSM après l'import (la version BACO est dans la sauvegarde).
+7. **Import réel** sur la même copie (même commande sans `--dry-run`, rapport `import.json`), puis contrôle : relance en
+   `--dry-run` = 0 créé / 0 mis à jour (idempotence).
+8. **Mise en ligne** : `pocketbase serve` local, `POST /api/backups` → zip, puis sur la prod `POST /api/backups/upload` +
+   `/restore` (§5 ; remplace la base entière, d'où la maintenance des étapes 3 à 8). Variante sans restauration : copier
+   la sauvegarde du gel dans le volume et lancer la commande dans le conteneur `csm-pocketbase` par une **tâche planifiée
+   Coolify exécutée une fois** (`pocketbase csm-import-delta /pb_data/delta/gel --base /pb_data/delta/base --dir /pb_data`),
+   puis supprimer ces fichiers du volume. Dans les deux cas : **jamais sans l'accord explicite de l'utilisateur**.
+9. **Vérifications** : `https://csm.fs0ciety.org/api/health`, comptages par collection = copie locale, quelques fiches
+   créées / mises à jour ouvertes dans l'interface, comptes nouveaux à valider (Administration › Utilisateurs), conflits
+   traités ; sortie du mode maintenance ; reprise de la synchro DICOS. Garder les rapports hors dépôt.
+
+**Répétition du 11 octobre 2026** (locale, aucune écriture sur la prod) : sauvegarde Supabase fraîche (GET seuls) contre la
+base prod construite le 10 octobre → **1 commande bus créée dans BACO depuis**, rien d'autre (hors `user_presence`, non
+reprise). Scénario fictif (9 créations, 6 mises à jour, 5 conflits, relance = 0 écriture) : voir `pocketbase/CLAUDE.md`.
+
 ## Secrets GitHub (CI)
 
 | Secret | Rôle |

@@ -79,6 +79,7 @@ Environnement dédié **CSM** : configuration de référence dans `docs/ENVIRONN
 # v2 — PocketBase local (détails : pocketbase/CLAUDE.md), binaire 0.40.4 dans /usr/local/bin
 cd pocketbase && P="--dir pb_data --migrationsDir pb_migrations --hooksDir pb_hooks"
 pocketbase migrate up $P && CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P
+pocketbase csm-import-delta <sauvegarde du gel> --base /home/user/csm-backup-prod --dry-run $P  # bascule (DEPLOIEMENT-V2 §7)
 pocketbase serve --http 127.0.0.1:8090 $P
 node scripts/test-rules.mjs            # PB_SUPERUSER_EMAIL / PB_SUPERUSER_PASSWORD
 # v2 — web (détails : web/CLAUDE.md)
@@ -932,6 +933,16 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   fs0ciety), route Traefik de secours de priorité 1 (service arrêté → 503 de la marque, adresse inconnue → 404). CSM : pages
   « introuvable » de l'appli (globale + dans le shell), en préversion. Pages Cloudflare « serveur injoignable » prêtes mais
   **impossibles en offre gratuite**. Taupe passé derrière le proxy Cloudflare (IP joueur par `CF-Connecting-IP`, liste blanche).
+
+- 2026-10-11 — **Import différentiel pour la bascule** (`pocketbase csm-import-delta`, `lib/import-delta.js`) : rapatrie ce qui
+  a été saisi dans BACO après la sauvegarde de l'import initial (10 oct., 12:36Z) sans écraser CSM : créé si nouveau et
+  absent, mis à jour si CSM n'a pas touché les champs repris, sinon **conflit listé** ; jamais de suppression ; comptes
+  nouveaux créés **désactivés** (`paco` à la réactivation), comptes existants jamais touchés ; `--dry-run`, transaction par
+  table, idempotent (registre `app_settings.import_delta`). Correspondances de `lib/import.js` extraites en fonctions
+  partagées (import complet inchangé, vérifié par empreinte). **La sauvegarde `/home/user/csm-backup-prod` sert de base de
+  comparaison (`--base`) : à garder en archive chiffrée jusqu'à la bascule.** Répétition locale sur une sauvegarde Supabase
+  fraîche (GET seuls) : 1 commande bus créée dans BACO depuis le 10 oct. Procédure de bascule : DEPLOIEMENT-V2 §7 ; rien
+  exécuté sur la prod.
 
 ---
 

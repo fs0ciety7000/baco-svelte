@@ -16,6 +16,8 @@ PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # 
 CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # Commandes + PMR, comptes gardés
 CSM_IMPORT_SCOPE=pmr CSM_IMPORT_RESET=1 pocketbase csm-import … $P        # PMR seul (zones, matériel, prestations)
 CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # main courante + 211 PN de BACO
+# Bascule : ce qui a été saisi dans BACO après l'import initial, sans écraser CSM (docs/DEPLOIEMENT-V2.md §7)
+pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-backup-prod --dry-run --report r.json $P
 ```
 
 ## Conventions
@@ -46,6 +48,35 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
   utilisé dans une règle doit avoir une valeur par défaut posée par hook.
 - **Import** : CLI uniquement (aucune route HTTP), en une transaction ; les empreintes bcrypt `$2a$` de Supabase sont
   recopiées telles quelles dans `users.password` (connexion testée, coûts 6 et 10).
+- **Correspondances d'import** : une fonction par table dans `lib/import.js` (`fillCompany`, `fillBusOrder`, `fillOpsLog`…),
+  partagées par `csm-import` et `csm-import-delta` (refactor du 11 oct. vérifié : empreinte de la base importée identique
+  avant / après). Toute évolution d'une correspondance vaut pour les deux.
+- **Import différentiel** (`csm-import-delta`, `lib/import-delta.js`, bascule finale) : lit une sauvegarde Supabase plus
+  récente (format de `scripts/supabase-backup.mjs`) ; ligne du delta = horodatage BACO postérieur à `--since`, ou fiche citée
+  par le journal d'audit BACO (`audit_log` / `audit_logs`) après `--since`, ou ligne différente / absente de la sauvegarde de
+  base `--base` (celle de l'import initial). Absente de CSM et nouvelle → créée ; identique → rien ; différente et non
+  modifiée dans CSM → mise à jour des **champs repris** seulement ; modifiée dans CSM → **conflit** (jamais écrasée) ; absente
+  de CSM mais ancienne → conflit (supprimée dans CSM : pas recréée) ; **jamais de suppression**. « Non modifiée dans CSM » =
+  `updated` ≤ `--imported-at` (auto : dernière fiche importée + 1 min, gardée au registre), **ou** champs repris égaux à
+  l'empreinte écrite par le delta précédent (registre `app_settings.import_delta`), **ou** égaux à ce que la ligne de base
+  aurait produit (seule voie pour `line_stations`, sans `updated`). Clés : `legacy_id` ; `taxi_orders` (pas de legacy_id) =
+  date de création BACO rétablie ; `b201_reports` = jour ; `ops_log_reads` = entrée + agent ; `audit_log` = date + table +
+  fiche + action ; `ebp_views` (aucun id dans BACO) = contenu, **exige `--base`**. Tables BACO **sans horodatage** :
+  `societes_bus`, `chauffeurs_bus`, `contacts_bus`, `lignes_bus`, `ligne_data`, `pn_data`, `contacts_repertoire`,
+  `spi_data`, `ebp` ; **sans `updated_at`** (création seule datée) : `otto_commandes`, `taxi_commands`, `taxis`, `pmr_data`,
+  `ptcar_abbreviations`, `document_metadata`, `log_reactions`, `daily_movements`, `movement_interventions` → modifications
+  vues par `--base` (et par le journal d'audit BACO pour sociétés, chauffeurs, contacts, lignes de bus, taxis, annuaire,
+  clients PMR, matériel PMR, journal, procédures, documents). Comptes : création seule, `role = disabled` +
+  `disabled_role = paco` (empreinte BACO reprise si `auth_password_hashes.json` est fourni) ; comptes existants jamais
+  modifiés. Prestations de la saisie de la journée (abandonnée) : création, ou conflit « à reprendre à la main » si
+  l'intervention a changé. Procédure mise à jour → version précédente archivée (le hook de versioning est un hook de
+  requête). Commandes : `order_events` « legacy » à la création et au changement de statut. Les hooks de **requête**
+  (transitions, notifications, audit) ne jouent pas en CLI : aucune notification envoyée. Transaction par table (une seule,
+  annulée, en `--dry-run`) ; arrêt à la première table en erreur. Rapport JSON + texte (`--report`) : identifiants et noms
+  de champs seulement, jamais de valeur. Test local du 11 oct. (copie de la base prod du 10 oct. + sauvegarde fictive) :
+  9 créations, 6 mises à jour (dont 2 par champ), 5 conflits (fiche modifiée dans CSM ×3, supprimée dans CSM, clé unique
+  PtCar prise), relance = 15 identiques / 0 écriture, 2e vague (registre) correcte. **Jamais lancé sur la prod** sans
+  l'accord de l'utilisateur (procédure : DEPLOIEMENT-V2 §7).
 - **Piège des fichiers** : PocketBase efface les fichiers d'une fiche supprimée *après* la validation de la
   transaction. Purger puis réimporter des fiches de même identifiant dans une seule transaction perd les fichiers
   → purge et import dans deux transactions (`lib/import.js`).
