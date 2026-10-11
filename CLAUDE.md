@@ -878,6 +878,13 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   jour (sites CARDOR, CSM prod, webmail, Coolify, Immich ; OCC Studios retiré) et **hôte entier derrière Cloudflare Access**
   (application « fs0ciety Hub » `b1f29c62-07d0-428b-8bce-823f6e1e43e7`, mêmes e-mails que Coolify).
 
+- 2026-10-11 — **Sauvegardes hors serveur de Cosmic Empires et OCC Deliveries** : déjà en place (OCC : sauvegardes PocketBase
+  vers R2 `occ-deliveries-backups` avec vérification de restauration, ajoutées le matin par une autre session ; Cosmic : copie
+  quotidienne des sauvegardes PocketBase vers R2 `cosmic` par le workflow GitHub `r2-backup.yml`, heure variable). Première
+  sauvegarde OCC lancée et vérifiée ; le hub suit les deux (clé R2 en lecture seule limitée au bucket `cosmic`). **Tableau de
+  bord Coolify** : `coolify.yaml` est régénéré par Coolify (nom réservé) → fichier séparé `hub/docs/cloudflare-only.yaml`
+  (dépôt `coolify`, routeurs prioritaires + liste blanche Cloudflare) à poser par l'utilisateur dans Proxy › Dynamic configurations.
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)
