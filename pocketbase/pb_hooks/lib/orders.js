@@ -166,4 +166,44 @@ function nextNumber(app, table) {
 	return row.n;
 }
 
-module.exports = { checkTransition, stamp, writeEvent, nextNumber, recipient, isCoordinator, TRANSITIONS, COORDINATOR };
+/** Nombre de bons qui citent une société (bus : `bus_orders.company`, taxi : `taxi_orders.taxi_company`). */
+function companyUses(app, collection, id) {
+	const ref = collection === 'bus_companies' ? ['bus_orders', 'company'] : ['taxi_orders', 'taxi_company'];
+	const row = new DynamicModel({ n: 0 });
+	app.db()
+		.newQuery(`SELECT COUNT(*) AS n FROM ${ref[0]} WHERE ${ref[1]} = {:id}`)
+		.bind({ id: id })
+		.one(row);
+	return row.n;
+}
+
+// Relance d'un fournisseur (11 oct. 2026) : bon « envoyé » jamais confirmé. L'agent prépare lui-même le brouillon
+// `.eml` (aucun envoi par CSM) ; la relance est notée dans l'historique (`order_events`, de « envoyé » à « envoyé »).
+const REMIND_GAP_MS = 2 * 60 * 1000;
+
+/**
+ * Note une relance : bon visible et modifiable par l'agent (règle `updateRule` de la collection, évaluée par
+ * PocketBase), statut « envoyé », pas de relance dans les 2 dernières minutes. Renvoie le nombre de relances.
+ */
+function remind(app, kind, id, auth, info) {
+	const table = kind === 'bus' ? 'bus_orders' : 'taxi_orders';
+	let record;
+	try {
+		record = app.findRecordById(table, id);
+	} catch (_) {
+		throw new NotFoundError('Commande introuvable.');
+	}
+	const col = record.collection();
+	if (!auth || auth.isSuperuser() || !app.canAccessRecord(record, info, col.viewRule) || !app.canAccessRecord(record, info, col.updateRule))
+		throw new NotFoundError('Commande introuvable.');
+	if (record.getString('status') !== 'envoye') throw new BadRequestError('Seul un bon envoyé et non confirmé se relance.');
+	const events = app.findRecordsByFilter('order_events', 'kind = {:k} && order = {:id} && from = "envoye" && to = "envoye"', '-at', 50, 0, { k: kind, id: id });
+	if (events.length) {
+		const last = new Date(events[0].getString('at').replace(' ', 'T')).getTime();
+		if (Date.now() - last < REMIND_GAP_MS) throw new BadRequestError('Relance déjà notée il y a moins de 2 minutes.');
+	}
+	writeEvent(app, record, 'envoye', 'envoye', auth, `Relance n° ${events.length + 1} (brouillon e-mail préparé)`);
+	return events.length + 1;
+}
+
+module.exports = { checkTransition, stamp, writeEvent, nextNumber, recipient, isCoordinator, companyUses, remind, TRANSITIONS, COORDINATOR };

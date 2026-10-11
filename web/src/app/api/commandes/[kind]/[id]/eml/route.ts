@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { buildEml, contentDisposition } from "@/lib/orders/eml";
 import { busMail, taxiMail, type OrderMail } from "@/lib/orders/mail";
+import { brusselsDay, pbDate } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
 import { getCurrentUser } from "@/server/auth";
 import {
@@ -34,7 +35,7 @@ const plain = (body: string, status: number) =>
   });
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ kind: string; id: string }> },
 ) {
   const user = await getCurrentUser();
@@ -46,17 +47,30 @@ export async function GET(
     return plain("Introuvable", 404);
 
   const agentName = user.name || user.username;
+  // `?relance=1` : brouillon de relance (bon envoyé non confirmé). La relance est notée dans l'historique par la
+  // Server Action `remindSupplier`, jamais ici (GET sans effet).
+  const reminder = new URL(request.url).searchParams.get("relance") === "1";
+  const sentDayOf = (sentAt: string) => {
+    const d = pbDate(sentAt);
+    return d ? brusselsDay(d) : "";
+  };
   try {
     let pdf: Uint8Array;
     let mail: OrderMail;
     if (kind === "bus") {
       const [order, ref] = await Promise.all([getBusOrder(id), busReference()]);
       pdf = await busOrderPdf(order, { agentName: orderAgent(order.meta), drivers: ref.drivers });
-      mail = busMail(order, { agentName });
+      mail = busMail(order, {
+        agentName,
+        reminder: reminder ? { sentDay: sentDayOf(order.meta.sentAt) } : undefined,
+      });
     } else {
       const order = await getTaxiOrder(id).then((o) => (can(user, "pmr:read") ? o : redactPmr(o)));
       pdf = await taxiOrderPdf(order, { agentName: orderAgent(order.meta) });
-      mail = taxiMail(order, { agentName });
+      mail = taxiMail(order, {
+        agentName,
+        reminder: reminder ? { sentDay: sentDayOf(order.meta.sentAt) } : undefined,
+      });
     }
     const eml = buildEml({
       ...mail,
@@ -68,7 +82,7 @@ export async function GET(
         "Content-Type": "message/rfc822",
         "Content-Disposition": contentDisposition(
           "attachment",
-          `${mail.filename.replace(/\.pdf$/, "")}.eml`,
+          `${reminder ? "Relance · " : ""}${mail.filename.replace(/\.pdf$/, "")}.eml`,
         ),
       },
     });

@@ -975,6 +975,66 @@ try {
 	const st = await api('PATCH', `/api/collections/users/records/${u.id}`, { token: u.token, body: { status: 'EXTRA', status_day: '2026-10-10' } });
 	check('agent pose son statut du jour', st.status === 200, `HTTP ${st.status}`);
 
+	// Fournisseurs gérés dans CSM (1760003100, 11 oct. 2026) : PACO/RCCA crée et modifie, ne supprime pas ; legacy_id
+	// non forgeable ; invité en lecture seule ; société citée par un bon non supprimable ; modérateur supprime.
+	const spBus = await api('POST', '/api/collections/bus_companies/records', { token: u.token, body: { name: `Fournisseur ${suffix}`, email: 'planning@example.org', notes: 'Permanence 24 h' } });
+	check('PACO crée une société de bus (avec remarques)', spBus.status === 200 && spBus.json?.notes === 'Permanence 24 h', `HTTP ${spBus.status}`);
+	const spLegacy = await api('POST', '/api/collections/bus_companies/records', { token: u.token, body: { name: `Usurpation ${suffix}`, legacy_id: 999999 } });
+	check('PACO ne pose pas de legacy_id sur une société de bus', spLegacy.status >= 400, `HTTP ${spLegacy.status}`);
+	const spLegacyUpd = await api('PATCH', `/api/collections/bus_companies/records/${spBus.json?.id}`, { token: u.token, body: { legacy_id: 999998 } });
+	check('PACO ne change pas le legacy_id', spLegacyUpd.status >= 400, `HTTP ${spLegacyUpd.status}`);
+	const spUpd = await api('PATCH', `/api/collections/bus_companies/records/${spBus.json?.id}`, { token: u.token, body: { phone: '065 11 22 33' } });
+	check('PACO modifie une société de bus', spUpd.status === 200, `HTTP ${spUpd.status}`);
+	const spGuest = await api('POST', '/api/collections/bus_companies/records', { token: roles.reader.token, body: { name: `Invité ${suffix}` } });
+	check('invité ne crée pas de société de bus', spGuest.status >= 400, `HTTP ${spGuest.status}`);
+	const spGuestRead = await api('GET', `/api/collections/bus_companies/records/${spBus.json?.id}`, { token: roles.reader.token });
+	check('invité lit une société de bus', spGuestRead.status === 200, `HTTP ${spGuestRead.status}`);
+	const spDrv = await api('POST', '/api/collections/bus_drivers/records', { token: u.token, body: { company: spBus.json?.id, name: 'Chauffeur Test', phone: '0470' } });
+	check('PACO ajoute un chauffeur', spDrv.status === 200, `HTTP ${spDrv.status}`);
+	const spDrvLegacy = await api('POST', '/api/collections/bus_drivers/records', { token: u.token, body: { company: spBus.json?.id, name: 'Chauffeur X', legacy_id: 77777 } });
+	check('PACO ne pose pas de legacy_id sur un chauffeur', spDrvLegacy.status >= 400, `HTTP ${spDrvLegacy.status}`);
+	const spLine = await api('POST', '/api/collections/bus_company_lines/records', { token: u.token, body: { company: spBus.json?.id, line: 'L.96' } });
+	check('PACO ajoute une ligne desservie', spLine.status === 200, `HTTP ${spLine.status}`);
+	const spDrvDel = await api('DELETE', `/api/collections/bus_drivers/records/${spDrv.json?.id}`, { token: u.token });
+	check('PACO ne retire pas un chauffeur (otto:delete)', spDrvDel.status >= 400, `HTTP ${spDrvDel.status}`);
+	const spDrvDelMod = await api('DELETE', `/api/collections/bus_drivers/records/${spDrv.json?.id}`, { token: roles.modo.token });
+	check('modérateur retire un chauffeur', spDrvDelMod.status === 204, `HTTP ${spDrvDelMod.status}`);
+	const spTaxi = await api('POST', '/api/collections/taxi_companies/records', { token: u.token, body: { name: `Taxi ${suffix}`, emails: ['resa@example.org'], phones: ['065'], places: ['Mons'] } });
+	check('PACO crée une société de taxi', spTaxi.status === 200, `HTTP ${spTaxi.status}`);
+	const spTaxiLegacy = await api('PATCH', `/api/collections/taxi_companies/records/${spTaxi.json?.id}`, { token: u.token, body: { legacy_id: 55555 } });
+	check('PACO ne change pas le legacy_id d\'un taxi', spTaxiLegacy.status >= 400, `HTTP ${spTaxiLegacy.status}`);
+	const spTaxiDel = await api('DELETE', `/api/collections/taxi_companies/records/${spTaxi.json?.id}`, { token: u.token });
+	check('PACO ne supprime pas une société de taxi', spTaxiDel.status >= 400, `HTTP ${spTaxiDel.status}`);
+	// Bon qui cite la société : suppression refusée même au modérateur ; relance d'un bon envoyé.
+	const spOrder = await api('POST', '/api/collections/bus_orders/records', {
+		token: u.token,
+		body: { status: 'brouillon', reason: 'Relance test', created_by: u.id, company: spBus.json?.id, order_date: '2026-10-12 00:00:00.000Z', origin: 'Mons', destination: 'Ath' }
+	});
+	const spBusDel = await api('DELETE', `/api/collections/bus_companies/records/${spBus.json?.id}`, { token: roles.modo.token });
+	check('société citée par un bon : suppression refusée', spBusDel.status === 400, `HTTP ${spBusDel.status}`);
+	const rmDraft = await api('POST', `/api/csm/orders/bus/${spOrder.json?.id}/reminder`, { token: u.token });
+	check('relance refusée pour un brouillon', rmDraft.status === 400, `HTTP ${rmDraft.status}`);
+	await api('PATCH', `/api/collections/bus_orders/records/${spOrder.json?.id}`, { token: u.token, body: { status: 'envoye' } });
+	const rmAnon = await api('POST', `/api/csm/orders/bus/${spOrder.json?.id}/reminder`);
+	check('relance refusée sans connexion', rmAnon.status === 401, `HTTP ${rmAnon.status}`);
+	const rmGuest = await api('POST', `/api/csm/orders/bus/${spOrder.json?.id}/reminder`, { token: roles.reader.token });
+	check('invité ne relance pas (pas de droit de modification)', rmGuest.status === 404, `HTTP ${rmGuest.status}`);
+	const rmDenied = await api('POST', `/api/csm/orders/bus/${spOrder.json?.id}/reminder`, { token: roles.denied.token });
+	check('PACO sans otto:write retiré relance (droit de modification gardé)', rmDenied.status === 200, `HTTP ${rmDenied.status}`);
+	const rmAgain = await api('POST', `/api/csm/orders/bus/${spOrder.json?.id}/reminder`, { token: u.token });
+	check('deuxième relance dans les 2 minutes refusée', rmAgain.status === 400, `HTTP ${rmAgain.status}`);
+	const rmEv = await api('GET', `/api/collections/order_events/records?filter=${encodeURIComponent(`order="${spOrder.json?.id}" && from="envoye" && to="envoye"`)}`, { token: u.token });
+	check('relance notée dans l\'historique (auteur, note)', rmEv.json?.totalItems === 1 && rmEv.json.items[0].by === roles.denied.id && /Relance n° 1/.test(rmEv.json.items[0].note), JSON.stringify(rmEv.json?.items?.[0] ?? {}));
+	const rmBad = await api('POST', '/api/csm/orders/bus/inexistant0000000/reminder', { token: u.token });
+	check('relance d\'un bon inexistant : 404', rmBad.status === 404, `HTTP ${rmBad.status}`);
+	await api('DELETE', `/api/collections/bus_orders/records/${spOrder.json?.id}`, { token: root });
+	auditIds.push(spOrder.json?.id);
+	const spBusDelOk = await api('DELETE', `/api/collections/bus_companies/records/${spBus.json?.id}`, { token: roles.modo.token });
+	check('modérateur supprime une société sans bon', spBusDelOk.status === 204, `HTTP ${spBusDelOk.status}`);
+	const spTaxiDelMod = await api('DELETE', `/api/collections/taxi_companies/records/${spTaxi.json?.id}`, { token: roles.modo.token });
+	check('modérateur supprime une société de taxi sans bon', spTaxiDelMod.status === 204, `HTTP ${spTaxiDelMod.status}`);
+	for (const id of [spBus.json?.id, spTaxi.json?.id, spDrv.json?.id, spLine.json?.id]) if (id) auditIds.push(id);
+
 	// Admin : supprime.
 	const adel = await api('DELETE', `/api/collections/bus_orders/records/${order.json.id}`, { token: roles.admin.token });
 	check('admin supprime', adel.status === 204, `HTTP ${adel.status}`);

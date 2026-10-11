@@ -99,6 +99,7 @@ export default async function Page({
         rows={rows}
         coordinator={isCoordinator(user.role)}
         showSince={view === "a-confirmer"}
+        canRemind={{ bus: can(user, "otto:update"), taxi: can(user, "generate_taxi:update") }}
       />
       {total > rows.length ? (
         <p className="text-small text-fg-muted">

@@ -339,6 +339,16 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   ne bloque jamais la clôture ; taxi archivé avec `redactPmr`), page `/commandes/archives` (`archives:read`), routes de
   téléchargement `/api/commandes/archives/<id>` (`?dl=1`) et `/api/commandes/archives/sauvegardes/<id>`, actions admin
   `archivePending` / `backupNow`, suppression `archives:delete`.
+- **Fournisseurs** (Commandes › Fournisseurs, `/commandes/fournisseurs?type=bus|taxi&q=`, 11 oct. 2026) :
+  `server/data/suppliers.ts` (liste filtrée en mémoire, fiches avec chauffeurs / contacts / lignes et nombre de bons),
+  actions `commandes/fournisseurs/actions.ts` (création `:write`, modification `:update`, suppression `:delete`, listes
+  taxi saisies une valeur par ligne), composant `components/orders/supplier-board.tsx` (liste, panneau, dialogues). Le
+  bouton Supprimer est grisé si un bon cite la société (le hook PocketBase refuse de toute façon).
+- **Relance en un geste** (Suivi, panneau d'un bon « envoyé ») : action `remindSupplier` (route PocketBase
+  `/api/csm/orders/{kind}/{id}/reminder` avec le jeton de l'agent : droit de modification, événement `order_events`
+  « envoyé → envoyé ») puis téléchargement de `/api/commandes/{kind}/{id}/eml?relance=1` (même `.eml` X-Unsent, PDF
+  joint, texte de relance au vouvoiement : `MailOptions.reminder`, `reminderSubject`, `reminderIntro` dans
+  `lib/orders/mail.ts`, testés). `OrderHistory` affiche « Relance du fournisseur » quand `from === to`.
 - **Recherche de gare tolérante** (11 oct. 2026) : `lib/stations/search.ts` (pur, testé : `foldStation`, `stationMatches`,
   `stationCandidates` — abréviation PtCar exacte, puis préfixe, puis contenu —, `stationTerms`, `stationMatchesAny`) et
   `server/stations.ts` (`resolveStationTerms(q)` : saisie + noms candidats tirés de `ptcar` (avec `ptcar:read`) et de

@@ -12,7 +12,7 @@ pocketbase migrate up $P                                   # appliquer les migra
 pocketbase superuser upsert <email> <mot de passe> $P      # compte superuser local
 pocketbase serve --http 127.0.0.1:8090 $P                  # serveur local
 CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P   # import de la sauvegarde Supabase (hors Git)
-PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (299 contrôles)
+PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (323 contrôles)
 CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # Commandes + PMR, comptes gardés
 CSM_IMPORT_SCOPE=pmr CSM_IMPORT_RESET=1 pocketbase csm-import … $P        # PMR seul (zones, matériel, prestations)
 CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # main courante + 211 PN de BACO
@@ -183,4 +183,13 @@ CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # ma
   R2 : `$filesystem.s3` avec les variables `CSM_BACKUP_S3_*` (dossier `bons/`), `CSM_ARCHIVE_R2=off` pour couper ; sans
   variables : volume seul. Cron `order-pdf-backup` (1 h UTC) : zip « stocké » écrit dans un `Uint8Array` préalloué
   (CRC32 maison, ~2 s/Mo en JSVM, mémoire bornée ; refus au-delà de 200 Mo par mois), 6 mois au plus, chacun isolé.
+- **Fournisseurs** (`1760003100_suppliers.js`, 11 oct. 2026 : Commandes › Fournisseurs) : `bus_companies`,
+  `taxi_companies`, `bus_drivers`, `bus_contacts`, `bus_company_lines` gardent les règles des rôles v2 (création
+  `otto:write` / `generate_taxi:write`, modification `:update`, suppression `:delete`) ; `legacy_id` **refusé dans le
+  corps** (création et modification) ; `bus_companies.notes` (2000). Hook `orders.pb.js` : une société citée par un bon
+  ne se supprime pas (400, `companyUses` dans `lib/orders.js`).
+- **Relance d'un fournisseur** : route `POST /api/csm/orders/{kind}/{id}/reminder` (`$apis.requireAuth('users')`,
+  `lib/orders.js` → `remind`) : bon visible ET modifiable par l'appelant (`$app.canAccessRecord` avec `viewRule` puis
+  `updateRule` de la collection : un refus = 404), statut `envoye` seulement, 2 min entre deux relances ; écrit
+  `order_events` de `envoye` à `envoye` (note « Relance n° N »). Aucun e-mail envoyé : Next produit le `.eml`.
 

@@ -59,6 +59,13 @@ export const MODULES: NavModule[] = [
         keywords: ["kanban", "statut"],
       },
       {
+        // Sociétés de bus et de taxi gérées dans CSM (11 oct. 2026 ; la page montre le taxi selon `generate_taxi:read`).
+        href: "/commandes/fournisseurs",
+        label: "Fournisseurs",
+        permission: "otto:read",
+        keywords: ["sociétés", "transporteurs", "chauffeurs", "taxis", "bus"],
+      },
+      {
         href: "/commandes/archives",
         label: "Archives",
         permission: "archives:read",
