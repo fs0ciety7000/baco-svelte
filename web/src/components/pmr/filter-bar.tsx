@@ -1,4 +1,4 @@
-import { EyeOff, Search } from "lucide-react";
+import { EyeOff, MapPin, Search } from "lucide-react";
 import Link from "next/link";
 
 import { FilterForm } from "@/components/ui/filter-form";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ChipRow, CollapsibleFilters, FilterChip } from "@/components/ui/filters";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Input, Select } from "@/components/ui/input";
+import { districtsLabel, normalizeDistricts } from "@/lib/pmr/district-filter";
 import { DISTRICT_LABEL, DISTRICTS } from "@/lib/pmr/districts";
 import { ASSIST_STATUS, ASSIST_STATUSES } from "@/lib/pmr/model";
 
@@ -27,17 +28,26 @@ export function PmrFilterBar({
   filters,
   shortcuts,
   statuses = ASSIST_STATUSES,
+  myDistricts = "",
 }: {
   action: string;
   filters: PmrFilters;
   shortcuts: { label: string; du: string; au: string }[];
   /** Statuts proposés (par défaut ceux des missions PMR). */
   statuses?: readonly string[];
+  /**
+   * Districts du jour de l'agent (codes, « DSO,DSE ») : filtre par défaut des Missions PMR et des Groupes. Avec cette
+   * prop, une puce bascule entre « Tous les districts » et « Mes districts » (district explicite dans l'URL).
+   */
+  myDistricts?: string;
 }) {
   const hidden = hideCancelled(filters);
+  // Filtre district courant : codes (« DSO,DSE »), vide = tous.
+  const current = normalizeDistricts(filters.district);
   const keep = Object.fromEntries(
     Object.entries({
-      district: filters.district,
+      // « tous » explicite quand un défaut existe : les raccourcis ne doivent pas le réappliquer.
+      district: current || (myDistricts || filters.district === "tous" ? "tous" : ""),
       q: filters.q,
       statut: filters.statut,
       annulees: hidden ? "masquees" : "affichees",
@@ -52,6 +62,18 @@ export function PmrFilterBar({
     ),
   );
   toggle.set("annulees", hidden ? "affichees" : "masquees");
+  // Puce district : lever le filtre (« tous » explicite), ou revenir aux districts du jour.
+  const districtLink = (value: string) => {
+    const p = new URLSearchParams(
+      Object.fromEntries(
+        Object.entries({ ...keep, du: filters.du ?? "", au: filters.au ?? "" }).filter(
+          ([k, v]) => v && k !== "district",
+        ),
+      ),
+    );
+    p.set("district", value);
+    return `${action}?${p}`;
+  };
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
@@ -71,6 +93,23 @@ export function PmrFilterBar({
           })}
         </ChipRow>
         <span aria-hidden className="hidden h-5 w-px shrink-0 bg-border sm:block" />
+        {myDistricts || current ? (
+          current ? (
+            <FilterChip asChild pressed={false}>
+              <Link href={districtLink("tous")} data-testid="all-districts">
+                <MapPin aria-hidden className="size-4" />
+                Tous les districts
+              </Link>
+            </FilterChip>
+          ) : (
+            <FilterChip asChild pressed={false}>
+              <Link href={districtLink(myDistricts)} data-testid="my-districts">
+                <MapPin aria-hidden className="size-4" />
+                Mes districts · {districtsLabel(myDistricts)}
+              </Link>
+            </FilterChip>
+          )
+        ) : null}
         <FilterChip asChild pressed={hidden}>
           <Link
             href={`${action}?${toggle}`}
@@ -106,11 +145,14 @@ export function PmrFilterBar({
             />
           </span>
         </label>
-        <CollapsibleFilters active={[filters.district, filters.statut].filter(Boolean).length}>
+        <CollapsibleFilters active={[current, filters.statut].filter(Boolean).length}>
           <label className="flex min-w-0 flex-col gap-1 md:w-40">
             <span className="text-small text-fg-muted">District</span>
-            <Select name="district" defaultValue={filters.district ?? ""}>
-              <option value="">Tous</option>
+            <Select name="district" defaultValue={current || "tous"}>
+              <option value="tous">Tous</option>
+              {current.includes(",") ? (
+                <option value={current}>{districtsLabel(current)}</option>
+              ) : null}
               {DISTRICTS.map((d) => (
                 <option key={d} value={d}>
                   {d} · {DISTRICT_LABEL[d]}

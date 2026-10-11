@@ -2,6 +2,7 @@ import type { GroupMission } from "@/server/data/groups";
 import type { Assist } from "@/server/data/pmr";
 
 import type { AleaEnd, GroupEnd } from "./model";
+import { inDistricts } from "./district-filter";
 
 // Trajet d'une mission (gares, heures, districts, assistance IN / OUT) et bouts d'assistance pour l'ALEA. Pur : partagé
 // par les écrans (Missions PMR, Groupes) et le serveur (Relève, frise « Ma journée »).
@@ -81,9 +82,9 @@ export function aleaEnds(rows: Assist[], district: string): AleaEnd[] {
       fullPax: a.fullPax,
       lightPax: a.lightPax,
     };
-    if (l.inA && (!district || l.depDistrict === district))
+    if (l.inA && inDistricts(l.depDistrict, district))
       ends.push({ ...base, station: l.dep, time: l.depTime, io: "IN" });
-    if (l.outA && (!district || l.arrDistrict === district))
+    if (l.outA && inDistricts(l.arrDistrict, district))
       ends.push({ ...base, station: l.arr, time: l.arrTime, io: "OUT" });
   }
   return ends;
@@ -103,9 +104,9 @@ export function groupEnds(rows: GroupMission[], district: string): GroupEnd[] {
       seniors: g.seniors,
       dossier: g.dicosRef,
     };
-    if (l.inA && (!district || l.depDistrict === district))
+    if (l.inA && inDistricts(l.depDistrict, district))
       ends.push({ ...base, station: l.dep, time: l.depTime, io: "IN" });
-    if (l.outA && (!district || l.arrDistrict === district))
+    if (l.outA && inDistricts(l.arrDistrict, district))
       ends.push({ ...base, station: l.arr, time: l.arrTime, io: "OUT" });
   }
   return ends;

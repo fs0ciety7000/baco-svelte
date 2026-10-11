@@ -14,6 +14,7 @@ import { Table, Td, Th, THead, Tr } from "@/components/ui/table";
 import { toast } from "@/components/ui/toast";
 import { safeCall } from "@/lib/orders/safe-call";
 import { formatDay, pbDate } from "@/lib/orders/time";
+import { inDistricts, districtsLabel } from "@/lib/pmr/district-filter";
 import { DISTRICT_LABEL } from "@/lib/pmr/districts";
 
 import {
@@ -58,8 +59,8 @@ function assistedEnds(l: Leg, district: string): ("depart" | "arrivee")[] {
   if (l.inA) all.push("depart");
   if (l.outA) all.push("arrivee");
   if (!district) return all;
-  const inDistrict = all.filter(
-    (e) => (e === "depart" ? l.depDistrict : l.arrDistrict) === district,
+  const inDistrict = all.filter((e) =>
+    inDistricts(e === "depart" ? l.depDistrict : l.arrDistrict, district),
   );
   return inDistrict.length ? inDistrict : all;
 }
@@ -74,7 +75,7 @@ function ioLabel(direction: string): string {
 export function IoBadges({ leg, district }: { leg: Leg; district: string }) {
   if (!leg.inA && !leg.outA) return <span className="text-fg-muted">—</span>;
   // Sens IN / OUT en badges neutres (les couleurs de statut restent aux statuts) ; hors district : estompé à 60 %.
-  const dim = (d: string) => (district && d !== district ? "opacity-60" : "");
+  const dim = (d: string) => (inDistricts(d, district) ? "" : "opacity-60");
   return (
     <span className="inline-flex gap-1">
       {leg.inA ? (
@@ -108,7 +109,7 @@ function RouteText({ a, district, barred }: { a: Assist; district: string; barre
   const end = (name: string, time: string, assisted: boolean, d: string) => (
     // Gare assistée toujours surlignée (IN → départ, OUT → arrivée) ; avec un filtre district, seulement celles du
     // district (retour utilisateur du 9 oct. 2026).
-    <span className={assisted && (!district || d === district) ? HIGHLIGHT : ""}>
+    <span className={assisted && inDistricts(d, district) ? HIGHLIGHT : ""}>
       {time ? <span className="font-mono tabular text-fg-muted">{time} </span> : null}
       <span
         className={
@@ -246,7 +247,7 @@ export function AssistBoard({
               canMark={canMark}
               disabled={!rows.length && !groups.length}
               eyebrow="// Missions PMR et groupes"
-              description={`Un bloc par train, gare et sens : PMR et groupes réunis${district ? ` (district ${district})` : ""}, la règle la plus exigeante décide. Missions annulées exclues.`}
+              description={`Un bloc par train, gare et sens : PMR et groupes réunis${district ? ` (district ${districtsLabel(district)})` : ""}, la règle la plus exigeante décide. Missions annulées exclues.`}
               compute={() =>
                 mergeAleaBlocks(
                   aleaGroups(aleaEnds(rows, district)),
@@ -640,7 +641,7 @@ function AleaExport({
       canMark={canMark}
       disabled={!rows.length}
       eyebrow="// Missions PMR"
-      description={`Par train, gare et sens : les PMR de tous les dossiers additionnées par type${district ? ` (district ${district})` : ""}. Missions annulées exclues.`}
+      description={`Par train, gare et sens : les PMR de tous les dossiers additionnées par type${district ? ` (district ${districtsLabel(district)})` : ""}. Missions annulées exclues.`}
       compute={() => aleaGroups(aleaEnds(rows, district))}
     />
   );

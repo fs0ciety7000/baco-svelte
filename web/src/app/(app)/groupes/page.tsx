@@ -5,6 +5,8 @@ import { GroupBoard } from "@/components/pmr/group-board";
 import { SyncStatus } from "@/components/pmr/sync-status";
 import { EmptyState } from "@/components/ui/misc";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
+import { effectiveDistricts } from "@/lib/pmr/district-filter";
+import { userDistricts } from "@/lib/team";
 import { requireRoute } from "@/server/auth";
 import { resolveCancelledPref } from "@/server/pmr-prefs";
 import { listGroups } from "@/server/data/groups";
@@ -24,11 +26,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
   const today = brusselsDay();
   const du = isValidDay(f.du) ? f.du : today;
   const au = isValidDay(f.au) && f.au >= du ? f.au : du;
+  // District : paramètre d'URL s'il est présent, sinon les districts du jour de l'agent (11 oct. 2026).
+  const myDistricts = effectiveDistricts(undefined, userDistricts(user, today));
+  const district = effectiveDistricts(sp.district, userDistricts(user, today));
   const [{ rows, total }, sync, delays] = await Promise.all([
     listGroups({
       from: du,
       to: au,
-      district: f.district,
+      district,
       q: f.q,
       status: f.statut,
       hideCancelled: hideCancelled(f),
@@ -50,7 +55,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
       </div>
       <PmrFilterBar
         action="/groupes"
-        filters={{ ...f, du, au }}
+        filters={{ ...f, du, au, district: district || "tous" }}
+        myDistricts={myDistricts}
         statuses={["prevue", "realisee", "annulee"]}
         shortcuts={[
           { label: "Aujourd'hui", du: today, au: today },
@@ -73,7 +79,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
       ) : (
         <GroupBoard
           rows={rows}
-          district={f.district ?? ""}
+          district={district}
           delays={delays}
           canMark={can(user, "deplacements:write")}
         />

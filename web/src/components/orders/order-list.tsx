@@ -34,8 +34,19 @@ export type ListFilters = {
 };
 
 /** Barre de filtres en GET (fonctionne sans JS, URL partageable) + raccourcis de dates. */
-export function FilterBar({ action, filters }: { action: string; filters: ListFilters }) {
+export function FilterBar({
+  action,
+  filters,
+  defaultPeriod,
+}: {
+  action: string;
+  filters: ListFilters;
+  /** Période par défaut de la liste (bons bus : J-1 → J+6) : ajoute les puces « 7 jours » et « Toutes les dates ». */
+  defaultPeriod?: { du: string; au: string };
+}) {
   const today = brusselsDay();
+  const allDates = new URLSearchParams({ ...clean(filters), du: "", au: "" });
+  const noDates = !filters.du && !filters.au;
   const shortcut = (label: string, du: string, au: string) => {
     const params = new URLSearchParams({ ...clean(filters), du, au });
     const active = filters.du === du && filters.au === au;
@@ -54,6 +65,18 @@ export function FilterBar({ action, filters }: { action: string; filters: ListFi
         {shortcut("Hier", addDays(today, -1), addDays(today, -1))}
         {shortcut("Demain", addDays(today, 1), addDays(today, 1))}
         {shortcut("7 derniers jours", addDays(today, -6), today)}
+        {defaultPeriod ? shortcut("Semaine (J-1 → J+6)", defaultPeriod.du, defaultPeriod.au) : null}
+        {defaultPeriod ? (
+          <FilterChip asChild pressed={noDates}>
+            <Link
+              href={`${action}?${allDates}`}
+              aria-current={noDates ? "true" : undefined}
+              data-testid="all-dates"
+            >
+              Toutes les dates
+            </Link>
+          </FilterChip>
+        ) : null}
       </ChipRow>
       <FilterForm
         action={action}

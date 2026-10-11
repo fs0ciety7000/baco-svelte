@@ -6,26 +6,34 @@ import { pl } from "@/lib/utils";
 import { FilterForm } from "@/components/ui/filter-form";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/input";
+import { Input, Select } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
 import { ListCard } from "@/components/ui/table";
 import { DISTRICT_LABEL } from "@/lib/pmr/districts";
 import { requireRoute } from "@/server/auth";
-import { getLineDetail, listLines } from "@/server/data/referentiels";
+import { getLineDetail, linesForStation, listLines } from "@/server/data/referentiels";
 
 export const metadata: Metadata = { title: "Lignes · CSM" };
 
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ ligne?: string; district?: string }>;
+  searchParams: Promise<{ ligne?: string; district?: string; gare?: string }>;
 }) {
   await requireRoute("/referentiels/lignes");
   const sp = await searchParams;
   const district = ["DSE", "DSO", "DCE"].includes(sp.district ?? "") ? sp.district! : "";
-  const lines = await listLines();
-  const shown = district ? lines.filter((l) => l.district === district) : lines;
+  const gare = (sp.gare ?? "").trim().slice(0, 60);
+  const [lines, byStation] = await Promise.all([
+    listLines(),
+    gare ? linesForStation(gare) : Promise.resolve(null),
+  ]);
+  // Recherche d'une gare (accents, casse, abréviation PtCar) : seulement les lignes qui la desservent.
+  const served = byStation ? new Map(byStation.map((l) => [l.line, l.stations])) : null;
+  const shown = lines.filter(
+    (l) => (!district || l.district === district) && (!served || served.has(l.line)),
+  );
   const detail = sp.ligne ? await getLineDetail(sp.ligne) : null;
 
   return (
@@ -40,6 +48,15 @@ export default async function Page({
             <option value="DSO">DSO · Sud-Ouest</option>
             <option value="DCE">DCE · Centre</option>
           </Select>
+        </label>
+        <label className="flex min-w-0 flex-col gap-1 md:w-56">
+          <span className="text-small text-fg-muted">Gare</span>
+          <Input
+            name="gare"
+            defaultValue={gare}
+            placeholder="Nom ou abréviation (FMS)…"
+            maxLength={60}
+          />
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-56">
           <span className="text-small text-fg-muted">Ligne</span>
@@ -72,14 +89,19 @@ export default async function Page({
                 >
                   <ListCard
                     title={<span className="font-mono">{l.line}</span>}
-                    meta={`${l.stations} gares${l.district ? ` · ${l.district}` : ""}`}
+                    meta={`${l.stations} gares${l.district ? ` · ${l.district}` : ""}${served?.get(l.line)?.length ? ` · ${served.get(l.line)!.join(", ")}` : ""}`}
                   />
                 </Link>
               </li>
             ))}
           </ul>
           {shown.length === 0 ? (
-            <EmptyState title="Aucune ligne" description="Aucune ligne pour ce district." />
+            <EmptyState
+              title="Aucune ligne"
+              description={
+                gare ? "Aucune ligne ne dessert cette gare." : "Aucune ligne pour ce district."
+              }
+            />
           ) : null}
         </>
       ) : (

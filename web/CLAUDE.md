@@ -339,4 +339,16 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   ne bloque jamais la clôture ; taxi archivé avec `redactPmr`), page `/commandes/archives` (`archives:read`), routes de
   téléchargement `/api/commandes/archives/<id>` (`?dl=1`) et `/api/commandes/archives/sauvegardes/<id>`, actions admin
   `archivePending` / `backupNow`, suppression `archives:delete`.
-
+- **Recherche de gare tolérante** (11 oct. 2026) : `lib/stations/search.ts` (pur, testé : `foldStation`, `stationMatches`,
+  `stationCandidates` — abréviation PtCar exacte, puis préfixe, puis contenu —, `stationTerms`, `stationMatchesAny`) et
+  `server/stations.ts` (`resolveStationTerms(q)` : saisie + noms candidats tirés de `ptcar` (avec `ptcar:read`) et de
+  `line_stations`, référentiels gardés 10 min en mémoire ; `stationFilter(pb, champs, termes, { fields, q })` : OU lié
+  `~` sur chaque terme + champs « bruts » comme le train ou le n° de dossier). Le `~` de PocketBase est sensible aux
+  accents : toujours passer par ces deux fonctions pour un champ de gare (Missions PMR, Groupes, Commandes bus / taxi,
+  Ma journée, ⌘K, Ressources › PtCar et Lignes `?gare=`).
+- **Filtres par défaut** : Missions PMR et Groupes filtrent sans `?district=` sur les districts du jour de l'agent
+  (`effectiveDistricts`, `lib/pmr/district-filter.ts` ; plusieurs codes « DSO,DSE » acceptés partout : `inDistricts`
+  dans `legs.ts` et les tableaux, `districtFilter` côté serveur) ; `?district=tous` (ou vide) lève le filtre, puce
+  « Tous les districts » / « Mes districts » (`PmrFilterBar myDistricts`). Un lien vers UNE mission précise (⌘K, Ma
+  journée, Journal) porte `district=tous`. Bons bus : période par défaut J-1 → J+6 sans `du` ni `au`
+  (`resolveBusPeriod`, `lib/orders/period.ts`), puces « Semaine » et « Toutes les dates » (`?du=&au=`).
