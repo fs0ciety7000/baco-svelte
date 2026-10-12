@@ -31,7 +31,7 @@ export async function GET(request: Request) {
       from: du.data,
       to: au.data,
       district: sp.get("district") ?? undefined,
-      status: sp.get("statut") ?? undefined,
+      status: sp.getAll("statut"),
       q: sp.get("q") ?? undefined,
       hideCancelled: sp.get("annulees") === "masquees",
     },

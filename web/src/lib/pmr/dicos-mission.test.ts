@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  combineStatus,
+  endStatus,
   frName,
   frText,
   isPmrMission,
@@ -9,6 +11,7 @@ import {
   mapMissionList,
   mapMission,
   mapStatus,
+  mergeEnds,
   missionDay,
   travelerSummary,
 } from "./dicos-mission";
@@ -557,5 +560,85 @@ describe("mapGroupList (missions de groupe)", () => {
       }),
     ]);
     expect(row).toMatchObject({ time: "", train: "", status: "annulee", day: "" });
+  });
+});
+
+describe("statut par bout (IN / OUT), 12 oct. 2026", () => {
+  // Trajet Tournai (IN) → Charleroi-Central (OUT). L'agent de Tournai ne voit que la mission de départ.
+  const dep = (status: string) =>
+    lm(
+      "10",
+      "900",
+      "Departure",
+      "TOURNAI / DOORNIK",
+      "2026-10-12T08:05:00+02:00",
+      "CHARLEROI-CENTRAL",
+      "2026-10-12T09:40:00+02:00",
+      { status },
+    );
+  const arr = (status: string) =>
+    lm(
+      "11",
+      "900",
+      "Arrival",
+      "CHARLEROI-CENTRAL",
+      "2026-10-12T09:40:00+02:00",
+      "TOURNAI / DOORNIK",
+      "2026-10-12T08:05:00+02:00",
+      { status },
+    );
+
+  it("IN validé seul : le trajet reste prévu (le débarquement à Charleroi n'est pas masqué)", () => {
+    const [leg] = mapMissionList([dep("Completed")]).map((l) => l.assist);
+    expect(leg).toMatchObject({ in_status: "realisee", out_status: "", status: "prevue" });
+    const [both] = mapMissionList([dep("Completed"), arr("New")]).map((l) => l.assist);
+    expect(both).toMatchObject({ in_status: "realisee", out_status: "prevue", status: "prevue" });
+  });
+
+  it("réalisé quand les deux bouts assistés le sont", () => {
+    const [leg] = mapMissionList([dep("Completed"), arr("Completed")]).map((l) => l.assist);
+    expect(leg).toMatchObject({ status: "realisee" });
+  });
+
+  it("fusion avec la fiche existante : un lot partiel garde le bout déjà connu", () => {
+    const [partial] = mapMissionList([dep("Completed")]).map((l) => l.assist);
+    // Charleroi a validé plus tôt (synchro d'un autre agent).
+    const merged = mergeEnds(
+      { ...partial },
+      { in_status: "prevue", out_status: "realisee" },
+      "pmr",
+    );
+    expect(merged).toMatchObject({
+      in_status: "realisee",
+      out_status: "realisee",
+      status: "realisee",
+    });
+    expect(merged).not.toHaveProperty("train_cancelled");
+    // Rien de connu côté Charleroi : prévu.
+    expect(mergeEnds({ ...partial }, null, "pmr")).toMatchObject({
+      status: "prevue",
+      out_status: null,
+    });
+  });
+
+  it("règles de combinaison", () => {
+    expect(endStatus([])).toBe("");
+    expect(endStatus(["realisee", "prevue"])).toBe("prevue");
+    expect(endStatus(["annulee", "annulee"])).toBe("annulee");
+    const base = { cancelled: false, inAssist: true, outAssist: false };
+    // OUT non demandé : seul l'embarquement compte.
+    expect(combineStatus({ ...base, inStatus: "realisee", outStatus: "" })).toBe("realisee");
+    expect(combineStatus({ ...base, cancelled: true, inStatus: "realisee", outStatus: "" })).toBe(
+      "annulee",
+    );
+    expect(
+      combineStatus({
+        cancelled: false,
+        inAssist: true,
+        outAssist: true,
+        inStatus: "absent",
+        outStatus: "",
+      }),
+    ).toBe("absent");
   });
 });

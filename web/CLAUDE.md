@@ -415,3 +415,10 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   testés), choix dans `users.preferences.shift` (`saveShift`, `dashboard-actions.ts`), `components/dashboard/shift-widget.tsx`
   (décompte rendu après montage, chaque seconde, arrêté onglet caché). `normalizeLayout` le place en tête des dispositions
   existantes ; les autres nouveaux widgets vont à la fin.
+- **Statut par bout (IN / OUT)** (12 oct. 2026) : `pmr_assists` / `group_missions` ont `in_status` et `out_status`
+  (`1760003300`). `endStatus`, `combineStatus`, `mergeEnds` (`lib/pmr/dicos-mission.ts`, testés) : un trajet n'est
+  « réalisé » que si **chaque bout assisté** l'est ; un bout absent du lot (vue DICOS limitée à une gare) garde le statut
+  déjà stocké, inconnu = à faire. L'ingestion recalcule `status` après fusion (`train_cancelled` n'est jamais stocké).
+  `Leg.inDone` / `outDone` → badge IN / OUT coché (`IoBadges`). **Filtre de statut à cases multiples** (Missions PMR,
+  Groupes, Historique) : `statut=a&statut=b` ou « a,b », `parseStatuses` (`lib/pmr/model.ts`), `statusFilter`
+  (`server/data/pmr.ts`) ; aucune case = tous (« Masquer les annulées » s'applique alors).

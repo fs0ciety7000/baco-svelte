@@ -983,6 +983,13 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   décompte le temps restant (barre de progression, heure de fin). Horaires AM 6-14, PM 14-22, Nuit 22-6 **supposés** (à
   confirmer) ; choix mémorisé dans le profil.
 
+- 2026-10-12 — **Missions PMR / Groupes : statut par bout** (retour utilisateur : PMR CRF Tournai IN → Charleroi-Central OUT ;
+  dès que Tournai validait, la prise en charge de Charleroi disparaissait). Cause : le statut du trajet était déduit des
+  seules missions du lot ; la vue DICOS de l'agent de Tournai ne contient que la mission de départ → trajet « réalisé ».
+  Désormais `in_status` / `out_status` fusionnés d'une synchro à l'autre, trajet réalisé seulement quand départ ET arrivée
+  assistés sont validés ; badges IN / OUT cochés. Filtre de statut en **cases à cocher multiples**. Les lignes déjà mal
+  marquées se corrigent à la synchro suivante.
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)

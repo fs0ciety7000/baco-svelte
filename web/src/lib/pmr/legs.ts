@@ -16,6 +16,9 @@ export type Leg = {
   arrDistrict: string;
   inA: boolean;
   outA: boolean;
+  /** Bout validé dans DICOS (embarquement / débarquement réalisé). */
+  inDone?: boolean;
+  outDone?: boolean;
 };
 export function legOf(a: Assist): Leg {
   if (a.inAssist || a.outAssist || a.arrTime || a.transport)
@@ -28,6 +31,8 @@ export function legOf(a: Assist): Leg {
       arrDistrict: a.arrDistrict,
       inA: a.inAssist,
       outA: a.outAssist,
+      inDone: a.inStatus === "realisee",
+      outDone: a.outStatus === "realisee",
     };
   if (a.direction === "arrivee")
     return {
@@ -61,6 +66,8 @@ export const groupLegOf = (g: GroupMission): Leg => ({
   arrDistrict: g.arrDistrict,
   inA: g.inAssist,
   outA: g.outAssist,
+  inDone: g.inStatus === "realisee",
+  outDone: g.outStatus === "realisee",
 });
 export const groupTotal = (g: GroupMission) => g.adults + g.children + g.seniors;
 export const groupTrain = (g: GroupMission) =>

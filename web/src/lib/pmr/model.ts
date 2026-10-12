@@ -598,3 +598,14 @@ export function mergeAleaBlocks(pmr: AleaGroup[], groups: AleaGroup[]): AleaGrou
   }
   return [...map.values()].sort(byTime);
 }
+
+/**
+ * Statuts cochés dans les filtres (12 oct. 2026, cases à cocher multiples) : paramètre répété (`statut=a&statut=b`) ou
+ * liste « a,b » → statuts valides, dans l'ordre du catalogue, sans doublon.
+ */
+export function parseStatuses<T extends string>(value: unknown, allowed: readonly T[]): T[] {
+  const raw = (Array.isArray(value) ? value : [value])
+    .flatMap((v) => (typeof v === "string" ? v.split(",") : []))
+    .map((v) => v.trim());
+  return allowed.filter((s) => raw.includes(s));
+}

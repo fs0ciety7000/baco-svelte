@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -81,20 +82,24 @@ export function IoBadges({ leg, district }: { leg: Leg; district: string }) {
     <span className="inline-flex gap-1">
       {leg.inA ? (
         <Badge
-          tone="neutral"
-          title="Embarquement (gare de départ)"
+          tone={leg.inDone ? "ok" : "neutral"}
+          title={`Embarquement (gare de départ)${leg.inDone ? " : validé dans DICOS" : ""}`}
           className={dim(leg.depDistrict)}
         >
+          {leg.inDone ? <Check aria-hidden className="size-3" /> : null}
           IN
+          {leg.inDone ? <span className="sr-only"> validé</span> : null}
         </Badge>
       ) : null}
       {leg.outA ? (
         <Badge
-          tone="neutral"
-          title="Débarquement (gare d'arrivée)"
+          tone={leg.outDone ? "ok" : "neutral"}
+          title={`Débarquement (gare d'arrivée)${leg.outDone ? " : validé dans DICOS" : ""}`}
           className={dim(leg.arrDistrict)}
         >
+          {leg.outDone ? <Check aria-hidden className="size-3" /> : null}
           OUT
+          {leg.outDone ? <span className="sr-only"> validé</span> : null}
         </Badge>
       ) : null}
     </span>

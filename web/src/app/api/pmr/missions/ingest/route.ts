@@ -7,6 +7,7 @@ import {
   mapGroupList,
   mapMissionList,
   type MappedMission,
+  mergeEnds,
 } from "@/lib/pmr/dicos-mission";
 import { isValidDay } from "@/lib/orders/time";
 import {
@@ -86,14 +87,15 @@ async function upsert(
       .collection("pmr_assists")
       .getFirstListItem(pb.filter("dicos_id = {:id}", { id: dicosId }))
       .catch(nullOn404);
-    const body = { ...base, source: "dicos", updated_by: svcId };
+    const merged = mergeEnds(base, existing as unknown as Rec | null, "pmr");
+    const body = { ...merged, source: "dicos", updated_by: svcId };
     if (existing) {
       if (existing.anonymized) {
         c.skipped++;
         return;
       }
       assistId = existing.id;
-      if (changed(base, existing as unknown as Rec)) {
+      if (changed(merged, existing as unknown as Rec)) {
         await pb.collection("pmr_assists").update(existing.id, body);
         c.updated++;
       } else c.unchanged++;
@@ -260,13 +262,16 @@ export async function POST(request: Request) {
         .collection("group_missions")
         .getFirstListItem(pb.filter("dicos_id = {:id}", { id }))
         .catch(nullOn404);
+      const merged = mergeEnds(base, cur as unknown as Rec | null, "groupe");
       if (cur) {
-        if (changed(base, cur as unknown as Rec)) {
-          await pb.collection("group_missions").update(cur.id, { ...base, updated_by: svc.id });
+        if (changed(merged, cur as unknown as Rec)) {
+          await pb.collection("group_missions").update(cur.id, { ...merged, updated_by: svc.id });
           g.updated++;
         } else g.unchanged++;
       } else {
-        await pb.collection("group_missions").create({ ...base, dicos_id: id, updated_by: svc.id });
+        await pb
+          .collection("group_missions")
+          .create({ ...merged, dicos_id: id, updated_by: svc.id });
         g.created++;
       }
     } catch {

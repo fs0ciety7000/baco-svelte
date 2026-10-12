@@ -12,14 +12,15 @@ import {
 import { Input, Select } from "@/components/ui/input";
 import { districtsLabel, normalizeDistricts } from "@/lib/pmr/district-filter";
 import { DISTRICT_LABEL, DISTRICTS } from "@/lib/pmr/districts";
-import { ASSIST_STATUS, ASSIST_STATUSES } from "@/lib/pmr/model";
+import { ASSIST_STATUS, ASSIST_STATUSES, parseStatuses } from "@/lib/pmr/model";
 
 export type PmrFilters = {
   du?: string;
   au?: string;
   district?: string;
   q?: string;
-  statut?: string;
+  /** Statuts cochés : « prevue,absent » ou paramètre répété (cases à cocher, 12 oct. 2026). */
+  statut?: string | string[];
   /** « masquees » / « affichees » (choix mémorisé : voir `lib/pmr/cancelled-pref.ts`). */
   annulees?: string;
 };
@@ -46,6 +47,8 @@ export function PmrFilterBar({
   myDistricts?: string;
 }) {
   const hidden = hideCancelled(filters);
+  const checked = parseStatuses(filters.statut, statuses);
+  const statut = checked.join(",");
   // Filtre district courant : codes (« DSO,DSE »), vide = tous.
   const current = normalizeDistricts(filters.district);
   const keep = Object.fromEntries(
@@ -53,7 +56,7 @@ export function PmrFilterBar({
       // « tous » explicite quand un défaut existe : les raccourcis ne doivent pas le réappliquer.
       district: current || (myDistricts || filters.district === "tous" ? "tous" : ""),
       q: filters.q,
-      statut: filters.statut,
+      statut,
       annulees: hidden ? "masquees" : "affichees",
     }).filter(([, v]) => v),
   ) as Record<string, string>;
@@ -148,7 +151,7 @@ export function PmrFilterBar({
             />
           </span>
         </label>
-        <CollapsibleFilters active={[current, filters.statut].filter(Boolean).length}>
+        <CollapsibleFilters active={[current, statut].filter(Boolean).length}>
           <label className="flex min-w-0 flex-col gap-1 md:w-40">
             <span className="text-small text-fg-muted">District</span>
             <Select name="district" defaultValue={current || "tous"}>
@@ -163,17 +166,27 @@ export function PmrFilterBar({
               ))}
             </Select>
           </label>
-          <label className="flex min-w-0 flex-col gap-1 md:w-40">
-            <span className="text-small text-fg-muted">Statut</span>
-            <Select name="statut" defaultValue={filters.statut ?? ""}>
-              <option value="">Tous</option>
+          {/* Plusieurs statuts à la fois (12 oct. 2026) ; aucune case = tous. */}
+          <fieldset className="col-span-2 flex min-w-0 flex-col gap-1 md:col-span-1">
+            <legend className="mb-1 text-small text-fg-muted">Statut</legend>
+            <span className="flex flex-wrap gap-x-3 gap-y-1">
               {statuses.map((s) => (
-                <option key={s} value={s}>
+                <label
+                  key={s}
+                  className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-body text-fg md:min-h-control"
+                >
+                  <input
+                    type="checkbox"
+                    name="statut"
+                    value={s}
+                    defaultChecked={checked.includes(s)}
+                    className="size-5 cursor-pointer accent-[var(--accent)]"
+                  />
                   {ASSIST_STATUS[s as keyof typeof ASSIST_STATUS]?.label ?? s}
-                </option>
+                </label>
               ))}
-            </Select>
-          </label>
+            </span>
+          </fieldset>
           <label className="flex min-w-0 flex-col gap-1 md:w-40">
             <span className="text-small text-fg-muted">Du</span>
             <Input type="date" name="du" defaultValue={filters.du} />

@@ -4,7 +4,12 @@ import type { RecordModel } from "pocketbase";
 import { z } from "zod";
 
 import { normalizeDistricts } from "@/lib/pmr/district-filter";
-import { ASSIST_STATUSES, type AssistStatus, type EquipmentState } from "@/lib/pmr/model";
+import {
+  ASSIST_STATUSES,
+  parseStatuses,
+  type AssistStatus,
+  type EquipmentState,
+} from "@/lib/pmr/model";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
 import type { TrainState, TrainStates } from "@/lib/pmr/train-delay";
 import { isAbsentFromDicos, latestSessions, syncSummary, type SyncRow } from "@/lib/pmr/sync-state";
@@ -74,6 +79,9 @@ export type Assist = {
   /** Assistance à l'embarquement (gare de départ) / au débarquement (gare d'arrivée). */
   inAssist: boolean;
   outAssist: boolean;
+  /** Statut de chaque bout (« » = inconnu) : le trajet n'est réalisé que si chaque bout assisté l'est. */
+  inStatus: string;
+  outStatus: string;
   transport: string;
   zone: string;
   zoneCode: string;
@@ -133,6 +141,8 @@ function assist(r: RecordModel, canPmr: boolean): Assist {
     arrDistrict: str(r.arr_district),
     inAssist: !!r.in_assist,
     outAssist: !!r.out_assist,
+    inStatus: str(r.in_status),
+    outStatus: str(r.out_status),
     transport: str(r.transport),
     zone: str(r.zone),
     zoneCode: str(e.zone?.code),
@@ -224,12 +234,21 @@ export const assistListSchema = z.object({
     .transform((v) => normalizeDistricts(v)),
   q: z.string().trim().max(60).default(""),
   hideCancelled: z.boolean().default(false),
+  /** Un ou plusieurs statuts (« prevue,absent » ou liste) ; vide = tous. */
   status: z
-    .string()
+    .union([z.string(), z.array(z.string())])
     .optional()
-    .transform((v) => ASSIST_STATUSES.find((x) => x === v)),
+    .transform((v) => parseStatuses(v, ASSIST_STATUSES)),
   limit: z.coerce.number().int().min(1).max(5000).default(300),
 });
+
+/** Filtre PocketBase lié « statut parmi la liste cochée ». */
+export function statusFilter(
+  pb: { filter: (raw: string, params: Record<string, unknown>) => string },
+  list: readonly string[],
+) {
+  return `(${list.map((s, i) => pb.filter(`status = {:s${i}}`, { [`s${i}`]: s })).join(" || ")})`;
+}
 
 export async function listAssists(
   input: z.input<typeof assistListSchema>,
@@ -243,9 +262,10 @@ export async function listAssists(
   ];
   // Un trajet concerne un district si sa gare de départ OU d'arrivée y est.
   if (p.district) parts.push(districtFilter(pb, p.district));
-  if (p.status) parts.push(pb.filter("status = {:s}", { s: p.status }));
-  // « Masquer les annulées » (sans effet si un statut précis est demandé).
-  else if (p.hideCancelled) parts.push('status != "annulee"');
+  if (p.status.length && p.status.length < ASSIST_STATUSES.length)
+    parts.push(statusFilter(pb, p.status));
+  // « Masquer les annulées » (sans effet si des statuts précis sont cochés).
+  else if (!p.status.length && p.hideCancelled) parts.push('status != "annulee"');
   if (p.q) {
     // Gare tolérante (accents, abréviation PtCar) ; train, n° de dossier et nom du voyageur sur la saisie brute.
     // Nom du voyageur : BACO (client lié) et DICOS (détail nominatif), avec `pmr:read` seulement.

@@ -188,6 +188,75 @@ export function mapStatus(
   return DICOS_STATUS[status] ?? "prevue";
 }
 
+/** Statut d'un bout de trajet (IN = mission de départ, OUT = mission d'arrivée) ; "" = mission absente du lot. */
+export type EndStatus = "" | "prevue" | "realisee" | "annulee" | "absent";
+
+/** Statut d'un bout d'après les statuts (déjà convertis) de ses missions DICOS. */
+export function endStatus(statuses: readonly string[]): EndStatus {
+  if (!statuses.length) return "";
+  if (statuses.includes("absent")) return "absent";
+  if (statuses.every((s) => s === "annulee")) return "annulee";
+  if (statuses.every((s) => s === "realisee")) return "realisee";
+  return "prevue";
+}
+
+/**
+ * Statut d'un trajet à partir de ses bouts (12 oct. 2026) : « réalisée » seulement quand CHAQUE bout assisté l'est.
+ * Une vue DICOS limitée à la gare de départ ne voit que la mission de départ : sa validation ne doit pas faire passer
+ * le débarquement de l'autre gare pour réalisé (et le masquer d'un filtre). Un bout inconnu compte comme à faire.
+ */
+export function combineStatus(x: {
+  cancelled: boolean;
+  inAssist: boolean;
+  outAssist: boolean;
+  inStatus: EndStatus;
+  outStatus: EndStatus;
+}): "prevue" | "realisee" | "annulee" | "absent" {
+  if (x.cancelled) return "annulee";
+  const ends: EndStatus[] = [];
+  if (x.inAssist) ends.push(x.inStatus);
+  if (x.outAssist) ends.push(x.outStatus);
+  // Sens d'assistance inconnu (anciennes lignes) : les bouts connus.
+  if (!ends.length) ends.push(...[x.inStatus, x.outStatus].filter((s) => s !== ""));
+  if (!ends.length) return "prevue";
+  if (ends.includes("absent")) return "absent";
+  if (ends.every((s) => s === "annulee")) return "annulee";
+  if (ends.every((s) => s === "realisee" || s === "annulee") && ends.includes("realisee"))
+    return "realisee";
+  return "prevue";
+}
+
+/**
+ * Fusionne les bouts IN / OUT du lot avec la fiche existante puis recalcule le statut du trajet (12 oct. 2026) : un
+ * agent dont la vue DICOS ne couvre que la gare de départ n'envoie que la mission de départ ; le statut du débarquement
+ * déjà connu est gardé, et le trajet n'est « réalisé » que si chaque bout assisté l'est. `train_cancelled` n'est pas
+ * stocké.
+ */
+export function mergeEnds(
+  base: Record<string, unknown>,
+  cur: Record<string, unknown> | null,
+  kind: "pmr" | "groupe",
+): Record<string, unknown> {
+  const { train_cancelled, ...rest } = base;
+  const pick = (k: "in_status" | "out_status") =>
+    ((rest[k] as string) || (cur?.[k] as string) || "") as EndStatus;
+  const inStatus = pick("in_status");
+  const outStatus = pick("out_status");
+  const status = combineStatus({
+    cancelled: !!train_cancelled,
+    inAssist: !!rest.in_assist,
+    outAssist: !!rest.out_assist,
+    inStatus,
+    outStatus,
+  });
+  return {
+    ...rest,
+    in_status: inStatus || null,
+    out_status: outStatus || null,
+    status: kind === "groupe" && status === "absent" ? "prevue" : status,
+  };
+}
+
 export type MappedAssist = {
   dicos_id: string;
   day: string;
@@ -379,15 +448,25 @@ export type MappedLeg = {
   full_pax: number;
   light_pax: number;
   status: "prevue" | "realisee" | "annulee" | "absent";
+  /** Statut de l'embarquement (mission de départ) et du débarquement (mission d'arrivée) ; "" = pas dans ce lot. */
+  in_status: EndStatus;
+  out_status: EndStatus;
+  /** Train supprimé (non stocké : sert à recalculer `status` après fusion avec la fiche existante). */
+  train_cancelled: boolean;
   source: "dicos";
 };
 
-/** Statut d'un trajet d'après les missions DICOS qui le concernent et les annulations du trajet. */
-function legStatus(j: z.infer<typeof journeySchema>, statuses: string[]): MappedLeg["status"] {
-  if (j.isTrainCancelled || statuses.some((s) => s === "Deleted" || s === "Suspended"))
-    return "annulee";
-  if (statuses.length && statuses.every((s) => s === "Completed")) return "realisee";
-  return "prevue";
+/** Bouts d'un trajet d'après ses missions DICOS (type + statut brut) ; une mission sans type vaut pour les deux. */
+function endsOf(missions: { missionType?: string | null; status?: string | null }[]) {
+  const typed = (m: { missionType?: string | null }) =>
+    m.missionType === "Departure" || m.missionType === "Arrival";
+  const of = (type: string) =>
+    endStatus(
+      missions
+        .filter((m) => m.missionType === type || !typed(m))
+        .map((m) => mapStatus(str(m.status), "")),
+    );
+  return { in_status: of("Departure"), out_status: of("Arrival") };
 }
 
 /** Dossier DICOS complet → une ligne (leg) par trajet + détail nominatif commun. */
@@ -411,7 +490,7 @@ export function mapDossier(raw: unknown): {
       const arr = wall(j.arrivalTime);
       const station = frName(j.departureName);
       const other = frName(j.arrivalName);
-      const statuses = d.missions.filter((m) => m.journeyId === j.id).map((m) => str(m.status));
+      const ends = endsOf(d.missions.filter((m) => m.journeyId === j.id));
       const isTaxi = str(j.transportType).toLowerCase() === "taxi";
       legs.push({
         assist: {
@@ -432,7 +511,15 @@ export function mapDossier(raw: unknown): {
           pmr_type: type,
           full_pax: 0,
           light_pax: 0,
-          status: legStatus(j, statuses),
+          status: combineStatus({
+            cancelled: !!j.isTrainCancelled,
+            inAssist: !!j.withDepartureAssistance,
+            outAssist: !!j.withArrivalAssistance,
+            inStatus: ends.in_status,
+            outStatus: ends.out_status,
+          }),
+          ...ends,
+          train_cancelled: !!j.isTrainCancelled,
           source: "dicos",
         },
         mission: {
@@ -535,15 +622,18 @@ export function mapMissionList(raws: unknown[]): { assist: MappedLeg; mission: M
     const depW = dep ? wallOrEmpty(dep.p.journey.time) : wallOrEmpty(arr?.p.journey.otherTime);
     const arrW = arr ? wallOrEmpty(arr.p.journey.time) : wallOrEmpty(dep?.p.journey.otherTime);
     const j = (dep ?? arr ?? parts[0]!).p.journey;
-    const statuses = parts.map((x) => x.p.status ?? "");
-    const status: MappedLeg["status"] =
-      j.isTrainCancelled || statuses.every((s) => s === "Deleted" || s === "Suspended")
-        ? "annulee"
-        : parts.some((x) => x.m.assist.status === "absent")
-          ? "absent"
-          : statuses.every((s) => s === "Completed")
-            ? "realisee"
-            : "prevue";
+    const endOf = (type: string) =>
+      endStatus(parts.filter((x) => x.p.missionType === type).map((x) => x.m.assist.status));
+    const inAssist = parts.some((x) => !!x.p.journey.withDepartureAssistance);
+    const outAssist = parts.some((x) => !!x.p.journey.withArrivalAssistance);
+    const ends = { in_status: endOf("Departure"), out_status: endOf("Arrival") };
+    const status = combineStatus({
+      cancelled: !!j.isTrainCancelled,
+      inAssist,
+      outAssist,
+      inStatus: ends.in_status,
+      outStatus: ends.out_status,
+    });
     const typed = first(parts, (x) => !!x.m.assist.pmr_type);
     const isTaxi = str(j.transportType).toLowerCase() === "taxi";
     const pick = (k: keyof MappedMission) => first(parts.map((x) => x.m.mission[k])) ?? "";
@@ -561,8 +651,8 @@ export function mapMissionList(raws: unknown[]): { assist: MappedLeg; mission: M
         other_station: arrStation,
         arr_time: arrW.time,
         arr_district: districtForStation(arrStation),
-        in_assist: parts.some((x) => !!x.p.journey.withDepartureAssistance),
-        out_assist: parts.some((x) => !!x.p.journey.withArrivalAssistance),
+        in_assist: inAssist,
+        out_assist: outAssist,
         transport: isTaxi ? "taxi" : "train",
         train: n(j.trainNumber) > 0 ? String(j.trainNumber) : str(j.transportId).slice(0, 20),
         dicos_ref: first(parts.map((x) => x.m.assist.dicos_ref)) ?? "",
@@ -572,6 +662,8 @@ export function mapMissionList(raws: unknown[]): { assist: MappedLeg; mission: M
         full_pax: Math.max(0, ...parts.map((x) => x.m.assist.full_pax)),
         light_pax: Math.max(0, ...parts.map((x) => x.m.assist.light_pax)),
         status,
+        ...ends,
+        train_cancelled: !!j.isTrainCancelled,
         source: "dicos",
       },
       mission,
@@ -651,6 +743,10 @@ export type MappedGroup = {
   children: number;
   seniors: number;
   status: "prevue" | "realisee" | "annulee";
+  in_status: EndStatus;
+  out_status: EndStatus;
+  /** Non stocké (voir `MappedLeg.train_cancelled`). */
+  train_cancelled: boolean;
   coach: string;
   meeting_point: string;
   contact_first: string;
@@ -690,13 +786,18 @@ export function mapGroupList(raws: unknown[]): MappedGroup[] {
     const arrW = arr ? wallOrEmpty(arr.journey.time) : wallOrEmpty(dep?.journey.otherTime);
     const j = (dep ?? arr ?? parts[0]!).journey;
     const t = parts.find((x) => x.traveler)?.traveler ?? {};
-    const statuses = parts.map((x) => x.status ?? "");
-    const status: MappedGroup["status"] =
-      j.isTrainCancelled || statuses.every((s) => s === "Deleted" || s === "Suspended")
-        ? "annulee"
-        : statuses.every((s) => s === "Completed")
-          ? "realisee"
-          : "prevue";
+    const ends = endsOf(parts);
+    const inAssist = parts.some((x) => !!x.journey.withDepartureAssistance);
+    const outAssist = parts.some((x) => !!x.journey.withArrivalAssistance);
+    // Pas d'« absent » pour un groupe (pas de statut client).
+    const combined = combineStatus({
+      cancelled: !!j.isTrainCancelled,
+      inAssist,
+      outAssist,
+      inStatus: ends.in_status,
+      outStatus: ends.out_status,
+    });
+    const status: MappedGroup["status"] = combined === "absent" ? "prevue" : combined;
     const isTaxi = str(j.transportType).toLowerCase() === "taxi";
     out.push({
       dicos_id: key,
@@ -707,8 +808,8 @@ export function mapGroupList(raws: unknown[]): MappedGroup[] {
       other_station: arrStation,
       arr_time: arrW.time,
       arr_district: districtForStation(arrStation),
-      in_assist: parts.some((x) => !!x.journey.withDepartureAssistance),
-      out_assist: parts.some((x) => !!x.journey.withArrivalAssistance),
+      in_assist: inAssist,
+      out_assist: outAssist,
       transport: isTaxi ? "taxi" : "train",
       train:
         n(j.trainNumber) > 0
@@ -723,6 +824,8 @@ export function mapGroupList(raws: unknown[]): MappedGroup[] {
       children: clamp(t.children),
       seniors: clamp(t.seniors),
       status,
+      ...ends,
+      train_cancelled: !!j.isTrainCancelled,
       coach: str(j.coachNumber).slice(0, 20),
       meeting_point: firstStr(parts.map((x) => frText(x.meetingPoint))).slice(0, 300),
       contact_first: firstStr(parts.map((x) => x.client?.firstName)).slice(0, 200),

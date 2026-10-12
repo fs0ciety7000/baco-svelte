@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { pl } from "@/lib/utils";
 import { AssistBoard } from "@/components/pmr/assist-board";
 import { hideCancelled, PmrFilterBar, type PmrFilters } from "@/components/pmr/filter-bar";
+import { ASSIST_STATUSES, parseStatuses } from "@/lib/pmr/model";
 import { Button } from "@/components/ui/button";
 import { can } from "@/lib/permissions";
 import { normalizeDistricts } from "@/lib/pmr/district-filter";
@@ -43,7 +44,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
         du,
         au,
         district: f.district ?? "",
-        statut: f.statut ?? "",
+        statut: parseStatuses(f.statut, ASSIST_STATUSES).join(","),
         q: f.q ?? "",
         annulees: hideCancelled(f) ? "masquees" : "",
       }).filter(([, v]) => v),

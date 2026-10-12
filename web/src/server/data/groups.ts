@@ -4,13 +4,16 @@ import type { RecordModel } from "pocketbase";
 import { z } from "zod";
 
 import { normalizeDistricts } from "@/lib/pmr/district-filter";
+import { parseStatuses } from "@/lib/pmr/model";
 import { brusselsDay, isValidDay } from "@/lib/orders/time";
 
 import { isAbsentFromDicos } from "@/lib/pmr/sync-state";
 
 import { districtFilter, resolveStationTerms, stationFilter } from "../stations";
 import { pbForRequest } from "./orders";
-import { dicosSessions } from "./pmr";
+import { dicosSessions, statusFilter } from "./pmr";
+
+export const GROUP_STATUSES = ["prevue", "realisee", "annulee"] as const;
 
 // Missions de groupe DICOS (lecture seule, droit `pmr:read` — règle PocketBase `1760001500`).
 
@@ -28,6 +31,8 @@ export type GroupMission = {
   arrDistrict: string;
   inAssist: boolean;
   outAssist: boolean;
+  inStatus: string;
+  outStatus: string;
   transport: string;
   train: string;
   dicosRef: string;
@@ -59,6 +64,8 @@ function row(r: RecordModel): GroupMission {
     arrDistrict: str(r.arr_district),
     inAssist: !!r.in_assist,
     outAssist: !!r.out_assist,
+    inStatus: str(r.in_status),
+    outStatus: str(r.out_status),
     transport: str(r.transport),
     train: str(r.train),
     dicosRef: str(r.dicos_ref),
@@ -90,9 +97,9 @@ export const groupListSchema = z.object({
   q: z.string().trim().max(60).default(""),
   hideCancelled: z.boolean().default(false),
   status: z
-    .string()
+    .union([z.string(), z.array(z.string())])
     .optional()
-    .transform((v) => (["prevue", "realisee", "annulee"] as const).find((x) => x === v)),
+    .transform((v) => parseStatuses(v, GROUP_STATUSES)),
 });
 
 export async function listGroups(input: z.input<typeof groupListSchema>) {
@@ -103,9 +110,10 @@ export async function listGroups(input: z.input<typeof groupListSchema>) {
     pb.filter("day >= {:a} && day <= {:b}", { a: p.from ?? today, b: p.to ?? p.from ?? today }),
   ];
   if (p.district) parts.push(districtFilter(pb, p.district));
-  if (p.status) parts.push(pb.filter("status = {:s}", { s: p.status }));
-  // « Masquer les annulées » (sans effet si un statut précis est demandé).
-  else if (p.hideCancelled) parts.push('status != "annulee"');
+  if (p.status.length && p.status.length < GROUP_STATUSES.length)
+    parts.push(statusFilter(pb, p.status));
+  // « Masquer les annulées » (sans effet si des statuts précis sont cochés).
+  else if (!p.status.length && p.hideCancelled) parts.push('status != "annulee"');
   if (p.q) {
     // Gare tolérante (accents, abréviation PtCar) ; train, groupe et n° de dossier sur la saisie brute.
     const terms = await resolveStationTerms(p.q);
