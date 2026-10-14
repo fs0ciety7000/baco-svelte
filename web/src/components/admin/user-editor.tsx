@@ -4,13 +4,7 @@ import { KeyRound, Mail, Power, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import {
-  resetPassword,
-  sendResetLink,
-  setActive,
-  setPermissions,
-  updateUser,
-} from "@/app/(app)/admin/actions";
+import { resetPassword, sendResetLink, setActive, updateUser } from "@/app/(app)/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
@@ -18,23 +12,21 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";
-import { PERMISSION_KEYS } from "@/lib/permissions";
 import { DEFAULT_ROLES, roleMeta, type RoleMeta } from "@/lib/roles";
 import type { AdminUser } from "@/server/data/admin";
 
 import { DistrictPicker } from "./district-picker";
-import { PermissionMatrix, type Tri } from "./permission-matrix";
+import { AgentRights } from "./agent-rights";
 import { PasswordReveal, roleOptions } from "./user-create";
 
-const KNOWN = new Set(PERMISSION_KEYS);
-
-/** Fiche d'un compte : identité, rôle et districts, droits par module (4 actions, 3 états), activation, mot de passe. */
+/** Fiche d'un compte : identité, rôle et districts, ajustements des droits (lot L5), activation, mot de passe. */
 export function UserEditor({
   user,
   isSelf,
   resetMail = false,
   roles = DEFAULT_ROLES,
   canAssignFull = false,
+  peers = 0,
 }: {
   user: AdminUser;
   isSelf: boolean;
@@ -44,6 +36,8 @@ export function UserEditor({
   canAssignFull?: boolean;
   /** Envoi d'e-mails réglé sur PocketBase (lien de réinitialisation possible). */
   resetMail?: boolean;
+  /** Autres agents ayant le même rôle et les mêmes ajustements (suggestion de rôle). */
+  peers?: number;
 }) {
   const router = useRouter();
   const disabled = user.role === "disabled";
@@ -53,13 +47,6 @@ export function UserEditor({
     fonction: user.fonction,
     districts: user.districts,
     role: disabled ? user.disabledRole || "paco" : user.role,
-  });
-  const [perm, setPerm] = useState<Record<string, Tri>>(() => {
-    const m: Record<string, Tri> = {};
-    // Seules les clés du catalogue sont éditées ici ; les autres (reprises de BACO) sont gardées par le serveur.
-    for (const k of user.grants) if (KNOWN.has(k)) m[k] = "accorde";
-    for (const k of user.denies) if (KNOWN.has(k) && !m[k]) m[k] = "retire";
-    return m;
   });
   const [pending, start] = useTransition();
   const [password, setPassword] = useState<string | null>(null);
@@ -79,16 +66,6 @@ export function UserEditor({
       toast.success(done);
       router.refresh();
     });
-
-  const savePerms = () =>
-    run(
-      () =>
-        setPermissions(user.id, {
-          grants: Object.keys(perm).filter((k) => perm[k] === "accorde"),
-          denies: Object.keys(perm).filter((k) => perm[k] === "retire"),
-        }),
-      "Droits enregistrés.",
-    );
 
   return (
     <div className="flex flex-col gap-4">
@@ -118,7 +95,9 @@ export function UserEditor({
             </Field>
             <Field
               label={disabled ? "Rôle à la réactivation" : "Rôle"}
-              hint={isSelf ? "Tu ne peux pas changer ton propre rôle." : undefined}
+              hint={
+                isSelf ? "Tu ne peux pas changer ton propre rôle." : meta.description || undefined
+              }
             >
               <Select
                 value={f.role}
@@ -214,29 +193,19 @@ export function UserEditor({
         </Card>
       </div>
 
-      <Card>
-        <CardHeader
-          eyebrow="Droits"
-          title="Droits par module"
-          actions={
-            <Button size="sm" onClick={savePerms} loading={pending} disabled={disabled}>
-              <Save aria-hidden /> Enregistrer les droits
-            </Button>
-          }
-        />
-        <CardContent className="flex flex-col gap-4">
-          {role === "screen" ? (
-            <p className="text-body text-fg-muted" data-testid="screen-role-note">
-              Compte « Écran » : aucun droit de module, même accordé. Il ne voit que l&apos;écran
-              commun (/tv) : bons bus ouverts, missions PMR sans nom, trains en retard, ALEA,
-              urgences et consignes ; ni taxis ni groupes. Ses districts règlent ce qu&apos;affiche
-              l&apos;écran.
-            </p>
-          ) : (
-            <PermissionMatrix role={meta} value={perm} onChange={setPerm} />
-          )}
-        </CardContent>
-      </Card>
+      <AgentRights
+        key={`${role}-${user.grants.join()}-${user.denies.join()}`}
+        userId={user.id}
+        firstName={
+          (user.name || user.username || "Cette personne").split(" ")[0] ?? "Cette personne"
+        }
+        grants={user.grants}
+        denies={user.denies}
+        role={meta}
+        roleChanged={role !== current}
+        disabled={disabled}
+        peers={peers}
+      />
       {password ? <PasswordReveal password={password} onClose={() => setPassword(null)} /> : null}
     </div>
   );

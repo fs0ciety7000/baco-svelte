@@ -427,7 +427,23 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `useRoles` / `useRoleLabel` (`components/shell/roles-context.tsx`, monté par `AppShell` depuis `(app)/layout.tsx`) ; `Avatar`
   est un composant client (`useAvatarRing`). Admin : rôles proposés = `assignableRoles(listRoles())`, Administrateur / Sysop
   seulement pour un admin (`canAssignFull`, revérifié par `assertAssignable` et par le hook), matrice des droits = permissions du
-  rôle (`PermissionMatrix role={RoleMeta}`). Pas encore d'écran Rôles (lot L4).
+  rôle (`PermissionMatrix role={RoleMeta}`).
+- **Rôles v3, lots L4-L5** (14 oct. 2026) : logique pure **`lib/roles-editor.ts`** (testée) : `VISIBLE` / `TASK_GROUPS` (catalogue
+  sans les lectures BACO cachées), `toggle` / `setTask` (dépendances ajoutées à l'activation, dépendants coupés),
+  `taskSummary` (Tout / Voir seulement / Aucun / « 2 sur 4 »), `diffPerms`, `preview`, `impactSentence`, `searchEntries`
+  (sans accents), `roleKeyFromLabel`, `historySentences` / `revertPatch` (journal d'audit `roles`), ajustements d'un agent
+  (`adjustmentsOf`, `addAdjustment` qui accorde aussi les dépendances absentes du rôle, `effectivePerms` = `computePerms`,
+  `adjustmentSignature`). **Administration › Rôles** (`/admin/roles`, onglet « Rôles » du groupe Comptes) : cartes,
+  `NewRoleDialog` (modèle puis nom ; `?depuis=<agent>` = rôle tiré des ajustements d'un agent), éditeur
+  `/admin/roles/[clé]` (`components/admin/roles/role-editor.tsx` : sections par tâche, `Switch` en phrases, badge
+  « Sensible », aperçu `PermPreview`, « Comparer avec », `ActionBar`, récapitulatif + case de confirmation pour un droit
+  sensible, toast « Annuler » = `saveRole` de l'état d'avant, historique + « Annuler ce changement », `DeleteRole` avec
+  réaffectation). Actions `app/(app)/admin/roles/actions.ts` (`createRole`, `saveRole` avec verrou `expectedUpdated`,
+  `revertRoleChange`, `deleteRole`, `reassignRole` ; le hook fait foi). Données : `listRolesAdmin`, `roleAgents`,
+  `roleHistory`, `adjustmentPeers` (`server/data/roles.ts`). **Fiche d'un agent** : `AgentRights`
+  (`components/admin/agent-rights.tsx`) — ajustements en phrases, « Ajouter un ajustement » (recherche), « X peut… »,
+  suggestion de rôle, matrice 3 états en « Vue experte » repliée ; `setPermissions` accepte toutes les clés visibles du
+  catalogue v3. Mobile : onglets « Droits / Ajustements » ↔ « Résultat ». E2E `e2e/roles.spec.ts` (`E2E_SHOTS_DIR`).
 - **Suppression d'un bon** : Server Action `deleteOrder(kind, id)` (`commandes/actions.ts`, droits revérifiés par
   `canDeleteOrder` de `lib/orders/status.ts`, miroir du hook `checkDelete`, puis redirection vers `/commandes` ou
   `/commandes/taxi`) : droit de suppression du module, ou créateur avec droit d'écriture pendant 8 h, bon pas envoyé. Pas encore

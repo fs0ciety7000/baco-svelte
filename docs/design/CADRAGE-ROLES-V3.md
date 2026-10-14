@@ -4,7 +4,7 @@
 > tard) ; Sysop gardé distinct ; pas de portée par district ; pas de droits temporaires ; granularité du §2.3 acceptée ;
 > suppression d'un rôle utilisé refusée avec réaffectation proposée ; Modérateur et PACO/RCCA modifiables mais non
 > supprimables ; couleur du rôle = anneau d'avatar. **Lots L0 à L3 livrés** (catalogue, `users.perms`, règles en `perms`,
-> collection `roles`) : voir l'annexe (§F pour L2-L3). Prochain : L4 (écran Administration › Rôles).
+> collection `roles`) : voir l'annexe (§F pour L2-L3). **L4 et L5 livrés** (§G).
 > Ébauche visuelle : `scratchpad/roles-v3/ebauche.html` (hors dépôt, noms fictifs).
 
 Demande de l'utilisateur (14 oct.) : « Granularité, ajout de nouvelles permissions, possibilité de créer rôles et
@@ -475,3 +475,34 @@ suppression visent désormais le bon d'un AUTRE agent, le créateur pouvant supp
 Retour arrière : sauvegarde PocketBase juste avant le déploiement ; sinon `pocketbase migrate down 3` (rend les règles v2 et
 `users.role` en liste, supprime `roles`) puis redéploiement du code précédent (le web L2-L3 lit `perms`, compatible avec les
 règles v2).
+
+### G. Lots L4 et L5 livrés (14 oct. 2026)
+
+**L4 — Administration › Rôles** (`/admin/roles`) : cartes (pastille, nom, description, nombre d'agents, « Rôle CSM » /
+« Créé par l'équipe », cadenas des rôles verrouillés ; Connecteur et Désactivé non listés), « Nouveau rôle » en deux temps
+(modèle parmi les rôles non verrouillés ou « Aucun droit », puis nom, description, couleur ; identifiant tiré du nom),
+éditeur par tâche métier (sections repliables avec résumé, « Tout activer / Tout couper », interrupteurs en phrases avec la
+phrase « Peut… », badges « Sensible », « Nécessaire pour : … » et dépendances ajoutées / coupées expliquées par un message,
+recherche sans accents), aperçu en direct « Ce rôle… peut / ne peut pas » et « Changements non enregistrés : +n, −n »,
+« Comparer avec » (différences seulement), enregistrement avec récapitulatif (« 4 agents vont recevoir : … ») et case
+« Je confirme » si un droit sensible est ajouté, toast « Annuler » (10 s, rejoue l'état d'avant), historique lisible (journal
+d'audit `roles`) avec « Annuler ce changement », suppression d'un rôle créé par l'équipe avec réaffectation en masse de ses
+agents. Message permanent : « Les droits disponibles sont fixés par CSM ; tu peux les combiner librement dans des rôles. »
+Verrou optimiste (rôle modifié ailleurs → refus). Rôles verrouillés : lecture seule.
+
+**L5 — fiche d'un agent** : description du rôle sous la liste, « Ajustements pour cette personne » en phrases (« En plus » /
+« Retiré », « Sans effet » si le rôle le donne déjà / ne le donne pas), chacun retirable, « Ajouter un ajustement » (même
+liste avec recherche ; « Donner en plus » accorde aussi les dépendances absentes du rôle), « Prénom peut… » (ajustements
+surlignés), suggestion « Créer un rôle à partir de ces ajustements » quand au moins un autre agent actif a le même rôle et
+les mêmes ajustements, grille 3 états en « Vue experte » repliée. Stockage inchangé (`grants` / `denies`, `setPermissions`
+accepte désormais toutes les clés visibles du catalogue v3 ; droits hors catalogue conservés).
+
+**Écarts à l'ébauche** : pas de **raison** par ajustement (le §4.2 la prévoyait ; elle demanderait un champ de plus, hors
+périmètre : stockage `grants` / `denies` inchangé) ; l'éditeur de rôle garde le nom, la description et la couleur en tête
+(comme l'ébauche) mais l'aperçu liste les 60 droits (pas de regroupement) ; historique en fenêtre (pas en page) ; barre
+d'enregistrement collante dans le flux (`ActionBar`), pas pleine largeur sous la barre latérale.
+
+**Contrôles** : Vitest 1066 (dont `roles-editor.test.ts`), `test-rules` 563 (inchangé), E2E `roles.spec.ts` (créer depuis
+PACO/RCCA, retirer « Voir les statistiques », attribuer à un compte jetable qui perd l'onglet Statistiques et reçoit 404,
+annuler par l'historique, supprimer avec réaffectation ; ajustements d'une fiche) en 1440 et 390, `admin.spec.ts` et
+`shell.spec.ts` verts.

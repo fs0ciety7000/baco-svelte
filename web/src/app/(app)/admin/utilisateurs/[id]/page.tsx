@@ -13,7 +13,8 @@ import { TokenList } from "@/components/pmr/extension-connect";
 import { assignableRoles } from "@/lib/roles";
 import { getUser } from "@/server/data/admin";
 import { pbForRequest } from "@/server/data/orders";
-import { listRoles } from "@/server/data/roles";
+import { adjustmentPeers, listRoles } from "@/server/data/roles";
+import { adjustmentSignature } from "@/lib/roles-editor";
 import { listMyConnectorTokens } from "@/server/extension";
 import { impersonationEnabled } from "@/server/impersonation";
 
@@ -25,7 +26,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const user = await getUser(id).catch(() => null);
   if (!user || user.role === "connector") notFound();
   const pb = await pbForRequest();
-  const [tokens, passkeys] = await Promise.all([
+  const signature = adjustmentSignature(user.role, user.grants, user.denies);
+  const [tokens, passkeys, peers] = await Promise.all([
     listMyConnectorTokens(user.id),
     pb
       .collection("passkeys")
@@ -43,6 +45,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         })),
       )
       .catch(() => []),
+    signature
+      ? adjustmentPeers()
+          .then((m) => Math.max(0, (m.get(signature) ?? 1) - 1))
+          .catch(() => 0)
+      : Promise.resolve(0),
   ]);
   return (
     <section className="flex flex-col gap-4" aria-label="Fiche du compte">
@@ -59,6 +66,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         resetMail={await passwordResetEnabled()}
         roles={assignableRoles(await listRoles())}
         canAssignFull={me.role === "admin"}
+        peers={peers}
       />
       <section
         className="flex flex-col gap-2 rounded-box border border-border bg-surface p-4"
