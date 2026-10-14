@@ -57,7 +57,9 @@ export async function authenticateConnector(
       .collection("connector_tokens")
       .getFirstListItem(pb.filter("token_hash = {:h}", { h: hash }), {
         expand: "user",
-        fields: "id,user,expand.user.role,expand.user.grants,expand.user.denies",
+        // `perms` (rôles v3) : seul champ de droits lisible par le compte de service ; grants / denies pour une
+        // instance PocketBase antérieure (champ absent).
+        fields: "id,user,expand.user.role,expand.user.perms,expand.user.grants,expand.user.denies",
       })
       .catch(nullOn404);
     // Droits du propriétaire relus à chaque recherche : compte désactivé ou droit retiré = jeton refusé.

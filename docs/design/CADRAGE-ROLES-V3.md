@@ -1,6 +1,9 @@
 # Cadrage — Rôles et permissions v3
 
-> Statut : **à valider par l'utilisateur** (14 oct. 2026). Aucun code de l'application n'est modifié par ce document.
+> Statut : **validé par l'utilisateur** (14 oct. 2026). Réponses au §5 : admin seul gère les rôles (délégation plus
+> tard) ; Sysop gardé distinct ; pas de portée par district ; pas de droits temporaires ; granularité du §2.3 acceptée ;
+> suppression d'un rôle utilisé refusée avec réaffectation proposée ; Modérateur et PACO/RCCA modifiables mais non
+> supprimables ; couleur du rôle = anneau d'avatar. **Lots L0 et L1 livrés** (catalogue, `users.perms`) : voir l'annexe.
 > Ébauche visuelle : `scratchpad/roles-v3/ebauche.html` (hors dépôt, noms fictifs).
 
 Demande de l'utilisateur (14 oct.) : « Granularité, ajout de nouvelles permissions, possibilité de créer rôles et
@@ -288,3 +291,137 @@ Ordre conseillé : L0 → L1 → L2 → L3 → L4 → L5, puis L6 à L8 selon le
 7. Supprimer un rôle encore utilisé : refuser, ou proposer une réaffectation en masse ?
 8. Les rôles Modérateur et PACO/RCCA peuvent-ils être **modifiés** depuis l'interface (proposé : oui, mais pas supprimés) ?
 9. Couleur du rôle utilisée pour l'anneau d'avatar (aujourd'hui accent doublé pour admin / sysop seulement) ?
+
+---
+
+## Annexe — L0 / L1 livrés et inventaire des tests de rôle (14 oct. 2026)
+
+### A. Catalogue v3 (L0) et `users.perms` (L1)
+
+- **Source unique** : `web/src/lib/permissions/catalog.ts` (clé, tâche, libellé, phrase « Peut… », niveau, `requires`,
+  `legacy`, rôles par défaut `roles`, `v2`, `hidden`). **69 clés** = **56 clés v2** (les 51 de `PERMISSION_MODULES` +
+  les 5 lectures BACO `planning:read`, `bus:read`, `taxi:read`, `ops:read`, `lignes:read`, cachées) + **13 nouvelles**
+  qui remplaceront des tests de rôle en dur au lot L2 :
+
+  | Clé | Par défaut | Remplacera |
+  |---|---|---|
+  | `bus:reopen`, `taxi:reopen` | PACO/RCCA, Modérateur | « coordinateur » des bons (`lib/orders.js` `isCoordinator`, `lib/orders/status.ts`) : rouvrir un envoyé, rétablir un annulé |
+  | `suppliers:read` | PACO/RCCA, Modérateur | onglet Fournisseurs `hideFor: ["guest"]` |
+  | `pmr_equipment:manage` | PACO/RCCA, Modérateur | `isCoordinator()` (matériel complet, zones) + branche de rôle de `pmr_equipment.updateRule` |
+  | `pmr_zones:read` | PACO/RCCA, Modérateur | `pmr_zones` list/view `role != "guest"` |
+  | `journal:moderate` | Modérateur | `COORD_ROLES` (`lib/operations.js`), `isJournalModerator()`, branches `moderator` des règles `ops_log*` |
+  | `spi:read` | PACO/RCCA, Modérateur | `spi_points` list/view `role != "guest"` |
+  | `timetable:read` | PACO/RCCA, Modérateur | `train_services`, `train_relations`, `rail_lines` list/view (et `rail_lines.update`) `!= "guest"` ; onglets Lignes / Trains / Gares ; export des gares |
+  | `team:read` | PACO/RCCA, Modérateur | onglet Équipe › Annuaire `hideFor` ; agents mentionnables (`server/data/ops.ts`) |
+  | `quinyx:read` | PACO/RCCA, Modérateur | `quinyx_*` list/view `!= "guest"`, onglet Planning, accueil (`todayShiftOf`) |
+  | `presence:read` | PACO/RCCA, Modérateur | « En ligne maintenant » (`topbar.tsx`, `onlineAgents`) |
+  | `changelog:read`, `changelog:write` | PACO/RCCA + Modérateur / Modérateur | `changelog` list/view `!= "guest"` / create-update-delete `moderator` ; `canEditChangelog()`, onglet « Annonces » |
+
+  Pas de clé d'administration : l'administration reste `ADMIN` (admin / sysop) en dur (décision : admin seul, délégation
+  plus tard). Attention aux noms : `bus:read` / `taxi:read` sont des lectures **historiques de BACO** (cachées), sans
+  rapport avec `bus:reopen` / `taxi:reopen` ; les bons bus restent sous `otto:*`, les taxis sous `generate_taxi:*`.
+- **Copie pour les hooks** : `pocketbase/pb_hooks/lib/catalog.js`, écrite par `npm run catalog` (web/, aussi en
+  `prebuild`) ; `catalog.test.ts` échoue si elle est périmée, si les clés v2 ne sont pas exactement couvertes, si les rôles
+  par défaut v2 changent, ou si le calcul web (`lib/permissions/compute.ts`) et le hook (`lib/perms.js`) divergent.
+- **`users.perms`** (migration `1760004300`, hook `users.pb.js`) : recalculé à **chaque** création / modification d'un
+  compte (corps ignoré, même admin / superuser), recalculé pour tous les comptes au démarrage de `serve` si le catalogue a
+  changé, jamais `null`. Héritage : admin / sysop = tout ; écran, désactivé, connecteur = rien ; accordé > retiré > rôle ;
+  `legacy` ; puis retrait des clés dont une dépendance manque (seul écart voulu avec la v2 : une lecture retirée retire les
+  actions du module). Masqué aux non-admins sur la fiche d'un autre agent (le compte de service lit `perms`, pas
+  grants / denies) ; l'agent lit les siens. Côté web, `can()` lit `perms` pour toute clé du catalogue (sinon ancien
+  calcul : instance sans le champ, droit hors catalogue comme `dicos:write`).
+- **Contrôle d'équivalence** : `node pocketbase/scripts/perms-equivalence.mjs <data.db>` (ancien `can()` + tests de rôle
+  en dur ↔ `perms` stocké, par compte et par clé, sans nom ni e-mail). Copie locale de la base de dev (13 comptes) :
+  0 écart. À relancer sur une copie de la base de prod avant L2.
+
+### B. Règles PocketBase (état après `1760004200`, lu dans `_collections`)
+
+Atomes communs : `ACTIVE` = `@request.auth.id != "" && role != "disabled"` ; `ADMIN` = admin || sysop ;
+`&& role != "screen"` ajouté partout par `1760003000`.
+
+1. **`can(P)`** = `ACTIVE && (ADMIN || ((rôles par défaut de P) && denies !~ '"P"') || grants ~ '"P"')` → L2 :
+   `ACTIVE && (ADMIN || perms ~ '"P"')`. Collections : `alea_marks` (deplacements:read / write), `b201_reports`
+   (b201:*), `bus_companies`, `bus_company_lines`, `bus_contacts`, `bus_drivers`, `bus_orders` (otto:*),
+   `order_templates`, `order_events` (otto:* ; generate_taxi:* pour `kind = "taxi"`), `taxi_companies`, `taxi_orders`
+   (generate_taxi:*), `connector_tokens` create (deplacements:write), `dicos_syncs`, `group_missions`,
+   `pmr_assist_legacy`, `pmr_clients`, `pmr_equipment`, `pmr_mission`, `train_schedules` (pmr:*), `pmr_assists`,
+   `mission_trains` (deplacements:*), `pmr_events` (deplacements:read || pmr:read), `pmr_zones` create / update
+   (pmr:write / update), `directory_contacts` (repertoire:*), `documents`, `procedures`, `procedure_versions`
+   (documents:*), `ebp_views` (ebp:*), `level_crossings` (carte_pn:*), `line_stations`, `spi_points` create / update /
+   delete (lignes:*), `ops_log`, `ops_log_events`, `ops_log_reads` (journal:*), `order_pdfs`, `order_pdf_backups`
+   (archives:read / delete), `ptcar` (ptcar:*), `stations`, `rail_lines` update (ptcar:update), `train_watches` create
+   (live:read).
+2. **`canDelete(P)`** = `ACTIVE && (ADMIN || (moderator && denies !~ P) || grants ~ P)` (deleteRule de toutes les
+   collections ci-dessus qui ont `X:delete`) → `perms ~ '"X:delete"'`.
+3. **Tests de rôle hors `can()`** :
+
+   | Collection.règle | Test actuel | L2 |
+   |---|---|---|
+   | `ops_log` list / view, `ops_log_events` / `ops_log_reads` list / view | `status = "active" \|\| author = moi \|\| ADMIN \|\| moderator` | `… \|\| perms ~ '"journal:moderate"'` |
+   | `ops_log.update` | `author = moi \|\| ADMIN \|\| moderator` | `journal:moderate` |
+   | `changelog` list / view | `role != "guest"` | `changelog:read` |
+   | `changelog` create / update / delete | `ADMIN \|\| moderator` | `changelog:write` |
+   | `pmr_equipment.update` (champs complets) | `ADMIN \|\| paco \|\| moderator` | `pmr_equipment:manage` |
+   | `pmr_zones` list / view | `role != "guest"` | `pmr_zones:read` |
+   | `spi_points` list / view | `role != "guest"` | `spi:read` |
+   | `train_services`, `train_relations`, `rail_lines` list / view ; `rail_lines.update` | `role != "guest"` | `timetable:read` (update : `ptcar:update && timetable:read`) |
+   | `quinyx_agents`, `quinyx_groups`, `quinyx_shifts` list / view | `role != "guest"` (connecteur compris) | `quinyx:read` **ou** `role = "connector"` (le connecteur n'a aucune permission de module) |
+   | `quinyx_*` create / update / delete, `quinyx_places` list / view | `role = "connector" && grants ~ dicos:write` | inchangé (rôle système + droit hors catalogue) |
+   | `dicos_syncs`, `group_missions`, `pmr_mission`, `pmr_assists`, `train_schedules`, `connector_tokens.update` | branche `grants ~ dicos:write` (compte de service) | inchangé |
+   | `bus_orders`, `pmr_assists`, `mission_trains`, `alea_marks`, `dicos_syncs`, `ops_log`, `app_settings`, `users` list / view | branches `role = "screen"` | inchangé (rôle système verrouillé) |
+   | `app_settings` (clé `import_delta`) ; create / update | `ADMIN` | inchangé |
+   | `audit_log` list / view | `ADMIN \|\| grants ~ "audit:read"` | **`ADMIN` seul** (clé retirée du catalogue le 11 oct., grants effacés) |
+   | `users` create / update / manage, `mail_campaigns`, `passkeys` list / view / delete, `user_sessions`, `cron_runs`, `connector_tokens` list / view / delete, `quinyx_groups` / `quinyx_places` écriture, `quinyx_agents` / `quinyx_shifts` delete | `ADMIN` | inchangé (admin seul) |
+   | `pmr_zones.delete`, `dicos_syncs` / `group_missions` / `mission_trains` / `pmr_mission` / `train_schedules` delete | `ADMIN` seul | inchangé ; **écart** : le web donne `pmr:delete` au Modérateur, la règle des zones non |
+   | `stations` list / view, `line_stations` list / view, `notifications`, `train_watches` | `ACTIVE` (invité compris) | inchangé ; **écart** : l'onglet Gares et l'export sont fermés à l'invité, la lecture de `stations` non |
+   | `users.update` (soi-même) | `role / grants / denies / … :isset = false` | ajouter `perms:isset = false` est inutile (le hook écrase), à garder tel quel |
+
+### C. Hooks PocketBase
+
+| Fichier | Test | L2 |
+|---|---|---|
+| `lib/operations.js` `COORD_ROLES` / `isCoord` | admin, sysop, moderator (+ superuser) | `perms ~ journal:moderate` (lire `users.perms`) |
+| `lib/operations.js` `hasJournalRead` (`LOG_READERS`), `hasPerm(u, perm, roles)` | calcul v2 recopié (rôle + grants + denies) | lire `perms` (une seule source) |
+| `lib/operations.js` filtres `role != "disabled" && role != "connector"` (+ `screen`) | destinataires possibles | inchangé (rôles système) |
+| `lib/orders.js` `isCoordinator` / `COORDINATOR` | admin, sysop, moderator, paco | `bus:reopen` / `taxi:reopen` selon la collection |
+| `pmr.pb.js` `dicosIngest`, `lib/alerts.js` l. 90 | `grants ~ dicos:write` | inchangé (connecteur) |
+| `pmr.pb.js` `onRecordEnrich` | `role = "screen"` | inchangé |
+| `lib/alerts.js` l. 110 | `role != disabled / connector / screen` | inchangé |
+| `passkeys.pb.js` | `disabled`, `connector` | inchangé |
+| `users.pb.js` | `disabled` (tokenKey, jetons) | inchangé |
+| `lib/import.js` `ROLE_MAP`, `lib/import-delta.js` | rôles BACO → v2, comptes créés désactivés | inchangé (`perms` recalculé par le hook à l'enregistrement) |
+
+### D. Web (`web/src`)
+
+| Où | Test | L2 |
+|---|---|---|
+| `lib/permissions.ts` `isCoordinator` (pmr/actions.ts `saveEquipment`, `saveZone`, pmr/materiel/page.tsx) | admin, sysop, moderator, paco | `can(user, "pmr_equipment:manage")` |
+| `lib/orders/status.ts` `isCoordinator(role)` (bus-order-view, taxi-order-view, commandes/suivi) | idem | `can(user, "bus:reopen" \| "taxi:reopen")` |
+| `lib/permissions.ts` `isJournalModerator` (operations/actions.ts, journal/page.tsx, export main courante) | admin, sysop, moderator | `can(user, "journal:moderate")` |
+| `lib/permissions.ts` `canEditChangelog` (equipe/actions.ts, changelog/page.tsx) | admin, sysop, moderator | `can(user, "changelog:write")` |
+| `changelog/page.tsx` `showAnnouncements = role !== "guest"` | invité exclu | `changelog:read` |
+| `navigation.ts` `hideFor: ["guest"]` (Fournisseurs) | | `permission: "suppliers:read"` |
+| `navigation.ts` `hideFor: ["guest", "screen"]` (Lignes, Trains, Gares) | | `timetable:read` |
+| `navigation.ts` `hideFor: ["guest", "screen"]` (Équipe › Annuaire / Planning) | | `team:read` / `quinyx:read` |
+| `navigation.ts` `hideFor: ["screen"]` (Mon profil) | | inchangé (rôle système) |
+| `components/shell/topbar.tsx` `role !== "guest"` ; `equipe/actions.ts` `onlineAgents` `role === "guest"` | « en ligne » | `presence:read` |
+| `(app)/page.tsx` `role === "guest" ? null : todayShiftOf` | | `quinyx:read` |
+| `server/data/ops.ts` l. 371 (agents mentionnables) | `role != guest / disabled / connector / screen` | `perms ~ '"team:read"'` |
+| `server/quinyx-ingest.ts` l. 167, `lib/quinyx/model.ts` `TEAM_ROLES` | comptes de l'équipe (horaires gardés) | `quinyx:read` (même ensemble) ou étiquette d'équipe (L7) |
+| `app/api/referentiels/gares/export/route.ts` | `guest / screen / disabled / connector` exclus | `timetable:read` |
+| `server/auth.ts` `isAdmin` / `requireAdmin` (pages et actions admin, export d'audit, actions admin des archives, import du référentiel des trains, ⌘K comptes) | admin, sysop | inchangé (admin seul) |
+| `server/auth.ts` `requireUser` (`screen` → `/tv`), `app/connexion/actions.ts`, `api/events` (présence), `server/data/handover.ts`, `tv/page.tsx`, `(app)/layout.tsx` (`isScreen`) | rôle Écran | inchangé |
+| `server/data/team.ts`, `server/data/quinyx.ts`, `search-actions.ts`, `admin/campaign-actions.ts` (filtres `role != disabled / connector / screen`) | listes d'agents | inchangé (rôles système) |
+| `admin/*` (`ROLES`, `ROLE_CHOICES`, `user-editor`, `permission-matrix` `full`, compte `connector` non gérable) | administration des rôles | L3 (collection `roles`) |
+| `components/shell/avatar.tsx` `avatarRing`, `equipe/page.tsx` badge admin | admin / sysop | L3 (couleur du rôle) |
+| `server/dicos-service.ts` `can(owner, "deplacements:write")` | droits du propriétaire du jeton | lit déjà `perms` (L1) |
+
+### E. À savoir pour L2
+
+- **Temps réel** (vérifié le 14 oct. sur PocketBase 0.40.4, script de contrôle hors dépôt) : une souscription SSE déjà
+  ouverte **suit** un changement de droits fait par l'API ou `$app.save()` (retrait de `journal:read` → plus d'événement
+  `ops_log` ; rétabli → de nouveau reçu) : PocketBase rafraîchit la fiche `@request.auth` de ses clients temps réel quand
+  la fiche de l'agent est enregistrée. Une écriture **SQL directe** sur `users` (migration, recalcul au démarrage) ne la
+  rafraîchit pas : au lot L3, le recalcul des agents d'un rôle modifié doit passer par `$app.save()`.
+- Le recalcul de `perms` après un changement du catalogue est automatique (démarrage de `serve`) ; ajouter un contrôle
+  `test-rules` par nouvelle clé.

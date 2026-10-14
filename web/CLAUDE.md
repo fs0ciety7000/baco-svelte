@@ -336,6 +336,19 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   enregistrement existant et **`X:delete`** pour supprimer (les règles PocketBase le font). Matrice admin :
   `components/admin/permission-matrix.tsx` (un clic : hérité → accordé → retiré). Districts permanents
   `users.districts` (`DistrictPicker`) ; `userDistricts()` (`lib/team.ts`) = jour coché → permanents → `district`.
+- **Rôles v3, lots L0-L1** (14 oct. 2026, `../docs/design/CADRAGE-ROLES-V3.md`) : **catalogue des permissions**
+  `lib/permissions/catalog.ts` = source unique (clé, tâche, libellé, phrase « Peut… », niveau, `requires`, `legacy`,
+  rôles par défaut `roles` ; 56 clés v2 + 13 nouvelles qui remplaceront des tests de rôle au lot L2 : `bus:reopen`,
+  `taxi:reopen`, `suppliers:read`, `pmr_equipment:manage`, `pmr_zones:read`, `journal:moderate`, `spi:read`,
+  `timetable:read`, `team:read`, `quinyx:read`, `presence:read`, `changelog:read`, `changelog:write`). Lu par Node sans
+  compilation : aucune importation, syntaxe effaçable seulement. `roleDefaults(role)` remplace l'ancien `ROLE_DEFAULTS`.
+  **`npm run catalog`** (aussi en `prebuild`) écrit la copie des hooks `../pocketbase/pb_hooks/lib/catalog.js`
+  (`catalog-module.ts`) ; `catalog.test.ts` échoue si elle est périmée, si les clés v2 ou leurs rôles par défaut changent,
+  ou si `lib/permissions/compute.ts` (`computePerms`) et `pb_hooks/lib/perms.js` divergent. **`users.perms`** (écrit par
+  PocketBase seul) est lu par `getCurrentUser` (`SessionUser.perms`, `ShellUser.perms`) : `can()` le suit pour toute clé du
+  catalogue, sinon ancien calcul (instance sans le champ, droit hors catalogue comme `dicos:write`). Le compte de service
+  lit `expand.user.perms` du propriétaire d'un jeton (`dicos-service.ts`) : grants / denies d'un autre agent sont masqués
+  aux non-admins. Nouvelle permission : entrée du catalogue + `npm run catalog` + contrôle `test-rules`.
 - **Avatars** : `avatarRing(role)` (`components/shell/avatar.tsx`) : anneau neutre, anneau d'accent doublé pour admin / sysop ;
   passer `role` à `<Avatar>` partout (Journal compris).
 - **Documents** (Ressources › Procédures et documents) : envoi par **`POST /api/referentiels/documents`** (30 Mo, type

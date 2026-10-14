@@ -12,7 +12,8 @@ pocketbase migrate up $P                                   # appliquer les migra
 pocketbase superuser upsert <email> <mot de passe> $P      # compte superuser local
 pocketbase serve --http 127.0.0.1:8090 $P                  # serveur local
 CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P   # import de la sauvegarde Supabase (hors Git)
-PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (465 contrôles)
+PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (482 contrôles)
+node scripts/perms-equivalence.mjs pb_data/data.db         # rôles v3 : ancien calcul ↔ users.perms (0 écart attendu)
 CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # Commandes + PMR, comptes gardés
 CSM_IMPORT_SCOPE=pmr CSM_IMPORT_RESET=1 pocketbase csm-import … $P        # PMR seul (zones, matériel, prestations)
 CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # main courante + 211 PN de BACO
@@ -36,6 +37,16 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   Nouveautés (`changelog`) : admin, sysop, modérateur. Les règles réécrites testent `(paco || moderator)`. `users.districts` (1 à 3, admin seul) : filtres et alertes
   (`dutyDistricts` : jour coché → districts permanents → `district`). La migration réécrit les règles en place par
   remplacement de motifs : toute nouvelle collection doit écrire directement `paco` / `guest`.
+- **Rôles v3, lots L0-L1** (14 oct. 2026, `docs/design/CADRAGE-ROLES-V3.md`) : **`users.perms`** (JSON, migration
+  `1760004300`) = permissions effectives, **écrites par le hook seul** (`users.pb.js` → `lib/perms.js`, chargé par
+  `require()`) à chaque création / modification d'un compte, à partir de `role`, `grants`, `denies` ; une valeur envoyée
+  dans le corps est ignorée (admin et superuser compris) ; jamais `null` (`[]` pour écran, désactivé, connecteur) ;
+  recalculé pour tous les comptes au démarrage de `serve` si le catalogue a changé (SQL, sans `updated`). Catalogue et
+  rôles par défaut : **`lib/catalog.js`, copie générée** depuis `web/src/lib/permissions/catalog.ts` par `npm run catalog`
+  (web/) — ne jamais l'éditer à la main. `onRecordEnrich` masque `perms` / `grants` / `denies` d'un autre agent aux
+  non-admins (le compte `connector` lit `perms`, pas grants / denies ; l'agent lit les siens) ; `@request.auth.*` des
+  règles n'est pas touché. **Les règles ne testent pas encore `perms`** (lot L2). Une écriture SQL directe sur `users` ne
+  rafraîchit pas la fiche `@request.auth` des souscriptions temps réel ouvertes (`$app.save()`, lui, la rafraîchit).
 - **Règles** : construites avec `can(perm, rôles)` (rôle par défaut, `grants` / `denies` par agent).
   `users.role`, `grants`, `denies`, `banned_until`, `email` ne sont modifiables que par un admin.
 - **Identifiants** : les UUID Supabase sont conservés (`users.id` accepte 15 à 36 caractères `[a-z0-9-]`) ;

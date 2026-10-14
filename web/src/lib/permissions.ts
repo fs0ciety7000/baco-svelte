@@ -5,6 +5,8 @@
 // l'administration), PACO/RCCA (lecture partout, écriture et modification, pas de suppression), Invité (lecture des commandes bus et taxi). Chaque module a jusqu'à quatre actions : `X:read`
 // (lecture), `X:write` (écriture = création), `X:update` (modification), `X:delete` (suppression).
 
+import { CATALOG_KEYS, roleDefaults } from "./permissions/catalog";
+
 export type Role = "admin" | "sysop" | "moderator" | "paco" | "guest" | "screen" | "disabled";
 
 export type Action = "read" | "write" | "update" | "delete";
@@ -89,33 +91,33 @@ export const PERMISSION_CATALOG: { group: string; items: { key: string; label: s
     ),
   }));
 
-// Lectures historiques (BACO) encore citées par quelques écrans : accordées comme les autres lectures.
-const LEGACY_READ = ["planning:read", "bus:read", "taxi:read", "ops:read", "lignes:read"];
+// Rôles par défaut : catalogue v3 (`lib/permissions/catalog.ts`, `roleDefaults`), source unique partagée avec les hooks
+// PocketBase (copie générée `pocketbase/pb_hooks/lib/catalog.js`). Modérateur : tout, suppression comprise ; PACO/RCCA :
+// tout sauf la suppression (décision du 11 oct. 2026) ; Invité : lecture bus et taxis ; Écran, désactivé : rien (l'Écran
+// lit `/tv` par `buildHandover(…, { screen: true })` et les règles propres à ce rôle, 1760003000). Les lectures
+// historiques de BACO (planning:read, bus:read, taxi:read, ops:read, lignes:read) y figurent, cachées.
 
-const ROLE_DEFAULTS: Record<Role, string[]> = {
-  admin: ["*"],
-  sysop: ["*"],
-  // Modérateur : tout le catalogue, suppression comprise ; pas l'administration (comptes, réglages).
-  moderator: [...PERMISSION_KEYS, ...LEGACY_READ],
-  // PACO/RCCA : tout sauf la suppression (décision du 11 oct. 2026).
-  paco: [...PERMISSION_KEYS.filter((k) => !k.endsWith(":delete")), ...LEGACY_READ],
-  // Invité : lecture des commandes bus et taxi.
-  guest: ["otto:read", "generate_taxi:read"],
-  // Écran (poste partagé, 11 oct. 2026) : AUCUN droit de module ; il ne voit que `/tv`, dont les lectures passent par
-  // `buildHandover(…, { screen: true })` et par les règles PocketBase propres à ce rôle (1760003000).
-  screen: [],
-  disabled: [],
+export type PermissionSubject = {
+  role: Role;
+  grants?: string[] | null;
+  denies?: string[] | null;
+  /** Permissions effectives écrites par PocketBase (`users.perms`, rôles v3 lot L1). Absent = ancien calcul. */
+  perms?: string[] | null;
 };
 
-export type PermissionSubject = { role: Role; grants?: string[] | null; denies?: string[] | null };
+const CATALOG_SET = new Set(CATALOG_KEYS);
 
 export function can(user: PermissionSubject | null | undefined, permission: string): boolean {
   // Compte « Écran » : jamais de droit, même accordé (les règles PocketBase le refusent aussi).
   if (!user || user.role === "disabled" || user.role === "screen") return false;
+  // `perms` relu dans PocketBase (seul le hook l'écrit) : fait foi pour toute clé du catalogue.
+  if (Array.isArray(user.perms) && CATALOG_SET.has(permission))
+    return user.perms.includes(permission);
+  // Ancien calcul : PocketBase sans `perms`, ou droit hors catalogue (repris de BACO, `dicos:write`…).
   if (user.role === "admin" || user.role === "sysop") return true;
   if (user.grants?.includes(permission)) return true;
   if (user.denies?.includes(permission)) return false;
-  return (ROLE_DEFAULTS[user.role] ?? []).includes(permission);
+  return roleDefaults(user.role).includes(permission);
 }
 
 /**
@@ -159,5 +161,5 @@ export function isScreen(user: PermissionSubject | null | undefined): boolean {
 /** Droit accordé par le seul rôle (sans grants / denies) : sert à la matrice « défaut du rôle » de l'admin. */
 export function roleHas(role: Role, permission: string): boolean {
   if (role === "admin" || role === "sysop") return true;
-  return (ROLE_DEFAULTS[role] ?? []).includes(permission);
+  return roleDefaults(role).includes(permission);
 }
