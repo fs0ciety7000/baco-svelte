@@ -1285,6 +1285,14 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   d'Infrabel **désactivés** (réversible) ; **BK réelle** : interpolée entre les bornes kilométriques Infrabel (CC0), 1 112 PN
   sur 1 290, estimation « ≈ » en repli (53) ; **vrai fond de carte** (tuiles OSM relayées) sous les zones.
 
+- 2026-10-15 — **PN Infrabel et zones SPI** (lot A, `docs/design/PLAN-2026-10-15.md`) : PN du jeu ouvert Infrabel (CC0), BK
+  interpolée entre les bornes kilométriques Infrabel (`bk_source`, `1760004810` ; BK relevée jamais remplacée), 28 PN BACO absents
+  d'Infrabel **désactivés** (réactivables), collection `spi_zones` (19 zones, noms = gare de référence, **pas de zone commune
+  FBMZ / FBN**), Carte PN refaite sur fond OpenStreetMap relayé (zones en polygones semi-transparents). **Districts par défaut
+  alignés sur la carte SPI** (décision de l'utilisateur : la carte fait foi) dans `web/src/data/station-seed.json` : Hal → Uccle
+  et Bruxelles-Midi en DCE ; Flawinne, Floreffe, Ham-sur-Sambre, Moustier, Ligny, Tilly, Villers-la-Ville, Bierges-Walibi en DSE ;
+  Boitsfort DCE ; Courtrai DNO ; Tirlemont, Bilzen, Nossegem, Zaventem, Boom DNE. Une correction manuelle déjà en base l'emporte.
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)

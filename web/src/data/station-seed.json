@@ -493,7 +493,7 @@
     "k": "pang"
   },
   "bierges walibi": {
-    "d": "DSO",
+    "d": "DSE",
     "k": "pang"
   },
   "bierset awans": {
@@ -501,7 +501,7 @@
     "k": "pang"
   },
   "bilzen": {
-    "d": "DSE",
+    "d": "DNE",
     "k": "pang"
   },
   "bilzen wijkspoor": {
@@ -548,7 +548,7 @@
     "k": "gare"
   },
   "boitsfort": {
-    "d": "DSE",
+    "d": "DCE",
     "k": "pang"
   },
   "bokrijk": {
@@ -567,7 +567,7 @@
     "k": "pang"
   },
   "boom": {
-    "d": "DNO",
+    "d": "DNE",
     "k": "gare"
   },
   "boondael": {
@@ -835,7 +835,7 @@
     "k": "pang"
   },
   "courtrai": {
-    "d": "DSO",
+    "d": "DNO",
     "k": "gare"
   },
   "couvin": {
@@ -1937,7 +1937,7 @@
     "k": "gare"
   },
   "ligny": {
-    "d": "DSO",
+    "d": "DSE",
     "k": "pang"
   },
   "lille flandres fr": {
@@ -2377,7 +2377,7 @@
     "d": ""
   },
   "nossegem": {
-    "d": "DCE",
+    "d": "DNE",
     "k": "pang"
   },
   "obaix buzet": {
@@ -2925,7 +2925,7 @@
     "k": "gare"
   },
   "tilly": {
-    "d": "DSO",
+    "d": "DSE",
     "k": "gare"
   },
   "tilly garage": {
@@ -2933,7 +2933,7 @@
     "k": "gare"
   },
   "tirlemont": {
-    "d": "DSE",
+    "d": "DNE",
     "k": "gare"
   },
   "tollembeek": {
@@ -3036,7 +3036,7 @@
     "k": "pang"
   },
   "villers la ville": {
-    "d": "DSO",
+    "d": "DSE",
     "k": "pang"
   },
   "vilvorde": {
@@ -3188,7 +3188,7 @@
     "k": "pang"
   },
   "zaventem": {
-    "d": "DCE",
+    "d": "DNE",
     "k": "pang"
   },
   "zedelgem": {
