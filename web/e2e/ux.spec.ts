@@ -21,9 +21,12 @@ test("la palette cherche aussi dans les données (train)", async ({ page, isMobi
 test("« / » place le curseur dans la recherche de la page", async ({ page, isMobile }) => {
   test.skip(isMobile, "raccourci clavier : desktop");
   await login(page, "/commandes");
-  await page.locator("body").click({ position: { x: 5, y: 5 } });
+  const q = page.locator('main [role="search"] input[name="q"]');
+  await expect(q).toBeVisible();
+  // Clic dans une zone neutre du contenu (le coin de la page porte le logo de la barre latérale, qui mène à l'accueil).
+  await page.locator("main").click({ position: { x: 5, y: 5 } });
   await page.keyboard.press("/");
-  await expect(page.locator('main [role="search"] input[name="q"]')).toBeFocused();
+  await expect(q).toBeFocused();
 });
 
 test("Missions PMR : état de la synchro DICOS affiché", async ({ page }) => {

@@ -467,6 +467,8 @@ test("taxi : création liée à une société, aller-retour pré-inversé", asyn
   // Départ rempli à la main : l'agent de la CI n'a pas de district (pas de gare par défaut).
   await page.getByRole("combobox", { name: "Départ", exact: true }).fill("Mons");
   await page.getByRole("combobox", { name: "Arrivée", exact: true }).fill("Tournai");
+  // Heure de l'aller fixée : par défaut « maintenant », le retour à 23:30 échouait le soir (« le retour doit suivre l'aller »).
+  await page.getByLabel("Heure de prise en charge").fill("08:00");
   await expect(page.getByTestId("autosave")).toHaveAttribute("data-state", "saved", {
     timeout: 10_000,
   });

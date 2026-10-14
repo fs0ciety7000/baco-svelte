@@ -3,10 +3,20 @@
 Toutes les évolutions de CSM visibles par les agents, de la plus récente à la plus ancienne.
 Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
-## [2026.10.14.1] — Dates au format belge, administration plus accessible
+## [2026.10.14.1] — Nouveaux menus, rôles personnalisés, annuaire refait
 
 ### Nouveautés
 
+- **Menus réorganisés** :
+  - **Accueil** : À traiter et Statistiques.
+  - **Opérations** : Journal (ouvert d'office), Ma journée, Relève.
+  - **Commandes** : Suivi « À envoyer » (ouvert d'office), Bus, Taxi, Archives, Fournisseurs.
+  - **PMR** : Missions, Groupes, Clients, Matériel, Historique.
+  - Nouveau module **Réseau** : Trains en direct, Horaires, Lignes, Gares, PtCar, EBP, Carte PN.
+  - **Ressources** : Contacts, Collègues, Planning, Procédures et documents, B201.
+  - Mon profil et l'extension CSM sont dans le menu de ton compte (ta photo en haut à droite).
+  - Les anciens liens et favoris mènent automatiquement à la bonne page. Les compteurs de la barre latérale ouvrent directement ce qu'ils comptent (Journal, bons à envoyer).
+- **Administration › Référentiels** (administrateurs) : tableau de bord qualité et écrans pour gérer gares et districts, lignes (dont l'ajout d'une ligne absente de l'horaire), PtCar, EBP, points SPI, passages à niveau (désactivation) et mise à jour des horaires.
 - **Annuaire refait** : la recherche part dès la première lettre et tolère accents, fautes de frappe et mots dans le désordre ; elle trouve un numéro quel que soit son format (espaces, /, +32), une gare par son abréviation (FMS) ou son nom néerlandais. Résultats classés et surlignés, appel et copie du numéro en un clic, **favoris** et **contacts consultés récemment**, fiche avec numéro en grand. « / » pour chercher, ↑ ↓ pour parcourir, Entrée pour ouvrir.
 - **Bon taxi : plusieurs gares « via »** (ajout, ordre, retrait), reprises sur le PDF, l'e-mail et le Suivi.
 - **Taxi PMR : « Numéro de dossier »** (format 2026-10-14-0134, remis en forme à la saisie), avec les dossiers DICOS du jour proposés.
@@ -42,6 +52,7 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 ### Sécurité
 
+- **Référentiels du réseau** (gares, lignes, PtCar, EBP, points SPI) : en lecture pour l'équipe, modifiables par les administrateurs (ou un rôle qui en reçoit le droit). La carte des passages à niveau ne change pas.
 - « Voir en tant que » et gestion des comptes renforcés après un audit : un compte Administrateur ne peut être modifié que par un administrateur, les rôles techniques sont protégés, et un bon déjà envoyé ne peut plus être supprimé par son créateur, même après réouverture.
 
 ## [2026.10.14] — Cycle des bons, trains et nouveautés
