@@ -35,6 +35,9 @@ export function userDistricts(
   return user.district ? [user.district] : [];
 }
 
+/** Événement de fenêtre émis après un changement des districts du jour (la cloche se recharge). */
+export const DUTY_CHANGED = "csm:duty-changed";
+
 /** District principal (bons de commande, feuille de route) : le premier des districts permanents, sinon `district`. */
 export function primaryDistrict(user: { districts?: string[] | null; district?: string }): string {
   return user.districts?.[0] || user.district || "";

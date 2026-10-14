@@ -1,5 +1,6 @@
 "use client";
 
+import { DUTY_CHANGED } from "@/lib/team";
 import { MapPin } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -84,6 +85,7 @@ function DutyDialog({
                     : "Aucun district aujourd'hui : pas de notification de district.",
                 );
                 onOpenChange(false);
+                window.dispatchEvent(new Event(DUTY_CHANGED));
                 router.refresh();
               })
             }

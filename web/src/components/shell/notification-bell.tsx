@@ -1,5 +1,6 @@
 "use client";
 
+import { DUTY_CHANGED } from "@/lib/team";
 import * as Menu from "@radix-ui/react-dropdown-menu";
 import {
   Accessibility,
@@ -66,8 +67,16 @@ export function NotificationBell() {
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => void load(), 400);
     });
+    // Districts du jour changés (puce de la barre du haut, profil) : la cloche suit, sans alerter pour les notifications
+    // qui réapparaissent (amorçage refait).
+    const onDuty = () => {
+      known.current = null;
+      void load();
+    };
+    window.addEventListener(DUTY_CHANGED, onDuty);
     return () => {
       off();
+      window.removeEventListener(DUTY_CHANGED, onDuty);
       if (timer.current) clearTimeout(timer.current);
     };
   }, [load]);

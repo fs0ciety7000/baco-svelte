@@ -138,6 +138,8 @@ export type LineRef = {
   line: string;
   name: string;
   district: string;
+  /** Districts auxquels la ligne est rattachée (30 % de ses gares au moins). */
+  districts: string[];
   stations: number;
   branches: number;
   /** Gares de la ligne qui correspondent à la recherche de gare. */
@@ -195,13 +197,15 @@ export async function listLines(gare = ""): Promise<LineRef[]> {
           .map((s) => s.n)
       : [];
     if (q && !matches.length) continue;
+    const ld = lineDistrict(
+      stations.map((s) => s.n),
+      districtOf,
+    );
     rows.push({
       line: str(r.line),
       name: str(r.name),
-      district: lineDistrict(
-        stations.map((s) => s.n),
-        districtOf,
-      ).district,
+      district: ld.district,
+      districts: ld.districts,
       stations: stations.length,
       branches: Array.isArray(r.branches) ? r.branches.length : 0,
       matches: [...new Set(matches)],

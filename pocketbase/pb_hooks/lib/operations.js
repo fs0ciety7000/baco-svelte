@@ -191,15 +191,32 @@ function fold(s) {
 		.replace(/[àâäáéèêëîïíôöóùûüúçÿ]/g, (c) => ACCENTS[c] || c);
 }
 
-// Gares des trois districts (line_stations), triées de la plus longue à la plus courte (« Mons » après « Mons-Nord »).
+// Gares des trois districts de l'équipe, triées de la plus longue à la plus courte (« Mons » après « Mons-Nord ») :
+// référentiel des gares (`stations`, noms FR et NL, district modifiable dans Ressources › Gares) puis `line_stations`
+// (BACO) pour les gares qui n'y sont pas encore. Districts DNO / DNE : hors équipe, ignorés.
 function stationIndex(app) {
+	const out = [];
+	const seen = {};
+	const add = (raw, district) => {
+		const name = fold(raw);
+		if (name.length < 3 || seen[name]) return;
+		seen[name] = true;
+		out.push({ name: name, district: district });
+	};
+	try {
+		const rows = arrayOf(new DynamicModel({ name: '', name_nl: '', district: '' }));
+		app.db().newQuery("SELECT name, name_nl, district FROM stations WHERE district IN ('DSO','DSE','DCE')").all(rows);
+		for (const r of rows) {
+			const d = DISTRICT_NAME[String(r.district)];
+			add(r.name, d);
+			add(r.name_nl, d);
+		}
+	} catch (_) {
+		// Référentiel des gares absent (base ancienne) : line_stations seule.
+	}
 	const rows = arrayOf(new DynamicModel({ station: '', district: '' }));
 	app.db().newQuery("SELECT DISTINCT station, district FROM line_stations WHERE station != '' AND district != ''").all(rows);
-	const out = [];
-	for (const r of rows) {
-		const name = fold(r.station);
-		if (name.length >= 3) out.push({ name: name, district: String(r.district) });
-	}
+	for (const r of rows) add(r.station, String(r.district));
 	return out.sort((x, y) => y.name.length - x.name.length);
 }
 
@@ -271,14 +288,18 @@ function irailJournal(app) {
 		app.save(r);
 		event(app, r.id, 'create', '', '', '', null, 'iRail');
 		const label = restored ? 'Rétabli' : planned ? 'Travaux' : 'Perturbation';
-		for (const u of recipients) notify(app, u, 'perturbation', `${label} (${districts.join(', ')}) : ${title}`, description, `/operations/journal?entree=${r.id}`, 'ops_log', r.id);
+		for (const u of recipients) notify(app, u, 'perturbation', `${label} (${districts.join(', ')}) : ${title}`, description, `/operations/journal?entree=${r.id}`, 'ops_log', r.id, districts);
 		created++;
 	}
 	return created;
 }
 
-function notify(app, user, kind, title, body, link, source, sourceId) {
+// `districts` : noms des districts concernés (« Sud-Ouest »…) ; vide = pour l'agent quel que soit son district (la cloche
+// filtre sur les districts du jour).
+function notify(app, user, kind, title, body, link, source, sourceId, districts) {
 	const n = new Record(app.findCollectionByNameOrId('notifications'));
+	const ds = (districts || []).filter((d) => DISTRICT_NAMES.indexOf(d) !== -1);
+	if (ds.length) n.set('districts', ds);
 	n.set('user', user);
 	n.set('kind', kind);
 	n.set('title', String(title).slice(0, 200));
@@ -375,8 +396,9 @@ function sendPlanned(app, record, auth, plan) {
 		.replace(/\s+/g, ' ')
 		.trim();
 	for (const u of plan.mention) notify(app, u, 'mention', `${who} te mentionne dans le Journal`, excerpt, link, 'ops_log', record.id);
-	for (const u of plan.urgent) notify(app, u, 'urgent', `Message urgent de ${who}`, excerpt, link, 'ops_log', record.id);
-	for (const d of plan.district || []) notify(app, d.user, 'mention', `${who} mentionne @${d.tag} dans le Journal`, excerpt, link, 'ops_log', record.id);
+	const urgentDistrict = record.getString('district');
+	for (const u of plan.urgent) notify(app, u, 'urgent', `Message urgent de ${who}`, excerpt, link, 'ops_log', record.id, urgentDistrict ? [urgentDistrict] : []);
+	for (const d of plan.district || []) notify(app, d.user, 'mention', `${who} mentionne @${d.tag} dans le Journal`, excerpt, link, 'ops_log', record.id, [DISTRICT_TAGS[d.tag]]);
 }
 
 // --- Passages à niveau (import) ---
@@ -402,6 +424,7 @@ function latLon(v) {
 // --- Retards des trains des missions PMR / groupes (cron `mission-trains`, demande du 10 oct. 2026) ---
 
 const DISTRICT_NAME = { DSO: 'Sud-Ouest', DSE: 'Sud-Est', DCE: 'Centre' };
+const DISTRICT_NAMES = ['Sud-Ouest', 'Sud-Est', 'Centre'];
 const DELAY_ALERT = 5; // minutes : premier seuil, puis paliers de 10 min
 
 function trainId(raw) {
@@ -610,7 +633,7 @@ function missionTrains(app, at) {
 			for (const u of users) {
 				const mine = dutyDistricts(u, today);
 				if (!mine.some((d) => pending.names.indexOf(d) !== -1)) continue;
-				notify(app, u.id, 'train', pending.title, pending.body, `/pmr?q=${encodeURIComponent(train.replace(/^[A-Z]+/, ''))}`, 'mission_trains', `${train}:${today}`.slice(0, 40));
+				notify(app, u.id, 'train', pending.title, pending.body, `/pmr?q=${encodeURIComponent(train.replace(/^[A-Z]+/, ''))}`, 'mission_trains', `${train}:${today}`.slice(0, 40), pending.names);
 				sent++;
 			}
 		}

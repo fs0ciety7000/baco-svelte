@@ -395,24 +395,30 @@ export function stationIndex(
   return (name) => byFold.get(foldStation(name));
 }
 
-const DISTRICT_ORDER = ["DSO", "DSE", "DCE"];
+const DISTRICT_ORDER = ["DSO", "DSE", "DCE", "DNO", "DNE"];
+
+/** Part minimale des gares d'une ligne dans un district pour que la ligne y soit rattachée. */
+export const LINE_DISTRICT_SHARE = 0.3;
 
 /**
- * District d'une ligne = district MAJORITAIRE de ses gares (district de chaque gare lu dans Ressources › Gares, où il
- * se modifie) ; à égalité : DSO, DSE, DCE. Vide si aucune gare n'a de district (lignes hors des trois districts).
+ * Districts d'une ligne (district de chaque gare lu dans Ressources › Gares, où il se modifie) : ceux qui regroupent au
+ * moins 30 % de TOUTES ses gares (une gare sans district compte : une seule gare d'un district ne suffit plus à y
+ * rattacher une ligne, retour du 14 oct. 2026 : L.15 Boechout – Hasselt apparaissait en DSE). `district` = le premier
+ * (à égalité : DSO, DSE, DCE, DNO, DNE), vide si aucun n'atteint le seuil.
  */
 export function lineDistrict(
   names: string[],
   districtOf: (name: string) => string,
-): { district: string; counts: Record<string, number> } {
+): { district: string; districts: string[]; counts: Record<string, number> } {
   const counts: Record<string, number> = {};
   for (const n of names) {
     const d = districtOf(n);
     if (d) counts[d] = (counts[d] ?? 0) + 1;
   }
-  const district =
-    Object.entries(counts).sort(
-      (a, b) => b[1] - a[1] || DISTRICT_ORDER.indexOf(a[0]) - DISTRICT_ORDER.indexOf(b[0]),
-    )[0]?.[0] ?? "";
-  return { district, counts };
+  const total = names.length || 1;
+  const districts = Object.entries(counts)
+    .filter(([, c]) => c / total >= LINE_DISTRICT_SHARE)
+    .sort((a, b) => b[1] - a[1] || DISTRICT_ORDER.indexOf(a[0]) - DISTRICT_ORDER.indexOf(b[0]))
+    .map(([d]) => d);
+  return { district: districts[0] ?? "", districts, counts };
 }

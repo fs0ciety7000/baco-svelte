@@ -7,7 +7,8 @@ import { parseFavorites, type FavoriteStation } from "@/lib/ops/irail";
 import { plainText } from "@/lib/ops/chat-markdown";
 import { LOG_CATEGORIES, type LogCategory } from "@/lib/ops/log";
 import { addDays, brusselsDay, brusselsToUtc, isValidDay } from "@/lib/orders/time";
-import { statusOf } from "@/lib/team";
+import { statusOf, userDistricts } from "@/lib/team";
+import { getCurrentUser } from "@/server/auth";
 
 import { pbForRequest, toPbInstant } from "./orders";
 
@@ -465,13 +466,30 @@ export type Notification = {
   created: string;
 };
 
+/**
+ * Notifications des districts du jour de l'agent (14 oct. 2026) : une notification rattachée à des districts n'est
+ * montrée que s'ils croisent ceux du jour (`userDistricts` : cochés → permanents → district du profil) ; sans district
+ * (mention personnelle, train suivi, alerte système) ou agent sans district : toujours.
+ */
+export async function notificationScope(): Promise<string> {
+  const user = await getCurrentUser();
+  const mine = user ? userDistricts(user, brusselsDay()).filter(Boolean) : [];
+  if (!mine.length) return "";
+  const pb = await pbForRequest();
+  return `(districts:length = 0 || ${mine
+    .map((d) => pb.filter("districts ~ {:d}", { d }))
+    .join(" || ")})`;
+}
+
 export async function listNotifications(
   limit = 30,
 ): Promise<{ items: Notification[]; unread: number }> {
   const pb = await pbForRequest();
+  const scope = await notificationScope();
+  const and = (f: string) => [f, scope].filter(Boolean).join(" && ");
   const [res, unread] = await Promise.all([
-    pb.collection("notifications").getList(1, limit, { sort: "-created" }),
-    pb.collection("notifications").getList(1, 1, { filter: 'read_at = ""', fields: "id" }),
+    pb.collection("notifications").getList(1, limit, { sort: "-created", filter: scope }),
+    pb.collection("notifications").getList(1, 1, { filter: and('read_at = ""'), fields: "id" }),
   ]);
   return {
     items: res.items.map((n) => ({

@@ -485,3 +485,11 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `setStationLines`, `setStationKind` (`referentiels/gares/actions.ts`, puis recalcul des propositions) ; `STATION_DISTRICTS`
   (5) dans `lib/timetable/stations.ts` (les filtres d'équipe restent sur `DISTRICTS`, 3). Nouveau GTFS : `remoteGtfsModified()`
   (HEAD) dans `scheduler.ts` toutes les 3 h, comparé à `gtfsModified` de l'état.
+- **Recherche pendant la frappe** : `<FormAutoSubmit live />` (debounce 450 ms sur les champs texte, focus et curseur rendus
+  après la navigation via `globalThis.__csmLiveFocus`) dans Ressources › Gares, Lignes et Trains.
+- **Cloche par districts du jour** : `notificationScope()` (`server/data/ops.ts`) filtre `listNotifications` et « Tout marquer
+  lu » ; `DUTY_CHANGED` (`lib/team.ts`) émis par `DutyDialog` et le profil après `setDutyDistricts`, la cloche recharge et
+  ré-amorce (pas de notification du navigateur pour celles qui réapparaissent).
+- **District d'une ligne** : `lineDistrict` (`lib/timetable/lines.ts`) = districts à ≥ 30 % de toutes les gares
+  (`LineRef.districts`) ; filtre Lignes : 5 districts + « Sans district ».
+

@@ -12,7 +12,7 @@ pocketbase migrate up $P                                   # appliquer les migra
 pocketbase superuser upsert <email> <mot de passe> $P      # compte superuser local
 pocketbase serve --http 127.0.0.1:8090 $P                  # serveur local
 CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P   # import de la sauvegarde Supabase (hors Git)
-PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (424 contrôles)
+PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (426 contrôles)
 CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # Commandes + PMR, comptes gardés
 CSM_IMPORT_SCOPE=pmr CSM_IMPORT_RESET=1 pocketbase csm-import … $P        # PMR seul (zones, matériel, prestations)
 CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # main courante + 211 PN de BACO
@@ -293,3 +293,9 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   `POST /api/csm/stations/suggest`, `suggestDistricts` de `lib/timetable.js` ; appelée par l'import et après une attribution),
   `lines_manual`. Le hook accepte district, lignes et type (lignes → `lines_manual` ; district → `district_manual`, proposition
   effacée) ; propositions, noms, coordonnées refusés.
+- **Notifications par district** (`1760004000_notification_districts.js`, 14 oct. 2026) : `notifications.districts` (noms
+  « Sud-Ouest »…, 0 à 3), 9e argument de `notify()` ; posé pour les urgences (district de l'entrée), perturbations iRail,
+  retards des trains de mission, changements DICOS et mentions @district ; vide pour les mentions personnelles, trains suivis
+  et alertes système. Refusé dans le corps des requêtes (`updateRule`). La cloche (web) filtre sur les districts du jour.
+  `stationIndex` (iRail) lit `stations` (FR + NL, DSO / DSE / DCE) puis `line_stations`.
+

@@ -203,7 +203,7 @@ async function RelationsView({ sp, q }: { sp: Search; q: string }) {
   return (
     <>
       <FilterForm action="/referentiels/trains" className="flex flex-wrap items-end gap-2">
-        <FormAutoSubmit />
+        <FormAutoSubmit live />
         <label className="flex min-w-0 flex-col gap-1 md:w-36">
           <span className="text-small text-fg-muted">Type</span>
           <Select name="type" defaultValue={type}>
@@ -484,6 +484,7 @@ async function StationView({ gare, day }: { gare: string; day: DayFilter }) {
   return (
     <>
       <FilterForm action="/referentiels/trains" className="flex flex-wrap items-end gap-2">
+        <FormAutoSubmit live />
         <input type="hidden" name="vue" value="gare" />
         <input type="hidden" name="jours" value={day} />
         <label className="flex min-w-0 flex-col gap-1 md:w-64">
@@ -632,7 +633,7 @@ async function LineView({ line, day }: { line: string; day: DayFilter }) {
   return (
     <>
       <FilterForm action="/referentiels/trains" className="flex flex-wrap items-end gap-2">
-        <FormAutoSubmit />
+        <FormAutoSubmit live />
         <input type="hidden" name="vue" value="ligne" />
         <input type="hidden" name="jours" value={day} />
         <label className="flex min-w-0 flex-col gap-1 md:w-48">

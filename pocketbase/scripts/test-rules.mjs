@@ -471,6 +471,14 @@ try {
 	check("on ne marque pas lue la notification d'un autre", np.status >= 400, `HTTP ${np.status}`);
 	np = await api('PATCH', `/api/collections/notifications/records/${nid}`, { token: roles.moderator.token, body: { title: 'Faux titre' } });
 	check('notification non modifiable (titre)', np.status >= 400, `HTTP ${np.status}`);
+	np = await api('PATCH', `/api/collections/notifications/records/${nid}`, { token: roles.moderator.token, body: { districts: ['Centre'] } });
+	check('districts d une notification non modifiables (1760004000)', np.status >= 400, `HTTP ${np.status}`);
+	{
+		const urg = nRd.json?.items?.[0];
+		const entry = (await api('GET', `/api/collections/ops_log/records/${lid}`, { token: roles.denied.token })).json;
+		const want = entry?.district ? [entry.district] : [];
+		check('urgence rattachée au district de l entrée', JSON.stringify(urg?.districts ?? []) === JSON.stringify(want), `${JSON.stringify(urg?.districts)} / ${JSON.stringify(want)}`);
+	}
 	np = await api('PATCH', `/api/collections/notifications/records/${nid}`, { token: roles.moderator.token, body: { read_at: new Date().toISOString() } });
 	check('destinataire marque lu', np.status === 200 && !!np.json.read_at, `HTTP ${np.status}`);
 	const nf = await api('POST', '/api/collections/notifications/records', { token: roles.admin.token, body: { user: u.id, kind: 'systeme', title: 'Faux' } });

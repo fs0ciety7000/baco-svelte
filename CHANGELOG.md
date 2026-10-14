@@ -20,10 +20,15 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 - **Nouveau cycle des bons bus et taxi** : « Brouillon / en cours » → « Terminé » (bus démobilisés, heures de démobilisation proposées) → « Envoyé / finalisé ». L'étape « Confirmé » disparaît.
 - **« Valider l'envoi »** : un seul bouton prépare le brouillon Outlook (adresse du fournisseur, récapitulatif, PDF joint) et passe le bon en « Envoyé / finalisé ». Le bon est alors verrouillé ; un coordinateur peut le rouvrir.
 - **Suivi des bons** : vues « À envoyer », « Aujourd'hui », « En cours » et « Toutes ». L'accueil, la relève et l'écran commun comptent les bons à envoyer.
+- **Notifications selon tes districts du jour** : la cloche n'affiche plus que les alertes de tes districts du jour (urgences, perturbations, retards des trains de mission, changements DICOS, mentions @DSO…) ; changer tes districts met la cloche à jour aussitôt. Les mentions personnelles et les trains que tu suis restent toujours affichés.
+- **Perturbations iRail** : les gares citées sont reconnues aussi par leur nom néerlandais et d'après les districts corrigés dans Ressources › Gares.
+- Ressources › Gares, Lignes et Trains : la recherche se lance pendant la frappe, sans Entrée.
+- Barre du bas mobile : « Ressources » s'appelle maintenant « Données ».
 
 ### Corrections
 
 - Bon taxi : une heure de retour laissée vide n'est plus enregistrée « 00:00 ».
+- **Ressources › Lignes** : le filtre par district ne montre plus des lignes de Flandre qui n'ont qu'une ou deux gares dans le district ; une ligne est rattachée aux districts qui portent au moins 30 % de ses gares (DNO et DNE compris), et peut en avoir plusieurs.
 
 ## [2026.10.12] — Missions PMR : statut par prise en charge
 

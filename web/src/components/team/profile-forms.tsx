@@ -1,5 +1,6 @@
 "use client";
 
+import { DUTY_CHANGED } from "@/lib/team";
 import { Camera, KeyRound, MapPin, PlugZap, Save, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -151,6 +152,7 @@ function DutyCard({ initial }: { initial: string[] }) {
         setPicked(picked);
         return void toast.error(r.error);
       }
+      window.dispatchEvent(new Event(DUTY_CHANGED));
       router.refresh();
     });
   };

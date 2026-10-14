@@ -1081,6 +1081,18 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   s'en inspirent : à revoir par les coordinateurs. **Nouveau GTFS** : le serveur vérifie toutes les 3 h (requête HEAD,
   `Last-Modified`) et relance l'import aussitôt (tous les référentiels).
 
+- 2026-10-14 — **Retours sur Ressources et notifications** : « ne fonctionne pas » sur Gares (`?q=fcr`) = la recherche ne partait
+  qu'à l'Entrée → **recherche pendant la frappe** (`FormAutoSubmit live`, 450 ms, focus gardé) sur Gares, Lignes et Trains ;
+  filtre district de Lignes qui montrait des lignes flamandes (la table BACO met Hasselt, Louvain, Gand-Saint-Pierre… en
+  DSO / DSE, et le district d'une ligne était la majorité des seules gares avec un district) → **district d'une ligne = ceux qui
+  portent ≥ 30 % de toutes ses gares** (`LINE_DISTRICT_SHARE`, plusieurs possibles, DNO / DNE compris). **Barre du bas mobile :
+  « Données »** (libellé court de Ressources ; l'onglet Annuaire des contacts garde son nom). **Notifications selon les districts
+  du jour** : champ `notifications.districts` (`1760004000`, noms, posé par les hooks, non modifiable) — urgences (district de
+  l'entrée), perturbations iRail, retards des trains de mission, changements DICOS, mentions @district ; la cloche
+  (`notificationScope`) n'affiche que ceux qui croisent les districts du jour (cochés → permanents → profil), sans district =
+  toujours ; changer ses districts recharge la cloche (`DUTY_CHANGED`) sans réalerter. Index des gares iRail lu d'abord dans
+  `stations` (FR + NL, districts corrigés). 426 contrôles de règles. **À signaler** : districts BACO flamands douteux (DSO / DSE).
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)

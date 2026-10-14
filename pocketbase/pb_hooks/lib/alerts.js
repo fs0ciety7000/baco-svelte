@@ -132,7 +132,7 @@ function dicosChangeAlert(app, before, record, kind, auth) {
 			if (ops.dutyDistricts(u, today).indexOf(name) === -1) continue;
 			const dup = app.countRecords('notifications', $dbx.exp("user = {:u} AND source = 'dicos' AND source_id = {:s}", { u: u.id, s: sourceId }));
 			if (dup) continue;
-			ops.notify(app, u.id, 'dicos', title, body, link, 'dicos', sourceId);
+			ops.notify(app, u.id, 'dicos', title, body, link, 'dicos', sourceId, [name]);
 			sent++;
 		}
 	}

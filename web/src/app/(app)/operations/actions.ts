@@ -14,6 +14,7 @@ import {
   listReplies,
   listLogEvents,
   listNotifications,
+  notificationScope,
   searchLinkables,
   type Linkable,
   type LogEntry,
@@ -266,9 +267,10 @@ export async function markNotifications(input: { ids: string[] | "all" }): Promi
     const ids =
       input.ids === "all"
         ? (
-            await pb
-              .collection("notifications")
-              .getFullList({ filter: 'read_at = ""', fields: "id" })
+            await pb.collection("notifications").getFullList({
+              filter: ['read_at = ""', await notificationScope()].filter(Boolean).join(" && "),
+              fields: "id",
+            })
           ).map((n) => n.id)
         : z.array(pbId).max(100).parse(input.ids);
     for (const id of ids) await pb.collection("notifications").update(id, { read_at: at });

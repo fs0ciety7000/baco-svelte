@@ -30,7 +30,9 @@ export default async function Page({
 }) {
   await requireRoute("/referentiels/lignes");
   const sp = await searchParams;
-  const district = ["DSE", "DSO", "DCE", "aucun"].includes(sp.district ?? "") ? sp.district! : "";
+  const district = ["DSE", "DSO", "DCE", "DNO", "DNE", "aucun"].includes(sp.district ?? "")
+    ? sp.district!
+    : "";
   const gare = (sp.gare ?? "").trim().slice(0, 60);
   const ligne = normLine(sp.ligne);
   const [lines, detail] = await Promise.all([
@@ -38,13 +40,14 @@ export default async function Page({
     ligne ? getLineDetail(ligne) : Promise.resolve(null),
   ]);
   const shown = lines.filter(
-    (l) => !district || (district === "aucun" ? !l.district : l.district === district),
+    (l) =>
+      !district || (district === "aucun" ? !l.districts.length : l.districts.includes(district)),
   );
 
   return (
     <section className="flex flex-col gap-4" aria-label="Lignes">
       <FilterForm action="/referentiels/lignes" className="flex flex-wrap items-end gap-2">
-        <FormAutoSubmit />
+        <FormAutoSubmit live />
         <label className="flex min-w-0 flex-col gap-1 md:w-48">
           <span className="text-small text-fg-muted">District</span>
           <Select name="district" defaultValue={district}>
@@ -52,7 +55,9 @@ export default async function Page({
             <option value="DSE">DSE · Sud-Est</option>
             <option value="DSO">DSO · Sud-Ouest</option>
             <option value="DCE">DCE · Centre</option>
-            <option value="aucun">Hors districts</option>
+            <option value="DNO">DNO · Nord-Ouest</option>
+            <option value="DNE">DNE · Nord-Est</option>
+            <option value="aucun">Sans district</option>
           </Select>
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-56">
@@ -116,7 +121,17 @@ export default async function Page({
                     ]
                       .filter(Boolean)
                       .join(" · ")}
-                    aside={l.district ? <Badge tone="info">{l.district}</Badge> : undefined}
+                    aside={
+                      l.districts.length ? (
+                        <span className="flex gap-1">
+                          {l.districts.map((d) => (
+                            <Badge key={d} tone="info">
+                              {d}
+                            </Badge>
+                          ))}
+                        </span>
+                      ) : undefined
+                    }
                   />
                 </Link>
               </li>

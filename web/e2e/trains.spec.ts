@@ -243,13 +243,14 @@ test("lignes : liste, filtres district et gare, gares dans l'ordre", async ({ pa
   await expect(grid.getByRole("link")).toHaveCount(1);
   await page.goto(`/referentiels/lignes?gare=${abbr}`);
   await expect(grid.getByText(`L.${LN}`)).toBeVisible();
-  // District majoritaire tiré de Ressources › Gares (seule gare avec un district : DSO).
+  // District tiré de Ressources › Gares : il faut 30 % des gares de la ligne. Une gare DSO sur cinq ne suffit pas
+  // (avant le 14 oct., la majorité parmi les seules gares avec un district rattachait des lignes flamandes au sud).
   await page.goto("/referentiels/lignes?district=DSO");
+  await expect(page.getByTestId("lines-grid").getByText(`L.${LN}`)).toHaveCount(0);
+  await page.goto("/referentiels/lignes?district=aucun");
   await expect(grid.getByText(`L.${LN}`)).toBeVisible();
   await noHorizontalScroll(page);
   await page.screenshot({ path: `test-results/lignes-liste-${p}.png`, fullPage: true });
-  await page.goto("/referentiels/lignes?district=DCE");
-  await expect(page.getByTestId("lines-grid").getByText(`L.${LN}`)).toHaveCount(0);
 
   // Fiche : « L.998 » accepté, tronc dans l'ordre avec la reprise signalée, embranchement, liens vers Trains.
   await page.goto(`/referentiels/lignes?ligne=L.${LN}`);

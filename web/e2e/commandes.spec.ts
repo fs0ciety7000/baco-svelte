@@ -122,7 +122,12 @@ async function trainFixtures(p: string) {
     );
     for (const r of old?.items ?? []) await pb("DELETE", `/api/collections/${col}/records/${r.id}`);
   }
-  const [alpha, bravo, charlie, delta] = ["Alpha", "Bravo", "Charlie", "Delta"].map(name);
+  const [alpha, bravo, charlie, delta] = ["Alpha", "Bravo", "Charlie", "Delta"].map(name) as [
+    string,
+    string,
+    string,
+    string,
+  ];
   const deltaNl = name("Delta-Noord");
   const svc = await pb("POST", "/api/collections/train_services/records", {
     key: `${n}:e2e-cmd`,

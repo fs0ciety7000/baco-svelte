@@ -42,7 +42,7 @@ export default async function Page({
   return (
     <section className="flex flex-col gap-4" aria-label="Gares">
       <FilterForm action="/referentiels/gares" className="flex flex-wrap items-end gap-2">
-        <FormAutoSubmit />
+        <FormAutoSubmit live />
         <label className="flex min-w-0 flex-col gap-1 md:w-56">
           <span className="text-small text-fg-muted">Gare</span>
           <Input

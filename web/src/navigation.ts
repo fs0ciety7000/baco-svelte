@@ -155,7 +155,7 @@ export const MODULES: NavModule[] = [
   },
   {
     id: "referentiels",
-    shortLabel: "Annuaire",
+    shortLabel: "Données",
     href: "/referentiels",
     // « Ressources » depuis le 11 oct. 2026 (ex-« Annuaire et données », demande de l'utilisateur).
     label: "Ressources",

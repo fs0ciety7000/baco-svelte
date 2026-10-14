@@ -203,14 +203,17 @@ describe("sectionsFrom", () => {
 });
 
 describe("lineDistrict", () => {
-  it("district majoritaire, égalité départagée DSO › DSE › DCE, vide sans district", () => {
+  it("districts à 30 % au moins de toutes les gares, égalité DSO › DSE › DCE, vide sinon", () => {
     const d: Record<string, string> = { A: "DSE", B: "DSE", C: "DSO", D: "DCE", E: "DSO" };
     const of = (n: string) => d[n] ?? "";
     expect(lineDistrict(["A", "B", "C", "X"], of)).toEqual({
       district: "DSE",
+      districts: ["DSE"],
       counts: { DSE: 2, DSO: 1 },
     });
-    expect(lineDistrict(["A", "C"], of).district).toBe("DSO");
-    expect(lineDistrict(["X", "Y"], of)).toEqual({ district: "", counts: {} });
+    expect(lineDistrict(["A", "C"], of).districts).toEqual(["DSO", "DSE"]);
+    expect(lineDistrict(["X", "Y"], of)).toEqual({ district: "", districts: [], counts: {} });
+    // Une seule gare du district sur dix : la ligne n'y est pas rattachée.
+    expect(lineDistrict(["A", "1", "2", "3", "4", "5", "6", "7", "8", "9"], of).district).toBe("");
   });
 });

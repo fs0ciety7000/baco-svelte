@@ -32,7 +32,7 @@ test("navigation principale et onglets en routes", async ({ page, isMobile }, te
   if (isMobile) {
     const bar = page.getByRole("navigation", { name: "Navigation principale" });
     // Libellés courts affichés (11 oct. 2026), noms complets annoncés.
-    await expect(bar.getByRole("link")).toHaveText(["Accueil", "Bons", "PMR", "Opér.", "Annuaire"]);
+    await expect(bar.getByRole("link")).toHaveText(["Accueil", "Bons", "PMR", "Opér.", "Données"]);
     await expect(bar.getByRole("link", { name: "Commandes", exact: true })).toBeVisible();
     await bar.getByRole("button", { name: "Plus" }).click();
     const sheet = page.getByRole("dialog", { name: "Plus" });
