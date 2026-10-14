@@ -3,7 +3,7 @@
 import { unstable_rethrow } from "next/navigation";
 import { after } from "next/server";
 
-import { isAdmin } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 import { requireUser } from "@/server/auth";
 import {
   readTimetableStatus,
@@ -13,7 +13,7 @@ import {
   timetableRunning,
 } from "@/server/timetable/import";
 
-// Référentiel des trains : mise à jour à la demande (administrateurs). L'import dure environ une minute : il est lancé
+// Référentiel des trains : mise à jour à la demande (`referentiels:manage` : admin, sysop ou rôle qui la reçoit). L'import dure environ une minute : il est lancé
 // sans être attendu, l'écran relit son état (`app_settings.timetable`).
 
 export async function startTimetableImport(): Promise<
@@ -21,7 +21,8 @@ export async function startTimetableImport(): Promise<
 > {
   try {
     const user = await requireUser();
-    if (!isAdmin(user)) return { ok: false, error: "Réservé aux administrateurs." };
+    if (!can(user, "referentiels:manage"))
+      return { ok: false, error: "Réservé aux gestionnaires des référentiels." };
     if (!timetableConfigured())
       return { ok: false, error: "Import non configuré (CSM_INTERNAL_SECRET)." };
     if (timetableRunning()) return { ok: true, running: true };

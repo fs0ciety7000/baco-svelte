@@ -56,7 +56,9 @@ const HARD = {
 	'presence:read': (r) => ACTIVE(r) && r !== 'guest',
 	'team:read': (r) => ACTIVE(r) && r !== 'guest',
 	'quinyx:read': (r) => ACTIVE(r) && r !== 'guest',
-	'timetable:read': (r) => ACTIVE(r) && r !== 'guest'
+	'timetable:read': (r) => ACTIVE(r) && r !== 'guest',
+	// Navigation v3 (1760004700) : référentiels du réseau modifiables par admin / sysop seulement (décision du 14 oct. 2026).
+	'referentiels:manage': (r) => ADMIN(r)
 };
 
 function list(raw) {

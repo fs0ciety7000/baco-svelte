@@ -49,7 +49,7 @@ export default async function Page({
   searchParams: Promise<{ ligne?: string; district?: string | string[]; gare?: string }>;
 }) {
   const user = await requireRoute("/reseau/lignes");
-  const canEdit = can(user, "ptcar:update");
+  const canEdit = can(user, "referentiels:manage");
   const sp = await searchParams;
   // Un ou plusieurs districts (paramètre répété) ; « aucun » = lignes sans district.
   const districts = parseDistricts(

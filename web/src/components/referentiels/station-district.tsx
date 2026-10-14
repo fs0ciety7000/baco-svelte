@@ -7,7 +7,7 @@ import { setStationDistrict } from "@/app/(app)/reseau/gares/actions";
 import { Select } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 
-/** Choix du district d'une gare (droit `ptcar:update`) ; « Automatique » rend la proposition de l'import. */
+/** Choix du district d'une gare (droit `referentiels:manage`) ; « Automatique » rend la proposition de l'import. */
 export function StationDistrict({
   id,
   name,

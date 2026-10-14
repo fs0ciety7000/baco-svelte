@@ -25,7 +25,7 @@ import { Badge } from "@/components/ui/status-badge";
 import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
 import { lineLabel } from "@/lib/lines";
 import { brusselsDay, formatShortDay } from "@/lib/orders/time";
-import { isAdmin } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 import {
   DAY_FILTERS,
   dayFilterOf,
@@ -107,7 +107,7 @@ export default async function Page({
       : (VIEWS.find((v) => v.id === sp.vue)?.id ?? "relations");
   const day = dayFilterOf(sp.jours, weekday());
   const state = await timetableState();
-  const admin = isAdmin(user);
+  const admin = can(user, "referentiels:manage");
   // « En cours » depuis plus de 30 min = import interrompu (redéploiement) : le bouton redevient disponible.
   const running =
     state?.state === "running" && Date.now() - Date.parse(state.startedAt ?? "") < STALE_RUN_MS;

@@ -722,9 +722,12 @@ try {
 	check('PACO/RCCA ne supprime pas un contact (repertoire:delete)', rfCtDel.status >= 400, `HTTP ${rfCtDel.status}`);
 	const rfCtRead = await api('GET', '/api/collections/directory_contacts/records?perPage=1', { token: roles.denied.token });
 	check('PACO/RCCA lit l annuaire', rfCtRead.status === 200, `HTTP ${rfCtRead.status}`);
-	const rfPc = await api('POST', '/api/collections/ptcar/records', { token: rfMod.token, body: { abbr: `ZZ${suffix}`, name_fr: 'Gare test', updated_by: rfMod.id } });
-	check('coordinateur crée un PtCar', rfPc.status === 200, `HTTP ${rfPc.status}`);
-	const rfPcDup = await api('POST', '/api/collections/ptcar/records', { token: rfMod.token, body: { abbr: `ZZ${suffix}`, name_fr: 'Doublon', updated_by: rfMod.id } });
+	// Navigation v3 (1760004700) : PtCar en lecture seule pour les PACO/RCCA ; `referentiels:manage` (admin, sysop) écrit.
+	const rfPcPaco = await api('POST', '/api/collections/ptcar/records', { token: rfMod.token, body: { abbr: `ZY${suffix}`, name_fr: 'Gare test', updated_by: rfMod.id } });
+	check('PACO/RCCA ne crée pas de PtCar (referentiels:manage)', rfPcPaco.status >= 400, `HTTP ${rfPcPaco.status}`);
+	const rfPc = await api('POST', '/api/collections/ptcar/records', { token: roles.admin.token, body: { abbr: `ZZ${suffix}`, name_fr: 'Gare test', updated_by: roles.admin.id } });
+	check('admin crée un PtCar', rfPc.status === 200, `HTTP ${rfPc.status}`);
+	const rfPcDup = await api('POST', '/api/collections/ptcar/records', { token: roles.admin.token, body: { abbr: `ZZ${suffix}`, name_fr: 'Doublon', updated_by: roles.admin.id } });
 	check('PtCar abbr en double refusé', rfPcDup.status >= 400, `HTTP ${rfPcDup.status}`);
 	const rfPcOtto = await api('GET', '/api/collections/ptcar/records?perPage=1', { token: roles.otto_agent.token });
 	check("l'invité ne lit pas PtCar", rfPcOtto.status !== 200 || rfPcOtto.json.totalItems === 0, `HTTP ${rfPcOtto.status} ${rfPcOtto.json?.totalItems}`);
@@ -1219,28 +1222,44 @@ try {
 		check('modérateur lit une ligne', rm.status === 200, `HTTP ${rm.status}`);
 		const rg = await api('GET', `/api/collections/rail_lines/records/${rid}`, { token: roles.reader.token });
 		check("invité ne lit pas une ligne", rg.status === 404 || rg.status === 403, `HTTP ${rg.status}`);
-		const rc = await api('POST', '/api/collections/rail_lines/records', { token: roles.admin.token, body: { line: 'X1', name: 'X' } });
-		check("admin ne crée pas de ligne par l'API", rc.status >= 400, `HTTP ${rc.status}`);
-		// Lignes modifiables (1760004100) : ptcar:update (PACO/RCCA, modérateur, admin), gares / embranchements / nom.
+		// Navigation v3 (1760004700) : lignes en lecture seule pour PACO/RCCA et modérateurs ; `referentiels:manage` (admin,
+		// sysop, rôle qui la reçoit) crée une ligne MANUELLE (absente de l'horaire), modifie, supprime une ligne manuelle.
+		const rc = await api('POST', '/api/collections/rail_lines/records', { token: roles.admin.token, body: { line: 'X1', name: 'X', updated_by: roles.admin.id } });
+		check('création de ligne sans deux gares refusée (admin)', rc.status >= 400, `HTTP ${rc.status}`);
+		const rcP = await api('POST', '/api/collections/rail_lines/records', { token: roles.user.token, body: { line: `M${suffix}`.slice(0, 12), name: 'A – B', stations: [{ n: 'A' }, { n: 'B' }], updated_by: roles.user.id } });
+		check('PACO/RCCA ne crée pas de ligne', rcP.status >= 400, `HTTP ${rcP.status}`);
+		const rcA = await api('POST', '/api/collections/rail_lines/records', { token: roles.admin.token, body: { line: `l.m${suffix}`.slice(0, 12), name: 'A – B', stations: [{ n: 'A' }, { n: 'B' }], sig: 'forgée', updated_by: roles.admin.id } });
+		check('admin crée une ligne manuelle (numéro normalisé, signature ignorée)', rcA.status === 200 && rcA.json.manual === true && rcA.json.sig === '' && rcA.json.count === 2 && /^M/.test(rcA.json.line), `HTTP ${rcA.status} ${rcA.json?.line} ${rcA.json?.manual}`);
+		if (rcA.json?.id) {
+			const rdM = await api('DELETE', `/api/collections/rail_lines/records/${rcA.json.id}`, { token: roles.modo.token });
+			check('modérateur ne supprime pas une ligne manuelle', rdM.status >= 400, `HTTP ${rdM.status}`);
+			const rdA = await api('DELETE', `/api/collections/rail_lines/records/${rcA.json.id}`, { token: roles.admin.token });
+			check('admin supprime une ligne manuelle', rdA.status === 204, `HTTP ${rdA.status}`);
+			auditIds.push(rcA.json.id);
+		}
 		const ru = await api('PATCH', `/api/collections/rail_lines/records/${rid}`, { token: roles.admin.token, body: { name: 'Modifiée' } });
 		check('modification sans updated_by refusée', ru.status >= 400, `HTTP ${ru.status}`);
-		const rpU = await api('PATCH', `/api/collections/rail_lines/records/${rid}`, { token: roles.user.token, body: { stations: [{ n: 'A' }, { n: 'C' }, { n: 'B' }, { n: 'X', b: 1 }], branches: [{ b: 1, from: 'C', to: '?' }], updated_by: roles.user.id } });
-		check('PACO/RCCA corrige les gares d une ligne (manuelle, embranchement recalculé)', rpU.status === 200 && rpU.json.manual === true && rpU.json.count === 4 && rpU.json.branches?.[0]?.to === 'X', `HTTP ${rpU.status} ${JSON.stringify(rpU.json?.branches)}`);
-		const rpS = await api('PATCH', `/api/collections/rail_lines/records/${rid}`, { token: roles.user.token, body: { sig: 'x', updated_by: roles.user.id } });
+		const rpP = await api('PATCH', `/api/collections/rail_lines/records/${rid}`, { token: roles.user.token, body: { name: 'Par PACO', updated_by: roles.user.id } });
+		check('PACO/RCCA ne modifie pas une ligne (lecture seule)', rpP.status >= 400, `HTTP ${rpP.status}`);
+		const rpMo = await api('PATCH', `/api/collections/rail_lines/records/${rid}`, { token: roles.modo.token, body: { name: 'Par modérateur', updated_by: roles.modo.id } });
+		check('modérateur ne modifie pas une ligne (lecture seule)', rpMo.status >= 400, `HTTP ${rpMo.status}`);
+		const rpU = await api('PATCH', `/api/collections/rail_lines/records/${rid}`, { token: roles.admin.token, body: { stations: [{ n: 'A' }, { n: 'C' }, { n: 'B' }, { n: 'X', b: 1 }], branches: [{ b: 1, from: 'C', to: '?' }], updated_by: roles.admin.id } });
+		check('admin corrige les gares d une ligne (manuelle, embranchement recalculé)', rpU.status === 200 && rpU.json.manual === true && rpU.json.count === 4 && rpU.json.branches?.[0]?.to === 'X', `HTTP ${rpU.status} ${JSON.stringify(rpU.json?.branches)}`);
+		const rpS = await api('PATCH', `/api/collections/rail_lines/records/${rid}`, { token: roles.admin.token, body: { sig: 'x', updated_by: roles.admin.id } });
 		check('signature d import non modifiable', rpS.status >= 400, `HTTP ${rpS.status}`);
-		const rp1 = await api('PATCH', `/api/collections/rail_lines/records/${rid}`, { token: roles.user.token, body: { stations: [{ n: 'A' }, { n: 'X', b: 1 }], updated_by: roles.user.id } });
+		const rp1 = await api('PATCH', `/api/collections/rail_lines/records/${rid}`, { token: roles.admin.token, body: { stations: [{ n: 'A' }, { n: 'X', b: 1 }], updated_by: roles.admin.id } });
 		check('tronc d une seule gare refusé', rp1.status >= 400, `HTTP ${rp1.status}`);
 		const rpG = await api('PATCH', `/api/collections/rail_lines/records/${rid}`, { token: roles.reader.token, body: { name: 'X', updated_by: roles.reader.id } });
 		check('invité ne modifie pas une ligne', rpG.status >= 400, `HTTP ${rpG.status}`);
-		const rpR = await api('PATCH', `/api/collections/rail_lines/records/${rid}`, { token: roles.modo.token, body: { manual: false, updated_by: roles.modo.id } });
-		check('modérateur rétablit la version automatique', rpR.status === 200 && rpR.json.manual === false, `HTTP ${rpR.status} ${rpR.json?.count}`);
+		const rpR = await api('PATCH', `/api/collections/rail_lines/records/${rid}`, { token: roles.admin.token, body: { manual: false, updated_by: roles.admin.id } });
+		check('admin rétablit la version automatique', rpR.status === 200 && rpR.json.manual === false, `HTTP ${rpR.status} ${rpR.json?.count}`);
 		const rd = await api('DELETE', `/api/collections/rail_lines/records/${rid}`, { token: roles.admin.token });
-		check("admin ne supprime pas une ligne par l'API", rd.status >= 400, `HTTP ${rd.status}`);
+		check("admin ne supprime pas une ligne automatique (l'import la recréerait)", rd.status >= 400, `HTTP ${rd.status}`);
 		await api('DELETE', `/api/collections/rail_lines/records/${rid}`, { token: root });
 	}
 	const rlNo = await api('GET', '/api/collections/rail_lines/records?perPage=1');
 	check('anonyme ne lit pas les lignes', rlNo.status !== 200 || rlNo.json.totalItems === 0, `HTTP ${rlNo.status}`);
-	// Référentiel des gares (1760003700) : lecture des agents, district seul modifiable (ptcar:update), import seul crée.
+	// Référentiel des gares (1760003700) : lecture des agents, district, lignes et type modifiables (referentiels:manage depuis 1760004700), import seul crée.
 	const stRec = await api('POST', '/api/collections/stations/records', { token: root, body: { key: `gare test ${suffix}`, name: `Gare test ${suffix}`, country: 'BE' } });
 	check('superuser crée une gare de test', stRec.status === 200, `HTTP ${stRec.status}`);
 	if (stRec.status === 200) {
@@ -1252,19 +1271,24 @@ try {
 		check('PACO/RCCA lit une gare', rdP.status === 200, `HTTP ${rdP.status}`);
 		const pc = await api('POST', '/api/collections/stations/records', { token: roles.admin.token, body: { key: `x-${suffix}`, name: 'X', updated_by: roles.admin.id } });
 		check("admin ne crée pas de gare par l'API", pc.status >= 400, `HTTP ${pc.status}`);
-		const pu = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.user.token, body: { district: 'DSO', updated_by: roles.user.id } });
-		check('PACO/RCCA modifie le district (marqué manuel)', pu.status === 200 && pu.json.district === 'DSO' && pu.json.district_manual === true, `HTTP ${pu.status} ${pu.json?.district} ${pu.json?.district_manual}`);
-		const pl = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.user.token, body: { lines: ['96', '97'], kind: 'pang', updated_by: roles.user.id } });
-		check('PACO/RCCA modifie lignes et type (lignes marquées manuelles)', pl.status === 200 && pl.json.lines_manual === true && pl.json.kind === 'pang', `HTTP ${pl.status} ${pl.json?.lines_manual} ${pl.json?.kind}`);
-		const dn = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.user.token, body: { district: 'DNO', updated_by: roles.user.id } });
+		// Navigation v3 (1760004700) : gares en lecture seule pour PACO/RCCA et modérateurs ; `referentiels:manage` modifie.
+		const puP = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.user.token, body: { district: 'DSO', updated_by: roles.user.id } });
+		check('PACO/RCCA ne modifie plus le district (lecture seule)', puP.status >= 400, `HTTP ${puP.status}`);
+		const puM = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.modo.token, body: { lines: ['96'], updated_by: roles.modo.id } });
+		check('modérateur ne modifie pas les lignes d une gare', puM.status >= 400, `HTTP ${puM.status}`);
+		const pu = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.admin.token, body: { district: 'DSO', updated_by: roles.admin.id } });
+		check('admin modifie le district (marqué manuel)', pu.status === 200 && pu.json.district === 'DSO' && pu.json.district_manual === true, `HTTP ${pu.status} ${pu.json?.district} ${pu.json?.district_manual}`);
+		const pl = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.admin.token, body: { lines: ['96', '97'], kind: 'pang', updated_by: roles.admin.id } });
+		check('admin modifie lignes et type (lignes marquées manuelles)', pl.status === 200 && pl.json.lines_manual === true && pl.json.kind === 'pang', `HTTP ${pl.status} ${pl.json?.lines_manual} ${pl.json?.kind}`);
+		const dn = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.admin.token, body: { district: 'DNO', updated_by: roles.admin.id } });
 		check('district DNO accepté', dn.status === 200 && dn.json.district === 'DNO', `HTTP ${dn.status} ${dn.json?.district}`);
-		const ps = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.user.token, body: { district_suggested: 'DSE', updated_by: roles.user.id } });
+		const ps = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.admin.token, body: { district_suggested: 'DSE', updated_by: roles.admin.id } });
 		check("proposition de district non modifiable par l'API", ps.status >= 400, `HTTP ${ps.status}`);
-		const pn = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.user.token, body: { name: 'Renommée', updated_by: roles.user.id } });
-		check('PACO/RCCA ne renomme pas une gare', pn.status >= 400, `HTTP ${pn.status}`);
+		const pn = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.admin.token, body: { name: 'Renommée', updated_by: roles.admin.id } });
+		check('admin ne renomme pas une gare (champ tenu par l import)', pn.status >= 400, `HTTP ${pn.status}`);
 		const gu = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.reader.token, body: { district: 'DSE', updated_by: roles.reader.id } });
 		check("invité ne modifie pas le district", gu.status >= 400, `HTTP ${gu.status}`);
-		const fu = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.user.token, body: { district: 'DSE', updated_by: roles.admin.id } });
+		const fu = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.admin.token, body: { district: 'DSE', updated_by: roles.user.id } });
 		check('auteur de modification non forgeable', fu.status >= 400, `HTTP ${fu.status}`);
 		const pd = await api('DELETE', `/api/collections/stations/records/${sid}`, { token: roles.admin.token });
 		check("admin ne supprime pas de gare par l'API", pd.status >= 400, `HTTP ${pd.status}`);
@@ -1678,10 +1702,55 @@ try {
 		const zP = await api('DELETE', `/api/collections/pmr_zones/records/${z1}`, { token: p.token });
 		const zM = await api('DELETE', `/api/collections/pmr_zones/records/${z2}`, { token: m.token });
 		check('pmr_zones.delete = pmr:delete : PACO/RCCA refusé, modérateur supprime', zP.status >= 400 && zM.status === 204, `HTTP ${zP.status}/${zM.status}`);
-		await set(g, { grants: ['ptcar:read', 'ptcar:update'] });
+		// Navigation v3 (1760004700) : l'ancien droit `ptcar:update` ne modifie plus rien ; `referentiels:manage` accordé, oui.
+		await set(g, { grants: ['timetable:read', 'ptcar:update'] });
 		const rlG = await api('PATCH', `/api/collections/rail_lines/records/${rl}`, { token: g.token, body: { name: 'Nom L2', updated_by: g.id } });
-		check('rail_lines.update = ptcar:update (invité avec le droit accordé : modifie)', rlG.status === 200, `HTTP ${rlG.status}`);
+		check('rail_lines.update : ancien droit ptcar:update accordé sans effet', rlG.status >= 400, `HTTP ${rlG.status}`);
+		await set(g, { grants: ['timetable:read', 'referentiels:manage'] });
+		const rlG2 = await api('PATCH', `/api/collections/rail_lines/records/${rl}`, { token: g.token, body: { name: 'Nom L2', updated_by: g.id } });
+		check('rail_lines.update = referentiels:manage (invité avec le droit accordé : modifie)', rlG2.status === 200, `HTTP ${rlG2.status}`);
+		await set(g, { grants: ['spi:read', 'lignes:update'] });
+		const spG = await api('PATCH', `/api/collections/spi_points/records/${spi}`, { token: g.token, body: { line: 'L.998', updated_by: g.id } });
+		check('spi_points.update : ancien droit lignes:update accordé sans effet', spG.status >= 400, `HTTP ${spG.status}`);
 		await set(g, {});
+
+		// Rôle personnalisé qui reçoit `referentiels:manage` (décision du 14 oct. 2026) : gère PtCar, EBP, points SPI, lignes ;
+		// un modérateur (rôle système) ne le peut pas.
+		const rkey = `gest-ref-${suffix}`.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30);
+		const rr = await api('POST', '/api/collections/roles/records', {
+			token: roles.admin.token,
+			body: { key: rkey, label: 'Gestion des référentiels (test)', perms: ['timetable:read', 'ptcar:read', 'ebp:read', 'spi:read', 'referentiels:manage'] }
+		});
+		check('admin crée un rôle « gestion des référentiels »', rr.status === 200, `HTTP ${rr.status} ${JSON.stringify(rr.json).slice(0, 100)}`);
+		const asg = await api('PATCH', `/api/collections/users/records/${g.id}`, { token: roles.admin.token, body: { role: rkey } });
+		check('rôle personnalisé attribué', asg.status === 200, `HTTP ${asg.status}`);
+		const rPc = await api('POST', '/api/collections/ptcar/records', { token: g.token, body: { abbr: `ZR${suffix}`.slice(0, 12).toUpperCase(), name_fr: 'PtCar rôle', updated_by: g.id } });
+		check('rôle personnalisé (referentiels:manage) crée un PtCar', rPc.status === 200, `HTTP ${rPc.status} ${JSON.stringify(rPc.json).slice(0, 100)}`);
+		const mPc = await api('PATCH', `/api/collections/ptcar/records/${rPc.json?.id}`, { token: m.token, body: { name_fr: 'Par modérateur', updated_by: m.id } });
+		check('modérateur ne modifie pas un PtCar (lecture seule)', mPc.status >= 400, `HTTP ${mPc.status}`);
+		const uPc = await api('PATCH', `/api/collections/ptcar/records/${rPc.json?.id}`, { token: g.token, body: { name_fr: 'PtCar rôle modifié', updated_by: g.id } });
+		check('rôle personnalisé modifie un PtCar', uPc.status === 200, `HTTP ${uPc.status}`);
+		const rEb = await api('POST', '/api/collections/ebp_views/records', { token: g.token, body: { line: 'L.999', ptcar: 'Test', updated_by: g.id } });
+		check('rôle personnalisé crée une EBP', rEb.status === 200, `HTTP ${rEb.status} ${JSON.stringify(rEb.json).slice(0, 100)}`);
+		const pEb = await api('POST', '/api/collections/ebp_views/records', { token: p.token, body: { line: 'L.999', ptcar: 'Test', updated_by: p.id } });
+		check('PACO/RCCA ne crée pas d EBP (lecture seule)', pEb.status >= 400, `HTTP ${pEb.status}`);
+		const mSp = await api('PATCH', `/api/collections/spi_points/records/${spi}`, { token: m.token, body: { line: 'L.997', updated_by: m.id } });
+		check('modérateur ne modifie pas un point SPI', mSp.status >= 400, `HTTP ${mSp.status}`);
+		const rSp = await api('PATCH', `/api/collections/spi_points/records/${spi}`, { token: g.token, body: { line: 'L.997', updated_by: g.id } });
+		check('rôle personnalisé modifie un point SPI', rSp.status === 200, `HTTP ${rSp.status}`);
+		const dPc = await api('DELETE', `/api/collections/ptcar/records/${rPc.json?.id}`, { token: m.token });
+		check('modérateur ne supprime pas un PtCar', dPc.status >= 400, `HTTP ${dPc.status}`);
+		for (const [c, x] of [['ptcar', rPc], ['ebp_views', rEb]]) {
+			if (!x.json?.id) continue;
+			const d = await api('DELETE', `/api/collections/${c}/records/${x.json.id}`, { token: g.token });
+			check(`rôle personnalisé supprime (${c})`, d.status === 204, `HTTP ${d.status}`);
+			auditIds.push(x.json.id);
+		}
+		await api('PATCH', `/api/collections/users/records/${g.id}`, { token: roles.admin.token, body: { role: 'guest' } });
+		if (rr.json?.id) {
+			await api('DELETE', `/api/collections/roles/records/${rr.json.id}`, { token: roles.admin.token });
+			auditIds.push(rr.json.id);
+		}
 
 		for (const [c, id] of [['pmr_zones', z1], ['spi_points', spi], ['train_services', ts], ['quinyx_groups', qg], ['changelog', cl], ['rail_lines', rl], ['pmr_equipment', eq]]) {
 			if (id) {

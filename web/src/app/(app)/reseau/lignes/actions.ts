@@ -10,7 +10,7 @@ import { requireUser } from "@/server/auth";
 import { pbForRequest } from "@/server/data/orders";
 
 // Ressources › Lignes : gares d'une ligne corrigées à la main (14 oct. 2026, remplace Admin › Lignes et arrêts et la
-// table BACO line_stations). Droit `ptcar:update` (administrateurs, coordinateurs PACO/RCCA, modérateurs), revérifié par
+// table BACO line_stations). Droit `referentiels:manage` (admin, sysop ou rôle qui la reçoit, 14 oct. 2026), revérifié par
 // la règle PocketBase ; le hook n'accepte que gares, embranchements et nom, marque la ligne « manuelle » et recalcule
 // les embranchements. Les bons bus (itinéraire de repli) lisent ces lignes.
 
@@ -32,7 +32,7 @@ const branch = z.object({
 
 async function editor() {
   const user = await requireUser();
-  if (!can(user, "ptcar:update"))
+  if (!can(user, "referentiels:manage"))
     throw new Error("DROIT:Modification réservée (droit PtCar : modification).");
   return user;
 }

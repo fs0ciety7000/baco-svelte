@@ -55,7 +55,8 @@ function run(app) {
 		'presence:read': (r) => r !== 'guest',
 		'team:read': (r) => r !== 'guest',
 		'quinyx:read': (r) => r !== 'guest',
-		'timetable:read': (r) => r !== 'guest'
+		'timetable:read': (r) => r !== 'guest',
+		'referentiels:manage': (r) => admin(r)
 	};
 
 	const lines = [];

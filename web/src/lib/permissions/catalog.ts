@@ -34,28 +34,48 @@ export type CatalogEntry = {
   hidden?: boolean;
 };
 
+// Regroupement de l'éditeur de rôles = menus de la navigation v3 (14 oct. 2026). Les identifiants de tâche ne changent
+// pas (ils sont seulement des étiquettes) ; seuls l'ordre, le groupe et le libellé suivent les menus.
 export const TASKS: { id: string; group: string; label: string }[] = [
+  { id: "operations.stats", group: "Accueil", label: "Statistiques" },
+  { id: "operations.journal", group: "Opérations", label: "Journal, Ma journée, Relève" },
   { id: "commandes.bus", group: "Commandes", label: "Bons bus" },
   { id: "commandes.fournisseurs", group: "Commandes", label: "Fournisseurs" },
   { id: "commandes.taxi", group: "Commandes", label: "Taxis" },
-  { id: "commandes.b201", group: "Commandes", label: "B201" },
   { id: "commandes.archives", group: "Commandes", label: "Archives des bons (PDF)" },
   { id: "pmr.missions", group: "PMR", label: "Missions PMR et groupes" },
   { id: "pmr.nominatif", group: "PMR", label: "Clients, matériel et données nominatives" },
-  { id: "operations.trains", group: "Opérations", label: "Trains en direct" },
-  { id: "operations.journal", group: "Opérations", label: "Journal" },
-  { id: "operations.pn", group: "Opérations", label: "Carte PN" },
-  { id: "operations.stats", group: "Opérations", label: "Statistiques" },
-  { id: "ressources.annuaire", group: "Ressources", label: "Annuaire" },
+  { id: "operations.trains", group: "Réseau", label: "Trains en direct" },
+  { id: "ressources.trains", group: "Réseau", label: "Horaires, gares et lignes" },
+  { id: "ressources.ptcar", group: "Réseau", label: "PtCar" },
+  { id: "ressources.ebp", group: "Réseau", label: "EBP" },
+  { id: "ressources.lignes", group: "Réseau", label: "Points SPI" },
+  { id: "operations.pn", group: "Réseau", label: "Carte PN" },
+  { id: "reseau.referentiels", group: "Réseau", label: "Gestion des référentiels" },
+  { id: "ressources.annuaire", group: "Ressources", label: "Contacts" },
+  { id: "equipe", group: "Ressources", label: "Collègues, planning et présence" },
   { id: "ressources.documents", group: "Ressources", label: "Procédures et documents" },
-  { id: "ressources.ptcar", group: "Ressources", label: "PtCar, gares et lignes" },
-  { id: "ressources.ebp", group: "Ressources", label: "EBP" },
-  { id: "ressources.lignes", group: "Ressources", label: "Lignes et arrêts (BACO), points SPI" },
-  { id: "ressources.trains", group: "Ressources", label: "Référentiel des trains" },
-  { id: "equipe", group: "Équipe", label: "Équipe" },
+  { id: "commandes.b201", group: "Ressources", label: "B201" },
   { id: "nouveautes", group: "Nouveautés", label: "Nouveautés" },
   { id: "baco", group: "Historique", label: "Lectures héritées de BACO" },
 ];
+
+/**
+ * Clés v2 sans effet depuis le 14 oct. 2026 : gares, lignes, PtCar, EBP et points SPI ne se modifient plus qu'avec
+ * `referentiels:manage` (règles PocketBase `1760004700`). Gardées au catalogue (rôles par défaut v2 inchangés, grants /
+ * denies existants valides), jamais proposées dans l'interface.
+ */
+const RETIRED = new Set([
+  "ptcar:write",
+  "ptcar:update",
+  "ptcar:delete",
+  "ebp:write",
+  "ebp:update",
+  "ebp:delete",
+  "lignes:write",
+  "lignes:update",
+  "lignes:delete",
+]);
 
 /** Rôles qui ont toutes les permissions. */
 export const FULL_ROLES = ["admin", "sysop"];
@@ -119,7 +139,7 @@ function baco(key: string, label: string): CatalogEntry {
   };
 }
 
-export const CATALOG: CatalogEntry[] = [
+const ENTRIES: CatalogEntry[] = [
   // ---- Commandes
   ...module("otto", "commandes.bus", [
     [
@@ -291,8 +311,8 @@ export const CATALOG: CatalogEntry[] = [
     ["write", "Ajouter un PtCar", "Peut ajouter une abréviation PtCar", PM],
     [
       "update",
-      "Modifier PtCar, gares et lignes",
-      "Peut modifier les PtCar, les districts des gares et les lignes",
+      "Modifier un PtCar (ancien droit)",
+      "Peut modifier une abréviation PtCar (sans effet : voir « Modifier les référentiels du réseau »)",
       PM,
     ],
     ["delete", "Supprimer un PtCar", "Peut supprimer une abréviation PtCar", MOD],
@@ -342,6 +362,18 @@ export const CATALOG: CatalogEntry[] = [
     "Peut voir le référentiel des trains, des gares et des lignes",
     PM,
   ),
+  // Navigation v3 (14 oct. 2026, décision de l'utilisateur) : gares (district, lignes, type), lignes, PtCar, EBP et points
+  // SPI en lecture seule pour les PACO/RCCA et les modérateurs ; modifiables par admin / sysop (qui ont tout) ou par un
+  // rôle personnalisé qui reçoit cette clé. Ouvre Administration › Référentiels. Carte PN : droits `carte_pn:*` inchangés.
+  extra(
+    "referentiels:manage",
+    "reseau.referentiels",
+    "Modifier les référentiels du réseau",
+    "Peut modifier les référentiels du réseau : gares, lignes, PtCar, EBP, points SPI",
+    [],
+    [],
+    "sensible",
+  ),
   // ---- Équipe
   extra(
     "team:read",
@@ -387,6 +419,10 @@ export const CATALOG: CatalogEntry[] = [
   baco("ops:read", "opérationnel"),
   baco("lignes:read", "lignes"),
 ];
+
+export const CATALOG: CatalogEntry[] = ENTRIES.map((e) =>
+  RETIRED.has(e.key) ? { ...e, hidden: true } : e,
+);
 
 export const CATALOG_KEYS: string[] = CATALOG.map((e) => e.key);
 

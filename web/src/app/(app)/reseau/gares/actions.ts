@@ -12,8 +12,8 @@ import { pbForRequest } from "@/server/data/orders";
 import { env } from "@/server/env";
 import { invalidateStationDistricts } from "@/server/station-districts";
 
-// Ressources › Gares : district, lignes et type d'une gare (droit `ptcar:update` : administrateurs, coordinateurs
-// PACO/RCCA, modérateurs ; revérifié par la règle PocketBase et le hook qui n'accepte que ces champs). « auto » rend la
+// Réseau › Gares : district, lignes et type d'une gare (droit `referentiels:manage` depuis le 14 oct. 2026 : admin,
+// sysop ou rôle qui la reçoit ; revérifié par la règle PocketBase et le hook qui n'accepte que ces champs). « auto » rend la
 // valeur de l'import. Après un changement de district, les propositions des gares voisines sont recalculées.
 
 type Result = { ok: true; done?: number; failed?: number } | { ok: false; error: string };
@@ -23,7 +23,7 @@ const district = z.enum(["DSO", "DSE", "DCE", "DNO", "DNE", "", "auto"]);
 
 async function editor() {
   const user = await requireUser();
-  if (!can(user, "ptcar:update"))
+  if (!can(user, "referentiels:manage"))
     throw new Error("DROIT:Modification réservée (droit PtCar : modification).");
   return user;
 }

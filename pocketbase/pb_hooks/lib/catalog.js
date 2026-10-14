@@ -60,6 +60,7 @@ const CATALOG = [
 	{"key":"lignes:delete","requires":[],"legacy":[],"roles":["moderator"],"level":"sensible","v2":true},
 	{"key":"spi:read","requires":[],"legacy":[],"roles":["paco","moderator"],"level":"normal","v2":false},
 	{"key":"timetable:read","requires":[],"legacy":[],"roles":["paco","moderator"],"level":"normal","v2":false},
+	{"key":"referentiels:manage","requires":[],"legacy":[],"roles":[],"level":"sensible","v2":false},
 	{"key":"team:read","requires":[],"legacy":[],"roles":["paco","moderator"],"level":"normal","v2":false},
 	{"key":"quinyx:read","requires":[],"legacy":[],"roles":["paco","moderator"],"level":"normal","v2":false},
 	{"key":"presence:read","requires":[],"legacy":[],"roles":["paco","moderator"],"level":"normal","v2":false},

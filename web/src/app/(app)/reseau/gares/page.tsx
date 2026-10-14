@@ -52,7 +52,7 @@ export default async function Page({
     type: first(raw, "type"),
   };
   const { rows, total } = await listStations(f);
-  const canEdit = can(user, "ptcar:update");
+  const canEdit = can(user, "referentiels:manage");
 
   return (
     <section className="flex flex-col gap-4" aria-label="Gares">

@@ -84,7 +84,7 @@ routerAdd('GET', '/api/csm/stations/districts', (e) => {
 	return e.json(200, { items: t.stationDistricts($app) });
 });
 
-// Modification par un agent (admin, coordinateur, modérateur : `ptcar:update`) : district, lignes et type. Les autres
+// Modification par un agent (`referentiels:manage` depuis le 14 oct. 2026 : admin, sysop ou rôle qui la reçoit) : district, lignes et type. Les autres
 // champs sont tenus par l'import. Un district ou des lignes choisis à la main ne sont plus écrasés par l'import
 // (`district_manual: false` / `lines_manual: false` dans le corps = retour à l'automatique).
 onRecordUpdateRequest((e) => {
@@ -141,6 +141,36 @@ onRecordUpdateRequest((e) => {
 		if (changed) e.record.set('manual', true);
 		else e.record.set('manual', before.getBool('manual'));
 	}
+	e.next();
+}, 'rail_lines');
+
+// Ligne créée à la main (Administration › Référentiels, `referentiels:manage`, 1760004700) : ligne absente de l'horaire
+// (ex. L.26). Toujours « manuelle » : l'import ne l'écrase ni ne la supprime ; s'il construit un jour la même ligne, il
+// ne remplit que la version automatique (`stations_auto`).
+onRecordCreateRequest((e) => {
+	const t = require(`${__hooks}/lib/timetable.js`);
+	const line = String(e.record.getString('line')).trim().toUpperCase().replace(/^L\.?\s*/, '');
+	if (!/^[0-9A-Z]{1,12}$/.test(line)) throw new BadRequestError('Numéro de ligne invalide (ex. 26, 161A).');
+	const parse = (v) => {
+		try {
+			return JSON.parse(v || '[]');
+		} catch (_) {
+			return [];
+		}
+	};
+	const stations = t.cleanLineStations(parse(e.record.getString('stations')));
+	if (stations.filter((s) => !s.b).length < 2) throw new BadRequestError('Une ligne garde au moins deux gares sur son tronc.');
+	e.record.set('line', line);
+	e.record.set('stations', stations);
+	e.record.set('branches', t.cleanLineBranches(parse(e.record.getString('branches')), stations));
+	e.record.set('count', stations.length);
+	e.record.set('name', String(e.record.getString('name')).slice(0, 300));
+	e.record.set('manual', true);
+	e.record.set('oriented', false);
+	e.record.set('sig', '');
+	e.record.set('stations_auto', []);
+	e.record.set('branches_auto', []);
+	e.record.set('name_auto', '');
 	e.next();
 }, 'rail_lines');
 

@@ -134,13 +134,16 @@ describe("historique", () => {
 
 describe("ajustements d'un agent", () => {
   it("lecture, écriture, effet", () => {
-    const adj = adjustmentsOf(["ptcar:update", "planning:read"], ["pmr:read", "ptcar:update"]);
-    expect(adj).toEqual({ "ptcar:update": "plus", "pmr:read": "moins" });
-    expect(splitAdjustments(adj)).toEqual({ grants: ["ptcar:update"], denies: ["pmr:read"] });
+    const adj = adjustmentsOf(
+      ["repertoire:update", "planning:read"],
+      ["pmr:read", "repertoire:update"],
+    );
+    expect(adj).toEqual({ "repertoire:update": "plus", "pmr:read": "moins" });
+    expect(splitAdjustments(adj)).toEqual({ grants: ["repertoire:update"], denies: ["pmr:read"] });
     const eff = effectivePerms("paco", paco, adj);
     expect(eff).not.toContain("pmr:read");
     expect(eff).not.toContain("pmr:update");
-    expect(adjustmentHasEffect(paco, "ptcar:update", "plus")).toBe(false);
+    expect(adjustmentHasEffect(paco, "repertoire:update", "plus")).toBe(false);
     expect(adjustmentHasEffect(paco, "pmr:read", "moins")).toBe(true);
   });
 
