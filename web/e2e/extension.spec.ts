@@ -13,7 +13,7 @@ test("téléchargement réservé aux agents connectés", async ({ request }) => 
 });
 
 test("jeton personnel généré, listé puis révoqué", async ({ page }) => {
-  await login(page, "/pmr/extension");
+  await login(page, "/extension");
   await expect(page.getByRole("link", { name: /Télécharger/ }).first()).toBeVisible();
   await expect(page.getByText(/Extension non détectée/)).toBeVisible({ timeout: 5000 });
   await page.getByRole("button", { name: /Générer un jeton/ }).click();

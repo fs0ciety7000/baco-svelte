@@ -74,7 +74,7 @@ const forContact = (id: string) => (r: Response) =>
 const rows = (page: Page) => page.getByTestId("contact-row");
 
 test("recherche tolérante : accents, désordre, faute de frappe, numéro", async ({ page }) => {
-  await login(page, "/referentiels");
+  await login(page, "/ressources");
   await expect(search(page)).toBeVisible();
   await noHorizontalScroll(page);
 
@@ -110,7 +110,7 @@ test("recherche tolérante : accents, désordre, faute de frappe, numéro", asyn
 test("appel et copie du numéro, fiche en panneau", async ({ page, context }, info) => {
   const mobile = info.project.name === "mobile";
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  await login(page, "/referentiels");
+  await login(page, "/ressources");
   await search(page).fill(`liege ${tag.toLowerCase()}`);
   await expect(rows(page)).toHaveCount(1);
   const row = rows(page).first();
@@ -143,7 +143,7 @@ test("appel et copie du numéro, fiche en panneau", async ({ page, context }, in
 test("favori qui persiste et consultés récemment", async ({ page }, info) => {
   // Une seule session écrit les préférences (desktop et mobile partagent le compte de test).
   test.skip(info.project.name === "mobile", "préférences du compte écrites par le projet desktop");
-  await login(page, "/referentiels");
+  await login(page, "/ressources");
   await search(page).fill(`dispatching ${tag.toLowerCase()}`);
   await expect(rows(page)).toHaveCount(1);
   const fav = rows(page).first().getByTestId("contact-fav");
@@ -159,7 +159,7 @@ test("favori qui persiste et consultés récemment", async ({ page }, info) => {
   await expect(page.getByTestId("contact-panel")).toBeVisible();
   await both;
 
-  await page.goto("/referentiels");
+  await page.goto("/ressources");
   const favorites = page.getByTestId("directory-favorites");
   await expect(favorites).toContainText(`Dispatching Sécurité ${tag}`);
   // Un favori n'est pas répété dans « Consultés récemment ».

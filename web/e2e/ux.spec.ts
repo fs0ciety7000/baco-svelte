@@ -12,7 +12,7 @@ test("la palette cherche aussi dans les données (train)", async ({ page, isMobi
   await page.keyboard.press("Control+k");
   const dialog = page.getByRole("dialog", { name: "Palette de commandes" });
   await dialog.getByRole("combobox").fill("3804");
-  // Groupe « Opérations › Trains en direct » (le référentiel des trains peut aussi connaître ce n°).
+  // Groupe « Réseau › Trains en direct » (le référentiel des trains peut aussi connaître ce n°).
   await expect(
     dialog.getByTestId("palette-group-live").getByRole("option", { name: /Train 3804/ }),
   ).toBeVisible();

@@ -83,7 +83,7 @@ test("voir en tant que : PACO/RCCA en lecture seule, puis retour", async ({ page
   await expect(banner).toBeVisible();
 
   // Écriture par une route : 403 du middleware, toast « Lecture seule ».
-  await page.goto("/equipe/profil");
+  await page.goto("/profil");
   await expect(banner).toHaveAttribute("data-ready", "");
   const route = await page.evaluate(async () => {
     const r = await fetch("/api/referentiels/documents", { method: "POST", body: new FormData() });

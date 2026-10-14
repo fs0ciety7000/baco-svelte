@@ -99,7 +99,7 @@ test("trains en direct : gare, favori, train, bus de substitution, suivi", async
   test.skip(info.project.name !== "desktop", "parcours en desktop ; mobile en captures");
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await login(page, "/operations");
+  await login(page, "/reseau");
   await page.getByTestId("live-search").fill("Mon");
   await page.getByTestId("live-suggestions").getByRole("button", { name: "Mons" }).click();
   await expect(page.getByTestId("live-station")).toHaveText("Mons");
@@ -216,7 +216,7 @@ test("carte PN : recherche, fiche, itinéraire, tuiles relayées", async ({ page
   test.skip(info.project.name !== "desktop", "parcours en desktop");
   const tiles: number[] = [];
   page.on("response", (r) => r.url().includes("/api/operations/tuiles/") && tiles.push(r.status()));
-  await login(page, "/operations/carte-pn");
+  await login(page, "/reseau/pn");
   // Recherche par l'adresse (propre à chaque worker : desktop et mobile créent chacun leur PN « 7 bis » de la L.999).
   await page.getByTestId("pn-search").fill(`Essai ${suffix}`);
   await expect(page.getByTestId("pn-count")).toContainText("1");
@@ -244,7 +244,7 @@ test("cloche et statistiques", async ({ page }, info) => {
     user: agentId,
     kind: "systeme",
     title: `Notification ${MARK}`,
-    link: "/operations/statistiques",
+    link: "/statistiques",
   });
   await login(page, "/operations/journal");
   await expect(page.getByTestId("bell")).toHaveAccessibleName(/1 non lue/);
@@ -311,18 +311,18 @@ for (const t of ["nuit", "jour"] as const) {
       },
     ]);
     const p = info.project.name;
-    await page.goto("/operations?gare=BE.NMBS.008881000&nom=Mons");
+    await page.goto("/reseau?gare=BE.NMBS.008881000&nom=Mons");
     await expect(page.getByTestId(p === "desktop" ? "live-board" : "live-cards")).toBeVisible();
     await snap(page, `${t}-trains`, p, false);
-    await page.goto("/operations?gare=BE.NMBS.008881000&nom=Mons&train=IC2100");
+    await page.goto("/reseau?gare=BE.NMBS.008881000&nom=Mons&train=IC2100");
     await expect(page.getByTestId("train-panel")).toBeVisible();
     await snap(page, `${t}-train-panneau`, p, false);
     await page.goto("/operations/journal");
     await expect(page.getByTestId("journal")).toBeVisible();
     await snap(page, `${t}-journal`, p, false);
-    await page.goto("/operations/carte-pn?q=L.999");
+    await page.goto("/reseau/pn?q=L.999");
     await snap(page, `${t}-carte-pn`, p, false);
-    await page.goto("/operations/statistiques");
+    await page.goto("/statistiques");
     await snap(page, `${t}-statistiques`, p);
   });
 }

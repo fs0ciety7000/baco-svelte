@@ -127,12 +127,12 @@ async function openPalette(page: Page, isMobile: boolean) {
   return dialog;
 }
 
-test("relation « IC96 » : groupe Ressources › Relations en tête", async ({ page, isMobile }) => {
+test("relation « IC96 » : groupe Réseau › Relations en tête", async ({ page, isMobile }) => {
   await login(page);
   const dialog = await openPalette(page, isMobile);
   await dialog.getByRole("combobox").fill(REL);
   const group = dialog.getByTestId("palette-group-relations");
-  await expect(group).toContainText("Ressources › Relations");
+  await expect(group).toContainText("Réseau › Relations");
   const option = group.getByRole("option", { name: new RegExp(`${REL} · ${STATION}`) });
   await expect(option).toBeVisible();
   // Premier groupe affiché : la relation (lecture de la saisie).
@@ -141,7 +141,7 @@ test("relation « IC96 » : groupe Ressources › Relations en tête", async ({ 
     "palette-group-relations",
   );
   await option.click();
-  await expect(page).toHaveURL(new RegExp(`/referentiels/trains\\?rel=${REL}`));
+  await expect(page).toHaveURL(new RegExp(`/reseau/horaires\\?rel=${REL}`));
 });
 
 test("n° de train : trains en direct et référentiel des trains", async ({ page, isMobile }) => {

@@ -144,7 +144,8 @@ cronAdd('train-watches', '*/2 * * * *', () => {
 				const threshold = w.getInt('threshold_min') || 5;
 				const notified = last.notifiedDelay || 0;
 				const label = w.getString('label') || train;
-				const link = `/operations?train=${encodeURIComponent(train)}`;
+				// Trains en direct : module Réseau depuis la navigation v3 (les anciens liens `/operations?train=` sont redirigés).
+				const link = `/reseau?train=${encodeURIComponent(train)}`;
 				let msg = '';
 				if (state.cancelled && !last.cancelled) msg = `${label} : suppression signalée`;
 				else if (state.delay >= threshold && state.delay >= notified + (notified ? 10 : 0)) msg = `${label} : +${state.delay} min`;

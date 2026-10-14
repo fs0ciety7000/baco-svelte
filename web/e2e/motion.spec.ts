@@ -73,7 +73,7 @@ test("l'accueil ne clignote pas au premier affichage", async ({ page }) => {
 
 test("changer un filtre ne recharge pas la page", async ({ page }) => {
   await login(page);
-  await page.goto("/equipe");
+  await page.goto("/ressources/equipe");
   await page.evaluate(() => {
     (window as unknown as { __sameDocument: boolean }).__sameDocument = true;
   });

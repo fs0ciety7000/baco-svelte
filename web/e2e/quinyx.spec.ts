@@ -128,7 +128,7 @@ test.afterAll(async () => {
 test("planning : jour, semaine, fraîcheur, mobile", async ({ page }, info) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await login(page, "/equipe/planning");
+  await login(page, "/ressources/planning");
   await expect(page.getByTestId("quinyx-freshness")).toContainText(LABEL);
   await expect(page.getByTestId("quinyx-freshness")).toContainText(
     "synchronisé avec Quinyx il y a 20 min",

@@ -74,7 +74,7 @@ async function loginAdmin(page: Page) {
   await expect(page).toHaveURL(/\/$/);
 }
 
-/** Onglets du module Opérations vus par le compte jetable (nouvelle session). */
+/** Onglet Statistiques (Accueil depuis la navigation v3) vu par le compte jetable (nouvelle session). */
 async function agentTabs(
   browser: Browser,
   email: string,
@@ -87,10 +87,10 @@ async function agentTabs(
   await page.getByLabel("Mot de passe").fill(PASSWORD);
   await page.getByRole("button", { name: "Se connecter", exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
-  await page.goto("/operations/journal");
+  await page.goto("/");
   await expect(page.getByRole("main")).toBeVisible();
   const stats = await page.getByRole("link", { name: "Statistiques", exact: true }).count();
-  const status = (await page.goto("/operations/statistiques"))?.status() ?? 0;
+  const status = (await page.goto("/statistiques"))?.status() ?? 0;
   await ctx.close();
   return { stats, status };
 }

@@ -130,8 +130,8 @@ test.afterAll(async () => {
 test("relations, fiche, train, gare, ligne", async ({ page }, info) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await login(page, "/referentiels/trains");
-  await page.goto(`/referentiels/trains?q=${REL}`);
+  await login(page, "/reseau/horaires");
+  await page.goto(`/reseau/horaires?q=${REL}`);
   const p = info.project.name;
   const list =
     p === "desktop" ? page.getByTestId("relations-table") : page.locator("ul.md\\:hidden").first();
@@ -139,7 +139,7 @@ test("relations, fiche, train, gare, ligne", async ({ page }, info) => {
   await noHorizontalScroll(page);
   await page.screenshot({ path: `test-results/trains-relations-${p}.png`, fullPage: true });
 
-  await page.goto(`/referentiels/trains?rel=${REL}`);
+  await page.goto(`/reseau/horaires?rel=${REL}`);
   const detail = page.getByTestId("relation-detail");
   await expect(detail.getByText("Quiévrain – Soignies").first()).toBeVisible();
   await expect(detail.getByTestId("stop-list").getByText("Saint-Ghislain")).toBeVisible();
@@ -148,26 +148,26 @@ test("relations, fiche, train, gare, ligne", async ({ page }, info) => {
   await page.screenshot({ path: `test-results/trains-relation-${p}.png`, fullPage: true });
 
   // Un n° de train dans la recherche ouvre sa fiche ; les passages sans arrêt y figurent.
-  await page.goto(`/referentiels/trains?q=${N1}`);
+  await page.goto(`/reseau/horaires?q=${N1}`);
   const train = page.getByTestId("train-detail");
   await expect(train.getByText("Ghlin (passage)")).toBeVisible();
   await expect(train.getByText("99800-99849")).toBeVisible();
   await noHorizontalScroll(page);
 
   // Par gare : nom NL accepté (Bergen = Mons), train à l'arrêt ; Ghlin : passage sans arrêt.
-  await page.goto("/referentiels/trains?vue=gare&gare=Bergen&jours=tous");
+  await page.goto("/reseau/horaires?vue=gare&gare=Bergen&jours=tous");
   await expect(
     page.getByTestId("board-stops").getByText(String(N1)).filter({ visible: true }).first(),
   ).toBeVisible();
   await noHorizontalScroll(page);
   await page.screenshot({ path: `test-results/trains-gare-${p}.png`, fullPage: true });
-  await page.goto("/referentiels/trains?vue=gare&gare=Ghlin&jours=semaine");
+  await page.goto("/reseau/horaires?vue=gare&gare=Ghlin&jours=semaine");
   await expect(
     page.getByTestId("board-passes").getByText(String(N1)).filter({ visible: true }).first(),
   ).toBeVisible();
   await expect(page.getByTestId("board-passes").getByText(String(N2))).toHaveCount(0);
 
-  await page.goto("/referentiels/trains?vue=ligne&ligne=97&jours=tous");
+  await page.goto("/reseau/horaires?vue=ligne&ligne=97&jours=tous");
   const line = page.getByTestId("line-board");
   await expect(line.getByText("Saint-Ghislain").filter({ visible: true }).first()).toBeVisible();
   await noHorizontalScroll(page);
@@ -188,8 +188,8 @@ test("gares : recherche par alias, district modifiable", async ({ page }, info) 
     served: true,
   });
   created.push({ col: "stations", id: st.id });
-  await login(page, "/referentiels/gares");
-  await page.goto(`/referentiels/gares?q=${encodeURIComponent(`Alias E2E ${info.project.name}`)}`);
+  await login(page, "/reseau/gares");
+  await page.goto(`/reseau/gares?q=${encodeURIComponent(`Alias E2E ${info.project.name}`)}`);
   await expect(page.getByText(name).filter({ visible: true }).first()).toBeVisible();
   await noHorizontalScroll(page);
   await page.screenshot({
@@ -242,25 +242,25 @@ test("lignes : liste, filtres district et gare, gares dans l'ordre", async ({ pa
 
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await login(page, "/referentiels/lignes");
+  await login(page, "/reseau/lignes");
   // Recherche par gare (nom ou abréviation PtCar) : la ligne fictive seule.
-  await page.goto(`/referentiels/lignes?gare=${encodeURIComponent(gare)}`);
+  await page.goto(`/reseau/lignes?gare=${encodeURIComponent(gare)}`);
   const grid = page.getByTestId("lines-grid");
   await expect(grid.getByText(`L.${LN}`)).toBeVisible();
   await expect(grid.getByRole("link")).toHaveCount(1);
-  await page.goto(`/referentiels/lignes?gare=${abbr}`);
+  await page.goto(`/reseau/lignes?gare=${abbr}`);
   await expect(grid.getByText(`L.${LN}`)).toBeVisible();
   // District tiré de Ressources › Gares : il faut 30 % des gares de la ligne. Une gare DSO sur cinq ne suffit pas
   // (avant le 14 oct., la majorité parmi les seules gares avec un district rattachait des lignes flamandes au sud).
-  await page.goto("/referentiels/lignes?district=DSO");
+  await page.goto("/reseau/lignes?district=DSO");
   await expect(page.getByTestId("lines-grid").getByText(`L.${LN}`)).toHaveCount(0);
-  await page.goto("/referentiels/lignes?district=aucun");
+  await page.goto("/reseau/lignes?district=aucun");
   await expect(grid.getByText(`L.${LN}`)).toBeVisible();
   await noHorizontalScroll(page);
   await page.screenshot({ path: `test-results/lignes-liste-${p}.png`, fullPage: true });
 
   // Fiche : « L.998 » accepté, tronc dans l'ordre avec la reprise signalée, embranchement, liens vers Trains.
-  await page.goto(`/referentiels/lignes?ligne=L.${LN}`);
+  await page.goto(`/reseau/lignes?ligne=L.${LN}`);
   const detail = page.getByTestId("line-detail");
   await expect(detail.getByText(`${gare} – Terminus E2E`)).toBeVisible();
   const trunk = detail.getByTestId("line-stations");
@@ -272,11 +272,11 @@ test("lignes : liste, filtres district et gare, gares dans l'ordre", async ({ pa
   await expect(detail.getByText("Embranchement depuis Milieu E2E")).toBeVisible();
   await expect(trunk.getByRole("link", { name: gare })).toHaveAttribute(
     "href",
-    `/referentiels/trains?vue=gare&gare=${encodeURIComponent(gare).replace(/%20/g, "+")}`,
+    `/reseau/horaires?vue=gare&gare=${encodeURIComponent(gare).replace(/%20/g, "+")}`,
   );
   await expect(detail.getByRole("link", { name: /Relations sur la ligne/ })).toHaveAttribute(
     "href",
-    `/referentiels/trains?vue=ligne&ligne=${LN}`,
+    `/reseau/horaires?vue=ligne&ligne=${LN}`,
   );
   await noHorizontalScroll(page);
   await page.screenshot({ path: `test-results/lignes-fiche-${p}.png`, fullPage: true });

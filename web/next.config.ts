@@ -1,6 +1,8 @@
 import path from "node:path";
 import type { NextConfig } from "next";
 
+import { LEGACY_REDIRECTS } from "./src/lib/redirects";
+
 // En-têtes de sécurité communs (la CSP avec nonce arrive avec le shell, étape 3).
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
@@ -22,7 +24,12 @@ const nextConfig: NextConfig = {
   // Paquets du Connecteur DICOS lus à l'exécution (page PMR › Extension DICOS et route de téléchargement).
   outputFileTracingIncludes: {
     "/api/pmr/extension/[file]": ["./downloads/dicos-connector/**"],
+    "/extension": ["./downloads/dicos-connector/**"],
     "/pmr/extension": ["./downloads/dicos-connector/**"],
+  },
+  // Anciennes routes (navigation v3) : redirections permanentes, chaîne de requête gardée (src/lib/redirects.ts).
+  async redirects() {
+    return LEGACY_REDIRECTS.map((r) => ({ ...r, permanent: true }));
   },
   async headers() {
     return [
