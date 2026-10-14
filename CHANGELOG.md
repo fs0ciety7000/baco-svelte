@@ -7,6 +7,7 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 ### Nouveautés
 
+- **Téléphoner avec Genesys Cloud** : les numéros (annuaire, missions PMR, équipe…) s'ouvrent dans Genesys Cloud au clic (lien `tel:` au format international +32…), comme avant avec Etrali. Il faut l'extension Genesys Cloud du navigateur, avec « Click-to-Dial » activé. Affichage › « Téléphoner en un clic » : choisis Genesys Cloud (par défaut) ou Etrali. Sur mobile, le téléphone compose toujours le numéro.
 - **Administration › Utilisateurs › fiche : « Voir en tant que »** (administrateurs). Tu vois CSM exactement comme cet agent (menus, onglets, données accessibles), pour vérifier ses droits. Lecture seule stricte, 30 minutes au plus, bandeau « Revenir à mon compte » en haut de chaque page ; chaque début et fin est noté dans le journal d'audit. Impossible sur un autre administrateur.
 
 ### Améliorations
@@ -26,6 +27,10 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 - **Notifications selon tes districts du jour, en direct** : perturbations et travaux iRail, retards des trains des missions PMR et des groupes, changements DICOS, urgences et mentions @DSO… arrivent à toute l'équipe concernée, et la cloche ne te montre que celles de tes districts du jour. Si tu changes de district en cours de journée, tu vois aussitôt les alertes de tes nouveaux districts (avant, tu ne recevais que celles du district coché au moment de l'alerte). Sans district choisi, la cloche ne montre que tes alertes personnelles.
 - **Mon profil › Notifications** : affiche ou masque chaque catégorie dans la cloche (urgences, mentions, perturbations iRail, travaux iRail, retards des trains, changements DICOS, alertes système). Une catégorie masquée ne déclenche plus de notification du navigateur.
 - **Synchro DICOS** : l'heure et le nom affichés sont ceux de la dernière synchro faite par un agent de l'équipe, quel qu'il soit. Si un jour de la période n'a pas été synchronisé depuis plus d'une heure, CSM le signale à part.
+
+### Corrections
+
+- Pendant une mise à jour de CSM (une trentaine de secondes), la page d'erreur réessaie toute seule dès que le serveur répond, au lieu de rester sur « momentanément indisponible ».
 
 ## [2026.10.14] — Cycle des bons, trains et nouveautés
 

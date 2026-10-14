@@ -1,7 +1,14 @@
 "use client";
 
+import { useCallback } from "react";
+
+import { useAutoRetry } from "@/lib/use-auto-retry";
+
 // Erreur du gabarit racine (rare) : page autonome, sans le design system qui n'est peut-être pas chargé.
 export default function GlobalError({ reset }: { error: Error; reset: () => void }) {
+  // Le gabarit racine a échoué (redéploiement en cours) : rechargement complet dès que l'application répond.
+  const reload = useCallback(() => window.location.reload(), []);
+  const left = useAutoRetry(reload);
   return (
     <html lang="fr">
       <body
@@ -19,7 +26,9 @@ export default function GlobalError({ reset }: { error: Error; reset: () => void
         <main style={{ maxWidth: 420, textAlign: "center" }}>
           <h1 style={{ fontSize: 20 }}>CSM est momentanément indisponible</h1>
           <p style={{ color: "#B1AA9E" }}>
-            Le serveur redémarre peut-être. Réessaie dans quelques secondes.
+            {left !== null
+              ? `CSM est peut-être en cours de mise à jour. Nouvel essai automatique dans ${left} s.`
+              : "Le serveur ne répond toujours pas. Réessaie dans quelques instants."}
           </p>
           <button
             type="button"
