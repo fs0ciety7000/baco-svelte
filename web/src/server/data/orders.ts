@@ -129,6 +129,8 @@ export function deletionFor(
   can: (permission: string) => boolean,
   userId: string,
   m: OrderMeta,
+  /** Historique du bon (`listEvents`) : un bon déjà envoyé une fois n'est plus supprimable par son créateur. */
+  events: readonly { to: string }[],
   relation = "",
 ): { until: string | null; label: string } | null {
   const d = orderDeletion(can, userId, {
@@ -136,6 +138,7 @@ export function deletionFor(
     created_by: m.createdById,
     created: m.created,
     status: m.status,
+    wasSent: events.some((e) => e.to === "envoye"),
   });
   if (!d) return null;
   const label =

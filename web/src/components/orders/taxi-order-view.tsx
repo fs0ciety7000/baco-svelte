@@ -60,7 +60,7 @@ export async function TaxiOrderView({
         client={client}
         reference={reference}
         officeEmail={officeFor(order.draft.district).email}
-        deletion={deletionFor((p) => can(user, p), user.id, meta)}
+        deletion={deletionFor((p) => can(user, p), user.id, meta, events)}
         archived={meta.archived}
       />
       <section

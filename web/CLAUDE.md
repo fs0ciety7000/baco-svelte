@@ -430,8 +430,30 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   rôle (`PermissionMatrix role={RoleMeta}`). Pas encore d'écran Rôles (lot L4).
 - **Suppression d'un bon** : Server Action `deleteOrder(kind, id)` (`commandes/actions.ts`, droits revérifiés par
   `canDeleteOrder` de `lib/orders/status.ts`, miroir du hook `checkDelete`, puis redirection vers `/commandes` ou
-  `/commandes/taxi`) : droit de suppression du module, ou créateur avec droit d'écriture pendant 8 h, bon pas envoyé. Pas encore
-  de bouton.
+  `/commandes/taxi`) : droit de suppression du module, ou créateur avec droit d'écriture pendant 8 h, bon jamais envoyé
+  (`wasSent` = un événement vers `envoye` dans l'historique). **Bouton** (14 oct. 2026) : `deletionFor(can, userId, meta, events,
+  relation)` (server/data/orders.ts → `orderDeletion` de status.ts : `{ until }` = fin des 8 h, `null` = sans limite) passé aux
+  formulaires (`deletion`) et au panneau du Suivi (`OrderPanel.deletion`) ; `useFormDeletion` (bon créé à l'instant dans le même
+  écran), `useDeleteOrder` / `DeleteOrderButton` / `useRemaining` (`components/orders/delete-order.tsx`) : menu « ⋯ » desktop
+  (`menu-delete-order`), feuille mobile sous « Annuler la commande » (`sheet-delete-order`), « Supprimable encore 7h05 »,
+  confirmation « Supprimer définitivement le bon TC_… / taxi n° N ? » (`delete-order-confirm`) ; `deleteOrder(…, { redirect:
+  false })` depuis le Suivi.
+- **Taxi : gares via et n° de dossier** (14 oct. 2026) : `TaxiDraft.via_stations` (liste ordonnée ; `z.preprocess` reprend
+  l'ancien `via_station` des brouillons / modèles), logique `lib/orders/via.ts` (`viaList` : JSON sinon ancien texte = une
+  étape, `cleanVias`, `viaText` « A · B », `routeWithVias`, `moveVia`, testés) ; écrit `via_stations` + copie `via_station`
+  (recherche liste et ⌘K). Champ `ViaStationsField` (`via-add`, `via-input-<i>`, `via-up/down/remove-<i>`). Taxi PMR :
+  « Numéro de dossier » = `pmr_file` (`TaxiDraft.pmr_file`, masqué sans `pmr:read` par `redactPmr`, vidé à la duplication et
+  dans les modèles), `normalizeDossier` (`lib/orders/dossier.ts`, AAAA-MM-JJ-NNNN, « 20261014134 » / « 2026-10-14-134 » remis au
+  format, sinon message non bloquant), `DossierField` + Server Action `suggestDossiers` (missions `pmr_assists` du client ou du
+  jour ±1 à la gare de départ / d'arrivée, taxis d'abord, sans nom). « Référence / relation » : taxis standard (et anciens PMR qui
+  en ont une). PDF / e-mail : « Via 1, Via 2… », « N° de dossier ». Transition taxi brouillon → terminé : « Terminer »
+  (`transitionsFor(…, { kind })`).
+- **Archivage à 30 jours** (14 oct. 2026) : `lib/orders/archive.ts` (`isArchivedOrder` : envoyé depuis > 30 j sur `sent_at`,
+  annulé sur `cancelled_at`, repli `ended_at` / `updated` pour BACO ; testé) ; `listSchema.archived` = `exclude` (défaut : listes
+  bus, taxi, Suivi, compteurs), `only` (Commandes › Archives, vue « Bons archivés », `OrderList pdfFor` + `archivePdfIndex`),
+  `include` (B201). Filtres PocketBase `archiveFilter` / `activeFilter` (complément explicite : pas de négation de groupe dans
+  les filtres PocketBase). `OrderMeta.archived`, `OrderRow.archived` → `ArchivedBadge` (fiche, listes, ⌘K « Archivé »). Vue
+  « PDF des bons » = `?vue=pdf`.
 - **Avatars** : `avatarRing(role, roles)` (`lib/roles.ts`, `useAvatarRing` côté client) : couleur du rôle (neutre par défaut),
   anneau doublé pour admin / sysop ; passer `role` à `<Avatar>` partout (Journal compris).
 - **Documents** (Ressources › Procédures et documents) : envoi par **`POST /api/referentiels/documents`** (30 Mo, type

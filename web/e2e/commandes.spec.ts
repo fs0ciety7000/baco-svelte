@@ -348,8 +348,11 @@ test("bus : barre d'actions mobile (une action principale + feuille « ⋯ »)",
   const cancel = sheet.getByTestId("sheet-transition-annule");
   await expect(cancel).toBeVisible();
   // Annulation séparée, en bas, en rouge.
-  const items = await sheet.locator("a, button").all();
-  expect(await items.at(-1)!.getAttribute("data-testid")).toBe("sheet-transition-annule");
+  // (« Supprimer le bon », s'il est permis, vient encore après : 14 oct. 2026.)
+  const ids = await sheet
+    .locator("a, button")
+    .evaluateAll((els) => els.map((e) => e.getAttribute("data-testid") ?? ""));
+  expect(ids.filter((i) => i !== "sheet-delete-order").at(-1)).toBe("sheet-transition-annule");
   await page.waitForTimeout(400); // fin de l'animation de la feuille
   await page.screenshot({ path: `test-results/r5r6-bus-feuille-${info.project.name}.png` });
 
@@ -577,6 +580,7 @@ test("suppression d'un bon par son créateur (confirmation, retour à la liste)"
   const p = info.project.name;
   await login(page, "/commandes/taxi/nouveau");
   await page.getByRole("combobox", { name: "Départ", exact: true }).fill("Mons");
+  await page.getByRole("combobox", { name: "Arrivée", exact: true }).fill("Jurbise");
   await expect(page.getByTestId("autosave")).toHaveAttribute("data-state", "saved", {
     timeout: 10_000,
   });
@@ -629,7 +633,8 @@ test("bon envoyé il y a plus de 30 jours : dans Archives, plus dans le Suivi", 
     trip_type: "aller",
   });
   fixtures.push({ col: "taxi_orders", id: old.id });
-  await login(page, `/commandes/taxi?q=${encodeURIComponent(station)}`);
+  await login(page, "/commandes/taxi");
+  await page.goto(`/commandes/taxi?q=${encodeURIComponent(station)}`);
   await expect(page.getByTestId("orders-count")).toHaveText(/^\s*0\s+commandes/);
   await page.goto("/commandes/suivi?vue=toutes&type=taxi");
   await expect(
@@ -638,7 +643,7 @@ test("bon envoyé il y a plus de 30 jours : dans Archives, plus dans le Suivi", 
   await page.goto("/commandes/archives");
   const list = page.getByTestId("archived-orders");
   await expect(list).toContainText(station);
-  await expect(list.getByTestId("archived-badge").first()).toBeVisible();
+  await expect(list.getByTestId("archived-badge").filter({ visible: true }).first()).toBeVisible();
   await noHorizontalScroll(page);
   await page.screenshot({ path: `${SHOTS}/archives-bons-${p}.png`, fullPage: true });
   // Filtre par type et recherche.

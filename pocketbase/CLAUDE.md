@@ -62,6 +62,10 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   créateur (`created_by`) avec `otto:write` / `generate_taxi:write`, bon pas `envoye`, **8 h** après `created` (hook
   `checkDelete`, lib/orders.js : pas d'arithmétique sur `@now` dans les règles). `order_events` supprimés avec le bon, liens du
   Journal vidés (relation facultative), PDF archivé (`order_pdfs`, identifiant texte) gardé.
+- **Gares via d'un taxi** (`1760004620_taxi_via_stations.js`, 14 oct. 2026) : `taxi_orders.via_stations` (JSON, liste ordonnée,
+  10 au plus) + `via_station` (texte, 2000, copie jointe par « · ») ; bons existants : `[via_station]` ou `[]` par SQL (même
+  valeur que `fillTaxiOrder` de `lib/import.js`, qui pose aussi `via_stations` : l'import différentiel ne voit pas d'écart).
+  N° de dossier DICOS d'un taxi PMR : colonne existante `pmr_file` (ex-`pmr_dossier` BACO, purgée à 12 mois).
 - **Rôles v3, lot L3** (`1760004500_roles.js`, `roles.pb.js`, `lib/roles.js`) : collection **`roles`** (`key` unique figée,
   `label`, `description`, `color` accent/info/ok/warn/progress/neutral, `perms` JSON, `system`, `locked`, `based_on`, `sort`,
   `updated_by` posé par hook ; lue par tout agent actif). 8 rôles système (admin / sysop verrouillés « tout », moderator / paco

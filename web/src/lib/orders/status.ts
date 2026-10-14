@@ -120,7 +120,13 @@ export function canDeleteOrder(
 export function orderDeletion(
   can: (permission: string) => boolean,
   userId: string,
-  order: { kind: OrderKind; created_by: string; created: string; status: string },
+  order: {
+    kind: OrderKind;
+    created_by: string;
+    created: string;
+    status: string;
+    wasSent?: boolean;
+  },
   now: number = Date.now(),
 ): { until: string | null } | null {
   if (!canDeleteOrder(can, userId, order, now)) return null;

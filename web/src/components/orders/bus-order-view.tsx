@@ -38,7 +38,7 @@ export async function BusOrderView({
         coordinator={can(user, "bus:reopen")}
         reference={reference}
         officeEmail={officeFor(order.draft.district).email}
-        deletion={deletionFor((p) => can(user, p), user.id, meta, order.draft.relation)}
+        deletion={deletionFor((p) => can(user, p), user.id, meta, events, order.draft.relation)}
         archived={meta.archived}
       />
       <section

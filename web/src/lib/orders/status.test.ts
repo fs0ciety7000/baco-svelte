@@ -89,6 +89,15 @@ describe("suppression d'un bon (14 oct. 2026)", () => {
     });
     expect(orderDeletion(has("otto:delete"), "x", order(), now)).toEqual({ until: null });
     expect(orderDeletion(has("otto:write"), "u2", order(), now)).toBeNull();
+    // Déjà envoyé une fois puis rouvert : plus de bouton pour le créateur.
+    expect(
+      orderDeletion(
+        has("otto:write"),
+        "u1",
+        { ...order({ status: "termine" }), wasSent: true },
+        now,
+      ),
+    ).toBeNull();
     expect(remainingLabel("2026-10-14T16:00:00.000Z", now)).toBe("4h00");
     expect(remainingLabel("2026-10-14T12:05:30.000Z", now)).toBe("0h06");
     expect(remainingLabel("2026-10-14T11:00:00.000Z", now)).toBe("");

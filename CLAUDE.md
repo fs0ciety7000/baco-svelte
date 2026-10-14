@@ -1215,6 +1215,12 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   format `admin~cible~exp~scellé`). 594 contrôles de règles. `perms-check` sur la préversion : 38 comptes, 0 écart.
   Téléphonie : **Genesys Cloud** (`tel:` E.164, extension de navigateur « Click-to-Dial ») ou Etrali au choix (`lib/telephony.ts`).
   Audit de navigation rendu (`docs/design/AUDIT-NAVIGATION.md`), en attente de validation.
+- 2026-10-14 — **Bons (retours utilisateur)** : taxi **plusieurs gares via** ordonnées (`via_stations`, migration `1760004620`,
+  anciens bons = une étape), **taxi PMR « Numéro de dossier »** AAAA-MM-JJ-NNNN dans `pmr_file` (colonne BACO existante, purgée
+  à 12 mois, masquée sans `pmr:read` ; saisie remise au format, dossiers DICOS proposés), « Terminer » sans « bus démobilisés »
+  pour un taxi, **bouton « Supprimer le bon »** (menu « ⋯ », feuille mobile, panneau du Suivi ; créateur 8 h si jamais envoyé),
+  **archivage** : bon envoyé ou annulé depuis plus de 30 jours hors des listes courantes, visible dans Commandes › Archives
+  (« Bons archivés »), fiche et ⌘K avec badge « Archivé », rien de supprimé ; la B201 garde tous les bons.
 
 ---
 

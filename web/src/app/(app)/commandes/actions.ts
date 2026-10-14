@@ -468,17 +468,19 @@ export async function deleteOrder(
     const cur = await pb
       .collection(COLLECTION[k])
       .getOne(oid, { fields: "id,created_by,created,status" });
+    const wasSent = (await listEvents(k, oid)).some((e) => e.to === "envoye");
     const allowed = canDeleteOrder((p) => can(user, p), user.id, {
       kind: k,
       created_by: String(cur.created_by ?? ""),
       created: String(cur.created ?? ""),
       status: String(cur.status ?? ""),
+      wasSent,
     });
     if (!allowed) {
       return {
         ok: false,
         error:
-          cur.status === "envoye"
+          cur.status === "envoye" || wasSent
             ? "Bon envoyé / finalisé : suppression réservée aux administrateurs et modérateurs."
             : "Suppression réservée au créateur du bon pendant 8 h, puis aux administrateurs et modérateurs.",
       };
@@ -688,7 +690,7 @@ export async function loadOrderPanel(input: {
           meta: o.meta,
           events,
           companyId: d.company,
-          deletion: deletionFor((p) => can(user, p), user.id, o.meta, d.relation),
+          deletion: deletionFor((p) => can(user, p), user.id, o.meta, events, d.relation),
           buses: d.buses,
           drivers: ref.drivers.filter((x) => x.company === d.company),
           facts: [
@@ -737,7 +739,7 @@ export async function loadOrderPanel(input: {
         meta: o.meta,
         events,
         companyId: d.taxi_company,
-        deletion: deletionFor((p) => can(user, p), user.id, o.meta),
+        deletion: deletionFor((p) => can(user, p), user.id, o.meta, events),
         buses: [],
         drivers: [],
         facts: [
