@@ -37,6 +37,7 @@ le 11 oct.** : il ne vit plus que sur `main` (BACO en production) et la branche 
 | 3 | Shell (6 entrées, onglets, ⌘K, mobile 4 + Plus) + tableau de bord | ✅ 8 oct. — 24 E2E, CSP, gardes par page, captures validées |
 | 4 | Données : schéma PocketBase, règles d'accès, import | ✅ **bascule faite le 10 oct.** : sauvegarde Supabase fraîche (GET seuls) → base construite en local (`csm-import` + référentiels) → restaurée sur `pb-csm` ; comptages vérifiés (29 comptes + connecteur, 300 bons bus, 445 prestations, 1148 PtCar…) |
 | 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 **Commandes** livré en session 3 (schéma + 66 contrôles de règles, bus, taxi, envoi `.eml` + PDF, suivi, B201, E2E) : **validé le 8 oct.**, cycle v3 brouillon → terminé → envoyé le 14 oct. ; **PMR validé le 8 oct.** (schéma + 105 contrôles de règles, prestations, collage DICOS, clients, matériel, E2E) ; **Opérations validé le 8 oct.** (trains en direct iRail, Journal (ex-main courante), carte PN, statistiques, cloche ; 149 contrôles de règles, 46 E2E) ; **DICOS / Missions PMR validé** (extension + ingestion, lecture seule, trajet/IN-OUT/district/copier) ; **Annuaire et données (ex-Référentiels) livré** (annuaire, lignes, PtCar, EBP, procédures + documents ; 7 collections ; 173 contrôles de règles ; audit + revue passés ; données v1 importées sur l'instance de test) ; **Équipe et Admin validés le 10 oct.** (+ vue admin des appareils connectés) |
+| 5b | Référentiel des relations de trains (Ressources › Trains) | 🔄 préversion le 14 oct. — GTFS SNCB + Infrabel, import quotidien par Next, 3 collections, écran 3 vues |
 | 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | ✅ 8 oct. — **PRODUCTION en ligne le 10 oct. : https://csm.fs0ciety.org** (`csm-web-prod` + `csm-pocketbase-prod`, environnement Coolify `prod`, branche **`csm-prod`**, données BACO importées le 10 oct., sauvegardes R2) ; **test-csm = preview** (branche de session) ; projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
 | — | Hotfix sécurité BACO (`supabase/migrations/20261008120000_security_hotfix.sql`) | ✅ appliqué par l'utilisateur (SQL Editor) le 8 oct., vérifié : 0 ERROR (36 avant). Suite **non appliquée** : `20261008130000_hotfix_followup.sql` (test NULL de `get_my_role()`) et `20261008140000_pn_data_update_fix.sql` (XSS stocké carte PN), accord requis ; protection des mots de passe compromis encore désactivée |
 
@@ -1003,6 +1004,20 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   `taxi_orders.return_time_pending` (`1760003500`, comme `time_pending` pour l'aller ; brouillons déjà à minuit repris).
   Gel de BACO reporté (décision de l'utilisateur). L.26 absente aussi des données BACO : stations à fournir ou à saisir
   dans Admin › Lignes et arrêts.
+
+- 2026-10-14 — **Référentiel des relations de trains** (demande de l'utilisateur : ligne, type IC / L / S / P, relation IC14…,
+  série 17xx, arrêts ; « via iRail ou DICOS »). Recherche par agent : iRail ne donne pas la relation, DICOS n'est lisible que
+  par l'extension → **GTFS officiel SNCB** (arrêts, passages, horaires, jours ; conditions de licence **non lues**, pages
+  bloquées ici : à vérifier) + **données ouvertes Infrabel (CC0)** : ponctualité J-1 (relation exacte « IC 14 », n° de ligne à
+  chaque point) et points opérationnels (noms FR / NL). Jointure par n° de train ; série = demi-bloc de 50 (les blocs de 100
+  mélangent deux relations : 17xx = IC14 + S1). Import par le serveur Next chaque matin (≥ 5 h, `instrumentation.ts`, ~1 min,
+  7 400 trains, 267 relations), écrit par routes internes PocketBase (`1760003600` : `train_paths`, `train_services`,
+  `train_relations`). Écran **Ressources › Trains** : relations, fiche relation / train, par gare (s'arrêtent / passent), par
+  ligne. Revue adversariale : corrigés deux imports simultanés (verrou PocketBase 30 min + `globalThis`), rattrapage mensuel
+  Infrabel non bloquant (une fois par mois), jours fériés hors semaine de référence, chemin Infrabel d'un n° réutilisé
+  (EXTRA) ignoré, lignes d'un trajet partiel, passages sans arrêt déduits d'Infrabel. 396 contrôles de règles.
+  Nouveau lot demandé (feuille de route CSM-V2 §7, étapes 11-13) : districts des gares en base, gares frontière, bons bus /
+  taxi et Lignes branchés sur le référentiel, CHANGELOG.md + `/changelog` + modale de mise à jour.
 
 ---
 

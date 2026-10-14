@@ -171,6 +171,12 @@ export const MODULES: NavModule[] = [
       },
       { href: "/referentiels/lignes", label: "Lignes", hideFor: ["guest", "screen"] },
       {
+        href: "/referentiels/trains",
+        label: "Trains",
+        hideFor: ["guest", "screen"],
+        keywords: ["relations", "IC", "séries", "horaires", "arrêts", "passages"],
+      },
+      {
         href: "/referentiels/ptcar",
         label: "PtCar",
         permission: "ptcar:read",

@@ -424,3 +424,12 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   terminés par `ended_at`), `aujourdhui`, `en-cours`, `toutes`. Accueil (`todo.tsx`) : « Bon bus terminé à envoyer »,
   KPI « Bons à envoyer » ; Relève `Handover { toSend, running }` ; barre latérale : bons terminés. Plus d'alerte H-2
   (`urgency.ts` supprimé) ni de relance fournisseur. Bons pris en compte par B201 et Ma journée : tout sauf annulé.
+- **Référentiel des relations de trains** (Ressources › Trains, `/referentiels/trains`, 14 oct. 2026) : logique pure
+  `lib/timetable/` (`model.ts` : relation, type, série demi-bloc, jours, `relationKey`, `referenceWeek` avec fériés belges ;
+  `csv.ts` ; `infrabel.ts` : `pathCollector` ; `gtfs.ts` : `timetableBuilder` → services + relations, chemin Infrabel retenu
+  si ≥ 60 % des arrêts connus s'y retrouvent ; testés), import `server/timetable/import.ts` (GTFS sur disque, lecteur zip
+  maison `zip.ts`, Infrabel J-1 + fin du fichier mensuel par requête partielle, routes internes PocketBase), planification
+  `scheduler.ts` démarrée par **`src/instrumentation.ts`** (condition `NEXT_RUNTIME === "nodejs"` en bloc, sinon le build edge
+  échoue ; actif en production ou `CSM_TIMETABLE=on`, jamais sans `CSM_INTERNAL_SECRET`), données `server/data/timetable.ts`,
+  page + `components/referentiels/trains.tsx`, bouton admin « Mettre à jour » (`after()`). Variables : `CSM_TIMETABLE`,
+  `CSM_GTFS_URL`. E2E `e2e/trains.spec.ts` (données fictives IC98 / IC97). En local : `NODE_USE_ENV_PROXY=1` pour l'import.

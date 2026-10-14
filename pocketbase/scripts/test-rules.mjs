@@ -993,7 +993,7 @@ try {
 		// Lectures nominatives ou hors /tv : refusées, même avec un droit accordé.
 		await api('PATCH', `/api/collections/users/records/${sc.json.id}`, { token: root, body: { grants: ['pmr:read', 'generate_taxi:read', 'repertoire:read', 'dicos:write'] } });
 		const stok2 = (await api('POST', '/api/collections/users/auth-with-password', { body: { identity: sc.json.email, password: spass } })).json?.token;
-		for (const c of ['taxi_orders', 'group_missions', 'pmr_mission', 'pmr_clients', 'pmr_assist_legacy', 'directory_contacts', 'audit_log', 'line_stations', 'changelog', 'order_events', 'pmr_events', 'connector_tokens', 'train_schedules', 'b201_reports', 'level_crossings']) {
+		for (const c of ['train_services', 'train_relations', 'train_paths', 'taxi_orders', 'group_missions', 'pmr_mission', 'pmr_clients', 'pmr_assist_legacy', 'directory_contacts', 'audit_log', 'line_stations', 'changelog', 'order_events', 'pmr_events', 'connector_tokens', 'train_schedules', 'b201_reports', 'level_crossings']) {
 			const r = await api('GET', `/api/collections/${c}/records?perPage=1`, { token: stok2 });
 			check(`écran ne lit pas ${c} (même avec un droit accordé)`, r.status !== 200 || r.json.totalItems === 0, `HTTP ${r.status} ${r.json?.totalItems}`);
 		}
@@ -1179,6 +1179,24 @@ try {
 	check("admin n'écrit pas de battement par l'API", crCreate.status >= 400, `HTTP ${crCreate.status}`);
 	for (const [method, route] of [['GET', '/api/csm/health'], ['POST', '/api/csm/journal/retention']]) {
 		const r = await api(method, route, { token: roles.admin.token });
+		check(`route interne ${route} fermée sans secret (même admin)`, r.status === 404, `HTTP ${r.status}`);
+		const w = await fetch(`${PB}${route}`, { method, headers: { 'x-csm-internal': 'mauvais-secret-mauvais-secret-mauvais' } });
+		check(`route interne ${route} fermée avec un mauvais secret`, w.status === 404, `HTTP ${w.status}`);
+	}
+
+	// Référentiel des relations de trains (1760003600) : lecture des agents, jamais d'écriture par l'API.
+	for (const c of ['train_services', 'train_relations']) {
+		const pr = await api('GET', `/api/collections/${c}/records?perPage=1`, { token: roles.user.token });
+		check(`PACO/RCCA lit ${c}`, pr.status === 200, `HTTP ${pr.status}`);
+		const gr = await api('GET', `/api/collections/${c}/records?perPage=1`, { token: roles.reader.token });
+		check(`invité ne lit pas ${c}`, gr.status !== 200 || gr.json.totalItems === 0, `HTTP ${gr.status} ${gr.json?.totalItems}`);
+		const cw = await api('POST', `/api/collections/${c}/records`, { token: roles.admin.token, body: { key: `x-${suffix}`, number: 1 } });
+		check(`admin n'écrit pas ${c} par l'API`, cw.status >= 400, `HTTP ${cw.status}`);
+	}
+	const tpaths = await api('GET', '/api/collections/train_paths/records?perPage=1', { token: roles.admin.token });
+	check("train_paths fermé à l'API (même admin)", tpaths.status !== 200 || tpaths.json.totalItems === 0, `HTTP ${tpaths.status} ${tpaths.json?.totalItems}`);
+	for (const [method, route] of [['GET', '/api/csm/timetable/status'], ['POST', '/api/csm/timetable/services'], ['POST', '/api/csm/timetable/finish'], ['GET', '/api/csm/timetable/paths']]) {
+		const r = await api(method, route, { token: roles.admin.token, body: method === 'POST' ? { items: [] } : undefined });
 		check(`route interne ${route} fermée sans secret (même admin)`, r.status === 404, `HTTP ${r.status}`);
 		const w = await fetch(`${PB}${route}`, { method, headers: { 'x-csm-internal': 'mauvais-secret-mauvais-secret-mauvais' } });
 		check(`route interne ${route} fermée avec un mauvais secret`, w.status === 404, `HTTP ${w.status}`);

@@ -12,7 +12,7 @@ pocketbase migrate up $P                                   # appliquer les migra
 pocketbase superuser upsert <email> <mot de passe> $P      # compte superuser local
 pocketbase serve --http 127.0.0.1:8090 $P                  # serveur local
 CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P   # import de la sauvegarde Supabase (hors Git)
-PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (378 contrôles)
+PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (396 contrôles)
 CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # Commandes + PMR, comptes gardés
 CSM_IMPORT_SCOPE=pmr CSM_IMPORT_RESET=1 pocketbase csm-import … $P        # PMR seul (zones, matériel, prestations)
 CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # main courante + 211 PN de BACO
@@ -264,3 +264,11 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
     « groups » (groupes disparus d'un coup non signalés).
   - Contrôles : `/api/crons/<id>` (superuser) lance un cron **en arrière-plan** (réponse 204 avant la fin) : attendre avant de
     compter ses effets (`test-rules.mjs`).
+- **Référentiel des relations de trains** (`1760003600_timetable.js`, `timetable.pb.js`, `lib/timetable.js`, 14 oct. 2026) :
+  `train_paths` (chemin Infrabel par n° de train : relation, lignes, gares `{n, k (NL), l, i}` ; superuser seul ; purge 60 j),
+  `train_services` (train de la semaine de référence : clé n° + empreinte, type, relation, série, arrêts JSON avec passages
+  `p: 1`, lignes, clés de recherche `|nom|`), `train_relations` (résumé par relation). Lecture : agents hors invité, Écran,
+  désactivé. **Aucune écriture par l'API** : routes internes (secret) `GET/POST /api/csm/timetable/status` (app_settings
+  `timetable` ; `state: "running"` refusé si un import tourne depuis < 30 min = verrou), `POST/GET …/paths`, `POST …/services`,
+  `…/relations` (upsert, rien n'est écrit si `sig` est inchangée), `…/finish` (supprime les clés absentes ; refusé sous 500
+  trains / 20 relations).

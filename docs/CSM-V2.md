@@ -129,7 +129,7 @@ Dans Coolify, deux ressources :
 
 ## 7. Feuille de route v2
 
-> Mise à jour le 11 octobre 2026. L'état détaillé et le journal des décisions sont dans `CLAUDE.md` §1 et §8.
+> Mise à jour le 14 octobre 2026. L'état détaillé et le journal des décisions sont dans `CLAUDE.md` §1 et §8.
 
 | # | Étape | État |
 |---|---|---|
@@ -142,7 +142,11 @@ Dans Coolify, deux ressources :
 | 6 | Déploiement, CI | ✅ prod `csm.fs0ciety.org` (10 oct.) + preview `test-csm` ; sauvegardes R2 (prod) ; PocketBase derrière Cloudflare Access |
 | 7 | Finition de l'interface (11 thèmes, motion, UX) | ✅ 9 oct. (lots 0 à 4 + GSAP) ; évolution « poste d'exploitation » le 11 oct. (thèmes Jour / Nuit / Contraste élevé, shell sur une ligne, accueil « À traiter ») |
 | 8 | Extension DICOS (Chrome / Edge / Firefox), jetons personnels | ✅ 9 oct. (v1.7.0, Firefox signé ; Chrome Web Store abandonné le 9 oct. : compte payant, Chrome / Edge restent en `.zip`) |
-| 9 | **Bascule** : gel de BACO, import différentiel, campagne « BACO devient CSM », fermeture de BACO | 🔄 production en ligne ; date de gel à fixer par l'utilisateur |
+| 9 | **Bascule** : gel de BACO, import différentiel, campagne « BACO devient CSM », fermeture de BACO | 🔄 production en ligne ; gel de BACO reporté (décision du 14 oct.) |
+| 10 | **Référentiel des relations de trains** (Ressources › Trains : relation IC14…, type, série, arrêts, lignes ; GTFS SNCB + Infrabel CC0, import quotidien) | 🔄 livré en préversion le 14 oct. |
+| 11 | **Gares et districts** : district de chaque gare / point d'arrêt en base, modifiable ; gares frontière (Maubeuge, Aachen, Luxembourg…) | ⏳ demandé le 14 oct. |
+| 12 | **Modules branchés sur le référentiel** : bons bus / taxi (gares, lignes traversées, arrêts proposés, n° de train qui remplit tout, modifiable) ; Ressources › Lignes. Missions PMR et Groupes gardent les données DICOS | ⏳ demandé le 14 oct. |
+| 13 | **Changelog** : `CHANGELOG.md` (Nouveautés / Corrections) tenu à chaque mise à jour, page `/changelog` (ex-`/equipe/nouveautes`), lien en pied de barre latérale, modale de mise à jour une fois par compte | ⏳ demandé le 14 oct. |
 
 Restent ouverts hors code : réponses du DPO (`docs/DPO-CONSERVATION.md`), retrait de `CSM_DICOS_TOKEN` quand toutes les
 extensions sont en 1.7.0, date de gel de BACO (les correctifs SQL BACO `20261008130000` / `20261008140000` deviennent

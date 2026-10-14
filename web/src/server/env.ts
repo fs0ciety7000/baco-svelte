@@ -26,6 +26,12 @@ const schema = z.object({
   // WebAuthn, obligatoire pour les passkeys (jamais déduit des en-têtes).
   CSM_INTERNAL_SECRET: z.string().default(""),
   CSM_PUBLIC_URL: z.string().default(""),
+  // Référentiel des relations de trains (14 oct. 2026) : import chaque matin (GTFS SNCB + Infrabel). « on » / « off » ;
+  // vide = actif en production seulement (jamais en CI ni en local sans le demander).
+  CSM_TIMETABLE: z.enum(["on", "off", ""]).default(""),
+  CSM_GTFS_URL: z
+    .url()
+    .default("https://sncb-opendata.hafas.de/gtfs/static/c21ac6758dd25af84cca5b707f3cb3de"),
 });
 
 export const env = schema.parse({
@@ -39,4 +45,6 @@ export const env = schema.parse({
   CSM_DICOS_PB_PASSWORD: process.env.CSM_DICOS_PB_PASSWORD,
   CSM_INTERNAL_SECRET: process.env.CSM_INTERNAL_SECRET,
   CSM_PUBLIC_URL: process.env.CSM_PUBLIC_URL,
+  CSM_TIMETABLE: process.env.CSM_TIMETABLE,
+  CSM_GTFS_URL: process.env.CSM_GTFS_URL || undefined,
 });
