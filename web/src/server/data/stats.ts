@@ -3,6 +3,7 @@ import "server-only";
 import type { RecordModel } from "pocketbase";
 import { z } from "zod";
 
+import { anyDistrictFilter, parseDistricts } from "@/lib/district-param";
 import { aggregate, normalizeReason, type StatAssist, type StatOrder } from "@/lib/ops/stats";
 import { addDays, brusselsDay, brusselsToUtc, dayOf, isValidDay, pbDate } from "@/lib/orders/time";
 
@@ -18,7 +19,12 @@ const exp = (r: RecordModel) => (r.expand ?? {}) as Record<string, RecordModel |
 export const statsFilterSchema = z.object({
   du: z.string().refine(isValidDay).optional().catch(undefined),
   au: z.string().refine(isValidDay).optional().catch(undefined),
-  district: z.enum(["Sud-Ouest", "Sud-Est", "Centre"]).optional().catch(undefined),
+  /** Un ou plusieurs districts (noms ou codes, paramètre répété) ; vide = tous. */
+  district: z
+    .union([z.string(), z.array(z.string())])
+    .optional()
+    .transform((d) => parseDistricts(d, ["Sud-Ouest", "Sud-Est", "Centre"]))
+    .catch([]),
   type: z.enum(["1", "2", "3"]).optional().catch(undefined),
   societe: z
     .string()
@@ -49,7 +55,7 @@ export async function loadStats(input: StatsFilters, ctx: { canTaxi: boolean; ca
       b: `${to} 00:00:00.000Z`,
     }),
   ];
-  if (f.district) busParts.push(pb.filter("district = {:d}", { d: f.district }));
+  if (f.district.length) busParts.push(anyDistrictFilter(pb, "district", f.district));
   if (f.type) busParts.push(pb.filter("c3_type = {:t}", { t: Number(f.type) }));
   if (f.societe) busParts.push(pb.filter("company = {:c}", { c: f.societe }));
   const busItems = await pb.collection("bus_orders").getFullList({
@@ -87,7 +93,7 @@ export async function loadStats(input: StatsFilters, ctx: { canTaxi: boolean; ca
         b: toPbInstant(brusselsToUtc(addDays(to, 1))),
       }),
     ];
-    if (f.district) parts.push(pb.filter("district = {:d}", { d: f.district }));
+    if (f.district.length) parts.push(anyDistrictFilter(pb, "district", f.district));
     const taxis = await pb.collection("taxi_orders").getFullList({
       filter: parts.join(" && "),
       fields:
@@ -114,10 +120,12 @@ export async function loadStats(input: StatsFilters, ctx: { canTaxi: boolean; ca
   if (ctx.canPmr) {
     const items = await pb.collection("pmr_assists").getFullList({
       // District : celui de la zone de la prestation.
-      filter: pb.filter(
-        `day >= {:a} && day <= {:b}${f.district ? " && zone.district = {:d}" : ""}`,
-        { a: from, b: to, d: f.district ?? "" },
-      ),
+      filter: [
+        pb.filter("day >= {:a} && day <= {:b}", { a: from, b: to }),
+        anyDistrictFilter(pb, "zone.district", f.district),
+      ]
+        .filter(Boolean)
+        .join(" && "),
       fields: "day,station,pmr_type,status,pax",
       batch: 1000,
     });

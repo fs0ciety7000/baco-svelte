@@ -1,12 +1,14 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Metadata } from "next";
+
+import { DistrictPicker } from "@/components/ui/district-picker";
+import { appendDistricts, DISTRICT_CODE_OPTIONS, parseDistricts } from "@/lib/district-param";
 import Link from "next/link";
 
 import { PlanningDay, PlanningWeek, QuinyxFreshness } from "@/components/team/planning";
 import { ChipRow, FilterChip } from "@/components/ui/filters";
 import { FilterForm } from "@/components/ui/filter-form";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
-import { Select } from "@/components/ui/input";
 import { DateField } from "@/components/ui/date-field";
 import { addDays, brusselsDay, formatLongDay, isValidDay } from "@/lib/orders/time";
 import { QUINYX_DISTRICTS, weekDays } from "@/lib/quinyx/model";
@@ -15,7 +17,14 @@ import { listPlanning, quinyxSyncs } from "@/server/data/quinyx";
 
 export const metadata: Metadata = { title: "Planning · Équipe · CSM" };
 
-type SP = { vue?: string; jour?: string; district?: string };
+// Districts Quinyx : les trois de l'équipe et les deux du nord (DNO, DNE).
+const PLANNING_DISTRICTS = [
+  ...DISTRICT_CODE_OPTIONS,
+  { value: "DNO", label: "DNO", hint: "Nord-Ouest" },
+  { value: "DNE", label: "DNE", hint: "Nord-Est" },
+];
+
+type SP = { vue?: string; jour?: string; district?: string | string[] };
 
 export default async function Page({ searchParams }: { searchParams: Promise<SP> }) {
   const user = await requireRoute("/equipe/planning");
@@ -23,21 +32,21 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
   const today = brusselsDay();
   const day = isValidDay(f.jour) ? f.jour : today;
   const week = f.vue === "semaine";
-  const district = (QUINYX_DISTRICTS as readonly string[]).includes(f.district ?? "")
-    ? f.district!
-    : "";
+  // Un ou plusieurs districts (paramètre répété ou « DSO,DSE ») ; vide = tous.
+  const districts = parseDistricts(f.district, QUINYX_DISTRICTS);
   const days = weekDays(day);
   const [shifts, syncs] = await Promise.all([
     // Vue du jour : la nuit de la veille est lue aussi (elle finit le matin).
     week
-      ? listPlanning(days[0]!, days[6]!, district)
-      : listPlanning(addDays(day, -1), day, district),
+      ? listPlanning(days[0]!, days[6]!, districts)
+      : listPlanning(addDays(day, -1), day, districts),
     quinyxSyncs().catch(() => []),
   ]);
-  const href = (p: Partial<SP>) => {
+  const href = (p: { vue?: string; jour?: string }) => {
     const q = new URLSearchParams();
-    const v = { vue: week ? "semaine" : "", jour: day === today ? "" : day, district, ...p };
+    const v = { vue: week ? "semaine" : "", jour: day === today ? "" : day, ...p };
     for (const [k, val] of Object.entries(v)) if (val) q.set(k, val);
+    appendDistricts(q, districts);
     const s = q.toString();
     return `/equipe/planning${s ? `?${s}` : ""}`;
   };
@@ -70,17 +79,16 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             <span className="text-small text-fg-muted">Jour</span>
             <DateField name="jour" defaultValue={day} />
           </label>
-          <label className="flex min-w-0 flex-col gap-1 md:w-36">
+          <div className="col-span-2 flex min-w-0 flex-col gap-1 md:col-span-1">
             <span className="text-small text-fg-muted">District</span>
-            <Select name="district" defaultValue={district}>
-              <option value="">Tous</option>
-              {QUINYX_DISTRICTS.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </Select>
-          </label>
+            <DistrictPicker
+              name="district"
+              label="District"
+              options={PLANNING_DISTRICTS}
+              defaultValues={districts}
+              showHint="never"
+            />
+          </div>
           <FormAutoSubmit />
         </FilterForm>
       </div>

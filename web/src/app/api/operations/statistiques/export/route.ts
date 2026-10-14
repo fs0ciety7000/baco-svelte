@@ -17,7 +17,9 @@ export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) return new Response("Non connecté", { status: 401 });
   if (!can(user, "stats:read")) return new Response("Introuvable", { status: 404 });
-  const sp = Object.fromEntries(new URL(request.url).searchParams);
+  const params = new URL(request.url).searchParams;
+  // Districts répétés (`?district=Sud-Ouest&district=Centre`) : `fromEntries` n'en garderait qu'un.
+  const sp = { ...Object.fromEntries(params), district: params.getAll("district") };
   const { from, to, stats } = await loadStats(sp, {
     canTaxi: can(user, "taxi:read"),
     canPmr: can(user, "deplacements:read"),

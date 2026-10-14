@@ -9,7 +9,9 @@ import { setDutyDistricts } from "@/app/(app)/operations/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
-import { DUTY_DISTRICTS, DUTY_SHORT } from "@/lib/ops/log";
+import { DistrictPicker } from "@/components/ui/district-picker";
+import { DISTRICT_NAME_OPTIONS } from "@/lib/district-param";
+import { DUTY_SHORT } from "@/lib/ops/log";
 import { cn } from "@/lib/utils";
 
 function DutyDialog({
@@ -42,38 +44,15 @@ function DutyDialog({
             Proposé d&apos;après ton horaire Quinyx : {hint}. Change-le si tu travailles ailleurs.
           </p>
         ) : null}
-        <div className="flex flex-col gap-2" role="group" aria-label="Districts du jour">
-          {DUTY_DISTRICTS.map((d) => {
-            const on = picked.includes(d);
-            return (
-              <button
-                key={d}
-                type="button"
-                role="checkbox"
-                aria-checked={on}
-                onClick={() => setPicked(on ? picked.filter((x) => x !== d) : [...picked, d])}
-                className={cn(
-                  "flex min-h-12 cursor-pointer items-center gap-3 border px-3 text-left transition-colors",
-                  on
-                    ? "border-accent bg-accent-soft"
-                    : "border-border-strong bg-surface hover:border-fg-muted",
-                )}
-              >
-                <span
-                  aria-hidden
-                  className={cn(
-                    "grid size-5 place-items-center border text-[0.8rem] leading-none",
-                    on ? "border-accent bg-accent text-accent-fg" : "border-border-strong",
-                  )}
-                >
-                  {on ? "✓" : ""}
-                </span>
-                <span className="font-mono text-small text-fg-muted">{DUTY_SHORT[d]}</span>
-                <span className="text-body text-fg">{d}</span>
-              </button>
-            );
-          })}
-        </div>
+        <DistrictPicker
+          options={DISTRICT_NAME_OPTIONS}
+          values={picked}
+          onValuesChange={setPicked}
+          allLabel={null}
+          layout="stack"
+          showHint="always"
+          label="Districts du jour"
+        />
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Plus tard

@@ -1,7 +1,10 @@
 import { Search } from "lucide-react";
 import type { Metadata } from "next";
+
 import Link from "next/link";
 
+import { DistrictPicker } from "@/components/ui/district-picker";
+import { DISTRICT_NAME_OPTIONS, parseDistricts } from "@/lib/district-param";
 import { pl } from "@/lib/utils";
 import { ClearFilters, FilterSubmit } from "@/components/ui/filters";
 import { FilterForm } from "@/components/ui/filter-form";
@@ -17,7 +20,8 @@ import { listUsers } from "@/server/data/admin";
 
 export const metadata: Metadata = { title: "Utilisateurs · CSM" };
 
-type SP = { q?: string; role?: string; district?: string };
+type SP = { q?: string; role?: string; district?: string | string[] };
+const DISTRICT_NAMES = ["Sud-Ouest", "Sud-Est", "Centre"];
 const ROLES = ["admin", "sysop", "moderator", "paco", "guest", "disabled"];
 
 export default async function Page({ searchParams }: { searchParams: Promise<SP> }) {
@@ -68,17 +72,15 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             ))}
           </Select>
         </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-44">
+        <div className="col-span-2 flex min-w-0 flex-col gap-1 md:w-auto">
           <span className="text-small text-fg-muted">District</span>
-          <Select name="district" defaultValue={f.district ?? ""}>
-            <option value="">Tous</option>
-            {Object.entries(DISTRICT_SHORT).map(([d, s]) => (
-              <option key={d} value={d}>
-                {s} · {d}
-              </option>
-            ))}
-          </Select>
-        </label>
+          <DistrictPicker
+            name="district"
+            label="District"
+            options={DISTRICT_NAME_OPTIONS}
+            defaultValues={parseDistricts(f.district, DISTRICT_NAMES)}
+          />
+        </div>
         <div className="col-span-2 flex gap-2">
           <FilterSubmit />
           <ClearFilters href="/admin" />

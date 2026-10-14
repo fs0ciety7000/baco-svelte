@@ -5,8 +5,10 @@ import type { RecordModel } from "pocketbase";
 import { cache } from "react";
 import { z } from "zod";
 
+import { anyDistrictFilter, parseDistricts } from "@/lib/district-param";
 import {
   busDraftSchema,
+  DISTRICTS,
   parseEmails,
   taxiDraftSchema,
   type BusDraft,
@@ -382,10 +384,11 @@ export const listSchema = z.object({
     .transform((s) => (isStatus(s) ? s : undefined)),
   from: z.string().refine(isValidDay).optional().catch(undefined),
   to: z.string().refine(isValidDay).optional().catch(undefined),
+  /** Un ou plusieurs districts (noms ou codes, paramètre répété ou « DSO,DSE ») ; vide = tous. */
   district: z
-    .string()
+    .union([z.string(), z.array(z.string())])
     .optional()
-    .transform((d) => (d === "Sud-Ouest" || d === "Sud-Est" || d === "Centre" ? d : undefined)),
+    .transform((d) => parseDistricts(d, DISTRICTS)),
   limit: z.coerce.number().int().min(1).max(500).default(200),
 });
 export type ListInput = z.input<typeof listSchema>;
@@ -429,7 +432,7 @@ function buildFilter(
   }
   if (p.status) parts.push(pb.filter("status = {:s}", { s: p.status }));
   if (p.from || p.to) parts.push(bounds(p.from ?? "2000-01-01", p.to ?? "2100-01-01"));
-  if (p.district) parts.push(pb.filter("district = {:d}", { d: p.district }));
+  if (p.district.length) parts.push(anyDistrictFilter(pb, "district", p.district));
   if (p.q) {
     // Gares : recherche tolérante (accents, abréviation PtCar : `stationTerms`) ; le reste sur la saisie brute.
     const stations = kind === "bus" ? ["origin", "destination"] : ["from_station", "to_station"];

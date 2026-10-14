@@ -196,6 +196,40 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   - Tests : `select.test.tsx`, `pickers.test.tsx` (utilitaires jsdom `picker-test-utils.tsx` : matchMedia,
     ResizeObserver). E2E : `fill()` sur un TimeField accepte « 14:30 » ; un DateField attend `jj/mm/aaaa`
     (`frDate(iso)` dans `e2e/helpers.ts`). Démo et états dans `/design` (section « Listes, dates et heures »).
+- **Recherche et choix multiples (refonte R2 + R4, 14 oct. 2026)** : plus de `datalist`, de `<select>` de liste longue
+  (société, chauffeur, ligne) ni de `<select>` « district » ni de case native dans un nouvel écran. Utiliser :
+  - `Combobox` (`components/ui/combobox.tsx`, motif APG « combobox with listbox popup, autocomplete list ») : `options`
+    ou `loadOptions(q)` (synchrone ou Server Action : `aria-busy`, réponses périmées ignorées ; **mémoïser** la fonction),
+    `value`/`defaultValue`/`onValueChange`, `filter` (défaut `comboboxMatch` : chaque mot, `foldStation`), `allowFree`
+    (la valeur EST le texte, mise à jour à chaque frappe ; `change` du pont émis seulement à la validation : Entrée,
+    sortie du champ, option), `normalize` (correction à la sortie), `createLabel` (+ `onCreate` sans saisie libre),
+    `emptyText`, `openOnFocus`, `max`, `name`. Liste fermée en mobile / tactile = bouton + feuille du bas avec recherche ;
+    saisie libre = liste sous le champ partout. Le champ visible n'a pas de `name` et son `change` natif est arrêté
+    (`useStopNativeChange`) : dans les tests, taper avec `fireEvent.input`. `filterOptions` / `comboboxMatch` exportés.
+  - `StationInput` (`components/orders/station-input.tsx`) = `Combobox allowFree` + `loadOptions` (`stationCandidates(q,
+    refs, 8, true)`, sans la gare déjà saisie) + `normalize` (`canonicalStation`) ; contrôlé (`value`/`onChange`) ou non
+    (`name`/`defaultValue`, filtres GET : Ressources › Trains « Dessert la gare » et « Par gare », refs `allStationRefs()`).
+  - `DistrictPicker` (`components/ui/district-picker.tsx`) : puces `aria-pressed` dans un `role="group"`, `options`
+    (`DISTRICT_CODE_OPTIONS` défaut, `DISTRICT_NAME_OPTIONS` pour les noms Sud-Ouest…), `values`/`defaultValues`/
+    `onValuesChange`, `allLabel` (`null` = pas de « Tous »), `emptyValue` (« tous » : lève un filtre par défaut), `mine`
+    (puce « Mes districts »), `layout="stack"`, `showHint`. `admin/district-picker.tsx` l'enveloppe (comptes).
+  - `MultiSelect` (`multi-select.tsx`) : `Listbox multiselectable`, « Tout / Aucun », `searchable`, `noun`/`nouns` pour le
+    résumé (`multiSummary`), `emptyValue` ; un seul `change` à la fermeture si les valeurs ont changé.
+  - `CheckboxGroup` (`checkbox-group.tsx`) : `fieldset` + `legend` (`hideLegend`), `Checkbox` Radix, `checkAll`,
+    `orientation`.
+  - Pont multi-valeurs `useMultiFormBridge(values)` (`form-bridge.tsx`) : champs cachés **répétés** rendus par le contrôle
+    + sentinelle qui émet `change` (`markUserChange()` au prochain rendu, `dispatch()` tout de suite). `Listbox` accepte
+    `selected` en liste, `multiselectable`, `emptyText`, `busy`.
+  - **Lecture serveur multi-districts** : `lib/district-param.ts` (pur, testé) → `districtTokens`, `isAllDistricts`
+    (« tous » / vide), `parseDistricts(raw, permis)` (répété ou « DSO,DSE », codes ↔ noms, inconnus écartés),
+    `anyDistrictFilter(pb, champ(s), valeurs, "=" | "~")` (OU lié), `appendDistricts(params, valeurs)` (liens). Chaque
+    schéma zod de liste accepte `z.union([z.string(), z.array(z.string())])` ; `normalizeDistricts` / `effectiveDistricts`
+    (PMR) et `handoverDistricts` (Relève, Ma journée, /tv) acceptent le paramètre répété. Une route qui lit
+    `Object.fromEntries(searchParams)` perd les répétitions : passer `district: params.getAll("district")`.
+  - Tests : `combobox.test.tsx`, `multi.test.tsx`, `lib/district-param.test.ts`. E2E : une société se choisit par
+    `getByTestId("bus-company" | "taxi-company").fill(nom)` puis clic sur l'option ; une puce district par
+    `getByRole("group", { name: "District" }).getByRole("button", { name: /DSO/ })`. Démo : `/design` › « Recherche et
+    choix multiples » (`search-demo.tsx`).
 - E2E `e2e/design.spec.ts` : `/design` dans les thèmes × 2 formats (captures `test-results/design-*.png`, pas de
   défilement horizontal, pas d'erreur console, cibles ≥ 44 px sur mobile).
 
@@ -428,8 +462,9 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   Ma journée, ⌘K, Ressources › PtCar et Lignes `?gare=`).
 - **Filtres par défaut** : Missions PMR et Groupes filtrent sans `?district=` sur les districts du jour de l'agent
   (`effectiveDistricts`, `lib/pmr/district-filter.ts` ; plusieurs codes « DSO,DSE » acceptés partout : `inDistricts`
-  dans `legs.ts` et les tableaux, `districtFilter` côté serveur) ; `?district=tous` (ou vide) lève le filtre, puce
-  « Tous les districts » / « Mes districts » (`PmrFilterBar myDistricts`). Un lien vers UNE mission précise (⌘K, Ma
+  dans `legs.ts` et les tableaux, `districtFilter` côté serveur) ; `?district=tous` (ou vide) lève le filtre ; depuis la
+  refonte R4, `DistrictPicker` (« Tous », « Mes districts » = `PmrFilterBar myDistricts`, DSO / DSE / DCE cumulables,
+  paramètre répété) dans la barre de filtres, statuts en `CheckboxGroup`. Un lien vers UNE mission précise (⌘K, Ma
   journée, Journal) porte `district=tous`. Bons bus : période par défaut J-1 → J+6 sans `du` ni `au`
   (`resolveBusPeriod`, `lib/orders/period.ts`), puces « Semaine » et « Toutes les dates » (`?du=&au=`).
 - **Champ de gare** (`components/orders/station-input.tsx`, 11 oct. 2026, bons bus et taxi) : `StationInput` remplace les

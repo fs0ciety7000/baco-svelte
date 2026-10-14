@@ -4,12 +4,14 @@ import type { Metadata } from "next";
 import { DayTimeline } from "@/components/ops/day-timeline";
 import { FilterForm } from "@/components/ui/filter-form";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
-import { Input, Select } from "@/components/ui/input";
+import { Combobox } from "@/components/ui/combobox";
+import { DistrictPicker } from "@/components/ui/district-picker";
+import { appendDistricts } from "@/lib/district-param";
 import { DateField } from "@/components/ui/date-field";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
 import { requireRoute } from "@/server/auth";
-import { HANDOVER_CODES, handoverDistricts } from "@/server/data/handover";
+import { handoverDistricts } from "@/server/data/handover";
 import { buildTimeline } from "@/server/data/timeline";
 
 import { LiveRefresh } from "../../commandes/live-refresh";
@@ -20,13 +22,15 @@ export const metadata: Metadata = { title: "Ma journée · CSM" };
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ jour?: string; district?: string; gare?: string }>;
+  searchParams: Promise<{ jour?: string; district?: string | string[]; gare?: string }>;
 }) {
   const user = await requireRoute("/operations/journee");
   const sp = await searchParams;
   const today = brusselsDay();
   const day = isValidDay(sp.jour) ? sp.jour : today;
   const codes = handoverDistricts(user, sp.district);
+  // Districts du jour de l'agent (puce « Mes districts » du sélecteur).
+  const mine = handoverDistricts(user, undefined);
   const gare = (sp.gare ?? "").trim().slice(0, 60);
   const data = await buildTimeline(user, day, codes, gare);
   return (
@@ -47,41 +51,36 @@ export default async function Page({
               max={addDays(today, 30)}
             />
           </label>
-          <label className="flex min-w-0 flex-col gap-1 md:w-40">
+          <div className="col-span-2 flex min-w-0 flex-col gap-1 md:w-auto">
             <span className="text-small text-fg-muted">District</span>
-            <Select name="district" defaultValue={sp.district ?? ""}>
-              <option value="">
-                Mes districts{codes.length && !sp.district ? ` (${codes.join(", ")})` : ""}
-              </option>
-              {HANDOVER_CODES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-              <option value="tous">Tous</option>
-            </Select>
-          </label>
+            <DistrictPicker
+              name="district"
+              label="District"
+              defaultValues={codes}
+              emptyValue="tous"
+              mine={mine}
+            />
+          </div>
           <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-56">
             <span className="text-small text-fg-muted">Gare</span>
-            <Input
+            {/* Gares du jour (refonte R2 : plus de datalist) ; saisie libre permise. */}
+            <Combobox
               name="gare"
               defaultValue={gare}
-              list="journee-gares"
+              allowFree
+              openOnFocus
+              options={data.stations.map((s) => ({ value: s, label: s }))}
               placeholder="Toutes les gares"
               maxLength={60}
-              autoComplete="off"
+              listLabel="Gares du jour"
+              data-testid="journee-gare"
             />
-            <datalist id="journee-gares">
-              {data.stations.map((s) => (
-                <option key={s} value={s} />
-              ))}
-            </datalist>
           </label>
         </FilterForm>
         <div className="flex flex-wrap items-center gap-3">
           {gare && can(user, "deplacements:read") ? (
             <a
-              href={`/api/pmr/feuille-de-route?${new URLSearchParams({ gare, jour: day, district: codes[0] ?? "" })}`}
+              href={`/api/pmr/feuille-de-route?${appendDistricts(new URLSearchParams({ gare, jour: day }), codes)}`}
               target="_blank"
               rel="noopener"
               className="inline-flex min-h-11 items-center gap-2 rounded-control border border-border-strong px-3 text-body hover:bg-surface-2"

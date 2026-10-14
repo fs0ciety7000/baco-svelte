@@ -24,6 +24,7 @@ import { aleaEnds, groupEnds, groupLegOf, groupTotal, legOf } from "@/lib/pmr/le
 import { aleaGroupBlocks, aleaGroups, type AleaGroup } from "@/lib/pmr/model";
 import { missionImpact, type TrainStates } from "@/lib/pmr/train-delay";
 import type { SessionUser } from "@/server/auth";
+import { isAllDistricts, parseDistricts, type DistrictParam } from "@/lib/district-param";
 
 import { listGroups, type GroupMission } from "./groups";
 import { pbForRequest, toPbInstant } from "./orders";
@@ -39,10 +40,14 @@ const NAME_TO_CODE: Record<string, string> = {
   Centre: "DCE",
 };
 
-/** Districts de la relève : `?district=` (code ou « tous »), sinon les districts du jour de l'agent, sinon son district. */
-export function handoverDistricts(user: SessionUser, param?: string): string[] {
-  if (param === "tous") return [];
-  if (param && (HANDOVER_CODES as readonly string[]).includes(param)) return [param];
+/**
+ * Districts de la relève : `?district=` (un ou plusieurs codes, répétés ou « DSO,DSE », ou « tous »), sinon les
+ * districts du jour de l'agent, sinon son district.
+ */
+export function handoverDistricts(user: SessionUser, param?: DistrictParam): string[] {
+  if (isAllDistricts(param)) return [];
+  const asked = parseDistricts(param, HANDOVER_CODES);
+  if (asked.length) return asked;
   const today = brusselsDay();
   const names = userDistricts(user, today);
   return names.map((n) => NAME_TO_CODE[n]).filter((c): c is string => Boolean(c));

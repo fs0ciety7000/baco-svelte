@@ -229,7 +229,7 @@ export const assistListSchema = z.object({
   to: z.string().refine(isValidDay).optional().catch(undefined),
   /** Un ou plusieurs codes (« DSO », « DSO,DSE ») ; vide = tous les districts. */
   district: z
-    .string()
+    .union([z.string(), z.array(z.string())])
     .optional()
     .transform((v) => normalizeDistricts(v)),
   q: z.string().trim().max(60).default(""),

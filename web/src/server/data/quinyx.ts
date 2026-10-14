@@ -3,6 +3,7 @@ import "server-only";
 import type { RecordModel } from "pocketbase";
 import { cache } from "react";
 
+import { anyDistrictFilter } from "@/lib/district-param";
 import { addDays, brusselsDay, pbDate } from "@/lib/orders/time";
 import { agentName, type QuinyxKind } from "@/lib/quinyx/model";
 
@@ -60,11 +61,12 @@ const SHIFT_FIELDS =
 export async function listPlanning(
   from: string,
   to: string,
-  district = "",
+  /** Un ou plusieurs districts (codes) ; vide = tous. */
+  districts: readonly string[] = [],
 ): Promise<PlanningShift[]> {
   const pb = await pbForRequest();
   const filter = [pb.filter("day >= {:f} && day <= {:t}", { f: from, t: to })];
-  if (district) filter.push(pb.filter("district = {:d}", { d: district }));
+  if (districts.length) filter.push(anyDistrictFilter(pb, "district", districts));
   const rows = await pb.collection("quinyx_shifts").getFullList({
     filter: filter.join(" && "),
     sort: "start,code",
