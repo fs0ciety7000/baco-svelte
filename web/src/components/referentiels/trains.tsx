@@ -13,7 +13,7 @@ export const trainsHref = (params: Record<string, string | number | undefined>) 
   const q = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") q.set(k, String(v));
   const s = q.toString();
-  return `/referentiels/trains${s ? `?${s}` : ""}`;
+  return `/reseau/horaires${s ? `?${s}` : ""}`;
 };
 
 export function TypeBadge({ type }: { type: string }) {

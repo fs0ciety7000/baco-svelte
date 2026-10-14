@@ -112,7 +112,7 @@ function links(r: RecordModel): LinkedObject[] {
       kind: "pn",
       id: pn.id,
       label: `PN ${str(pn.number)} · ${str(pn.line)}`,
-      href: `/operations/carte-pn?pn=${pn.id}`,
+      href: `/reseau/pn?pn=${pn.id}`,
     });
   return out;
 }

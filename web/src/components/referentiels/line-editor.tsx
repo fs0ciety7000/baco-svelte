@@ -4,7 +4,7 @@ import { ArrowDown, ArrowUp, GitBranch, Plus, RotateCcw, Save, Trash2, X } from 
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 
-import { resetLine, saveLineStations } from "@/app/(app)/referentiels/lignes/actions";
+import { resetLine, saveLineStations } from "@/app/(app)/reseau/lignes/actions";
 import { StationInput } from "@/components/orders/station-input";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";

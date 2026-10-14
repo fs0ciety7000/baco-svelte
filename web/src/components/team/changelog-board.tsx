@@ -4,7 +4,7 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import { deleteChangelog, saveChangelog } from "@/app/(app)/equipe/actions";
+import { deleteChangelog, saveChangelog } from "@/app/team-actions";
 import { MarkdownView } from "@/components/referentiels/markdown-view";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";

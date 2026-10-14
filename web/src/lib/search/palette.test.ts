@@ -101,8 +101,8 @@ describe("ordre des groupes", () => {
     expect(order("L36").slice(0, 2)).toEqual(["relations", "lines"]);
     expect(order("3804").slice(0, 3)).toEqual(["live", "trains", "bus"]);
     expect(order("FMS").slice(0, 2)).toEqual(["stations", "ptcar"]);
-    // Sans indice : ordre des modules (Commandes d'abord).
-    expect(order("dupont")[0]).toBe("bus");
+    // Sans indice : ordre des modules (navigation v3 : Opérations, puis Commandes).
+    expect(order("dupont").slice(0, 3)).toEqual(["journal", "journee", "bus"]);
   });
 
   it("trie les groupes et retire les vides", () => {
@@ -116,9 +116,9 @@ describe("ordre des groupes", () => {
   });
 
   it("en-tête « Module › Type »", () => {
-    expect(paletteHeading("stations")).toBe("Ressources › Gares");
+    expect(paletteHeading("stations")).toBe("Réseau › Gares");
     expect(paletteHeading("suppliers")).toBe("Commandes › Fournisseurs");
-    expect(paletteHeading("team")).toBe("Équipe › Agents");
+    expect(paletteHeading("team")).toBe("Ressources › Collègues");
   });
 });
 

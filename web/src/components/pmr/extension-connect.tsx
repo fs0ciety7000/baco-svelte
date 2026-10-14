@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { revokeAgentConnectorToken } from "@/app/(app)/admin/actions";
-import { revokeConnectorToken, createConnectorToken } from "@/app/(app)/pmr/extension/actions";
+import { revokeConnectorToken, createConnectorToken } from "@/app/(app)/extension/actions";
 import { CopyButton } from "@/components/pmr/copy";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/status-badge";

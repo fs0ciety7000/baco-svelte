@@ -4,7 +4,7 @@ import { RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useTransition } from "react";
 
-import { startTimetableImport } from "@/app/(app)/referentiels/trains/actions";
+import { startTimetableImport } from "@/app/(app)/reseau/horaires/actions";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 
-import { setHiddenNotifications } from "@/app/(app)/equipe/actions";
+import { setHiddenNotifications } from "@/app/team-actions";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Switch } from "@/components/ui/checkbox";
 import { toast } from "@/components/ui/toast";

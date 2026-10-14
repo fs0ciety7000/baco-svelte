@@ -6,7 +6,7 @@ import { env } from "@/server/env";
 // Lecture d'un document de la bibliothèque : fin du bucket public de BACO (BUG-1). La fiche est lue avec le jeton de
 // l'agent (règles PocketBase), le fichier protégé est demandé avec un jeton de fichier à usage court ; jamais d'URL
 // publique ni d'URL PocketBase dans le navigateur. Image en aperçu ; PDF en aperçu seulement pour la visionneuse
-// (`?vue=1`, cadre de la page `/referentiels/documents/voir/<id>`) ; `?dl=1` force le téléchargement.
+// (`?vue=1`, cadre de la page `/ressources/documents/voir/<id>`) ; `?dl=1` force le téléchargement.
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

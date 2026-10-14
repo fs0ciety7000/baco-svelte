@@ -11,7 +11,9 @@ export const dynamic = "force-dynamic";
 export async function GET(_request: Request, { params }: { params: Promise<{ file: string }> }) {
   const user = await getCurrentUser();
   if (!user) return new Response("Non connecté", { status: 401 });
-  if (!can(user, "deplacements:read")) return new Response("Introuvable", { status: 404 });
+  // Extension CSM (DICOS, ATMS, Quinyx) : missions PMR ou planning (navigation v3, menu du compte).
+  if (!can(user, "deplacements:read") && !can(user, "quinyx:read"))
+    return new Response("Introuvable", { status: 404 });
   const { file } = await params;
   const body = await readExtensionFile(file);
   if (!body) return new Response("Introuvable", { status: 404 });

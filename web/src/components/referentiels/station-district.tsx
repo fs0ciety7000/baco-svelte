@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
-import { setStationDistrict } from "@/app/(app)/referentiels/gares/actions";
+import { setStationDistrict } from "@/app/(app)/reseau/gares/actions";
 import { Select } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 

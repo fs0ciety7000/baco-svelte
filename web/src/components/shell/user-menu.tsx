@@ -1,7 +1,7 @@
 "use client";
 
 import * as Menu from "@radix-ui/react-dropdown-menu";
-import { CalendarDays, LogOut, Palette, Puzzle, Shield, SwatchBook, UserRound } from "lucide-react";
+import { LogOut, Palette, Shield, SwatchBook } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -22,14 +22,8 @@ const itemClass =
  * est visible pour l'agent (même règle que la navigation).
  */
 export function UserMenu({ compact }: { compact?: boolean }) {
-  const { user, admin, modules, ui, setUi } = useShell();
+  const { user, admin, account: personal, ui, setUi } = useShell();
   const roleLabel = useRoleLabel();
-  const tabs = new Set(modules.flatMap((m) => m.tabs.map((t) => t.href)));
-  const personal = [
-    { href: "/equipe/profil", label: "Mon profil", icon: UserRound },
-    { href: "/equipe/planning", label: "Mon planning", icon: CalendarDays },
-    { href: "/pmr/extension", label: "Extension CSM", icon: Puzzle },
-  ].filter((l) => tabs.has(l.href));
   const [prefsOpen, setPrefsOpen] = useState(false);
 
   return (

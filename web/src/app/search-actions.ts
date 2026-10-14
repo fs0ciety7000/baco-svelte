@@ -105,7 +105,7 @@ export async function paletteSearch(input: string): Promise<SearchGroup[]> {
           kind: "live",
           label: `Train ${p.trainNumber}`,
           meta: "Trains en direct",
-          href: `/operations?train=${p.trainNumber}`,
+          href: `/reseau?train=${p.trainNumber}`,
         },
       ]),
     );
@@ -129,7 +129,7 @@ export async function paletteSearch(input: string): Promise<SearchGroup[]> {
     add(can(user, "pmr:read") && !p.lineOnly, () => missions(ctx, range, "groups"));
 
     // --- Ressources -------------------------------------------------------------------------------------------
-    const gares = routeOk(user, "/referentiels/gares");
+    const gares = routeOk(user, "/reseau/gares");
     const journee = can(user, "journal:read");
     if (nameSearch && (gares || journee)) {
       const found = stations(ctx);
@@ -146,9 +146,9 @@ export async function paletteSearch(input: string): Promise<SearchGroup[]> {
               s.district,
               s.lines.slice(0, 3).map(lineLabel).join(", "),
             ),
-            href: `/referentiels/trains?vue=gare&gare=${enc(s.name)}`,
+            href: `/reseau/horaires?vue=gare&gare=${enc(s.name)}`,
           })),
-          `/referentiels/gares?q=${enc(q)}`,
+          `/reseau/gares?q=${enc(q)}`,
         );
       });
       // Ma journée à la gare la plus probable (frise du jour filtrée sur la gare).
@@ -166,10 +166,10 @@ export async function paletteSearch(input: string): Promise<SearchGroup[]> {
           : null;
       });
     }
-    add(routeOk(user, "/referentiels/lignes") && (!!p.line || (nameSearch && q.length >= 3)), () =>
+    add(routeOk(user, "/reseau/lignes") && (!!p.line || (nameSearch && q.length >= 3)), () =>
       lines(ctx),
     );
-    const trains = routeOk(user, "/referentiels/trains");
+    const trains = routeOk(user, "/reseau/horaires");
     add(trains && (!!p.relation || (nameSearch && q.length >= 3)), () => relations(ctx));
     add(trains && !!p.trainNumber, () => trainServices(ctx));
     add(can(user, "ptcar:read") && nameSearch, () => ptcar(ctx));
@@ -179,7 +179,7 @@ export async function paletteSearch(input: string): Promise<SearchGroup[]> {
     add(can(user, "ebp:read") && (nameSearch || !!p.line), () => ebp(ctx));
 
     // --- Équipe et administration -----------------------------------------------------------------------------
-    add(nameSearch && routeOk(user, "/equipe"), () => team(ctx));
+    add(nameSearch && routeOk(user, "/ressources/equipe"), () => team(ctx));
     add(nameSearch && isAdmin(user), () => accounts(ctx));
 
     const settled = await Promise.allSettled(tasks);
@@ -241,7 +241,7 @@ async function crossings({ pb, p, q }: Ctx): Promise<SearchGroup | null> {
       kind: "pn",
       label: `PN ${str(c.number)} · ${lineLabel(str(c.line))}`,
       meta: str(c.address).slice(0, 80),
-      href: `/operations/carte-pn?pn=${c.id}`,
+      href: `/reseau/pn?pn=${c.id}`,
     })),
   );
 }
@@ -498,7 +498,7 @@ async function lines({ pb, p, q, terms }: Ctx): Promise<SearchGroup> {
       kind: "lines",
       label: `${lineLabel(l.line)}${l.name ? ` · ${l.name}` : ""}`,
       meta: l.count ? `${l.count} ${pl(l.count, "gare")}` : "Ligne",
-      href: `/referentiels/lignes?ligne=${enc(l.line)}`,
+      href: `/reseau/lignes?ligne=${enc(l.line)}`,
     })),
   );
 }
@@ -520,9 +520,9 @@ async function relations({ pb, p, q, terms }: Ctx): Promise<SearchGroup> {
       kind: "relations",
       label: `${str(x.relation)}${x.label ? ` · ${str(x.label)}` : ""}`,
       meta: x.trains ? `${Number(x.trains)} ${pl(Number(x.trains), "train")}` : "Relation",
-      href: `/referentiels/trains?rel=${enc(str(x.key))}`,
+      href: `/reseau/horaires?rel=${enc(str(x.key))}`,
     })),
-    p.relation ? undefined : `/referentiels/trains?q=${enc(q)}`,
+    p.relation ? undefined : `/reseau/horaires?q=${enc(q)}`,
   );
 }
 
@@ -542,7 +542,7 @@ async function trainServices({ pb, p }: Ctx): Promise<SearchGroup> {
         s.relation,
         s.first_dep && s.last_arr ? `${str(s.first_dep)} – ${str(s.last_arr)}` : "",
       ),
-      href: `/referentiels/trains?train=${Number(s.number)}`,
+      href: `/reseau/horaires?train=${Number(s.number)}`,
     })),
   );
 }
@@ -560,9 +560,9 @@ async function ptcar({ pb, q, terms }: Ctx): Promise<SearchGroup> {
       kind: "ptcar",
       label: str(x.name_fr) || str(x.abbr),
       meta: `PtCar ${str(x.abbr)}`,
-      href: `/referentiels/ptcar?q=${enc(str(x.abbr))}`,
+      href: `/reseau/ptcar?q=${enc(str(x.abbr))}`,
     })),
-    `/referentiels/ptcar?q=${enc(q)}`,
+    `/reseau/ptcar?q=${enc(q)}`,
   );
 }
 
@@ -578,11 +578,11 @@ async function contacts({ pb, q }: Ctx): Promise<SearchGroup> {
     r.items.map((c) => ({
       kind: "contacts",
       label: str(c.name),
-      meta: join(c.group, c.phone) || "Annuaire",
+      meta: join(c.group, c.phone) || "Contacts",
       // Fiche ouverte directement dans l'annuaire (panneau, refonte du 14 oct. 2026).
-      href: `/referentiels?q=${enc(str(c.name) || q)}&id=${c.id}`,
+      href: `/ressources?q=${enc(str(c.name) || q)}&id=${c.id}`,
     })),
-    `/referentiels?q=${enc(q)}`,
+    `/ressources?q=${enc(q)}`,
   );
 }
 
@@ -599,9 +599,9 @@ async function procedures({ pb, q }: Ctx): Promise<SearchGroup> {
       kind: "procedures",
       label: str(x.title) || "Procédure",
       meta: join("Procédure", x.category),
-      href: `/referentiels/documents?q=${enc(str(x.title) || q)}`,
+      href: `/ressources/documents?q=${enc(str(x.title) || q)}`,
     })),
-    `/referentiels/documents?q=${enc(q)}`,
+    `/ressources/documents?q=${enc(q)}`,
   );
 }
 
@@ -618,9 +618,9 @@ async function documents({ pb, q }: Ctx): Promise<SearchGroup> {
       kind: "documents",
       label: str(x.name) || "Document",
       meta: join("Document", x.category),
-      href: `/referentiels/documents/voir/${x.id}`,
+      href: `/ressources/documents/voir/${x.id}`,
     })),
-    `/referentiels/documents?vue=documents&q=${enc(q)}`,
+    `/ressources/documents?vue=documents&q=${enc(q)}`,
   );
 }
 
@@ -639,9 +639,9 @@ async function ebp({ pb, p, q, terms }: Ctx): Promise<SearchGroup> {
       kind: "ebp",
       label: `${str(x.ptcar) || "?"}${x.ebp_view ? ` · vue ${str(x.ebp_view)}` : ""}`,
       meta: join("EBP", x.abbr, x.line ? lineLabel(str(x.line)) : ""),
-      href: `/referentiels/ebp?q=${enc(str(x.ptcar) || q)}`,
+      href: `/reseau/ebp?q=${enc(str(x.ptcar) || q)}`,
     })),
-    `/referentiels/ebp?q=${enc(q)}`,
+    `/reseau/ebp?q=${enc(q)}`,
   );
 }
 
@@ -662,9 +662,9 @@ async function team({ pb, q }: Ctx): Promise<SearchGroup> {
       kind: "team",
       label: str(u.name) || str(u.username) || "Agent",
       meta: join(u.fonction, u.district) || "Équipe",
-      href: `/equipe?q=${enc(str(u.name) || str(u.username) || q)}`,
+      href: `/ressources/equipe?q=${enc(str(u.name) || str(u.username) || q)}`,
     })),
-    `/equipe?q=${enc(q)}`,
+    `/ressources/equipe?q=${enc(q)}`,
   );
 }
 

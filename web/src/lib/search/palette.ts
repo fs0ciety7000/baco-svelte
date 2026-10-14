@@ -78,7 +78,7 @@ export function parsePaletteQuery(input: string): PaletteQuery | null {
 
 /** Groupes de résultats de la palette, avec leur module (en-tête « Module › Type »). */
 export const PALETTE_GROUPS = {
-  live: { module: "Opérations", label: "Trains en direct" },
+  live: { module: "Réseau", label: "Trains en direct" },
   bus: { module: "Commandes", label: "Bons bus" },
   taxi: { module: "Commandes", label: "Bons taxi" },
   suppliers: { module: "Commandes", label: "Fournisseurs" },
@@ -87,17 +87,17 @@ export const PALETTE_GROUPS = {
   groups: { module: "PMR", label: "Groupes" },
   journal: { module: "Opérations", label: "Journal" },
   journee: { module: "Opérations", label: "Ma journée" },
-  pn: { module: "Opérations", label: "Passages à niveau" },
-  stations: { module: "Ressources", label: "Gares" },
-  lines: { module: "Ressources", label: "Lignes" },
-  relations: { module: "Ressources", label: "Relations" },
-  trains: { module: "Ressources", label: "Trains" },
-  ptcar: { module: "Ressources", label: "PtCar" },
-  contacts: { module: "Ressources", label: "Annuaire" },
+  pn: { module: "Réseau", label: "Passages à niveau" },
+  stations: { module: "Réseau", label: "Gares" },
+  lines: { module: "Réseau", label: "Lignes" },
+  relations: { module: "Réseau", label: "Relations" },
+  trains: { module: "Réseau", label: "Horaires" },
+  ptcar: { module: "Réseau", label: "PtCar" },
+  contacts: { module: "Ressources", label: "Contacts" },
   procedures: { module: "Ressources", label: "Procédures" },
   documents: { module: "Ressources", label: "Documents" },
-  ebp: { module: "Ressources", label: "EBP" },
-  team: { module: "Équipe", label: "Agents" },
+  ebp: { module: "Réseau", label: "EBP" },
+  team: { module: "Ressources", label: "Collègues" },
   users: { module: "Administration", label: "Comptes" },
 } as const;
 
@@ -105,6 +105,8 @@ export type PaletteGroupId = keyof typeof PALETTE_GROUPS;
 
 /** Ordre par défaut : modules dans l'ordre de la navigation. */
 const DEFAULT_ORDER: PaletteGroupId[] = [
+  "journal",
+  "journee",
   "bus",
   "taxi",
   "suppliers",
@@ -112,19 +114,17 @@ const DEFAULT_ORDER: PaletteGroupId[] = [
   "pmr",
   "groups",
   "live",
-  "journal",
-  "journee",
-  "pn",
-  "stations",
-  "lines",
-  "relations",
   "trains",
+  "relations",
+  "lines",
+  "stations",
   "ptcar",
+  "ebp",
+  "pn",
   "contacts",
+  "team",
   "procedures",
   "documents",
-  "ebp",
-  "team",
   "users",
 ];
 

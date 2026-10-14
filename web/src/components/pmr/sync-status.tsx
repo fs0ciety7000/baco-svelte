@@ -97,7 +97,7 @@ export function SyncStatus({
                     : ""
                 }`}
       {stale ? (
-        <Link href="/pmr/extension" className="link ml-1">
+        <Link href="/extension" className="link ml-1">
           Extension DICOS
         </Link>
       ) : null}

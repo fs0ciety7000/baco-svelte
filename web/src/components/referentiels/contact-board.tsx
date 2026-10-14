@@ -3,11 +3,7 @@
 import { Pencil, Save, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 
-import {
-  deleteContact,
-  findContactDuplicates,
-  saveContact,
-} from "@/app/(app)/referentiels/actions";
+import { deleteContact, findContactDuplicates, saveContact } from "@/app/(app)/ressources/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";

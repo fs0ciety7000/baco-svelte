@@ -85,7 +85,7 @@ function hitValue(query: string, heading: string, h: SearchHit): string {
  * 14 oct. 2026, selon les droits de l'agent), Créer, Aller à (modules et onglets), Administration, Affichage.
  */
 export function CommandPalette() {
-  const { modules, admin, actions, ui, setUi, paletteOpen, setPaletteOpen } = useShell();
+  const { modules, admin, account, actions, ui, setUi, paletteOpen, setPaletteOpen } = useShell();
   const router = useRouter();
 
   useEffect(() => {
@@ -232,6 +232,15 @@ export function CommandPalette() {
                         </CommandItem>
                       )),
                 )}
+                {account.map((l) => (
+                  <CommandItem
+                    key={`compte-${l.href}`}
+                    value={`compte ${l.label} ${(l.keywords ?? []).join(" ")}`}
+                    onSelect={() => go(l.href)}
+                  >
+                    <l.icon /> {l.label}
+                  </CommandItem>
+                ))}
                 <CommandItem
                   value={`${CHANGELOG_LINK.label} ${CHANGELOG_LINK.keywords.join(" ")}`}
                   onSelect={() => go(CHANGELOG_LINK.href)}

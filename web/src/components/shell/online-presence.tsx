@@ -5,7 +5,7 @@ import { Users } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { onlineAgents } from "@/app/(app)/equipe/actions";
+import { onlineAgents } from "@/app/team-actions";
 import { Button } from "@/components/ui/button";
 import { subscribeLive } from "@/lib/live";
 import { safeCall } from "@/lib/orders/safe-call";
@@ -118,7 +118,7 @@ export function OnlinePresence() {
           </ul>
           <Menu.Item asChild className="outline-none data-[highlighted]:bg-surface-2">
             <Link
-              href="/equipe"
+              href="/ressources/equipe"
               className="flex h-control items-center border-t border-border px-3 text-small"
             >
               Voir l&apos;équipe

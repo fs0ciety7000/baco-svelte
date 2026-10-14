@@ -16,7 +16,7 @@ import {
   loadContact,
   noteContactViewed,
   toggleContactFavorite,
-} from "@/app/(app)/referentiels/actions";
+} from "@/app/(app)/ressources/actions";
 import { CopyIcon, useCopy } from "@/components/pmr/copy";
 import {
   ContactActions,
@@ -264,7 +264,7 @@ export function DirectoryBoard({
       <div className="flex flex-col gap-3">
         <form
           role="search"
-          action="/referentiels"
+          action="/ressources"
           className="flex items-center gap-2"
           onSubmit={(e) => {
             e.preventDefault();

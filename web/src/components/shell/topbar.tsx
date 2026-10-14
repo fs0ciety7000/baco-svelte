@@ -24,7 +24,7 @@ import { UserMenu } from "./user-menu";
  * Mobile : 48 px collante, marque + module courant, puce des districts, recherche, menu utilisateur (onglets sous la barre).
  */
 export function Topbar() {
-  const { modules, admin, actions, setPaletteOpen, user } = useShell();
+  const { modules, admin, account, actions, setPaletteOpen, user } = useShell();
   const pathname = usePathname();
   const mod = activeModule(pathname, [...modules, ...(admin ? [admin] : [])]);
   // Administration : ses pages sont dans la barre latérale (14 oct. 2026) ; la barre du haut affiche « Administration › page ».
@@ -41,7 +41,9 @@ export function Topbar() {
       </Link>
       <p className="min-w-0 truncate text-body font-semibold text-fg md:shrink-0 md:text-body-lg">
         <span className="font-normal text-fg-muted md:hidden">· </span>
-        {mod?.label ?? (pathname === CHANGELOG_LINK.href ? CHANGELOG_LINK.label : "Accueil")}
+        {mod?.label ??
+          account.find((l) => pathname === l.href || pathname.startsWith(`${l.href}/`))?.label ??
+          (pathname === CHANGELOG_LINK.href ? CHANGELOG_LINK.label : "Accueil")}
         {adminPage ? (
           <span
             className="hidden font-normal text-fg-muted md:inline"

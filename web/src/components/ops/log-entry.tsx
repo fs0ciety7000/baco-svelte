@@ -46,7 +46,7 @@ export function LogLinks({ entry }: { entry: LogEntry }) {
     <div className="flex flex-wrap items-center gap-1.5">
       {entry.train ? (
         <Link
-          href={`/operations?train=${encodeURIComponent(entry.train)}`}
+          href={`/reseau?train=${encodeURIComponent(entry.train)}`}
           className="inline-flex min-h-8 items-center gap-1 border border-border bg-surface-2 px-2 font-mono text-small hover:border-fg-muted"
         >
           {entry.train}

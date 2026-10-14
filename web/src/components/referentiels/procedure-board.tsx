@@ -21,7 +21,7 @@ import {
   loadProcedure,
   restoreProcedureVersion,
   saveProcedure,
-} from "@/app/(app)/referentiels/actions";
+} from "@/app/(app)/ressources/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
@@ -435,7 +435,7 @@ function AttachmentRow({ doc }: { doc: Procedure["attachments"][number] }) {
     <li className="flex min-w-0 flex-wrap items-center gap-2 border border-border px-2 py-1.5">
       <Icon aria-hidden className="size-4 shrink-0 text-fg-muted" />
       <Link
-        href={`/referentiels/documents/voir/${doc.id}`}
+        href={`/ressources/documents/voir/${doc.id}`}
         className="link min-w-0 flex-1 truncate"
         title={doc.name}
       >
@@ -444,7 +444,7 @@ function AttachmentRow({ doc }: { doc: Procedure["attachments"][number] }) {
       {doc.category ? <span className="text-small text-fg-muted">{doc.category}</span> : null}
       <span className="flex gap-1">
         <Button asChild size="sm" variant="ghost" className="border border-border">
-          <Link href={`/referentiels/documents/voir/${doc.id}`} aria-label={`Voir ${doc.name}`}>
+          <Link href={`/ressources/documents/voir/${doc.id}`} aria-label={`Voir ${doc.name}`}>
             <Eye aria-hidden className="size-4" /> Voir
           </Link>
         </Button>

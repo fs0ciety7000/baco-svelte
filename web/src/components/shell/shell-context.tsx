@@ -2,12 +2,16 @@
 
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
+import type { LucideIcon } from "lucide-react";
+
 import type { UiPreferences } from "@/design/preferences";
 import {
+  accountLinks,
   adminModule,
   quickActions,
   visibleModules,
   type NavModule,
+  type NavTab,
   type QuickAction,
 } from "@/navigation";
 
@@ -17,6 +21,8 @@ export type ShellData = {
   user: ShellUser;
   modules: NavModule[];
   admin: NavModule | null;
+  /** Liens du menu du compte (Mon profil, Mon planning, Extension CSM). */
+  account: (NavTab & { icon: LucideIcon })[];
   actions: QuickAction[];
   ui: UiPreferences;
   /** Version livrée de CSM (« 2026.10.14 »), null si le changelog est vide. */
@@ -48,6 +54,7 @@ export function ShellProvider({
       user,
       modules: visibleModules(user),
       admin: adminModule(user),
+      account: accountLinks(user),
       actions: quickActions(user),
       ui,
       version,

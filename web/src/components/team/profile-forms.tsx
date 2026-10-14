@@ -12,7 +12,7 @@ import {
   removeMyAvatar,
   saveMyProfile,
   uploadMyAvatar,
-} from "@/app/(app)/equipe/actions";
+} from "@/app/team-actions";
 import { setDutyDistricts } from "@/app/(app)/operations/actions";
 import { Avatar } from "@/components/shell/avatar";
 import { PasskeysCard } from "@/components/team/passkeys";
@@ -367,7 +367,7 @@ export function ProfileForms({
             </p>
             <div>
               <Button asChild variant="secondary">
-                <Link href="/pmr/extension">
+                <Link href="/extension">
                   <PlugZap aria-hidden /> Gérer mes appareils
                 </Link>
               </Button>

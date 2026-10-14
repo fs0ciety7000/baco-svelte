@@ -39,7 +39,7 @@ async function run(
     await requireAdmin();
     await fn(await pbForRequest());
     revalidatePath("/admin/quinyx");
-    revalidatePath("/equipe/planning");
+    revalidatePath("/ressources/planning");
     return { ok: true };
   } catch (e) {
     return fail(e);

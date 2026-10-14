@@ -123,7 +123,7 @@ export function TrainsWidget({ favorites }: { favorites: FavoriteStation[] | nul
         title="Aucune gare favorite"
         description="Ajoute tes gares en favori dans Trains en direct (étoile)."
         action={
-          <Link href="/operations" className="text-small link">
+          <Link href="/reseau" className="text-small link">
             Ouvrir les trains en direct
           </Link>
         }
@@ -146,7 +146,7 @@ export function TrainsWidget({ favorites }: { favorites: FavoriteStation[] | nul
     <ul className="flex flex-col gap-2">
       {rows.map((r) => (
         <li key={`${r.station}-${r.train}-${r.at}`}>
-          <Link href={`/operations?train=${encodeURIComponent(r.train)}`} className="block">
+          <Link href={`/reseau?train=${encodeURIComponent(r.train)}`} className="block">
             <ListCard
               statusColor={
                 delayTone(r.delayMin, r.cancelled) === "danger" ? "var(--danger)" : "var(--warn)"
@@ -257,7 +257,7 @@ export function DisturbanceWidget({
           </li>
         ))}
       </ul>
-      <Link href="/operations" className="inline-flex min-h-11 items-center text-small link">
+      <Link href="/reseau" className="inline-flex min-h-11 items-center text-small link">
         {list.length > 5 ? `Voir les ${list.length} messages` : "Ouvrir les trains en direct"}
       </Link>
     </div>

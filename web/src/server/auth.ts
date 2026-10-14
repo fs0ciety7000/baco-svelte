@@ -5,7 +5,7 @@ import { cache } from "react";
 import { z } from "zod";
 
 import { can } from "@/lib/permissions";
-import { visibleModules } from "@/navigation";
+import { accountLinks, visibleModules } from "@/navigation";
 
 import { createPb } from "./pocketbase";
 import { readSessionToken, resolveActing } from "./session";
@@ -118,10 +118,15 @@ export async function requireAdmin(): Promise<SessionUser> {
   return user;
 }
 
-/** Garde d'un onglet de navigation : mêmes règles que les menus (permission + rôles masqués). */
+/**
+ * Garde d'un onglet de navigation ou d'un lien du menu du compte (Mon profil, Extension CSM) : mêmes règles que les menus
+ * (permission + rôles masqués).
+ */
 export async function requireRoute(href: string): Promise<SessionUser> {
   const user = await requireUser();
-  const allowed = visibleModules(user).some((m) => m.tabs.some((t) => t.href === href));
+  const allowed =
+    visibleModules(user).some((m) => m.tabs.some((t) => t.href === href)) ||
+    accountLinks(user).some((l) => l.href === href);
   if (!allowed) notFound();
   return user;
 }

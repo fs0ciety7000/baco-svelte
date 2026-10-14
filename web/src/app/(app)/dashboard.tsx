@@ -34,6 +34,7 @@ import {
 } from "@/components/ops/dashboard-widgets";
 import { ShiftWidget, type QuinyxShift } from "@/components/dashboard/shift-widget";
 import { KpiStrip, TodoQueue, todoItems } from "@/components/dashboard/todo";
+import { ModuleTabs } from "@/components/shell/module-tabs";
 import { useShell } from "@/components/shell/shell-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -383,6 +384,10 @@ export function Dashboard({
       ref={ref}
       className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-4 md:px-6 md:py-5"
     >
+      {/* Onglets de l'Accueil en mobile (À traiter · Statistiques, navigation v3) ; en desktop, dans la barre du haut. */}
+      <div className="md:hidden">
+        <ModuleTabs moduleId="accueil" />
+      </div>
       {/* En-tête d'une ligne (11 oct. 2026) : salutation, date, personnalisation. */}
       <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="flex min-w-0 items-baseline gap-3">

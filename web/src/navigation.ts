@@ -2,41 +2,47 @@ import {
   Accessibility,
   Bus,
   CalendarClock,
+  CalendarDays,
   Car,
-  Database,
   HeartPulse,
   KeyRound,
   Home,
+  Library,
   ListFilter,
   Mail,
   MonitorSmartphone,
   Plus,
+  Puzzle,
+  Radio,
   ScrollText,
   ShieldCheck,
   Train,
   UserCog,
-  Users,
+  UserRound,
   type LucideIcon,
 } from "lucide-react";
 
 import { can, isAdmin, type PermissionSubject, type Role } from "@/lib/permissions";
 
-// Navigation : SOURCE UNIQUE pour la barre latérale, la barre d'onglets mobile, « Plus », ⌘K et les onglets
-// des modules. 6 modules au maximum (docs/CSM-V2.md §2) ; l'administration (admin / sysop) a sa propre section dans la
-// barre latérale depuis le 14 oct. 2026 (pages groupées par `group`), dans « Plus » en mobile et dans ⌘K.
+// Navigation : SOURCE UNIQUE pour la barre latérale, la barre d'onglets mobile, « Plus », ⌘K, le menu du compte et les
+// onglets des modules. Navigation v3 (14 oct. 2026, docs/design/AUDIT-NAVIGATION.md) : Accueil, Opérations, Commandes,
+// PMR, Réseau, Ressources ; l'administration a sa propre section dans la barre latérale (pages groupées par `group`),
+// dans « Plus » en mobile et dans ⌘K. Les anciennes routes sont redirigées par `lib/redirects.ts` (next.config.ts).
 
 export type NavTab = {
   href: string;
   label: string;
   /** Permission(s) du catalogue exigée(s) (toutes, si plusieurs). */
   permission?: string | string[];
+  /** Au moins une de ces permissions (ex. Suivi : bus OU taxi). */
+  anyOf?: string[];
   /**
    * Rôles système pour lesquels l'onglet est masqué (rôles v3, lot L2 : seulement l'Écran sur « Mon profil » ; toute autre
    * exclusion passe par une permission du catalogue).
    */
   hideFor?: Role[];
   keywords?: string[];
-  /** Groupe d'affichage (Administration : Comptes, Supervision, Réglages). */
+  /** Groupe d'affichage (Administration : Comptes, Référentiels, Supervision, Réglages). */
   group?: string;
   icon?: LucideIcon;
 };
@@ -53,93 +59,31 @@ export type NavModule = {
 };
 
 export const MODULES: NavModule[] = [
-  { id: "accueil", href: "/", label: "Accueil", icon: Home, mobile: true, tabs: [] },
   {
-    id: "commandes",
-    shortLabel: "Bons",
-    href: "/commandes",
-    label: "Commandes",
-    icon: Bus,
+    id: "accueil",
+    href: "/",
+    label: "Accueil",
+    icon: Home,
     mobile: true,
     tabs: [
+      { href: "/", label: "À traiter", keywords: ["tableau de bord", "widgets", "accueil"] },
+      // Statistiques : bons bus, taxis et PMR (navigation v3 : sorties d'Opérations, ce n'est pas du temps réel).
       {
-        href: "/commandes",
-        label: "Bus",
-        permission: "otto:read",
-        keywords: ["C3", "otto", "bon"],
-      },
-      { href: "/commandes/taxi", label: "Taxi", permission: "generate_taxi:read" },
-      {
-        href: "/commandes/suivi",
-        label: "Suivi",
-        permission: "otto:read",
-        keywords: ["kanban", "statut"],
-      },
-      {
-        // Sociétés de bus et de taxi gérées dans CSM (11 oct. 2026 ; la page montre le taxi selon `generate_taxi:read`).
-        href: "/commandes/fournisseurs",
-        label: "Fournisseurs",
-        // L'invité ne voit que les bons (rôles v2) ; il lit les sociétés à travers eux (`suppliers:read`, lot L2).
-        permission: ["otto:read", "suppliers:read"],
-        keywords: ["sociétés", "transporteurs", "chauffeurs", "taxis", "bus"],
-      },
-      {
-        href: "/commandes/archives",
-        label: "Archives",
-        permission: "archives:read",
-        keywords: ["PDF", "bons terminés", "sauvegarde", "TC_"],
-      },
-      {
-        href: "/commandes/b201",
-        label: "Remise B201",
-        permission: "b201:read",
-        keywords: ["remise", "service"],
-      },
-    ],
-  },
-  {
-    id: "pmr",
-    href: "/pmr",
-    label: "PMR",
-    icon: Accessibility,
-    mobile: true,
-    tabs: [
-      {
-        href: "/pmr",
-        label: "Missions PMR",
-        permission: "deplacements:read",
-        keywords: ["déplacements", "DICOS", "assistance"],
-      },
-      {
-        href: "/groupes",
-        label: "Groupes",
-        permission: "pmr:read",
-        keywords: ["école", "groupe", "DICOS"],
-      },
-      { href: "/pmr/historique", label: "Historique", permission: "deplacements:read" },
-      { href: "/pmr/clients", label: "Clients", permission: "pmr:read" },
-      { href: "/pmr/materiel", label: "Rampes et matériel", permission: "pmr:read" },
-      {
-        href: "/pmr/extension",
-        label: "Extension DICOS",
-        permission: "deplacements:read",
-        keywords: ["connecteur", "zip", "installer", "ATMS", "télécharger"],
+        href: "/statistiques",
+        label: "Statistiques",
+        permission: "stats:read",
+        keywords: ["chiffres", "volumes", "graphiques"],
       },
     ],
   },
   {
     id: "operations",
-    href: "/operations",
+    href: "/operations/journal",
     label: "Opérations",
-    icon: Train,
+    icon: Radio,
     mobile: true,
     tabs: [
-      {
-        href: "/operations",
-        label: "Trains en direct",
-        permission: "live:read",
-        keywords: ["iRail", "départs", "retards"],
-      },
+      // Le Journal ouvre le module et porte la pastille des non-lus (navigation v3).
       {
         href: "/operations/journal",
         label: "Journal",
@@ -158,83 +102,192 @@ export const MODULES: NavModule[] = [
         permission: "journal:read",
         keywords: ["relève", "passation", "fin de service", "synthèse"],
       },
-      {
-        href: "/operations/carte-pn",
-        label: "Carte PN",
-        permission: "carte_pn:read",
-        keywords: ["passages à niveau"],
-      },
-      { href: "/operations/statistiques", label: "Statistiques", permission: "stats:read" },
     ],
   },
   {
-    id: "referentiels",
-    shortLabel: "Données",
-    href: "/referentiels",
-    // « Ressources » depuis le 11 oct. 2026 (ex-« Annuaire et données », demande de l'utilisateur).
-    label: "Ressources",
-    // Dans « Plus » en mobile depuis le 14 oct. 2026 (barre du bas à 5 entrées : Accueil, Bons, PMR, Opérations, Plus).
-    icon: Database,
+    id: "commandes",
+    shortLabel: "Bons",
+    href: "/commandes/suivi",
+    label: "Commandes",
+    icon: Bus,
+    mobile: true,
+    tabs: [
+      // Suivi (vue « À envoyer » par défaut) ouvre le module et porte la pastille des bons à envoyer ; ouvert à qui lit
+      // les bus OU les taxis (un agent « taxi seul » le voit, navigation v3).
+      {
+        href: "/commandes/suivi",
+        label: "Suivi",
+        anyOf: ["otto:read", "generate_taxi:read"],
+        keywords: ["kanban", "statut", "à envoyer"],
+      },
+      {
+        href: "/commandes",
+        label: "Bus",
+        permission: "otto:read",
+        keywords: ["C3", "otto", "bon"],
+      },
+      { href: "/commandes/taxi", label: "Taxi", permission: "generate_taxi:read" },
+      {
+        href: "/commandes/archives",
+        label: "Archives",
+        permission: "archives:read",
+        keywords: ["PDF", "bons terminés", "sauvegarde", "TC_"],
+      },
+      {
+        // Sociétés de bus et de taxi gérées dans CSM (11 oct. 2026 ; la page montre le taxi selon `generate_taxi:read`).
+        href: "/commandes/fournisseurs",
+        label: "Fournisseurs",
+        // L'invité ne voit que les bons (rôles v2) ; il lit les sociétés à travers eux (`suppliers:read`, lot L2).
+        permission: ["otto:read", "suppliers:read"],
+        keywords: ["sociétés", "transporteurs", "chauffeurs", "taxis", "bus"],
+      },
+    ],
+  },
+  {
+    id: "pmr",
+    href: "/pmr",
+    label: "PMR",
+    icon: Accessibility,
+    mobile: true,
     tabs: [
       {
-        href: "/referentiels",
-        label: "Annuaire",
-        permission: "repertoire:read",
-        keywords: ["répertoire", "sociétés", "taxis", "contacts"],
+        href: "/pmr",
+        label: "Missions",
+        permission: "deplacements:read",
+        keywords: ["missions PMR", "déplacements", "DICOS", "assistance"],
       },
-      { href: "/referentiels/lignes", label: "Lignes", permission: "timetable:read" },
       {
-        href: "/referentiels/trains",
-        label: "Trains",
+        href: "/groupes",
+        label: "Groupes",
+        permission: "pmr:read",
+        keywords: ["école", "groupe", "DICOS"],
+      },
+      { href: "/pmr/clients", label: "Clients", permission: "pmr:read" },
+      {
+        href: "/pmr/materiel",
+        label: "Matériel",
+        permission: "pmr:read",
+        keywords: ["rampes", "matériel PMR", "zones"],
+      },
+      {
+        // Historique BACO archivé de la saisie de la journée (abandonnée le 3 mai 2026), pas l'historique DICOS.
+        href: "/pmr/historique",
+        label: "Historique",
+        permission: "deplacements:read",
+        keywords: ["BACO", "archives", "saisie de la journée"],
+      },
+    ],
+  },
+  {
+    // Réseau (navigation v3) : le temps réel et les référentiels du réseau, en consultation ; la gestion est dans
+    // Administration › Référentiels (`referentiels:manage`).
+    id: "reseau",
+    href: "/reseau",
+    label: "Réseau",
+    icon: Train,
+    tabs: [
+      {
+        href: "/reseau",
+        label: "Trains en direct",
+        permission: "live:read",
+        keywords: ["iRail", "départs", "arrivées", "retards"],
+      },
+      {
+        href: "/reseau/horaires",
+        label: "Horaires",
         permission: "timetable:read",
-        keywords: ["relations", "IC", "séries", "horaires", "arrêts", "passages"],
+        keywords: ["trains", "relations", "IC", "séries", "arrêts", "passages"],
       },
+      { href: "/reseau/lignes", label: "Lignes", permission: "timetable:read" },
       {
-        href: "/referentiels/gares",
+        href: "/reseau/gares",
         label: "Gares",
         permission: "timetable:read",
-        keywords: ["districts", "gares frontière", "UIC", "arrêts"],
+        keywords: ["districts", "gares frontière", "UIC", "arrêts", "PANG"],
       },
       {
-        href: "/referentiels/ptcar",
+        href: "/reseau/ptcar",
         label: "PtCar",
         permission: "ptcar:read",
         keywords: ["gares", "abréviations"],
       },
-      { href: "/referentiels/ebp", label: "EBP", permission: "ebp:read" },
+      { href: "/reseau/ebp", label: "EBP", permission: "ebp:read" },
       {
-        href: "/referentiels/documents",
-        label: "Procédures et documents",
-        permission: "documents:read",
+        href: "/reseau/pn",
+        label: "Carte PN",
+        permission: "carte_pn:read",
+        keywords: ["passages à niveau", "PN"],
       },
     ],
   },
   {
-    id: "equipe",
-    href: "/equipe",
-    label: "Équipe",
-    icon: Users,
+    // Ressources (navigation v3) : les gens et les documents ; le module Équipe a disparu (14 oct. 2026).
+    id: "ressources",
+    href: "/ressources",
+    label: "Ressources",
+    icon: Library,
     tabs: [
-      // Congés : pas pour l'instant (décision du 9 oct. 2026). Planning : horaires publiés dans Quinyx (14 oct. 2026).
       {
-        href: "/equipe",
-        label: "Annuaire de l'équipe",
-        permission: "team:read",
-        keywords: ["collègues"],
+        href: "/ressources",
+        label: "Contacts",
+        permission: "repertoire:read",
+        keywords: ["annuaire", "répertoire", "sociétés", "taxis", "téléphone"],
       },
       {
-        href: "/equipe/planning",
+        href: "/ressources/equipe",
+        label: "Collègues",
+        permission: "team:read",
+        keywords: ["équipe", "annuaire de l'équipe", "agents"],
+      },
+      {
+        // Horaires publiés dans Quinyx (14 oct. 2026). Congés : pas pour l'instant (décision du 9 oct. 2026).
+        href: "/ressources/planning",
         label: "Planning",
         permission: "quinyx:read",
         keywords: ["Quinyx", "horaires", "service", "AM", "PM", "nuit", "qui travaille"],
       },
       {
-        href: "/equipe/profil",
-        label: "Mon profil",
-        keywords: ["mot de passe", "compte"],
-        hideFor: ["screen"],
+        href: "/ressources/documents",
+        label: "Procédures et documents",
+        permission: "documents:read",
+        keywords: ["procédures", "documents", "PDF"],
+      },
+      {
+        href: "/ressources/b201",
+        label: "B201",
+        permission: "b201:read",
+        keywords: ["remise", "remise B201", "service"],
       },
     ],
+  },
+];
+
+/**
+ * Liens du menu du compte (navigation v3) : hors module, aussi proposés dans ⌘K et gardés comme les onglets
+ * (`requireRoute`). « Mon planning » mène à l'onglet Ressources › Planning.
+ */
+export const ACCOUNT_LINKS: (NavTab & { icon: LucideIcon })[] = [
+  {
+    href: "/profil",
+    label: "Mon profil",
+    icon: UserRound,
+    hideFor: ["screen"],
+    keywords: ["mot de passe", "compte", "passkeys", "sessions", "avatar"],
+  },
+  {
+    href: "/ressources/planning",
+    label: "Mon planning",
+    icon: CalendarDays,
+    permission: "quinyx:read",
+    keywords: ["Quinyx", "horaires"],
+  },
+  {
+    // Extension de navigateur (DICOS, ATMS, Quinyx) : installation, connexion, dépannage.
+    href: "/extension",
+    label: "Extension CSM",
+    icon: Puzzle,
+    anyOf: ["deplacements:read", "quinyx:read"],
+    keywords: ["extension DICOS", "connecteur", "zip", "installer", "ATMS", "télécharger"],
   },
 ];
 
@@ -248,6 +301,10 @@ export const CHANGELOG_LINK = {
   keywords: ["changelog", "mise à jour", "version", "annonces"],
 } as const;
 
+/**
+ * Administration. Les pages sans `permission` sont réservées à admin / sysop ; celles qui portent une permission
+ * (Référentiels : `referentiels:manage`) s'ouvrent aussi à un rôle qui l'a reçue.
+ */
 export const ADMIN: NavModule = {
   id: "admin",
   href: "/admin",
@@ -300,13 +357,14 @@ export const QUICK_ACTIONS: QuickAction[] = [
   },
 ];
 
-function tabAllowed(user: PermissionSubject, tab: NavTab) {
+export function tabAllowed(user: PermissionSubject, tab: NavTab): boolean {
   if (tab.hideFor?.includes(user.role)) return false;
   const perms = tab.permission === undefined ? [] : [tab.permission].flat();
-  return perms.every((p) => can(user, p));
+  if (!perms.every((p) => can(user, p))) return false;
+  return !tab.anyOf?.length || tab.anyOf.some((p) => can(user, p));
 }
 
-/** Modules visibles pour l'agent : un module sans onglet autorisé disparaît. */
+/** Modules visibles pour l'agent : un module sans onglet autorisé disparaît (l'Accueil reste). */
 export function visibleModules(user: PermissionSubject): NavModule[] {
   return MODULES.map((m) => ({ ...m, tabs: m.tabs.filter((t) => tabAllowed(user, t)) }))
     .filter((m) => m.id === "accueil" || m.tabs.length > 0)
@@ -317,26 +375,47 @@ export function visibleModules(user: PermissionSubject): NavModule[] {
     );
 }
 
+/** Liens du menu du compte visibles pour l'agent. */
+export function accountLinks(user: PermissionSubject): (NavTab & { icon: LucideIcon })[] {
+  return ACCOUNT_LINKS.filter((l) => tabAllowed(user, l));
+}
+
+/**
+ * Administration visible : tout pour admin / sysop ; pour un autre rôle, seulement les pages qui portent une permission
+ * qu'il a (Référentiels) ; `null` s'il n'en a aucune.
+ */
 export function adminModule(user: PermissionSubject): NavModule | null {
-  return isAdmin(user) ? ADMIN : null;
+  if (isAdmin(user)) return ADMIN;
+  const tabs = ADMIN.tabs.filter((t) => t.permission !== undefined && tabAllowed(user, t));
+  return tabs.length ? { ...ADMIN, href: tabs[0]!.href, tabs } : null;
 }
 
 export function quickActions(user: PermissionSubject): QuickAction[] {
   return QUICK_ACTIONS.filter((a) => can(user, a.permission));
 }
 
-/** Module actif pour un chemin (le plus long préfixe). */
+const within = (pathname: string, href: string) =>
+  pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
+
+/**
+ * Module actif pour un chemin : celui dont un onglet (ou l'adresse) est le plus long préfixe du chemin. L'Accueil ne
+ * répond qu'à `/` et à ses onglets (Statistiques).
+ */
 export function activeModule(pathname: string, modules: NavModule[]): NavModule | undefined {
   const all = [...modules, ADMIN];
-  if (pathname === "/") return all.find((m) => m.id === "accueil");
-  return all
-    .filter((m) => m.id !== "accueil")
-    .find(
-      (m) =>
-        pathname === m.href ||
-        pathname.startsWith(`${m.href}/`) ||
-        m.tabs.some((t) => pathname === t.href || pathname.startsWith(`${t.href}/`)),
-    );
+  let best: NavModule | undefined;
+  let len = -1;
+  for (const m of all) {
+    for (const href of [m.href, ...m.tabs.map((t) => t.href)]) {
+      if (href === "/" ? pathname === "/" : within(pathname, href)) {
+        if (href.length > len) {
+          best = m;
+          len = href.length;
+        }
+      }
+    }
+  }
+  return best;
 }
 
 /** Onglet actif : correspondance exacte, sinon le plus long préfixe. */
@@ -345,7 +424,7 @@ export function activeTab(pathname: string, module: NavModule): NavTab | undefin
   if (exact) return exact;
   return (
     [...module.tabs]
-      .filter((t) => t.href !== module.href && pathname.startsWith(`${t.href}/`))
+      .filter((t) => t.href !== module.href && t.href !== "/" && pathname.startsWith(`${t.href}/`))
       .sort((a, b) => b.href.length - a.href.length)[0] ??
     module.tabs.find((t) => t.href === module.href)
   );

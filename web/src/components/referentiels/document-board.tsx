@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
-import { deleteDocument } from "@/app/(app)/referentiels/actions";
+import { deleteDocument } from "@/app/(app)/ressources/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
@@ -72,7 +72,7 @@ export function DocumentBoard({
                     <Td>
                       <div className="flex gap-1">
                         <Button asChild size="sm" variant="ghost" className="border border-border">
-                          <Link href={`/referentiels/documents/voir/${d.id}?retour=documents`}>
+                          <Link href={`/ressources/documents/voir/${d.id}?retour=documents`}>
                             <Eye aria-hidden className="size-4" /> Voir
                           </Link>
                         </Button>
@@ -107,7 +107,7 @@ export function DocumentBoard({
             {documents.map((d) => (
               <li key={d.id}>
                 <Link
-                  href={`/referentiels/documents/voir/${d.id}?retour=documents`}
+                  href={`/ressources/documents/voir/${d.id}?retour=documents`}
                   className="block"
                 >
                   <ListCard

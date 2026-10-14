@@ -5,11 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 
-import {
-  applyDistricts,
-  setStationKind,
-  setStationLines,
-} from "@/app/(app)/referentiels/gares/actions";
+import { applyDistricts, setStationKind, setStationLines } from "@/app/(app)/reseau/gares/actions";
 import { StationDistrict } from "@/components/referentiels/station-district";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -25,8 +21,7 @@ import type { StationRow } from "@/server/data/timetable";
 
 const KIND_LABEL: Record<string, string> = { gare: "Gare", pang: "PANG", etranger: "Étranger" };
 
-const trainsHref = (gare: string) =>
-  `/referentiels/trains?vue=gare&gare=${encodeURIComponent(gare)}`;
+const trainsHref = (gare: string) => `/reseau/horaires?vue=gare&gare=${encodeURIComponent(gare)}`;
 
 /**
  * Ressources › Gares : liste avec sélection multiple (attribution d'un district en masse, validation des propositions),
@@ -392,7 +387,7 @@ function LinesCell({ s, canEdit }: { s: StationRow; canEdit: boolean }) {
         s.lines.map((l) => (
           <Link
             key={l}
-            href={`/referentiels/trains?vue=ligne&ligne=${encodeURIComponent(l)}`}
+            href={`/reseau/horaires?vue=ligne&ligne=${encodeURIComponent(l)}`}
             className="link font-mono text-small"
           >
             {lineLabel(l)}
