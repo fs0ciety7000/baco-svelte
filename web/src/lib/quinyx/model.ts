@@ -82,7 +82,7 @@ export const quinyxBatchSchema = z.object({
   group: z.string().regex(/^\d{1,15}$/),
   from: day,
   to: day,
-  /** Date de publication Quinyx (`publish-date`) : le planning est publié AVANT ce jour (prudence, à confirmer). */
+  /** Date de publication Quinyx (`publish-date`) : planning publié jusqu'à ce jour INCLUS (confirmé le 14 oct. 2026). */
   publishedUntil: day,
   unit: z.string().max(160).catch(""),
   // Bornes réalistes (un groupe ≈ 15 agents, 300 prestations par mois) : un lot coûte une requête par prestation.
@@ -150,7 +150,7 @@ export function mapQuinyxBatch(
       !isCapturedCode(code) ||
       d < batch.from ||
       d > batch.to ||
-      d >= batch.publishedUntil
+      d > batch.publishedUntil
     ) {
       ignored++;
       continue;

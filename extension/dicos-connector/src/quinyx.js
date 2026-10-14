@@ -57,8 +57,8 @@
       const publishedUntil = dates[0] || "";
       const from = addDays(today(), -7);
       if (!DAY.test(publishedUntil)) return { error: "Date de publication Quinyx introuvable." };
-      // Période lue : de J-7 à la veille de la date de publication, 60 jours au plus.
-      let to = addDays(publishedUntil, -1);
+      // Période lue : de J-7 à la date de publication incluse, 60 jours au plus.
+      let to = publishedUntil; // date de publication incluse
       if (to > addDays(from, 60)) to = addDays(from, 60);
       const base = { group: String(group), from, to: to < from ? from : to, publishedUntil };
       if (to < from) return { batch: { ...base, unit: "", sections: [], types: [], employees: [], shifts: [], complete: false } };
@@ -76,7 +76,7 @@
           String(s.status || "").toUpperCase() === "ASSIGNED" &&
           Number(s.employeeId) > 0 &&
           CAPTURE(typeName.get(String(s.shiftTypeId))) &&
-          String(s.begin || "").slice(0, 10) < publishedUntil,
+          String(s.begin || "").slice(0, 10) <= publishedUntil,
       );
       const MAX = 1500;
       const people = new Set(kept.slice(0, MAX).map((s) => String(s.employeeId)));

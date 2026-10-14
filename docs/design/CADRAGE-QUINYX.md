@@ -111,15 +111,16 @@ règles (`pocketbase/scripts/test-rules.mjs`).
   synchro : ne configurer que le groupe parent (la page « schedule » de Quinyx).
 - Le badge « En service » est calculé à l'ouverture de la page (pas de mise à jour à la minute) ; le widget « Fin de
   service » garde la prestation chargée à l'ouverture de l'accueil (recharger après minuit).
-- Date de publication : la plus prudente de `publishDate` / `unitPublishDate`, traitée comme exclue (question 1).
+- Date de publication : la plus prudente de `publishDate` / `unitPublishDate`, **incluse** (confirmé le 14 oct.).
 
-## 7. Questions ouvertes pour l'utilisateur
+## 7. Décisions de l'utilisateur (14 oct. 2026)
 
-1. **Date de publication** : Quinyx renvoie « publié jusqu'au 15/11 ». CSM la traite comme **exclue** (prestations du
-   14/11 et avant). Le 15/11 est-il déjà publié ? (si oui, une ligne à changer.)
-2. **EXTRA** : les prestations « EXTRA - OCC SO » de 9 h à 17 h comptent-elles comme « en service » ? (oui aujourd'hui.)
-3. **Autres groupes** : OCC SE (DSE) à ajouter dans Administration › Quinyx ; d'autres districts (DCE…) et leurs lieux ?
-4. **Horaires AM / PM / Nuit** : Quinyx donne 6-14 / 14-22 / 22-6 pour PACO_AM / PM / N — les heures supposées du
-   widget étaient donc justes ; le widget prend maintenant l'horaire réel quand il existe.
-5. **Visibilité** : le planning de toute l'équipe visible de tous les PACO / RCCA, comme dans Quinyx ? (oui aujourd'hui.)
-6. Faut-il garder plus de J-7 en arrière (historique), ou au contraire moins de 90 jours ?
+1. **Date de publication incluse** : « publié jusqu'au 15/11 » = le 15/11 est publié.
+2. **EXTRA = en service** (districts du jour, fin de service, « En service »).
+3. **Pas d'autres groupes ni districts pour l'instant** : Mons (DSO) et OCC SE (DSE) seulement.
+4. Horaires AM / PM / Nuit : Quinyx donne 6-14 / 14-22 / 22-6 (les heures supposées du widget étaient justes) ; le widget
+   prend l'horaire réel quand il existe.
+5. Horaires gardés seulement pour les comptes CSM de l'équipe ; une synchro profite à tous.
+
+Questions encore ouvertes : visibilité du planning de toute l'équipe par tous (oui aujourd'hui) ; historique gardé
+(J-7 lu, 90 jours conservés) ; validation DPO.

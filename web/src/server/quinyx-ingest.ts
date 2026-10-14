@@ -218,7 +218,7 @@ async function ingestGroup(
   }
 
   // --- Prestations : upsert par identifiant Quinyx ---
-  const end = batch.to < batch.publishedUntil ? batch.to : prevDay(batch.publishedUntil);
+  const end = batch.to < batch.publishedUntil ? batch.to : batch.publishedUntil;
   const stored = await pb.collection("quinyx_shifts").getFullList({
     filter: pb.filter("group_id = {:g} && day >= {:f} && day <= {:t}", {
       g: batch.group,
@@ -324,12 +324,6 @@ async function ingestGroup(
     })
     .catch(() => null);
   return c;
-}
-
-function prevDay(day: string): string {
-  const d = new Date(`${day}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() - 1);
-  return d.toISOString().slice(0, 10);
 }
 
 function shiftRecord(s: MappedShift, agent: string) {

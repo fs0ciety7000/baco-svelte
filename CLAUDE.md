@@ -1132,7 +1132,8 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   `POST /api/equipe/quinyx/ingest` + `GET …/config`, `lib/quinyx/model.ts` (source unique, testée), migration
   `1760004200` (`quinyx_groups`, `quinyx_places`, `quinyx_agents`, `quinyx_shifts`), purge `quinyx-retention`
   (90 j / 180 j, à valider DPO), **Équipe › Planning**, **Administration › Quinyx**, district du jour proposé d'après la
-  prestation, widget « Fin de service » sur l'horaire réel. Date de publication Quinyx traitée comme exclue (à confirmer).
+  prestation, widget « Fin de service » sur l'horaire réel. Réponses de l'utilisateur : date de publication Quinyx **incluse**, EXTRA = en service, pas d'autre
+  groupe ni district pour l'instant.
   Revues sécurité + adversariale : retrait des prestations disparues limité aux agents visibles du compte Quinyx
   (`visible`), aux sections reçues et à 30 %, un lot à la fois par groupe, bornes de période et d'heures, création
   concurrente relue, date de publication la plus prudente. **Horaires gardés seulement pour les comptes CSM de

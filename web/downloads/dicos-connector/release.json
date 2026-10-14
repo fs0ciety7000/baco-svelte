@@ -1,18 +1,18 @@
 {
   "version": "1.8.0",
-  "builtAt": "2026-10-14T15:05:27.390Z",
+  "builtAt": "2026-10-14T15:13:16.752Z",
   "files": [
     {
       "name": "csm-dicos-connector-chrome-v1.8.0.zip",
       "browser": "chrome",
       "bytes": 32065,
-      "sha256": "4b82ae1fd32b7c2cd0234d6cd7781eac691534c2b015d27789536458da6508a8"
+      "sha256": "125a2352d84563fcd5c60ec303a1c1999939cb1b84f9660fa099a3d8ac1629cc"
     },
     {
       "name": "csm-dicos-connector-firefox-v1.8.0.zip",
       "browser": "firefox",
       "bytes": 32180,
-      "sha256": "99afa9b9ebf60e2e00f508a02592f7f93b4e996084eaaf7480c5309549ca6f77"
+      "sha256": "a70b97a765a5ebf1e853a42d9703f53644b1d631a38df9f5a6891ece0d7255e4"
     }
   ]
 }

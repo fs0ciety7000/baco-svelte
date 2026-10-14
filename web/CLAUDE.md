@@ -512,7 +512,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - Cadrage : `../docs/design/CADRAGE-QUINYX.md`. Logique pure `lib/quinyx/model.ts` (testée) : `quinyxBatchSchema`
   (lot de l'extension : un groupe, une période ≤ 62 j), `isCapturedCode` (PACO_ / RCCA_ / EXTRA seulement),
   `shiftKind`, `placeDistrict` (motif le plus long en mots entiers), `mapQuinyxBatch` (affectées, captées, jour <
-  `publishedUntil` **exclu**, heures de Bruxelles → UTC par `brusselsToUtc`), `suggestUser` (nom complet identique,
+  `publishedUntil` **inclus**, heures de Bruxelles → UTC par `brusselsToUtc`), `suggestUser` (nom complet identique,
   une seule correspondance), `weekDays`, `weekRows`, `brusselsClock`, `DUTY_NAME` (DSO → « Sud-Ouest »…).
 - Ingestion : `server/quinyx-ingest.ts` (`connectorRequest` = jeton de connecteur + débit + compte de service,
   réutilisable ; `ingestQuinyx` : groupe configuré et activé sinon 404, agents créés / mis à jour avec proposition,

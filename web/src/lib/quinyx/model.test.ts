@@ -29,7 +29,7 @@ function batch(over: Partial<QuinyxBatch> = {}): QuinyxBatch {
     group: "111",
     from: "2026-10-01",
     to: "2026-10-31",
-    publishedUntil: "2026-10-20",
+    publishedUntil: "2026-10-19",
     unit: "Operations OCC Test",
     sections: [
       { id: 111, name: "Operations OCC Test" },
@@ -155,7 +155,7 @@ describe("conversion d'un lot", () => {
   it("ne garde que les prestations affectées, captées et publiées", () => {
     const r = mapQuinyxBatch(batch(), PLACES);
     expect(r.shifts.map((s) => s.quinyx_id)).toEqual(["1", "2", "4"]);
-    expect(r.ignored).toBe(4); // non affectée, repos, visite médicale, non publiée (20 oct.)
+    expect(r.ignored).toBe(4); // non affectée, repos, visite médicale, non publiée (20 oct. > 19 oct.)
     expect(r.agents.map((a) => a.quinyx_id).sort()).toEqual(["901", "902"]);
   });
 
@@ -282,5 +282,12 @@ describe("comptes de l'équipe", () => {
     expect(["guest", "screen", "connector", "disabled", "", undefined].some(isTeamAccount)).toBe(
       false,
     );
+  });
+});
+
+describe("date de publication", () => {
+  it("le jour de publication est inclus", () => {
+    const r = mapQuinyxBatch(batch({ publishedUntil: "2026-10-20" }), PLACES);
+    expect(r.shifts.map((s) => s.quinyx_id)).toContain("7");
   });
 });
