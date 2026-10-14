@@ -289,6 +289,87 @@ test("bus : création, enregistrement automatique, fin, envoi", async ({ page },
   expect(errors).toEqual([]);
 });
 
+test("bus : barre d'actions mobile (une action principale + feuille « ⋯ »)", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "mobile", "barre d'actions mobile (< 768 px)");
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  const agent = await pb(
+    "GET",
+    `/api/collections/users/records?filter=${encodeURIComponent(`email="${identity}"`)}`,
+  );
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(
+    new Date(),
+  );
+  const order = await pb("POST", "/api/collections/bus_orders/records", {
+    status: "brouillon",
+    created_by: agent.items[0].id,
+    reason: "Barre d'actions mobile (essai)",
+    order_date: `${today} 00:00:00.000Z`,
+    origin: "Mons",
+    destination: "Soignies",
+    company: fixtures.find((f) => f.col === "bus_companies")!.id,
+    buses: [{ planned: "08:00" }],
+  });
+  await login(page, `/commandes/bus/${order.id}`);
+  const bar = page.getByTestId("order-action-bar");
+  await expect(bar).toBeVisible();
+  // Une seule action visible (Terminer), pleine largeur ; l'annulation n'est plus dans la barre.
+  const main = bar.getByTestId("transition-termine");
+  await expect(main).toBeVisible();
+  await expect(bar.getByTestId("transition-annule")).toBeHidden();
+  const [barBox, mainBox] = [await bar.boundingBox(), await main.boundingBox()];
+  expect(mainBox!.width).toBeGreaterThan(barBox!.width * 0.7);
+  // Hauteur fixe en bas d'écran : barre d'actions + barre d'onglets (≈ 190 px avant la refonte R6).
+  const fixed = await page.evaluate(() => {
+    const el = document.querySelector<HTMLElement>('[data-testid="order-action-bar"]')!;
+    return Math.round(window.innerHeight - el.getBoundingClientRect().top);
+  });
+  info.annotations.push({ type: "hauteur fixe (px)", description: String(fixed) });
+  expect(fixed).toBeLessThanOrEqual(125);
+  await noHorizontalScroll(page);
+  // Segmented « Type C3 » : aucun libellé coupé en 390 px (passe en grille si besoin).
+  const cut = await page
+    .getByRole("radiogroup", { name: "Type C3" })
+    .getByRole("radio")
+    .evaluateAll((els) =>
+      els.filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.textContent),
+    );
+  expect(cut).toEqual([]);
+  await page.screenshot({ path: `test-results/r5r6-bus-barre-${info.project.name}.png` });
+
+  await bar.getByTestId("order-more").click();
+  const sheet = page.getByTestId("order-actions-sheet");
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByText("Aperçu PDF")).toBeVisible();
+  const cancel = sheet.getByTestId("sheet-transition-annule");
+  await expect(cancel).toBeVisible();
+  // Annulation séparée, en bas, en rouge.
+  const items = await sheet.locator("a, button").all();
+  expect(await items.at(-1)!.getAttribute("data-testid")).toBe("sheet-transition-annule");
+  await page.waitForTimeout(400); // fin de l'animation de la feuille
+  await page.screenshot({ path: `test-results/r5r6-bus-feuille-${info.project.name}.png` });
+
+  // Le dialogue de motif s'ouvre après la fermeture de la feuille (il n'est pas démonté avec elle).
+  await cancel.click();
+  const dialog = page.getByRole("dialog", { name: "Annuler la commande" });
+  await expect(dialog).toBeVisible();
+  await expect(sheet).toBeHidden();
+  const motif = dialog.getByLabel("Motif d'annulation");
+  await expect(motif).toBeVisible();
+  await motif.fill("Essai de la feuille mobile");
+  await page.waitForTimeout(300);
+  const box = await dialog.boundingBox();
+  expect(box!.y).toBeGreaterThanOrEqual(0);
+  expect(box!.y + box!.height).toBeLessThanOrEqual(844 + 1);
+  await dialog.getByRole("button", { name: "Annuler la commande" }).click();
+  await expect(page.getByText(/annuler la commande — fait/i)).toBeVisible();
+  const after = await pb("GET", `/api/collections/bus_orders/records/${order.id}`);
+  expect(after.status).toBe("annule");
+  expect(errors).toEqual([]);
+});
+
 test("modèle partagé : envoi possible sans modification", async ({ page }, info) => {
   test.skip(info.project.name !== "desktop", "parcours en desktop");
   await login(page, "/commandes/nouveau");

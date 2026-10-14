@@ -82,3 +82,25 @@ export function isCoordinator(role: string): boolean {
 export function isEditable(status: Status): boolean {
   return status !== "annule" && status !== "envoye";
 }
+
+/** Action principale de la barre (une seule en mobile, pleine largeur). */
+export type MainAction =
+  { type: "send" } | { type: "create" } | { type: "transition"; t: Transition } | null;
+
+/**
+ * Choix de l'action principale : « Valider l'envoi » (bon terminé), « Créer le bon » (bon neuf), la transition principale
+ * (Terminer, Rétablir), sinon la première transition de retour (Rouvrir, Revenir en cours). Jamais l'annulation.
+ * Sert à la barre d'actions des bons (`OrderActionBar`, refonte R6).
+ */
+export function mainActionOf(opts: {
+  canSend: boolean;
+  canCreate: boolean;
+  transitions: Transition[];
+}): MainAction {
+  if (opts.canSend) return { type: "send" };
+  if (opts.canCreate) return { type: "create" };
+  const primary = opts.transitions.find((t) => t.primary);
+  if (primary) return { type: "transition", t: primary };
+  const back = opts.transitions.find((t) => t.tone !== "danger");
+  return back ? { type: "transition", t: back } : null;
+}

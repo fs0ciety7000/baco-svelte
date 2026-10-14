@@ -21,17 +21,51 @@ type Extra = Omit<Parameters<typeof transitionOrder>[0], "kind" | "id" | "to">;
  * bon en « Envoyé / finalisé » ; Annuler exige un motif. Le serveur revérifie chaque transition.
  */
 export function TransitionButtons({
-  kind,
-  id,
-  status,
-  statusBeforeCancel,
-  coordinator,
-  buses,
-  before,
-  onDone,
-  hideSend = false,
   size = "md",
+  ...props
+}: TransitionOptions & { size?: "sm" | "md" }) {
+  const tr = useOrderTransitions(props);
+  if (tr.list.length === 0) return null;
+  return (
+    <>
+      {tr.list.map((t) => (
+        <TransitionButton key={t.to} t={t} tr={tr} size={size} />
+      ))}
+      {tr.dialog}
+    </>
+  );
+}
+
+/** Un bouton de transition (variante selon le rôle : principale, retour, annulation). */
+export function TransitionButton({
+  t,
+  tr,
+  size = "md",
+  className,
+  variant,
 }: {
+  t: Transition;
+  tr: OrderTransitions;
+  size?: "sm" | "md";
+  className?: string;
+  variant?: "primary" | "secondary" | "danger";
+}) {
+  return (
+    <Button
+      size={size}
+      variant={variant ?? (t.primary ? "primary" : t.tone === "danger" ? "danger" : "secondary")}
+      loading={tr.pending && !tr.dialogOpen}
+      disabled={tr.pending}
+      onClick={() => tr.click(t)}
+      data-testid={`transition-${t.to}`}
+      className={className}
+    >
+      {t.label}
+    </Button>
+  );
+}
+
+export type TransitionOptions = {
   kind: OrderKind;
   id: string;
   status: Status;
@@ -43,8 +77,26 @@ export function TransitionButtons({
   onDone?: (to: Status) => void;
   /** « Valider l'envoi » passe par la feuille d'envoi du formulaire (contrôles, destinataires) : masqué ici. */
   hideSend?: boolean;
-  size?: "sm" | "md";
-}) {
+};
+
+export type OrderTransitions = ReturnType<typeof useOrderTransitions>;
+
+/**
+ * Logique des transitions sans rendu des boutons : la barre d'actions mobile des bons (`OrderActionBar`) range les
+ * transitions dans une feuille. Le dialogue (`dialog`) doit être rendu HORS de cette feuille : il reste monté quand
+ * elle se ferme.
+ */
+export function useOrderTransitions({
+  kind,
+  id,
+  status,
+  statusBeforeCancel,
+  coordinator,
+  buses,
+  before,
+  onDone,
+  hideSend = false,
+}: TransitionOptions) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [dialog, setDialog] = useState<Transition | null>(null);
@@ -94,33 +146,21 @@ export function TransitionButtons({
     else run(t, {});
   };
 
-  if (list.length === 0) return null;
-  return (
-    <>
-      {list.map((t) => (
-        <Button
-          key={t.to}
-          size={size}
-          variant={t.primary ? "primary" : t.tone === "danger" ? "danger" : "secondary"}
-          loading={pending && dialog === null}
-          disabled={pending}
-          onClick={() => click(t)}
-          data-testid={`transition-${t.to}`}
-        >
-          {t.label}
-        </Button>
-      ))}
-      {dialog ? (
-        <TransitionDialog
-          transition={dialog}
-          buses={buses ?? []}
-          pending={pending}
-          onCancel={() => setDialog(null)}
-          onSubmit={(extra) => run(dialog, extra)}
-        />
-      ) : null}
-    </>
-  );
+  return {
+    list,
+    pending,
+    click,
+    dialogOpen: dialog !== null,
+    dialog: dialog ? (
+      <TransitionDialog
+        transition={dialog}
+        buses={buses ?? []}
+        pending={pending}
+        onCancel={() => setDialog(null)}
+        onSubmit={(extra) => run(dialog, extra)}
+      />
+    ) : null,
+  };
 }
 
 function TransitionDialog({
