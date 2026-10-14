@@ -38,7 +38,12 @@ export type CatalogEntry = {
 // pas (ils sont seulement des étiquettes) ; seuls l'ordre, le groupe et le libellé suivent les menus.
 export const TASKS: { id: string; group: string; label: string }[] = [
   { id: "operations.stats", group: "Accueil", label: "Statistiques" },
-  { id: "operations.journal", group: "Opérations", label: "Journal, Ma journée, Relève" },
+  {
+    id: "operations.journal",
+    group: "Opérations",
+    label: "Journal, Ma journée, synthèse de la B201",
+  },
+  { id: "commandes.b201", group: "Opérations", label: "B201 (notes et transports du jour)" },
   { id: "commandes.bus", group: "Commandes", label: "Bons bus" },
   { id: "commandes.fournisseurs", group: "Commandes", label: "Fournisseurs" },
   { id: "commandes.taxi", group: "Commandes", label: "Taxis" },
@@ -55,7 +60,6 @@ export const TASKS: { id: string; group: string; label: string }[] = [
   { id: "ressources.annuaire", group: "Ressources", label: "Contacts" },
   { id: "equipe", group: "Ressources", label: "Collègues, planning et présence" },
   { id: "ressources.documents", group: "Ressources", label: "Procédures et documents" },
-  { id: "commandes.b201", group: "Ressources", label: "B201" },
   { id: "nouveautes", group: "Nouveautés", label: "Nouveautés" },
   { id: "baco", group: "Historique", label: "Lectures héritées de BACO" },
 ];
@@ -197,10 +201,10 @@ const ENTRIES: CatalogEntry[] = [
     ["generate_taxi:update"],
   ),
   ...module("b201", "commandes.b201", [
-    ["read", "Voir la B201", "Peut voir la remise B201", PM],
-    ["write", "Rédiger la B201", "Peut rédiger la remise B201 du jour", PM],
-    ["update", "Modifier la B201", "Peut modifier une remise B201", PM],
-    ["delete", "Supprimer une B201", "Peut supprimer une remise B201", MOD],
+    ["read", "Voir la B201", "Peut voir la B201 (notes et transports du jour)", PM],
+    ["write", "Rédiger la B201", "Peut rédiger les notes de la B201 du jour", PM],
+    ["update", "Modifier la B201", "Peut modifier les notes d'une B201", PM],
+    ["delete", "Supprimer une B201", "Peut supprimer une B201", MOD],
   ]),
   ...module("archives", "commandes.archives", [
     ["read", "Voir les archives", "Peut voir et télécharger les PDF archivés des bons", PM],

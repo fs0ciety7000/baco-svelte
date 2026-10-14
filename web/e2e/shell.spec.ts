@@ -117,7 +117,9 @@ const OLD_ROUTES: [string, string][] = [
   ["/equipe/planning?jour=2026-10-14", "/ressources/planning?jour=2026-10-14"],
   ["/equipe/profil?x=1", "/profil?x=1"],
   ["/equipe/nouveautes", "/changelog"],
-  ["/commandes/b201?jour=2026-10-14", "/ressources/b201?jour=2026-10-14"],
+  ["/commandes/b201?jour=2026-10-14", "/operations/b201?jour=2026-10-14"],
+  ["/ressources/b201?jour=2026-10-14", "/operations/b201?jour=2026-10-14"],
+  ["/operations/releve?district=tous", "/operations/b201?district=tous"],
   ["/pmr/groupes?du=2026-10-14", "/groupes?du=2026-10-14"],
 ];
 

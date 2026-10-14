@@ -220,6 +220,23 @@ class Layout {
     });
     this.y -= 1.5;
   }
+
+  /** Texte courant sur toute la largeur (notes en Markdown aplati : titres en gras, puces en retrait). */
+  paragraph(lines: { text: string; bold?: boolean; indent?: number; gap?: boolean }[]) {
+    const lh = 13;
+    for (const p of lines) {
+      if (p.gap) this.y -= 5;
+      const x = MARGIN + (p.indent ?? 0) * 12;
+      const o = { bold: p.bold };
+      const wrapped = p.text.trim() ? this.wrap(p.text, MARGIN + WIDTH - x, o) : [""];
+      for (const l of wrapped) {
+        this.ensure(lh);
+        this.text(l, x, this.y - 10, o);
+        this.y -= lh;
+      }
+    }
+    this.y -= 1.5;
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -576,10 +593,15 @@ export async function taxiOrderPdf(detail: TaxiPdfDetail, ctx: PdfContext): Prom
 export type B201PdfInput = {
   day: string;
   district: string;
+  /** Notes du jour (Markdown aplati par `markdownToPdfLines`). */
+  notes: { text: string; bold?: boolean; indent?: number; gap?: boolean }[];
+  /** Note sous les notes (auteur et heure de la dernière modification). */
+  notesMeta?: string;
+  /** Synthèse de la relève (jour même seulement), même format. */
+  handover?: { text: string; bold?: boolean; indent?: number; gap?: boolean }[];
   periods: {
     label: string;
     range: string;
-    note: string;
     entries: {
       service: string;
       time: string;
@@ -589,18 +611,17 @@ export type B201PdfInput = {
       manual: boolean;
     }[];
   }[];
-  next: string;
 };
 
 export async function b201Pdf(input: B201PdfInput, ctx: PdfContext): Promise<Uint8Array> {
   const { doc, font, l, at } = await setup(
-    `Remise B201 ${input.day}`,
-    `Remise de service B201 du ${formatShortDay(input.day)}`,
+    `B201 ${input.day}`,
+    `B201 du ${formatShortDay(input.day)}`,
     ctx,
   );
   const office = officeFor(input.district || "Sud-Ouest");
   header(l, office, ctx.agentName, {
-    name: "Remise de service B201",
+    name: "B201 — remise de service",
     lines: [
       formatShortDay(input.day),
       input.district ? `District ${input.district}` : "Tous districts",
@@ -608,12 +629,20 @@ export async function b201Pdf(input: B201PdfInput, ctx: PdfContext): Promise<Uin
   });
   title(
     l,
-    "Remise de service",
-    "Transports de remplacement commandés (bus, taxis, taxis PMR)",
+    "B201 — remise de service",
+    "Notes du jour, relève et transports de remplacement (bus, taxis, taxis PMR)",
     formatShortDay(input.day),
   );
+  l.section("Notes et commentaires");
+  if (input.notes.some((n) => n.text.trim())) l.paragraph(input.notes);
+  else l.field("Notes", "—");
+  if (input.notesMeta) l.paragraph([{ text: input.notesMeta, gap: true }]);
+  if (input.handover?.length) {
+    l.section("Synthèse de la relève");
+    l.paragraph(input.handover);
+  }
   for (const p of input.periods) {
-    l.section(`${p.label} (${p.range})`);
+    l.section(`Transports · ${p.label} (${p.range})`);
     if (p.entries.length === 0) l.field("Transports", "Aucun");
     for (const e of p.entries) {
       l.field(
@@ -621,10 +650,7 @@ export async function b201Pdf(input: B201PdfInput, ctx: PdfContext): Promise<Uin
         `${e.route} · ${e.company || "?"}${e.ref ? ` · ${e.ref}` : ""}${e.manual ? " (saisie manuelle)" : ""}`,
       );
     }
-    l.field("Commentaires", p.note || "—");
   }
-  l.section("Pour le service suivant");
-  l.field("Commentaires", input.next || "—");
   footer(doc, font, at, `B201 ${input.day}`);
   return doc.save();
 }

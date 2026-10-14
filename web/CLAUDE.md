@@ -49,9 +49,9 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 ## Navigation v3 (14 oct. 2026, `../docs/design/AUDIT-NAVIGATION.md`)
 
 - `src/navigation.ts` : Accueil (À traiter `/` · Statistiques `/statistiques`), Opérations (Journal par défaut · Ma journée ·
-  Relève), Commandes (Suivi par défaut · Bus · Taxi · Archives · Fournisseurs), PMR (Missions · Groupes · Clients · Matériel ·
+  **B201** `/operations/b201`, ex-Relève), Commandes (Suivi par défaut · Bus · Taxi · Archives · Fournisseurs), PMR (Missions · Groupes · Clients · Matériel ·
   Historique), **Réseau** (`/reseau` = Trains en direct · `/reseau/horaires` · `lignes` · `gares` · `ptcar` · `ebp` · `pn`),
-  **Ressources** (`/ressources` = Contacts · `/ressources/equipe` Collègues · `planning` · `documents` · `b201`). Module
+  **Ressources** (`/ressources` = Contacts · `/ressources/equipe` Collègues · `planning` · `documents` ; la B201 est passée dans Opérations le 15 oct. 2026). Module
   Équipe supprimé. Un onglet peut exiger plusieurs clés (`permission: [...]`) ou **l'une d'elles** (`anyOf`, Suivi : bus OU
   taxi). `ACCOUNT_LINKS` / `accountLinks(user)` (Mon profil `/profil`, Mon planning, Extension CSM `/extension`) : menu du
   compte (`ShellData.account`), ⌘K, et `requireRoute` les accepte comme des onglets. `activeModule` = **plus long préfixe**
@@ -383,7 +383,22 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `data-print="hide"`, `FilterForm` et `ChipRow` masqués, vue tableau imprimée, fil du Journal en entier) ; bouton
   « Imprimer » dans le Journal.
 - E2E Admin : `e2e/admin.spec.ts` (compte `E2E_ADMIN_IDENTITY` / `E2E_ADMIN_PASSWORD`, créé par la CI).
-- **Relève de service** (`/operations/releve`, `journal:read`) : `server/data/handover.ts` (`buildHandover`, districts du jour
+- **B201** (15 oct. 2026, `/operations/b201`, onglet `anyOf: [journal:read, b201:read]` ; `/operations/releve`,
+  `/ressources/b201`, `/commandes/b201` redirigent en 308) : la Relève renommée, qui remplace l'ancienne remise B201 de
+  Ressources. Un jour (`?jour=`, ← / → / T par `B201Keys`) et des districts (codes ou noms, ceux du jour par défaut,
+  `tous`) ; sommaire en puces ; **Synthèse de la relève** (`HandoverView`, aujourd'hui seulement : c'est un instantané ;
+  la copie / l'épinglage ajoutent les notes, `handoverText(…, { notes })`) ; **Notes et commentaires du jour**
+  (`components/ops/b201-board.tsx` → `MarkdownEditor`, `components/ops/markdown-editor.tsx` : barre d'outils gras /
+  italique / titre / listes / lien, Ctrl+B / I, aperçu `ChatMarkdown`, côte à côte dès 1024 px, onglets Écrire / Aperçu
+  plus étroit ; enregistrement automatique `useAutosave` + verrou optimiste, conflit = message avec l'auteur ; « Modifié à …
+  par … » ; **versions du jour** restaurables, tenues par le hook PocketBase) ; **Transports du jour** (commandes + saisies
+  hors outil, comme l'ancienne remise ; les commentaires par période ont disparu, repris en Markdown). Logique pure
+  `lib/ops/b201.ts` (`legacyNotesToMarkdown`, `b201NotesOf` : relit `notes` si `content` est vide, `applyFormat`,
+  `markdownToPdfLines`, `parseVersions` ; testée, avec le hook `pocketbase/pb_hooks/lib/b201.js`). Action `saveB201`
+  (`commandes/actions.ts`) : `{ day, content, manual, expectedUpdated }`. PDF `/api/commandes/b201/{jour}/pdf` : notes
+  (Markdown aplati, `Layout.paragraph`), synthèse de la relève (jour même, `journal:read`), transports par période.
+  Toujours **une fiche par jour** (le district ne filtre que l'affichage). E2E `e2e/b201.spec.ts`.
+- **Synthèse de la relève** (ex-« Relève de service », dans la B201, `journal:read`) : `server/data/handover.ts` (`buildHandover`, districts du jour
   ou `?district=DSO|DSE|DCE|tous`) → bons bus / taxi terminés à envoyer, en cours ; missions et groupes
   à venir (jusqu'à demain 10 h) ; trains en retard ; ALEA du jour non encodés ; urgences 12 h + consignes ; perturbations
   iRail 12 h. Texte copiable `handoverText` (`lib/ops/handover.ts`, testé), « Épingler au Journal » (`pinHandover` :

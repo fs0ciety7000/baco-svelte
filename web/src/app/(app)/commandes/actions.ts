@@ -30,7 +30,8 @@ import {
 import { primaryDistrict } from "@/lib/team";
 import { archiveOrder } from "@/server/archives";
 import { requireUser, type SessionUser } from "@/server/auth";
-import { manualEntrySchema, notesSchema } from "@/server/data/b201";
+import { B201_NOTES_MAX } from "@/lib/ops/b201";
+import { manualEntrySchema } from "@/server/data/b201";
 import {
   busDraftFromRecord,
   busDraftToRecord,
@@ -779,11 +780,12 @@ export async function loadOrderPanel(input: {
 }
 
 // ---------------------------------------------------------------------------------------------------
-// Remise B201 (une par jour) : commentaires par période et transports hors outil
+// B201 (une par jour, Opérations › B201 depuis le 15 oct. 2026) : notes du jour en Markdown et transports hors outil.
+// Les anciens commentaires par période (`notes`) ne sont plus écrits : ils sont repris en Markdown (migration 1760004830).
 
 const b201Schema = z.object({
   day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  notes: notesSchema,
+  content: z.string().max(B201_NOTES_MAX, "Notes trop longues (20 000 caractères au plus)."),
   manual: z.array(manualEntrySchema).max(200),
   expectedUpdated: z.string().nullable(),
 });
@@ -794,18 +796,27 @@ export async function saveB201(
   try {
     const p = b201Schema.parse(input);
     const user = await requireUser();
-    if (!canWriteB201(user))
-      return { ok: false, error: "Remise B201 : droit d'écriture manquant." };
+    if (!canWriteB201(user)) return { ok: false, error: "B201 : droit d'écriture manquant." };
     const pb = await pbForRequest();
     const current = await pb
       .collection("b201_reports")
-      .getFirstListItem(pb.filter("day = {:day}", { day: p.day }))
+      .getFirstListItem(pb.filter("day = {:day}", { day: p.day }), {
+        expand: "updated_by",
+        fields: "id,updated,expand.updated_by.name,expand.updated_by.username",
+      })
       .catch(() => null);
     // Verrou optimiste : deux agents sur la même B201 (le jour n'est jamais modifiable : bug B1 de BACO).
-    if (current && current.updated !== p.expectedUpdated) throw new ConflictError();
+    if (current && current.updated !== p.expectedUpdated) {
+      const by = current.expand?.updated_by as { name?: string; username?: string } | undefined;
+      const who = by?.name || by?.username;
+      return {
+        ok: false,
+        error: `CONFLIT : la B201 a été modifiée${who ? ` par ${who}` : ""} entre-temps. Recharge la page (ta saisie reste affichée : copie-la avant).`,
+      };
+    }
     if (!can(user, current ? "b201:update" : "b201:write"))
-      return { ok: false, error: "Remise B201 : droit manquant pour cette action." };
-    const body = { notes: p.notes, manual: p.manual, updated_by: user.id };
+      return { ok: false, error: "B201 : droit manquant pour cette action." };
+    const body = { content: p.content, manual: p.manual, updated_by: user.id };
     const r = current
       ? await pb.collection("b201_reports").update(current.id, body)
       : await pb.collection("b201_reports").create({ ...body, day: p.day });

@@ -52,6 +52,8 @@ describe("redirections des anciennes routes (navigation v3)", () => {
       "/equipe/planning",
       "/equipe/profil",
       "/commandes/b201",
+      "/ressources/b201",
+      "/operations/releve",
     ];
     for (const o of old) expect(LEGACY_REDIRECTS.map((r) => r.source)).toContain(o);
     // Alias gardé (script de connexion des extensions installées) : servi, pas redirigé.

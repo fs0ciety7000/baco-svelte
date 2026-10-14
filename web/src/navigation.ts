@@ -98,10 +98,12 @@ export const MODULES: NavModule[] = [
         keywords: ["frise", "ligne de temps", "planning du jour", "agenda"],
       },
       {
-        href: "/operations/releve",
-        label: "Relève",
-        permission: "journal:read",
-        keywords: ["relève", "passation", "fin de service", "synthèse"],
+        // B201 (15 oct. 2026) : la Relève renommée, avec les notes du jour en Markdown qui remplacent l'ancienne remise
+        // B201 de Ressources. Ouverte à qui lit le Journal (synthèse) OU la B201 (notes, transports).
+        href: "/operations/b201",
+        label: "B201",
+        anyOf: ["journal:read", "b201:read"],
+        keywords: ["relève", "remise", "remise B201", "passation", "fin de service", "synthèse", "notes"],
       },
     ],
   },
@@ -254,12 +256,6 @@ export const MODULES: NavModule[] = [
         label: "Procédures et documents",
         permission: "documents:read",
         keywords: ["procédures", "documents", "PDF"],
-      },
-      {
-        href: "/ressources/b201",
-        label: "B201",
-        permission: "b201:read",
-        keywords: ["remise", "remise B201", "service"],
       },
     ],
   },

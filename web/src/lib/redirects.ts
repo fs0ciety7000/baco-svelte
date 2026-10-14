@@ -33,8 +33,10 @@ export const LEGACY_REDIRECTS: LegacyRedirect[] = [
   { source: "/equipe/planning", destination: "/ressources/planning" },
   { source: "/equipe/profil", destination: "/profil" },
   { source: "/equipe/nouveautes", destination: "/changelog" },
-  // Commandes : la B201 passe dans Ressources.
-  { source: "/commandes/b201", destination: "/ressources/b201" },
+  // B201 (15 oct. 2026) : la Relève devient « B201 » (Opérations) et remplace la remise B201 de Ressources.
+  { source: "/commandes/b201", destination: "/operations/b201" },
+  { source: "/ressources/b201", destination: "/operations/b201" },
+  { source: "/operations/releve", destination: "/operations/b201" },
   // PMR : Groupes en route courte (9 oct. 2026).
   { source: "/pmr/groupes", destination: "/groupes" },
 ];

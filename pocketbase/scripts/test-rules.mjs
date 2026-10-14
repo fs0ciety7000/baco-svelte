@@ -329,6 +329,12 @@ try {
 	check('PACO/RCCA lit la B201', b2p.status === 200, `HTTP ${b2p.status}`);
 	const b2m = await api('PATCH', `/api/collections/b201_reports/records/${b2.json.id}`, { token: roles.admin.token, body: { day: '2099-01-02', updated_by: roles.admin.id } });
 	check('jour de la B201 non modifiable (bug B1 de BACO)', b2m.status >= 400, `HTTP ${b2m.status}`);
+	// Notes Markdown (15 oct. 2026) : versions du jour tenues par le hook, jamais celles envoyées par un client.
+	const b201Forged = [{ at: '2099-01-01 00:00:00.000Z', by: 'forge', content: 'faux' }];
+	const b2c = await api('PATCH', `/api/collections/b201_reports/records/${b2.json.id}`, { token: roles.admin.token, body: { content: 'v1', versions: b201Forged, updated_by: roles.admin.id } });
+	check('B201 : notes Markdown enregistrées, versions forgées ignorées', b2c.status === 200 && b2c.json.content === 'v1' && !JSON.stringify(b2c.json.versions || []).includes('forge'), `HTTP ${b2c.status}`);
+	const b2v = await api('PATCH', `/api/collections/b201_reports/records/${b2.json.id}`, { token: roles.moderator.token, body: { content: 'v2', updated_by: roles.moderator.id } });
+	check("B201 : la version précédente est gardée au changement d'auteur", b2v.status === 200 && Array.isArray(b2v.json.versions) && b2v.json.versions[0]?.content === 'v1', `HTTP ${b2v.status}`);
 
 	for (const [c, id] of [
 		['bus_orders', bid],
