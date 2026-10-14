@@ -1,3 +1,4 @@
+import { assertNotActing } from "./session";
 import "server-only";
 
 import { env } from "./env";
@@ -37,6 +38,8 @@ export async function internal<T>(
   path: string,
   body: unknown,
 ): Promise<{ status: number; data: T }> {
+  // Enregistrer une passkey pendant « Voir en tant que » l'ajouterait au compte de la cible : refusé.
+  if (path === "register") await assertNotActing();
   const res = await fetch(`${env.PB_URL.replace(/\/$/, "")}/api/csm/passkey/${path}`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-csm-internal": env.CSM_INTERNAL_SECRET },

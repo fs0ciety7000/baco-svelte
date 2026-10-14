@@ -1,6 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { isExpired } from "@/server/token";
+import {
+  AS_COOKIE,
+  READ_ONLY_HEADER,
+  actingBlock,
+  parseActingCookie,
+  readOnlyMessage,
+} from "@/lib/impersonation";
+import { isExpired, tokenPayload } from "@/server/token";
 
 // Garde de premier niveau : sans jeton valide, redirection vers /connexion. La vraie vérification
 // (agent existant, non désactivé, rôle) est faite côté serveur à chaque page et par PocketBase.
@@ -55,6 +62,33 @@ export async function middleware(request: NextRequest) {
   const isPublic = PUBLIC.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   const isApi = pathname.startsWith("/api/");
 
+  // « Voir en tant que » (14 oct. 2026) : cookie `csm_as` valable seulement avec la session du même admin et un jeton de
+  // la cible non expiré. Pendant le mode, toute écriture est refusée ici (403), sauf la fin du mode et les Server
+  // Actions (où le client PocketBase de la cible refuse toute écriture : server/pocketbase.ts) ; exports nominatifs aussi.
+  const asRaw = request.cookies.get(AS_COOKIE)?.value;
+  let clearAs = false;
+  if (asRaw) {
+    const as = parseActingCookie(asRaw);
+    const ownId = valid && token ? tokenPayload(token)?.id : null;
+    if (!as || !token || !ownId || as.adminId !== ownId) clearAs = true;
+    else if (isExpired(as.token)) {
+      clearAs = true;
+      await auditExpiredActing(token, as.token);
+    } else {
+      const block = actingBlock(request.method, pathname, request.headers.has("next-action"));
+      if (block) {
+        const res = new NextResponse(
+          JSON.stringify({ message: readOnlyMessage(), code: `readonly-${block}` }),
+          { status: 403, headers: { "content-type": "application/json; charset=utf-8" } },
+        );
+        res.headers.set(READ_ONLY_HEADER, block);
+        res.headers.set("x-robots-tag", ROBOTS);
+        res.headers.set("cache-control", "no-store");
+        return res;
+      }
+    }
+  }
+
   if (!valid && !isPublic && !isApi) {
     const url = request.nextUrl.clone();
     url.pathname = "/connexion";
@@ -62,6 +96,7 @@ export async function middleware(request: NextRequest) {
     const res = NextResponse.redirect(url);
     res.headers.set("x-robots-tag", ROBOTS);
     if (token) res.cookies.delete(SESSION_COOKIE);
+    if (asRaw) res.cookies.delete(AS_COOKIE);
     return res;
   }
 
@@ -81,6 +116,7 @@ export async function middleware(request: NextRequest) {
       "cache-control",
       "private, no-cache, no-store, max-age=0, must-revalidate, no-transform",
     );
+  if (clearAs) res.cookies.delete(AS_COOKIE);
   if (valid && isExpired(token, Date.now(), REFRESH_MARGIN_S)) {
     try {
       const pbUrl = process.env.PB_URL ?? "http://127.0.0.1:8090";
@@ -103,6 +139,24 @@ export async function middleware(request: NextRequest) {
     }
   }
   return res;
+}
+
+/** Fin de « Voir en tant que » par expiration du jeton de la cible : tracée dans le journal d'audit (jamais bloquant). */
+async function auditExpiredActing(own: string, asToken: string): Promise<void> {
+  const secret = process.env.CSM_INTERNAL_SECRET ?? "";
+  const target = tokenPayload(asToken)?.id;
+  if (secret.length < 32 || !target) return;
+  try {
+    const pbUrl = (process.env.PB_URL ?? "http://127.0.0.1:8090").replace(/\/$/, "");
+    await fetch(`${pbUrl}/api/csm/impersonate/stop`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-csm-internal": secret, authorization: own },
+      body: JSON.stringify({ target }),
+      signal: AbortSignal.timeout(3000),
+    });
+  } catch {
+    // Trace perdue : le mode se termine quand même.
+  }
 }
 
 export const config = {

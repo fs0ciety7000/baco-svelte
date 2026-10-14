@@ -12,6 +12,7 @@ import { readSessionToken } from "@/server/session";
  */
 export async function acknowledgeChangelog(version: string): Promise<void> {
   const user = await requireUser();
+  if (user.impersonatedBy) return;
   const latest = currentVersion();
   if (!isVersion(version) || !latest || compareVersions(version, latest) > 0) return;
   const pb = createPb(await readSessionToken());

@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { can } from "@/lib/permissions";
 import { requireUser } from "@/server/auth";
+import { assertNotActing } from "@/server/session";
 import { pbForRequest } from "@/server/data/orders";
 import { env } from "@/server/env";
 import { invalidateStationDistricts } from "@/server/station-districts";
@@ -39,6 +40,7 @@ function fail(e: unknown): { ok: false; error: string } {
 /** Propositions recalculées par PocketBase (route interne) ; sans secret : au prochain import. */
 async function refreshSuggestions() {
   if (env.CSM_INTERNAL_SECRET.length < 32) return;
+  await assertNotActing();
   await fetch(`${env.PB_URL.replace(/\/$/, "")}/api/csm/stations/suggest`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-csm-internal": env.CSM_INTERNAL_SECRET },

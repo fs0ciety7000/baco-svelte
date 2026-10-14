@@ -4,13 +4,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { passwordResetEnabled } from "@/app/connexion/reset-actions";
+import { ImpersonateCard } from "@/components/admin/impersonate-card";
 import { UserEditor } from "@/components/admin/user-editor";
+import { impersonationRefusal } from "@/lib/impersonation";
 import { UserPasskeys } from "@/components/admin/user-passkeys";
 import { requireAdmin } from "@/server/auth";
 import { TokenList } from "@/components/pmr/extension-connect";
 import { getUser } from "@/server/data/admin";
 import { pbForRequest } from "@/server/data/orders";
 import { listMyConnectorTokens } from "@/server/extension";
+import { impersonationEnabled } from "@/server/impersonation";
 
 export const metadata: Metadata = { title: "Compte · Administration · CSM" };
 
@@ -44,6 +47,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       <Link href="/admin" className="inline-flex min-h-11 items-center gap-1 text-small link">
         <ArrowLeft aria-hidden className="size-4" /> Retour aux utilisateurs
       </Link>
+      {impersonationEnabled() && !impersonationRefusal(me, user) ? (
+        <ImpersonateCard id={user.id} name={user.name || user.username} />
+      ) : null}
       <UserEditor
         key={`${user.id}-${user.role}`}
         user={user}

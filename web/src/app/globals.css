@@ -480,3 +480,29 @@
 [data-compact-empty] [data-slot="empty-desc"] {
   display: none;
 }
+
+/* « Voir en tant que » (14 oct. 2026) : bandeau fixe de 3 rem en haut (`components/shell/acting-banner.tsx`) ; la page,
+   les éléments collés en haut (barre du haut, barre latérale) et les panneaux plein-hauteur sont décalés d'autant. */
+html[data-acting] {
+  --acting-h: 3rem;
+}
+html[data-acting] body {
+  padding-top: var(--acting-h);
+}
+html[data-acting] .sticky.top-0 {
+  top: var(--acting-h);
+}
+html[data-acting] .sticky.h-dvh {
+  height: calc(100dvh - var(--acting-h));
+}
+html[data-acting] .fixed.top-0.bottom-0 {
+  top: var(--acting-h);
+}
+html[data-acting] .fixed.top-12.bottom-0 {
+  top: calc(3rem + var(--acting-h));
+}
+@media print {
+  html[data-acting] body {
+    padding-top: 0;
+  }
+}

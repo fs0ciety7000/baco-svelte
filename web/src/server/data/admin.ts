@@ -123,7 +123,10 @@ export const auditListSchema = z.object({
     .regex(/^[a-z_]*$/)
     .default("")
     .catch(""),
-  action: z.enum(["create", "update", "delete"]).optional().catch(undefined),
+  action: z
+    .enum(["create", "update", "delete", "impersonate_start", "impersonate_stop"])
+    .optional()
+    .catch(undefined),
   user: z
     .string()
     .trim()

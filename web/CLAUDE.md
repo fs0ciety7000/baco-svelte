@@ -567,3 +567,31 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - Extension 1.8.0 : `src/quinyx.js` (onglet Quinyx, tri avant envoi), `src/quinyx-inject.js` (relève `x-app-version`),
   service worker `syncQuinyx` (bouton du popup ou ouverture d'une page `/schedule/`, au plus toutes les 3 h).
 - E2E `e2e/quinyx.spec.ts` (groupes fictifs 990001 / 990002, agents « E2E Quinyx <format> », le compte E2E rattaché).
+
+## « Voir en tant que » (Administration, 14 oct. 2026)
+
+- Fiche d'un compte → « Voir en tant que » (`components/admin/impersonate-card.tsx`, action `impersonate` de
+  `app/(app)/admin/impersonation-actions.ts`, `requireAdmin` + `impersonationRefusal`) ; absent pour admin / sysop, service,
+  soi-même, et sans `CSM_INTERNAL_SECRET`. `server/impersonation.ts` appelle la route interne PocketBase avec le jeton de
+  l'admin et pose **`csm_as`** = `<id admin>~<jeton statique de la cible>` (httpOnly, `SameSite=Strict`, `Secure` en prod,
+  35 min ; jeton 30 min) ; `csm_session` / `csm_sid` de l'admin restent intacts. Logique pure : `lib/impersonation.ts` (testée,
+  sans import : lue par le middleware).
+- **`readSessionToken()` = jeton effectif** (celui de la cible pendant le mode) via `resolveActing()` (`server/session.ts`,
+  par requête : cookie au même admin, admin encore admin / sysop, jeton non expiré, cible lisible ; sinon ignoré et effacé
+  si possible, `stale`). Le jeton brut de la session : `readOwnSessionToken()` (déconnexion, `sessionAlive`). `getCurrentUser`
+  rend la cible avec `impersonatedBy = { id, name }` et vérifie la session de l'admin ; `/api/events` s'abonne avec le jeton de la
+  cible, revérifie la session de l'admin et coupe à l'expiration ; l'admin n'est **jamais compté « en ligne »** pendant le mode.
+- **Lecture seule, deux barrières** : (1) `middleware.ts` refuse (403 + `x-csm-readonly`) toute méthode autre que GET / HEAD /
+  OPTIONS, routes `/api` comprises, sauf `POST /api/admin/en-tant-que/fin` et les **Server Actions** (beaucoup ne font que lire :
+  palette, compteurs, panneaux) ; il refuse aussi les exports nominatifs en GET (`isBlockedRead` : exports CSV, PDF, .eml, B201,
+  feuille de route, archives, pièces jointes du Journal) ; (2) tout client `createPb(jeton de la cible)` est **en lecture seule**
+  (`markReadOnlyToken`, `beforeSend` : seules GET / HEAD et `POST /api/files/token` partent ; sinon `ClientResponseError` 403
+  « Lecture seule… » avant tout appel réseau, et cookie `csm_ro_hit` pour le toast du navigateur). Écritures hors PocketBase :
+  `assertNotActing()` (passkey `register`, rotation de session, propositions de districts, archives). Neutralisés à l'affichage :
+  fenêtre « CSM a été mis à jour » et `acknowledgeChangelog`, préférence « masquer les annulées ». Nouvelle écriture par route
+  interne (secret) depuis une action d'agent : **appeler `assertNotActing()`**.
+- Bandeau `components/shell/acting-banner.tsx` (root layout : shell, `/tv`, maintenance ; `html[data-acting]` décale le corps,
+  les éléments `.sticky.top-0` et les panneaux plein-hauteur de `--acting-h` = 3 rem, `globals.css`) : toast « Lecture seule » sur
+  un 403 `x-csm-readonly` ou `csm_ro_hit`, liens d'export bloqués au clic, rechargement à l'expiration. « Revenir à mon compte »
+  = formulaire HTML → route de fin (audit `impersonate_stop`, cookie effacé, retour sur la fiche). Expiration constatée par le
+  middleware : fin tracée aussi. La déconnexion termine le mode. E2E : `e2e/impersonate.spec.ts` (`E2E_SHOTS_DIR` pour les captures).

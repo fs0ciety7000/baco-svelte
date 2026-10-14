@@ -14,7 +14,8 @@ export async function resolveCancelledPref(
 ): Promise<CancelledPref> {
   const stored = storedCancelledPref(user.preferences);
   const effective = cancelledPref(param, stored);
-  if (param === effective && effective !== (stored ?? "affichees")) {
+  // « Voir en tant que » : jamais d'écriture dans les préférences de la cible.
+  if (!user.impersonatedBy && param === effective && effective !== (stored ?? "affichees")) {
     try {
       const pb = await pbForRequest();
       const record = await pb.collection("users").getOne(user.id, { fields: "preferences" });
