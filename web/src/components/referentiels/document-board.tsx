@@ -9,6 +9,7 @@ import { deleteDocument } from "@/app/(app)/referentiels/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
+import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
@@ -198,11 +199,6 @@ function UploadForm({ categories, onDone }: { categories: string[]; onDone: () =
         });
       }}
     >
-      <datalist id="doc-cat">
-        {categories.map((c) => (
-          <option key={c} value={c} />
-        ))}
-      </datalist>
       <Field label="Fichier" required>
         <input
           ref={fileRef}
@@ -220,10 +216,13 @@ function UploadForm({ categories, onDone }: { categories: string[]; onDone: () =
         <Input value={name} onChange={(e) => setName(e.target.value)} required maxLength={300} />
       </Field>
       <Field label="Catégorie">
-        <Input
-          list="doc-cat"
+        <Combobox
+          allowFree
+          openOnFocus
           value={category}
-          onChange={(e) => setCategory(e.target.value)}
+          onValueChange={setCategory}
+          options={categories.map((v) => ({ value: v, label: v }))}
+          createLabel={(q) => `Nouvelle catégorie « ${q} »`}
           maxLength={60}
         />
       </Field>

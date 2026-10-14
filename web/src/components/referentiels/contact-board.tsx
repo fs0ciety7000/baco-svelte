@@ -14,6 +14,7 @@ import { PhoneLink } from "@/components/pmr/phone-link";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
+import { Combobox } from "@/components/ui/combobox";
 import { Input, Textarea } from "@/components/ui/input";
 import { EmptyState, Skeleton } from "@/components/ui/misc";
 import { Sheet } from "@/components/ui/sheet";
@@ -358,21 +359,6 @@ function ContactForm({
         submit();
       }}
     >
-      <datalist id="dc-cat">
-        {facets.categories.map((c) => (
-          <option key={c} value={c} />
-        ))}
-      </datalist>
-      <datalist id="dc-zone">
-        {facets.zones.map((z) => (
-          <option key={z} value={z} />
-        ))}
-      </datalist>
-      <datalist id="dc-group">
-        {facets.groups.map((g) => (
-          <option key={g} value={g} />
-        ))}
-      </datalist>
       <Field label="Nom" required>
         <Input
           value={f.name}
@@ -400,28 +386,37 @@ function ContactForm({
           />
         </Field>
         <Field label="Catégorie" required>
-          <Input
-            list="dc-cat"
+          <Combobox
+            allowFree
+            openOnFocus
             value={f.category}
-            onChange={(e) => setF({ ...f, category: e.target.value })}
+            onValueChange={(v) => setF({ ...f, category: v })}
+            options={facets.categories.map((v) => ({ value: v, label: v }))}
+            createLabel={(q) => `Nouvelle catégorie « ${q} »`}
             required
             maxLength={60}
           />
         </Field>
         <Field label="Zone">
-          <Input
-            list="dc-zone"
+          <Combobox
+            allowFree
+            openOnFocus
             value={f.zone}
-            onChange={(e) => setF({ ...f, zone: e.target.value })}
+            onValueChange={(v) => setF({ ...f, zone: v })}
+            options={facets.zones.map((v) => ({ value: v, label: v }))}
+            createLabel={(q) => `Nouvelle zone « ${q} »`}
             maxLength={60}
           />
         </Field>
       </div>
       <Field label="Groupe">
-        <Input
-          list="dc-group"
+        <Combobox
+          allowFree
+          openOnFocus
           value={f.group}
-          onChange={(e) => setF({ ...f, group: e.target.value })}
+          onValueChange={(v) => setF({ ...f, group: v })}
+          options={facets.groups.map((v) => ({ value: v, label: v }))}
+          createLabel={(q) => `Nouveau groupe « ${q} »`}
           maxLength={120}
         />
       </Field>

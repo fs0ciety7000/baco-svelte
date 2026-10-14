@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { FilterForm } from "@/components/ui/filter-form";
 import { FilterChip, ChipRow } from "@/components/ui/filters";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
+import { StationInput } from "@/components/orders/station-input";
+import { Combobox } from "@/components/ui/combobox";
 import { Input, Select } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
@@ -45,6 +47,7 @@ import {
   type BoardRow,
   type RelationRow,
 } from "@/server/data/timetable";
+import { allStationRefs } from "@/server/data/referentiels";
 
 export const metadata: Metadata = { title: "Trains · CSM" };
 
@@ -199,7 +202,10 @@ function DayChips({ base, day }: { base: Record<string, string>; day: DayFilter 
 
 async function RelationsView({ sp, q }: { sp: Search; q: string }) {
   const type = (sp.type ?? "").toUpperCase();
-  const { rows, lines } = await listTrainRelations({ type, line: sp.ligne, gare: sp.gare, q });
+  const [{ rows, lines }, refs] = await Promise.all([
+    listTrainRelations({ type, line: sp.ligne, gare: sp.gare, q }),
+    allStationRefs(),
+  ]);
   return (
     <>
       <FilterForm action="/referentiels/trains" className="flex flex-wrap items-end gap-2">
@@ -217,18 +223,24 @@ async function RelationsView({ sp, q }: { sp: Search; q: string }) {
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-36">
           <span className="text-small text-fg-muted">Ligne</span>
-          <Select name="ligne" defaultValue={normLine(sp.ligne)}>
-            <option value="">Toutes</option>
-            {lines.map((l) => (
-              <option key={l} value={l}>
-                {lineLabel(l)}
-              </option>
-            ))}
-          </Select>
+          <Combobox
+            name="ligne"
+            defaultValue={normLine(sp.ligne)}
+            options={lineOptions(lines)}
+            placeholder="Toutes"
+            emptyText="Aucune ligne"
+            data-testid="trains-line"
+          />
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-52">
           <span className="text-small text-fg-muted">Dessert la gare</span>
-          <Input name="gare" defaultValue={sp.gare ?? ""} placeholder="Mons, FMS…" maxLength={60} />
+          <StationInput
+            name="gare"
+            defaultValue={sp.gare ?? ""}
+            refs={refs}
+            placeholder="Mons, FMS…"
+            maxLength={60}
+          />
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-52">
           <span className="text-small text-fg-muted">Relation ou n° de train</span>
@@ -480,7 +492,10 @@ async function TrainView({ number }: { number: number }) {
 // Par gare
 
 async function StationView({ gare, day }: { gare: string; day: DayFilter }) {
-  const board = gare ? await stationBoard(gare, day) : null;
+  const [board, refs] = await Promise.all([
+    gare ? stationBoard(gare, day) : Promise.resolve(null),
+    allStationRefs(),
+  ]);
   return (
     <>
       <FilterForm action="/referentiels/trains" className="flex flex-wrap items-end gap-2">
@@ -489,9 +504,10 @@ async function StationView({ gare, day }: { gare: string; day: DayFilter }) {
         <input type="hidden" name="jours" value={day} />
         <label className="flex min-w-0 flex-col gap-1 md:w-64">
           <span className="text-small text-fg-muted">Gare</span>
-          <Input
+          <StationInput
             name="gare"
             defaultValue={gare}
+            refs={refs}
             placeholder="Nom ou abréviation (FMS)…"
             maxLength={60}
           />
@@ -625,6 +641,9 @@ function BoardTable({
 // ---------------------------------------------------------------------------------------------------
 // Par ligne
 
+/** Lignes en options de recherche (« L.96 » ; « 96 » tapé la trouve aussi). */
+const lineOptions = (lines: string[]) => lines.map((l) => ({ value: l, label: lineLabel(l) }));
+
 async function LineView({ line, day }: { line: string; day: DayFilter }) {
   const [{ lines }, board] = await Promise.all([
     listTrainRelations({}),
@@ -638,14 +657,13 @@ async function LineView({ line, day }: { line: string; day: DayFilter }) {
         <input type="hidden" name="jours" value={day} />
         <label className="flex min-w-0 flex-col gap-1 md:w-48">
           <span className="text-small text-fg-muted">Ligne</span>
-          <Select name="ligne" defaultValue={line}>
-            <option value="">—</option>
-            {lines.map((l) => (
-              <option key={l} value={l}>
-                {lineLabel(l)}
-              </option>
-            ))}
-          </Select>
+          <Combobox
+            name="ligne"
+            defaultValue={line}
+            options={lineOptions(lines)}
+            placeholder="Choisir une ligne…"
+            emptyText="Aucune ligne"
+          />
         </label>
         <Button type="submit" variant="secondary">
           Afficher

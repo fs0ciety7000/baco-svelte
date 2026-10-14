@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { ActionBar, AutosaveIndicator, FormSection, Segmented } from "@/components/ui/form-kit";
+import { Combobox } from "@/components/ui/combobox";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";
@@ -121,6 +122,16 @@ export function TaxiForm(props: TaxiFormProps) {
   const number = autosave.number ?? props.number;
 
   const company = reference.companies.find((c) => c.id === d.taxi_company);
+  // Liste longue avec recherche (refonte R2) : lieux desservis en aide (cherchables aussi).
+  const companyOptions = useMemo(
+    () =>
+      reference.companies.map((c) => ({
+        value: c.id,
+        label: c.name,
+        hint: c.places.length ? c.places.slice(0, 3).join(", ") : undefined,
+      })),
+    [reference.companies],
+  );
   const to = parseEmails([...(company?.emails ?? []), d.taxi_email]).join("; ");
   const missing = useMemo(() => checkTaxiForSend(d, { companyEmail: to }), [d, to]);
   const err = (f: string) => (showErrors ? missing.find((m) => m.field === f)?.message : undefined);
@@ -457,15 +468,14 @@ export function TaxiForm(props: TaxiFormProps) {
                   : undefined
               }
             >
-              <Select value={d.taxi_company} onChange={(e) => set("taxi_company", e.target.value)}>
-                <option value="">Choisir une société…</option>
-                {reference.companies.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                    {c.places.length ? ` — ${c.places.slice(0, 2).join(", ")}` : ""}
-                  </option>
-                ))}
-              </Select>
+              <Combobox
+                value={d.taxi_company}
+                onValueChange={(v) => set("taxi_company", v)}
+                options={companyOptions}
+                placeholder="Choisir une société…"
+                emptyText="Aucune société de taxi"
+                data-testid="taxi-company"
+              />
             </Field>
             {company && company.emails.length === 0 ? (
               <Field label="E-mail du taxi" error={err("taxi_email")}>

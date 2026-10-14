@@ -255,7 +255,9 @@ test("bus : création, enregistrement automatique, fin, envoi", async ({ page },
     "aria-pressed",
     "true",
   );
-  await page.getByLabel("Société").selectOption({ label: BUS_COMPANY });
+  // Société : liste avec recherche (Combobox, refonte R2).
+  await page.getByTestId("bus-company").fill(BUS_COMPANY);
+  await page.getByRole("option", { name: BUS_COMPANY }).click();
   await page.getByLabel("Heure prévue").fill("14:30");
   await page.getByRole("button", { name: "Ajouter un bus" }).click();
   await expect(page.getByTestId("bus-row")).toHaveCount(2);
@@ -386,7 +388,11 @@ test("taxi : création liée à une société, aller-retour pré-inversé", asyn
   });
   await page.getByRole("radio", { name: "Aller-retour" }).click();
   await expect(page.getByLabel("Départ du retour")).toHaveValue("Tournai");
-  await page.getByLabel("Société de taxi").selectOption({ label: `${TAXI_COMPANY} — Mons` });
+  await page.getByTestId("taxi-company").fill(TAXI_COMPANY);
+  await page
+    .getByRole("option", { name: new RegExp(TAXI_COMPANY) })
+    .first()
+    .click();
   // Heure de retour vide : relue vide, jamais « 00:00 » (régression du 14 oct. 2026).
   await expect(page.getByTestId("autosave")).toHaveAttribute("data-state", "saved", {
     timeout: 10_000,
