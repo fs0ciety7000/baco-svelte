@@ -51,7 +51,8 @@ test.beforeAll(async ({}, info) => {
   for (const [col, filter] of [
     ["train_services", `key="${N1}:e2e" || key="${N2}:e2e"`],
     ["train_relations", `key="${REL}"`],
-    ["stations", `key~"gare e2e"`],
+    // Gare de CE format seulement : l'autre format tourne en parallèle (sa gare de test disparaissait).
+    ["stations", `key="gare e2e ${info.project.name}"`],
     ["rail_lines", `line="${LN}"`],
     ["stations", `key="lignes e2e ${info.project.name}"`],
   ]) {
