@@ -25,10 +25,15 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 - **Perturbations iRail** : les gares citées sont reconnues aussi par leur nom néerlandais et d'après les districts corrigés dans Ressources › Gares.
 - Ressources › Gares, Lignes et Trains : la recherche se lance pendant la frappe, sans Entrée.
 - Barre du bas mobile : « Ressources » s'appelle maintenant « Données ».
+- **Ressources › Lignes : gares modifiables** par les administrateurs, coordinateurs et modérateurs (« Modifier les gares » dans la fiche d'une ligne : ordre, ajout, retrait, embranchements). Une ligne corrigée garde tes corrections aux mises à jour du référentiel ; « Rétablir l'automatique » reprend les gares de l'horaire. Remplace Administration › Lignes et arrêts.
+- **Bons bus** : les lignes proposées et l'itinéraire entre deux gares viennent maintenant de Ressources › Lignes (toutes les lignes du réseau, embranchements compris), y compris tes corrections.
+- **Trains en direct** : les perturbations de ton district reposent sur les districts de Ressources › Gares.
+- **Ressources › Gares** : export de toutes les gares en CSV. Les districts validés par l'équipe deviennent le référentiel de départ de CSM.
 
 ### Corrections
 
 - Bon taxi : une heure de retour laissée vide n'est plus enregistrée « 00:00 ».
+- **Ressources › Trains** : un train dévié certains jours (travaux) n'affiche plus les gares de son trajet habituel au milieu du détour (IC 943 : Braine-le-Comte suivi des gares de la L.118).
 - **Ressources › Lignes** : le filtre par district ne montre plus des lignes de Flandre qui n'ont qu'une ou deux gares dans le district ; une ligne est rattachée aux districts qui portent au moins 30 % de ses gares (DNO et DNE compris), et peut en avoir plusieurs.
 
 ## [2026.10.12] — Missions PMR : statut par prise en charge

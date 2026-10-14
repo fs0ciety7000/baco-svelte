@@ -19,7 +19,6 @@ async function loginAdmin(page: Page) {
 
 const SCREENS: [string, RegExp][] = [
   ["/admin", /compte/],
-  ["/admin/lignes", /itinéraires des bons bus/],
   ["/admin/audit", /audit|Aucune/i],
   ["/admin/extension", /Jetons de l'extension/],
   ["/admin/journal", /Catégorie donnée aux messages automatiques/],

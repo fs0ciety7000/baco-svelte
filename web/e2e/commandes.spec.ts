@@ -85,18 +85,17 @@ test.beforeAll(async ({}, info) => {
     company: bus.id,
     buses: [{ planned: "08:00" }],
   });
-  for (const [line, stations] of [
-    ["96", ["Bruxelles-Midi", "Hal", "Braine-le-Comte", "Soignies", "Mons"]],
-  ] as const) {
-    for (const [i, station] of stations.entries()) {
-      const r = await pb("POST", "/api/collections/line_stations/records", {
-        line: `${line}${suffix}`,
-        station,
-        position: i,
-      });
-      fixtures.push({ col: "line_stations", id: r.id });
-    }
-  }
+  // Ligne du référentiel (rail_lines, 14 oct. 2026 : les bons ne lisent plus line_stations).
+  const stations = ["Bruxelles-Midi", "Hal", "Braine-le-Comte", "Soignies", "Mons"];
+  const rl = await pb("POST", "/api/collections/rail_lines/records", {
+    line: `96${suffix}`.toUpperCase(),
+    name: "Bruxelles-Midi – Mons",
+    stations: stations.map((n) => ({ n })),
+    stations_auto: stations.map((n) => ({ n })),
+    branches: [],
+    count: stations.length,
+  });
+  fixtures.push({ col: "rail_lines", id: rl.id });
   trains = await trainFixtures(info.project.name);
 });
 

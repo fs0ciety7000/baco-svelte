@@ -7,7 +7,7 @@ import { parseFavorites, type FavoriteStation } from "@/lib/ops/irail";
 import { plainText } from "@/lib/ops/chat-markdown";
 import { LOG_CATEGORIES, type LogCategory } from "@/lib/ops/log";
 import { addDays, brusselsDay, brusselsToUtc, isValidDay } from "@/lib/orders/time";
-import { statusOf, userDistricts } from "@/lib/team";
+import { DISTRICT_SHORT, statusOf, userDistricts } from "@/lib/team";
 import { getCurrentUser } from "@/server/auth";
 
 import { pbForRequest, toPbInstant } from "./orders";
@@ -610,13 +610,21 @@ export function favoritesOf(preferences: unknown): FavoriteStation[] {
   return parseFavorites(preferences);
 }
 
-/** Gares des lignes du district (filtre des perturbations iRail). */
+/**
+ * Gares du district (filtre des perturbations iRail) : référentiel des gares (`stations`, district corrigé dans
+ * Ressources › Gares, noms FR et NL). `district` = nom du profil (« Sud-Ouest ») ou code (« DSO »).
+ */
 export async function districtStations(district: string): Promise<string[]> {
-  if (!district) return [];
+  const code = DISTRICT_SHORT[district] ?? district;
+  if (!/^(DSO|DSE|DCE|DNO|DNE)$/.test(code)) return [];
   const pb = await pbForRequest();
   const items = await pb
-    .collection("line_stations")
-    .getFullList({ filter: pb.filter("district = {:d}", { d: district }), fields: "station" })
+    .collection("stations")
+    .getFullList({
+      filter: pb.filter("district = {:d}", { d: code }),
+      fields: "name,name_nl",
+      batch: 1000,
+    })
     .catch(() => []);
-  return [...new Set(items.map((s) => str(s.station)).filter(Boolean))];
+  return [...new Set(items.flatMap((s) => [str(s.name), str(s.name_nl)]).filter(Boolean))];
 }

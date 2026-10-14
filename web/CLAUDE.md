@@ -499,4 +499,11 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   ré-amorce (pas de notification du navigateur pour celles qui réapparaissent).
 - **District d'une ligne** : `lineDistrict` (`lib/timetable/lines.ts`) = districts à ≥ 30 % de toutes les gares
   (`LineRef.districts`) ; filtre Lignes : 5 districts + « Sans district ».
+- **Lignes des bons et éditeur de lignes** (14 oct. 2026) : `orderLines()` (`server/data/orders.ts`) lit `rail_lines` via
+  `railLineInfo` (`lib/timetable/rail-segments.ts` : « L.96 », `segments` = tronc + embranchements depuis leur bifurcation ;
+  `segmentsOf` dans `lib/orders/stops.ts` pour `routeBetween` / `stopsBetween`). Éditeur `components/referentiels/line-editor.tsx`
+  (`LineEditToggle` dans la fiche de Ressources › Lignes si `ptcar:update`), actions `referentiels/lignes/actions.ts`
+  (`saveLineStations`, `resetLine`). `/admin/lignes` redirige (308) ; `LineBoard` et les actions `line_stations` supprimés.
+- **Référentiel des gares par défaut** : `src/data/station-seed.json` (`stationSeed(key)`, test de validité), régénéré par
+  `node scripts/station-seed.mjs <export.json>` depuis `/api/referentiels/gares/export?format=json` de la préversion.
 

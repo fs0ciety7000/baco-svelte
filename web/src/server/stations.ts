@@ -48,13 +48,16 @@ async function load(kind: "ptcar" | "lines" | "stations", pb: PocketBase): Promi
                 .collection("ptcar")
                 .getFullList({ fields: "abbr,name_fr,name_nl", batch: 1000 })
             ).map((r) => ({ abbr: str(r.abbr), names: [str(r.name_fr), str(r.name_nl)] }))
-          : [
+          : // Gares des lignes du référentiel des trains (14 oct. 2026, ex-table BACO line_stations).
+            [
               ...new Set(
                 (
-                  await pb
-                    .collection("line_stations")
-                    .getFullList({ fields: "station", batch: 1000 })
-                ).map((r) => str(r.station)),
+                  await pb.collection("rail_lines").getFullList({ fields: "stations", batch: 1000 })
+                ).flatMap((r) =>
+                  Array.isArray(r.stations)
+                    ? r.stations.map((s: { n?: unknown }) => str(s?.n)).filter(Boolean)
+                    : [],
+                ),
               ),
             ].map((s) => ({ names: [s] }));
     // Un référentiel vide (accès refusé, base neuve) n'est pas gardé : nouvel essai à la prochaine recherche.

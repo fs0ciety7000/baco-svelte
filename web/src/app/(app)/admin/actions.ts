@@ -22,7 +22,6 @@ const userId = z.string().regex(/^[a-z0-9-]{15,36}$/);
 const pbId = z.string().regex(/^[a-z0-9]{15}$/);
 // Rôles v2 (11 oct. 2026).
 const ROLES = ["admin", "sysop", "moderator", "paco", "guest", "screen"] as const;
-const DISTRICTS = ["", "Sud-Ouest", "Sud-Est", "Centre"] as const;
 const DISTRICT_NAMES = ["Sud-Ouest", "Sud-Est", "Centre"] as const;
 const KNOWN = new Set(PERMISSION_CATALOG.flatMap((g) => g.items.map((i) => i.key)));
 
@@ -208,80 +207,6 @@ export async function sendResetLink(id: string): Promise<Result> {
     if (!email) throw new Error("DROIT:Ce compte n'a pas d'adresse e-mail.");
     if (u.role === "disabled") throw new Error("DROIT:Réactive d'abord le compte.");
     await pb.collection("users").requestPasswordReset(email);
-    return { ok: true };
-  } catch (e) {
-    return fail(e);
-  }
-}
-
-// --- Lignes et arrêts -----------------------------------------------------------------------------
-
-const stationSchema = z.object({
-  line: z.string().trim().min(1, "Ligne requise").max(50),
-  station: z.string().trim().min(1, "Gare requise").max(200),
-  district: z.enum(DISTRICTS).default(""),
-});
-
-export async function addStation(input: unknown): Promise<Result> {
-  try {
-    await requireAdmin();
-    const s = stationSchema.parse(input);
-    const pb = await pbForRequest();
-    const last = await pb.collection("line_stations").getList(1, 1, {
-      filter: pb.filter("line = {:l}", { l: s.line }),
-      sort: "-position",
-      fields: "position",
-    });
-    const position = ((last.items[0]?.position as number | undefined) ?? 0) + 1;
-    await pb.collection("line_stations").create({ ...s, district: s.district || null, position });
-    return { ok: true };
-  } catch (e) {
-    return fail(e);
-  }
-}
-
-export async function updateStation(id: string, input: unknown): Promise<Result> {
-  try {
-    await requireAdmin();
-    const s = stationSchema.parse(input);
-    const pb = await pbForRequest();
-    await pb
-      .collection("line_stations")
-      .update(pbId.parse(id), { ...s, district: s.district || null });
-    return { ok: true };
-  } catch (e) {
-    return fail(e);
-  }
-}
-
-export async function deleteStation(id: string): Promise<Result> {
-  try {
-    await requireAdmin();
-    const pb = await pbForRequest();
-    await pb.collection("line_stations").delete(pbId.parse(id));
-    return { ok: true };
-  } catch (e) {
-    return fail(e);
-  }
-}
-
-/** Nouvel ordre des arrêts d'une ligne (liste complète des identifiants, dans l'ordre). */
-export async function reorderLine(line: string, ids: string[]): Promise<Result> {
-  try {
-    await requireAdmin();
-    const l = z.string().trim().min(1).max(50).parse(line);
-    const list = z.array(pbId).max(300).parse(ids);
-    const pb = await pbForRequest();
-    const rows = await pb
-      .collection("line_stations")
-      .getFullList({ filter: pb.filter("line = {:l}", { l }), fields: "id,position" });
-    const known = new Set(rows.map((r) => r.id));
-    if (list.length !== rows.length || list.some((id) => !known.has(id)))
-      throw new Error("DROIT:La liste a changé entre-temps : recharge la page.");
-    const pos = new Map(rows.map((r) => [r.id, r.position as number]));
-    for (const [i, id] of list.entries())
-      if (pos.get(id) !== i + 1)
-        await pb.collection("line_stations").update(id, { position: i + 1 });
     return { ok: true };
   } catch (e) {
     return fail(e);

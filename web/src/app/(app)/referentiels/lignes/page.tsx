@@ -2,6 +2,7 @@ import { MapPin, TrainFront } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { LineEditToggle } from "@/components/referentiels/line-editor";
 import { trainsHref } from "@/components/referentiels/trains";
 import { Button } from "@/components/ui/button";
 import { FilterForm } from "@/components/ui/filter-form";
@@ -13,8 +14,15 @@ import { ListCard } from "@/components/ui/table";
 import { lineLabel } from "@/lib/lines";
 import { DISTRICT_LABEL } from "@/lib/pmr/districts";
 import { pl } from "@/lib/utils";
+import { can } from "@/lib/permissions";
 import { requireRoute } from "@/server/auth";
-import { getLineDetail, listLines, type LineDetail } from "@/server/data/referentiels";
+import {
+  allStationRefs,
+  getLineDetail,
+  listLines,
+  type LineDetail,
+} from "@/server/data/referentiels";
+import type { StationRef } from "@/lib/stations/search";
 import { normLine } from "@/server/data/timetable";
 
 export const metadata: Metadata = { title: "Lignes · CSM" };
@@ -28,16 +36,18 @@ export default async function Page({
 }: {
   searchParams: Promise<{ ligne?: string; district?: string; gare?: string }>;
 }) {
-  await requireRoute("/referentiels/lignes");
+  const user = await requireRoute("/referentiels/lignes");
+  const canEdit = can(user, "ptcar:update");
   const sp = await searchParams;
   const district = ["DSE", "DSO", "DCE", "DNO", "DNE", "aucun"].includes(sp.district ?? "")
     ? sp.district!
     : "";
   const gare = (sp.gare ?? "").trim().slice(0, 60);
   const ligne = normLine(sp.ligne);
-  const [lines, detail] = await Promise.all([
+  const [lines, detail, refs] = await Promise.all([
     listLines(gare),
     ligne ? getLineDetail(ligne) : Promise.resolve(null),
+    ligne && canEdit ? allStationRefs() : Promise.resolve([] as StationRef[]),
   ]);
   const shown = lines.filter(
     (l) =>
@@ -151,13 +161,21 @@ export default async function Page({
           ) : null}
         </>
       ) : (
-        <LineView detail={detail} />
+        <LineView detail={detail} canEdit={canEdit && !!detail.id} refs={refs} />
       )}
     </section>
   );
 }
 
-function LineView({ detail }: { detail: LineDetail }) {
+function LineView({
+  detail,
+  canEdit,
+  refs,
+}: {
+  detail: LineDetail;
+  canEdit: boolean;
+  refs: StationRef[];
+}) {
   const trunk = detail.stations.filter((s) => !s.branch);
   const label = lineLabel(detail.line);
   return (
@@ -168,6 +186,11 @@ function LineView({ detail }: { detail: LineDetail }) {
         {detail.district ? (
           <Badge tone="info">
             {detail.district} · {DISTRICT_LABEL[detail.district] ?? ""}
+          </Badge>
+        ) : null}
+        {detail.manual ? (
+          <Badge tone="warn" data-testid="line-manual">
+            Corrigée à la main
           </Badge>
         ) : null}
         <div className="flex flex-wrap gap-2 md:ml-auto">
@@ -190,32 +213,22 @@ function LineView({ detail }: { detail: LineDetail }) {
           <p className="mt-2 text-small text-fg-muted">
             Ligne absente du référentiel des trains (aucun train voyageurs observé).
           </p>
+        ) : canEdit ? (
+          <div className="mt-2">
+            <LineEditToggle
+              id={detail.id}
+              name={detail.name}
+              stations={detail.raw}
+              branches={detail.branches}
+              manual={detail.manual}
+              refs={refs}
+            >
+              <LineStations detail={detail} trunk={trunk} />
+            </LineEditToggle>
+          </div>
         ) : (
-          <div className="mt-2 flex flex-col gap-3">
-            <p className="text-small text-fg-muted">
-              {detail.oriented
-                ? "Dans le sens des points kilométriques Infrabel (km aux gares de début ou de fin de section)."
-                : "Ordre des trajets Infrabel (sens kilométrique non publié pour cette ligne)."}{" "}
-              District : Ressources › Gares.
-            </p>
-            <StationList stations={trunk} testId="line-stations" />
-            {detail.branches.map((b) => {
-              const list = detail.stations.filter((s) => s.branch === b.b);
-              if (!list.length) return null;
-              return (
-                <section
-                  key={b.b}
-                  className="flex flex-col gap-1"
-                  aria-label={`Embranchement ${b.b}`}
-                >
-                  <h3 className="text-small font-medium">
-                    {b.from ? `Embranchement depuis ${b.from}` : "Tronçon séparé"}
-                    <span className="font-normal text-fg-muted"> · vers {b.to}</span>
-                  </h3>
-                  <StationList stations={list} testId={`line-branch-${b.b}`} />
-                </section>
-              );
-            })}
+          <div className="mt-2">
+            <LineStations detail={detail} trunk={trunk} />
           </div>
         )}
       </details>
@@ -269,6 +282,33 @@ function LineView({ detail }: { detail: LineDetail }) {
           ))}
         </div>
       </details>
+    </div>
+  );
+}
+
+function LineStations({ detail, trunk }: { detail: LineDetail; trunk: LineDetail["stations"] }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-small text-fg-muted">
+        {detail.oriented
+          ? "Dans le sens des points kilométriques Infrabel (km aux gares de début ou de fin de section)."
+          : "Ordre des trajets Infrabel (sens kilométrique non publié pour cette ligne)."}{" "}
+        District : Ressources › Gares.
+      </p>
+      <StationList stations={trunk} testId="line-stations" />
+      {detail.branches.map((b) => {
+        const list = detail.stations.filter((s) => s.branch === b.b);
+        if (!list.length) return null;
+        return (
+          <section key={b.b} className="flex flex-col gap-1" aria-label={`Embranchement ${b.b}`}>
+            <h3 className="text-small font-medium">
+              {b.from ? `Embranchement depuis ${b.from}` : "Tronçon séparé"}
+              <span className="font-normal text-fg-muted"> · vers {b.to}</span>
+            </h3>
+            <StationList stations={list} testId={`line-branch-${b.b}`} />
+          </section>
+        );
+      })}
     </div>
   );
 }

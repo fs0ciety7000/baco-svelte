@@ -3,8 +3,9 @@ import "server-only";
 import type { RecordModel } from "pocketbase";
 import { z } from "zod";
 
-import { foldStation, stationMatchesAny } from "@/lib/stations/search";
+import { foldStation, stationMatchesAny, type StationRef } from "@/lib/stations/search";
 import { lineDistrict } from "@/lib/timetable/lines";
+import { railStations, type RailBranch, type RailStation } from "@/lib/timetable/rail-segments";
 
 import { resolveStationTerms, stationFilter } from "../stations";
 import { pbForRequest } from "./orders";
@@ -146,13 +147,26 @@ export type LineRef = {
   matches: string[];
 };
 
-type RailStation = { n: string; a?: string; km?: number; b?: number; g?: number };
-type RailBranch = { b: number; from: string; to: string };
+export type { RailStation };
 
-const railStations = (v: unknown): RailStation[] =>
-  Array.isArray(v)
-    ? v.filter((s): s is RailStation => !!s && typeof s === "object" && typeof s.n === "string")
-    : [];
+/** Gares connues (nom FR retenu, puis NL et alias ; abréviation) pour le champ de gare de l'éditeur de lignes. */
+export async function allStationRefs(): Promise<StationRef[]> {
+  const pb = await pbForRequest();
+  const rows = await pb
+    .collection("stations")
+    .getFullList({ fields: "name,name_nl,abbr,aliases", sort: "name", batch: 1000 })
+    .catch(() => []);
+  return rows
+    .map((r) => ({
+      ...(str(r.abbr) ? { abbr: str(r.abbr) } : {}),
+      names: [
+        str(r.name),
+        str(r.name_nl),
+        ...(Array.isArray(r.aliases) ? r.aliases.map(str) : []),
+      ].filter(Boolean),
+    }))
+    .filter((r) => r.names.length);
+}
 
 /** District de chaque gare (nom FR, NL, alias → district), lu dans `stations`. */
 async function stationDistricts(
@@ -215,6 +229,11 @@ export async function listLines(gare = ""): Promise<LineRef[]> {
 }
 
 export type LineDetail = {
+  id: string;
+  /** Gares corrigées à la main (Ressources › Lignes) : l'import ne les remplace plus. */
+  manual: boolean;
+  /** Gares telles que stockées (`{ n, a?, km?, b?, g? }`), pour l'éditeur. */
+  raw: RailStation[];
   line: string;
   name: string;
   district: string;
@@ -267,6 +286,9 @@ export async function getLineDetail(raw: string): Promise<LineDetail | null> {
   const stations = rec ? railStations(rec.stations) : [];
   if (!rec && !crossings.length && !spi.length) return null;
   return {
+    id: rec?.id ?? "",
+    manual: !!rec?.manual,
+    raw: stations,
     line: l,
     name: rec ? str(rec.name) : "",
     district: lineDistrict(

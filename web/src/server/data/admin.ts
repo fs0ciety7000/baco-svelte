@@ -202,43 +202,6 @@ export async function listAudit(input: z.input<typeof auditListSchema>) {
 }
 
 // ---------------------------------------------------------------------------------------------------
-// Lignes et arrêts (line_stations)
-
-export type LineStation = {
-  id: string;
-  line: string;
-  station: string;
-  position: number;
-  district: string;
-};
-
-export async function listLines(): Promise<
-  { line: string; district: string; stations: LineStation[] }[]
-> {
-  const pb = await pbForRequest();
-  const rows = await pb.collection("line_stations").getFullList({ sort: "line,position" });
-  const map = new Map<string, LineStation[]>();
-  for (const r of rows) {
-    const s: LineStation = {
-      id: r.id,
-      line: str(r.line),
-      station: str(r.station),
-      position: typeof r.position === "number" ? r.position : 0,
-      district: str(r.district),
-    };
-    map.set(s.line, [...(map.get(s.line) ?? []), s]);
-  }
-  const majority = (list: LineStation[]) => {
-    const count = new Map<string, number>();
-    for (const s of list) if (s.district) count.set(s.district, (count.get(s.district) ?? 0) + 1);
-    return [...count.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
-  };
-  return [...map.entries()]
-    .map(([line, stations]) => ({ line, district: majority(stations), stations }))
-    .sort((a, b) => a.line.localeCompare(b.line, "fr", { numeric: true }));
-}
-
-// ---------------------------------------------------------------------------------------------------
 // Réglages globaux et santé
 
 export async function getSetting<T>(key: string): Promise<{ id: string; value: T } | null> {

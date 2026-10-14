@@ -352,6 +352,40 @@ module.exports.suggestDistricts = suggestDistricts;
 
 // --- Lignes (gares dans l'ordre, 1760003850) --------------------------------------------------------------------------
 
+// Gares d'une ligne `[{ n, a?, km?, b?, g? }]` (import ou correction manuelle), bornées et nettoyées.
+function cleanLineStations(list) {
+	return (Array.isArray(list) ? list : [])
+		.filter((s) => s && typeof s.n === 'string' && s.n.trim())
+		.slice(0, 200)
+		.map((s) => {
+			const o = { n: str(s.n, 120).trim() };
+			if (s.a) o.a = str(s.a, 12);
+			const km = Number(s.km);
+			if (s.km != null && s.km !== '' && Number.isFinite(km)) o.km = Math.round(km * 10) / 10;
+			if (Number.isInteger(s.b) && s.b > 0) o.b = Math.min(s.b, 99);
+			if (s.g) o.g = 1;
+			return o;
+		});
+}
+
+// Embranchements `[{ b, from, to }]` : seulement ceux qui ont des gares ; `to` = dernière gare de l'embranchement.
+function cleanLineBranches(list, stations) {
+	const out = [];
+	const given = {};
+	for (const b of Array.isArray(list) ? list : []) {
+		const n = Math.max(1, Math.min(99, Math.floor(Number(b && b.b) || 1)));
+		given[n] = { from: str(b && b.from, 120), to: str(b && b.to, 120) };
+	}
+	const seen = [];
+	for (const s of stations) if (s.b && seen.indexOf(s.b) === -1) seen.push(s.b);
+	seen.sort((x, y) => x - y);
+	for (const n of seen) {
+		const own = stations.filter((s) => s.b === n);
+		out.push({ b: n, from: given[n] ? given[n].from : '', to: own.length ? own[own.length - 1].n : '' });
+	}
+	return out;
+}
+
 function upsertLines(app, items) {
 	const col = app.findCollectionByNameOrId('rail_lines');
 	let saved = 0;
@@ -372,24 +406,18 @@ function upsertLines(app, items) {
 				rec = new Record(col);
 				rec.set('line', line);
 			}
-			const stations = (Array.isArray(it.stations) ? it.stations : []).slice(0, 200).map((s) => {
-				const o = { n: str(s && s.n, 120) };
-				if (s && s.a) o.a = str(s.a, 12);
-				const km = s ? Number(s.km) : NaN;
-				if (s && s.km != null && Number.isFinite(km)) o.km = Math.round(km * 10) / 10;
-				if (s && Number.isInteger(s.b) && s.b > 0) o.b = Math.min(s.b, 99);
-				if (s && s.g) o.g = 1;
-				return o;
-			});
-			const branches = (Array.isArray(it.branches) ? it.branches : []).slice(0, 99).map((b) => ({
-				b: Math.max(1, Math.min(99, Math.floor(Number(b && b.b) || 1))),
-				from: str(b && b.from, 120),
-				to: str(b && b.to, 120)
-			}));
-			rec.set('name', str(it.name, 300));
-			rec.set('stations', stations);
-			rec.set('branches', branches);
-			rec.set('count', stations.length);
+			const stations = cleanLineStations(it.stations);
+			const branches = cleanLineBranches(it.branches, stations);
+			// Version automatique toujours tenue à jour ; ligne corrigée à la main (`manual`) : affichage inchangé.
+			rec.set('stations_auto', stations);
+			rec.set('branches_auto', branches);
+			rec.set('name_auto', str(it.name, 300));
+			if (!rec.getBool('manual')) {
+				rec.set('name', str(it.name, 300));
+				rec.set('stations', stations);
+				rec.set('branches', branches);
+				rec.set('count', stations.length);
+			}
 			rec.set('oriented', !!it.oriented);
 			rec.set('sig', sig);
 			tx.save(rec);
@@ -406,7 +434,8 @@ function pruneLines(app, lines) {
 	let deleted = 0;
 	app.runInTransaction((tx) => {
 		for (const r of tx.findAllRecords('rail_lines')) {
-			if (keep[r.getString('line')]) continue;
+			// Ligne corrigée à la main : jamais supprimée par l'import.
+			if (keep[r.getString('line')] || r.getBool('manual')) continue;
 			tx.delete(r);
 			deleted++;
 		}
@@ -415,4 +444,6 @@ function pruneLines(app, lines) {
 }
 
 module.exports.upsertLines = upsertLines;
+module.exports.cleanLineStations = cleanLineStations;
+module.exports.cleanLineBranches = cleanLineBranches;
 module.exports.pruneLines = pruneLines;

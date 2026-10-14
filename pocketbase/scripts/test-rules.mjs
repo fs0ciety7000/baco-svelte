@@ -1206,8 +1206,7 @@ try {
 		const cw = await api('POST', `/api/collections/${c}/records`, { token: roles.admin.token, body: { key: `x-${suffix}`, number: 1 } });
 		check(`admin n'écrit pas ${c} par l'API`, cw.status >= 400, `HTTP ${cw.status}`);
 	}
-	// Lignes (1760003850) : comme train_services ; écrites par la route interne seulement (création, modification,
-	// suppression refusées même à un admin).
+	// Lignes (1760003850) : comme train_services ; création et suppression par la route interne seulement.
 	const rlRec = await api('POST', '/api/collections/rail_lines/records', { token: root, body: { line: `T${suffix}`.slice(0, 12).toUpperCase(), name: 'A – B', stations: [{ n: 'A' }, { n: 'B' }], count: 2 } });
 	check('superuser crée une ligne de test', rlRec.status === 200, `HTTP ${rlRec.status}`);
 	if (rlRec.status === 200) {
@@ -1220,8 +1219,19 @@ try {
 		check("invité ne lit pas une ligne", rg.status === 404 || rg.status === 403, `HTTP ${rg.status}`);
 		const rc = await api('POST', '/api/collections/rail_lines/records', { token: roles.admin.token, body: { line: 'X1', name: 'X' } });
 		check("admin ne crée pas de ligne par l'API", rc.status >= 400, `HTTP ${rc.status}`);
+		// Lignes modifiables (1760004100) : ptcar:update (PACO/RCCA, modérateur, admin), gares / embranchements / nom.
 		const ru = await api('PATCH', `/api/collections/rail_lines/records/${rid}`, { token: roles.admin.token, body: { name: 'Modifiée' } });
-		check("admin ne modifie pas une ligne par l'API", ru.status >= 400, `HTTP ${ru.status}`);
+		check('modification sans updated_by refusée', ru.status >= 400, `HTTP ${ru.status}`);
+		const rpU = await api('PATCH', `/api/collections/rail_lines/records/${rid}`, { token: roles.user.token, body: { stations: [{ n: 'A' }, { n: 'C' }, { n: 'B' }, { n: 'X', b: 1 }], branches: [{ b: 1, from: 'C', to: '?' }], updated_by: roles.user.id } });
+		check('PACO/RCCA corrige les gares d une ligne (manuelle, embranchement recalculé)', rpU.status === 200 && rpU.json.manual === true && rpU.json.count === 4 && rpU.json.branches?.[0]?.to === 'X', `HTTP ${rpU.status} ${JSON.stringify(rpU.json?.branches)}`);
+		const rpS = await api('PATCH', `/api/collections/rail_lines/records/${rid}`, { token: roles.user.token, body: { sig: 'x', updated_by: roles.user.id } });
+		check('signature d import non modifiable', rpS.status >= 400, `HTTP ${rpS.status}`);
+		const rp1 = await api('PATCH', `/api/collections/rail_lines/records/${rid}`, { token: roles.user.token, body: { stations: [{ n: 'A' }, { n: 'X', b: 1 }], updated_by: roles.user.id } });
+		check('tronc d une seule gare refusé', rp1.status >= 400, `HTTP ${rp1.status}`);
+		const rpG = await api('PATCH', `/api/collections/rail_lines/records/${rid}`, { token: roles.reader.token, body: { name: 'X', updated_by: roles.reader.id } });
+		check('invité ne modifie pas une ligne', rpG.status >= 400, `HTTP ${rpG.status}`);
+		const rpR = await api('PATCH', `/api/collections/rail_lines/records/${rid}`, { token: roles.modo.token, body: { manual: false, updated_by: roles.modo.id } });
+		check('modérateur rétablit la version automatique', rpR.status === 200 && rpR.json.manual === false, `HTTP ${rpR.status} ${rpR.json?.count}`);
 		const rd = await api('DELETE', `/api/collections/rail_lines/records/${rid}`, { token: roles.admin.token });
 		check("admin ne supprime pas une ligne par l'API", rd.status >= 400, `HTTP ${rd.status}`);
 		await api('DELETE', `/api/collections/rail_lines/records/${rid}`, { token: root });

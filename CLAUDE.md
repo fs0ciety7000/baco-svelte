@@ -1103,6 +1103,20 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   toujours ; changer ses districts recharge la cloche (`DUTY_CHANGED`) sans réalerter. Index des gares iRail lu d'abord dans
   `stations` (FR + NL, districts corrigés). 426 contrôles de règles. **À signaler** : districts BACO flamands douteux (DSO / DSE).
 
+- 2026-10-14 — **Districts de la préversion = référentiel par défaut** (demande : « ce sont les vraies données, à injecter en prod et
+  faire le référentiel par défaut ») : export `GET /api/referentiels/gares/export` (CSV, `?format=json`), lu avec le compte admin
+  de test → `web/src/data/station-seed.json` (829 gares, 65 districts corrigés à la main ; `scripts/station-seed.mjs`), appliqué
+  par `buildStations` comme valeur automatique (avant la table BACO) : la prod reçoit ces districts au premier import après son
+  déploiement (rien d'écrit à la main dans `pb-csm`). À régénérer après de nouvelles corrections en préversion.
+  **Fin de `line_stations`** (validé par l'utilisateur) : bons bus / taxi (`orderLines` : `rail_lines` → `LineInfo` avec
+  tronçons `segments`, libellé « L.96 » ; repli `line_stations` seulement si `rail_lines` est vide), recherche de gare,
+  perturbations iRail par district (`districtStations` lit `stations`), index iRail de PocketBase ; **Admin › Lignes et arrêts
+  remplacé** par l'édition dans Ressources › Lignes (`ptcar:update`, `1760004100` : `manual`, `stations_auto` /
+  `branches_auto` / `name_auto`, l'import n'écrase ni ne supprime une ligne manuelle ; « Rétablir l'automatique »).
+  `line_stations` reste en base (import BACO, import différentiel) mais n'est plus lue. **IC 943** : variante de 3 jours
+  réellement déviée par Braine-le-Comte (GTFS) ; l'insertion des passages Infrabel ne traverse plus un vrai arrêt absent du
+  chemin (sinon les gares de la L.118 apparaissaient après Braine-le-Comte). ⌘K granulaire (agent) fusionné. 431 contrôles.
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)

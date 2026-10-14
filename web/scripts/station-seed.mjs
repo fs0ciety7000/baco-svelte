@@ -28,5 +28,5 @@ for (const r of rows.sort((a, b) => String(a.key).localeCompare(String(b.key))))
   count[e.d || "aucun"] = (count[e.d || "aucun"] ?? 0) + 1;
 }
 const target = fileURLToPath(new URL("../src/data/station-seed.json", import.meta.url));
-writeFileSync(target, `${JSON.stringify(out, null, 0).replace(/\},"/g, '},\n"')}\n`);
+writeFileSync(target, `${JSON.stringify(out, null, 2)}\n`);
 console.log(`${Object.keys(out).length} gares →`, count);

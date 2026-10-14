@@ -236,7 +236,6 @@ export const ADMIN: NavModule = {
   icon: ClipboardList,
   tabs: [
     { href: "/admin", label: "Utilisateurs" },
-    { href: "/admin/lignes", label: "Lignes et arrêts" },
     { href: "/admin/audit", label: "Journal d'audit" },
     { href: "/admin/journal", label: "Tri du Journal" },
     { href: "/admin/extension", label: "Appareils connectés" },

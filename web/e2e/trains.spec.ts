@@ -217,17 +217,23 @@ test("lignes : liste, filtres district et gare, gares dans l'ordre", async ({ pa
     served: true,
   });
   created.push({ col: "stations", id: st.id });
+  const railStations = [
+    { n: gare, a: abbr, km: 0.4 },
+    { n: "Milieu E2E" },
+    { n: "Reprise E2E", g: 1, km: 12.5 },
+    { n: "Terminus E2E", km: 20 },
+    { n: "Antenne E2E", b: 1 },
+  ];
+  const railBranches = [{ b: 1, from: "Milieu E2E", to: "Antenne E2E" }];
   const line = await pb("POST", "/api/collections/rail_lines/records", {
     line: LN,
     name: `${gare} – Terminus E2E`,
-    stations: [
-      { n: gare, a: abbr, km: 0.4 },
-      { n: "Milieu E2E" },
-      { n: "Reprise E2E", g: 1, km: 12.5 },
-      { n: "Terminus E2E", km: 20 },
-      { n: "Antenne E2E", b: 1 },
-    ],
-    branches: [{ b: 1, from: "Milieu E2E", to: "Antenne E2E" }],
+    stations: railStations,
+    branches: railBranches,
+    // Version de l'import (1760004100) : « Rétablir l'automatique » la reprend.
+    stations_auto: railStations,
+    branches_auto: railBranches,
+    name_auto: `${gare} – Terminus E2E`,
     count: 5,
     oriented: true,
   });
@@ -273,5 +279,20 @@ test("lignes : liste, filtres district et gare, gares dans l'ordre", async ({ pa
   );
   await noHorizontalScroll(page);
   await page.screenshot({ path: `test-results/lignes-fiche-${p}.png`, fullPage: true });
+
+  // Correction manuelle (remplace Admin › Lignes et arrêts) : Terminus monte d'un cran, badge, puis retour à l'import.
+  await detail.getByTestId("line-edit").click();
+  const editor = page.getByTestId("line-editor");
+  await editor.getByRole("button", { name: "Monter Terminus E2E" }).click();
+  await noHorizontalScroll(page);
+  await page.screenshot({ path: `test-results/lignes-edition-${p}.png`, fullPage: true });
+  await editor.getByTestId("line-save").click();
+  await expect(detail.getByTestId("line-manual")).toBeVisible();
+  await expect(trunk.getByRole("listitem").nth(2)).toContainText("Terminus E2E");
+  await detail.getByTestId("line-edit").click();
+  page.once("dialog", (d) => void d.accept());
+  await editor.getByRole("button", { name: /Rétablir l'automatique/ }).click();
+  await expect(detail.getByTestId("line-manual")).toHaveCount(0);
+  await expect(trunk.getByRole("listitem").nth(2)).toContainText("Reprise E2E");
   expect(errors).toEqual([]);
 });

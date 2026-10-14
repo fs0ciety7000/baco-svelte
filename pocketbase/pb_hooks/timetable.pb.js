@@ -105,6 +105,45 @@ onRecordUpdateRequest((e) => {
 	e.next();
 }, 'stations');
 
+// Lignes corrigées à la main (1760004100) : gares, embranchements et nom seulement ; `manual: false` rétablit la version
+// automatique de l'import.
+onRecordUpdateRequest((e) => {
+	const t = require(`${__hooks}/lib/timetable.js`);
+	const before = e.record.original();
+	for (const f of ['line', 'oriented', 'sig', 'stations_auto', 'branches_auto', 'name_auto', 'count']) {
+		if (e.record.getString(f) !== before.getString(f)) throw new BadRequestError('Champ tenu par l\'import : ' + f + '.');
+	}
+	const body = e.requestInfo().body || {};
+	const parse = (v) => {
+		try {
+			return JSON.parse(v || '[]');
+		} catch (_) {
+			return [];
+		}
+	};
+	if (body.manual === false) {
+		const auto = t.cleanLineStations(parse(before.getString('stations_auto')));
+		e.record.set('stations', auto);
+		e.record.set('branches', t.cleanLineBranches(parse(before.getString('branches_auto')), auto));
+		e.record.set('name', before.getString('name_auto'));
+		e.record.set('count', auto.length);
+		e.record.set('manual', false);
+	} else {
+		const stations = t.cleanLineStations(parse(e.record.getString('stations')));
+		if (stations.filter((s) => !s.b).length < 2) throw new BadRequestError('Une ligne garde au moins deux gares sur son tronc.');
+		const changed =
+			JSON.stringify(stations) !== JSON.stringify(t.cleanLineStations(parse(before.getString('stations')))) ||
+			e.record.getString('name') !== before.getString('name');
+		e.record.set('stations', stations);
+		e.record.set('branches', t.cleanLineBranches(parse(e.record.getString('branches')), stations));
+		e.record.set('count', stations.length);
+		e.record.set('name', String(e.record.getString('name')).slice(0, 300));
+		if (changed) e.record.set('manual', true);
+		else e.record.set('manual', before.getBool('manual'));
+	}
+	e.next();
+}, 'rail_lines');
+
 // Propositions de district (gares sans district) : recalculées par l'import et après une attribution.
 routerAdd('POST', '/api/csm/stations/suggest', (e) => {
 	const t = require(`${__hooks}/lib/timetable.js`);

@@ -6,7 +6,9 @@ import { stationSeed } from "./station-seed";
 
 describe("référentiel des gares par défaut", () => {
   it("districts et types valides, clés repliées", () => {
-    const entries = Object.entries(seed as Record<string, { d?: string; k?: string; l?: string[] }>);
+    const entries = Object.entries(
+      seed as Record<string, { d?: string; k?: string; l?: string[] }>,
+    );
     expect(entries.length).toBeGreaterThan(500);
     for (const [key, e] of entries) {
       expect(key).toBe(key.toLowerCase());

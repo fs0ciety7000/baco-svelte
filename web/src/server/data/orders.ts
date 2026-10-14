@@ -14,6 +14,7 @@ import {
 } from "@/lib/orders/schemas";
 import { isStatus, type OrderKind, type Status } from "@/lib/orders/status";
 import { foldStation, type StationRef } from "@/lib/stations/search";
+import { railBranches, railLineInfo, railStations } from "@/lib/timetable/rail-segments";
 import {
   addDays,
   brusselsDay,
@@ -564,7 +565,8 @@ export async function listEvents(kind: OrderKind, id: string): Promise<OrderEven
 
 export type BusCompany = { id: string; name: string; email: string; phone: string };
 export type Driver = { id: string; company: string; name: string; phone: string };
-export type LineInfo = { line: string; stations: string[] };
+export type { LineInfo } from "@/lib/orders/stops";
+import type { LineInfo } from "@/lib/orders/stops";
 
 /** Abréviations PtCar des gares connues (« FMS » → Mons) pour le champ de gare ; vide sans droit `ptcar:read`. */
 async function stationAbbrs(
@@ -610,26 +612,47 @@ async function orderStationRefs(pb: PocketBase, lineNames: string[]): Promise<St
   return rest.map((n) => (byName.has(n) ? { abbr: byName.get(n)!, names: [n] } : { names: [n] }));
 }
 
-export const busReference = cache(async () => {
+/**
+ * Lignes des bons (itinéraire de repli, « toutes les gares des lignes cochées ») : référentiel des trains `rail_lines`
+ * (14 oct. 2026, corrections manuelles comprises) ; table BACO `line_stations` seulement si le référentiel est vide
+ * (instance neuve avant le premier import).
+ */
+export const orderLines = cache(async (): Promise<LineInfo[]> => {
   const pb = await pbForRequest();
-  const [companies, drivers, stations, companyLines] = await Promise.all([
-    pb.collection("bus_companies").getFullList({ sort: "name", fields: "id,name,email,phone" }),
-    pb.collection("bus_drivers").getFullList({ sort: "name", fields: "id,company,name,phone" }),
-    pb
-      .collection("line_stations")
-      .getFullList({ sort: "line,position", fields: "line,station,position" }),
-    pb.collection("bus_company_lines").getFullList({ fields: "company,line" }),
-  ]);
+  const rail = await pb
+    .collection("rail_lines")
+    .getFullList({ fields: "line,stations,branches", batch: 1000 })
+    .catch(() => []);
+  if (rail.length) {
+    return rail
+      .map((r) => railLineInfo(str(r.line), railStations(r.stations), railBranches(r.branches)))
+      .filter((l) => l.stations.length >= 2)
+      .sort((a, b) => a.line.localeCompare(b.line, "fr", { numeric: true }));
+  }
+  const rows = await pb
+    .collection("line_stations")
+    .getFullList({ sort: "line,position", fields: "line,station,position" })
+    .catch(() => []);
   const lines = new Map<string, string[]>();
-  for (const s of stations) {
+  for (const s of rows) {
     const list = lines.get(str(s.line)) ?? [];
     list.push(str(s.station));
     lines.set(str(s.line), list);
   }
-  const lineList: LineInfo[] = [...lines.entries()]
+  return [...lines.entries()]
     .map(([line, st]) => ({ line, stations: st }))
     .sort((a, b) => a.line.localeCompare(b.line, "fr", { numeric: true }));
-  const stationNames = [...new Set(stations.map((s) => str(s.station)))].sort((a, b) =>
+});
+
+export const busReference = cache(async () => {
+  const pb = await pbForRequest();
+  const [companies, drivers, lineList, companyLines] = await Promise.all([
+    pb.collection("bus_companies").getFullList({ sort: "name", fields: "id,name,email,phone" }),
+    pb.collection("bus_drivers").getFullList({ sort: "name", fields: "id,company,name,phone" }),
+    orderLines(),
+    pb.collection("bus_company_lines").getFullList({ fields: "company,line" }),
+  ]);
+  const stationNames = [...new Set(lineList.flatMap((l) => l.stations))].sort((a, b) =>
     a.localeCompare(b, "fr"),
   );
   return {
@@ -654,11 +677,11 @@ export type BusReference = Awaited<ReturnType<typeof busReference>>;
 
 export const taxiReference = cache(async () => {
   const pb = await pbForRequest();
-  const [companies, stations] = await Promise.all([
+  const [companies, lineList] = await Promise.all([
     pb.collection("taxi_companies").getFullList({ sort: "name" }),
-    pb.collection("line_stations").getFullList({ fields: "station" }),
+    orderLines(),
   ]);
-  const stationNames = [...new Set(stations.map((s) => str(s.station)))].sort((a, b) =>
+  const stationNames = [...new Set(lineList.flatMap((l) => l.stations))].sort((a, b) =>
     a.localeCompare(b, "fr"),
   );
   return {
