@@ -59,6 +59,7 @@ export function timetableBuilder(dates: string[]) {
   const trips = new Map<string, Trip>();
   const stopNames = new Map<string, string>();
   const uicOf = new Map<string, string>(); // nom → code UIC (7 chiffres)
+  const geoOf = new Map<string, { lat: number; lon: number }>(); // nom → coordonnées
   const nl = new Map<string, string>(); // nom FR → nom NL
   const times = new Map<string, StopTime[]>();
 
@@ -96,6 +97,9 @@ export function timetableBuilder(dates: string[]) {
       stopNames.set(r.stop_id ?? "", name);
       const uic = /^S?(\d{7})(?:_|$)/.exec(r.stop_id ?? "")?.[1];
       if (uic && name && !uicOf.has(name)) uicOf.set(name, uic);
+      const lat = Number(r.stop_lat);
+      const lon = Number(r.stop_lon);
+      if (name && lat && lon && !geoOf.has(name)) geoOf.set(name, { lat, lon });
     },
     addTranslation(r: Record<string, string>) {
       if (

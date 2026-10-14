@@ -73,15 +73,30 @@ routerAdd('GET', '/api/csm/stations/districts', (e) => {
 	return e.json(200, { items: t.stationDistricts($app) });
 });
 
-// Modification par un agent : le district seulement (et le retour au district automatique). Tout autre champ est
-// tenu par l'import. Un district choisi à la main n'est plus écrasé par l'import.
+// Modification par un agent (admin, coordinateur, modérateur : `ptcar:update`) : district, lignes et type. Les autres
+// champs sont tenus par l'import. Un district ou des lignes choisis à la main ne sont plus écrasés par l'import
+// (`district_manual: false` / `lines_manual: false` dans le corps = retour à l'automatique).
 onRecordUpdateRequest((e) => {
 	const before = e.record.original();
-	const fixed = ['key', 'name', 'name_nl', 'abbr', 'uic', 'country', 'aliases', 'lines', 'search_key', 'served', 'sig_import'];
+	const fixed = ['key', 'name', 'name_nl', 'abbr', 'uic', 'country', 'aliases', 'search_key', 'served', 'sig_import', 'lat', 'lon', 'district_suggested', 'suggestion'];
 	for (const f of fixed) {
-		if (e.record.getString(f) !== before.getString(f)) throw new BadRequestError('Seul le district se modifie.');
+		if (e.record.getString(f) !== before.getString(f)) throw new BadRequestError('Champ tenu par l\'import : ' + f + '.');
 	}
 	const body = e.requestInfo().body || {};
-	e.record.set('district_manual', body.district_manual === false ? false : true);
+	if (body.district_manual === false) e.record.set('district_manual', false);
+	else if (e.record.getString('district') !== before.getString('district')) {
+		e.record.set('district_manual', true);
+		e.record.set('district_suggested', '');
+		e.record.set('suggestion', '');
+	}
+	if (body.lines_manual === false) e.record.set('lines_manual', false);
+	else if (e.record.getString('lines') !== before.getString('lines')) e.record.set('lines_manual', true);
 	e.next();
 }, 'stations');
+
+// Propositions de district (gares sans district) : recalculées par l'import et après une attribution.
+routerAdd('POST', '/api/csm/stations/suggest', (e) => {
+	const t = require(`${__hooks}/lib/timetable.js`);
+	if (!t.allowed(e)) return e.json(404, { message: 'Not found.' });
+	return e.json(200, t.suggestDistricts($app));
+});

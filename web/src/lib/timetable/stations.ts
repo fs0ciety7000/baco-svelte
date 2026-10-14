@@ -5,13 +5,15 @@
 import { districtForStation } from "@/lib/pmr/districts";
 import { foldStation } from "@/lib/stations/search";
 
-import type { OpPoint } from "./infrabel";
+import type { OpPoint, TrainPath } from "./infrabel";
 import { keyOf } from "./model";
 
 export type StationSeed = {
   name: string;
   nl?: string;
   uic?: string;
+  lat?: number;
+  lon?: number;
   lines: string[];
   served: boolean;
 };
@@ -28,6 +30,20 @@ export type StationRecord = {
   lines: string[];
   searchKey: string;
   served: boolean;
+  /** gare (Station), pang (point d'arrêt non gardé), etranger. */
+  kind: "gare" | "pang" | "etranger" | "";
+  lat?: number;
+  lon?: number;
+};
+
+/** Districts d'une gare (5 districts SNCB ; l'équipe filtre sur DSO, DSE, DCE). */
+export const STATION_DISTRICTS = ["DSO", "DSE", "DCE", "DNO", "DNE"] as const;
+export const STATION_DISTRICT_LABEL: Record<string, string> = {
+  DSO: "Sud-Ouest",
+  DSE: "Sud-Est",
+  DCE: "Centre",
+  DNO: "Nord-Ouest",
+  DNE: "Nord-Est",
 };
 
 /** Pays d'une gare d'après le suffixe GTFS (« Luxembourg (LU) ») ; Belgique sinon. */
@@ -52,7 +68,44 @@ export function aliasesOf(name: string, extra: (string | undefined)[]): string[]
   return [...out];
 }
 
-export function buildStations(seeds: StationSeed[], ops: Map<string, OpPoint>): StationRecord[] {
+/**
+ * Fiches des gares : celles des trains de la semaine (GTFS), puis toutes les gares et PANG d'Infrabel qui n'y figurent
+ * pas (sans train cette semaine-là), avec les lignes relevées sur les chemins Infrabel.
+ */
+export function buildStations(
+  gtfsSeeds: StationSeed[],
+  ops: Map<string, OpPoint>,
+  paths: TrainPath[] = [],
+): StationRecord[] {
+  const pathLines = new Map<string, Set<string>>();
+  for (const p of paths)
+    for (const pt of p.points) {
+      if (!pt.l) continue;
+      for (const n of [pt.n, pt.k]) {
+        if (!n) continue;
+        const k = foldStation(n);
+        const set = pathLines.get(k) ?? new Set<string>();
+        set.add(pt.l);
+        pathLines.set(k, set);
+      }
+    }
+  const seen = new Set(
+    gtfsSeeds.flatMap((s) => [foldStation(s.name), s.nl ? foldStation(s.nl) : ""]),
+  );
+  const seeds = [...gtfsSeeds];
+  for (const op of ops.values()) {
+    if (!op.station || !op.fr) continue;
+    if (seen.has(foldStation(op.fr)) || (op.nl && seen.has(foldStation(op.nl)))) continue;
+    seen.add(foldStation(op.fr));
+    seeds.push({
+      name: op.fr,
+      nl: op.nl && op.nl !== op.fr ? op.nl : undefined,
+      lat: op.lat,
+      lon: op.lon,
+      lines: [...(pathLines.get(foldStation(op.fr)) ?? [])],
+      served: false,
+    });
+  }
   // Points Infrabel indexés par nom FR / NL replié.
   const byName = new Map<string, OpPoint>();
   for (const op of ops.values()) {
@@ -85,9 +138,14 @@ export function buildStations(seeds: StationSeed[], ops: Map<string, OpPoint>): 
       country: countryOf(s.name),
       district,
       aliases,
-      lines: [...new Set(s.lines)].sort((a, b) => a.localeCompare(b, "fr", { numeric: true })),
+      lines: [...new Set([...s.lines, ...(pathLines.get(key) ?? [])])].sort((a, b) =>
+        a.localeCompare(b, "fr", { numeric: true }),
+      ),
       searchKey: keyOf([s.name, ...aliases, op?.abbr ?? ""]),
       served: s.served,
+      kind: countryOf(s.name) !== "BE" ? "etranger" : (op?.kind ?? ""),
+      lat: s.lat ?? op?.lat,
+      lon: s.lon ?? op?.lon,
     });
   }
   return [...out.values()].sort((a, b) => a.name.localeCompare(b.name, "fr"));

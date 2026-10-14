@@ -25,7 +25,7 @@ import { entryLines, zipEntries } from "./zip";
 //  3. Écriture par lots dans PocketBase (routes internes), puis suppression de ce qui n'existe plus.
 
 const INFRABEL = "https://opendata.infrabel.be/api/explore/v2.1/catalog/datasets";
-const OP_URL = `${INFRABEL}/operationele-punten-van-het-netwerk/exports/csv?delimiter=%3B&select=symbolicname,longnamedutch,commerciallongnamefrench,commerciallongnamedutch,classification`;
+const OP_URL = `${INFRABEL}/operationele-punten-van-het-netwerk/exports/csv?delimiter=%3B&select=geo_point_2d,symbolicname,longnamedutch,commerciallongnamefrench,commerciallongnamedutch,classification`;
 const D1_URL = `${INFRABEL}/ruwe-gegevens-van-stiptheid-d-1/exports/csv?delimiter=%3B`;
 const MONTHLY_URL = (ym: string) =>
   `https://fr.ftp.opendatasoft.com/infrabel/PunctualityHistory/Data_raw_punctuality_${ym}.csv`;
@@ -314,10 +314,12 @@ async function doImport(trigger: string): Promise<TimetableStatus> {
       internal("relations", { body: { items: batch.map((r) => ({ ...r, sig: sig(r) })) } }),
     );
     // Référentiel des gares (district gardé s'il a été modifié à la main).
-    const stations = buildStations(builder.stationSeeds(services), ops);
+    const stations = buildStations(builder.stationSeeds(services), ops, paths);
     await inBatches(stations, 300, (batch) =>
       internal("stations", { body: { items: batch.map((st) => ({ ...st, sig: sig(st) })) } }),
     );
+    // Propositions de district pour les gares qui n'en ont pas (validées ensuite par un coordinateur).
+    await internal("../stations/suggest", { body: {} });
     await internal("finish", {
       body: { services: services.map((s) => s.key), relations: relations.map((r) => r.key) },
     });

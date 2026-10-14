@@ -5,7 +5,16 @@
 import { lineNorm, relationName } from "./model";
 
 /** Point opérationnel Infrabel : nom long NL (clé des données de ponctualité) → noms commerciaux. */
-export type OpPoint = { fr: string; nl: string; abbr: string; station: boolean };
+export type OpPoint = {
+  fr: string;
+  nl: string;
+  abbr: string;
+  station: boolean;
+  /** « gare » (Station) ou « pang » (Stopplaats : point d'arrêt non gardé). */
+  kind?: "gare" | "pang";
+  lat?: number;
+  lon?: number;
+};
 
 /** Chemin d'un train lu chez Infrabel. */
 export type TrainPath = {
@@ -40,9 +49,17 @@ export function opPointsFrom(rows: Iterable<Record<string, string>>): Map<string
         .toUpperCase()
         .slice(0, 12),
       station: cls === "Station" || cls === "Stopplaats",
+      kind: cls === "Station" ? "gare" : cls === "Stopplaats" ? "pang" : undefined,
+      ...geo(r.geo_point_2d),
     });
   }
   return map;
+}
+
+/** « 50.89, 4.71 » → coordonnées. */
+function geo(raw: string | undefined): { lat?: number; lon?: number } {
+  const m = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(raw ?? "");
+  return m ? { lat: Number(m[1]), lon: Number(m[2]) } : {};
 }
 
 const MONTHS: Record<string, string> = {

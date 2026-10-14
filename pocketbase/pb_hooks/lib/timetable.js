@@ -206,7 +206,7 @@ module.exports = { allowed, readStatus, writeStatus, upsertPaths, listPaths, ups
 
 // --- Référentiel des gares --------------------------------------------------------------------------------------------
 
-const DISTRICTS = ['DSO', 'DSE', 'DCE'];
+const DISTRICTS = ['DSO', 'DSE', 'DCE', 'DNO', 'DNE'];
 
 function upsertStations(app, items) {
 	const col = app.findCollectionByNameOrId('stations');
@@ -233,7 +233,15 @@ function upsertStations(app, items) {
 			rec.set('uic', str(it.uic, 12));
 			rec.set('country', str(it.country, 2));
 			rec.set('aliases', Array.isArray(it.aliases) ? it.aliases.slice(0, 30).map((a) => str(a, 120)) : []);
-			rec.set('lines', Array.isArray(it.lines) ? it.lines.slice(0, 40).map((a) => str(a, 12)) : []);
+			if (!rec.getBool('lines_manual'))
+				rec.set('lines', Array.isArray(it.lines) ? it.lines.slice(0, 40).map((a) => str(a, 12)) : []);
+			if (!rec.getString('kind') && ['gare', 'pang', 'etranger'].indexOf(it.kind) >= 0) rec.set('kind', it.kind);
+			const lat = Number(it.lat);
+			const lon = Number(it.lon);
+			if (Number.isFinite(lat) && Number.isFinite(lon) && lat !== 0) {
+				rec.set('lat', lat);
+				rec.set('lon', lon);
+			}
 			rec.set('search_key', str(it.searchKey, 2000));
 			rec.set('served', !!it.served);
 			rec.set('sig_import', str(it.sig, 20));
@@ -264,3 +272,80 @@ function stationDistricts(app) {
 
 module.exports.upsertStations = upsertStations;
 module.exports.stationDistricts = stationDistricts;
+
+// Proposition de district pour chaque gare sans district : les 6 gares connues les plus proches (30 km au plus), pondérées
+// par la distance et doublées si elles partagent une ligne ; retenue si une majorité de 60 % se dégage (au moins deux
+// voisines, ou une seule à moins de 5 km sur la même ligne). Sans coordonnées : district majoritaire des gares connues de
+// ses lignes (80 %). Rien n'est appliqué : un coordinateur valide.
+function suggestDistricts(app) {
+	const recs = app.findAllRecords('stations');
+	const rows = recs.map((r) => {
+		let lines = [];
+		try {
+			lines = JSON.parse(r.getString('lines') || '[]');
+		} catch (_) {}
+		return { r, name: r.getString('name'), d: r.getString('district'), lat: r.getFloat('lat'), lon: r.getFloat('lon'), lines };
+	});
+	const known = rows.filter((x) => x.d);
+	const km = (a, b) => {
+		const rad = Math.PI / 180;
+		const dLat = (b.lat - a.lat) * rad;
+		const dLon = (b.lon - a.lon) * rad;
+		const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
+		return 12742 * Math.asin(Math.sqrt(h));
+	};
+	const byLine = {};
+	for (const k of known) for (const l of k.lines) (byLine[l] = byLine[l] || {})[k.d] = ((byLine[l] || {})[k.d] || 0) + 1;
+	let suggested = 0;
+	app.runInTransaction((tx) => {
+		for (const x of rows) {
+			let sug = '';
+			let why = '';
+			if (!x.d) {
+				if (x.lat) {
+					const near = known
+						.filter((k) => k.lat)
+						.map((k) => ({ k, dist: km(x, k) }))
+						.filter((n) => n.dist <= 30)
+						.sort((a, b) => a.dist - b.dist)
+						.slice(0, 6);
+					const score = {};
+					let total = 0;
+					for (const n of near) {
+						const shared = n.k.lines.some((l) => x.lines.indexOf(l) >= 0);
+						const w = (1 / (n.dist + 1)) * (shared ? 2 : 1);
+						score[n.k.d] = (score[n.k.d] || 0) + w;
+						total += w;
+					}
+					const best = Object.keys(score).sort((a, b) => score[b] - score[a])[0];
+					const sameLineClose = near.length === 1 && near[0].dist < 5 && near[0].k.lines.some((l) => x.lines.indexOf(l) >= 0);
+					if (best && total > 0 && score[best] / total >= 0.6 && (near.length >= 2 || sameLineClose)) {
+						sug = best;
+						why = 'Proche de ' + near.filter((n) => n.k.d === best).slice(0, 3).map((n) => n.k.name + ' (' + Math.round(n.dist) + ' km)').join(', ');
+					}
+				} else if (x.lines.length) {
+					const tally = {};
+					let total = 0;
+					for (const l of x.lines) for (const d in byLine[l] || {}) {
+						tally[d] = (tally[d] || 0) + byLine[l][d];
+						total += byLine[l][d];
+					}
+					const best = Object.keys(tally).sort((a, b) => tally[b] - tally[a])[0];
+					if (best && tally[best] / total >= 0.8) {
+						sug = best;
+						why = 'Lignes ' + x.lines.join(', ') + ' : ' + tally[best] + ' gares en ' + best;
+					}
+				}
+			}
+			if (x.r.getString('district_suggested') === sug && x.r.getString('suggestion') === why) continue;
+			x.r.set('district_suggested', sug);
+			x.r.set('suggestion', why.slice(0, 300));
+			tx.save(x.r);
+			if (sug) suggested++;
+		}
+	});
+	const missing = rows.filter((x) => !x.d);
+	return { saved: suggested, suggested: missing.filter((x) => x.r.getString('district_suggested')).length, withoutDistrict: missing.length };
+}
+
+module.exports.suggestDistricts = suggestDistricts;
