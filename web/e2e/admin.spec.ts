@@ -37,6 +37,17 @@ test("écrans d'administration", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test("administration dans la barre latérale (desktop)", async ({ page }, info) => {
+  test.skip(info.project.name.includes("mobile"), "barre latérale desktop seulement");
+  await loginAdmin(page);
+  const section = page.getByTestId("sidebar-admin");
+  await expect(section.getByRole("group", { name: "Supervision" })).toBeVisible();
+  await page.getByTestId("sidebar-admin-sante").click();
+  await expect(page).toHaveURL(/\/admin\/sante$/);
+  await expect(page.getByTestId("sidebar-admin-sante")).toHaveAttribute("aria-current", "page");
+  await expect(page.getByTestId("topbar-admin-page")).toContainText("Santé");
+});
+
 test("compte : création, désactivation, réactivation", async ({ page }, info) => {
   test.skip(info.project.name !== "desktop", "parcours en desktop");
   await loginAdmin(page);

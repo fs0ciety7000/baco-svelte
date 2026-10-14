@@ -10,7 +10,7 @@ import { useState } from "react";
 
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { activeModule, CHANGELOG_LINK } from "@/navigation";
+import { activeModule, CHANGELOG_LINK, tabGroups } from "@/navigation";
 
 import { useShell } from "./shell-context";
 
@@ -93,19 +93,26 @@ export function MobileTabBar() {
                 >
                   <Icon className="size-5 text-fg-muted" aria-hidden /> {m.label}
                 </Link>
-                <ul className="ml-8 flex flex-col border-l border-border">
-                  {m.tabs.map((t) => (
-                    <li key={t.href}>
-                      <Link
-                        href={t.href}
-                        onClick={() => setMore(false)}
-                        className="flex h-11 items-center px-3 text-body text-fg-muted hover:text-fg"
-                      >
-                        {t.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+                {tabGroups(m).map((g) => (
+                  <div key={g.label} className="ml-8 flex flex-col">
+                    {g.label ? (
+                      <p className="px-3 pt-1 text-small text-fg-subtle">{g.label}</p>
+                    ) : null}
+                    <ul className="flex flex-col border-l border-border">
+                      {g.tabs.map((t) => (
+                        <li key={t.href}>
+                          <Link
+                            href={t.href}
+                            onClick={() => setMore(false)}
+                            className="flex h-11 items-center px-3 text-body text-fg-muted hover:text-fg"
+                          >
+                            {t.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
               </li>
             );
           })}

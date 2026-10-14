@@ -49,7 +49,9 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 ## Shell (étape 3)
 
 - Navigation : **source unique** `src/navigation.ts` (6 modules, onglets en routes, `hideFor`, actions rapides,
-  administration). Barre latérale (rail 96 px dès 768 px, 232 px dès 1280 px), barre du haut (fil, ⌘K, + Nouveau,
+  administration : `ADMIN.tabs` portent `group` + `icon`, `tabGroups()` ; section `AdminSection` de la barre latérale
+  (groupes titrés repliables ≥ 1280 px, menu latéral sur le rail, `data-testid` `sidebar-admin`, `sidebar-admin-<page>`),
+  « Plus » mobile groupé, barre du haut « Administration › page » (`topbar-admin-page`) sans onglets). Barre latérale (rail 96 px dès 768 px, 232 px dès 1280 px), barre du haut (fil, ⌘K, + Nouveau,
   menu utilisateur), mobile : 4 onglets + « Plus » (Sheet). Composants dans `src/components/shell/`.
 - Les icônes ne traversent pas la frontière serveur → client : la navigation est calculée côté client
   (`ShellProvider`) à partir de l'agent, avec les mêmes fonctions que les gardes serveur.

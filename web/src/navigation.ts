@@ -1,12 +1,19 @@
 import {
   Accessibility,
   Bus,
+  CalendarClock,
   Car,
-  ClipboardList,
   Database,
+  HeartPulse,
   Home,
+  ListFilter,
+  Mail,
+  MonitorSmartphone,
   Plus,
+  ScrollText,
+  ShieldCheck,
   Train,
+  UserCog,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -14,7 +21,8 @@ import {
 import { can, isAdmin, type PermissionSubject, type Role } from "@/lib/permissions";
 
 // Navigation : SOURCE UNIQUE pour la barre latérale, la barre d'onglets mobile, « Plus », ⌘K et les onglets
-// des modules. 6 modules au maximum (docs/CSM-V2.md §2) ; l'administration est dans le menu utilisateur.
+// des modules. 6 modules au maximum (docs/CSM-V2.md §2) ; l'administration (admin / sysop) a sa propre section dans la
+// barre latérale depuis le 14 oct. 2026 (pages groupées par `group`), dans « Plus » en mobile et dans ⌘K.
 
 export type NavTab = {
   href: string;
@@ -23,6 +31,9 @@ export type NavTab = {
   /** Rôles pour lesquels l'onglet est masqué (repris de la v1). */
   hideFor?: Role[];
   keywords?: string[];
+  /** Groupe d'affichage (Administration : Comptes, Supervision, Réglages). */
+  group?: string;
+  icon?: LucideIcon;
 };
 export type NavModule = {
   id: string;
@@ -239,17 +250,34 @@ export const ADMIN: NavModule = {
   id: "admin",
   href: "/admin",
   label: "Administration",
-  icon: ClipboardList,
+  icon: ShieldCheck,
   tabs: [
-    { href: "/admin", label: "Utilisateurs" },
-    { href: "/admin/audit", label: "Journal d'audit" },
-    { href: "/admin/journal", label: "Tri du Journal" },
-    { href: "/admin/extension", label: "Appareils connectés" },
-    { href: "/admin/quinyx", label: "Quinyx" },
-    { href: "/admin/campagnes", label: "Campagnes" },
-    { href: "/admin/sante", label: "Santé" },
+    { href: "/admin", label: "Utilisateurs", group: "Comptes", icon: UserCog },
+    {
+      href: "/admin/extension",
+      label: "Appareils connectés",
+      group: "Comptes",
+      icon: MonitorSmartphone,
+    },
+    { href: "/admin/sante", label: "Santé", group: "Supervision", icon: HeartPulse },
+    { href: "/admin/audit", label: "Journal d'audit", group: "Supervision", icon: ScrollText },
+    { href: "/admin/journal", label: "Tri du Journal", group: "Réglages", icon: ListFilter },
+    { href: "/admin/quinyx", label: "Quinyx", group: "Réglages", icon: CalendarClock },
+    { href: "/admin/campagnes", label: "Campagnes", group: "Réglages", icon: Mail },
   ],
 };
+
+/** Onglets d'un module regroupés par `group`, dans l'ordre d'apparition (Administration). */
+export function tabGroups(module: NavModule): { label: string; tabs: NavTab[] }[] {
+  const out: { label: string; tabs: NavTab[] }[] = [];
+  for (const t of module.tabs) {
+    const label = t.group ?? "";
+    const g = out.find((x) => x.label === label);
+    if (g) g.tabs.push(t);
+    else out.push({ label, tabs: [t] });
+  }
+  return out;
+}
 
 export type QuickAction = { href: string; label: string; icon: LucideIcon; permission: string };
 

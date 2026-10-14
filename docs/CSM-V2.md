@@ -40,7 +40,7 @@ La correction est prête et testée dans `supabase/migrations/20261008120000_sec
    - Référentiels
    - Équipe
 
-   L'administration passe dans le menu utilisateur. Les sous-pages deviennent des **onglets à l'intérieur de chaque module** (par exemple Commandes → Bus | Taxi | Suivi | Remise B201). Le mobile garde 4 onglets en bas plus « Plus ».
+   L'administration passe dans le menu utilisateur (révisé le 14 oct. 2026 : section « Administration » de la barre latérale, pages groupées Comptes / Supervision / Réglages, menu latéral sur le rail, « Plus » en mobile ; un seul lien dans le menu utilisateur). Les sous-pages deviennent des **onglets à l'intérieur de chaque module** (par exemple Commandes → Bus | Taxi | Suivi | Remise B201). Le mobile garde 4 onglets en bas plus « Plus ».
 2. **Widgets non responsive** : abandonner gridstack. Utiliser une grille CSS avec **container queries** ; chaque widget adapte son contenu à sa propre largeur. On réorganise par glisser-déposer simple (dnd-kit) et on mémorise la disposition par utilisateur.
 3. **Lisibilité insuffisante** :
    - corps de texte à 14 px minimum ;

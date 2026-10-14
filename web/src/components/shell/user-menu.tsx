@@ -18,7 +18,7 @@ const itemClass =
 
 /**
  * Menu utilisateur : identité, mon profil (avatar, mot de passe, passkeys, sessions…), mon planning, extension CSM,
- * préférences d'affichage, design system, administration (admin), déconnexion. Les liens n'apparaissent que si l'onglet
+ * préférences d'affichage, design system, lien vers l'administration (admin), déconnexion. Les liens n'apparaissent que si l'onglet
  * est visible pour l'agent (même règle que la navigation).
  */
 export function UserMenu({ compact }: { compact?: boolean }) {
@@ -81,20 +81,13 @@ export function UserMenu({ compact }: { compact?: boolean }) {
                 <SwatchBook /> Design system
               </Link>
             </Menu.Item>
+            {/* Les pages d'administration sont dans la barre latérale (14 oct. 2026) : un seul lien ici, par habitude. */}
             {admin ? (
-              <>
-                <Menu.Separator className="my-1 h-px bg-border" />
-                <Menu.Label className="label-mono px-3 py-1 text-fg-muted">
-                  Administration
-                </Menu.Label>
-                {admin.tabs.map((t) => (
-                  <Menu.Item key={t.href} asChild className={itemClass}>
-                    <Link href={t.href}>
-                      <Shield /> {t.label}
-                    </Link>
-                  </Menu.Item>
-                ))}
-              </>
+              <Menu.Item asChild className={itemClass}>
+                <Link href={admin.href} data-testid="user-menu-admin">
+                  <Shield /> Administration
+                </Link>
+              </Menu.Item>
             ) : null}
             <Menu.Separator className="my-1 h-px bg-border" />
             <Menu.Item className={itemClass} onSelect={() => void logout()}>

@@ -1152,6 +1152,16 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   était celle du jour le moins récent et le nom celui du dernier envoi. Constat : la préversion n'avait reçu que la synchro
   de 03:43 (utilisateur) et la **prod n'a jamais reçu de synchro** (extensions encore branchées sur test-csm).
 
+- 2026-10-14 — **Refonte de l'interface et rôles v3 validés** (« je valide tout ») : plans `docs/design/REFONTE-UI-2026-10.md`
+  et `docs/design/CADRAGE-ROLES-V3.md`, réponses par défaut retenues (contrôles personnalisés aussi en mobile en feuille du
+  bas ; administration réservée à admin / sysop ; un lien « Administration » dans le menu du profil ; « + Nouveau » et
+  « En ligne » hors de la barre du haut sous 1536 px ; barre du bas à 5 entrées avec Ressources dans « Plus » ; filtres
+  multi-districts partout ; jours fériés belges dans le calendrier ; heures au pas de 5 min ; ordre R0 → R1 → R3 ; rôles :
+  admin seul gère les rôles, Sysop gardé, pas de portée par district ni de droits temporaires, rôle utilisé non supprimable
+  (réaffectation proposée), Modérateur et PACO/RCCA modifiables non supprimables, couleur du rôle = anneau d'avatar).
+  **R0 livré** : Administration dans la barre latérale (groupes Comptes / Supervision / Réglages, repliable ≥ 1280 px, menu
+  latéral « Admin » sur le rail, « Plus » mobile groupé), barre du haut « Administration › page », menu du profil allégé.
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)
