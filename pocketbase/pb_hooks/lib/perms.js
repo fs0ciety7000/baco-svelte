@@ -55,4 +55,17 @@ function permsOf(record) {
 	return computePerms(record.getString('role'), parseList(record.getString('grants')), parseList(record.getString('denies')));
 }
 
-module.exports = { computePerms, permsOf, parseList };
+// Rôles système sans aucune permission de module (même si `perms` était périmé).
+const NO_PERM_ROLES = ['disabled', 'screen', 'connector'];
+
+// Lot L2 : un hook teste une permission en lisant `users.perms` (seule source), jamais le rôle. `record` = fiche
+// `users` (destinataire d'une notification) ou `e.auth` (superuser : tout). Les clés hors catalogue (`dicos:write` du
+// compte de service) ne passent pas par ici : elles restent dans `grants`.
+function has(record, key) {
+	if (!record) return false;
+	if (typeof record.isSuperuser === 'function' && record.isSuperuser()) return true;
+	if (NO_PERM_ROLES.indexOf(record.getString('role')) !== -1) return false;
+	return parseList(record.getString('perms')).indexOf(key) !== -1;
+}
+
+module.exports = { computePerms, permsOf, parseList, has };

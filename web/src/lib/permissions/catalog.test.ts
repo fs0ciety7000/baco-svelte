@@ -4,16 +4,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { isCoordinator as isOrderCoordinator } from "@/lib/orders/status";
-
-import {
-  can,
-  canEditChangelog,
-  isCoordinator,
-  isJournalModerator,
-  PERMISSION_KEYS,
-  type Role,
-} from "../permissions";
+import { can, PERMISSION_KEYS } from "../permissions";
 
 import { CATALOG, CATALOG_KEYS, roleDefaults, TASKS } from "./catalog";
 import { catalogModule } from "./catalog-module";
@@ -33,6 +24,13 @@ const V2_DEFAULTS: Record<string, string[]> = {
   disabled: [],
   connector: [],
 };
+
+// Tests de rôle en dur d'avant le lot L2 (isJournalModerator, canEditChangelog, isCoordinator des bons et du PMR),
+// recopiés tels quels : référence d'équivalence des clés nouvelles.
+const ADMIN = (r: string) => r === "admin" || r === "sysop";
+const isJournalModerator = (r: string) => ADMIN(r) || r === "moderator";
+const canEditChangelog = (r: string) => ADMIN(r) || r === "moderator";
+const isCoordinator = (r: string) => ADMIN(r) || r === "moderator" || r === "paco";
 
 // Ancien `can()` (avant L1), recopié tel quel.
 function canV2(role: string, grants: string[], denies: string[], p: string): boolean {
@@ -77,13 +75,12 @@ describe("catalogue v3 (L0)", () => {
     for (const role of ROLES) {
       const perms = computePerms(role);
       const has = (k: string) => perms.includes(k);
-      const subject = { role: role as Role };
       const active = !["screen", "disabled", "connector"].includes(role);
-      expect(has("journal:moderate"), role).toBe(active && isJournalModerator(subject));
-      expect(has("changelog:write"), role).toBe(active && canEditChangelog(subject));
-      expect(has("bus:reopen"), role).toBe(active && isOrderCoordinator(role));
-      expect(has("taxi:reopen"), role).toBe(active && isOrderCoordinator(role));
-      expect(has("pmr_equipment:manage"), role).toBe(active && isCoordinator(subject));
+      expect(has("journal:moderate"), role).toBe(active && isJournalModerator(role));
+      expect(has("changelog:write"), role).toBe(active && canEditChangelog(role));
+      expect(has("bus:reopen"), role).toBe(active && isCoordinator(role));
+      expect(has("taxi:reopen"), role).toBe(active && isCoordinator(role));
+      expect(has("pmr_equipment:manage"), role).toBe(active && isCoordinator(role));
       // Exclusions `role != "guest"` (règles, navigation `hideFor`, écrans).
       for (const k of [
         "suppliers:read",

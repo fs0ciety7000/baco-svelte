@@ -277,11 +277,21 @@ describe("retrait des prestations disparues", () => {
 });
 
 describe("comptes de l'équipe", () => {
-  it("PACO/RCCA, modérateur, admin ; jamais invité, écran ni connecteur", () => {
-    expect(["paco", "moderator", "admin", "sysop"].every(isTeamAccount)).toBe(true);
-    expect(["guest", "screen", "connector", "disabled", "", undefined].some(isTeamAccount)).toBe(
-      false,
+  it("PACO/RCCA, modérateur, admin ; jamais invité, écran ni connecteur (sans perms : rôles)", () => {
+    expect(["paco", "moderator", "admin", "sysop"].every((role) => isTeamAccount({ role }))).toBe(
+      true,
     );
+    expect(
+      ["guest", "screen", "connector", "disabled", "", undefined].some((role) =>
+        isTeamAccount({ role }),
+      ),
+    ).toBe(false);
+  });
+
+  it("rôles v3 : `quinyx:read` dans perms décide", () => {
+    expect(isTeamAccount({ role: "guest", perms: ["quinyx:read"] })).toBe(true);
+    expect(isTeamAccount({ role: "paco", perms: ["otto:read"] })).toBe(false);
+    expect(isTeamAccount({ role: "screen", perms: ["quinyx:read"] })).toBe(false);
   });
 });
 

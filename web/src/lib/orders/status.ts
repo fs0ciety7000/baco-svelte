@@ -73,9 +73,34 @@ export function isStatus(v: unknown): v is Status {
   return typeof v === "string" && (ORDER_STATUSES as readonly string[]).includes(v);
 }
 
-export function isCoordinator(role: string): boolean {
-  // Rôles v2 (11 oct. 2026) : les PACO/RCCA ont les droits des anciens coordinateurs (miroir de `lib/orders.js`).
-  return role === "admin" || role === "sysop" || role === "moderator" || role === "paco";
+/**
+ * Droit de rouvrir un bon envoyé / rétablir un annulé (rôles v3, lot L2) : `bus:reopen` ou `taxi:reopen` (PACO/RCCA,
+ * Modérateur, admins par défaut). Miroir de `isCoordinator` (pocketbase/pb_hooks/lib/orders.js), qui fait foi.
+ */
+export function reopenPermission(kind: OrderKind): "bus:reopen" | "taxi:reopen" {
+  return kind === "taxi" ? "taxi:reopen" : "bus:reopen";
+}
+
+/** Fenêtre pendant laquelle le créateur d'un bon peut le supprimer (miroir de `DELETE_WINDOW_MS`, lib/orders.js). */
+export const ORDER_DELETE_WINDOW_MS = 8 * 3600 * 1000;
+
+/**
+ * Suppression d'un bon (14 oct. 2026) — miroir d'affichage de `checkDelete` (hook) et de la règle `1760004410` :
+ * droit de suppression du module (`otto:delete` / `generate_taxi:delete` : Modérateur, admins), OU créateur du bon avec
+ * le droit d'écriture du module, pendant 8 h après la création, tant que le bon n'est pas envoyé / finalisé.
+ */
+export function canDeleteOrder(
+  can: (permission: string) => boolean,
+  userId: string,
+  order: { kind: OrderKind; created_by: string; created: string; status: string },
+  now: number = Date.now(),
+): boolean {
+  const mod = order.kind === "taxi" ? "generate_taxi" : "otto";
+  if (can(`${mod}:delete`)) return true;
+  if (!can(`${mod}:write`) || !userId || order.created_by !== userId) return false;
+  if (order.status === "envoye") return false;
+  const created = Date.parse(order.created.replace(" ", "T"));
+  return Number.isFinite(created) && now - created <= ORDER_DELETE_WINDOW_MS;
 }
 
 /** Une commande se modifie tant qu'elle n'est pas annulée (un bon finalisé se rouvre d'abord). */

@@ -293,10 +293,14 @@ export function removalAllowed(stored: number, toRemove: number): boolean {
 /**
  * Comptes CSM dont on garde les horaires (demande du 14 oct. 2026 : « seulement les PACO / RCCA de CSM ») : PACO/RCCA,
  * Modérateur, et les administrateurs qui travaillent aussi en PACO. Jamais Invité, Écran, connecteur ni désactivé.
+ * Rôles v3, lot L2 : comptes qui ont `quinyx:read` (`users.perms`, lisible par le compte de service) ; rôles en dur
+ * seulement si `perms` est absent (instance sans le champ).
  */
 export const TEAM_ROLES = ["paco", "moderator", "admin", "sysop"] as const;
-export function isTeamAccount(role: unknown): boolean {
-  return (TEAM_ROLES as readonly unknown[]).includes(role);
+export function isTeamAccount(user: { role?: unknown; perms?: unknown }): boolean {
+  if (["disabled", "screen", "connector"].includes(String(user.role))) return false;
+  if (Array.isArray(user.perms)) return user.perms.includes("quinyx:read");
+  return (TEAM_ROLES as readonly unknown[]).includes(user.role);
 }
 
 /**

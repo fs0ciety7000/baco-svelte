@@ -363,12 +363,12 @@ export async function listLogEvents(id: string): Promise<LogEvent[]> {
 
 export type Agent = { id: string; name: string; username: string };
 
-/** Agents mentionnables (actifs, hors invités et compte de service). */
+/** Agents mentionnables (actifs, de l'équipe : `team:read` ; jamais invité, Écran ni compte de service). */
 export async function listMentionable(): Promise<Agent[]> {
   const pb = await pbForRequest();
   const items = await pb.collection("users").getFullList({
     filter:
-      'role != "disabled" && role != "guest" && role != "connector" && role != "screen" && username != ""',
+      'role != "disabled" && role != "connector" && role != "screen" && perms ~ \'"team:read"\' && username != ""',
     sort: "name",
     fields: "id,name,username",
   });

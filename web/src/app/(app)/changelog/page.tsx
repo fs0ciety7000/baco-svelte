@@ -5,7 +5,7 @@ import { ChangelogBoard } from "@/components/team/changelog-board";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/misc";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { canEditChangelog } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 import { requireUser } from "@/server/auth";
 import { releases } from "@/server/changelog";
 import { listChangelog, type ChangelogEntry } from "@/server/data/team";
@@ -20,7 +20,7 @@ export const metadata: Metadata = { title: "Nouveautés · CSM" };
 export default async function ChangelogPage() {
   const user = await requireUser();
   const all = releases();
-  const showAnnouncements = user.role !== "guest";
+  const showAnnouncements = can(user, "changelog:read");
   let announcements: ChangelogEntry[] = [];
   if (showAnnouncements) {
     try {
@@ -79,7 +79,7 @@ export default async function ChangelogPage() {
             </TabsList>
             <TabsContent value="versions">{notes}</TabsContent>
             <TabsContent value="annonces">
-              <ChangelogBoard items={announcements} canEdit={canEditChangelog(user)} />
+              <ChangelogBoard items={announcements} canEdit={can(user, "changelog:write")} />
             </TabsContent>
           </Tabs>
         ) : (

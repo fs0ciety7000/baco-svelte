@@ -21,7 +21,7 @@ export default async function AccueilPage() {
   const user = await requireUser();
   const prefs = (user.preferences ?? {}) as { dashboard?: unknown; shift?: unknown };
   // Horaire réel du jour (Quinyx), pour le widget « Fin de service » (14 oct. 2026).
-  const qs = user.role === "guest" ? null : await todayShiftOf(user.id).catch(() => null);
+  const qs = can(user, "quinyx:read") ? await todayShiftOf(user.id).catch(() => null) : null;
   const quinyxShift = qs
     ? {
         start: qs.start,

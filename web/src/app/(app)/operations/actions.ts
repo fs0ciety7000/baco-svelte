@@ -7,7 +7,7 @@ import { z } from "zod";
 import { normalizeTrain, parseFavorites, stationId } from "@/lib/ops/irail";
 import { DUTY_DISTRICTS, entrySchema, RETIRE_WINDOW_MS } from "@/lib/ops/log";
 import { brusselsDay, brusselsTime, brusselsToUtc, pbDate } from "@/lib/orders/time";
-import { can, isJournalModerator } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 import { requireUser, type SessionUser } from "@/server/auth";
 import {
   getLogEntry,
@@ -57,7 +57,8 @@ async function need(perm: string): Promise<SessionUser> {
   return user;
 }
 
-const coordinator = (u: SessionUser) => isJournalModerator(u);
+// Modération du Journal (rôles v3, lot L2) : `journal:moderate` (Modérateur, admins par défaut).
+const coordinator = (u: SessionUser) => can(u, "journal:moderate");
 
 function entryBody(p: z.output<typeof entrySchema>) {
   return {

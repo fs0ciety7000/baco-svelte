@@ -1,13 +1,12 @@
 // Module Opérations : logique partagée par les hooks (les callbacks JSVM sont isolés, voir operations.pb.js).
 
-// Rôles v2 (11 oct. 2026) : la modération du Journal (retrait tardif, rétablissement) reste aux modérateurs et admins ; l'invité ne lit que les commandes bus et taxi.
-const COORD_ROLES = ['admin', 'sysop', 'moderator'];
-// Rôles qui lisent le Journal par défaut (journal:read).
-const LOG_READERS = ['admin', 'sysop', 'moderator', 'paco'];
+// Rôles v3, lot L2 (14 oct. 2026) : les tests de rôle sont devenus des permissions lues dans `users.perms` (lib/perms.js).
+// Modération du Journal (retrait tardif, rétablissement, messages retirés des autres) = `journal:moderate` (Modérateur et
+// admins par défaut) ; lecture = `journal:read`.
 const MAX_WATCHES = 10;
 
 function isCoord(auth) {
-	return !!auth && (auth.isSuperuser() || COORD_ROLES.indexOf(auth.getString('role')) !== -1);
+	return require(`${__hooks}/lib/perms.js`).has(auth, 'journal:moderate');
 }
 
 function now() {
@@ -120,13 +119,8 @@ function ids(record, field) {
 }
 
 function hasJournalRead(u) {
-	const denies = u.getString('denies');
-	const grants = u.getString('grants');
-	// Compte « Écran » (poste partagé) : jamais destinataire, même avec un droit accordé.
-	if (u.getString('role') === 'disabled' || u.getString('role') === 'screen') return false;
-	if (grants.indexOf('"journal:read"') !== -1) return true;
-	if (LOG_READERS.indexOf(u.getString('role')) === -1) return false;
-	return u.getString('role') === 'admin' || u.getString('role') === 'sysop' || denies.indexOf('"journal:read"') === -1;
+	// Compte « Écran » (poste partagé), désactivé, connecteur : jamais destinataires (perms vide, et refusés par `has`).
+	return require(`${__hooks}/lib/perms.js`).has(u, 'journal:read');
 }
 
 // « @nom.utilisateur » → agents actifs qui lisent la main courante (l'auteur exclu).
@@ -461,12 +455,9 @@ function findStop(stops, station) {
 	return best;
 }
 
-function hasPerm(u, perm, roles) {
-	const role = u.getString('role');
-	if (role === 'disabled' || role === 'screen' || role === 'connector') return false;
-	if (role === 'admin' || role === 'sysop') return true;
-	if (u.getString('grants').indexOf(`"${perm}"`) !== -1) return true;
-	return roles.indexOf(role) !== -1 && u.getString('denies').indexOf(`"${perm}"`) === -1;
+// Permission d'un agent (destinataire d'une notification) : `users.perms` seulement (lot L2).
+function hasPerm(u, perm) {
+	return require(`${__hooks}/lib/perms.js`).has(u, perm);
 }
 
 // Lit l'état iRail des trains portant une mission du jour (dans une fenêtre autour de leurs heures), l'enregistre dans
@@ -518,7 +509,7 @@ function missionTrains(app, at) {
 	const ddmmyy = `${today.slice(8, 10)}${today.slice(5, 7)}${today.slice(2, 4)}`;
 	const users = app
 		.findRecordsByFilter('users', 'role != "disabled" && role != "connector"', '', 500, 0)
-		.filter((u) => hasPerm(u, 'deplacements:read', ['moderator', 'paco']));
+		.filter((u) => hasPerm(u, 'deplacements:read'));
 	const collection = app.findCollectionByNameOrId('mission_trains');
 	const started = Date.now();
 	const trains = Object.keys(byTrain).slice(0, 60);
