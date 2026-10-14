@@ -11,22 +11,28 @@ import { Input, Select } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
 import { Table, Td, Th, THead, Tr } from "@/components/ui/table";
-import { DISTRICT_SHORT, ROLE_LABEL } from "@/lib/team";
+import { assignableRoles, roleLabel } from "@/lib/roles";
+import { DISTRICT_SHORT } from "@/lib/team";
 import { requireAdmin } from "@/server/auth";
 import { listUsers } from "@/server/data/admin";
+import { listRoles } from "@/server/data/roles";
 
 export const metadata: Metadata = { title: "Utilisateurs · CSM" };
 
 type SP = { q?: string; role?: string; district?: string };
-const ROLES = ["admin", "sysop", "moderator", "paco", "guest", "disabled"];
 
 export default async function Page({ searchParams }: { searchParams: Promise<SP> }) {
   // Garde dans la page (pas seulement le layout) : Next rend layout et page en parallèle.
-  await requireAdmin();
+  const me = await requireAdmin();
   const f = await searchParams;
   const rows = (await listUsers({ q: f.q ?? "", role: f.role, district: f.district })).filter(
     (u) => u.role !== "connector",
   );
+  // Rôles lus dans la collection `roles` (lot L3) : filtre, libellés, création de compte.
+  const roles = await listRoles();
+  const choices = assignableRoles(roles);
+  const filterRoles = [...choices.map((r) => r.key), "disabled"];
+  const label = (k: string) => roleLabel(k, roles);
   return (
     <section className="flex flex-col gap-4" aria-label="Utilisateurs">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -34,7 +40,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
           <span className="font-mono text-fg tabular">{rows.length}</span>{" "}
           {pl(rows.length, "compte")}
         </p>
-        <UserCreate />
+        <UserCreate roles={choices} canAssignFull={me.role === "admin"} />
       </div>
       <FilterForm
         action="/admin"
@@ -61,9 +67,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
           <span className="text-small text-fg-muted">Rôle</span>
           <Select name="role" defaultValue={f.role ?? ""}>
             <option value="">Tous</option>
-            {ROLES.map((r) => (
+            {filterRoles.map((r) => (
               <option key={r} value={r}>
-                {ROLE_LABEL[r]}
+                {label(r)}
               </option>
             ))}
           </Select>
@@ -113,7 +119,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
                       </Link>
                     </Td>
                     <Td className="break-all text-fg-muted">{u.email}</Td>
-                    <Td>{ROLE_LABEL[u.role === "disabled" ? u.disabledRole : u.role] ?? u.role}</Td>
+                    <Td>{label(u.role === "disabled" ? u.disabledRole : u.role)}</Td>
                     <Td>
                       {u.districts.length
                         ? u.districts.map((d) => DISTRICT_SHORT[d] ?? d).join(" · ")
@@ -147,7 +153,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="truncate font-medium">{u.name || u.username || "—"}</span>
                     <span className="truncate text-small text-fg-muted">
-                      {ROLE_LABEL[u.role === "disabled" ? u.disabledRole : u.role] ?? u.role}
+                      {label(u.role === "disabled" ? u.disabledRole : u.role)}
                       {u.districts.length
                         ? ` · ${u.districts.map((d) => DISTRICT_SHORT[d] ?? d).join(" · ")}`
                         : ""}

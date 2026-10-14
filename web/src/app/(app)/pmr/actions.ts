@@ -4,7 +4,7 @@ import { unstable_rethrow } from "next/navigation";
 import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 
-import { can, isCoordinator } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 import { normalizeTrain, type Train } from "@/lib/ops/irail";
 import {
   ASSIST_STATUSES,
@@ -60,8 +60,9 @@ async function need(perm: string): Promise<SessionUser> {
   return user;
 }
 
+// Matériel complet et zones (ex-« coordinateurs ») : `pmr_equipment:manage` (rôles v3, lot L2).
 function coordinator(user: SessionUser) {
-  return isCoordinator(user);
+  return can(user, "pmr_equipment:manage");
 }
 
 // ---------------------------------------------------------------------------------------------------

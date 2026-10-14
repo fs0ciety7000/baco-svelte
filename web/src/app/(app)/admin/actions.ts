@@ -10,8 +10,10 @@ import { z } from "zod";
 import { ruleCategory, rulesSchema } from "@/lib/ops/journal-rules";
 import type { LogCategory } from "@/lib/ops/log";
 import { PERMISSION_CATALOG } from "@/lib/permissions";
-import { requireAdmin } from "@/server/auth";
+import { assignableRoles } from "@/lib/roles";
+import { requireAdmin, type SessionUser } from "@/server/auth";
 import { pbForRequest } from "@/server/data/orders";
+import { listRoles } from "@/server/data/roles";
 
 // Écritures de l'administration : admin et sysop seulement (contrôle ici ET règles PocketBase `1760001400`).
 
@@ -20,8 +22,8 @@ type Result<T = undefined> =
 
 const userId = z.string().regex(/^[a-z0-9-]{15,36}$/);
 const pbId = z.string().regex(/^[a-z0-9]{15}$/);
-// Rôles v2 (11 oct. 2026).
-const ROLES = ["admin", "sysop", "moderator", "paco", "guest", "screen"] as const;
+// Rôles (lot L3) : identifiants lus dans la collection `roles` (`assignableRoles`), revérifiés par le hook PocketBase.
+const roleKey = z.string().regex(/^[a-z][a-z0-9_-]{1,39}$/, "Rôle invalide");
 const DISTRICT_NAMES = ["Sud-Ouest", "Sud-Est", "Centre"] as const;
 const KNOWN = new Set(PERMISSION_CATALOG.flatMap((g) => g.items.map((i) => i.key)));
 
@@ -77,8 +79,19 @@ const profileSchema = z.object({
     .max(3)
     .default([])
     .transform((l) => DISTRICT_NAMES.filter((d) => l.includes(d))),
-  role: z.enum(ROLES),
+  role: roleKey,
 });
+
+/**
+ * Rôle attribuable (collection `roles`, ni « désactivé » ni compte de service) ; `admin` / `sysop` par un administrateur
+ * seulement (même garde-fou dans le hook PocketBase `users.pb.js`).
+ */
+async function assertAssignable(me: SessionUser, role: string, previous?: string) {
+  const allowed = assignableRoles(await listRoles()).map((r) => r.key);
+  if (!allowed.includes(role)) throw new Error("DROIT:Rôle inconnu.");
+  if ((role === "admin" || role === "sysop") && role !== previous && me.role !== "admin")
+    throw new Error("DROIT:Seul un administrateur peut attribuer le rôle Administrateur ou Sysop.");
+}
 
 const withDistrict = <T extends { districts: string[] }>(p: T) => ({
   ...p,
@@ -89,10 +102,11 @@ export async function createUser(
   input: unknown,
 ): Promise<Result<{ id: string; password: string }>> {
   try {
-    await requireAdmin();
+    const me = await requireAdmin();
     const p = profileSchema
       .extend({ email: z.string().trim().toLowerCase().email("E-mail invalide").max(200) })
       .parse(input);
+    await assertAssignable(me, p.role);
     const password = tempPassword();
     const pb = await pbForRequest();
     const r = await pb.collection("users").create({
@@ -118,7 +132,8 @@ export async function updateUser(id: string, input: unknown): Promise<Result> {
     if (uid === me.id && p.role !== me.role)
       throw new Error("DROIT:Tu ne peux pas changer ton propre rôle.");
     const pb = await pbForRequest();
-    await managed(pb, uid);
+    const cur = await managed(pb, uid);
+    await assertAssignable(me, p.role, String(cur.role));
     await pb.collection("users").update(uid, withDistrict(p));
     return { ok: true };
   } catch (e) {
@@ -162,15 +177,16 @@ export async function setActive(id: string, active: boolean, role?: string): Pro
     if (active) {
       // Déjà réactivé (autre onglet) : ne pas réécrire le rôle.
       if (cur.role !== "disabled") return { ok: true };
-      const back = z
-        .enum(ROLES)
-        .catch("paco")
-        .parse(role ?? cur.disabled_role);
+      const keys = assignableRoles(await listRoles()).map((r) => r.key);
+      const wanted = String(role ?? cur.disabled_role ?? "");
+      const back = keys.includes(wanted) ? wanted : "paco";
+      // Réactiver un administrateur ou un sysop = lui rendre ce rôle : un administrateur seulement (comme le hook).
+      await assertAssignable(me, back, String(cur.role));
       await pb.collection("users").update(uid, { role: back, disabled_role: null });
     } else if (cur.role !== "disabled") {
       await pb.collection("users").update(uid, {
         role: "disabled",
-        disabled_role: z.enum(ROLES).catch("paco").parse(cur.role),
+        disabled_role: String(cur.role || "paco"),
       });
     }
     return { ok: true };

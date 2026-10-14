@@ -12,6 +12,7 @@ import { userDistricts } from "@/lib/team";
 import { maintenanceState, requireUser } from "@/server/auth";
 import { releases } from "@/server/changelog";
 import { todayShiftOf } from "@/server/data/quinyx";
+import { listRoles } from "@/server/data/roles";
 
 async function dutySuggestion(userId: string) {
   const shift = await todayShiftOf(userId).catch(() => null);
@@ -45,6 +46,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <AppShell
       ui={ui}
+      roles={await listRoles()}
       version={all[0]?.version ?? null}
       update={pending ? releaseSummary(pending) : null}
       user={{

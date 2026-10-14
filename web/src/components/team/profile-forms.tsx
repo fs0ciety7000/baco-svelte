@@ -26,7 +26,8 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 import { DUTY_DISTRICTS, DUTY_SHORT } from "@/lib/ops/log";
-import { DISTRICT_SHORT, ROLE_LABEL } from "@/lib/team";
+import { useRoleLabel } from "@/components/shell/roles-context";
+import { DISTRICT_SHORT } from "@/lib/team";
 import { cn } from "@/lib/utils";
 import type { MyActivity, MyProfile } from "@/server/data/team";
 
@@ -64,6 +65,7 @@ async function squareImage(file: File): Promise<Blob> {
 }
 
 function PhotoCard({ profile }: { profile: MyProfile }) {
+  const roleLabel = useRoleLabel();
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [pending, start] = useTransition();
@@ -108,7 +110,7 @@ function PhotoCard({ profile }: { profile: MyProfile }) {
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="truncate text-h3 font-semibold text-fg">{profile.name}</span>
           <span className="text-body text-fg-muted">
-            {profile.fonction || ROLE_LABEL[profile.role] || "—"}
+            {profile.fonction || roleLabel(profile.role) || "—"}
             {profile.district
               ? ` · ${DISTRICT_SHORT[profile.district] ?? ""} ${profile.district}`
               : ""}
@@ -246,6 +248,7 @@ export function ProfileForms({
 }) {
   const router = useRouter();
   const { ui, setUi } = useShell();
+  const roleLabel = useRoleLabel();
   const [pending, start] = useTransition();
   const [name, setName] = useState(profile.name);
   const [fonction, setFonction] = useState(profile.fonction);
@@ -298,7 +301,7 @@ export function ProfileForms({
             <dt className="text-small text-fg-muted">Identifiant</dt>
             <dd className="font-mono">{profile.username || "—"}</dd>
             <dt className="text-small text-fg-muted">Rôle</dt>
-            <dd>{ROLE_LABEL[profile.role] ?? profile.role}</dd>
+            <dd>{roleLabel(profile.role)}</dd>
             <dt className="text-small text-fg-muted">District</dt>
             <dd>
               {profile.district

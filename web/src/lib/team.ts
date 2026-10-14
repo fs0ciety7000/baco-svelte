@@ -1,15 +1,6 @@
 // Libellés partagés Équipe / Admin (client et serveur).
 
-export const ROLE_LABEL: Record<string, string> = {
-  admin: "Administrateur",
-  sysop: "Sysop",
-  moderator: "Modérateur",
-  paco: "PACO/RCCA",
-  guest: "Invité",
-  screen: "Écran",
-  disabled: "Désactivé",
-  connector: "Connecteur",
-};
+// Libellés des rôles : collection `roles` (lot L3), voir `lib/roles.ts` (`roleLabel`).
 
 export const DISTRICT_SHORT: Record<string, string> = {
   "Sud-Ouest": "DSO",

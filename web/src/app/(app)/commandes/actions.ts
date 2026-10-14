@@ -1,6 +1,7 @@
 "use server";
 
 import { ClientResponseError } from "pocketbase";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { after } from "next/server";
 import { z } from "zod";
 
@@ -16,7 +17,7 @@ import {
   type BusDraft,
   type TaxiDraft,
 } from "@/lib/orders/schemas";
-import { isStatus, type OrderKind } from "@/lib/orders/status";
+import { canDeleteOrder, isStatus, type OrderKind } from "@/lib/orders/status";
 import { brusselsDay, brusselsToUtc, brusselsTime, formatShortDay } from "@/lib/orders/time";
 import { primaryDistrict } from "@/lib/team";
 import { archiveOrder } from "@/server/archives";
@@ -429,6 +430,46 @@ export async function saveTemplate(
   } catch (e) {
     return fail(e);
   }
+}
+
+/**
+ * Supprime un bon bus ou taxi (14 oct. 2026) puis renvoie vers la liste du module. Droits revérifiés ici (message clair)
+ * et par PocketBase, qui fait foi : règle `1760004410` + hook `checkDelete` (lib/orders.js). Permis aux titulaires de
+ * `otto:delete` / `generate_taxi:delete` (Modérateur, admins), ou au créateur du bon (droit d'écriture du module) pendant
+ * 8 h après la création, tant que le bon n'est pas envoyé / finalisé. L'historique part avec le bon ; le PDF archivé reste.
+ */
+export async function deleteOrder(kind: OrderKind, id: string): Promise<ActionResult> {
+  let target = "/commandes";
+  try {
+    const k = kindSchema.parse(kind);
+    const oid = idSchema.parse(id);
+    const user = await requireUser();
+    const pb = await pbForRequest();
+    const cur = await pb
+      .collection(COLLECTION[k])
+      .getOne(oid, { fields: "id,created_by,created,status" });
+    const allowed = canDeleteOrder((p) => can(user, p), user.id, {
+      kind: k,
+      created_by: String(cur.created_by ?? ""),
+      created: String(cur.created ?? ""),
+      status: String(cur.status ?? ""),
+    });
+    if (!allowed) {
+      return {
+        ok: false,
+        error:
+          cur.status === "envoye"
+            ? "Bon envoyé / finalisé : suppression réservée aux administrateurs et modérateurs."
+            : "Suppression réservée au créateur du bon pendant 8 h, puis aux administrateurs et modérateurs.",
+      };
+    }
+    await pb.collection(COLLECTION[k]).delete(oid);
+    target = k === "taxi" ? "/commandes/taxi" : "/commandes";
+  } catch (e) {
+    unstable_rethrow(e);
+    return fail(e);
+  }
+  redirect(target);
 }
 
 export async function deleteTemplate(input: {

@@ -4,7 +4,6 @@ import { OrderHistory } from "@/components/orders/order-history";
 import { TaxiForm } from "@/components/orders/taxi-form";
 import { can } from "@/lib/permissions";
 import { officeFor } from "@/lib/orders/mail";
-import { isCoordinator } from "@/lib/orders/status";
 import type { SessionUser } from "@/server/auth";
 import { getTaxiOrder, listEvents, redactPmr, taxiReference } from "@/server/data/orders";
 
@@ -51,7 +50,7 @@ export async function TaxiOrderView({
           can(user, "generate_taxi:update") && (!!meta.id || can(user, "generate_taxi:write"))
         }
         canPmr={can(user, "pmr:read")}
-        coordinator={isCoordinator(user.role)}
+        coordinator={can(user, "taxi:reopen")}
         client={client}
         reference={reference}
         officeEmail={officeFor(order.draft.district).email}

@@ -4,16 +4,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { isCoordinator as isOrderCoordinator } from "@/lib/orders/status";
-
-import {
-  can,
-  canEditChangelog,
-  isCoordinator,
-  isJournalModerator,
-  PERMISSION_KEYS,
-  type Role,
-} from "../permissions";
+import { can, PERMISSION_KEYS } from "../permissions";
 
 import { CATALOG, CATALOG_KEYS, roleDefaults, TASKS } from "./catalog";
 import { catalogModule } from "./catalog-module";
@@ -33,6 +24,13 @@ const V2_DEFAULTS: Record<string, string[]> = {
   disabled: [],
   connector: [],
 };
+
+// Tests de rôle en dur d'avant le lot L2 (isJournalModerator, canEditChangelog, isCoordinator des bons et du PMR),
+// recopiés tels quels : référence d'équivalence des clés nouvelles.
+const ADMIN = (r: string) => r === "admin" || r === "sysop";
+const isJournalModerator = (r: string) => ADMIN(r) || r === "moderator";
+const canEditChangelog = (r: string) => ADMIN(r) || r === "moderator";
+const isCoordinator = (r: string) => ADMIN(r) || r === "moderator" || r === "paco";
 
 // Ancien `can()` (avant L1), recopié tel quel.
 function canV2(role: string, grants: string[], denies: string[], p: string): boolean {
@@ -77,13 +75,12 @@ describe("catalogue v3 (L0)", () => {
     for (const role of ROLES) {
       const perms = computePerms(role);
       const has = (k: string) => perms.includes(k);
-      const subject = { role: role as Role };
       const active = !["screen", "disabled", "connector"].includes(role);
-      expect(has("journal:moderate"), role).toBe(active && isJournalModerator(subject));
-      expect(has("changelog:write"), role).toBe(active && canEditChangelog(subject));
-      expect(has("bus:reopen"), role).toBe(active && isOrderCoordinator(role));
-      expect(has("taxi:reopen"), role).toBe(active && isOrderCoordinator(role));
-      expect(has("pmr_equipment:manage"), role).toBe(active && isCoordinator(subject));
+      expect(has("journal:moderate"), role).toBe(active && isJournalModerator(role));
+      expect(has("changelog:write"), role).toBe(active && canEditChangelog(role));
+      expect(has("bus:reopen"), role).toBe(active && isCoordinator(role));
+      expect(has("taxi:reopen"), role).toBe(active && isCoordinator(role));
+      expect(has("pmr_equipment:manage"), role).toBe(active && isCoordinator(role));
       // Exclusions `role != "guest"` (règles, navigation `hideFor`, écrans).
       for (const k of [
         "suppliers:read",
@@ -174,6 +171,38 @@ describe("calcul de users.perms (L1)", () => {
     }
     for (const [role, g, d] of samples) {
       expect(hook(role, g, d), `${role} +${g} -${d}`).toEqual(computePerms(role, g, d));
+    }
+  });
+
+  it("lot L3 : permissions du rôle lues en base (hook et web identiques, défaut = catalogue)", () => {
+    const hook = hookPerms() as
+      ((role: string, g: string[], d: string[], r?: string[] | null) => string[]) | null;
+    const custom = ["otto:read", "otto:write", "otto:update", "bus:reopen", "journal:read"];
+    // Rôle créé : seules ses permissions ; une dépendance absente retire la clé (journal:moderate sans journal:read).
+    expect(computePerms("coordinateur-nuit", [], [], custom)).toEqual(
+      CATALOG_KEYS.filter((k) => custom.includes(k)),
+    );
+    expect(computePerms("x", [], [], ["journal:moderate"])).toEqual([]);
+    // Les permissions par défaut stockées pour un rôle système donnent le même calcul qu'avant L3.
+    for (const role of ROLES) {
+      expect(computePerms(role, [], [], roleDefaults(role)), role).toEqual(computePerms(role));
+    }
+    // admin / sysop : tout, écran / connecteur : rien, quelles que soient les permissions stockées.
+    expect(computePerms("admin", [], [], [])).toEqual(CATALOG_KEYS);
+    expect(computePerms("screen", [], [], CATALOG_KEYS)).toEqual([]);
+    if (!hook) return;
+    for (const [role, r] of [
+      ["coordinateur-nuit", custom],
+      ["paco", []],
+      ["guest", CATALOG_KEYS],
+      ["moderator", null],
+    ] as [string, string[] | null][]) {
+      for (const [g, d] of [
+        [[], []],
+        [["otto:delete"], ["journal:read"]],
+      ] as [string[], string[]][]) {
+        expect(hook(role, g, d, r), `${role} ${r?.length}`).toEqual(computePerms(role, g, d, r));
+      }
     }
   });
 });

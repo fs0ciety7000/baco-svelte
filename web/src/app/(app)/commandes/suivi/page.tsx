@@ -3,7 +3,6 @@ import Link from "next/link";
 
 import { TrackingBoard } from "@/components/orders/tracking-board";
 import { can } from "@/lib/permissions";
-import { isCoordinator } from "@/lib/orders/status";
 import { cn } from "@/lib/utils";
 import { requireRoute } from "@/server/auth";
 import { listOrders, VIEWS, viewCounts, type View } from "@/server/data/orders";
@@ -96,7 +95,7 @@ export default async function Page({
       ) : null}
       <TrackingBoard
         rows={rows}
-        coordinator={isCoordinator(user.role)}
+        coordinator={{ bus: can(user, "bus:reopen"), taxi: can(user, "taxi:reopen") }}
         showSince={view === "a-envoyer"}
       />
       {total > rows.length ? (

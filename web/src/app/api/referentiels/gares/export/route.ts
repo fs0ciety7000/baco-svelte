@@ -1,3 +1,4 @@
+import { can } from "@/lib/permissions";
 import { getCurrentUser } from "@/server/auth";
 import { pbForRequest } from "@/server/data/orders";
 
@@ -17,8 +18,8 @@ const cell = (v: string | number | boolean) => {
 export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) return new Response("Non connecté", { status: 401 });
-  if (["guest", "screen", "disabled", "connector"].includes(user.role))
-    return new Response("Introuvable", { status: 404 });
+  // Même droit que l'onglet Gares et la lecture de `stations` (rôles v3, lot L2).
+  if (!can(user, "timetable:read")) return new Response("Introuvable", { status: 404 });
   const pb = await pbForRequest();
   const rows = await pb.collection("stations").getFullList({
     sort: "name",

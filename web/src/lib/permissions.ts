@@ -7,7 +7,14 @@
 
 import { CATALOG_KEYS, roleDefaults } from "./permissions/catalog";
 
-export type Role = "admin" | "sysop" | "moderator" | "paco" | "guest" | "screen" | "disabled";
+/**
+ * Rôle d'un compte : identifiant d'une fiche de la collection `roles` (lot L3 : rôles système ci-dessous, ou rôle créé
+ * par un admin, ex. « coordinateur-nuit »). Les droits viennent de `users.perms`, jamais du nom du rôle (sauf admin /
+ * sysop et les rôles système Écran, Connecteur, Désactivé).
+ */
+export type SystemRole =
+  "admin" | "sysop" | "moderator" | "paco" | "guest" | "screen" | "disabled" | "connector";
+export type Role = SystemRole | (string & {});
 
 export type Action = "read" | "write" | "update" | "delete";
 
@@ -132,34 +139,13 @@ export function isAdmin(user: PermissionSubject | null | undefined): boolean {
   return user?.role === "admin" || user?.role === "sysop";
 }
 
-/**
- * « Coordinateur » des anciens écrans (annulations, rétablissements, matériel complet, entrées du Journal des autres) :
- * depuis les rôles v2, tout PACO/RCCA, plus les administrateurs. Miroir des hooks PocketBase.
- */
-export function isCoordinator(user: PermissionSubject | null | undefined): boolean {
-  return isAdmin(user) || user?.role === "moderator" || user?.role === "paco";
-}
-
-/**
- * Modération du Journal (messages retirés, textes des autres, retrait tardif, rétablissement) : modérateurs et
- * administrateurs seulement (audit sécurité du 11 oct. 2026). Miroir de `COORD_ROLES` (hooks) et des règles `ops_log`.
- */
-export function isJournalModerator(user: PermissionSubject | null | undefined): boolean {
-  return isAdmin(user) || user?.role === "moderator";
-}
-
-/** Nouveautés de l'application : administrateurs et modérateurs. */
-export function canEditChangelog(user: PermissionSubject | null | undefined): boolean {
-  return isAdmin(user) || user?.role === "moderator";
-}
+// Rôles v3, lot L2 (14 oct. 2026) : les anciens tests de rôle sont des permissions du catalogue, testées par `can()` :
+// « coordinateur » des bons → `bus:reopen` / `taxi:reopen` ; matériel complet et zones PMR → `pmr_equipment:manage` ;
+// modération du Journal → `journal:moderate` ; annonces de l'équipe → `changelog:read` / `changelog:write` ; « En ligne
+// maintenant » → `presence:read` ; Équipe → `team:read` ; planning → `quinyx:read` ; trains, gares, lignes → `timetable:read` ;
+// onglet Fournisseurs → `suppliers:read`. Restent des rôles système en dur : admin / sysop (`isAdmin`), Écran.
 
 /** Compte d'affichage du poste partagé : ne voit que l'écran commun `/tv`. */
 export function isScreen(user: PermissionSubject | null | undefined): boolean {
   return user?.role === "screen";
-}
-
-/** Droit accordé par le seul rôle (sans grants / denies) : sert à la matrice « défaut du rôle » de l'admin. */
-export function roleHas(role: Role, permission: string): boolean {
-  if (role === "admin" || role === "sysop") return true;
-  return roleDefaults(role).includes(permission);
 }

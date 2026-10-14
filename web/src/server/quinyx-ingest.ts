@@ -159,15 +159,15 @@ async function ingestGroup(
       .getFullList({ filter: orFilter(pb, "quinyx_id", part) }))
       existing.set(String(r.quinyx_id), r);
   }
-  // Comptes de l'équipe (PACO/RCCA, modérateurs, admins) : seuls candidats à la proposition, et seuls dont les
-  // horaires sont gardés.
+  // Comptes de l'équipe (`quinyx:read` : PACO/RCCA, modérateurs, admins par défaut) : seuls candidats à la proposition,
+  // et seuls dont les horaires sont gardés. Le compte de service lit `perms` (jamais grants / denies).
   const team = (
     await pb.collection("users").getFullList({
-      fields: "id,name,role",
-      filter: 'role != "disabled" && role != "connector" && role != "screen" && role != "guest"',
+      fields: "id,name,role,perms",
+      filter: 'role != "disabled" && role != "connector" && role != "screen"',
     })
   )
-    .filter((u) => isTeamAccount(u.role))
+    .filter((u) => isTeamAccount({ role: u.role, perms: u.perms }))
     .map((u) => ({ id: u.id, name: String(u.name ?? "") }));
   const teamIds = new Set(team.map((u) => u.id));
   const users = team;

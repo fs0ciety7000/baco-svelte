@@ -6,6 +6,8 @@
 // Héritage : admin / sysop = tout ; écran, désactivé, connecteur = rien, même accordé ; sinon, pour chaque clé :
 // accordée → oui ; retirée → non ; sinon le rôle décide. Une clé v3 hérite des grants / denies de ses clés `legacy`.
 // Une clé dont une dépendance (`requires`) manque est retirée.
+// Lot L3 : « le rôle décide » = permissions du rôle dans la collection `roles` (éditable) ; rôles par défaut du catalogue
+// seulement si la collection ou la fiche du rôle manque (migrations antérieures, base neuve).
 
 const cat = require(`${__hooks}/lib/catalog.js`);
 
@@ -19,12 +21,17 @@ function parseList(raw) {
 	}
 }
 
-function computePerms(role, grants, denies) {
+function computePerms(role, grants, denies, rolePerms) {
 	const keys = cat.CATALOG.map((e) => e.key);
 	if (cat.NO_MODULE_ROLES.indexOf(role) !== -1) return [];
 	if (cat.FULL_ROLES.indexOf(role) !== -1) return keys;
 	const g = {};
 	const d = {};
+	let byRole = null;
+	if (Array.isArray(rolePerms)) {
+		byRole = {};
+		for (const k of rolePerms) byRole[k] = true;
+	}
 	for (const k of grants || []) g[k] = true;
 	for (const k of denies || []) d[k] = true;
 	const out = {};
@@ -34,7 +41,7 @@ function computePerms(role, grants, denies) {
 		else if (d[e.key]) v = false;
 		if (v === null) for (const k of e.legacy) if (g[k]) { v = true; break; }
 		if (v === null) for (const k of e.legacy) if (d[k]) { v = false; break; }
-		if (v === null) v = e.roles.indexOf(role) !== -1;
+		if (v === null) v = byRole ? !!byRole[e.key] : e.roles.indexOf(role) !== -1;
 		if (v) out[e.key] = true;
 	}
 	let changed = true;
@@ -50,9 +57,34 @@ function computePerms(role, grants, denies) {
 	return keys.filter((k) => out[k]);
 }
 
-// Permissions d'une fiche `users` (rôle, grants, denies lus sur la fiche elle-même).
-function permsOf(record) {
-	return computePerms(record.getString('role'), parseList(record.getString('grants')), parseList(record.getString('denies')));
+// Permissions d'un rôle lues dans `roles` ; null si la collection ou la fiche manque (repli : catalogue).
+function rolePermsOf(app, role) {
+	if (!app || !role) return null;
+	try {
+		return parseList(app.findFirstRecordByData('roles', 'key', role).getString('perms'));
+	} catch (_) {
+		return null;
+	}
 }
 
-module.exports = { computePerms, permsOf, parseList };
+// Permissions d'une fiche `users` (rôle, grants, denies lus sur la fiche ; permissions du rôle lues dans `roles` avec
+// `app`, la même transaction que l'écriture en cours).
+function permsOf(record, app) {
+	const role = record.getString('role');
+	return computePerms(role, parseList(record.getString('grants')), parseList(record.getString('denies')), rolePermsOf(app, role));
+}
+
+// Rôles système sans aucune permission de module (même si `perms` était périmé).
+const NO_PERM_ROLES = ['disabled', 'screen', 'connector'];
+
+// Lot L2 : un hook teste une permission en lisant `users.perms` (seule source), jamais le rôle. `record` = fiche
+// `users` (destinataire d'une notification) ou `e.auth` (superuser : tout). Les clés hors catalogue (`dicos:write` du
+// compte de service) ne passent pas par ici : elles restent dans `grants`.
+function has(record, key) {
+	if (!record) return false;
+	if (typeof record.isSuperuser === 'function' && record.isSuperuser()) return true;
+	if (NO_PERM_ROLES.indexOf(record.getString('role')) !== -1) return false;
+	return parseList(record.getString('perms')).indexOf(key) !== -1;
+}
+
+module.exports = { computePerms, permsOf, rolePermsOf, parseList, has };

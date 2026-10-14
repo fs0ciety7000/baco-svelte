@@ -10,13 +10,23 @@ import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { Input, Select } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
-import { ROLE_LABEL } from "@/lib/team";
+import type { RoleMeta } from "@/lib/roles";
 
 import { DistrictPicker } from "./district-picker";
 
-// Rôles v2 (11 oct. 2026).
-// « Écran » : compte d'affichage du poste partagé (`/tv` seul, aucun droit de module).
-export const ROLE_CHOICES = ["paco", "moderator", "guest", "screen", "admin", "sysop"] as const;
+/**
+ * Rôles proposés (lot L3 : collection `roles`, `assignableRoles`) ; « Administrateur » et « Sysop » seulement pour un
+ * administrateur (même garde-fou côté serveur et dans le hook PocketBase). « Écran » : poste partagé (`/tv` seul).
+ */
+export function roleOptions(
+  roles: RoleMeta[],
+  canAssignFull: boolean,
+  current?: string,
+): RoleMeta[] {
+  return roles.filter(
+    (r) => canAssignFull || (r.key !== "admin" && r.key !== "sysop") || r.key === current,
+  );
+}
 
 /** Mot de passe provisoire affiché une seule fois, à transmettre à l'agent (il le change dans « Mon profil »). */
 export function PasswordReveal({ password, onClose }: { password: string; onClose: () => void }) {
@@ -52,7 +62,13 @@ export function PasswordReveal({ password, onClose }: { password: string; onClos
   );
 }
 
-export function UserCreate() {
+export function UserCreate({
+  roles,
+  canAssignFull,
+}: {
+  roles: RoleMeta[];
+  canAssignFull: boolean;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
@@ -109,9 +125,9 @@ export function UserCreate() {
             </Field>
             <Field label="Rôle">
               <Select value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })}>
-                {ROLE_CHOICES.map((r) => (
-                  <option key={r} value={r}>
-                    {ROLE_LABEL[r]}
+                {roleOptions(roles, canAssignFull).map((r) => (
+                  <option key={r.key} value={r.key}>
+                    {r.label}
                   </option>
                 ))}
               </Select>

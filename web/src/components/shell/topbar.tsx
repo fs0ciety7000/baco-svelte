@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/misc";
+import { can } from "@/lib/permissions";
 import { activeModule, activeTab, CHANGELOG_LINK } from "@/navigation";
 
 import { DutyChip } from "@/components/ops/duty-districts";
@@ -116,8 +117,8 @@ export function Topbar() {
             </Menu.Portal>
           </Menu.Root>
         ) : null}
-        {/* Invité : pas de liste des agents en ligne (audit sécurité du 11 oct. 2026). */}
-        {user.role !== "guest" ? (
+        {/* « En ligne maintenant » : `presence:read` (l'invité ne l'a pas : audit sécurité du 11 oct. 2026). */}
+        {can(user, "presence:read") ? (
           <span className="hidden md:inline-flex">
             <OnlinePresence />
           </span>

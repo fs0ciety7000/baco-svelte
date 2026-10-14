@@ -32,7 +32,8 @@ export function TrackingBoard({
   showSince,
 }: {
   rows: OrderRow[];
-  coordinator: boolean;
+  /** Droit de rouvrir / rétablir, par type de bon (`bus:reopen`, `taxi:reopen`). */
+  coordinator: { bus: boolean; taxi: boolean };
   /** Vue « À envoyer » : ancienneté de la fin (bus démobilisés). */
   showSince: boolean;
 }) {
@@ -233,7 +234,7 @@ export function TrackingBoard({
                 id={open.id}
                 status={panel.meta.status}
                 statusBeforeCancel={panel.meta.statusBeforeCancel}
-                coordinator={coordinator}
+                coordinator={coordinator[open.kind]}
                 buses={panel.buses}
                 size="sm"
                 onDone={() => {

@@ -369,8 +369,27 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   catalogue, sinon ancien calcul (instance sans le champ, droit hors catalogue comme `dicos:write`). Le compte de service
   lit `expand.user.perms` du propriétaire d'un jeton (`dicos-service.ts`) : grants / denies d'un autre agent sont masqués
   aux non-admins. Nouvelle permission : entrée du catalogue + `npm run catalog` + contrôle `test-rules`.
-- **Avatars** : `avatarRing(role)` (`components/shell/avatar.tsx`) : anneau neutre, anneau d'accent doublé pour admin / sysop ;
-  passer `role` à `<Avatar>` partout (Journal compris).
+- **Rôles v3, lots L2-L3** (14 oct. 2026) : plus aucun test de rôle pour un droit de module : `can(user, clé)` partout —
+  `bus:reopen` / `taxi:reopen` (prop `coordinator` des bons ; `TrackingBoard` reçoit `{ bus, taxi }`), `pmr_equipment:manage`
+  (matériel complet, zones), `journal:moderate`, `changelog:read` / `changelog:write`, `presence:read`, `quinyx:read`,
+  `team:read` (agents mentionnables : filtre `perms ~ '"team:read"'`), `timetable:read` (onglets Lignes / Trains / Gares, export
+  des gares), `suppliers:read` (onglet Fournisseurs : `permission: ["otto:read", "suppliers:read"]`, un onglet peut exiger
+  plusieurs clés). `isCoordinator`, `isJournalModerator`, `canEditChangelog`, `roleHas`, `ROLE_LABEL` supprimés ; `hideFor` ne
+  sert plus qu'à l'Écran (« Mon profil »). Restent en dur : `isAdmin` (admin / sysop), `isScreen`, désactivé, connecteur.
+  `Role` = identifiant texte d'une fiche `roles` (`SystemRole | string`) ; `getCurrentUser` accepte tout identifiant bien formé.
+  **Rôles en base** : `lib/roles.ts` (`RoleMeta`, `DEFAULT_ROLES` = copie des rôles système de la migration, `roleLabel`,
+  `avatarRing(role, roles)` — couleur du rôle, anneau doublé pour admin / sysop —, `assignableRoles`), `server/data/roles.ts`
+  (`listRoles` en cache par requête, `getRole`, `roleKeys`, `roleUsage` ; repli sur `DEFAULT_ROLES`), `RolesProvider` /
+  `useRoles` / `useRoleLabel` (`components/shell/roles-context.tsx`, monté par `AppShell` depuis `(app)/layout.tsx`) ; `Avatar`
+  est un composant client (`useAvatarRing`). Admin : rôles proposés = `assignableRoles(listRoles())`, Administrateur / Sysop
+  seulement pour un admin (`canAssignFull`, revérifié par `assertAssignable` et par le hook), matrice des droits = permissions du
+  rôle (`PermissionMatrix role={RoleMeta}`). Pas encore d'écran Rôles (lot L4).
+- **Suppression d'un bon** : Server Action `deleteOrder(kind, id)` (`commandes/actions.ts`, droits revérifiés par
+  `canDeleteOrder` de `lib/orders/status.ts`, miroir du hook `checkDelete`, puis redirection vers `/commandes` ou
+  `/commandes/taxi`) : droit de suppression du module, ou créateur avec droit d'écriture pendant 8 h, bon pas envoyé. Pas encore
+  de bouton.
+- **Avatars** : `avatarRing(role, roles)` (`lib/roles.ts`, `useAvatarRing` côté client) : couleur du rôle (neutre par défaut),
+  anneau doublé pour admin / sysop ; passer `role` à `<Avatar>` partout (Journal compris).
 - **Documents** (Ressources › Procédures et documents) : envoi par **`POST /api/referentiels/documents`** (30 Mo, type
   détecté par les octets, `lib/referentiels/detect.ts`) — jamais par Server Action (limitée à 1 Mo par Next). Lecture
   `/api/referentiels/documents/<id>` : image en aperçu, `?vue=1` PDF inline **sans `sandbox`** (sinon le lecteur PDF de

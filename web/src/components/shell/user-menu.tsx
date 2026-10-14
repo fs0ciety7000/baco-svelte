@@ -11,7 +11,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 import { Avatar } from "./avatar";
 import { useShell } from "./shell-context";
-import { ROLE_LABEL } from "./types";
+import { useRoleLabel } from "./roles-context";
 
 const itemClass =
   "flex h-control cursor-pointer items-center gap-3 px-3 text-body text-fg outline-none select-none data-[highlighted]:bg-surface-2 [&_svg]:size-4 [&_svg]:text-fg-muted";
@@ -23,6 +23,7 @@ const itemClass =
  */
 export function UserMenu({ compact }: { compact?: boolean }) {
   const { user, admin, modules, ui, setUi } = useShell();
+  const roleLabel = useRoleLabel();
   const tabs = new Set(modules.flatMap((m) => m.tabs.map((t) => t.href)));
   const personal = [
     { href: "/equipe/profil", label: "Mon profil", icon: UserRound },
@@ -50,7 +51,7 @@ export function UserMenu({ compact }: { compact?: boolean }) {
               <span className="truncate text-small font-medium text-fg">
                 {user.name || user.email}
               </span>
-              <span className="truncate text-small text-fg-muted">{ROLE_LABEL[user.role]}</span>
+              <span className="truncate text-small text-fg-muted">{roleLabel(user.role)}</span>
             </span>
           ) : null}
         </Menu.Trigger>
@@ -63,7 +64,7 @@ export function UserMenu({ compact }: { compact?: boolean }) {
             <div className="flex flex-col gap-0.5 border-b border-border px-3 py-2">
               <span className="truncate text-body font-medium">{user.name || user.email}</span>
               <span className="truncate text-small text-fg-muted">{user.email}</span>
-              <span className="label-mono mt-1 text-fg-muted">{ROLE_LABEL[user.role]}</span>
+              <span className="label-mono mt-1 text-fg-muted">{roleLabel(user.role)}</span>
             </div>
             {personal.map((l) => (
               <Menu.Item key={l.href} asChild className={itemClass}>

@@ -12,24 +12,17 @@ import { readSessionToken, resolveActing } from "./session";
 import { sessionAlive } from "./sessions";
 import { isExpired, tokenPayload } from "./token";
 
-// Rôles v2 (11 oct. 2026) : Administrateur, Sysop, Modérateur, PACO/RCCA, Invité, Écran (poste partagé, `/tv` seul).
-export const ROLES = [
-  "admin",
-  "sysop",
-  "moderator",
-  "paco",
-  "guest",
-  "screen",
-  "disabled",
-] as const;
+// Rôles (lot L3) : identifiant d'une fiche `roles` (rôles système : admin, sysop, moderator, paco, guest, screen,
+// disabled ; ou rôle créé par un admin). Les droits viennent de `perms`.
+const ROLE_KEY = /^[a-z][a-z0-9_-]{1,39}$/;
 
 const userSchema = z.object({
   id: z.string(),
   email: z.string(),
   name: z.string().default(""),
   username: z.string().default(""),
-  // Rôle inconnu (déploiement web et PocketBase décalés, ancien rôle) : invité, plutôt qu'une déconnexion de tous.
-  role: z.enum(ROLES).catch("guest"),
+  // Identifiant mal formé (ne devrait pas arriver : validé par le hook PocketBase) : invité, plutôt qu'une déconnexion.
+  role: z.string().regex(ROLE_KEY).catch("guest"),
   grants: z.array(z.string()).nullable().default([]),
   denies: z.array(z.string()).nullable().default([]),
   // Permissions effectives (rôles v3, lot L1) : écrites par le hook PocketBase seul ; absentes (ancienne instance) =

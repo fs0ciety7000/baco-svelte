@@ -6,7 +6,7 @@ import { FilterSubmit } from "@/components/ui/filters";
 import { FilterForm } from "@/components/ui/filter-form";
 import { EquipmentBoard } from "@/components/pmr/equipment-board";
 import { Input, Select } from "@/components/ui/input";
-import { can, isCoordinator } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 import { brusselsDay } from "@/lib/orders/time";
 import { cn } from "@/lib/utils";
 import { requirePermission } from "@/server/auth";
@@ -104,7 +104,7 @@ export default async function Page({
         zones={zones}
         today={brusselsDay()}
         canWrite={can(user, "pmr:write")}
-        coordinator={isCoordinator(user)}
+        coordinator={can(user, "pmr_equipment:manage")}
       />
     </section>
   );

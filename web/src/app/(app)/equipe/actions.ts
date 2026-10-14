@@ -4,7 +4,7 @@ import { unstable_rethrow } from "next/navigation";
 import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 
-import { canEditChangelog } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 import { requireUser } from "@/server/auth";
 import { pbForRequest } from "@/server/data/orders";
 import { createPb } from "@/server/pocketbase";
@@ -160,8 +160,9 @@ const changelogSchema = z.object({
 
 async function editor() {
   const user = await requireUser();
-  // Nouveautés : administrateurs et modérateurs (rôles v2, 11 oct. 2026).
-  if (!canEditChangelog(user)) throw new Error("DROIT:Réservé aux administrateurs et modérateurs.");
+  // Annonces de l'équipe : `changelog:write` (Modérateur, admins par défaut ; rôles v3, lot L2).
+  if (!can(user, "changelog:write"))
+    throw new Error("DROIT:Droit de publier une annonce manquant.");
   return user;
 }
 
@@ -362,7 +363,7 @@ export async function onlineAgents(): Promise<
 > {
   try {
     const me = await requireUser();
-    if (me.role === "guest") return { ok: true, data: { me: me.id, agents: [] } };
+    if (!can(me, "presence:read")) return { ok: true, data: { me: me.id, agents: [] } };
     return { ok: true, data: { me: me.id, agents: await listOnline(onlineUsers()) } };
   } catch (e) {
     return fail(e);

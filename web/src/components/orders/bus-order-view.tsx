@@ -4,7 +4,6 @@ import { BusForm } from "@/components/orders/bus-form";
 import { OrderHistory } from "@/components/orders/order-history";
 import { can } from "@/lib/permissions";
 import { officeFor } from "@/lib/orders/mail";
-import { isCoordinator } from "@/lib/orders/status";
 import type { SessionUser } from "@/server/auth";
 import { busReference, getBusOrder, listEvents } from "@/server/data/orders";
 
@@ -36,7 +35,7 @@ export async function BusOrderView({
         updated={meta.updated}
         initial={order.draft}
         canWrite={can(user, "otto:update") && (!!meta.id || can(user, "otto:write"))}
-        coordinator={isCoordinator(user.role)}
+        coordinator={can(user, "bus:reopen")}
         reference={reference}
         officeEmail={officeFor(order.draft.district).email}
       />

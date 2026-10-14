@@ -27,8 +27,12 @@ import { can, isAdmin, type PermissionSubject, type Role } from "@/lib/permissio
 export type NavTab = {
   href: string;
   label: string;
-  permission?: string;
-  /** Rôles pour lesquels l'onglet est masqué (repris de la v1). */
+  /** Permission(s) du catalogue exigée(s) (toutes, si plusieurs). */
+  permission?: string | string[];
+  /**
+   * Rôles système pour lesquels l'onglet est masqué (rôles v3, lot L2 : seulement l'Écran sur « Mon profil » ; toute autre
+   * exclusion passe par une permission du catalogue).
+   */
   hideFor?: Role[];
   keywords?: string[];
   /** Groupe d'affichage (Administration : Comptes, Supervision, Réglages). */
@@ -74,9 +78,8 @@ export const MODULES: NavModule[] = [
         // Sociétés de bus et de taxi gérées dans CSM (11 oct. 2026 ; la page montre le taxi selon `generate_taxi:read`).
         href: "/commandes/fournisseurs",
         label: "Fournisseurs",
-        permission: "otto:read",
-        // L'invité ne voit que les bons (rôles v2) ; il lit les sociétés à travers eux.
-        hideFor: ["guest"],
+        // L'invité ne voit que les bons (rôles v2) ; il lit les sociétés à travers eux (`suppliers:read`, lot L2).
+        permission: ["otto:read", "suppliers:read"],
         keywords: ["sociétés", "transporteurs", "chauffeurs", "taxis", "bus"],
       },
       {
@@ -178,17 +181,17 @@ export const MODULES: NavModule[] = [
         permission: "repertoire:read",
         keywords: ["répertoire", "sociétés", "taxis", "contacts"],
       },
-      { href: "/referentiels/lignes", label: "Lignes", hideFor: ["guest", "screen"] },
+      { href: "/referentiels/lignes", label: "Lignes", permission: "timetable:read" },
       {
         href: "/referentiels/trains",
         label: "Trains",
-        hideFor: ["guest", "screen"],
+        permission: "timetable:read",
         keywords: ["relations", "IC", "séries", "horaires", "arrêts", "passages"],
       },
       {
         href: "/referentiels/gares",
         label: "Gares",
-        hideFor: ["guest", "screen"],
+        permission: "timetable:read",
         keywords: ["districts", "gares frontière", "UIC", "arrêts"],
       },
       {
@@ -215,13 +218,13 @@ export const MODULES: NavModule[] = [
       {
         href: "/equipe",
         label: "Annuaire de l'équipe",
-        hideFor: ["guest", "screen"],
+        permission: "team:read",
         keywords: ["collègues"],
       },
       {
         href: "/equipe/planning",
         label: "Planning",
-        hideFor: ["guest", "screen"],
+        permission: "quinyx:read",
         keywords: ["Quinyx", "horaires", "service", "AM", "PM", "nuit", "qui travaille"],
       },
       {
@@ -297,7 +300,8 @@ export const QUICK_ACTIONS: QuickAction[] = [
 
 function tabAllowed(user: PermissionSubject, tab: NavTab) {
   if (tab.hideFor?.includes(user.role)) return false;
-  return !tab.permission || can(user, tab.permission);
+  const perms = tab.permission === undefined ? [] : [tab.permission].flat();
+  return perms.every((p) => can(user, p));
 }
 
 /** Modules visibles pour l'agent : un module sans onglet autorisé disparaît. */

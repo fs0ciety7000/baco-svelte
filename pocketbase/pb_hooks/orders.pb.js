@@ -29,7 +29,14 @@ onRecordUpdateRequest((e) => {
 	if (changed) orders.writeEvent(e.app, e.record, from, to, e.auth, to === 'annule' ? e.record.getString('cancel_reason') : '');
 }, 'bus_orders', 'taxi_orders');
 
-// Suppression d'une commande : son historique part avec elle.
+// Suppression d'un bon : droit de suppression du module, ou son créateur pendant 8 h (lib/orders.js `checkDelete`).
+onRecordDeleteRequest((e) => {
+	require(`${__hooks}/lib/orders.js`).checkDelete(e.record, e.auth);
+	e.next();
+}, 'bus_orders', 'taxi_orders');
+
+// Suppression d'une commande : son historique part avec elle (les liens du Journal sont vidés par PocketBase, relation
+// facultative ; le PDF archivé `order_pdfs` est gardé, référencé par identifiant texte).
 onRecordAfterDeleteSuccess((e) => {
 	const kind = e.record.collection().name === 'bus_orders' ? 'bus' : 'taxi';
 	e.app.db().newQuery('DELETE FROM order_events WHERE kind = {:kind} AND "order" = {:id}').bind({ kind: kind, id: e.record.id }).execute();

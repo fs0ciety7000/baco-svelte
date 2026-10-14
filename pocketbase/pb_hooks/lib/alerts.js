@@ -108,7 +108,7 @@ function dicosChangeAlert(app, before, record, kind, auth) {
 	const perm = kind === 'groupe' ? 'pmr:read' : 'deplacements:read';
 	const users = app
 		.findRecordsByFilter('users', 'role != "disabled" && role != "connector" && role != "screen"', '', 500, 0)
-		.filter((u) => ops.hasPerm(u, perm, ['moderator', 'paco']));
+		.filter((u) => ops.hasPerm(u, perm));
 	const what = kind === 'groupe' ? 'groupe' : 'mission';
 	const train = after.train ? `train ${after.train}` : 'train ?';
 	const people =

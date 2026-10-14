@@ -1146,6 +1146,15 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   l'équipe** (paco, moderator, admin, sysop ; précision de l'utilisateur) ; une synchro profite à tous.
   Cadrage `docs/design/CADRAGE-QUINYX.md`, note DPO §2-3-5. PR vers `csm-preview` (demandée par l'utilisateur).
 
+- 2026-10-14 — **Rôles v3, lots L2 et L3** (`docs/design/CADRAGE-ROLES-V3.md` annexe F) : règles PocketBase en `users.perms`
+  (`1760004400`, 47 collections réécrites explicitement, `down` = règles v2 exactes), tests de rôle des hooks et du web devenus
+  des permissions (`journal:moderate`, `bus:reopen` / `taxi:reopen`, `pmr_equipment:manage`, `changelog:*`, `presence:read`,
+  `team:read`, `quinyx:read`, `timetable:read`, `suppliers:read`) ; corrections validées (audit ADMIN seul, zones PMR
+  supprimables avec `pmr:delete`, gares fermées à l'invité, lignes modifiables avec `ptcar:update`) ; **suppression des bons par
+  leur créateur pendant 8 h** (demande de l'utilisateur, `1760004410`, `deleteOrder` sans bouton) ; collection **`roles`**
+  (`1760004500`, 8 rôles système, `users.role` en texte validé, garde-fous dans les hooks : dernier admin, admin / sysop attribués
+  par un admin, rôle verrouillé / système / utilisé) ; commande **`perms-check`** (lecture seule) à lancer sur préversion et prod.
+  558 contrôles de règles. Pas encore d'écran Rôles (L4).
 - 2026-10-14 — **Synchro DICOS : dernier agent et heure** (retour : « il y a 12 h » alors que d'autres ont pu synchroniser) :
   `syncSummary` renvoie `latest` (synchro complète la plus récente de la période, tous agents, heure + nom de la même fiche)
   et `oldestDay` ; `SyncStatus` affiche la dernière synchro et signale à part un jour resté ancien (> 1 h). Avant, l'heure
