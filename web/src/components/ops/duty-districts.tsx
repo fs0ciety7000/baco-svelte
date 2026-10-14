@@ -1,6 +1,6 @@
 "use client";
 
-import { DUTY_CHANGED } from "@/lib/team";
+import { announceDutyChange, DUTY_CHANGED } from "@/lib/team";
 import { MapPin } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -72,7 +72,7 @@ function DutyDialog({
                     : "Aucun district aujourd'hui : pas de notification de district.",
                 );
                 onOpenChange(false);
-                window.dispatchEvent(new Event(DUTY_CHANGED));
+                announceDutyChange();
                 router.refresh();
               })
             }
@@ -96,6 +96,21 @@ export function DutyChip({
   suggested?: { districts: string[]; label: string } | null;
 }) {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
+  // Changement fait dans un autre onglet : la barre du haut (et la cloche) se mettent à jour ici aussi.
+  useEffect(() => {
+    let ch: BroadcastChannel | null = null;
+    try {
+      ch = new BroadcastChannel("csm-duty");
+      ch.onmessage = () => {
+        window.dispatchEvent(new Event(DUTY_CHANGED));
+        router.refresh();
+      };
+    } catch {
+      return;
+    }
+    return () => ch?.close();
+  }, [router]);
   const set = today && districts.length > 0;
   return (
     <>

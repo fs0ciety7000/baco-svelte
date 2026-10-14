@@ -147,7 +147,9 @@ export const MODULES: NavModule[] = [
   {
     id: "pmr",
     href: "/pmr",
-    label: "PMR",
+    // « PMR & Groupes » (15 oct. 2026) ; libellé court « PMR » dans la barre du bas mobile.
+    label: "PMR & Groupes",
+    shortLabel: "PMR",
     icon: Accessibility,
     mobile: true,
     tabs: [

@@ -1,7 +1,7 @@
 "use client";
 
 import type { NotificationCategory } from "@/lib/notification-prefs";
-import { DUTY_CHANGED } from "@/lib/team";
+import { announceDutyChange } from "@/lib/team";
 import { Camera, KeyRound, PlugZap, Save, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -155,7 +155,7 @@ function DutyCard({ initial }: { initial: string[] }) {
         setPicked(picked);
         return void toast.error(r.error);
       }
-      window.dispatchEvent(new Event(DUTY_CHANGED));
+      announceDutyChange();
       router.refresh();
     });
   };

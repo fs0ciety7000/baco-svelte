@@ -66,7 +66,14 @@ export function ModuleTabs({
   const current = mod ? activeTab(pathname, mod) : undefined;
   const tabs = mod?.tabs ?? [];
   const activeIndex = tabs.findIndex((t) => t.href === current?.href);
-  const [fit, setFit] = useState<{ shown: number[]; more: number[] } | null>(null);
+  // La répartition est liée à la liste d'onglets qui l'a produite : en changeant de module, l'ancienne (indices d'un autre
+  // module) est ignorée jusqu'à la nouvelle mesure. Sinon `tabs[i]` valait undefined → « reading 'href' », page en erreur
+  // (15 oct. 2026, « momentanément indisponible » aléatoire).
+  const sig = tabs.map((t) => t.href).join("|");
+  const [measured, setFit] = useState<{ shown: number[]; more: number[]; sig: string } | null>(
+    null,
+  );
+  const fit = measured && measured.sig === sig ? measured : null;
 
   // Recalcul du trait quand les onglets visibles changent (répartition « Plus » selon la largeur).
   useSlideIndicator(ref, bar, '[aria-current="page"]', [fit?.shown.join(",")]);
@@ -90,13 +97,13 @@ export function ModuleTabs({
     if (!box || !ruler) return;
     const compute = () => {
       const widths = Array.from(ruler.children).map((c) => (c as HTMLElement).offsetWidth);
-      setFit(fitTabs(widths, box.clientWidth, activeIndex));
+      setFit({ ...fitTabs(widths, box.clientWidth, activeIndex), sig });
     };
     compute();
     const ro = new ResizeObserver(compute);
     ro.observe(box);
     return () => ro.disconnect();
-  }, [variant, activeIndex, tabs.length]);
+  }, [variant, activeIndex, sig]);
 
   if (!mod || tabs.length < 2) return null;
   const tabClass = (isActive: boolean) =>
@@ -105,8 +112,9 @@ export function ModuleTabs({
       variant === "bar" ? "h-full px-3" : "h-control px-4",
       isActive && (variant === "bar" ? "text-fg" : "bg-surface-2 text-fg"),
     );
-  const shown = variant === "bar" && fit ? fit.shown.map((i) => tabs[i]!) : tabs;
-  const more: NavTab[] = variant === "bar" && fit ? fit.more.map((i) => tabs[i]!) : [];
+  const pick = (list: number[]) => list.map((i) => tabs[i]).filter((t): t is NavTab => !!t);
+  const shown = variant === "bar" && fit ? pick(fit.shown) : tabs;
+  const more: NavTab[] = variant === "bar" && fit ? pick(fit.more) : [];
 
   return (
     <div

@@ -88,7 +88,8 @@ function PickerSurface({
     return (
       <>
         <div className="min-w-0">{anchor}</div>
-        <Drawer.Root open={open} onOpenChange={onOpenChange} direction="bottom">
+        {/* handleOnly : défiler la liste ne doit pas tirer la feuille vers le bas (elle se refermait, 15 oct. 2026). */}
+        <Drawer.Root open={open} onOpenChange={onOpenChange} direction="bottom" handleOnly>
           <Drawer.Portal>
             <Drawer.Overlay className="fixed inset-0 z-50 bg-[color-mix(in_oklab,var(--bg)_65%,transparent)]" />
             <Drawer.Content

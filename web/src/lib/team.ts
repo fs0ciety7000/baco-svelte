@@ -29,6 +29,21 @@ export function userDistricts(
 /** Événement de fenêtre émis après un changement des districts du jour (la cloche se recharge). */
 export const DUTY_CHANGED = "csm:duty-changed";
 
+/**
+ * Districts du jour modifiés : prévient cet onglet (cloche, puce) et les autres onglets CSM ouverts (BroadcastChannel), qui
+ * rafraîchissent leur barre du haut (15 oct. 2026 : un autre onglet gardait l'ancienne puce).
+ */
+export function announceDutyChange() {
+  window.dispatchEvent(new Event(DUTY_CHANGED));
+  try {
+    const ch = new BroadcastChannel("csm-duty");
+    ch.postMessage("changed");
+    ch.close();
+  } catch {
+    // BroadcastChannel absent : cet onglet seulement.
+  }
+}
+
 /** District principal (bons de commande, feuille de route) : le premier des districts permanents, sinon `district`. */
 export function primaryDistrict(user: { districts?: string[] | null; district?: string }): string {
   return user.districts?.[0] || user.district || "";
