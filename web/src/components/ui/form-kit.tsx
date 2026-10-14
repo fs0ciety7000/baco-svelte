@@ -5,26 +5,69 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+import { useFormBridge } from "./form-bridge";
+
 // Briques des formulaires de commande (audit UX §5) : contrôle segmenté, section repliable avec résumé,
 // barre d'actions collante, indicateur d'enregistrement automatique, historique horodaté.
 
-/** Contrôle segmenté (2 à 4 options) : radiogroup, flèches du clavier, pleine largeur sur mobile. */
+/** Faut-il passer en grille ? Largeur naturelle (libellés sur une ligne) plus grande que la place disponible. */
+export function segmentedNeedsWrap(natural: number, available: number): boolean {
+  return available > 0 && natural > available + 1;
+}
+
+const SEGMENT_TEXT = "px-2 text-small font-medium sm:px-3";
+
+/**
+ * Contrôle segmenté (2 à 4 options) : radiogroup, flèches du clavier, pleine largeur sur mobile. Quand une option ne
+ * tient pas sur la ligne (« Modif. service planifié » en 390 px), il passe en **grille de 2 colonnes** et les libellés
+ * vont à la ligne au lieu d'être coupés (mesure d'une rangée invisible, ResizeObserver). Contrôlé (`value` +
+ * `onChange`) ou non (`defaultValue`) ; avec `name`, la valeur part dans un champ caché (formulaires GET, `FilterForm` :
+ * `change` émis à chaque choix de l'agent, comme les listes personnalisées).
+ */
 function Segmented<T extends string | number>({
-  value,
+  value: valueProp,
+  defaultValue,
   onChange,
   options,
   label,
+  name,
   disabled,
   className,
 }: {
-  value: T;
-  onChange: (v: T) => void;
+  value?: T;
+  defaultValue?: T;
+  onChange?: (v: T) => void;
   options: readonly { value: T; label: string }[];
   label: string;
+  name?: string;
   disabled?: boolean;
   className?: string;
 }) {
   const refs = React.useRef<(HTMLButtonElement | null)[]>([]);
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  const measureRef = React.useRef<HTMLDivElement>(null);
+  const [inner, setInner] = React.useState<T | undefined>(defaultValue ?? options[0]?.value);
+  const value = valueProp !== undefined ? valueProp : inner;
+  const bridge = useFormBridge(value === undefined ? "" : String(value));
+  const [wrap, setWrap] = React.useState(false);
+
+  React.useLayoutEffect(() => {
+    const root = rootRef.current;
+    const measure = measureRef.current;
+    if (!root || !measure || typeof ResizeObserver === "undefined") return;
+    const check = () => setWrap(segmentedNeedsWrap(measure.offsetWidth, root.clientWidth));
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(root);
+    return () => ro.disconnect();
+  }, [options]);
+
+  const choose = (v: T) => {
+    if (v === value) return;
+    bridge.markUserChange();
+    if (valueProp === undefined) setInner(v);
+    onChange?.(v);
+  };
   const index = Math.max(
     0,
     options.findIndex((o) => o.value === value),
@@ -33,18 +76,31 @@ function Segmented<T extends string | number>({
     const next = (index + delta + options.length) % options.length;
     const opt = options[next];
     if (!opt) return;
-    onChange(opt.value);
+    choose(opt.value);
     refs.current[next]?.focus();
   };
   return (
     <div
+      ref={rootRef}
       role="radiogroup"
       aria-label={label}
+      data-wrap={wrap || undefined}
       className={cn(
-        "flex w-full rounded-control border border-border-strong bg-surface p-0.5 sm:w-auto",
+        "relative w-full rounded-control border border-border-strong bg-surface p-0.5 sm:w-auto",
+        wrap ? "grid grid-cols-2 gap-0.5" : "flex",
         className,
       )}
     >
+      {/* Rangée invisible : largeur naturelle des libellés sur une ligne (le cadre coupe ce qui déborde). */}
+      <div aria-hidden className="pointer-events-none invisible absolute inset-0 overflow-hidden">
+        <div ref={measureRef} className="flex w-max p-0.5">
+          {options.map((o) => (
+            <span key={String(o.value)} className={cn(SEGMENT_TEXT, "whitespace-nowrap")}>
+              {o.label}
+            </span>
+          ))}
+        </div>
+      </div>
       {options.map((o, i) => {
         const active = o.value === value;
         return (
@@ -58,7 +114,7 @@ function Segmented<T extends string | number>({
             aria-checked={active}
             tabIndex={active ? 0 : -1}
             disabled={disabled}
-            onClick={() => onChange(o.value)}
+            onClick={() => choose(o.value)}
             onKeyDown={(e) => {
               if (e.key === "ArrowRight" || e.key === "ArrowDown") {
                 e.preventDefault();
@@ -69,7 +125,15 @@ function Segmented<T extends string | number>({
               }
             }}
             className={cn(
-              "h-control-sm min-w-0 flex-1 cursor-pointer truncate rounded-control px-2 text-small font-medium whitespace-nowrap transition-colors sm:px-3 duration-150 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none",
+              SEGMENT_TEXT,
+              "min-w-0 cursor-pointer rounded-control transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50",
+              wrap
+                ? // Grille : libellé sur plusieurs lignes si besoin ; un dernier bouton seul prend la rangée.
+                  cn(
+                    "min-h-control-sm py-1 text-center break-words whitespace-normal",
+                    options.length % 2 === 1 && i === options.length - 1 && "col-span-2",
+                  )
+                : "h-control-sm flex-auto truncate whitespace-nowrap sm:flex-none",
               active
                 ? "bg-accent text-accent-fg"
                 : "text-fg-muted hover:bg-surface-2 hover:text-fg",
@@ -79,6 +143,15 @@ function Segmented<T extends string | number>({
           </button>
         );
       })}
+      {name ? (
+        <input
+          ref={bridge.ref}
+          type="hidden"
+          name={name}
+          value={value === undefined ? "" : String(value)}
+          readOnly
+        />
+      ) : null}
     </div>
   );
 }
@@ -159,14 +232,15 @@ function FormSection({
   );
 }
 
-/** Barre d'actions collante en bas du formulaire (au-dessus de la barre d'onglets mobile). */
-function ActionBar({ children, className }: { children: React.ReactNode; className?: string }) {
+/** Barre d'actions collante en bas du formulaire, collée à la barre d'onglets mobile (56 px + bordure). */
+function ActionBar({ children, className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       className={cn(
-        "sticky bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] z-20 -mx-4 flex flex-wrap items-center gap-2 border-t border-border bg-[color-mix(in_oklab,var(--surface)_94%,transparent)] px-4 py-3 backdrop-blur md:bottom-0 md:mx-0 md:border",
+        "sticky bottom-[calc(env(safe-area-inset-bottom)+3.5625rem)] z-20 -mx-4 flex flex-wrap items-center gap-2 border-t border-border bg-[color-mix(in_oklab,var(--surface)_94%,transparent)] px-4 py-2 backdrop-blur md:bottom-0 md:mx-0 md:border md:py-3",
         className,
       )}
+      {...props}
     >
       {children}
     </div>

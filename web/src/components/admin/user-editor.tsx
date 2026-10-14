@@ -14,7 +14,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
-import { Input, Select } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";
 import { PERMISSION_KEYS } from "@/lib/permissions";
@@ -121,15 +122,13 @@ export function UserEditor({
             >
               <Select
                 value={f.role}
-                onChange={(e) => setF({ ...f, role: e.target.value })}
+                onValueChange={(role) => setF({ ...f, role })}
                 disabled={isSelf}
-              >
-                {roleOptions(roles, canAssignFull, current).map((r) => (
-                  <option key={r.key} value={r.key}>
-                    {r.label}
-                  </option>
-                ))}
-              </Select>
+                options={roleOptions(roles, canAssignFull, current).map((r) => ({
+                  value: r.key,
+                  label: r.label,
+                }))}
+              />
             </Field>
             <Field
               label="Districts"

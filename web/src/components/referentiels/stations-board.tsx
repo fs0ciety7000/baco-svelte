@@ -14,6 +14,7 @@ import { StationDistrict } from "@/components/referentiels/station-district";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input, Select } from "@/components/ui/input";
+import { Select as CustomSelect } from "@/components/ui/select";
 import { Badge } from "@/components/ui/status-badge";
 import { Table, Td, Th, THead, Tr } from "@/components/ui/table";
 import { toast } from "@/components/ui/toast";
@@ -301,13 +302,19 @@ function KindCell({ s, canEdit }: { s: StationRow; canEdit: boolean }) {
   const [pending, start] = useTransition();
   if (!canEdit) return <span className="text-small">{KIND_LABEL[s.kind] ?? "—"}</span>;
   return (
-    <Select
+    <CustomSelect
       aria-label={`Type de ${s.name}`}
+      label={`Type de ${s.name}`}
       value={s.kind}
       disabled={pending}
-      className="w-28"
-      onChange={(e) => {
-        const kind = e.target.value;
+      className="w-32"
+      options={[
+        ...(!s.kind ? [{ value: "", label: "—" }] : []),
+        { value: "gare", label: "Gare" },
+        { value: "pang", label: "PANG" },
+        { value: "etranger", label: "Étranger" },
+      ]}
+      onValueChange={(kind) => {
         start(async () => {
           const res = await setStationKind({ id: s.id, kind }).catch(() => null);
           if (!res?.ok)
@@ -315,12 +322,7 @@ function KindCell({ s, canEdit }: { s: StationRow; canEdit: boolean }) {
           router.refresh();
         });
       }}
-    >
-      {!s.kind ? <option value="">—</option> : null}
-      <option value="gare">Gare</option>
-      <option value="pang">PANG</option>
-      <option value="etranger">Étranger</option>
-    </Select>
+    />
   );
 }
 

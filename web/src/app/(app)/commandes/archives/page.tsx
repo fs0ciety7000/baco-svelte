@@ -6,7 +6,8 @@ import { ArchiveAdminBar, ArchiveDelete } from "@/components/orders/archive-tool
 import { ClearFilters, FilterSubmit } from "@/components/ui/filters";
 import { Button } from "@/components/ui/button";
 import { FilterForm } from "@/components/ui/filter-form";
-import { Input, Select } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
 import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
@@ -78,11 +79,15 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-36">
           <span className="text-small text-fg-muted">Type</span>
-          <Select name="type" defaultValue={sp.type ?? ""}>
-            <option value="">Bus et taxis</option>
-            <option value="bus">Bus</option>
-            <option value="taxi">Taxis</option>
-          </Select>
+          <Select
+            name="type"
+            defaultValue={sp.type ?? ""}
+            options={[
+              { value: "", label: "Bus et taxis" },
+              { value: "bus", label: "Bus" },
+              { value: "taxi", label: "Taxis" },
+            ]}
+          />
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-44">
           <span className="text-small text-fg-muted">Mois</span>

@@ -15,6 +15,7 @@ import {
 } from "@/app/(app)/admin/quinyx/actions";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
+import { Select as CustomSelect } from "@/components/ui/select";
 import { Badge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";
 import { sinceLabel } from "@/lib/orders/time";
@@ -329,24 +330,23 @@ export function QuinyxAgents({
                 )}
               </span>
             </div>
-            <Select
+            <CustomSelect
               aria-label={`Compte CSM de ${a.name}`}
+              label={`Compte CSM de ${a.name}`}
               defaultValue={a.userId || a.suggestedId}
               key={`${a.id}-${a.userId}-${a.suggestedId}`}
               disabled={pending}
-              onChange={(e) => {
-                const v = e.target.value;
+              placeholder="Choisir un compte…"
+              onValueChange={(v) => {
                 if (v) act(() => linkQuinyxAgent(a.id, v), "Agent rattaché.");
               }}
-            >
-              <option value="">Choisir un compte…</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                  {taken.has(u.id) && taken.get(u.id) !== a.name ? " (déjà rattaché)" : ""}
-                </option>
-              ))}
-            </Select>
+              options={users.map((u) => ({
+                value: u.id,
+                label:
+                  u.name +
+                  (taken.has(u.id) && taken.get(u.id) !== a.name ? " (déjà rattaché)" : ""),
+              }))}
+            />
             <span className="flex gap-2">
               {!a.confirmed && a.suggestedId ? (
                 <Button

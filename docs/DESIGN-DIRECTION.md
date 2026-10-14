@@ -248,3 +248,19 @@ nouvel écran (liste aux couleurs du système, format mm/dd/yyyy et « 02:50 PM 
   voisins en `fg-subtle`.
 - **Heure à confirmer** (`pending`) : bordure en pointillés et « À confirmer » en `warn` tant que l'heure est vide.
 - Rien ne bouge en mouvement réduit (règle globale).
+
+## Listes courtes et mobile des formulaires — refonte R5 + R6 (14 oct. 2026)
+
+- **R5** : toutes les listes courtes (statut, type, rôle, action, facturation, cause PMR, état / assistance / zone du
+  matériel, zone PN, catégories, tri du Journal, Quinyx…) utilisent le `Select` personnalisé. Seuls les districts et les
+  listes longues (société, chauffeur, ligne, gares) attendent les lots R2 / R4. Le titre de la feuille mobile est le
+  libellé du champ seul.
+- **Barre d'actions des bons en mobile** : une seule action principale pleine largeur (Terminer, Valider l'envoi, Créer le
+  bon, Rétablir ou Rouvrir) + bouton « ⋯ » carré (secondaire) ; la feuille du bas « Actions du bon » liste les actions
+  secondaires (options de 48 px, icône `fg-muted`), puis, **séparée par un filet**, « Annuler la commande » en bouton
+  `danger` pleine largeur, qui ouvre le dialogue de motif. Barre collée à la barre d'onglets : ≈ 118 px fixes en bas
+  d'écran (≈ 193 px avant). Desktop inchangé.
+- **Segmented** : quand une option ne tient pas, grille de 2 colonnes (le dernier bouton d'un nombre impair prend la
+  rangée), libellés sur deux lignes, jamais coupés par « … » ; sinon largeur des boutons selon leur libellé.
+- **Switch** : rayon du thème (`rounded-control`, pouce au même rayon moins 2 px : carré, arrondi ou rond) ; libellé
+  englobant cliquable de 44 px (`SwitchField`) ; zone tactile agrandie à 44 px en `pointer: coarse`.

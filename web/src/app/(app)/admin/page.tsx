@@ -8,6 +8,7 @@ import { FilterForm } from "@/components/ui/filter-form";
 import { UserCreate } from "@/components/admin/user-create";
 import { Avatar } from "@/components/shell/avatar";
 import { Input, Select } from "@/components/ui/input";
+import { Select as CustomSelect } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
 import { Table, Td, Th, THead, Tr } from "@/components/ui/table";
@@ -65,14 +66,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-44">
           <span className="text-small text-fg-muted">Rôle</span>
-          <Select name="role" defaultValue={f.role ?? ""}>
-            <option value="">Tous</option>
-            {filterRoles.map((r) => (
-              <option key={r} value={r}>
-                {label(r)}
-              </option>
-            ))}
-          </Select>
+          <CustomSelect
+            name="role"
+            defaultValue={f.role ?? ""}
+            options={[
+              { value: "", label: "Tous" },
+              ...filterRoles.map((r) => ({ value: r, label: label(r) })),
+            ]}
+          />
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-44">
           <span className="text-small text-fg-muted">District</span>

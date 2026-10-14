@@ -11,6 +11,7 @@ import { BarList, StackedBars } from "@/components/ops/charts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Select } from "@/components/ui/input";
+import { Select as CustomSelect } from "@/components/ui/select";
 import { StatCard } from "@/components/ui/stat-card";
 import { Table, Td, Th, THead, Tr } from "@/components/ui/table";
 import { addDays, brusselsDay, formatDay } from "@/lib/orders/time";
@@ -95,12 +96,16 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
             </label>
             <label className="flex min-w-0 flex-col gap-1 md:w-32">
               <span className="text-small text-fg-muted">Type C3</span>
-              <Select name="type" defaultValue={filters.type ?? ""}>
-                <option value="">Tous</option>
-                <option value="1">Type 1</option>
-                <option value="2">Type 2</option>
-                <option value="3">Type 3</option>
-              </Select>
+              <CustomSelect
+                name="type"
+                defaultValue={filters.type ?? ""}
+                options={[
+                  { value: "", label: "Tous" },
+                  { value: "1", label: "Type 1" },
+                  { value: "2", label: "Type 2" },
+                  { value: "3", label: "Type 3" },
+                ]}
+              />
             </label>
             <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-56">
               <span className="text-small text-fg-muted">Société de bus</span>

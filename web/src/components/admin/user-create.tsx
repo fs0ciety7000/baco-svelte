@@ -8,7 +8,8 @@ import { createUser } from "@/app/(app)/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
-import { Input, Select } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { toast } from "@/components/ui/toast";
 import type { RoleMeta } from "@/lib/roles";
 
@@ -124,13 +125,14 @@ export function UserCreate({
               />
             </Field>
             <Field label="Rôle">
-              <Select value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })}>
-                {roleOptions(roles, canAssignFull).map((r) => (
-                  <option key={r.key} value={r.key}>
-                    {r.label}
-                  </option>
-                ))}
-              </Select>
+              <Select
+                value={f.role}
+                onValueChange={(role) => setF({ ...f, role })}
+                options={roleOptions(roles, canAssignFull).map((r) => ({
+                  value: r.key,
+                  label: r.label,
+                }))}
+              />
             </Field>
             <Field
               label="Districts"

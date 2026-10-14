@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { FilterForm } from "@/components/ui/filter-form";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Input, Select } from "@/components/ui/input";
+import { Select as CustomSelect } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/misc";
 import { can } from "@/lib/permissions";
 import { pl } from "@/lib/utils";
@@ -66,27 +67,39 @@ export default async function Page({
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-40">
           <span className="text-small text-fg-muted">Pays</span>
-          <Select name="pays" defaultValue={f.pays}>
-            <option value="">Tous</option>
-            <option value="be">Belgique</option>
-            <option value="etranger">Gares étrangères</option>
-          </Select>
+          <CustomSelect
+            name="pays"
+            defaultValue={f.pays}
+            options={[
+              { value: "", label: "Tous" },
+              { value: "be", label: "Belgique" },
+              { value: "etranger", label: "Gares étrangères" },
+            ]}
+          />
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-36">
           <span className="text-small text-fg-muted">Type</span>
-          <Select name="type" defaultValue={f.type}>
-            <option value="">Tous</option>
-            <option value="gare">Gares</option>
-            <option value="pang">PANG</option>
-            <option value="etranger">Étranger</option>
-          </Select>
+          <CustomSelect
+            name="type"
+            defaultValue={f.type}
+            options={[
+              { value: "", label: "Tous" },
+              { value: "gare", label: "Gares" },
+              { value: "pang", label: "PANG" },
+              { value: "etranger", label: "Étranger" },
+            ]}
+          />
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-52">
           <span className="text-small text-fg-muted">Proposition de district</span>
-          <Select name="proposition" defaultValue={f.proposition}>
-            <option value="">Toutes les gares</option>
-            <option value="oui">Sans district, avec proposition</option>
-          </Select>
+          <CustomSelect
+            name="proposition"
+            defaultValue={f.proposition}
+            options={[
+              { value: "", label: "Toutes les gares" },
+              { value: "oui", label: "Sans district, avec proposition" },
+            ]}
+          />
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-28">
           <span className="text-small text-fg-muted">Ligne</span>

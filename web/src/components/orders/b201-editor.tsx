@@ -8,7 +8,8 @@ import { saveB201 } from "@/app/(app)/commandes/actions";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { AutosaveIndicator } from "@/components/ui/form-kit";
-import { Input, Select, Textarea } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TimeField } from "@/components/ui/time-field";
 import { PERIODS, type Period } from "@/lib/orders/time";
@@ -284,15 +285,11 @@ function ManualRow({
       <div className="grid grid-cols-2 gap-2">
         <Select
           aria-label="Service"
+          label="Service"
           value={entry.service}
-          onChange={(e) => onChange({ service: e.target.value as Service })}
-        >
-          {SERVICES.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label}
-            </option>
-          ))}
-        </Select>
+          onValueChange={(v) => v && onChange({ service: v as Service })}
+          options={SERVICES.map((s) => ({ value: s.id, label: s.label }))}
+        />
         <TimeField
           aria-label="Heure"
           value={entry.time}

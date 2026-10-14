@@ -11,6 +11,7 @@ import {
   FilterSubmit,
 } from "@/components/ui/filters";
 import { Input, Select } from "@/components/ui/input";
+import { Select as CustomSelect } from "@/components/ui/select";
 import { LiveHighlight } from "@/components/ui/live-highlight";
 import { EmptyState } from "@/components/ui/misc";
 import { StatusBadge, statusColor } from "@/components/ui/status-badge";
@@ -109,14 +110,14 @@ export function FilterBar({
         >
           <label className="flex min-w-0 flex-col gap-1 md:w-40">
             <span className="text-small text-fg-muted">Statut</span>
-            <Select name="statut" defaultValue={filters.statut ?? ""}>
-              <option value="">Tous</option>
-              {ORDER_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {STATUS_LABEL[s]}
-                </option>
-              ))}
-            </Select>
+            <CustomSelect
+              name="statut"
+              defaultValue={filters.statut ?? ""}
+              options={[
+                { value: "", label: "Tous" },
+                ...ORDER_STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] })),
+              ]}
+            />
           </label>
           <label className="flex min-w-0 flex-col gap-1 md:w-40">
             <span className="text-small text-fg-muted">District</span>

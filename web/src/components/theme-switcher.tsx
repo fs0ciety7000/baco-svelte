@@ -148,7 +148,7 @@ function ShortcutsToggle() {
   const [on, setOn] = useState(true);
   useEffect(() => setOn(shortcutsEnabled()), []);
   return (
-    <label className="flex items-center justify-between gap-3 text-body">
+    <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-body">
       <span>
         Raccourcis à une touche{" "}
         <span className="text-small text-fg-muted">(« / » recherche, « N » nouveau)</span>
@@ -186,7 +186,7 @@ function BrowserNotifyToggle() {
         ? "Bloquées par le navigateur : autorise-les dans les réglages du site (icône du cadenas)."
         : "Urgences, mentions et retards de train, quand CSM est en arrière-plan.";
   return (
-    <label className="flex items-center justify-between gap-3 text-body">
+    <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-body">
       <span>
         Notifications du navigateur{" "}
         <span

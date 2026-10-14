@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 export const identity = process.env.E2E_IDENTITY ?? "";
 export const password = process.env.E2E_PASSWORD ?? "";
@@ -25,4 +25,32 @@ export async function noHorizontalScroll(page: Page) {
 export function frDate(iso: string): string {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
+}
+
+/**
+ * Listes personnalisées (refonte R1 / R5) : plus de `<select>` natif, donc plus de `selectOption`. Ouvre le combobox
+ * nommé `label` (libellé du champ, `aria-label`, ou un `Locator` déjà ciblé) puis choisit l'option `option` (texte exact
+ * ou motif). Marche en desktop (Popover) comme en mobile (feuille du bas) : l'option est cherchée dans la liste ouverte.
+ */
+export async function chooseOption(
+  page: Page,
+  label: string | RegExp | Locator,
+  option: string | RegExp,
+) {
+  const trigger =
+    typeof label === "string" || label instanceof RegExp
+      ? page
+          .getByRole("combobox", {
+            name: label,
+            ...(typeof label === "string" ? { exact: true } : {}),
+          })
+          .filter({ visible: true })
+          .first()
+      : label;
+  await trigger.click();
+  const list = page.getByRole("listbox").filter({ visible: true }).last();
+  await list
+    .getByRole("option", { name: option, ...(typeof option === "string" ? { exact: true } : {}) })
+    .click();
+  await expect(list).toBeHidden();
 }

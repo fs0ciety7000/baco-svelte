@@ -6,7 +6,7 @@ import { useRef, useState } from "react";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { Checkbox, Switch } from "@/components/ui/checkbox";
+import { Checkbox, SwitchField } from "@/components/ui/checkbox";
 import {
   Command,
   CommandEmpty,
@@ -30,7 +30,8 @@ import {
   Timeline,
   ToggleChip,
 } from "@/components/ui/form-kit";
-import { Input, Select, Textarea } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { EmptyState, Kbd, PageHeader, Skeleton } from "@/components/ui/misc";
 import { Sheet } from "@/components/ui/sheet";
@@ -367,11 +368,14 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
               <Input placeholder="Ex. La Louvière-Centre" />
             </Field>
             <Field label="Motif">
-              <Select defaultValue="travaux">
-                <option value="travaux">Travaux</option>
-                <option value="incident">Incident</option>
-                <option value="greve">Grève</option>
-              </Select>
+              <Select
+                defaultValue="travaux"
+                options={[
+                  { value: "travaux", label: "Travaux" },
+                  { value: "incident", label: "Incident" },
+                  { value: "greve", label: "Grève" },
+                ]}
+              />
             </Field>
             <Field label="Nombre de bus">
               <Input type="number" min={1} defaultValue={2} inputMode="numeric" />
@@ -383,10 +387,7 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
               <Checkbox id="ar" defaultChecked />
               <Label htmlFor="ar">Aller-retour</Label>
             </div>
-            <div className="flex min-h-11 items-center gap-3 md:min-h-0">
-              <Switch id="pmr" />
-              <Label htmlFor="pmr">Voyageurs PMR à bord</Label>
-            </div>
+            <SwitchField label="Voyageurs PMR à bord" />
           </CardContent>
           <CardFooter className="flex-wrap justify-end">
             <span className="w-full text-small text-fg-muted sm:mr-auto sm:w-auto">
@@ -662,6 +663,25 @@ function FormKitDemo() {
             { value: "1", label: "Évacuation" },
             { value: "3", label: "Modif. service planifié" },
           ]}
+        />
+        {/* Colonne étroite (≈ mobile) : une option ne tient pas → grille de 2 colonnes, libellés sur deux lignes. */}
+        <div className="max-w-72" data-testid="segmented-narrow">
+          <Segmented
+            label="Type C3 (colonne étroite)"
+            value={type}
+            onChange={setType}
+            options={[
+              { value: "2", label: "Remplacement" },
+              { value: "1", label: "Évacuation" },
+              { value: "3", label: "Modif. service planifié" },
+            ]}
+          />
+        </div>
+        <SwitchField
+          reverse
+          label="Trajet spécifique"
+          hint="Tout le libellé est cliquable (44 px au moins)."
+          defaultChecked
         />
         <div className="flex flex-wrap gap-2">
           {["96", "97", "118"].map((l) => (

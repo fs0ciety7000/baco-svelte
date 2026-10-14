@@ -179,9 +179,19 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - **Contrôles personnalisés (refonte R1 + R3, 14 oct. 2026, `../docs/design/REFONTE-UI-2026-10.md` §3.5)** : **plus
   aucun `<select>` ni champ `type="date|time|month|datetime-local"` natif dans un nouvel écran** (liste aux couleurs du
   système, format américain sur un poste en anglais, libellés coupés). Utiliser :
-  - `Select` (`components/ui/select.tsx` ; le `Select` natif de `input.tsx` reste dans les écrans pas encore migrés, lot
-    R5) : `options: {value,label,hint?,icon?,disabled?}[]`, `value`/`defaultValue`/`onValueChange`, `placeholder`,
-    `clearable` (option vide en tête = « Tous »), `name`, `disabled`, `label` (titre de la feuille mobile) ;
+  - `Select` (`components/ui/select.tsx`) : `options: {value,label,hint?,icon?,disabled?}[]`,
+    `value`/`defaultValue`/`onValueChange`, `placeholder`, `clearable` (option vide en tête = « Tous »), `name`,
+    `disabled`, `label` (titre de la feuille mobile ; sinon le texte du `<label>`, sans l'option choisie). **Lot R5
+    (14 oct. 2026)** : toutes les listes courtes migrées (même `name`, mêmes valeurs ; une option `""` « Tous » se met
+    dans `options`, `onValueChange` reçoit `T | ""` → `v && set(v)` pour une liste sans option vide). Le `Select` natif
+    d'`input.tsx` (ancien) ne reste que pour les districts et les listes longues (société, chauffeur, ligne, gares :
+    lots R2 / R4) ; dans un fichier qui garde les deux, le personnalisé est importé `as CustomSelect`. E2E : plus de
+    `selectOption`, helper **`chooseOption(page, libellé | Locator, option)`** (`e2e/helpers.ts`) ;
+  - `Segmented` (`form-kit.tsx`, **R6**) : grille de 2 colonnes et libellés sur plusieurs lignes quand la rangée ne tient
+    pas (mesure d'une rangée invisible, `segmentedNeedsWrap`), boutons en `flex-auto` (largeur selon le libellé) ;
+    contrôlé (`value` + `onChange`) ou non (`defaultValue`) ; `name` → champ caché + `change` (formulaires GET) ;
+  - `Switch` à la forme du thème (`rounded-control`, zone de 44 px en `pointer: coarse`) ; avec un libellé :
+    **`SwitchField`** (`label`, `hint`, `reverse` : `<label>` englobant, 44 px de haut) ;
   - `DateField` (`date-field.tsx`, `jj/mm/aaaa`, `min`/`max`), `TimeField` (`time-field.tsx`, `HH:MM`, `step` = 5,
     `pending` « À confirmer », bouton « Maintenant »), `DateRangePicker` (`nameFrom`/`nameTo`, `defaultFrom`/`defaultTo`,
     `presets` `today|tomorrow|7d|last7|week`, `fieldClassName`), `MonthField` (`month-field.tsx`, `AAAA-MM`) ;
@@ -489,6 +499,15 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `Leg.inDone` / `outDone` → badge IN / OUT coché (`IoBadges`). **Filtre de statut à cases multiples** (Missions PMR,
   Groupes, Historique) : `statut=a&statut=b` ou « a,b », `parseStatuses` (`lib/pmr/model.ts`), `statusFilter`
   (`server/data/pmr.ts`) ; aucune case = tous (« Masquer les annulées » s'applique alors).
+- **Barre d'actions des bons (refonte R6, 14 oct. 2026)** : `OrderActionBar` (`components/orders/order-action-bar.tsx`,
+  `data-testid="order-action-bar"`) dans `bus-form.tsx` et `taxi-form.tsx`. Desktop inchangé. Mobile (< 768 px) : une seule
+  action principale pleine largeur (`mainActionOf` dans `lib/orders/status.ts`, testé : Valider l'envoi > Créer le bon >
+  transition principale > retour, jamais l'annulation) + « ⋯ » (`order-more`) qui ouvre une `Sheet` (`order-actions-sheet` :
+  transitions secondaires `sheet-transition-<statut>`, PDF, dupliquer, modèle, retour ; « Annuler la commande » à part en bas,
+  en `danger`). Les transitions passent par **`useOrderTransitions`** (`transitions.tsx`, logique + `dialog`) : le dialogue
+  de motif est rendu hors de la feuille (la fermer ne le démonte pas) ; `TransitionButtons` (panneau du Suivi) l'utilise
+  aussi. `ActionBar` collée à la barre d'onglets (56 px + bordure) : hauteur fixe en bas d'écran ≈ 118 px (≈ 193 avant).
+  E2E « barre d'actions mobile » dans `e2e/commandes.spec.ts`.
 - **Cycle des bons v3** (14 oct. 2026, `lib/orders/status.ts`, miroir du hook) : `brouillon` « Brouillon / en cours » →
   `termine` « Terminé » (bus démobilisés ; `TransitionButtons` ouvre le dialogue des heures de démobilisation) → `envoye`
   « Envoyé / finalisé » (verrouillé : `isEditable` faux ; « Rouvrir » = coordinateurs) ; `annule`. « Valider l'envoi »

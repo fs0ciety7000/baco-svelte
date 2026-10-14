@@ -1,17 +1,7 @@
 "use client";
 
 import { pl } from "@/lib/utils";
-import {
-  Copy,
-  ExternalLink,
-  FileText,
-  MoreHorizontal,
-  Save,
-  Search,
-  Send,
-  UserPlus,
-  X,
-} from "lucide-react";
+import { ExternalLink, Search, UserPlus, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
@@ -25,8 +15,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
-import { ActionBar, AutosaveIndicator, FormSection, Segmented } from "@/components/ui/form-kit";
+import { AutosaveIndicator, FormSection, Segmented } from "@/components/ui/form-kit";
 import { Input, Select, Textarea } from "@/components/ui/input";
+import { Select as CustomSelect } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";
 import { DateField } from "@/components/ui/date-field";
@@ -46,7 +37,7 @@ import { useAutosave } from "@/lib/orders/use-autosave";
 import { TemplateDialog } from "./bus-form";
 import { PdfLink, SendDialog } from "./send-dialog";
 import { StartPanel, type StartPanelProps } from "./start-panel";
-import { TransitionButtons } from "./transitions";
+import { OrderActionBar } from "./order-action-bar";
 import { StationInput } from "./station-input";
 import { TrainNumberField } from "./train-field";
 import type { OrderTrain } from "@/app/(app)/commandes/train-actions";
@@ -90,7 +81,6 @@ export function TaxiForm(props: TaxiFormProps) {
   const [client, setClient] = useState<Client | null>(props.client);
   const [sendOpen, setSendOpen] = useState(false);
   const [tplOpen, setTplOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [pending, start] = useTransition();
   const editable = canWrite && isEditable(props.status);
@@ -356,14 +346,11 @@ export function TaxiForm(props: TaxiFormProps) {
                 />
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   <Field label="Type">
-                    <Select value={d.pmr_type} onChange={(e) => set("pmr_type", e.target.value)}>
-                      <option value="">—</option>
-                      {PMR_TYPES.map((t) => (
-                        <option key={t.value} value={t.value}>
-                          {t.label}
-                        </option>
-                      ))}
-                    </Select>
+                    <CustomSelect
+                      value={d.pmr_type}
+                      onValueChange={(v) => set("pmr_type", v)}
+                      options={[{ value: "", label: "—" }, ...PMR_TYPES]}
+                    />
                   </Field>
                   <Field label="Nombre de PMR" required error={err("pmr_count")}>
                     <Input
@@ -387,14 +374,12 @@ export function TaxiForm(props: TaxiFormProps) {
                   </Field>
                 </div>
                 <Field label="Cause PMR" required error={err("pmr_reason")}>
-                  <Select value={d.pmr_reason} onChange={(e) => set("pmr_reason", e.target.value)}>
-                    <option value="">Choisir…</option>
-                    {PMR_CAUSES.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </Select>
+                  <CustomSelect
+                    value={d.pmr_reason}
+                    onValueChange={(v) => set("pmr_reason", v)}
+                    placeholder="Choisir…"
+                    options={PMR_CAUSES.map((c) => ({ value: c, label: c }))}
+                  />
                 </Field>
               </>
             ) : (
@@ -496,13 +481,11 @@ export function TaxiForm(props: TaxiFormProps) {
             defaultOpen={!props.orderId}
           >
             <Field label="Facturation">
-              <Select value={d.billing} onChange={(e) => set("billing", e.target.value)}>
-                {BILLING.map((b) => (
-                  <option key={b} value={b}>
-                    {b}
-                  </option>
-                ))}
-              </Select>
+              <CustomSelect
+                value={d.billing}
+                onValueChange={(v) => v && set("billing", v)}
+                options={BILLING.map((b) => ({ value: b, label: b }))}
+              />
             </Field>
             <Field label="Motif / remarques">
               <Textarea
@@ -517,99 +500,22 @@ export function TaxiForm(props: TaxiFormProps) {
           </FormSection>
         </fieldset>
 
-        <ActionBar>
-          {/* Cycle v3 (14 oct. 2026) : « Terminer » en cours, puis « Valider l'envoi » une fois le trajet fait. */}
-          {editable && props.status === "termine" ? (
-            <Button
-              type="button"
-              variant="primary"
-              onClick={() => void prepareSend()}
-              data-testid="prepare-send"
-            >
-              <Send aria-hidden /> Valider l&apos;envoi
-            </Button>
-          ) : null}
-          {editable && !orderId ? (
-            <Button
-              type="button"
-              variant="primary"
-              onClick={() => void autosave.flush({ create: true })}
-              data-testid="create-order"
-            >
-              Créer le bon
-            </Button>
-          ) : null}
-          {orderId ? (
-            <TransitionButtons
-              kind="taxi"
-              id={orderId}
-              status={props.status}
-              statusBeforeCancel={props.statusBeforeCancel}
-              coordinator={props.coordinator}
-              before={autosave.flush}
-              hideSend
-            />
-          ) : null}
-          <div className="relative ml-auto">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Plus d'actions"
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen((o) => !o)}
-            >
-              <MoreHorizontal />
-            </Button>
-            {menuOpen ? (
-              <div
-                role="menu"
-                className="absolute right-0 bottom-full z-30 mb-2 flex w-60 flex-col border border-border-strong bg-surface py-1 shadow-lg"
-                onClick={() => setMenuOpen(false)}
-              >
-                {orderId ? (
-                  <a
-                    role="menuitem"
-                    className="flex min-h-11 items-center gap-2 px-3 text-body hover:bg-surface-2"
-                    href={`/api/commandes/taxi/${orderId}/pdf`}
-                    target="_blank"
-                    rel="noopener"
-                  >
-                    <FileText aria-hidden className="size-4" /> Aperçu PDF
-                  </a>
-                ) : null}
-                {orderId && canWrite ? (
-                  <button
-                    role="menuitem"
-                    type="button"
-                    className="flex min-h-11 cursor-pointer items-center gap-2 px-3 text-left text-body hover:bg-surface-2"
-                    onClick={duplicate}
-                    disabled={pending}
-                  >
-                    <Copy aria-hidden className="size-4" /> Dupliquer (aujourd&apos;hui)
-                  </button>
-                ) : null}
-                {canWrite ? (
-                  <button
-                    role="menuitem"
-                    type="button"
-                    className="flex min-h-11 cursor-pointer items-center gap-2 px-3 text-left text-body hover:bg-surface-2"
-                    onClick={() => setTplOpen(true)}
-                  >
-                    <Save aria-hidden className="size-4" /> Enregistrer comme modèle
-                  </button>
-                ) : null}
-                <Link
-                  role="menuitem"
-                  className="flex min-h-11 items-center gap-2 px-3 text-body hover:bg-surface-2"
-                  href="/commandes/taxi"
-                >
-                  Retour à la liste
-                </Link>
-              </div>
-            ) : null}
-          </div>
-        </ActionBar>
+        <OrderActionBar
+          kind="taxi"
+          orderId={orderId ?? undefined}
+          status={props.status}
+          statusBeforeCancel={props.statusBeforeCancel}
+          coordinator={props.coordinator}
+          editable={editable}
+          canWrite={canWrite}
+          busy={pending}
+          flush={autosave.flush}
+          onSend={() => void prepareSend()}
+          onCreate={() => void autosave.flush({ create: true })}
+          onDuplicate={duplicate}
+          onTemplate={() => setTplOpen(true)}
+          listHref="/commandes/taxi"
+        />
       </form>
 
       <aside
@@ -856,14 +762,11 @@ function NewClientDialog({
               />
             </Field>
             <Field label="Type">
-              <Select value={f.type} onChange={(e) => setF({ ...f, type: e.target.value })}>
-                <option value="">—</option>
-                {PMR_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
-                  </option>
-                ))}
-              </Select>
+              <CustomSelect
+                value={f.type}
+                onValueChange={(v) => setF({ ...f, type: v })}
+                options={[{ value: "", label: "—" }, ...PMR_TYPES]}
+              />
             </Field>
           </div>
           <DialogFooter>

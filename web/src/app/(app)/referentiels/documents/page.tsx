@@ -7,7 +7,8 @@ import { FilterForm } from "@/components/ui/filter-form";
 import { DocumentBoard } from "@/components/referentiels/document-board";
 import { ProcedureBoard } from "@/components/referentiels/procedure-board";
 import { Button } from "@/components/ui/button";
-import { Input, Select } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { can } from "@/lib/permissions";
 import { requirePermission } from "@/server/auth";
 
@@ -77,14 +78,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-44">
           <span className="text-small text-fg-muted">Catégorie</span>
-          <Select name="categorie" defaultValue={categorie}>
-            <option value="">Toutes</option>
-            {categories.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </Select>
+          <Select
+            name="categorie"
+            defaultValue={categorie}
+            options={[
+              { value: "", label: "Toutes" },
+              ...categories.map((c) => ({ value: c, label: c })),
+            ]}
+          />
         </label>
         <FilterSubmit />
         {q || categorie ? (
