@@ -2,7 +2,9 @@
 > - **Trains en direct** va dans **Réseau** (pas dans Opérations) ;
 > - **B201** va dans **Ressources** (pas dans Commandes) ;
 > - Q5 : **Gares et PtCar restent deux onglets séparés** (pas de fusion) ;
-> - Q7 : modifier PtCar / EBP / SPI reste **ouvert aux PACO/RCCA** (pas réservé aux modérateurs) ;
+> - Q7 (corrigé par l'utilisateur) : PtCar / EBP / SPI **en lecture seule pour les PACO/RCCA**, **modifiables par admin /
+>   sysop seulement**. Aujourd'hui `ptcar:update` couvre aussi les districts des gares et l'édition des lignes : séparer une
+>   clé (ex. `stations:update`) pour que les PACO/RCCA gardent la modification des gares et des lignes ;
 > - tout le reste validé (Réseau, Statistiques dans l'Accueil, Journal et Suivi « À envoyer » par défaut, module Équipe
 >   supprimé, Mon profil et Extension dans le menu du compte, Admin › Référentiels pour admin / sysop / modérateurs,
 >   renommages, nouvelles URL avec redirections).
