@@ -7,8 +7,9 @@ import { transitionOrder } from "@/app/(app)/commandes/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
-import { Input, Textarea } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
+import { TimeField } from "@/components/ui/time-field";
 import type { BusLine } from "@/lib/orders/schemas";
 import { transitionsFor, type OrderKind, type Status, type Transition } from "@/lib/orders/status";
 
@@ -181,11 +182,7 @@ function TransitionDialog({
               <fieldset key={r.index} className="flex flex-col gap-3 border border-border p-3">
                 <legend className="label-mono px-1 text-fg-muted">Bus {r.index + 1}</legend>
                 <Field label="Démobilisation">
-                  <Input
-                    type="time"
-                    value={r.demob}
-                    onChange={(e) => set(r.index, { demob: e.target.value })}
-                  />
+                  <TimeField value={r.demob} onValueChange={(v) => set(r.index, { demob: v })} />
                 </Field>
               </fieldset>
             ))

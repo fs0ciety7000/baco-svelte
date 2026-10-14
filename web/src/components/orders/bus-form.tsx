@@ -27,6 +27,8 @@ import {
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";
+import { DateField } from "@/components/ui/date-field";
+import { TimeField } from "@/components/ui/time-field";
 import {
   C3_TYPES,
   checkBusForSend,
@@ -417,18 +419,10 @@ export function BusForm(props: BusFormProps) {
             </Field>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <Field label="Date de circulation" required error={err("order_date")}>
-                <Input
-                  type="date"
-                  value={d.order_date}
-                  onChange={(e) => set("order_date", e.target.value)}
-                />
+                <DateField value={d.order_date} onValueChange={(v) => set("order_date", v)} />
               </Field>
               <Field label="Heure d'appel">
-                <Input
-                  type="time"
-                  value={d.call_time}
-                  onChange={(e) => set("call_time", e.target.value)}
-                />
+                <TimeField value={d.call_time} onValueChange={(v) => set("call_time", v)} />
               </Field>
               <Field label="Relation / n° d'ordre" className="col-span-2 sm:col-span-1">
                 <Input
@@ -709,32 +703,22 @@ export function BusForm(props: BusFormProps) {
                   </div>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     <Field label="Heure prévue">
-                      <Input
-                        type="time"
+                      <TimeField
                         value={b.planned}
-                        onChange={(e) => setBus(i, { planned: e.target.value })}
+                        onValueChange={(v) => setBus(i, { planned: v })}
                       />
                     </Field>
                     <Field label="Heure réelle">
-                      <Input
-                        type="time"
-                        value={b.actual}
-                        onChange={(e) => setBus(i, { actual: e.target.value })}
-                      />
+                      <TimeField value={b.actual} onValueChange={(v) => setBus(i, { actual: v })} />
                     </Field>
                     <Field label="Heure confirmée">
-                      <Input
-                        type="time"
+                      <TimeField
                         value={b.confirmed}
-                        onChange={(e) => setBus(i, { confirmed: e.target.value })}
+                        onValueChange={(v) => setBus(i, { confirmed: v })}
                       />
                     </Field>
                     <Field label="Démobilisation">
-                      <Input
-                        type="time"
-                        value={b.demob}
-                        onChange={(e) => setBus(i, { demob: e.target.value })}
-                      />
+                      <TimeField value={b.demob} onValueChange={(v) => setBus(i, { demob: v })} />
                     </Field>
                     <Field label="Plaque">
                       <Input

@@ -6,7 +6,8 @@ import { PlanningDay, PlanningWeek, QuinyxFreshness } from "@/components/team/pl
 import { ChipRow, FilterChip } from "@/components/ui/filters";
 import { FilterForm } from "@/components/ui/filter-form";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
-import { Input, Select } from "@/components/ui/input";
+import { Select } from "@/components/ui/input";
+import { DateField } from "@/components/ui/date-field";
 import { addDays, brusselsDay, formatLongDay, isValidDay } from "@/lib/orders/time";
 import { QUINYX_DISTRICTS, weekDays } from "@/lib/quinyx/model";
 import { requireRoute } from "@/server/auth";
@@ -67,7 +68,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
           {week ? <input type="hidden" name="vue" value="semaine" /> : null}
           <label className="flex min-w-0 flex-col gap-1">
             <span className="text-small text-fg-muted">Jour</span>
-            <Input type="date" name="jour" defaultValue={day} />
+            <DateField name="jour" defaultValue={day} />
           </label>
           <label className="flex min-w-0 flex-col gap-1 md:w-36">
             <span className="text-small text-fg-muted">District</span>

@@ -228,3 +228,23 @@ Validés par l'utilisateur après le verdict design et l'ébauche (artefact priv
 - **Panneau de détail ancré** à droite dès 1280 px (28 rem, sans voile, la page se resserre) ; en dessous, panneau
   modal comme avant.
 - **Barre d'onglets mobile** : libellés courts (« Bons », « Opér. », « Annuaire »), nom complet annoncé.
+
+## Contrôles personnalisés — refonte R1 + R3 (14 oct. 2026)
+
+Plan validé : `docs/design/REFONTE-UI-2026-10.md` §3.5 et §4. Plus de `<select>` ni de champ date / heure natif dans un
+nouvel écran (liste aux couleurs du système, format mm/dd/yyyy et « 02:50 PM » sur un poste en anglais, libellés coupés).
+
+- **Select** : déclencheur aux mêmes jetons qu'un champ (`surface`, `border-strong`, focus `accent`, erreur `danger`,
+  placeholder `fg-subtle`), le libellé choisi **passe à la ligne** ; liste en Popover ancré (largeur du déclencheur,
+  12 rem au moins, 18 rem de haut au plus), option survolée / active en `surface-2`, coche `accent` sur l'option
+  choisie. Ouverture `pop-in`.
+- **Mobile (< 768 px) ou pointeur tactile** : la même liste, ou le calendrier, s'ouvre en **feuille du bas** (titre = libellé
+  du champ, options de 48 px, jours de 44 px) ; pas de sélecteur natif, pour garder le format belge.
+- **DateField** `jj/mm/aaaa`, **TimeField** `HH:MM` sur 24 h (pas des flèches : 5 min), **MonthField** `mm/aaaa`,
+  **DateRangePicker** (raccourcis Aujourd'hui / Demain / 7 jours / Semaine dans le calendrier). Bouton calendrier ou
+  horloge (« Maintenant ») à droite du champ, chiffres tabulaires.
+- **Calendrier** : semaine du lundi, libellés `fr-BE`, jour choisi en `accent`, aujourd'hui cerclé `border-strong`,
+  période en `accent-soft`, **jours fériés belges en `danger` avec un point** (légende « Jour férié »), jours des mois
+  voisins en `fg-subtle`.
+- **Heure à confirmer** (`pending`) : bordure en pointillés et « À confirmer » en `warn` tant que l'heure est vide.
+- Rien ne bouge en mouvement réduit (règle globale).

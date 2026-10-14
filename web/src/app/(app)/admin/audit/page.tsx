@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { pl } from "@/lib/utils";
 import { ClearFilters, FilterSubmit } from "@/components/ui/filters";
+import { DateRangePicker } from "@/components/ui/date-field";
 import { FilterForm } from "@/components/ui/filter-form";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
@@ -81,14 +82,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
           <span className="text-small text-fg-muted">Fiche (identifiant)</span>
           <Input name="record" defaultValue={p.record} maxLength={100} />
         </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-40">
-          <span className="text-small text-fg-muted">Du</span>
-          <Input type="date" name="du" defaultValue={p.du} />
-        </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-40">
-          <span className="text-small text-fg-muted">Au</span>
-          <Input type="date" name="au" defaultValue={p.au} />
-        </label>
+        <DateRangePicker
+          nameFrom="du"
+          nameTo="au"
+          defaultFrom={p.du ?? ""}
+          defaultTo={p.au ?? ""}
+          presets={["today", "last7", "week"]}
+          fieldClassName="md:w-40"
+        />
         {p.user ? <input type="hidden" name="user" value={p.user} /> : null}
         <div className="col-span-2 flex flex-wrap gap-2">
           <FilterSubmit />

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { identity, login, noHorizontalScroll, password } from "./helpers";
+import { frDate, identity, login, noHorizontalScroll, password } from "./helpers";
 
 // Module Commandes : création bus avec enregistrement automatique, envoi (.eml + PDF), confirmation depuis le
 // suivi, taxi, B201, puis captures de chaque écran (desktop 1440 et mobile 390, thèmes Commandement et Ivoire).
@@ -225,7 +225,7 @@ test("bus : création, enregistrement automatique, fin, envoi", async ({ page },
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(
     new Date(),
   );
-  await expect(page.getByLabel("Date de circulation")).toHaveValue(today);
+  await expect(page.getByLabel("Date de circulation")).toHaveValue(frDate(today));
   await expect(page.getByRole("radio", { name: "Remplacement" })).toHaveAttribute(
     "aria-checked",
     "true",

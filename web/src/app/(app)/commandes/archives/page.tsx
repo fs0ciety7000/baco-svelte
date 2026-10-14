@@ -10,6 +10,7 @@ import { Input, Select } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
 import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
+import { MonthField } from "@/components/ui/month-field";
 import { formatShortDay } from "@/lib/orders/time";
 import { can, isAdmin } from "@/lib/permissions";
 import { pl } from "@/lib/utils";
@@ -85,7 +86,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-44">
           <span className="text-small text-fg-muted">Mois</span>
-          <Input type="month" name="mois" defaultValue={sp.mois ?? ""} />
+          <MonthField name="mois" defaultValue={sp.mois ?? ""} />
         </label>
         <FilterSubmit />
         {sp.q || sp.type || sp.mois ? <ClearFilters href="/commandes/archives" /> : null}

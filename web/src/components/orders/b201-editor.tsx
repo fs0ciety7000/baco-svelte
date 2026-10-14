@@ -10,6 +10,7 @@ import { Field } from "@/components/ui/field";
 import { AutosaveIndicator } from "@/components/ui/form-kit";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { TimeField } from "@/components/ui/time-field";
 import { PERIODS, type Period } from "@/lib/orders/time";
 import { useAutosave } from "@/lib/orders/use-autosave";
 import { cn } from "@/lib/utils";
@@ -292,11 +293,10 @@ function ManualRow({
             </option>
           ))}
         </Select>
-        <Input
+        <TimeField
           aria-label="Heure"
-          type="time"
           value={entry.time}
-          onChange={(e) => onChange({ time: e.target.value })}
+          onValueChange={(v) => onChange({ time: v })}
         />
         <Input
           aria-label="Origine"

@@ -5,6 +5,7 @@ import { DayTimeline } from "@/components/ops/day-timeline";
 import { FilterForm } from "@/components/ui/filter-form";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Input, Select } from "@/components/ui/input";
+import { DateField } from "@/components/ui/date-field";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
 import { requireRoute } from "@/server/auth";
@@ -39,8 +40,7 @@ export default async function Page({
           <FormAutoSubmit />
           <label className="flex min-w-0 flex-col gap-1 md:w-44">
             <span className="text-small text-fg-muted">Jour</span>
-            <Input
-              type="date"
+            <DateField
               name="jour"
               defaultValue={day}
               min={addDays(today, -30)}
