@@ -12,6 +12,7 @@ export const REF_ADMIN_SCREENS = [
   { href: "/admin/referentiels/lignes", label: "Lignes" },
   { href: "/admin/referentiels/ptcar", label: "PtCar" },
   { href: "/admin/referentiels/ebp", label: "EBP" },
+  { href: "/admin/referentiels/zones-spi", label: "Zones SPI" },
   { href: "/admin/referentiels/spi", label: "Points SPI" },
   { href: "/admin/referentiels/pn", label: "Passages à niveau" },
   { href: "/admin/referentiels/imports", label: "Imports" },
