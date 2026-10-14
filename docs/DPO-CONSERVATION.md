@@ -24,6 +24,12 @@ s'authentifie auprès de CSM avec un **jeton personnel révocable**.
 | Groupes (DICOS) | nom, téléphone, e-mail du contact du groupe, point de rencontre | responsables de groupes (écoles…) | agents avec `pmr:read` |
 | Comptes agents | nom, e-mail, fonction, district, rôle, empreinte du mot de passe (bcrypt) | agents | administrateurs |
 | Journal d'audit | qui a modifié quoi et quand | agents | administrateurs |
+| Horaires Quinyx (14 oct. 2026) | prénom, nom et identifiant Quinyx de l'agent ; jour, début et fin de ses prestations publiées PACO / RCCA / EXTRA (type et lieu, ex. « PACO_AM · PACO Mons ») ; compte CSM rattaché | agents PACO / RCCA (et collègues en EXTRA) | tous les agents de l'équipe (pas l'Invité ni l'Écran) ; configuration et rattachement : administrateurs |
+
+**Horaires Quinyx** : seules les prestations de travail publiées sont lues. Les repos, compensations, absences,
+congés, visites médicales (IDEWE), commentaires, e-mails et téléphones de Quinyx sont **écartés dans le navigateur**
+avant tout envoi, puis une seconde fois par le serveur. Finalité : savoir qui est en service et proposer à chacun son
+district du jour (l'agent garde la main) ; aucune évaluation ni contrôle individuel.
 
 Le **type d'assistance** décrit une situation de handicap : c'est une **donnée de santé** au sens de l'article 9 du RGPD.
 
@@ -40,6 +46,8 @@ le code source, ni présente dans les captures d'écran ou les documents de trav
 | Fiche client PMR sans activité | **24 mois** sans mission ni taxi | **archivée** (masquée des listes, données conservées) ; journal d'audit de plus de 24 mois purgé | ☐ **Archiver ou supprimer ?** |
 | Notifications aux agents | 30 jours après lecture, 90 jours au plus | supprimées | ☐ |
 | Journal d'exploitation (messages des agents et messages iRail, pièces jointes, lectures, historique des modifications) | **24 mois** après la publication du message (tâche `journal-retention`, chaque nuit à 3 h 50 UTC ; réglable par `CSM_JOURNAL_RETENTION_MONTHS`) | supprimés, pièces jointes comprises, avec leurs lignes du journal d'audit ; un message reste tant qu'une de ses réponses est plus récente, une consigne encore épinglée reste | ☐ **À valider** |
+| Prestations Quinyx (horaires des agents) | **90 jours** après le jour de la prestation (tâche `quinyx-retention`, chaque nuit à 3 h 25 UTC) | supprimées | ☐ **À valider** |
+| Fiche « agent Quinyx » (nom, identifiant Quinyx, compte CSM rattaché) | **180 jours** sans prestation reçue | supprimée avec son rattachement | ☐ |
 | Journal des synchronisations DICOS, horaires ATMS | 60 jours | supprimés (aucune donnée personnelle) | — |
 | Jetons de connecteur des agents | jusqu'à révocation par l'agent ou désactivation du compte | supprimés | ☐ |
 | Sauvegardes de la base | 1 par nuit, 14 conservées (réglable, `CSM_BACKUP_KEEP`) ; copie hors serveur sur Cloudflare R2 une fois activée + copie locale du volume | écrasées ; une donnée effacée disparaît des sauvegardes après la dernière conservée (14 jours par défaut) | ☐ |
@@ -71,3 +79,7 @@ le code source, ni présente dans les captures d'écran ou les documents de trav
    suppression définitive (messages, pièces jointes, lectures, historique, audit). Cette durée couvre-t-elle le besoin
    (suivi des incidents, réclamations, retours d'expérience) sans excéder la finalité ? Une durée plus courte pour les
    pièces jointes est-elle souhaitable ?
+8. Horaires Quinyx (ajoutés le 14 oct. 2026) : les prestations publiées des PACO / RCCA sont visibles de toute
+   l'équipe dans CSM (comme dans Quinyx pour les membres du groupe). Durée proposée : **90 jours**, puis suppression.
+   Faut-il une information des agents (note de service) ? La lecture se fait avec la session Quinyx d'un agent qui a
+   déjà accès au planning de son groupe ; aucune donnée d'absence ni de santé n'est reprise.

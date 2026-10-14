@@ -11,7 +11,12 @@ export type ShellUser = {
   grants: string[];
   denies: string[];
   /** Districts du jour (puce de la barre du haut) ; null = l'agent ne lit pas le Journal (pas de puce). */
-  duty?: { districts: string[]; today: boolean } | null;
+  duty?: {
+    districts: string[];
+    today: boolean;
+    /** Proposition d'après la prestation Quinyx du jour (l'agent garde la main). */
+    suggested?: { districts: string[]; label: string } | null;
+  } | null;
 };
 
 export const ROLE_LABEL: Record<Role, string> = {

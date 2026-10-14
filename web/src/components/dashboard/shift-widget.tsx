@@ -11,6 +11,7 @@ import {
   SHIFT_KINDS,
   SHIFTS,
   shiftState,
+  windowState,
   type ShiftChoice,
   type ShiftKind,
 } from "@/lib/shift";
@@ -22,7 +23,16 @@ import { saveShift } from "@/app/dashboard-actions";
 // Rendu du décompte après le montage seulement (l'heure du serveur et du navigateur diffèrent : pas d'erreur
 // d'hydratation) ; une mise à jour par seconde, arrêtée onglet caché.
 
-export function ShiftWidget({ initial }: { initial: ShiftChoice | null }) {
+/** Prestation Quinyx du jour (rattachement validé par un admin) : prend le pas sur les horaires supposés. */
+export type QuinyxShift = { start: string; end: string; label: string; kind: ShiftKind | "autre" };
+
+export function ShiftWidget({
+  initial,
+  quinyx = null,
+}: {
+  initial: ShiftChoice | null;
+  quinyx?: QuinyxShift | null;
+}) {
   const [choice, setChoice] = useState(initial);
   const [now, setNow] = useState<Date | null>(null);
   const [pending, start] = useTransition();
@@ -58,13 +68,18 @@ export function ShiftWidget({ initial }: { initial: ShiftChoice | null }) {
     });
 
   const active = choice && now && !isStale(choice, now) ? choice : null;
-  const state = active && now ? shiftState(active, now) : null;
+  // Sans choix manuel, l'horaire réel publié dans Quinyx (fin à 15 h si la prestation finit à 15 h).
+  const real =
+    !active && quinyx && now
+      ? windowState(new Date(quinyx.start), new Date(quinyx.end), now)
+      : null;
+  const state = active && now ? shiftState(active, now) : real;
 
   return (
     <div className="flex flex-col gap-3" data-testid="shift-widget">
       <div role="group" aria-label="Mon service" className="grid grid-cols-4 gap-1.5">
         {SHIFT_KINDS.map((k) => {
-          const on = active?.kind === k;
+          const on = active ? active.kind === k : !!real && quinyx?.kind === k;
           return (
             <button
               key={k}
@@ -88,6 +103,11 @@ export function ShiftWidget({ initial }: { initial: ShiftChoice | null }) {
         })}
       </div>
 
+      {quinyx && !active ? (
+        <p className="text-small text-fg-muted" data-testid="shift-quinyx">
+          Selon Quinyx : <span className="text-fg">{quinyx.label}</span>
+        </p>
+      ) : null}
       {!now ? (
         <div className="h-[4.5rem]" aria-hidden />
       ) : !state ? (

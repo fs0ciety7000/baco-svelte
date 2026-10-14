@@ -16,10 +16,13 @@ function DutyDialog({
   open,
   onOpenChange,
   initial,
+  hint,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   initial: string[];
+  /** Origine de la proposition (prestation Quinyx du jour). */
+  hint?: string;
 }) {
   const router = useRouter();
   const [picked, setPicked] = useState<string[]>(initial);
@@ -34,6 +37,11 @@ function DutyDialog({
         title="Où travailles-tu aujourd'hui ?"
         description="Tu recevras les urgences et les perturbations iRail de ces districts, pour la journée."
       >
+        {hint ? (
+          <p className="mb-2 text-small text-fg-muted" data-testid="duty-quinyx">
+            Proposé d&apos;après ton horaire Quinyx : {hint}. Change-le si tu travailles ailleurs.
+          </p>
+        ) : null}
         <div className="flex flex-col gap-2" role="group" aria-label="Districts du jour">
           {DUTY_DISTRICTS.map((d) => {
             const on = picked.includes(d);
@@ -99,7 +107,15 @@ function DutyDialog({
 }
 
 /** Puce « Mes districts du jour » (en-tête du Journal) : ouvre le choix. */
-export function DutyChip({ districts, today }: { districts: string[]; today: boolean }) {
+export function DutyChip({
+  districts,
+  today,
+  suggested = null,
+}: {
+  districts: string[];
+  today: boolean;
+  suggested?: { districts: string[]; label: string } | null;
+}) {
   const [open, setOpen] = useState(false);
   const set = today && districts.length > 0;
   return (
@@ -128,7 +144,12 @@ export function DutyChip({ districts, today }: { districts: string[]; today: boo
           </>
         )}
       </button>
-      <DutyDialog open={open} onOpenChange={setOpen} initial={today ? districts : []} />
+      <DutyDialog
+        open={open}
+        onOpenChange={setOpen}
+        initial={today ? districts : (suggested?.districts ?? [])}
+        hint={!today && suggested?.districts.length ? suggested.label : undefined}
+      />
     </>
   );
 }

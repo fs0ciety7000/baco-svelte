@@ -4,11 +4,13 @@ import type { Metadata } from "next";
 import { normalizeLayout } from "@/design/dashboard-layout";
 import { requireUser } from "@/server/auth";
 import { dashboardStats } from "@/server/data/dashboard";
+import { todayShiftOf } from "@/server/data/quinyx";
 import { impactedMissions, todayPmr } from "@/server/data/impacts";
 import { favoritesOf, latestLog, listNotifications, listPinned } from "@/server/data/ops";
 import { brusselsTime, pbDate } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
 
+import { brusselsClock, shiftLabel } from "@/lib/quinyx/model";
 import { parseShift } from "@/lib/shift";
 
 import { Dashboard } from "./dashboard";
@@ -18,6 +20,16 @@ export const metadata: Metadata = { title: "Accueil · CSM" };
 export default async function AccueilPage() {
   const user = await requireUser();
   const prefs = (user.preferences ?? {}) as { dashboard?: unknown; shift?: unknown };
+  // Horaire réel du jour (Quinyx), pour le widget « Fin de service » (14 oct. 2026).
+  const qs = user.role === "guest" ? null : await todayShiftOf(user.id).catch(() => null);
+  const quinyxShift = qs
+    ? {
+        start: qs.start,
+        end: qs.end,
+        label: `${shiftLabel(qs)} · ${brusselsClock(qs.start)} – ${brusselsClock(qs.end)}`,
+        kind: qs.kind,
+      }
+    : null;
   const [stats, pinned, latest, impacts, today, notifs] = await Promise.all([
     can(user, "otto:read") ? dashboardStats() : null,
     can(user, "journal:read") ? listPinned().catch(() => []) : null,
@@ -56,6 +68,7 @@ export default async function AccueilPage() {
         today,
         mentions: notifs ? notifs.items : null,
         shift: parseShift(prefs.shift),
+        quinyx: quinyxShift,
       }}
       initialLayout={normalizeLayout(prefs.dashboard)}
     />

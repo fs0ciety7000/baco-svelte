@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "CSM — Connecteur DICOS",
-  "version": "1.7.0",
-  "description": "Synchronise les missions PMR et groupes de DICOS vers CSM, avec les temps d'arrêt ATMS, en réutilisant les sessions ouvertes. Aucun mot de passe ni jeton SNCB stocké.",
+  "version": "1.8.0",
+  "description": "Synchronise les missions PMR et groupes de DICOS vers CSM, avec les temps d'arrêt ATMS et les horaires publiés dans Quinyx, en réutilisant les sessions ouvertes. Aucun mot de passe ni jeton SNCB stocké.",
   "browser_specific_settings": {
     "gecko": {
       "id": "dicos-connector@csm.fs0ciety.org",
@@ -23,7 +23,8 @@
   ],
   "host_permissions": [
     "https://dicos.intern-belgiantrain.be/*",
-    "https://atms.intern-belgiantrain.be/*"
+    "https://atms.intern-belgiantrain.be/*",
+    "https://web.quinyx.com/*"
   ],
   "optional_host_permissions": [
     "https://*.fs0ciety.org/*"
@@ -61,6 +62,27 @@
       ],
       "js": [
         "src/atms.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://web.quinyx.com/*"
+      ],
+      "js": [
+        "src/quinyx-inject.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://web.quinyx.com/*"
+      ],
+      "js": [
+        "src/quinyx.js"
       ],
       "run_at": "document_idle",
       "all_frames": false

@@ -54,6 +54,11 @@ export type ShiftState =
 /** État du service à `now` (durées en millisecondes). */
 export function shiftState(choice: ShiftChoice, now: Date = new Date()): ShiftState {
   const { start, end } = shiftWindow(choice.kind, choice.day);
+  return windowState(start, end, now);
+}
+
+/** État d'un service de début et fin connus (horaire Quinyx réel, 14 oct. 2026). */
+export function windowState(start: Date, end: Date, now: Date = new Date()): ShiftState {
   const t = now.getTime();
   if (t < start.getTime()) return { phase: "avant", start, end, untilStart: start.getTime() - t };
   if (t >= end.getTime()) return { phase: "termine", start, end, since: t - end.getTime() };

@@ -7,9 +7,17 @@ import { parseUiCookie, UI_COOKIE } from "@/design/preferences";
 import { pendingRelease, releaseSummary, seenVersion } from "@/lib/changelog";
 import { brusselsDay } from "@/lib/orders/time";
 import { can, isScreen } from "@/lib/permissions";
+import { DUTY_NAME, shiftLabel } from "@/lib/quinyx/model";
 import { userDistricts } from "@/lib/team";
 import { maintenanceState, requireUser } from "@/server/auth";
 import { releases } from "@/server/changelog";
+import { todayShiftOf } from "@/server/data/quinyx";
+
+async function dutySuggestion(userId: string) {
+  const shift = await todayShiftOf(userId).catch(() => null);
+  const name = shift ? DUTY_NAME[shift.district] : undefined;
+  return shift && name ? { districts: [name], label: shiftLabel(shift) } : null;
+}
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
@@ -23,6 +31,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     ? {
         districts: userDistricts(user, today),
         today: user.duty_day === today,
+        // Pas encore coché aujourd'hui : proposition d'après la prestation Quinyx du jour (14 oct. 2026).
+        suggested: user.duty_day === today ? null : await dutySuggestion(user.id),
       }
     : null;
   // Fenêtre « CSM a été mis à jour » : dernière version du changelog pas encore vue par ce compte (jamais pour l'écran).

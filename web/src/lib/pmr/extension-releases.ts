@@ -5,6 +5,14 @@ export type ExtensionNote = { version: string; date: string; notes: string[] };
 
 export const EXTENSION_NOTES: ExtensionNote[] = [
   {
+    version: "1.8.0",
+    date: "2026-10-14",
+    notes: [
+      "Horaires Quinyx : à l'ouverture du planning dans Quinyx (au plus toutes les 3 h) ou par le bouton « Synchroniser le planning Quinyx », les prestations publiées des PACO / RCCA (AM, PM, nuit, extra) partent vers Équipe › Planning.",
+      "Seuls le type de prestation, le lieu, le début, la fin et le nom de l'agent sont envoyés : ni repos, ni absences, ni coordonnées.",
+    ],
+  },
+  {
     version: "1.7.0",
     date: "2026-10-09",
     notes: [
