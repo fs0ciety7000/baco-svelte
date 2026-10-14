@@ -298,3 +298,13 @@ export const TEAM_ROLES = ["paco", "moderator", "admin", "sysop"] as const;
 export function isTeamAccount(role: unknown): boolean {
   return (TEAM_ROLES as readonly unknown[]).includes(role);
 }
+
+/**
+ * Numéro de groupe Quinyx tiré d'une saisie : adresse copiée depuis Quinyx (`…/schedule/123456?start=…&timeframe=…`,
+ * paramètres de la vue ignorés), numéro en fin de saisie, sinon la saisie telle quelle (refusée ensuite si ce ne sont pas
+ * des chiffres).
+ */
+export function quinyxGroupId(input: string): string {
+  const v = input.trim();
+  return v.match(/\/schedule\/(\d{1,15})(?:[/?#]|$)/)?.[1] ?? v.match(/(\d{1,15})\/?$/)?.[1] ?? v;
+}

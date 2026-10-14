@@ -5,7 +5,7 @@ import { unstable_rethrow } from "next/navigation";
 import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 
-import { QUINYX_DISTRICTS } from "@/lib/quinyx/model";
+import { QUINYX_DISTRICTS, quinyxGroupId } from "@/lib/quinyx/model";
 import { requireAdmin } from "@/server/auth";
 import { pbForRequest } from "@/server/data/orders";
 
@@ -50,8 +50,9 @@ const groupSchema = z.object({
   groupId: z
     .string()
     .trim()
-    // On accepte l'adresse complète copiée depuis Quinyx (…/schedule/123456) : on n'en garde que le numéro.
-    .transform((v) => v.match(/(\d{1,15})\/?$/)?.[1] ?? v)
+    // On accepte l'adresse complète copiée depuis Quinyx (…/schedule/123456?start=…&timeframe=…) : on n'en garde que
+    // le numéro qui suit /schedule/ (paramètres de la vue ignorés), sinon un numéro en fin de saisie.
+    .transform(quinyxGroupId)
     .pipe(z.string().regex(/^\d{1,15}$/, "Numéro de groupe Quinyx (chiffres) attendu.")),
   label: z.string().trim().min(2, "Nom du groupe trop court.").max(80),
   district: district.or(z.literal("")),

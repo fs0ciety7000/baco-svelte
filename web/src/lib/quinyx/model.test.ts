@@ -291,3 +291,17 @@ describe("date de publication", () => {
     expect(r.shifts.map((s) => s.quinyx_id)).toContain("7");
   });
 });
+
+describe("quinyxGroupId", () => {
+  it("prend le numéro après /schedule/, paramètres de la vue compris", async () => {
+    const { quinyxGroupId } = await import("./model");
+    expect(
+      quinyxGroupId(
+        "https://web.quinyx.com/schedule/990123?end=2026-11-30&start=2026-11-01&timeframe=multiday_month",
+      ),
+    ).toBe("990123");
+    expect(quinyxGroupId("https://web.quinyx.com/schedule/990123/")).toBe("990123");
+    expect(quinyxGroupId(" 990123 ")).toBe("990123");
+    expect(quinyxGroupId("Mons")).toBe("Mons");
+  });
+});
