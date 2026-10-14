@@ -217,3 +217,24 @@ describe("lineDistrict", () => {
     expect(lineDistrict(["A", "1", "2", "3", "4", "5", "6", "7", "8", "9"], of).district).toBe("");
   });
 });
+
+describe("railLineInfo", () => {
+  it("tronc puis embranchement depuis sa bifurcation ; libellé L.xx ; itinéraire sans saut tronc → embranchement", async () => {
+    const { railLineInfo } = await import("./rail-segments");
+    const { routeBetween, stopsBetween } = await import("@/lib/orders/stops");
+    const info = railLineInfo(
+      "36",
+      [{ n: "A" }, { n: "B" }, { n: "C" }, { n: "E" }, { n: "X", b: 1 }, { n: "Y", b: 1 }],
+      [{ b: 1, from: "B", to: "Y" }],
+    );
+    expect(info.line).toBe("L.36");
+    expect(info.stations).toEqual(["A", "B", "C", "E", "X", "Y"]);
+    expect(info.segments).toEqual([
+      ["A", "B", "C", "E"],
+      ["B", "X", "Y"],
+    ]);
+    // E et X ne sont pas voisines : A → Y passe par B.
+    expect(routeBetween([info], "A", "Y")?.stops).toEqual(["B", "X"]);
+    expect(stopsBetween([info], ["L.36"], "E", "A")).toEqual(["C", "B"]);
+  });
+});

@@ -1,6 +1,14 @@
 // Lignes et arrêts intermédiaires d'un bon bus (déduits des gares de chaque ligne, ex-ligne_data).
 
-export type LineInfo = { line: string; stations: string[] };
+/**
+ * Ligne et ses gares (affichage, « toutes les gares des lignes cochées »). `segments` : tronçons continus (tronc, puis
+ * chaque embranchement depuis sa gare de bifurcation) pour l'itinéraire ; sans eux, `stations` est un seul tronçon.
+ */
+export type LineInfo = { line: string; stations: string[]; segments?: string[][] };
+
+/** Tronçons continus d'une ligne. */
+export const segmentsOf = (l: LineInfo): string[][] =>
+  l.segments?.length ? l.segments : [l.stations];
 
 /** Identité d'une ligne : « L.96 » (référentiel BACO), « 96 » (référentiel des trains) et « l 96 » se rejoignent. */
 export const lineId = (line: string) =>
@@ -47,11 +55,14 @@ export function stopsBetween(
   const out: string[] = [];
   for (const l of lines) {
     if (!selected.includes(l.line)) continue;
-    const a = indexOf(l.stations, origin);
-    const b = indexOf(l.stations, destination);
-    if (a === -1 || b === -1 || a === b) continue;
-    const slice = a < b ? l.stations.slice(a + 1, b) : l.stations.slice(b + 1, a).reverse();
-    for (const s of slice) if (!out.some((x) => norm(x) === norm(s))) out.push(s);
+    for (const seg of segmentsOf(l)) {
+      const a = indexOf(seg, origin);
+      const b = indexOf(seg, destination);
+      if (a === -1 || b === -1 || a === b) continue;
+      const slice = a < b ? seg.slice(a + 1, b) : seg.slice(b + 1, a).reverse();
+      for (const s of slice) if (!out.some((x) => norm(x) === norm(s))) out.push(s);
+      break;
+    }
   }
   return out;
 }
@@ -86,16 +97,18 @@ export function routeBetween(
     adj.set(a, list);
   };
   for (const l of pool) {
-    let prev = "";
-    for (const s of l.stations) {
-      const k = norm(s);
-      if (!k) continue;
-      if (!label.has(k)) label.set(k, s);
-      if (prev && prev !== k) {
-        link(prev, k, l.line);
-        link(k, prev, l.line);
+    for (const seg of segmentsOf(l)) {
+      let prev = "";
+      for (const s of seg) {
+        const k = norm(s);
+        if (!k) continue;
+        if (!label.has(k)) label.set(k, s);
+        if (prev && prev !== k) {
+          link(prev, k, l.line);
+          link(k, prev, l.line);
+        }
+        prev = k;
       }
-      prev = k;
     }
   }
   if (!adj.has(from) || !adj.has(to)) return null;
