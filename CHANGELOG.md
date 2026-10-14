@@ -7,7 +7,8 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 ### Nouveautés
 
-- **Ressources › Trains** : référentiel des relations de trains (IC, L, P…), avec leurs séries, leurs jours de circulation et la liste de leurs arrêts, mis à jour chaque jour.
+- **Ressources › Trains** : référentiel des relations de trains (IC, L, P…), avec leurs séries, leurs jours de circulation et la liste de leurs arrêts, mis à jour chaque jour. Par gare : les trains qui s'y arrêtent et ceux qui passent sans arrêt. Par ligne : les relations et les gares desservies.
+- **Ressources › Gares** : toutes les gares desservies, avec leur nom néerlandais, leur abréviation, leur pays et leurs lignes. Le district de chaque gare se corrige ici ; les missions DICOS l'utilisent. Les gares frontière (Maubeuge, Aachen, Luxembourg…) se retrouvent aussi sans leur suffixe de pays.
 - **Page Nouveautés** : toutes les évolutions de CSM au même endroit, accessible depuis le bas de la barre latérale (ou « Plus » sur mobile). Une fenêtre te résume la dernière mise à jour à ta première connexion après celle-ci.
 
 ### Améliorations

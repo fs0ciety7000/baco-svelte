@@ -146,7 +146,7 @@ Dans Coolify, deux ressources :
 | 10 | **Référentiel des relations de trains** (Ressources › Trains : relation IC14…, type, série, arrêts, lignes ; GTFS SNCB + Infrabel CC0, import quotidien) | 🔄 livré en préversion le 14 oct. |
 | 11 | **Gares et districts** : district de chaque gare / point d'arrêt en base, modifiable ; gares frontière (Maubeuge, Aachen, Luxembourg…) | 🔄 préversion le 14 oct. (Ressources › Gares ; districts DCE à compléter) |
 | 12 | **Modules branchés sur le référentiel** : bons bus / taxi (gares, lignes traversées, arrêts proposés, n° de train qui remplit tout, modifiable) ; Ressources › Lignes. Missions PMR et Groupes gardent les données DICOS | ⏳ demandé le 14 oct. |
-| 13 | **Changelog** : `CHANGELOG.md` (Nouveautés / Corrections) tenu à chaque mise à jour, page `/changelog` (ex-`/equipe/nouveautes`), lien en pied de barre latérale, modale de mise à jour une fois par compte | ⏳ demandé le 14 oct. |
+| 13 | **Changelog** : `CHANGELOG.md` (Nouveautés / Corrections) tenu à chaque mise à jour, page `/changelog` (ex-`/equipe/nouveautes`), lien en pied de barre latérale, modale de mise à jour une fois par compte | 🔄 livré en préversion le 14 oct. |
 
 Restent ouverts hors code : réponses du DPO (`docs/DPO-CONSERVATION.md`), retrait de `CSM_DICOS_TOKEN` quand toutes les
 extensions sont en 1.7.0, date de gel de BACO (les correctifs SQL BACO `20261008130000` / `20261008140000` deviennent
