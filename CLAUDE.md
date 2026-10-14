@@ -285,6 +285,9 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   (fait pour Quinyx le 14 oct.), et demander à l'utilisateur de se déconnecter du service ensuite.
 - (v2) **Identifiants Quinyx (groupes, employés) jamais dans Git** : les groupes se saisissent dans Administration ›
   Quinyx ; l'extension les demande à CSM (`/api/equipe/quinyx/config`). E2E et tests : identifiants fictifs.
+- (v2) **`users.preferences` est réécrit en entier** (lire puis `update`) par chaque action de préférence : deux actions
+  lancées en même temps s'écrasent (favori + récent de l'annuaire, 14 oct.) → les passer en file côté client. En E2E,
+  attendre la réponse de la Server Action visée (filtrer sur son argument) : la barre latérale poste aussi ses compteurs.
 - (v2) Playwright : un libellé avec astérisque requis (`Arrivée *`) ne répond pas à `getByLabel(…, { exact: true })` ;
   passer par `getByRole(…, { name, exact: true })`.
 
@@ -1160,6 +1163,17 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   et `oldestDay` ; `SyncStatus` affiche la dernière synchro et signale à part un jour resté ancien (> 1 h). Avant, l'heure
   était celle du jour le moins récent et le nom celui du dernier envoi. Constat : la préversion n'avait reçu que la synchro
   de 03:43 (utilisateur) et la **prod n'a jamais reçu de synchro** (extensions encore branchées sur test-csm).
+
+- 2026-10-14 — **Refonte de l'annuaire** (Ressources › Annuaire, demande de l'utilisateur : « plus agréable à utiliser /
+  rechercher » ; `docs/design/REFONTE-ANNUAIRE.md`). Audit : « liege » ne trouvait pas « Liège », un numéro tapé avec
+  d'autres espaces ou en +32 introuvable, abréviation de gare ignorée, recherche à l'Entrée seulement, numéro non
+  appelable depuis la liste mobile, ni favori ni récent. Livré : recherche **instantanée dans le navigateur** (toutes les
+  fiches lues une fois avec les alias des gares citées : `FMS`, `Bergen`), tolérante (accents, désordre, numéro en forme
+  nationale, fautes au second passage seulement), classée et surlignée, « / » / ↓ / Entrée ; lignes avec numéro lisible,
+  appel (`etrali:` / `tel:` 44 px), copie, e-mail ; **favoris et « Consultés récemment » dans `users.preferences.directory`**
+  (aucune nouvelle collection) ; fiche avec Appeler / Copier ; état vide avec correction proposée ; ⌘K ouvre la fiche
+  (`?id=`). Droits d'écriture inchangés. Piège trouvé par l'E2E : deux Server Actions « lire-modifier-écrire » des
+  préférences lancées ensemble s'écrasent → file côté client.
 
 - 2026-10-14 — **Refonte de l'interface et rôles v3 validés** (« je valide tout ») : plans `docs/design/REFONTE-UI-2026-10.md`
   et `docs/design/CADRAGE-ROLES-V3.md`, réponses par défaut retenues (contrôles personnalisés aussi en mobile en feuille du

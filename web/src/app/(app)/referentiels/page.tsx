@@ -1,101 +1,43 @@
-import { Search } from "lucide-react";
 import type { Metadata } from "next";
 
-import { pl } from "@/lib/utils";
-import { ClearFilters, FilterSubmit } from "@/components/ui/filters";
-import { FilterForm } from "@/components/ui/filter-form";
-import { ContactBoard } from "@/components/referentiels/contact-board";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { DirectoryBoard } from "@/components/referentiels/directory-board";
 import { can } from "@/lib/permissions";
+import { readDirectoryPrefs } from "@/lib/referentiels/directory";
 import { requirePermission } from "@/server/auth";
-import { contactFacets, listContacts } from "@/server/data/referentiels";
+import { listDirectory } from "@/server/data/referentiels";
 
 export const metadata: Metadata = { title: "Annuaire · CSM" };
 
-type SP = { q?: string; category?: string; zone?: string; group?: string; page?: string };
+type SP = { q?: string; category?: string; zone?: string; group?: string; id?: string };
 
+const param = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+
+/**
+ * Annuaire (refonte du 14 oct. 2026) : toutes les fiches sont lues une fois avec le jeton de l'agent, la recherche et
+ * les filtres tournent dans le navigateur (instantané, tolérant). Les paramètres d'URL (`q`, `category`, `zone`,
+ * `group`, `id`) donnent l'état initial : lien partageable, et la recherche est déjà appliquée au rendu serveur.
+ */
 export default async function Page({ searchParams }: { searchParams: Promise<SP> }) {
   const user = await requirePermission("repertoire:read");
   const f = await searchParams;
-  const q = (f.q ?? "").trim();
-  const [{ rows, total }, facets] = await Promise.all([
-    listContacts({ q, category: f.category, zone: f.zone, group: f.group, page: f.page }),
-    contactFacets(),
-  ]);
-  const canWrite = can(user, "repertoire:write");
+  const { entries, facets, updated } = await listDirectory();
+  const id = param(f.id, 15);
   return (
-    <section className="flex flex-col gap-4" aria-label="Annuaire">
-      <p className="text-body text-fg-muted" data-testid="contacts-count">
-        <span className="font-mono text-fg tabular">{total}</span> {pl(total, "contact")}
-        {total > rows.length ? ` · ${rows.length} affichés : affine les filtres` : ""}
-      </p>
-      <FilterForm
-        action="/referentiels"
-        role="search"
-        className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
-      >
-        <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-60">
-          <span className="text-small text-fg-muted">Recherche</span>
-          <span className="relative">
-            <Search
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted"
-            />
-            <Input
-              name="q"
-              defaultValue={q}
-              placeholder="Nom, tél., e-mail, groupe…"
-              className="pl-9"
-              maxLength={60}
-            />
-          </span>
-        </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-44">
-          <span className="text-small text-fg-muted">Catégorie</span>
-          <Select
-            name="category"
-            defaultValue={f.category ?? ""}
-            options={[
-              { value: "", label: "Toutes" },
-              ...facets.categories.map((c) => ({ value: c, label: c })),
-            ]}
-          />
-        </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-40">
-          <span className="text-small text-fg-muted">Zone</span>
-          <Select
-            name="zone"
-            defaultValue={f.zone ?? ""}
-            options={[
-              { value: "", label: "Toutes" },
-              ...facets.zones.map((z) => ({ value: z, label: z })),
-            ]}
-          />
-        </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-44">
-          <span className="text-small text-fg-muted">Groupe</span>
-          <Select
-            name="group"
-            defaultValue={f.group ?? ""}
-            options={[
-              { value: "", label: "Tous" },
-              ...facets.groups.map((g) => ({ value: g, label: g })),
-            ]}
-          />
-        </label>
-        <div className="col-span-2 flex gap-2">
-          <FilterSubmit />
-          <ClearFilters href="/referentiels" />
-        </div>
-      </FilterForm>
-      <ContactBoard
-        rows={rows}
-        facets={facets}
-        canWrite={canWrite}
-        canUpdate={can(user, "repertoire:update")}
-        canDelete={can(user, "repertoire:delete")}
-      />
-    </section>
+    <DirectoryBoard
+      entries={entries}
+      facets={facets}
+      updated={updated}
+      initial={{
+        q: param(f.q, 80),
+        category: param(f.category, 60),
+        zone: param(f.zone, 60),
+        group: param(f.group, 120),
+        id: /^[a-z0-9]{15}$/.test(id) ? id : "",
+      }}
+      prefs={readDirectoryPrefs(user.preferences)}
+      canWrite={can(user, "repertoire:write")}
+      canUpdate={can(user, "repertoire:update")}
+      canDelete={can(user, "repertoire:delete")}
+    />
   );
 }

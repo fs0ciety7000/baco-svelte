@@ -3,6 +3,11 @@ import "server-only";
 import type { RecordModel } from "pocketbase";
 import { z } from "zod";
 
+import {
+  stationAliasesFor,
+  stationAliasIndex,
+  type DirectoryEntry,
+} from "@/lib/referentiels/directory";
 import { foldStation, stationMatchesAny, type StationRef } from "@/lib/stations/search";
 import { lineDistrict } from "@/lib/timetable/lines";
 import { railStations, type RailBranch, type RailStation } from "@/lib/timetable/rail-segments";
@@ -49,50 +54,56 @@ function contact(r: RecordModel): Contact {
   };
 }
 
-export const contactListSchema = z.object({
-  q: z.string().trim().max(60).default(""),
-  category: z.string().trim().max(60).optional(),
-  zone: z.string().trim().max(60).optional(),
-  group: z.string().trim().max(120).optional(),
-  page: z.coerce.number().int().min(1).max(200).default(1),
-});
-
-export async function listContacts(input: z.input<typeof contactListSchema>) {
-  const p = contactListSchema.parse(input);
+/**
+ * Annuaire complet (≈ 400 fiches, borné) pour la recherche instantanée du navigateur (refonte du 14 oct. 2026) : chaque
+ * fiche porte les alias des gares qu'elle cite (abréviation PtCar, nom NL, alias : « Chef de gare Mons » ← « FMS »,
+ * « Bergen »), tirés du référentiel `stations` (gares et gares étrangères ; les PANG portent des noms trop communs).
+ * Valeurs distinctes des filtres calculées sur la même lecture.
+ */
+export async function listDirectory(): Promise<{
+  entries: DirectoryEntry[];
+  facets: { categories: string[]; zones: string[]; groups: string[] };
+  /** Dernière modification par fiche (signal visuel après un enregistrement). */
+  updated: Record<string, string>;
+}> {
   const pb = await pbForRequest();
-  const parts: string[] = [];
-  if (p.category) parts.push(pb.filter("category = {:c}", { c: p.category }));
-  if (p.zone) parts.push(pb.filter("zone = {:z}", { z: p.zone }));
-  if (p.group) parts.push(pb.filter("group = {:g}", { g: p.group }));
-  if (p.q)
-    parts.push(
-      pb.filter("(name ~ {:q} || phone ~ {:q} || email ~ {:q} || group ~ {:q})", { q: p.q }),
-    );
-  // Annuaire borné (≈ 385 contacts) : une page large suffit à tout afficher groupé, sans pagination fantôme.
-  const res = await pb.collection("directory_contacts").getList(p.page, 500, {
-    filter: parts.join(" && "),
-    sort: "group,name",
-    expand: "updated_by",
-  });
-  return {
-    rows: res.items.map(contact),
-    total: res.totalItems,
-    page: res.page,
-    totalPages: res.totalPages,
-  };
-}
-
-/** Valeurs distinctes pour les filtres (385 contacts : lecture complète, agrégée en mémoire). */
-export async function contactFacets() {
-  const pb = await pbForRequest();
-  const items = await pb
-    .collection("directory_contacts")
-    .getFullList({ fields: "category,zone,group", batch: 1000 });
+  const [items, stations] = await Promise.all([
+    pb.collection("directory_contacts").getFullList({
+      fields: "id,name,phone,email,category,zone,group,note,updated",
+      sort: "name",
+      batch: 1000,
+    }),
+    pb
+      .collection("stations")
+      .getFullList({ fields: "abbr,name,name_nl,aliases", filter: 'kind != "pang"', batch: 1000 })
+      .catch(() => [] as RecordModel[]),
+  ]);
+  const aliasIdx = stationAliasIndex(
+    stations.map((r) => ({
+      abbr: str(r.abbr),
+      names: [str(r.name), str(r.name_nl), ...(Array.isArray(r.aliases) ? r.aliases.map(str) : [])]
+        .map((x) => x.trim())
+        .filter(Boolean),
+    })),
+  );
+  const entries: DirectoryEntry[] = items.map((r) => ({
+    id: r.id,
+    name: str(r.name),
+    phone: str(r.phone),
+    email: str(r.email),
+    category: str(r.category),
+    zone: str(r.zone),
+    group: str(r.group),
+    note: str(r.note),
+    aliases: stationAliasesFor(str(r.name), aliasIdx),
+  }));
   const set = (k: "category" | "zone" | "group") =>
-    [...new Set(items.map((i) => str(i[k])).filter(Boolean))].sort((a, b) =>
-      a.localeCompare(b, "fr"),
-    );
-  return { categories: set("category"), zones: set("zone"), groups: set("group") };
+    [...new Set(entries.map((e) => e[k]).filter(Boolean))].sort((x, y) => x.localeCompare(y, "fr"));
+  return {
+    entries,
+    facets: { categories: set("category"), zones: set("zone"), groups: set("group") },
+    updated: Object.fromEntries(items.map((r) => [r.id, str(r.updated)])),
+  };
 }
 
 export async function getContact(id: string): Promise<Contact> {
