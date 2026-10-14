@@ -7,6 +7,7 @@ import { foldStation } from "@/lib/stations/search";
 
 import type { OpPoint, TrainPath } from "./infrabel";
 import { keyOf } from "./model";
+import { stationSeed } from "./station-seed";
 
 export type StationSeed = {
   name: string;
@@ -127,8 +128,16 @@ export function buildStations(
       byName.get(foldStation(bareName(s.name))) ??
       (s.nl ? byName.get(foldStation(s.nl)) : undefined);
     const aliases = aliasesOf(s.name, [s.nl, op?.fr, op?.nl]);
+    // Référentiel par défaut validé par l'équipe d'abord (« » compris : gare explicitement sans district), puis BACO.
+    const seeded = stationSeed(key);
     const district =
-      districtForStation(s.name) || aliases.map((a) => districtForStation(a)).find(Boolean) || "";
+      seeded?.d !== undefined
+        ? seeded.d
+        : districtForStation(s.name) ||
+          aliases.map((a) => districtForStation(a)).find(Boolean) ||
+          "";
+    const kinds = ["gare", "pang", "etranger"] as const;
+    const seededKind = kinds.find((k) => k === seeded?.k);
     out.set(key, {
       key,
       name: s.name,
@@ -138,12 +147,13 @@ export function buildStations(
       country: countryOf(s.name),
       district,
       aliases,
-      lines: [...new Set([...s.lines, ...(pathLines.get(key) ?? [])])].sort((a, b) =>
-        a.localeCompare(b, "fr", { numeric: true }),
-      ),
+      lines: (seeded?.l?.length
+        ? [...seeded.l]
+        : [...new Set([...s.lines, ...(pathLines.get(key) ?? [])])]
+      ).sort((a, b) => a.localeCompare(b, "fr", { numeric: true })),
       searchKey: keyOf([s.name, ...aliases, op?.abbr ?? ""]),
       served: s.served,
-      kind: countryOf(s.name) !== "BE" ? "etranger" : (op?.kind ?? ""),
+      kind: seededKind ?? (countryOf(s.name) !== "BE" ? "etranger" : (op?.kind ?? "")),
       lat: s.lat ?? op?.lat,
       lon: s.lon ?? op?.lon,
     });

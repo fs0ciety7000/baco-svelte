@@ -100,6 +100,10 @@ export default async function Page({
         <span className="font-mono text-fg tabular">{total}</span> {pl(total, "gare")}
         {total > rows.length ? ` · ${rows.length} affichées, affine la recherche` : ""}
         {canEdit ? " · district modifiable (« Automatique » = proposé par l'import)" : ""}
+        {" · "}
+        <a href="/api/referentiels/gares/export" className="link" data-print="hide">
+          Exporter toutes les gares (CSV)
+        </a>
       </p>
       {rows.length === 0 ? (
         <EmptyState

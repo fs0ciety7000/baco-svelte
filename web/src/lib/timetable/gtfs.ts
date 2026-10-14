@@ -293,13 +293,17 @@ function buildReferential(
           }
         }
       }
-      // Gares traversées sans arrêt (le GTFS n'en marque presque aucune) : points Infrabel entre deux arrêts retrouvés,
-      // ajoutés en passage (`p: 1`, sans heure).
+      // Gares traversées sans arrêt (le GTFS n'en marque presque aucune) : points Infrabel entre deux arrêts retrouvés
+      // ET consécutifs, ajoutés en passage (`p: 1`, sans heure). Un arrêt absent du chemin entre les deux = détour
+      // (travaux : IC 943 par Braine-le-Comte certains jours) : le chemin Infrabel de la veille ne vaut plus, rien
+      // n'est inséré (sinon les gares de la L.118 apparaissaient après Braine-le-Comte).
       const merged: ServiceStop[] = [];
       let prev = -1;
+      let detour = false; // vrai arrêt (pas un passage) absent du chemin depuis le dernier arrêt retrouvé
       svc.stops.forEach((st, si) => {
         const mi = matched[si]!;
-        if (mi >= 0 && prev >= 0) {
+        if (mi < 0 && !st.p) detour = true;
+        if (mi >= 0 && prev >= 0 && !detour) {
           for (let j = prev + 1; j < mi; j++) {
             const pt = path.points[j]!;
             if (svc.stops.some((x) => samePoint(x, pt))) continue;
@@ -310,7 +314,10 @@ function buildReferential(
           }
         }
         merged.push(st);
-        if (mi >= 0) prev = mi;
+        if (mi >= 0) {
+          prev = mi;
+          detour = false;
+        }
       });
       svc.stops = merged;
       const a = path.points[first]?.i;

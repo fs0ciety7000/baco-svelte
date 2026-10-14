@@ -305,6 +305,59 @@ describe("GTFS", () => {
     });
   });
 
+  it("détour (vrai arrêt absent du chemin) : aucun passage inséré dans ce tronçon", () => {
+    // Chemin de la veille par Jemappes ; ce jour-là le GTFS dessert Ghlin en vrai arrêt entre Saint-Ghislain et Mons.
+    const paths = d1([
+      ["2026-10-13", "1706", "IC 14", "QUIEVRAIN", "", "97", "", "06:11:00"],
+      ["2026-10-13", "1706", "IC 14", "SAINT-GHISLAIN", "97", "97", "06:27:00", "06:31:00"],
+      ["2026-10-13", "1706", "IC 14", "JEMAPPES", "97", "97", "06:40:00", "06:40:00"],
+      ["2026-10-13", "1706", "IC 14", "BERGEN", "96", "96", "06:45:00", "06:50:00"],
+      ["2026-10-13", "1706", "IC 14", "ZINNIK", "96", "", "07:08:00", ""],
+    ]).paths(OPS);
+    const b = timetableBuilder(dates);
+    b.addRoute({ route_id: "r1", route_short_name: "IC" });
+    b.addCalendar({
+      service_id: "s1",
+      monday: "1",
+      tuesday: "1",
+      wednesday: "1",
+      thursday: "1",
+      friday: "1",
+      saturday: "0",
+      sunday: "0",
+      start_date: "20260101",
+      end_date: "20261212",
+    });
+    b.addTrip({ route_id: "r1", service_id: "s1", trip_id: "t1", trip_short_name: "1706" });
+    for (const [id, n] of [
+      ["1", "Quiévrain"],
+      ["2", "Saint-Ghislain"],
+      ["3", "Ghlin"],
+      ["4", "Mons"],
+      ["5", "Soignies"],
+    ])
+      b.addStop({ stop_id: id!, stop_name: n! });
+    ["1", "2", "3", "4", "5"].forEach((stop, i) =>
+      b.addStopTime({
+        trip_id: "t1",
+        stop_sequence: String(i + 1),
+        stop_id: stop,
+        arrival_time: `06:${String(10 + i * 10)}:00`,
+        departure_time: `06:${String(11 + i * 10)}:00`,
+        pickup_type: "0",
+        drop_off_type: "0",
+      }),
+    );
+    const svc = b.build(paths).services[0]!;
+    expect(svc.stops.map((s) => `${s.n}${s.p ? "*" : ""}`)).toEqual([
+      "Quiévrain",
+      "Saint-Ghislain",
+      "Ghlin",
+      "Mons",
+      "Soignies",
+    ]);
+  });
+
   it("chemin Infrabel d'un autre trajet (n° réutilisé) : ignoré", () => {
     const paths = d1([
       ["2026-10-13", "1706", "EXTRA", "ZINNIK", "", "96", "", "06:11:00"],
