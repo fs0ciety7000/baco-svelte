@@ -25,6 +25,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
+import { CheckboxGroup } from "@/components/ui/checkbox-group";
+import { Combobox } from "@/components/ui/combobox";
 import { Input, Textarea } from "@/components/ui/input";
 import { EmptyState, Skeleton } from "@/components/ui/misc";
 import { Sheet } from "@/components/ui/sheet";
@@ -327,13 +329,6 @@ function ProcedureForm({
       if (fileRef.current) fileRef.current.value = "";
     }
   };
-  const toggle = (docId: string) =>
-    setF((s) => ({
-      ...s,
-      attachments: s.attachments.includes(docId)
-        ? s.attachments.filter((x) => x !== docId)
-        : [...s.attachments, docId],
-    }));
   return (
     <form
       className="flex flex-col gap-3"
@@ -347,11 +342,6 @@ function ProcedureForm({
         });
       }}
     >
-      <datalist id="proc-cat">
-        {categories.map((c) => (
-          <option key={c} value={c} />
-        ))}
-      </datalist>
       <Field label="Titre" required>
         <Input
           value={f.title}
@@ -361,10 +351,13 @@ function ProcedureForm({
         />
       </Field>
       <Field label="Catégorie">
-        <Input
-          list="proc-cat"
+        <Combobox
+          allowFree
+          openOnFocus
           value={f.category}
-          onChange={(e) => setF({ ...f, category: e.target.value })}
+          onValueChange={(v) => setF({ ...f, category: v })}
+          options={categories.map((v) => ({ value: v, label: v }))}
+          createLabel={(q) => `Nouvelle catégorie « ${q} »`}
           maxLength={60}
         />
       </Field>
@@ -413,17 +406,15 @@ function ProcedureForm({
           bibliothèque des documents.
         </p>
         {docs.length ? (
-          <div className="flex max-h-48 flex-col gap-1 overflow-auto border border-border p-2">
-            {docs.map((d) => (
-              <label key={d.id} className="flex min-h-11 items-center gap-2 md:min-h-0">
-                <input
-                  type="checkbox"
-                  checked={f.attachments.includes(d.id)}
-                  onChange={() => toggle(d.id)}
-                />
-                <span className="min-w-0 flex-1 truncate text-small">{d.name}</span>
-              </label>
-            ))}
+          <div className="max-h-48 overflow-auto rounded-control border border-border px-2 py-1">
+            <CheckboxGroup
+              legend="Documents liés"
+              hideLegend
+              orientation="column"
+              options={docs.map((d) => ({ value: d.id, label: d.name }))}
+              values={f.attachments}
+              onValuesChange={(attachments) => setF((s) => ({ ...s, attachments }))}
+            />
           </div>
         ) : null}
       </div>

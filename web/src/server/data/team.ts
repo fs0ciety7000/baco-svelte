@@ -3,6 +3,8 @@ import "server-only";
 import type { RecordModel } from "pocketbase";
 import { z } from "zod";
 
+import { anyDistrictFilter, parseDistricts } from "@/lib/district-param";
+
 import { brusselsDay } from "@/lib/orders/time";
 import { statusOf } from "@/lib/team";
 
@@ -55,7 +57,12 @@ function member(r: RecordModel): TeamMember {
 
 export const teamListSchema = z.object({
   q: z.string().trim().max(60).default(""),
-  district: z.enum(["Sud-Ouest", "Sud-Est", "Centre"]).optional().catch(undefined),
+  /** Un ou plusieurs districts (noms ou codes, paramètre répété) ; vide = tous. */
+  district: z
+    .union([z.string(), z.array(z.string())])
+    .optional()
+    .transform((d) => parseDistricts(d, ["Sud-Ouest", "Sud-Est", "Centre"]))
+    .catch([]),
 });
 
 /** Annuaire de l'équipe : comptes actifs (hors compte de service du connecteur DICOS). */
@@ -63,7 +70,10 @@ export async function listTeam(input: z.input<typeof teamListSchema>): Promise<T
   const p = teamListSchema.parse(input);
   const pb = await pbForRequest();
   const parts = ['role != "disabled"', 'role != "connector"', 'role != "screen"'];
-  if (p.district) parts.push(pb.filter("(district = {:d} || districts ~ {:d})", { d: p.district }));
+  if (p.district.length)
+    parts.push(
+      `(${anyDistrictFilter(pb, "district", p.district)} || ${anyDistrictFilter(pb, "districts", p.district, "~")})`,
+    );
   if (p.q) parts.push(pb.filter("(name ~ {:q} || username ~ {:q} || fonction ~ {:q})", { q: p.q }));
   const rows = await pb.collection("users").getFullList({
     filter: parts.join(" && "),

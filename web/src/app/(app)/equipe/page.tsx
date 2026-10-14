@@ -1,12 +1,14 @@
 import { Search } from "lucide-react";
 import type { Metadata } from "next";
 
+import { DistrictPicker } from "@/components/ui/district-picker";
+import { DISTRICT_NAME_OPTIONS, parseDistricts } from "@/lib/district-param";
 import { pl } from "@/lib/utils";
 import { ClearFilters, FilterSubmit } from "@/components/ui/filters";
 import { FilterForm } from "@/components/ui/filter-form";
 import { PhoneLink } from "@/components/pmr/phone-link";
 import { Avatar } from "@/components/shell/avatar";
-import { Input, Select } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
 import { FULL_ROLE_KEYS, roleLabel } from "@/lib/roles";
@@ -17,13 +19,15 @@ import { listTeam } from "@/server/data/team";
 
 export const metadata: Metadata = { title: "Annuaire de l'équipe · CSM" };
 
-type SP = { q?: string; district?: string };
+const DISTRICT_NAMES = ["Sud-Ouest", "Sud-Est", "Centre"];
+
+type SP = { q?: string; district?: string | string[] };
 
 export default async function Page({ searchParams }: { searchParams: Promise<SP> }) {
   await requireRoute("/equipe");
   const f = await searchParams;
   const [rows, roles] = await Promise.all([
-    listTeam({ q: f.q ?? "", district: f.district as never }),
+    listTeam({ q: f.q ?? "", district: f.district }),
     listRoles(),
   ]);
   return (
@@ -49,17 +53,15 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             />
           </span>
         </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-44">
+        <div className="col-span-2 flex min-w-0 flex-col gap-1 md:w-auto">
           <span className="text-small text-fg-muted">District</span>
-          <Select name="district" defaultValue={f.district ?? ""}>
-            <option value="">Tous</option>
-            {Object.entries(DISTRICT_SHORT).map(([d, s]) => (
-              <option key={d} value={d}>
-                {s} · {d}
-              </option>
-            ))}
-          </Select>
-        </label>
+          <DistrictPicker
+            name="district"
+            label="District"
+            options={DISTRICT_NAME_OPTIONS}
+            defaultValues={parseDistricts(f.district, DISTRICT_NAMES)}
+          />
+        </div>
         <div className="col-span-2 flex gap-2">
           <FilterSubmit />
           <ClearFilters href="/equipe" />

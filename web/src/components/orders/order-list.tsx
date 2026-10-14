@@ -16,6 +16,8 @@ import { LiveHighlight } from "@/components/ui/live-highlight";
 import { EmptyState } from "@/components/ui/misc";
 import { StatusBadge, statusColor } from "@/components/ui/status-badge";
 import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
+import { DistrictPicker } from "@/components/ui/district-picker";
+import { appendDistricts, DISTRICT_NAME_OPTIONS, parseDistricts } from "@/lib/district-param";
 import { DISTRICTS } from "@/lib/orders/schemas";
 import { ORDER_STATUSES, STATUS_LABEL, type OrderKind } from "@/lib/orders/status";
 import { addDays, brusselsDay, formatDay } from "@/lib/orders/time";
@@ -36,7 +38,8 @@ export type ListFilters = {
   statut?: string;
   du?: string;
   au?: string;
-  district?: string;
+  /** Un ou plusieurs districts (noms, paramètre répété : `DistrictPicker`). */
+  district?: string | string[];
 };
 
 /** Barre de filtres en GET (fonctionne sans JS, URL partageable) + raccourcis de dates. */
@@ -51,10 +54,12 @@ export function FilterBar({
   defaultPeriod?: { du: string; au: string };
 }) {
   const today = brusselsDay();
+  const districts = parseDistricts(filters.district, DISTRICTS);
   const allDates = new URLSearchParams({ ...clean(filters), du: "", au: "" });
+  appendDistricts(allDates, districts);
   const noDates = !filters.du && !filters.au;
   const shortcut = (label: string, du: string, au: string) => {
-    const params = new URLSearchParams({ ...clean(filters), du, au });
+    const params = appendDistricts(new URLSearchParams({ ...clean(filters), du, au }), districts);
     const active = filters.du === du && filters.au === au;
     return (
       <FilterChip key={label} asChild pressed={active}>
@@ -106,7 +111,10 @@ export function FilterBar({
           </span>
         </label>
         <CollapsibleFilters
-          active={[filters.statut, filters.district, filters.du, filters.au].filter(Boolean).length}
+          active={
+            [filters.statut, districts.length ? "d" : "", filters.du, filters.au].filter(Boolean)
+              .length
+          }
         >
           <label className="flex min-w-0 flex-col gap-1 md:w-40">
             <span className="text-small text-fg-muted">Statut</span>
@@ -119,17 +127,15 @@ export function FilterBar({
               ]}
             />
           </label>
-          <label className="flex min-w-0 flex-col gap-1 md:w-40">
+          <div className="col-span-2 flex min-w-0 flex-col gap-1 md:w-auto">
             <span className="text-small text-fg-muted">District</span>
-            <Select name="district" defaultValue={filters.district ?? ""}>
-              <option value="">Tous</option>
-              {DISTRICTS.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </Select>
-          </label>
+            <DistrictPicker
+              name="district"
+              label="District"
+              options={DISTRICT_NAME_OPTIONS}
+              defaultValues={districts}
+            />
+          </div>
           <DateRangePicker
             nameFrom="du"
             nameTo="au"
@@ -148,9 +154,10 @@ export function FilterBar({
   );
 }
 
+/** Filtres simples (une valeur) ; les districts, répétés, sont ajoutés par `appendDistricts`. */
 function clean(f: ListFilters): Record<string, string> {
   return Object.fromEntries(
-    Object.entries(f).filter(([, v]) => typeof v === "string" && v),
+    Object.entries(f).filter(([k, v]) => k !== "district" && typeof v === "string" && v),
   ) as Record<string, string>;
 }
 

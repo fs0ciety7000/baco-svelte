@@ -264,3 +264,25 @@ nouvel écran (liste aux couleurs du système, format mm/dd/yyyy et « 02:50 PM 
   rangée), libellés sur deux lignes, jamais coupés par « … » ; sinon largeur des boutons selon leur libellé.
 - **Switch** : rayon du thème (`rounded-control`, pouce au même rayon moins 2 px : carré, arrondi ou rond) ; libellé
   englobant cliquable de 44 px (`SwitchField`) ; zone tactile agrandie à 44 px en `pointer: coarse`.
+
+## Recherche et choix multiples — refonte R2 + R4 (14 oct. 2026)
+
+- **Combobox** (recherche dans une liste longue : sociétés, chauffeurs, lignes, gares, catégories) : champ texte aux
+  jetons d'un champ, chevron à droite pour une liste fermée ; la frappe filtre (accents et casse ignorés, chaque mot), le
+  libellé qui commence par la saisie passe en tête, la première option est active (`surface-2`). Popover ancré (largeur
+  du champ, 14 rem au moins, 18 rem de haut au plus) ; « Aucun résultat » en `fg-muted` ; aide de l'option (lieux,
+  « Sans adresse e-mail ») en `text-small fg-muted` sous le libellé. Annonce « N résultats » pour les lecteurs d'écran.
+- **Mobile / tactile** : liste fermée → le champ devient un bouton qui ouvre une **feuille du bas** (recherche en haut,
+  16 px, options de 48 px). **Saisie libre** (gare, catégorie) → la liste reste sous le champ (le clavier du téléphone
+  est déjà ouvert ; une feuille masquerait le champ) : écart assumé au plan §3.5.
+- **Saisie libre** : option « Nouvelle catégorie « … » » en fin de liste quand la saisie ne correspond à rien.
+- **DistrictPicker** : puces toujours visibles « Tous » + DSO / DSE / DCE (+ « Mes districts » quand l'agent a des
+  districts du jour) ; puce cochée = contour `accent` + fond `accent-soft` + case pleine `accent` (jamais la couleur
+  seule) ; 44 px au doigt, `h-control-sm` à la souris ; nom complet (Sud-Ouest…) affiché dès 640 px ou toujours
+  (`showHint`). Variante empilée (une puce par ligne, nom complet) dans le dialogue des districts du jour.
+- **MultiSelect** : déclencheur qui résume (« Tous », « DSO, DSE », « 3 statuts ») ; liste à cases (case `accent` pleine
+  si cochée) précédée de « Tout / Aucun » et du compteur `n/N` ; recherche facultative. Utilisé quand il y a plus de
+  4 choix (districts DNO / DNE et « Sans district » de Ressources › Gares et Lignes).
+- **CheckboxGroup** : `fieldset` + légende `text-small fg-muted`, cases Radix (forme du thème), libellé cliquable de 44 px
+  au doigt, « Tout cocher » en lien.
+- Rien ne bouge en mouvement réduit (ouverture `pop-in` des Popover seulement).

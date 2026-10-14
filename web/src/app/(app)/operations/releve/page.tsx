@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { HandoverView } from "@/components/ops/handover-view";
-import { ChipRow, FilterChip } from "@/components/ui/filters";
+import { DistrictPicker } from "@/components/ui/district-picker";
+import { FilterForm } from "@/components/ui/filter-form";
+import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
+import { appendDistricts } from "@/lib/district-param";
 import { brusselsTime } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
 import { requireRoute } from "@/server/auth";
-import { buildHandover, HANDOVER_CODES, handoverDistricts } from "@/server/data/handover";
+import { buildHandover, handoverDistricts } from "@/server/data/handover";
 
 import { LiveRefresh } from "../../commandes/live-refresh";
 
@@ -16,30 +18,42 @@ export const metadata: Metadata = { title: "Relève · CSM" };
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ district?: string }>;
+  searchParams: Promise<{ district?: string | string[] }>;
 }) {
   const user = await requireRoute("/operations/releve");
   const { district } = await searchParams;
   const codes = handoverDistricts(user, district);
   const data = await buildHandover(user, codes);
   const scope = codes.length ? codes.join(" · ") : "tous districts";
-  const chip = (label: string, value: string | undefined, pressed: boolean) => (
-    <FilterChip key={label} asChild pressed={pressed}>
-      <Link href={value ? `/operations/releve?district=${value}` : "/operations/releve"}>
-        {label}
-      </Link>
-    </FilterChip>
-  );
+  const mine = handoverDistricts(user, undefined);
+  // Paramètre district transmis à l'écran commun (rien = districts du compte).
+  const tvDistricts =
+    district === undefined
+      ? new URLSearchParams()
+      : codes.length
+        ? appendDistricts(new URLSearchParams(), codes)
+        : new URLSearchParams({ district: "tous" });
+  const tvQuery = (extra: Record<string, string> = {}) => {
+    const p = new URLSearchParams(extra);
+    tvDistricts.forEach((v, k) => p.append(k, v));
+    const s = p.toString();
+    return s ? `?${s}` : "";
+  };
   return (
     <section className="flex flex-col gap-4" aria-label="Relève de service">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <ChipRow aria-label="Districts de la relève">
-          {chip("Mes districts", undefined, !district)}
-          {HANDOVER_CODES.map((c) => chip(c, c, district === c))}
-          {chip("Tous", "tous", district === "tous")}
-        </ChipRow>
+        <FilterForm action="/operations/releve" className="min-w-0">
+          <FormAutoSubmit />
+          <DistrictPicker
+            name="district"
+            label="Districts de la relève"
+            defaultValues={codes}
+            emptyValue="tous"
+            mine={mine}
+          />
+        </FilterForm>
         <a
-          href={district ? `/tv?district=${district}` : "/tv"}
+          href={`/tv${tvQuery()}`}
           target="_blank"
           rel="noopener"
           className="link text-small"
@@ -48,7 +62,7 @@ export default async function Page({
           Écran commun (TV)
         </a>
         <a
-          href={`/tv?theme=rail${district ? `&district=${district}` : ""}`}
+          href={`/tv${tvQuery({ theme: "rail" })}`}
           target="_blank"
           rel="noopener"
           className="link text-small"

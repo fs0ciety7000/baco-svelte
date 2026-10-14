@@ -2,7 +2,7 @@
 
 import type { NotificationCategory } from "@/lib/notification-prefs";
 import { DUTY_CHANGED } from "@/lib/team";
-import { Camera, KeyRound, MapPin, PlugZap, Save, Trash2 } from "lucide-react";
+import { Camera, KeyRound, PlugZap, Save, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
@@ -25,8 +25,10 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
-import { DUTY_DISTRICTS, DUTY_SHORT } from "@/lib/ops/log";
 import { useRoleLabel } from "@/components/shell/roles-context";
+import { DistrictPicker } from "@/components/ui/district-picker";
+import { DISTRICT_NAME_OPTIONS } from "@/lib/district-param";
+import { DUTY_DISTRICTS, DUTY_SHORT } from "@/lib/ops/log";
 import { DISTRICT_SHORT } from "@/lib/team";
 import { cn } from "@/lib/utils";
 import type { MyActivity, MyProfile } from "@/server/data/team";
@@ -147,8 +149,7 @@ function DutyCard({ initial }: { initial: string[] }) {
   const router = useRouter();
   const [picked, setPicked] = useState<string[]>(initial);
   const [pending, start] = useTransition();
-  const toggle = (d: string) => {
-    const next = picked.includes(d) ? picked.filter((x) => x !== d) : [...picked, d];
+  const save = (next: string[]) => {
     setPicked(next);
     start(async () => {
       const r = await setDutyDistricts(next);
@@ -168,30 +169,15 @@ function DutyCard({ initial }: { initial: string[] }) {
           Urgences, perturbations iRail et retards des missions de ces districts te sont notifiés,
           pour la journée. Enregistré à chaque clic.
         </p>
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Districts du jour">
-          {DUTY_DISTRICTS.map((d) => {
-            const on = picked.includes(d);
-            return (
-              <button
-                key={d}
-                type="button"
-                role="checkbox"
-                aria-checked={on}
-                disabled={pending}
-                onClick={() => toggle(d)}
-                className={cn(
-                  "inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-control border px-3 text-body transition-colors",
-                  on
-                    ? "border-accent bg-accent-soft text-fg"
-                    : "border-border-strong bg-surface text-fg-muted hover:text-fg",
-                )}
-              >
-                <MapPin aria-hidden className={cn("size-4", on && "text-accent")} />
-                {DUTY_SHORT[d]} · {d}
-              </button>
-            );
-          })}
-        </div>
+        <DistrictPicker
+          options={DISTRICT_NAME_OPTIONS}
+          values={picked}
+          onValuesChange={save}
+          allLabel={null}
+          showHint="always"
+          disabled={pending}
+          label="Districts du jour"
+        />
       </CardContent>
     </Card>
   );

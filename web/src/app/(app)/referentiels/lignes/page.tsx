@@ -7,10 +7,13 @@ import { trainsHref } from "@/components/referentiels/trains";
 import { Button } from "@/components/ui/button";
 import { FilterForm } from "@/components/ui/filter-form";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
-import { Input, Select } from "@/components/ui/input";
+import { Combobox } from "@/components/ui/combobox";
+import { Input } from "@/components/ui/input";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
 import { ListCard } from "@/components/ui/table";
+import { parseDistricts } from "@/lib/district-param";
 import { lineLabel } from "@/lib/lines";
 import { DISTRICT_LABEL } from "@/lib/pmr/districts";
 import { pl } from "@/lib/utils";
@@ -31,17 +34,28 @@ export const metadata: Metadata = { title: "Lignes · CSM" };
 // des points kilométriques, district majoritaire tiré de Ressources › Gares. Passages à niveau et zones SPI : référentiels
 // BACO, par libellé de ligne.
 
+const DISTRICT_FILTER = [
+  { value: "DSO", label: "DSO · Sud-Ouest" },
+  { value: "DSE", label: "DSE · Sud-Est" },
+  { value: "DCE", label: "DCE · Centre" },
+  { value: "DNO", label: "DNO · Nord-Ouest" },
+  { value: "DNE", label: "DNE · Nord-Est" },
+  { value: "aucun", label: "Sans district" },
+];
+
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ ligne?: string; district?: string; gare?: string }>;
+  searchParams: Promise<{ ligne?: string; district?: string | string[]; gare?: string }>;
 }) {
   const user = await requireRoute("/referentiels/lignes");
   const canEdit = can(user, "ptcar:update");
   const sp = await searchParams;
-  const district = ["DSE", "DSO", "DCE", "DNO", "DNE", "aucun"].includes(sp.district ?? "")
-    ? sp.district!
-    : "";
+  // Un ou plusieurs districts (paramètre répété) ; « aucun » = lignes sans district.
+  const districts = parseDistricts(
+    sp.district,
+    DISTRICT_FILTER.map((o) => o.value),
+  );
   const gare = (sp.gare ?? "").trim().slice(0, 60);
   const ligne = normLine(sp.ligne);
   const [lines, detail, refs] = await Promise.all([
@@ -51,24 +65,24 @@ export default async function Page({
   ]);
   const shown = lines.filter(
     (l) =>
-      !district || (district === "aucun" ? !l.districts.length : l.districts.includes(district)),
+      !districts.length ||
+      districts.some((d) => (d === "aucun" ? !l.districts.length : l.districts.includes(d))),
   );
 
   return (
     <section className="flex flex-col gap-4" aria-label="Lignes">
       <FilterForm action="/referentiels/lignes" className="flex flex-wrap items-end gap-2">
         <FormAutoSubmit live />
-        <label className="flex min-w-0 flex-col gap-1 md:w-48">
+        <label className="flex min-w-0 flex-col gap-1 md:w-52">
           <span className="text-small text-fg-muted">District</span>
-          <Select name="district" defaultValue={district}>
-            <option value="">Tous</option>
-            <option value="DSE">DSE · Sud-Est</option>
-            <option value="DSO">DSO · Sud-Ouest</option>
-            <option value="DCE">DCE · Centre</option>
-            <option value="DNO">DNO · Nord-Ouest</option>
-            <option value="DNE">DNE · Nord-Est</option>
-            <option value="aucun">Sans district</option>
-          </Select>
+          <MultiSelect
+            name="district"
+            options={DISTRICT_FILTER}
+            defaultValues={districts}
+            allLabel="Tous"
+            noun="district"
+            data-testid="lines-district"
+          />
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-56">
           <span className="text-small text-fg-muted">Gare</span>
@@ -81,14 +95,17 @@ export default async function Page({
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-72">
           <span className="text-small text-fg-muted">Ligne</span>
-          <Select name="ligne" defaultValue={detail ? detail.line : ""}>
-            <option value="">—</option>
-            {shown.map((l) => (
-              <option key={l.line} value={l.line}>
-                {lineLabel(l.line)} · {l.name}
-              </option>
-            ))}
-          </Select>
+          <Combobox
+            name="ligne"
+            defaultValue={detail ? detail.line : ""}
+            options={shown.map((l) => ({
+              value: l.line,
+              label: `${lineLabel(l.line)} · ${l.name}`,
+            }))}
+            placeholder="Choisir une ligne…"
+            emptyText="Aucune ligne"
+            data-testid="lines-line"
+          />
         </label>
         <Button type="submit" variant="secondary">
           Afficher

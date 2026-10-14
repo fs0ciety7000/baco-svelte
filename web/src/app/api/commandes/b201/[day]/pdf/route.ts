@@ -1,3 +1,5 @@
+import { parseDistricts } from "@/lib/district-param";
+import { DISTRICTS } from "@/lib/orders/schemas";
 import { z } from "zod";
 
 import { contentDisposition } from "@/lib/orders/eml";
@@ -23,9 +25,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ day:
     .safeParse((await params).day);
   if (!day.success || !can(user, "b201:read"))
     return new Response("Introuvable", { status: 404, headers: HEADERS });
-  const d = new URL(request.url).searchParams.get("district") ?? "";
-  const district = ["Sud-Ouest", "Sud-Est", "Centre"].includes(d) ? d : "";
-  const data = await b201Data(day.data, district || undefined, user);
+  // Un ou plusieurs districts (paramètre répété) ; vide = tous.
+  const districts = parseDistricts(new URL(request.url).searchParams.getAll("district"), DISTRICTS);
+  const district = districts.join(" + ");
+  const data = await b201Data(day.data, districts, user);
   const groups = entriesByPeriod(data);
   const pdf = await b201Pdf(
     {

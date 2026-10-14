@@ -26,11 +26,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
   // Sans date de fin : jusqu'à hier (ou le jour de début s'il est postérieur).
   const au = isValidDay(f.au) && f.au >= du ? f.au : def.to >= du ? def.to : du;
   const canPmr = can(user, "pmr:read");
+  // Un ou plusieurs districts (paramètre répété ou « DSO,DSE ») ; « tous » ou rien = tous.
+  const district = normalizeDistricts(f.district);
   const { rows, total } = await listAssists(
     {
       from: du,
       to: au,
-      district: f.district,
+      district,
       q: f.q,
       status: f.statut,
       hideCancelled: hideCancelled(f),
@@ -43,7 +45,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
       Object.entries({
         du,
         au,
-        district: f.district ?? "",
+        district,
         statut: parseStatuses(f.statut, ASSIST_STATUSES).join(","),
         q: f.q ?? "",
         annulees: hideCancelled(f) ? "masquees" : "",
@@ -72,12 +74,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
           { label: "Depuis janvier", du: `${today.slice(0, 4)}-01-01`, au: today },
         ]}
       />
-      <AssistBoard
-        rows={rows}
-        canPmr={canPmr}
-        groupByDay={false}
-        district={normalizeDistricts(f.district)}
-      />
+      <AssistBoard rows={rows} canPmr={canPmr} groupByDay={false} district={district} />
     </section>
   );
 }

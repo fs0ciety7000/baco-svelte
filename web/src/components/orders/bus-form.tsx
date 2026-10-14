@@ -17,7 +17,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { AutosaveIndicator, FormSection, Segmented, ToggleChip } from "@/components/ui/form-kit";
-import { Input, Select, Textarea } from "@/components/ui/input";
+import { Combobox } from "@/components/ui/combobox";
+import { Input, Textarea } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";
 import { DateField } from "@/components/ui/date-field";
@@ -320,6 +321,17 @@ export function BusForm(props: BusFormProps) {
   const companyDrivers = reference.drivers.filter((dr) => dr.company === d.company);
   const [extraDrivers, setExtraDrivers] = useState<typeof reference.drivers>([]);
   const drivers = [...companyDrivers, ...extraDrivers.filter((x) => x.company === d.company)];
+  // Listes longues avec recherche (refonte R2) : sociétés et chauffeurs de la société.
+  const companyOptions = useMemo(
+    () =>
+      reference.companies.map((c) => ({
+        value: c.id,
+        label: c.name,
+        hint: c.email ? undefined : "Sans adresse e-mail",
+      })),
+    [reference.companies],
+  );
+  const driverOptions = drivers.map((dr) => ({ value: dr.id, label: dr.name }));
 
   const prepareSend = async () => {
     setShowErrors(true);
@@ -626,15 +638,14 @@ export function BusForm(props: BusFormProps) {
                   : undefined
               }
             >
-              <Select value={d.company} onChange={(e) => set("company", e.target.value)}>
-                <option value="">Choisir une société…</option>
-                {reference.companies.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                    {c.email ? "" : " (sans e-mail)"}
-                  </option>
-                ))}
-              </Select>
+              <Combobox
+                value={d.company}
+                onValueChange={(v) => set("company", v)}
+                options={companyOptions}
+                placeholder="Choisir une société…"
+                emptyText="Aucune société"
+                data-testid="bus-company"
+              />
             </Field>
             {company && !company.email ? (
               <Field
@@ -720,17 +731,13 @@ export function BusForm(props: BusFormProps) {
                       />
                     </Field>
                     <Field label="Chauffeur" className="sm:col-span-2">
-                      <Select
+                      <Combobox
                         value={b.driver}
-                        onChange={(e) => setBus(i, { driver: e.target.value })}
-                      >
-                        <option value="">—</option>
-                        {drivers.map((dr) => (
-                          <option key={dr.id} value={dr.id}>
-                            {dr.name}
-                          </option>
-                        ))}
-                      </Select>
+                        onValueChange={(v) => setBus(i, { driver: v })}
+                        options={driverOptions}
+                        placeholder={drivers.length ? "Choisir un chauffeur…" : "—"}
+                        emptyText="Aucun chauffeur pour cette société"
+                      />
                     </Field>
                   </div>
                   <div className="flex flex-wrap gap-x-6 gap-y-2">

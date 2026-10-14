@@ -104,7 +104,8 @@ function entriesFromRows(rows: OrderRow[], buses: Map<string, BusLine[]>): B201E
   return out.sort((a, b) => a.time.localeCompare(b.time));
 }
 
-export async function b201Data(day: string, district: string | undefined, user: SessionUser) {
+/** `districts` : un ou plusieurs (noms) ; vide = tous. */
+export async function b201Data(day: string, districts: string[], user: SessionUser) {
   const ctx = {
     userId: user.id,
     canBus: can(user, "otto:read"),
@@ -114,7 +115,10 @@ export async function b201Data(day: string, district: string | undefined, user: 
   const pb = await pbForRequest();
   // La nuit (21 h – 6 h) déborde sur le lendemain matin : on lit aussi le lendemain avant 6 h.
   const [{ rows }, report] = await Promise.all([
-    listOrders({ kind: "all", from: day, to: addDays(day, 1), district, limit: 500 }, ctx),
+    listOrders(
+      { kind: "all", from: day, to: addDays(day, 1), district: districts, limit: 500 },
+      ctx,
+    ),
     pb
       .collection("b201_reports")
       .getFirstListItem(pb.filter("day = {:day}", { day }))

@@ -3,6 +3,8 @@ import "server-only";
 import type { RecordModel } from "pocketbase";
 import { z } from "zod";
 
+import { anyDistrictFilter, parseDistricts } from "@/lib/district-param";
+
 import { addDays, brusselsToUtc } from "@/lib/orders/time";
 
 import { pbForRequest, toPbInstant } from "./orders";
@@ -62,7 +64,12 @@ const USER_FIELDS =
 export const userListSchema = z.object({
   q: z.string().trim().max(60).default(""),
   role: z.string().trim().max(20).optional(),
-  district: z.string().trim().max(20).optional(),
+  /** Un ou plusieurs districts (noms ou codes, paramètre répété) ; vide = tous. */
+  district: z
+    .union([z.string(), z.array(z.string())])
+    .optional()
+    .transform((d) => parseDistricts(d, ["Sud-Ouest", "Sud-Est", "Centre"]))
+    .catch([]),
 });
 
 export async function listUsers(input: z.input<typeof userListSchema>): Promise<AdminUser[]> {
@@ -70,7 +77,10 @@ export async function listUsers(input: z.input<typeof userListSchema>): Promise<
   const pb = await pbForRequest();
   const parts: string[] = [];
   if (p.role) parts.push(pb.filter("role = {:r}", { r: p.role }));
-  if (p.district) parts.push(pb.filter("(district = {:d} || districts ~ {:d})", { d: p.district }));
+  if (p.district.length)
+    parts.push(
+      `(${anyDistrictFilter(pb, "district", p.district)} || ${anyDistrictFilter(pb, "districts", p.district, "~")})`,
+    );
   const rows = await pb.collection("users").getFullList({
     filter: parts.join(" && "),
     sort: "name,username",

@@ -2,6 +2,7 @@ import "server-only";
 
 import type { RecordModel } from "pocketbase";
 
+import { anyDistrictFilter } from "@/lib/district-param";
 import { keysOf, type RouteTrain } from "@/lib/orders/train-route";
 import { foldStation } from "@/lib/stations/search";
 import {
@@ -380,7 +381,8 @@ function stationRow(r: RecordModel): StationRow {
 
 export type StationFilters = {
   q?: string;
-  district?: string;
+  /** Codes (DSO… DNE) et / ou « aucun » (sans district) ; vide = tous. */
+  district?: string[];
   pays?: string;
   ligne?: string;
   /** « oui » : seulement les gares sans district qui ont une proposition. */
@@ -394,10 +396,13 @@ export async function listStations(
 ): Promise<{ rows: StationRow[]; total: number }> {
   const pb = await pbForRequest();
   const parts: string[] = [];
-  const d = (f.district ?? "").toUpperCase();
-  if (["DSO", "DSE", "DCE", "DNO", "DNE"].includes(d))
-    parts.push(pb.filter("district = {:d}", { d }));
-  else if (d === "AUCUN") parts.push('district = ""');
+  const wanted = (f.district ?? []).map((d) => d.toUpperCase());
+  const codes = wanted.filter((d) => ["DSO", "DSE", "DCE", "DNO", "DNE"].includes(d));
+  const ors = [
+    anyDistrictFilter(pb, "district", codes),
+    wanted.includes("AUCUN") ? 'district = ""' : "",
+  ].filter(Boolean);
+  if (ors.length) parts.push(`(${ors.join(" || ")})`);
   if (f.proposition === "oui") parts.push('district = "" && district_suggested != ""');
   if (["gare", "pang", "etranger"].includes(f.type ?? ""))
     parts.push(pb.filter("kind = {:k}", { k: f.type! }));

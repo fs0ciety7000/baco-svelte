@@ -77,7 +77,8 @@ test("changer un filtre ne recharge pas la page", async ({ page }) => {
   await page.evaluate(() => {
     (window as unknown as { __sameDocument: boolean }).__sameDocument = true;
   });
-  await page.locator('select[name="district"]').selectOption({ index: 1 });
+  // Districts en puces (DistrictPicker, refonte R4) : une bascule soumet le filtre.
+  await page.getByRole("group", { name: "District" }).getByRole("button", { name: /DSO/ }).click();
   await expect(page).toHaveURL(/district=/);
   const same = await page.evaluate(
     () => (window as unknown as { __sameDocument?: boolean }).__sameDocument === true,

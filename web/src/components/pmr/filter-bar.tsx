@@ -1,4 +1,4 @@
-import { EyeOff, MapPin, Search } from "lucide-react";
+import { EyeOff, Search } from "lucide-react";
 import Link from "next/link";
 
 import { DateRangePicker } from "@/components/ui/date-field";
@@ -10,15 +10,18 @@ import {
   FilterChip,
   FilterSubmit,
 } from "@/components/ui/filters";
-import { Input, Select } from "@/components/ui/input";
-import { districtsLabel, normalizeDistricts } from "@/lib/pmr/district-filter";
-import { DISTRICT_LABEL, DISTRICTS } from "@/lib/pmr/districts";
+import { CheckboxGroup } from "@/components/ui/checkbox-group";
+import { DistrictPicker } from "@/components/ui/district-picker";
+import { Input } from "@/components/ui/input";
+import { isAllDistricts } from "@/lib/district-param";
+import { districtCodes, normalizeDistricts } from "@/lib/pmr/district-filter";
 import { ASSIST_STATUS, ASSIST_STATUSES, parseStatuses } from "@/lib/pmr/model";
 
 export type PmrFilters = {
   du?: string;
   au?: string;
-  district?: string;
+  /** Codes : « DSO,DSE » ou paramètre répété (`DistrictPicker`, refonte R4). */
+  district?: string | string[];
   q?: string;
   /** Statuts cochés : « prevue,absent » ou paramètre répété (cases à cocher, 12 oct. 2026). */
   statut?: string | string[];
@@ -43,7 +46,7 @@ export function PmrFilterBar({
   statuses?: readonly string[];
   /**
    * Districts du jour de l'agent (codes, « DSO,DSE ») : filtre par défaut des Missions PMR et des Groupes. Avec cette
-   * prop, une puce bascule entre « Tous les districts » et « Mes districts » (district explicite dans l'URL).
+   * prop, le `DistrictPicker` propose la puce « Mes districts » (district explicite dans l'URL).
    */
   myDistricts?: string;
 }) {
@@ -55,7 +58,7 @@ export function PmrFilterBar({
   const keep = Object.fromEntries(
     Object.entries({
       // « tous » explicite quand un défaut existe : les raccourcis ne doivent pas le réappliquer.
-      district: current || (myDistricts || filters.district === "tous" ? "tous" : ""),
+      district: current || (myDistricts || isAllDistricts(filters.district) ? "tous" : ""),
       q: filters.q,
       statut,
       annulees: hidden ? "masquees" : "affichees",
@@ -70,18 +73,6 @@ export function PmrFilterBar({
     ),
   );
   toggle.set("annulees", hidden ? "affichees" : "masquees");
-  // Puce district : lever le filtre (« tous » explicite), ou revenir aux districts du jour.
-  const districtLink = (value: string) => {
-    const p = new URLSearchParams(
-      Object.fromEntries(
-        Object.entries({ ...keep, du: filters.du ?? "", au: filters.au ?? "" }).filter(
-          ([k, v]) => v && k !== "district",
-        ),
-      ),
-    );
-    p.set("district", value);
-    return `${action}?${p}`;
-  };
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
@@ -101,23 +92,6 @@ export function PmrFilterBar({
           })}
         </ChipRow>
         <span aria-hidden className="hidden h-5 w-px shrink-0 bg-border sm:block" />
-        {myDistricts || current ? (
-          current ? (
-            <FilterChip asChild pressed={false}>
-              <Link href={districtLink("tous")} data-testid="all-districts">
-                <MapPin aria-hidden className="size-4" />
-                Tous les districts
-              </Link>
-            </FilterChip>
-          ) : (
-            <FilterChip asChild pressed={false}>
-              <Link href={districtLink(myDistricts)} data-testid="my-districts">
-                <MapPin aria-hidden className="size-4" />
-                Mes districts · {districtsLabel(myDistricts)}
-              </Link>
-            </FilterChip>
-          )
-        ) : null}
         <FilterChip asChild pressed={hidden}>
           <Link
             href={`${action}?${toggle}`}
@@ -152,42 +126,32 @@ export function PmrFilterBar({
             />
           </span>
         </label>
-        <CollapsibleFilters active={[current, statut].filter(Boolean).length}>
-          <label className="flex min-w-0 flex-col gap-1 md:w-40">
-            <span className="text-small text-fg-muted">District</span>
-            <Select name="district" defaultValue={current || "tous"}>
-              <option value="tous">Tous</option>
-              {current.includes(",") ? (
-                <option value={current}>{districtsLabel(current)}</option>
-              ) : null}
-              {DISTRICTS.map((d) => (
-                <option key={d} value={d}>
-                  {d} · {DISTRICT_LABEL[d]}
-                </option>
-              ))}
-            </Select>
-          </label>
+        {/* Districts en puces (refonte R4) : un, plusieurs ou « Tous » ; « Mes districts » = districts du jour. */}
+        <div className="col-span-2 flex min-w-0 flex-col gap-1 md:w-auto">
+          <span className="text-small text-fg-muted" id="pmr-district-label">
+            District
+          </span>
+          <DistrictPicker
+            name="district"
+            label="District"
+            defaultValues={districtCodes(current)}
+            emptyValue="tous"
+            mine={districtCodes(myDistricts)}
+            data-testid="district-picker"
+          />
+        </div>
+        <CollapsibleFilters active={[statut].filter(Boolean).length}>
           {/* Plusieurs statuts à la fois (12 oct. 2026) ; aucune case = tous. */}
-          <fieldset className="col-span-2 flex min-w-0 flex-col gap-1 md:col-span-1">
-            <legend className="mb-1 text-small text-fg-muted">Statut</legend>
-            <span className="flex flex-wrap gap-x-3 gap-y-1">
-              {statuses.map((s) => (
-                <label
-                  key={s}
-                  className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-body text-fg md:min-h-control"
-                >
-                  <input
-                    type="checkbox"
-                    name="statut"
-                    value={s}
-                    defaultChecked={checked.includes(s)}
-                    className="size-5 cursor-pointer accent-[var(--accent)]"
-                  />
-                  {ASSIST_STATUS[s as keyof typeof ASSIST_STATUS]?.label ?? s}
-                </label>
-              ))}
-            </span>
-          </fieldset>
+          <CheckboxGroup
+            legend="Statut"
+            name="statut"
+            className="col-span-2 md:col-span-1"
+            options={statuses.map((s) => ({
+              value: s,
+              label: ASSIST_STATUS[s as keyof typeof ASSIST_STATUS]?.label ?? s,
+            }))}
+            defaultValues={checked}
+          />
           <DateRangePicker
             nameFrom="du"
             nameTo="au"

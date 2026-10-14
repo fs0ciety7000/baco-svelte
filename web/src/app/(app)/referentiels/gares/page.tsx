@@ -6,7 +6,9 @@ import { FilterForm } from "@/components/ui/filter-form";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Input, Select } from "@/components/ui/input";
 import { Select as CustomSelect } from "@/components/ui/select";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { EmptyState } from "@/components/ui/misc";
+import { parseDistricts } from "@/lib/district-param";
 import { can } from "@/lib/permissions";
 import { pl } from "@/lib/utils";
 import { requireRoute } from "@/server/auth";
@@ -22,6 +24,15 @@ function first(raw: Record<string, string | string[] | undefined>, k: string): s
   return (Array.isArray(v) ? v[0] : v) ?? "";
 }
 
+const DISTRICT_FILTER = [
+  { value: "DSO", label: "DSO · Sud-Ouest" },
+  { value: "DSE", label: "DSE · Sud-Est" },
+  { value: "DCE", label: "DCE · Centre" },
+  { value: "DNO", label: "DNO · Nord-Ouest" },
+  { value: "DNE", label: "DNE · Nord-Est" },
+  { value: "aucun", label: "Sans district" },
+];
+
 export default async function Page({
   searchParams,
 }: {
@@ -31,7 +42,10 @@ export default async function Page({
   const raw = await searchParams;
   const f = {
     q: first(raw, "q").slice(0, 60),
-    district: first(raw, "district"),
+    district: parseDistricts(
+      raw.district,
+      DISTRICT_FILTER.map((o) => o.value),
+    ),
     pays: first(raw, "pays"),
     ligne: first(raw, "ligne").slice(0, 12),
     proposition: first(raw, "proposition"),
@@ -53,17 +67,16 @@ export default async function Page({
             maxLength={60}
           />
         </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-44">
+        <label className="flex min-w-0 flex-col gap-1 md:w-52">
           <span className="text-small text-fg-muted">District</span>
-          <Select name="district" defaultValue={f.district}>
-            <option value="">Tous</option>
-            <option value="DSO">DSO · Sud-Ouest</option>
-            <option value="DSE">DSE · Sud-Est</option>
-            <option value="DCE">DCE · Centre</option>
-            <option value="DNO">DNO · Nord-Ouest</option>
-            <option value="DNE">DNE · Nord-Est</option>
-            <option value="aucun">Sans district</option>
-          </Select>
+          <MultiSelect
+            name="district"
+            options={DISTRICT_FILTER}
+            defaultValues={f.district}
+            allLabel="Tous"
+            noun="district"
+            data-testid="stations-district-filter"
+          />
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-40">
           <span className="text-small text-fg-muted">Pays</span>

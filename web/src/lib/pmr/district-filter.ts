@@ -1,3 +1,4 @@
+import { districtTokens, isAllDistricts, type DistrictParam } from "../district-param";
 import { DISTRICTS } from "./districts";
 
 // Filtre district des Missions PMR et des Groupes (11 oct. 2026) : un ou plusieurs codes (« DSO », « DSO,DSE »).
@@ -10,10 +11,12 @@ const NAME_TO_CODE: Record<string, string> = {
   Centre: "DCE",
 };
 
-/** Codes valides d'une valeur de filtre, sans doublon, dans l'ordre DCE, DSE, DSO ; chaîne vide = tous. */
-export function normalizeDistricts(value: string | null | undefined): string {
-  if (!value) return "";
-  const set = new Set(value.split(",").map((s) => s.trim().toUpperCase()));
+/**
+ * Codes valides d'une valeur de filtre, sans doublon, dans l'ordre DCE, DSE, DSO ; chaîne vide = tous. Accepte aussi
+ * le paramètre répété (`?district=DSO&district=DSE`, refonte R4) et les noms (« Sud-Ouest »).
+ */
+export function normalizeDistricts(value: DistrictParam): string {
+  const set = new Set(districtTokens(value).map((s) => NAME_TO_CODE[s] ?? s.toUpperCase()));
   return DISTRICTS.filter((d) => set.has(d)).join(",");
 }
 
@@ -31,8 +34,9 @@ export function inDistricts(district: string, filter: string): boolean {
  * Filtre effectif d'une page : paramètre d'URL s'il est présent (« tous » ou vide = tous les districts), sinon les
  * districts du jour de l'agent (noms « Sud-Ouest »… convertis en codes).
  */
-export function effectiveDistricts(param: string | undefined, dayDistricts: string[]): string {
-  if (param !== undefined) return param === "tous" ? "" : normalizeDistricts(param);
+export function effectiveDistricts(param: DistrictParam, dayDistricts: string[]): string {
+  if (param !== undefined && param !== null)
+    return isAllDistricts(param) ? "" : normalizeDistricts(param);
   return normalizeDistricts(dayDistricts.map((n) => NAME_TO_CODE[n] ?? n).join(","));
 }
 

@@ -145,9 +145,10 @@ test("journal : publier (Markdown), lu, corriger, pièce jointe, retirer", async
   if (!((await chip.textContent()) ?? "").includes("DSO")) {
     await chip.click();
     const dialog = page.getByRole("dialog", { name: /Où travailles-tu/ });
-    const dso = dialog.getByRole("checkbox", { name: /DSO/ });
-    if ((await dso.getAttribute("aria-checked")) !== "true") await dso.click();
-    await expect(dso).toHaveAttribute("aria-checked", "true");
+    // Puces DistrictPicker (refonte R4) : boutons aria-pressed.
+    const dso = dialog.getByRole("button", { name: /DSO/ });
+    if ((await dso.getAttribute("aria-pressed")) !== "true") await dso.click();
+    await expect(dso).toHaveAttribute("aria-pressed", "true");
     await dialog.getByTestId("duty-save").click();
     await expect(dialog).toBeHidden();
   }

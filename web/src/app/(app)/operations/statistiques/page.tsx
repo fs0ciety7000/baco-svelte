@@ -10,8 +10,11 @@ import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { BarList, StackedBars } from "@/components/ops/charts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Combobox } from "@/components/ui/combobox";
+import { DistrictPicker } from "@/components/ui/district-picker";
 import { Select } from "@/components/ui/input";
 import { Select as CustomSelect } from "@/components/ui/select";
+import { appendDistricts, DISTRICT_NAME_OPTIONS } from "@/lib/district-param";
 import { StatCard } from "@/components/ui/stat-card";
 import { Table, Td, Th, THead, Tr } from "@/components/ui/table";
 import { addDays, brusselsDay, formatDay } from "@/lib/orders/time";
@@ -38,11 +41,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
   const today = brusselsDay();
   const keep = Object.fromEntries(
     Object.entries({
-      district: filters.district,
       type: filters.type,
       societe: filters.societe,
     }).filter(([, v]) => v),
   ) as Record<string, string>;
+  // Districts répétés (`?district=Sud-Ouest&district=Centre`).
+  const withKeep = (extra: Record<string, string>) =>
+    appendDistricts(new URLSearchParams({ ...keep, ...extra }), filters.district).toString();
   const presets = [
     { label: "7 jours", du: addDays(today, -6), au: today },
     { label: "30 jours", du: addDays(today, -29), au: today },
@@ -50,7 +55,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
     { label: "Cette année", du: `${today.slice(0, 4)}-01-01`, au: today },
   ];
   const t = stats.totals;
-  const csv = `/api/operations/statistiques/export?${new URLSearchParams({ ...keep, du: from, au: to })}`;
+  const csv = `/api/operations/statistiques/export?${withKeep({ du: from, au: to })}`;
   return (
     <section className="flex flex-col gap-5" aria-label="Statistiques">
       <div className="flex flex-col gap-2">
@@ -60,7 +65,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
             return (
               <FilterChip key={p.label} asChild pressed={active}>
                 <Link
-                  href={`/operations/statistiques?${new URLSearchParams({ ...keep, du: p.du, au: p.au })}`}
+                  href={`/operations/statistiques?${withKeep({ du: p.du, au: p.au })}`}
                   aria-current={active ? "true" : undefined}
                 >
                   {p.label}
@@ -75,7 +80,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
         >
           <FormAutoSubmit />
           <CollapsibleFilters
-            active={[filters.district, filters.type, filters.societe].filter(Boolean).length}
+            active={
+              [filters.district.length ? "d" : "", filters.type, filters.societe].filter(Boolean)
+                .length
+            }
           >
             <DateRangePicker
               nameFrom="du"
@@ -85,15 +93,15 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
               presets={["last7", "week"]}
               fieldClassName="md:w-40"
             />
-            <label className="flex min-w-0 flex-col gap-1 md:w-36">
+            <div className="col-span-2 flex min-w-0 flex-col gap-1 md:w-auto">
               <span className="text-small text-fg-muted">District</span>
-              <Select name="district" defaultValue={filters.district ?? ""}>
-                <option value="">Tous</option>
-                <option>Sud-Ouest</option>
-                <option>Sud-Est</option>
-                <option>Centre</option>
-              </Select>
-            </label>
+              <DistrictPicker
+                name="district"
+                label="District"
+                options={DISTRICT_NAME_OPTIONS}
+                defaultValues={filters.district}
+              />
+            </div>
             <label className="flex min-w-0 flex-col gap-1 md:w-32">
               <span className="text-small text-fg-muted">Type C3</span>
               <CustomSelect
@@ -109,14 +117,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
             </label>
             <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-56">
               <span className="text-small text-fg-muted">Société de bus</span>
-              <Select name="societe" defaultValue={filters.societe ?? ""}>
-                <option value="">Toutes</option>
-                {companies.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </Select>
+              {/* Liste longue : recherche (refonte R2) ; vide = toutes. */}
+              <Combobox
+                name="societe"
+                defaultValue={filters.societe ?? ""}
+                options={companies.map((c) => ({ value: c.id, label: c.name }))}
+                placeholder="Toutes"
+                emptyText="Aucune société"
+              />
             </label>
             <Button type="submit">Appliquer</Button>
           </CollapsibleFilters>

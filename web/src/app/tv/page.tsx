@@ -23,7 +23,7 @@ export const dynamic = "force-dynamic";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ district?: string; gare?: string; theme?: string }>;
+  searchParams: Promise<{ district?: string | string[]; gare?: string; theme?: string }>;
 }) {
   const user = await requireUser({ screen: true });
   const screen = isScreen(user);
