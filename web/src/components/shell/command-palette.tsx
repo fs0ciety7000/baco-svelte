@@ -3,22 +3,36 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   Accessibility,
+  Archive,
+  ArrowRight,
+  Building2,
   Bus,
+  CalendarClock,
+  Car,
   CornerDownLeft,
+  FileText,
+  KeyRound,
+  Map as MapIcon,
   MapPin,
   MessageSquare,
   Monitor,
   Palette,
+  Train,
+  Route,
+  ScrollText,
+  Signpost,
   Sparkles,
   TrainFront,
+  TrainTrack,
   UserRound,
   Users,
+  type LucideIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { saveUiPreferences } from "@/app/preferences-actions";
-import { paletteSearch, type SearchHit } from "@/app/search-actions";
+import { paletteSearch, type SearchGroup, type SearchHit } from "@/app/search-actions";
 import {
   Command,
   CommandEmpty,
@@ -29,14 +43,46 @@ import {
 } from "@/components/ui/command";
 import { Kbd } from "@/components/ui/misc";
 import { THEMES, themeById, type ThemeChoice } from "@/design/tokens";
+import type { PaletteGroupId } from "@/lib/search/palette";
 
 import { CHANGELOG_LINK } from "@/navigation";
 
 import { useShell } from "./shell-context";
 
+/** Icône de chaque groupe de résultats. */
+const HIT_ICON: Record<PaletteGroupId, LucideIcon> = {
+  live: TrainFront,
+  bus: Bus,
+  taxi: Car,
+  suppliers: Building2,
+  archives: Archive,
+  pmr: Accessibility,
+  groups: Users,
+  journal: MessageSquare,
+  journee: CalendarClock,
+  pn: Signpost,
+  stations: MapPin,
+  lines: TrainTrack,
+  relations: Route,
+  trains: Train,
+  ptcar: MapIcon,
+  contacts: UserRound,
+  procedures: ScrollText,
+  documents: FileText,
+  ebp: MapIcon,
+  team: Users,
+  users: KeyRound,
+};
+
+/** Valeur cmdk d'un résultat : elle contient la saisie, cmdk ne masque donc pas un résultat venu du serveur. */
+function hitValue(query: string, heading: string, h: SearchHit): string {
+  return `${query} ${heading} ${h.label} ${h.meta} ${h.href}`;
+}
+
 /**
  * Palette ⌘K / Ctrl+K. Ne s'ouvre qu'avec le modificateur (corrige le bug v1 : un « K » tapé dans un champ
- * ouvrait la palette). Groupes : Créer, Aller à (modules et onglets), Administration, Affichage.
+ * ouvrait la palette). Groupes : résultats de la recherche par module (`paletteSearch`, étendue à tous les modules le
+ * 14 oct. 2026, selon les droits de l'agent), Créer, Aller à (modules et onglets), Administration, Affichage.
  */
 export function CommandPalette() {
   const { modules, admin, actions, ui, setUi, paletteOpen, setPaletteOpen } = useShell();
@@ -53,16 +99,25 @@ export function CommandPalette() {
     return () => window.removeEventListener("keydown", onKey);
   }, [paletteOpen, setPaletteOpen]);
 
-  // Recherche dans les données (contacts, bons, PtCar, trains), après 250 ms sans frappe.
+  // Recherche dans les données de tous les modules, après 250 ms sans frappe.
   const [query, setQuery] = useState("");
-  const [hits, setHits] = useState<SearchHit[]>([]);
+  const [hits, setHits] = useState<SearchGroup[]>([]);
+  // Résultat actif contrôlé : à l'arrivée des résultats, le premier (groupe le plus probable) est choisi, sinon cmdk
+  // gardait un résultat de la saisie précédente encore présent (Entrée ouvrait la ligne au lieu de la gare).
+  const [selected, setSelected] = useState("");
   useEffect(() => {
     const q = query.trim();
     if (q.length < 2) return void setHits([]);
     let cancelled = false;
     const t = window.setTimeout(() => {
       void paletteSearch(q)
-        .then((r) => !cancelled && setHits(r))
+        .then((r) => {
+          if (cancelled) return;
+          setHits(r);
+          const g = r[0];
+          const first = g?.items[0];
+          if (g && first) setSelected(hitValue(query, g.heading, first));
+        })
         .catch(() => !cancelled && setHits([]));
     }, 250);
     return () => {
@@ -99,45 +154,49 @@ export function CommandPalette() {
           className="fixed top-0 left-1/2 z-50 w-full max-w-xl -translate-x-1/2 overflow-hidden border border-border-strong bg-surface md:rounded-box data-[state=open]:animate-pop-in md:top-[12vh]"
         >
           <DialogPrimitive.Title className="sr-only">Palette de commandes</DialogPrimitive.Title>
-          <Command label="Palette de commandes" loop>
+          <Command label="Palette de commandes" loop value={selected} onValueChange={setSelected}>
             <CommandInput
-              placeholder="Rechercher un contact, un bon, une gare, un train… ou aller à"
+              placeholder="Gare, train, IC14, L.96, bon, agent, procédure… ou aller à"
               autoFocus
               value={query}
               onValueChange={setQuery}
             />
             <CommandList className="max-h-[min(60dvh,26rem)]">
               <CommandEmpty>Aucun résultat</CommandEmpty>
-              {hits.length > 0 ? (
-                <CommandGroup heading="Résultats">
-                  {hits.map((h, i) => {
-                    const Icon = {
-                      contact: UserRound,
-                      bus: Bus,
-                      ptcar: MapPin,
-                      train: TrainFront,
-                      journal: MessageSquare,
-                      pmr: Accessibility,
-                      groupe: Users,
-                    }[h.kind];
-                    return (
+              {hits.map((g) => {
+                const Icon = HIT_ICON[g.id];
+                return (
+                  <CommandGroup
+                    key={g.id}
+                    heading={g.heading}
+                    data-testid={`palette-group-${g.id}`}
+                  >
+                    {g.items.map((h, i) => (
                       <CommandItem
                         key={`${i}-${h.href}`}
-                        // La valeur contient la saisie : cmdk ne masque pas un résultat venu du serveur.
-                        value={`${query} ${h.label} ${h.meta} ${h.href}`}
+                        value={hitValue(query, g.heading, h)}
                         onSelect={() => go(h.href)}
                       >
-                        <Icon /> <span className="truncate">{h.label}</span>
+                        <Icon /> <span className="min-w-0 flex-1 truncate">{h.label}</span>
                         {h.meta ? (
-                          <span className="ml-auto truncate text-small text-fg-muted">
+                          <span className="max-w-[45%] shrink-0 truncate text-right text-small text-fg-muted">
                             {h.meta}
                           </span>
                         ) : null}
                       </CommandItem>
-                    );
-                  })}
-                </CommandGroup>
-              ) : null}
+                    ))}
+                    {g.more ? (
+                      <CommandItem
+                        value={`${query} ${g.heading} voir tout ${g.more}`}
+                        onSelect={() => go(g.more!)}
+                        className="text-fg-muted"
+                      >
+                        <ArrowRight /> Voir tout ({g.heading.split(" › ").pop()})
+                      </CommandItem>
+                    ) : null}
+                  </CommandGroup>
+                );
+              })}
               {actions.length > 0 ? (
                 <CommandGroup heading="Créer">
                   {actions.map((a) => (
