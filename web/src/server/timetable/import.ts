@@ -52,6 +52,8 @@ export type TimetableStatus = {
   error?: string;
   step?: string;
   feedVersion?: string;
+  /** En-tête Last-Modified du GTFS importé : un GTFS plus récent relance l'import (scheduler). */
+  gtfsModified?: string;
   window?: [string, string];
   d1Day?: string;
   paths?: number;
@@ -209,6 +211,7 @@ async function readGtfs(dates: string[]) {
   try {
     const res = await get(env.CSM_GTFS_URL, {}, 300_000);
     if (!res.body) throw new Error("GTFS vide.");
+    const lastModified = res.headers.get("last-modified") ?? "";
     await pipeline(Readable.fromWeb(res.body as never), createWriteStream(file));
     const entries = await zipEntries(file);
     const builder = timetableBuilder(dates);
@@ -233,7 +236,7 @@ async function readGtfs(dates: string[]) {
     await each("stops.txt", builder.addStop);
     if (entries.has("translations.txt")) await each("translations.txt", builder.addTranslation);
     await each("stop_times.txt", builder.addStopTime);
-    return { builder, feedVersion };
+    return { builder, feedVersion, lastModified };
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -321,7 +324,7 @@ async function doImport(trigger: string): Promise<TimetableStatus> {
     step = "gtfs";
     await setStatus({ step, paths: paths.length, d1Day });
     const days = referenceWeek(today);
-    const { builder, feedVersion } = await readGtfs(days);
+    const { builder, feedVersion, lastModified } = await readGtfs(days);
     const { services, relations } = builder.build(paths);
     if (services.length < 1000)
       throw new Error(`GTFS : ${services.length} trains seulement sur la semaine.`);
@@ -370,6 +373,7 @@ async function doImport(trigger: string): Promise<TimetableStatus> {
       lastOkAt: finishedAt,
       durationMs: Date.now() - t0,
       feedVersion: /^\d{4}-\d{2}-\d{2}$/.test(feedVersion) ? feedVersion : "",
+      gtfsModified: lastModified.slice(0, 64),
       window: [toDay(days[0]!), toDay(days[6]!)],
       d1Day: /^\d{4}-\d{2}-\d{2}$/.test(d1Day) ? d1Day : "",
       paths: paths.length,
@@ -390,4 +394,15 @@ async function doImport(trigger: string): Promise<TimetableStatus> {
       durationMs: Date.now() - t0,
     }).catch(() => ({ state: "error" as const, error }));
   }
+}
+
+/** Date de publication du GTFS en ligne (requête HEAD), « » si inconnue. */
+export async function remoteGtfsModified(): Promise<string> {
+  const res = await fetch(env.CSM_GTFS_URL, {
+    method: "HEAD",
+    headers: { "user-agent": env.CSM_USER_AGENT },
+    cache: "no-store",
+    signal: AbortSignal.timeout(30_000),
+  });
+  return res.ok ? (res.headers.get("last-modified") ?? "").slice(0, 64) : "";
 }

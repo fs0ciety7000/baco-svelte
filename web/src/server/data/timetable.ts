@@ -350,7 +350,11 @@ export type StationRow = {
   manual: boolean;
   aliases: string[];
   lines: string[];
+  linesManual: boolean;
   served: boolean;
+  kind: string;
+  suggested: string;
+  suggestion: string;
 };
 
 function stationRow(r: RecordModel): StationRow {
@@ -365,11 +369,23 @@ function stationRow(r: RecordModel): StationRow {
     manual: !!r.district_manual,
     aliases: arr(r.aliases),
     lines: arr(r.lines),
+    linesManual: !!r.lines_manual,
     served: !!r.served,
+    kind: str(r.kind),
+    suggested: str(r.district_suggested),
+    suggestion: str(r.suggestion),
   };
 }
 
-export type StationFilters = { q?: string; district?: string; pays?: string; ligne?: string };
+export type StationFilters = {
+  q?: string;
+  district?: string;
+  pays?: string;
+  ligne?: string;
+  /** « oui » : seulement les gares sans district qui ont une proposition. */
+  proposition?: string;
+  type?: string;
+};
 
 /** Gares filtrées (district « aucun » = sans district ; pays « etranger » = hors Belgique). */
 export async function listStations(
@@ -378,8 +394,12 @@ export async function listStations(
   const pb = await pbForRequest();
   const parts: string[] = [];
   const d = (f.district ?? "").toUpperCase();
-  if (["DSO", "DSE", "DCE"].includes(d)) parts.push(pb.filter("district = {:d}", { d }));
+  if (["DSO", "DSE", "DCE", "DNO", "DNE"].includes(d))
+    parts.push(pb.filter("district = {:d}", { d }));
   else if (d === "AUCUN") parts.push('district = ""');
+  if (f.proposition === "oui") parts.push('district = "" && district_suggested != ""');
+  if (["gare", "pang", "etranger"].includes(f.type ?? ""))
+    parts.push(pb.filter("kind = {:k}", { k: f.type! }));
   if (f.pays === "be") parts.push('country = "BE"');
   else if (f.pays === "etranger") parts.push('country != "BE"');
   const line = normLine(f.ligne);

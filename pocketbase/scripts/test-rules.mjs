@@ -1226,6 +1226,12 @@ try {
 		check("admin ne crée pas de gare par l'API", pc.status >= 400, `HTTP ${pc.status}`);
 		const pu = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.user.token, body: { district: 'DSO', updated_by: roles.user.id } });
 		check('PACO/RCCA modifie le district (marqué manuel)', pu.status === 200 && pu.json.district === 'DSO' && pu.json.district_manual === true, `HTTP ${pu.status} ${pu.json?.district} ${pu.json?.district_manual}`);
+		const pl = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.user.token, body: { lines: ['96', '97'], kind: 'pang', updated_by: roles.user.id } });
+		check('PACO/RCCA modifie lignes et type (lignes marquées manuelles)', pl.status === 200 && pl.json.lines_manual === true && pl.json.kind === 'pang', `HTTP ${pl.status} ${pl.json?.lines_manual} ${pl.json?.kind}`);
+		const dn = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.user.token, body: { district: 'DNO', updated_by: roles.user.id } });
+		check('district DNO accepté', dn.status === 200 && dn.json.district === 'DNO', `HTTP ${dn.status} ${dn.json?.district}`);
+		const ps = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.user.token, body: { district_suggested: 'DSE', updated_by: roles.user.id } });
+		check("proposition de district non modifiable par l'API", ps.status >= 400, `HTTP ${ps.status}`);
 		const pn = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.user.token, body: { name: 'Renommée', updated_by: roles.user.id } });
 		check('PACO/RCCA ne renomme pas une gare', pn.status >= 400, `HTTP ${pn.status}`);
 		const gu = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.reader.token, body: { district: 'DSE', updated_by: roles.reader.id } });
@@ -1236,7 +1242,7 @@ try {
 		check("admin ne supprime pas de gare par l'API", pd.status >= 400, `HTTP ${pd.status}`);
 		await api('DELETE', `/api/collections/stations/records/${sid}`, { token: root });
 	}
-	for (const [method, route] of [['POST', '/api/csm/timetable/stations'], ['GET', '/api/csm/stations/districts']]) {
+	for (const [method, route] of [['POST', '/api/csm/timetable/stations'], ['GET', '/api/csm/stations/districts'], ['POST', '/api/csm/stations/suggest']]) {
 		const r = await api(method, route, { token: roles.admin.token, body: method === 'POST' ? { items: [] } : undefined });
 		check(`route interne ${route} fermée sans secret (même admin)`, r.status === 404, `HTTP ${r.status}`);
 	}

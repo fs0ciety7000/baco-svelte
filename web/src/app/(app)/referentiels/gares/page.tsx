@@ -1,19 +1,15 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
-import { StationDistrict } from "@/components/referentiels/station-district";
-import { LinesChain, trainsHref } from "@/components/referentiels/trains";
+import { StationsBoard } from "@/components/referentiels/stations-board";
 import { Button } from "@/components/ui/button";
 import { FilterForm } from "@/components/ui/filter-form";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Input, Select } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/misc";
-import { Badge } from "@/components/ui/status-badge";
-import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
 import { can } from "@/lib/permissions";
 import { pl } from "@/lib/utils";
 import { requireRoute } from "@/server/auth";
-import { listStations, type StationRow } from "@/server/data/timetable";
+import { listStations } from "@/server/data/timetable";
 
 export const metadata: Metadata = { title: "Gares · CSM" };
 
@@ -37,6 +33,8 @@ export default async function Page({
     district: first(raw, "district"),
     pays: first(raw, "pays"),
     ligne: first(raw, "ligne").slice(0, 12),
+    proposition: first(raw, "proposition"),
+    type: first(raw, "type"),
   };
   const { rows, total } = await listStations(f);
   const canEdit = can(user, "ptcar:update");
@@ -61,6 +59,8 @@ export default async function Page({
             <option value="DSO">DSO · Sud-Ouest</option>
             <option value="DSE">DSE · Sud-Est</option>
             <option value="DCE">DCE · Centre</option>
+            <option value="DNO">DNO · Nord-Ouest</option>
+            <option value="DNE">DNE · Nord-Est</option>
             <option value="aucun">Sans district</option>
           </Select>
         </label>
@@ -70,6 +70,22 @@ export default async function Page({
             <option value="">Tous</option>
             <option value="be">Belgique</option>
             <option value="etranger">Gares étrangères</option>
+          </Select>
+        </label>
+        <label className="flex min-w-0 flex-col gap-1 md:w-36">
+          <span className="text-small text-fg-muted">Type</span>
+          <Select name="type" defaultValue={f.type}>
+            <option value="">Tous</option>
+            <option value="gare">Gares</option>
+            <option value="pang">PANG</option>
+            <option value="etranger">Étranger</option>
+          </Select>
+        </label>
+        <label className="flex min-w-0 flex-col gap-1 md:w-52">
+          <span className="text-small text-fg-muted">Proposition de district</span>
+          <Select name="proposition" defaultValue={f.proposition}>
+            <option value="">Toutes les gares</option>
+            <option value="oui">Sans district, avec proposition</option>
           </Select>
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-28">
@@ -91,80 +107,8 @@ export default async function Page({
           description="Aucune gare ne correspond (le référentiel est construit chaque matin avec celui des trains)."
         />
       ) : (
-        <>
-          <div className="hidden md:block">
-            <Table data-testid="stations-table">
-              <THead>
-                <tr>
-                  <Th>Gare</Th>
-                  <Th>Abrév.</Th>
-                  <Th>Pays</Th>
-                  <Th>District</Th>
-                  <Th>Lignes</Th>
-                </tr>
-              </THead>
-              <tbody>
-                {rows.map((s) => (
-                  <Tr key={s.id}>
-                    <Td className="max-w-80">
-                      <StationName s={s} />
-                    </Td>
-                    <Td className="font-mono text-small">{s.abbr || "—"}</Td>
-                    <Td className="text-small">{s.country}</Td>
-                    <Td>
-                      <DistrictCell s={s} canEdit={canEdit} />
-                    </Td>
-                    <Td className="max-w-72">
-                      <LinesChain lines={s.lines} />
-                    </Td>
-                  </Tr>
-                ))}
-              </tbody>
-            </Table>
-          </div>
-          <ul className="flex flex-col gap-2 md:hidden">
-            {rows.map((s) => (
-              <li key={s.id} className="min-w-0">
-                <ListCard
-                  title={<StationName s={s} />}
-                  meta={`${s.abbr ? `${s.abbr} · ` : ""}${s.country} · ${s.lines.map((l) => `L.${l}`).join(", ") || "—"}`}
-                  aside={canEdit ? undefined : <DistrictCell s={s} canEdit={false} />}
-                />
-                {canEdit ? (
-                  <div className="mt-1">
-                    <DistrictCell s={s} canEdit />
-                  </div>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </>
+        <StationsBoard rows={rows} canEdit={canEdit} />
       )}
     </section>
-  );
-}
-
-function StationName({ s }: { s: StationRow }) {
-  return (
-    <span className="inline-flex min-w-0 flex-wrap items-baseline gap-x-2">
-      <Link href={trainsHref({ vue: "gare", gare: s.name })} className="link font-medium">
-        {s.name}
-      </Link>
-      {s.nameNl ? <span className="text-small text-fg-muted">{s.nameNl}</span> : null}
-      {!s.served ? <span className="text-small text-fg-muted">(traversée seulement)</span> : null}
-    </span>
-  );
-}
-
-function DistrictCell({ s, canEdit }: { s: StationRow; canEdit: boolean }) {
-  if (canEdit)
-    return <StationDistrict id={s.id} name={s.name} district={s.district} manual={s.manual} />;
-  return s.district ? (
-    <Badge tone="info">
-      {s.district}
-      {s.manual ? " · modifié" : ""}
-    </Badge>
-  ) : (
-    <span className="text-small text-fg-muted">—</span>
   );
 }

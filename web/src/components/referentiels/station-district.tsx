@@ -33,7 +33,7 @@ export function StationDistrict({
         start(async () => {
           const res = await setStationDistrict({
             id,
-            district: v === "auto" ? "auto" : v === "hors" ? "" : (v as "DSO" | "DSE" | "DCE"),
+            district: v === "auto" ? "auto" : v === "hors" ? "" : v,
           }).catch(() => null);
           if (!res) return void toast.error("Serveur injoignable : réessaie.");
           if (!res.ok) return void toast.error(res.error);
@@ -48,7 +48,9 @@ export function StationDistrict({
       <option value="DSO">DSO · Sud-Ouest</option>
       <option value="DSE">DSE · Sud-Est</option>
       <option value="DCE">DCE · Centre</option>
-      <option value="hors">Hors district</option>
+      <option value="DNO">DNO · Nord-Ouest</option>
+      <option value="DNE">DNE · Nord-Est</option>
+      <option value="hors">Sans district</option>
     </Select>
   );
 }
