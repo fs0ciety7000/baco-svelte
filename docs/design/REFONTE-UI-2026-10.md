@@ -2,7 +2,7 @@
 
 > Statut : **proposition à valider**. Aucun fichier de l'application n'a été modifié.
 > Ébauche visuelle (HTML autonome, thèmes Jour / Nuit, desktop + mobile) : `scratchpad/refonte/ebauche.html`
-> (hors dépôt). Captures de référence : `scratchpad/refonte/C01…C09-*.png` (hors dépôt, données de test).
+> (hors dépôt), rendue en `E-ebauche-{jour,nuit}-{1440,390}.png`. Captures de référence : `scratchpad/refonte/C01…C09-*.png` (hors dépôt, données de test).
 
 ## 0. Méthode et limites
 
