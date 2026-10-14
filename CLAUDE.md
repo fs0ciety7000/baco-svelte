@@ -990,6 +990,11 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   assistés sont validés ; badges IN / OUT cochés. Filtre de statut en **cases à cocher multiples**. Les lignes déjà mal
   marquées se corrigent à la synchro suivante.
 
+- 2026-10-14 — **« Valider l'envoi » = brouillon Outlook + « Envoyé »** (demande de l'utilisateur ; revient sur le « Terminé »
+  direct du 9 oct.) : un clic ouvre le .eml (adresse du fournisseur, message avec date / trajet / n° TC, PDF joint) et passe
+  le bon en « Envoyé » ; confirmation et clôture ensuite. Conséquence : ces bons entrent dans « À confirmer », l'alerte H-2 et
+  la relance.
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)

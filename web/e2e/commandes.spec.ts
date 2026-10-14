@@ -199,12 +199,10 @@ test("bus : création, enregistrement automatique, envoi, confirmation", async (
   expect(pdf.headers()["content-type"]).toBe("application/pdf");
 
   const download = page.waitForEvent("download");
-  await page.getByTestId("download-eml").click();
+  await page.getByTestId("validate-send").click();
   await download;
-  await expect(page.getByTestId("confirm-banner")).toBeVisible();
-  await page.getByTestId("mark-sent").click();
-  // Valider l'envoi termine la commande (décision du 9 oct. 2026).
-  await expect(page.getByText("Terminé", { exact: true }).first()).toBeVisible();
+  // Valider l'envoi = brouillon Outlook + bon « Envoyé » (14 oct. 2026).
+  await expect(page.getByText("Envoyé", { exact: true }).first()).toBeVisible();
   void number;
   expect(errors).toEqual([]);
 });
@@ -215,7 +213,7 @@ test("modèle partagé : envoi possible sans modification", async ({ page }, inf
   await page.goto(`/commandes/nouveau?modele=${templateId}`);
   await expect(page.getByLabel("Motif")).toHaveValue("Travaux");
   await page.getByTestId("prepare-send").click();
-  await expect(page.getByTestId("download-eml")).toBeEnabled();
+  await expect(page.getByTestId("validate-send")).toBeEnabled();
 });
 
 test("taxi : création liée à une société, aller-retour pré-inversé", async ({ page }, info) => {

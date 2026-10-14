@@ -64,8 +64,8 @@ export function TransitionButtons({
   const [dialog, setDialog] = useState<Transition | null>(null);
   const closable = isClosable(status, serviceDay, brusselsDay());
   const list = transitionsFor(status, { coordinator, statusBeforeCancel, closable }).filter(
-    // Seul l'envoi depuis le brouillon (« Marquer envoyé » → terminé) est masqué : il passe par la feuille d'envoi.
-    (t) => !(hideSend && status === "brouillon" && t.to === "termine"),
+    // Seul l'envoi depuis le brouillon (« Marquer envoyé » → envoyé) est masqué : il passe par la feuille d'envoi.
+    (t) => !(hideSend && status === "brouillon" && t.to === "envoye"),
   );
 
   const run = (t: Transition, extra: Extra) =>

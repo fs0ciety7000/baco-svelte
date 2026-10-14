@@ -422,3 +422,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `Leg.inDone` / `outDone` → badge IN / OUT coché (`IoBadges`). **Filtre de statut à cases multiples** (Missions PMR,
   Groupes, Historique) : `statut=a&statut=b` ou « a,b », `parseStatuses` (`lib/pmr/model.ts`), `statusFilter`
   (`server/data/pmr.ts`) ; aucune case = tous (« Masquer les annulées » s'applique alors).
+- **« Valider l'envoi »** (14 oct. 2026, `components/orders/send-dialog.tsx`) : un seul bouton qui enregistre, télécharge le
+  brouillon Outlook (`/eml` : X-Unsent, adresse du fournisseur, message généré, PDF joint ; sans adresse : PDF seul) puis
+  passe le bon **brouillon → envoyé** (plus « terminé ») ; suite : confirmer, en cours, terminé (ou clôture 5 j après).
+  `TRANSITIONS.brouillon` = envoyé / annulé côté web ; le hook garde brouillon → terminé permis. E2E : `validate-send`.

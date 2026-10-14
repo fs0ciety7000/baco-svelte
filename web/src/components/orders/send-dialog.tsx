@@ -2,7 +2,7 @@
 
 import { Download, FileText, Mail, TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useTransition } from "react";
 
 import { transitionOrder } from "@/app/(app)/commandes/actions";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,8 @@ import type { Missing } from "@/lib/orders/schemas";
 import type { OrderKind } from "@/lib/orders/status";
 
 /**
- * Feuille d'envoi (audit UX §3.3) : contrôles, destinataires, brouillon Outlook (.eml avec le PDF joint),
- * puis confirmation explicite « Oui, marquer envoyé ». Le statut ne change jamais seul.
+ * Feuille d'envoi (audit UX §3.3) : contrôles, destinataires, puis « Valider l'envoi » = brouillon Outlook (.eml avec le
+ * PDF joint) et passage en « Envoyé » (14 oct. 2026).
  */
 export function SendDialog({
   kind,
@@ -36,60 +36,49 @@ export function SendDialog({
   flush: () => Promise<boolean>;
 }) {
   const router = useRouter();
-  const [downloaded, setDownloaded] = useState(false);
   const [pending, start] = useTransition();
   const ready = !!id && missing.length === 0;
   // Sans adresse e-mail (société sans adresse, rien saisi) : PDF seul, transmis autrement ; pas de brouillon .eml.
   const noMail = !to.trim();
   const base = id ? `/api/commandes/${kind}/${id}` : "";
 
-  useEffect(() => {
-    if (!open) setDownloaded(false);
-  }, [open]);
-
-  const download = async (what: "eml" | "pdf") => {
-    if (!(await flush())) {
-      toast.error("Enregistrement impossible : corrige la saisie avant l'envoi.");
-      return;
-    }
-    if (what === "pdf" && noMail) {
-      // Téléchargement du PDF à transmettre (la confirmation « envoyé » suit, comme pour l'e-mail).
-      const a = document.createElement("a");
-      a.href = `${base}/pdf?download=1`;
-      a.rel = "noopener";
-      document.body.append(a);
-      a.click();
-      a.remove();
-      setDownloaded(true);
-    } else if (what === "eml") {
-      // Téléchargement par lien : le fichier part avec le cookie de session (même domaine).
-      const a = document.createElement("a");
-      a.href = `${base}/eml`;
-      a.rel = "noopener";
-      document.body.append(a);
-      a.click();
-      a.remove();
-      setDownloaded(true);
-    } else {
-      window.open(`${base}/pdf`, "_blank", "noopener");
-    }
+  const fetchFile = (href: string) => {
+    // Téléchargement par lien : le fichier part avec le cookie de session (même domaine).
+    const a = document.createElement("a");
+    a.href = href;
+    a.rel = "noopener";
+    document.body.append(a);
+    a.click();
+    a.remove();
   };
 
-  const markSent = () =>
+  /**
+   * « Valider l'envoi » (14 oct. 2026) : ouvre le brouillon Outlook (.eml : adresse du fournisseur, PDF joint, message
+   * généré) — ou le PDF seul sans adresse — puis passe le bon en « Envoyé ». Il reste à confirmer puis clôturer.
+   */
+  const validate = () =>
     start(async () => {
+      if (!(await flush())) {
+        toast.error("Enregistrement impossible : corrige la saisie avant l'envoi.");
+        return;
+      }
+      fetchFile(noMail ? `${base}/pdf?download=1` : `${base}/eml`);
       let res: Awaited<ReturnType<typeof transitionOrder>>;
       try {
-        // Valider l'envoi termine la commande (décision du 9 oct. 2026).
-        res = await transitionOrder({ kind, id: id ?? "", to: "termine" });
+        res = await transitionOrder({ kind, id: id ?? "", to: "envoye" });
       } catch {
-        toast.error("Serveur injoignable : réessaie dans un instant.");
+        toast.error("Serveur injoignable : le bon n'est pas passé en « Envoyé ». Réessaie.");
         return;
       }
       if (!res.ok) {
         toast.error(res.error);
         return;
       }
-      toast.success("Commande envoyée : statut « Terminé ».");
+      toast.success(
+        noMail
+          ? "PDF téléchargé : commande « Envoyée »."
+          : "Brouillon ouvert dans Outlook : commande « Envoyée ».",
+      );
       onOpenChange(false);
       router.refresh();
     });
@@ -101,8 +90,8 @@ export function SendDialog({
         title="Préparer l'envoi"
         description={
           noMail
-            ? "Aucune adresse e-mail pour ce fournisseur : télécharge le bon en PDF et transmets-le (téléphone, autre canal)."
-            : "Le brouillon s'ouvre dans Outlook avec le bon en PDF. Vérifie l'expéditeur (boîte fonctionnelle), puis envoie."
+            ? "Aucune adresse e-mail pour ce fournisseur : le bon est téléchargé en PDF, à transmettre (téléphone, autre canal)."
+            : "Le brouillon s'ouvre dans Outlook avec l'adresse du fournisseur, le message et le bon en PDF. Vérifie l'expéditeur (boîte fonctionnelle), puis envoie."
         }
       >
         {missing.length ? (
@@ -128,60 +117,28 @@ export function SendDialog({
             <dd className="flex items-center gap-1.5 text-fg">
               <FileText aria-hidden className="size-4 text-fg-muted" /> Bon de commande (PDF)
             </dd>
+            <dt className="label-mono pt-0.5 text-fg-muted">Statut</dt>
+            <dd className="text-fg">Passe en « Envoyé » à la validation</dd>
           </dl>
         )}
 
-        {downloaded ? (
-          <div
-            className="mt-4 flex flex-col gap-2 border border-info/60 bg-[color-mix(in_oklab,var(--info)_8%,var(--surface))] p-3"
-            data-testid="confirm-banner"
-          >
-            <p className="text-body font-medium text-fg">
-              {noMail ? "As-tu transmis le bon ?" : "As-tu envoyé l'e-mail ?"}
-            </p>
-            <p className="text-small text-fg-muted">
-              La commande passe à « Terminé » seulement si tu le confirmes.
-            </p>
-          </div>
-        ) : null}
-
         <DialogFooter>
-          <Button variant="ghost" onClick={() => download("pdf")} disabled={!id}>
+          <Button
+            variant="ghost"
+            onClick={() => window.open(`${base}/pdf`, "_blank", "noopener")}
+            disabled={!id}
+          >
             <FileText aria-hidden /> Aperçu PDF
           </Button>
-          {downloaded ? (
-            <>
-              <Button variant="secondary" onClick={() => onOpenChange(false)}>
-                Pas encore
-              </Button>
-              <Button
-                variant="primary"
-                onClick={markSent}
-                loading={pending}
-                data-testid="mark-sent"
-              >
-                <Mail aria-hidden /> Oui, marquer envoyé
-              </Button>
-            </>
-          ) : noMail ? (
-            <Button
-              variant="primary"
-              onClick={() => download("pdf")}
-              disabled={!ready}
-              data-testid="download-pdf"
-            >
-              <Download aria-hidden /> Télécharger le PDF
-            </Button>
-          ) : (
-            <Button
-              variant="primary"
-              onClick={() => download("eml")}
-              disabled={!ready}
-              data-testid="download-eml"
-            >
-              <Download aria-hidden /> Brouillon Outlook (.eml)
-            </Button>
-          )}
+          <Button
+            variant="primary"
+            onClick={validate}
+            disabled={!ready}
+            loading={pending}
+            data-testid="validate-send"
+          >
+            {noMail ? <Download aria-hidden /> : <Mail aria-hidden />} Valider l&apos;envoi
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

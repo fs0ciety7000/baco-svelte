@@ -1,7 +1,7 @@
 // Cycle de vie des commandes bus et taxi (docs/design/AUDIT-UX-COMMANDES.md §4, décisions du 8 octobre 2026).
 // brouillon → envoyé → confirmé → en cours → terminé, ou annulé. Pas de « facturé ».
-// Depuis le 9 oct. 2026 : valider l'envoi passe directement à « terminé » (brouillon → terminé) ; le chemin long reste
-// permis pour les commandes déjà « envoyées ».
+// 9 oct. 2026 : valider l'envoi passait directement à « terminé » ; depuis le 14 oct. 2026, il passe à « envoyé »
+// (brouillon Outlook ouvert, demande de l'utilisateur). brouillon → terminé reste permis (anciens écrans, imports).
 
 const KIND = { bus_orders: 'bus', taxi_orders: 'taxi' };
 

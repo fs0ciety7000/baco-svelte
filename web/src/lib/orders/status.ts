@@ -24,7 +24,7 @@ export const STATUS_LABEL: Record<Status, string> = {
 };
 
 const TRANSITIONS: Record<Status, Status[]> = {
-  brouillon: ["termine", "annule"],
+  brouillon: ["envoye", "annule"],
   // « Clôturer » : seulement 5 jours après la date de service (option `closable`, le hook PocketBase vérifie).
   envoye: ["brouillon", "confirme", "termine", "annule"],
   confirme: ["envoye", "en_cours", "termine", "annule"],
@@ -47,7 +47,7 @@ export type Transition = {
 };
 
 const ACTION: Record<string, Omit<Transition, "to">> = {
-  "brouillon>termine": { label: "Marquer envoyé", primary: true },
+  "brouillon>envoye": { label: "Marquer envoyé", primary: true },
   "envoye>confirme": { label: "Confirmer", primary: true },
   "envoye>brouillon": { label: "Revenir en brouillon", tone: "back" },
   "envoye>termine": { label: "Clôturer sans confirmation" },
