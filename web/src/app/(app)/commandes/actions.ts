@@ -159,6 +159,7 @@ async function taxiBody(draft: TaxiDraft, user: SessionUser, creating: boolean) 
     vehicles: draft.vehicles,
     passenger_name: draft.passenger_name,
     relation_number: draft.relation_number,
+    train_number: draft.train_number,
     billing: draft.billing,
     reason: draft.reason,
     confirmed_time: draft.confirmed_time,
@@ -565,6 +566,7 @@ export async function loadOrderPanel(input: {
             },
             { label: "Motif", value: d.reason || "—" },
             { label: "Relation", value: d.relation || "—" },
+            ...(d.train_number ? [{ label: "Train", value: d.train_number }] : []),
             ...d.buses.map((b, i) => ({
               label: `Bus ${i + 1}`,
               value: b.cancelled
@@ -604,6 +606,7 @@ export async function loadOrderPanel(input: {
             label: "Trajet",
             value: `${d.from_station || "?"}${d.via_station ? ` → ${d.via_station}` : ""} → ${d.to_station || "?"}`,
           },
+          ...(d.train_number ? [{ label: "Train", value: d.train_number }] : []),
           ...(d.round_trip
             ? [
                 {

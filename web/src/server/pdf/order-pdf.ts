@@ -443,6 +443,7 @@ export async function busOrderPdf(detail: BusPdfDetail, ctx: PdfContext): Promis
   );
   l.field("Motif", d.reason);
   l.field(relationLabel, d.relation);
+  if (d.train_number) l.field("N° de train", d.train_number);
   l.section("Trajet");
   l.field("Origine", d.origin, { bold: true });
   // Un direct peut s'arrêter aux gares de correspondance (11 oct. 2026) : arrêts listés dès qu'il y en a.
@@ -501,6 +502,7 @@ export async function taxiOrderPdf(detail: TaxiPdfDetail, ctx: PdfContext): Prom
   l.field("Départ", d.from_station);
   if (d.via_station) l.field("Via", d.via_station);
   l.field("Arrivée", d.to_station);
+  if (d.train_number) l.field("N° de train", d.train_number);
   if (d.round_trip) {
     l.field("Retour", when(d.return_day, d.return_time), { bold: true });
     l.field("De", d.return_from || d.to_station);

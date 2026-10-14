@@ -17,6 +17,11 @@ const id = z
   .regex(/^$|^[a-z0-9-]{15,36}$/, "Identifiant invalide")
   .default("");
 const count = (max: number) => z.coerce.number().int().min(0).max(max).default(0);
+/** N° de train (14 oct. 2026) : chiffres seulement, 6 au plus ; une saisie partielle ne bloque jamais l'enregistrement. */
+const trainNumber = z
+  .string()
+  .default("")
+  .transform((s) => s.replace(/\D/g, "").slice(0, 6));
 
 export const DISTRICTS = ["Sud-Ouest", "Sud-Est", "Centre"] as const;
 export const districtSchema = z.enum(DISTRICTS).or(z.literal("")).default("");
@@ -51,6 +56,7 @@ export const busDraftSchema = z.object({
   order_date: day,
   call_time: time,
   relation: text(200),
+  train_number: trainNumber,
   origin: text(200),
   destination: text(200),
   direct: z.boolean().default(false),
@@ -125,6 +131,7 @@ export const taxiDraftSchema = z.object({
   vehicles: count(20).default(1),
   passenger_name: text(200),
   relation_number: text(100),
+  train_number: trainNumber,
   billing: text(200).default("SNCB"),
   reason: text(2000),
   pmr_reason: text(2000),

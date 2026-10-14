@@ -1055,6 +1055,17 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   `districtStations`), avec une note dans l'admin ; aucune correction manuelle sur `rail_lines`. Schaerbeek n'apparaît plus
   sur la L.161 du nouveau référentiel (les trains de la L.161 partent de Bruxelles-Nord dans les données Infrabel).
   418 contrôles de règles.
+- 2026-10-14 — **Bons bus / taxi branchés sur le référentiel des trains** (étape 12, partie bons) : champ de gare alimenté
+  par `stations` (nom FR retenu, nom NL / alias / PtCar acceptés : « Bergen » → Mons, « Maubeuge » → « Maubeuge (FR) »,
+  suffixe de pays gardé ; saisie libre permise, anciens bons inchangés). **Lignes et arrêts tirés des trains** (Server
+  Action `orderTrainRoute`, `lib/orders/train-route.ts`) : trains qui passent par les deux gares, **les deux sens** (un bus
+  roule dans les deux : Charleroi-Central → Mons n'a aucun omnibus direct dans ce sens) ; omnibus = L / S / P avec le plus
+  d'arrêts, direct = IC avec le moins d'arrêts ; puces = union des arrêts de tous ces trains ; repli sur `routeBetween`
+  (réseau des lignes BACO) sans train. Posés d'office seulement après un changement de gare (jamais à l'ouverture d'un bon).
+  **N° de train** (`train_number`, `1760003800`, bus et taxi) : variante du jour du bon, trajet repris d'office si la gare
+  d'arrivée est vide, sinon bouton « Reprendre le trajet du train » ; gares du rédacteur gardées si le train y passe ;
+  « Annuler la reprise » ; taxi : heure = départ du train. Sur le PDF, l'e-mail et le panneau du Suivi. Corrigé en route :
+  l'indicateur d'enregistrement restait « Modifié » quand la saisie revenait à l'état enregistré. 409 contrôles de règles.
 
 ---
 

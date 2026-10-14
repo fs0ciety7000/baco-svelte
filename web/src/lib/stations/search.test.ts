@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canonicalStation,
   foldStation,
   stationCandidates,
   stationMatches,
@@ -67,5 +68,30 @@ describe("recherche de gare tolérante", () => {
     expect(stationMatchesAny("Bergen (Mons)", terms)).toBe(true);
     expect(stationMatchesAny("Namur", terms)).toBe(false);
     expect(stationMatchesAny("Namur", [])).toBe(true);
+  });
+});
+
+describe("champ de gare des bons (nom retenu)", () => {
+  const refs: StationRef[] = [
+    ...REFS,
+    { names: ["Maubeuge (FR)", "Maubeuge"] },
+    { names: ["Mons-Nimy"] },
+  ];
+
+  it("propose le nom FR même quand la saisie correspond au nom NL ou à un alias", () => {
+    expect(stationCandidates("Berg", refs, 8, true)).toEqual(["Mons"]);
+    expect(stationCandidates("maubeu", refs, 8, true)).toEqual(["Maubeuge (FR)"]);
+    expect(stationCandidates("FCR", refs, 8, true)).toEqual(["Charleroi-Central"]);
+    // Une gare n'apparaît qu'une fois, préfixe avant contenu.
+    expect(stationCandidates("mons", refs, 8, true)).toEqual(["Mons", "Mons-Nimy"]);
+  });
+
+  it("ramène une saisie exacte au nom retenu ; garde une saisie libre", () => {
+    expect(canonicalStation("bergen", refs)).toBe("Mons");
+    expect(canonicalStation("Maubeuge", refs)).toBe("Maubeuge (FR)");
+    expect(canonicalStation("charleroi centraal", refs)).toBe("Charleroi-Central");
+    expect(canonicalStation("fms", refs)).toBe("Mons");
+    expect(canonicalStation("Dépôt de Saint-Ghislain", refs)).toBe("Dépôt de Saint-Ghislain");
+    expect(canonicalStation("", refs)).toBe("");
   });
 });

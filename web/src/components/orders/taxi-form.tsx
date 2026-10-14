@@ -45,7 +45,11 @@ import { TemplateDialog } from "./bus-form";
 import { PdfLink, SendDialog } from "./send-dialog";
 import { StartPanel, type StartPanelProps } from "./start-panel";
 import { TransitionButtons } from "./transitions";
-import { StationInput, useStationRefs } from "./station-input";
+import { StationInput } from "./station-input";
+import { TrainNumberField } from "./train-field";
+import type { OrderTrain } from "@/app/(app)/commandes/train-actions";
+import { stationsFromTrain } from "@/lib/orders/train-route";
+import type { StationRef } from "@/lib/stations/search";
 
 export type Client = {
   id: string;
@@ -70,8 +74,7 @@ export type TaxiFormProps = {
   client: Client | null;
   reference: {
     companies: { id: string; name: string; emails: string[]; phones: string[]; places: string[] }[];
-    stations: string[];
-    abbrs: { abbr: string; name: string }[];
+    stationRefs: StationRef[];
   };
   officeEmail: string;
   start?: Omit<StartPanelProps, "kind">;
@@ -79,7 +82,7 @@ export type TaxiFormProps = {
 
 export function TaxiForm(props: TaxiFormProps) {
   const { reference, canWrite } = props;
-  const stationRefs = useStationRefs(reference.stations, reference.abbrs);
+  const stationRefs = reference.stationRefs;
   const router = useRouter();
   const [d, setD] = useState<TaxiDraft>(props.initial);
   const [client, setClient] = useState<Client | null>(props.client);
@@ -129,6 +132,23 @@ export function TaxiForm(props: TaxiFormProps) {
       return_from: on ? x.return_from || x.to_station : "",
       return_to: on ? x.return_to || x.from_station : "",
     }));
+
+  // N° de train (14 oct. 2026) : départ / arrivée gardés si le train y passe, sinon son origine / son terminus ; heure de
+  // prise en charge = départ du train à la gare de départ (l'heure par défaut d'un bon neuf est l'heure courante, pas un
+  // choix du rédacteur). « Annuler la reprise » rétablit tout.
+  const [trainUndo, setTrainUndo] = useState<TaxiDraft | null>(null);
+  const applyTrain = (t: OrderTrain) => {
+    const s = stationsFromTrain(t, d.from_station, d.to_station);
+    if (!s.leg) return;
+    setTrainUndo(d);
+    setD({
+      ...d,
+      train_number: String(t.number),
+      from_station: s.origin,
+      to_station: s.destination,
+      trip_time: s.leg.depTime || d.trip_time,
+    });
+  };
 
   const prepareSend = async () => {
     setShowErrors(true);
@@ -220,13 +240,30 @@ export function TaxiForm(props: TaxiFormProps) {
                 />
               </Field>
             </div>
+            <TrainNumberField
+              value={d.train_number}
+              onChange={(v) => {
+                set("train_number", v);
+                setTrainUndo(null);
+              }}
+              day={d.trip_day}
+              disabled={!editable}
+              autoApply={!d.to_station.trim()}
+              onApply={applyTrain}
+              onUndo={
+                trainUndo
+                  ? () => {
+                      setD(trainUndo);
+                      setTrainUndo(null);
+                    }
+                  : null
+              }
+            />
             <div className="grid gap-3 sm:grid-cols-3">
               <Field label="Départ" required error={err("from_station")}>
                 <StationInput
                   value={d.from_station}
                   onChange={(v) => set("from_station", v)}
-                  stations={reference.stations}
-                  abbrs={reference.abbrs}
                   refs={stationRefs}
                 />
               </Field>
@@ -234,8 +271,6 @@ export function TaxiForm(props: TaxiFormProps) {
                 <StationInput
                   value={d.via_station}
                   onChange={(v) => set("via_station", v)}
-                  stations={reference.stations}
-                  abbrs={reference.abbrs}
                   refs={stationRefs}
                 />
               </Field>
@@ -243,8 +278,6 @@ export function TaxiForm(props: TaxiFormProps) {
                 <StationInput
                   value={d.to_station}
                   onChange={(v) => set("to_station", v)}
-                  stations={reference.stations}
-                  abbrs={reference.abbrs}
                   refs={stationRefs}
                 />
               </Field>
@@ -281,8 +314,6 @@ export function TaxiForm(props: TaxiFormProps) {
                     <StationInput
                       value={d.return_from}
                       onChange={(v) => set("return_from", v)}
-                      stations={reference.stations}
-                      abbrs={reference.abbrs}
                       refs={stationRefs}
                     />
                   </Field>
@@ -290,8 +321,6 @@ export function TaxiForm(props: TaxiFormProps) {
                     <StationInput
                       value={d.return_to}
                       onChange={(v) => set("return_to", v)}
-                      stations={reference.stations}
-                      abbrs={reference.abbrs}
                       refs={stationRefs}
                     />
                   </Field>

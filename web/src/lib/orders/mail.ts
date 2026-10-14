@@ -199,6 +199,7 @@ export function busMail(detail: BusMailDetail, opts: MailOptions): OrderMail {
     ...(d.relation
       ? [[d.c3_type === 3 ? "N° de commande / BNX" : "Relation", d.relation] as Row]
       : []),
+    ...(d.train_number ? [["N° de train", d.train_number] as Row] : []),
     ...(d.call_time ? [["Heure d'appel", d.call_time] as Row] : []),
     ["Origine", d.origin || "—"],
     [
@@ -257,6 +258,7 @@ export function taxiMail(detail: TaxiMailDetail, opts: MailOptions): OrderMail {
     ["Départ", d.from_station || "—"],
     ...(d.via_station ? [["Via", d.via_station] as Row] : []),
     ["Arrivée", d.to_station || "—"],
+    ...(d.train_number ? [["N° de train", d.train_number] as Row] : []),
     [
       "Retour",
       d.round_trip

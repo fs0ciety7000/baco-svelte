@@ -3,46 +3,19 @@
 import { useId, useMemo, useRef, useState } from "react";
 
 import { Input } from "@/components/ui/input";
-import { foldStation, stationCandidates, type StationRef } from "@/lib/stations/search";
+import { canonicalStation, stationCandidates, type StationRef } from "@/lib/stations/search";
 import { cn } from "@/lib/utils";
 
 // Champ de gare (bons bus et taxi, retour utilisateur du 11 oct. 2026 : la liste native `datalist` ne proposait rien de
 // visible et un nom approximatif empêchait de trouver les lignes et les arrêts intermédiaires). Liste filtrée à la
 // frappe (accents, casse, tirets ignorés ; abréviation PtCar acceptée : « FMS » → Mons), choix au clavier ou au clic,
 // et le nom tapé est remplacé par le nom exact du référentiel dès qu'il correspond à une gare connue.
-
-export type StationAbbr = { abbr: string; name: string };
-
-export function useStationRefs(stations: string[], abbrs: StationAbbr[] = []): StationRef[] {
-  return useMemo(
-    () => [
-      ...abbrs.map((a) => ({ abbr: a.abbr, names: [a.name] })),
-      ...stations.map((s) => ({ names: [s] })),
-    ],
-    [stations, abbrs],
-  );
-}
-
-/** Nom exact du référentiel pour une saisie (même nom replié, ou abréviation PtCar), sinon la saisie telle quelle. */
-export function canonicalStation(
-  value: string,
-  stations: string[],
-  abbrs: StationAbbr[] = [],
-): string {
-  const v = value.trim();
-  if (!v) return value;
-  const f = foldStation(v);
-  const byName = stations.find((s) => foldStation(s) === f);
-  if (byName) return byName;
-  const byAbbr = abbrs.find((a) => a.abbr.toUpperCase() === v.toUpperCase());
-  return byAbbr && stations.includes(byAbbr.name) ? byAbbr.name : value;
-}
+// Depuis le 14 oct. 2026 : référentiel des gares (`stations`) — nom NL et alias acceptés (« Bergen » → Mons,
+// « Maubeuge » → « Maubeuge (FR) »), le nom FR est toujours celui retenu ; la saisie libre reste permise.
 
 export function StationInput({
   value,
   onChange,
-  stations,
-  abbrs,
   refs,
   disabled,
   placeholder = "Nom ou abréviation (ex. Mons, FMS)",
@@ -50,8 +23,7 @@ export function StationInput({
 }: {
   value: string;
   onChange: (value: string) => void;
-  stations: string[];
-  abbrs?: StationAbbr[];
+  /** Gares connues : premier nom = nom retenu (FR), puis NL et alias ; abréviation PtCar. */
   refs: StationRef[];
   disabled?: boolean;
   placeholder?: string;
@@ -64,7 +36,7 @@ export function StationInput({
   const [active, setActive] = useState(0);
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const options = useMemo(
-    () => (open ? stationCandidates(value, refs, 8).filter((n) => n !== value) : []),
+    () => (open ? stationCandidates(value, refs, 8, true).filter((n) => n !== value) : []),
     [open, value, refs],
   );
 
@@ -96,7 +68,7 @@ export function StationInput({
           // Laisse le clic sur une proposition aboutir avant de fermer ; corrige ensuite vers le nom exact.
           blurTimer.current = setTimeout(() => {
             setOpen(false);
-            const exact = canonicalStation(value, stations, abbrs);
+            const exact = canonicalStation(value, refs);
             if (exact !== value) onChange(exact);
           }, 150);
         }}
