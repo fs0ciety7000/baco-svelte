@@ -52,6 +52,8 @@ import { AUTO_THEMES, COLOR_TOKENS, THEMES, themeById } from "@/design/tokens";
 import { useStaggerIn } from "@/lib/motion";
 import { lineLabel } from "@/lib/lines";
 
+import { PickersDemo } from "./pickers-demo";
+
 // Données fictives uniquement (aucune donnée réelle sur cette page).
 const ORDERS: {
   id: string;
@@ -394,6 +396,10 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
             <Button variant="primary">Générer le brouillon</Button>
           </CardFooter>
         </Card>
+      </Section>
+
+      <Section id="listes-dates" title="Listes, dates et heures">
+        <PickersDemo />
       </Section>
 
       <Section id="saisie" title="Saisie des commandes">

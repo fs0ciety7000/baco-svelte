@@ -174,6 +174,26 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
     Badge/StatusBadge, Tabs, Dialog, Sheet, Toast, EmptyState, PageHeader, Kbd, Skeleton, Tooltip, Table/ListCard,
     Command) : **aucun style ad hoc dans les pages** ; tout nouveau composant est ajouté à `/design` ;
   - motion : `src/lib/motion.ts` (GSAP + `gsap.matchMedia()`, ease `hud`, `useStaggerIn`) ; budgets de DESIGN-DIRECTION.
+- **Contrôles personnalisés (refonte R1 + R3, 14 oct. 2026, `../docs/design/REFONTE-UI-2026-10.md` §3.5)** : **plus
+  aucun `<select>` ni champ `type="date|time|month|datetime-local"` natif dans un nouvel écran** (liste aux couleurs du
+  système, format américain sur un poste en anglais, libellés coupés). Utiliser :
+  - `Select` (`components/ui/select.tsx` ; le `Select` natif de `input.tsx` reste dans les écrans pas encore migrés, lot
+    R5) : `options: {value,label,hint?,icon?,disabled?}[]`, `value`/`defaultValue`/`onValueChange`, `placeholder`,
+    `clearable` (option vide en tête = « Tous »), `name`, `disabled`, `label` (titre de la feuille mobile) ;
+  - `DateField` (`date-field.tsx`, `jj/mm/aaaa`, `min`/`max`), `TimeField` (`time-field.tsx`, `HH:MM`, `step` = 5,
+    `pending` « À confirmer », bouton « Maintenant »), `DateRangePicker` (`nameFrom`/`nameTo`, `defaultFrom`/`defaultTo`,
+    `presets` `today|tomorrow|7d|last7|week`, `fieldClassName`), `MonthField` (`month-field.tsx`, `AAAA-MM`) ;
+    `Calendar` (`calendar.tsx`, grille APG, fériés belges) ; logique pure `lib/dates/calendar.ts` (testée : saisie
+    libre, Pâques, fériés, grille du lundi, heures, mois) ;
+  - socle : `Popover` + `PickerSurface` (`popover.tsx` : Popover ancré en desktop, **feuille du bas Vaul** si
+    `(max-width: 767px), (pointer: coarse)`), `Listbox` (`listbox.tsx`, motif APG, `listboxNavigate`, `useTypeahead`),
+    pont formulaire (`form-bridge.tsx`) : valeur **ISO** dans un `<input type="hidden" name>` + `change` natif émis
+    après un choix de l'agent seulement → `FormAutoSubmit` / `next/form` / Server Actions inchangés. Le champ texte
+    visible n'a pas de `name` et son `change` natif est arrêté (`useStopNativeChange`) : une date tapée à moitié ne
+    soumet rien. `Field` fournit `id` / `aria-*` au déclencheur ou au champ texte.
+  - Tests : `select.test.tsx`, `pickers.test.tsx` (utilitaires jsdom `picker-test-utils.tsx` : matchMedia,
+    ResizeObserver). E2E : `fill()` sur un TimeField accepte « 14:30 » ; un DateField attend `jj/mm/aaaa`
+    (`frDate(iso)` dans `e2e/helpers.ts`). Démo et états dans `/design` (section « Listes, dates et heures »).
 - E2E `e2e/design.spec.ts` : `/design` dans les thèmes × 2 formats (captures `test-results/design-*.png`, pas de
   défilement horizontal, pas d'erreur console, cibles ≥ 44 px sur mobile).
 
