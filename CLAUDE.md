@@ -295,6 +295,9 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
 - (v2) **`users.preferences` est réécrit en entier** (lire puis `update`) par chaque action de préférence : deux actions
   lancées en même temps s'écrasent (favori + récent de l'annuaire, 14 oct.) → les passer en file côté client. En E2E,
   attendre la réponse de la Server Action visée (filtrer sur son argument) : la barre latérale poste aussi ses compteurs.
+- (v2) **Déplacer une page = l'ajouter à `web/src/lib/redirects.ts`** (navigation v3) : les notifications en base, les
+  favoris et ⌘K portent d'anciens liens (`/operations?train=`, `/operations/carte-pn?pn=`…). Ne jamais rediriger
+  `/pmr/extension` tant que l'extension ne déclare pas `/extension*` dans ses `content_scripts` (connexion cassée).
 - (v2) Playwright : un libellé avec astérisque requis (`Arrivée *`) ne répond pas à `getByLabel(…, { exact: true })` ;
   passer par `getByRole(…, { name, exact: true })`.
 
@@ -1170,6 +1173,20 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   et `oldestDay` ; `SyncStatus` affiche la dernière synchro et signale à part un jour resté ancien (> 1 h). Avant, l'heure
   était celle du jour le moins récent et le nom celui du dernier envoi. Constat : la préversion n'avait reçu que la synchro
   de 03:43 (utilisateur) et la **prod n'a jamais reçu de synchro** (extensions encore branchées sur test-csm).
+
+- 2026-10-14 — **Navigation v3** (audit `docs/design/AUDIT-NAVIGATION.md`, proposition B validée avec les décisions en tête) :
+  Accueil (À traiter · Statistiques), Opérations (Journal par défaut · Ma journée · Relève), Commandes (Suivi « À envoyer »
+  par défaut, ouvert au « taxi seul » · Bus · Taxi · Archives · Fournisseurs), PMR (Missions · Groupes · Clients · Matériel ·
+  Historique), **Réseau** (Trains en direct · Horaires · Lignes · Gares · PtCar · EBP · Carte PN ; Gares et PtCar restent
+  séparés), Ressources (Contacts · Collègues · Planning · Procédures et documents · **B201**) ; module Équipe supprimé, Mon
+  profil (`/profil`) et Extension CSM (`/extension`) dans le menu du compte ; mobile Accueil · Opérations · Bons · PMR · Plus.
+  Nouvelles URL `/reseau/*`, `/ressources/*`, `/statistiques`, `/profil`, `/extension` ; **anciennes routes redirigées en
+  308 (requête gardée) depuis une liste unique** `web/src/lib/redirects.ts` ; `/pmr/extension` gardée en **alias** (le script
+  de connexion des extensions installées n'y est injecté que là). **Droits (décision de l'utilisateur)** : gares (district,
+  lignes, type), lignes, PtCar, EBP, points SPI en **lecture seule pour PACO/RCCA et modérateurs**, modifiables avec la clé
+  sensible **`referentiels:manage`** (admin / sysop d'office, rôle personnalisé possible ; migration `1760004700`) ; Carte PN
+  inchangée. **Administration › Référentiels** : tableau de bord qualité + écrans Gares et districts, Lignes (création d'une
+  ligne absente, ex. L.26), PtCar, EBP, Points SPI, Passages à niveau (désactivation), Imports. 617 contrôles de règles.
 
 - 2026-10-14 — **Refonte de l'annuaire** (Ressources › Annuaire, demande de l'utilisateur : « plus agréable à utiliser /
   rechercher » ; `docs/design/REFONTE-ANNUAIRE.md`). Audit : « liege » ne trouvait pas « Liège », un numéro tapé avec

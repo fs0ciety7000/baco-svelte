@@ -41,6 +41,28 @@ La correction est prête et testée dans `supabase/migrations/20261008120000_sec
    - Équipe
 
    L'administration passe dans le menu utilisateur (révisé le 14 oct. 2026 : section « Administration » de la barre latérale, pages groupées Comptes / Supervision / Réglages, menu latéral sur le rail, « Plus » en mobile ; un seul lien dans le menu utilisateur). Les sous-pages deviennent des **onglets à l'intérieur de chaque module** (par exemple Commandes → Bus | Taxi | Suivi | Remise B201). Le mobile garde 4 onglets en bas plus « Plus ».
+
+   **Navigation v3 (14 oct. 2026, `docs/design/AUDIT-NAVIGATION.md`, proposition B validée avec les décisions en tête du
+   document)** — modules « par nature de travail », source unique `web/src/navigation.ts` :
+
+   | Module | Onglets (le premier ouvre le module) | Routes |
+   |---|---|---|
+   | Accueil | À traiter · Statistiques | `/`, `/statistiques` |
+   | Opérations | **Journal** · Ma journée · Relève | `/operations/journal`, `/operations/journee`, `/operations/releve` |
+   | Commandes | **Suivi** (« À envoyer ») · Bus · Taxi · Archives · Fournisseurs | `/commandes/suivi`, `/commandes`, `/commandes/taxi`, `/commandes/archives`, `/commandes/fournisseurs` |
+   | PMR | Missions · Groupes · Clients · Matériel · Historique (BACO) | `/pmr`, `/groupes`, `/pmr/clients`, `/pmr/materiel`, `/pmr/historique` |
+   | Réseau | Trains en direct · Horaires · Lignes · Gares · PtCar · EBP · Carte PN | `/reseau`, `/reseau/horaires`, `/reseau/lignes`, `/reseau/gares`, `/reseau/ptcar`, `/reseau/ebp`, `/reseau/pn` |
+   | Ressources | Contacts · Collègues · Planning · Procédures et documents · B201 | `/ressources`, `/ressources/equipe`, `/ressources/planning`, `/ressources/documents`, `/ressources/b201` |
+   | Administration | Comptes (Utilisateurs, Rôles, Appareils connectés) · **Référentiels** · Supervision · Réglages | `/admin…`, `/admin/referentiels…` |
+
+   Module Équipe supprimé : **Mon profil** (`/profil`) et **Extension CSM** (`/extension`) dans le menu du compte (et ⌘K).
+   Gares et PtCar restent deux onglets. Mobile : Accueil · Opérations · Bons · PMR · Plus. Les pastilles de la barre
+   latérale mènent à ce qu'elles comptent (non-lus → Journal, bons à envoyer → Suivi « À envoyer »). Anciennes routes :
+   redirections permanentes (308, requête gardée) listées dans `web/src/lib/redirects.ts` ; `/pmr/extension` reste servie
+   (alias) tant que l'extension installée n'injecte son script de connexion que sur ce chemin. Règle : **consulter dans le
+   module, gérer dans l'Administration** — gares (district, lignes, type), lignes, PtCar, EBP, points SPI en lecture seule
+   pour PACO/RCCA et modérateurs, modifiables avec `referentiels:manage` (admin, sysop, rôle personnalisé) ; Carte PN
+   inchangée (`carte_pn:*`).
 2. **Widgets non responsive** : abandonner gridstack. Utiliser une grille CSS avec **container queries** ; chaque widget adapte son contenu à sa propre largeur. On réorganise par glisser-déposer simple (dnd-kit) et on mémorise la disposition par utilisateur.
 3. **Lisibilité insuffisante** :
    - corps de texte à 14 px minimum ;

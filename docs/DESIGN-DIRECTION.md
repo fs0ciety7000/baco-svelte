@@ -306,3 +306,18 @@ Principe de refonte validé par l'utilisateur (« plus agréable à utiliser / r
   index des groupes en une rangée de puces qui défile.
 - **Fiche** : bloc téléphone sur `surface-2` (numéro en `text-h3` mono, « Appeler » primaire + « Copier le numéro »
   secondaire), puis e-mail, favori, détails.
+
+## Navigation v3 — 14 oct. 2026 (validée, `docs/design/AUDIT-NAVIGATION.md`)
+
+- **Six modules par nature de travail** : Accueil (À traiter · Statistiques), Opérations (Journal · Ma journée · Relève),
+  Commandes (Suivi · Bus · Taxi · Archives · Fournisseurs), PMR (Missions · Groupes · Clients · Matériel · Historique),
+  **Réseau** (Trains en direct · Horaires · Lignes · Gares · PtCar · EBP · Carte PN), Ressources (Contacts · Collègues ·
+  Planning · Procédures et documents · B201). Module Équipe supprimé ; Mon profil et Extension CSM dans le menu du compte.
+- Icônes : Opérations `Radio`, Réseau `Train`, Ressources `Library`. Couleurs de module (thèmes « taxonomie ») :
+  `--mod-reseau` (ex-`referentiels`), `--mod-ressources` (ex-`equipe`).
+- Barre mobile : **Accueil · Opérations · Bons · PMR · Plus** ; « Plus » : Réseau, Ressources, Nouveautés, Administration.
+- L'Accueil a des onglets (À traiter · Statistiques) : barre du haut en desktop, onglets sous l'en-tête en mobile.
+- **Administration › Référentiels** : barre de puces des écrans (tableau de bord, gares et districts, lignes, PtCar, EBP,
+  points SPI, PN, imports) ; tableau de bord en cartes (une par référentiel, anomalies en lignes de 44 px avec icône
+  d'état, compteur mono) ; listes de gestion = tableau dense en desktop, `ListCard` + actions en icônes en mobile,
+  panneau `Sheet` pour créer / modifier, suppression confirmée par dialogue `danger`.

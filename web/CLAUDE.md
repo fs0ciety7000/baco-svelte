@@ -46,6 +46,37 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   supprimait l'une des deux (bouton primaire sans `text-accent-fg`, contraste 1,6:1). Tout nouveau jeton de taille ou de
   couleur doit être ajouté dans `src/lib/utils.ts`. L'E2E `/design` vérifie la couleur calculée du bouton primaire.
 
+## Navigation v3 (14 oct. 2026, `../docs/design/AUDIT-NAVIGATION.md`)
+
+- `src/navigation.ts` : Accueil (À traiter `/` · Statistiques `/statistiques`), Opérations (Journal par défaut · Ma journée ·
+  Relève), Commandes (Suivi par défaut · Bus · Taxi · Archives · Fournisseurs), PMR (Missions · Groupes · Clients · Matériel ·
+  Historique), **Réseau** (`/reseau` = Trains en direct · `/reseau/horaires` · `lignes` · `gares` · `ptcar` · `ebp` · `pn`),
+  **Ressources** (`/ressources` = Contacts · `/ressources/equipe` Collègues · `planning` · `documents` · `b201`). Module
+  Équipe supprimé. Un onglet peut exiger plusieurs clés (`permission: [...]`) ou **l'une d'elles** (`anyOf`, Suivi : bus OU
+  taxi). `ACCOUNT_LINKS` / `accountLinks(user)` (Mon profil `/profil`, Mon planning, Extension CSM `/extension`) : menu du
+  compte (`ShellData.account`), ⌘K, et `requireRoute` les accepte comme des onglets. `activeModule` = **plus long préfixe**
+  (un onglet ou l'adresse d'un module) ; l'Accueil ne répond qu'à `/` et à ses onglets. Couleurs de module : `reseau`,
+  `ressources` (`design/tokens.ts`).
+- **Anciennes routes** : `src/lib/redirects.ts` (`LEGACY_REDIRECTS`, lu par `next.config.ts` `redirects()`, 308, requête
+  gardée, cible finale directe, jamais `/api`). Toute route déplacée s'y ajoute ; `lib/redirects.test.ts` vérifie que chaque
+  cible est une page, que chaque source n'en est plus une et que chaque lien de la navigation mène à une page ; E2E « anciennes
+  routes » dans `e2e/shell.spec.ts`. **Exception** : `/pmr/extension` est un ALIAS (réexporte `extension/page.tsx`) car le
+  script `csm-link.js` des extensions installées n'est injecté que sur ce chemin ; à rediriger quand une version de
+  l'extension aura ajouté `/extension*` à ses `content_scripts`. `lib/home.ts` convertit les anciennes pages d'accueil
+  enregistrées (`/operations` → `/reseau`, `/referentiels` → `/ressources`, `/commandes` → `/commandes/suivi`).
+- Actions déplacées : `app/team-actions.ts` (ex-`equipe/actions.ts`), `app/(app)/extension/actions.ts`,
+  `app/(app)/ressources/actions.ts` (contacts, documents), `app/(app)/reseau/{gares,lignes,horaires}/actions.ts`.
+- **Référentiels du réseau** : modification = `can(user, "referentiels:manage")` (gares, lignes, relance de l'import des
+  horaires ; PtCar / EBP / SPI dans l'administration). Carte PN : `carte_pn:*` inchangés.
+- **Administration › Référentiels** (`/admin/referentiels…`, entrée `ADMIN` à `permission: "referentiels:manage"` ;
+  `adminModule()` rend les seuls onglets à permission pour un non-admin ; `admin/layout.tsx` = `adminModule(user)` sinon 404,
+  et garde `requirePermission("referentiels:manage")` dans chaque page) : `server/data/admin-referentiels.ts`
+  (`referentialQuality`, anomalies `*_ISSUES` partagées tableau de bord / listes, `adminPtcar|Ebp|Spi|Crossings|Lines`),
+  actions `admin/referentiels/actions.ts` (`saveReference`, `deleteReference`, `setCrossingActive`, `createRailLine`,
+  `deleteRailLine`), composants `components/admin/referentiels/` (`ReferenceAdmin` générique : champs décrits par la page,
+  aucun callback serveur → client ; `RefAdminList`, `RefAdminNav`, `LinesAdmin`). Gares : `StationsScreen`
+  (`components/referentiels/stations-screen.tsx`) partagé par Réseau › Gares et l'administration.
+
 ## Shell (étape 3)
 
 - Navigation : **source unique** `src/navigation.ts` (6 modules, onglets en routes, `hideFor`, actions rapides,
@@ -130,10 +161,10 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `/api/operations/tuiles/{z}/{x}/{y}` (`carte_pn:read`, cache), pièces jointes
   `/api/operations/main-courante/[id]/fichiers` (POST multipart borné, type vérifié sur les octets) et `/[nom]` (GET,
   jeton de fichier côté serveur), exports CSV main courante et statistiques.
-- Écrans : `/operations` (trains en direct, `?gare=&nom=&train=&jour=`), **`/operations/journal`** (ex-main courante :
+- Écrans : `/reseau` (trains en direct, `?gare=&nom=&train=&jour=`), **`/operations/journal`** (ex-main courante :
   fil continu façon messagerie, `?entree=&pn=&q=&categorie=&urgentes=&agents=&n=`, `?train=&categorie=` pré-remplit la
-  barre d'écriture ; `/operations/main-courante[/nouveau]` redirigent), `/operations/carte-pn` (Leaflet chargé à la demande,
-  `?pn=&q=`), `/operations/statistiques`. Cloche `components/shell/notification-bell.tsx` (SSE `notifications`).
+  barre d'écriture ; `/operations/main-courante[/nouveau]` redirigent), `/reseau/pn` (Leaflet chargé à la demande,
+  `?pn=&q=`), `/statistiques`. Cloche `components/shell/notification-bell.tsx` (SSE `notifications`).
 - Variables : `IRAIL_URL`, `TILES_URL`, `CSM_USER_AGENT` (facultatives). E2E : `e2e/operations.spec.ts` avec
   `node e2e/mock-services.mjs 8094` et `IRAIL_URL=http://127.0.0.1:8094/v1 TILES_URL=http://127.0.0.1:8094/tiles/{z}/{x}/{y}.png`.
 
@@ -304,7 +335,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   (`lib/orders/mail.ts`) vouvoient. Barre mobile : 5 modules (`mobile: true`, `shortLabel`) + « Plus ».
 - E2E `e2e/motion.spec.ts` : palette sans glissement, aucune animation infinie (hors `animate-pulse-dot` /
   `animate-spin`), accueil sans flash, filtre sans rechargement.
-- **Extension DICOS** (`/pmr/extension`) : paquets lus dans `downloads/dicos-connector/` (`server/extension.ts`,
+- **Extension DICOS** (`/extension`) : paquets lus dans `downloads/dicos-connector/` (`server/extension.ts`,
   `release.json` validé par zod), servis par `api/pmr/extension/[file]` ; `next.config.ts` → `outputFileTracingIncludes`
   (sinon absents du standalone). Nouvelle version de l'extension : manifests + `lib/pmr/extension-releases.ts` +
   `../extension/build-zips.sh` (test `extension-releases.test.ts`).
@@ -489,7 +520,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - **Documents** (Ressources › Procédures et documents) : envoi par **`POST /api/referentiels/documents`** (30 Mo, type
   détecté par les octets, `lib/referentiels/detect.ts`) — jamais par Server Action (limitée à 1 Mo par Next). Lecture
   `/api/referentiels/documents/<id>` : image en aperçu, `?vue=1` PDF inline **sans `sandbox`** (sinon le lecteur PDF de
-  Chrome ne s'ouvre pas), `?dl=1` téléchargement. Visionneuse `/referentiels/documents/voir/<id>` (cadre même origine) :
+  Chrome ne s'ouvre pas), `?dl=1` téléchargement. Visionneuse `/ressources/documents/voir/<id>` (cadre même origine) :
   `next.config.ts` ne pose pas `X-Frame-Options: DENY` et le middleware ne pose pas sa CSP sur ce seul chemin (la route
   pose `SAMEORIGIN` + `frame-ancestors 'self'`). Envoi possible depuis le formulaire d'une procédure (document lié).
 - **Archives des bons** : `server/archives.ts` (`archiveOrder` appelé par `transitionOrder` quand le bon passe « envoyé / finalisé » ;
@@ -606,7 +637,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   terminés par `ended_at`), `aujourdhui`, `en-cours`, `toutes`. Accueil (`todo.tsx`) : « Bon bus terminé à envoyer »,
   KPI « Bons à envoyer » ; Relève `Handover { toSend, running }` ; barre latérale : bons terminés. Plus d'alerte H-2
   (`urgency.ts` supprimé) ni de relance fournisseur. Bons pris en compte par B201 et Ma journée : tout sauf annulé.
-- **Référentiel des relations de trains** (Ressources › Trains, `/referentiels/trains`, 14 oct. 2026) : logique pure
+- **Référentiel des relations de trains** (Ressources › Trains, `/reseau/horaires`, 14 oct. 2026) : logique pure
   `lib/timetable/` (`model.ts` : relation, type, série demi-bloc, jours, `relationKey`, `referenceWeek` avec fériés belges ;
   `csv.ts` ; `infrabel.ts` : `pathCollector` ; `gtfs.ts` : `timetableBuilder` → services + relations, chemin Infrabel retenu
   si ≥ 60 % des arrêts connus s'y retrouvent ; testés), import `server/timetable/import.ts` (GTFS sur disque, lecteur zip
@@ -615,7 +646,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   échoue ; actif en production ou `CSM_TIMETABLE=on`, jamais sans `CSM_INTERNAL_SECRET`), données `server/data/timetable.ts`,
   page + `components/referentiels/trains.tsx`, bouton admin « Mettre à jour » (`after()`). Variables : `CSM_TIMETABLE`,
   `CSM_GTFS_URL`. E2E `e2e/trains.spec.ts` (données fictives IC98 / IC97). En local : `NODE_USE_ENV_PROXY=1` pour l'import.
-- **Référentiel des gares** (Ressources › Gares, `/referentiels/gares`, 14 oct. 2026) : `lib/timetable/stations.ts`
+- **Référentiel des gares** (Ressources › Gares, `/reseau/gares`, 14 oct. 2026) : `lib/timetable/stations.ts`
   (`buildStations`, `countryOf`, `aliasesOf`, testés) construit à l'import ; district par `StationDistrict` (action
   `referentiels/gares/actions.ts`, `ptcar:update`) ; `districtForStation` consulte d'abord `setDistrictOverrides` chargé par
   `server/station-districts.ts` (`loadStationDistricts()` en tête de l'ingestion DICOS) ; `resolveStationTerms` lit aussi
@@ -637,7 +668,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `/changelog` appellent `acknowledgeChangelog` (`app/changelog-actions.ts` : `preferences.changelogSeen`, jamais en arrière ni
   au-delà de la version livrée). E2E : `e2e/global-setup.ts` met `changelogSeen = 9999.12.31` aux comptes E2E communs ;
   `e2e/changelog.spec.ts` crée ses comptes jetables. `E2E_BASE_URL` change le port de Playwright en local.
-- **Ressources › Lignes** (`/referentiels/lignes`, 14 oct. 2026) : lit `rail_lines` (plus `line_stations`). Ordre pur
+- **Ressources › Lignes** (`/reseau/lignes`, 14 oct. 2026) : lit `rail_lines` (plus `line_stations`). Ordre pur
   `lib/timetable/lines.ts` (`buildRailLines`, `sectionsFrom`, `stationIndex`, `lineDistrict` ; testé : sens inverse,
   raccourci, embranchement, bifurcation entre deux gares, trou kilométrique, point non voyageur) appelé par l'import après les
   gares (`readSections` : « lijnsecties » Infrabel, échec = avertissement, ordre gardé sans sens). Données
@@ -682,7 +713,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   rattaché, ou proposé, à un compte de l'équipe : `isTeamAccount`, `TEAM_ROLES` ; les autres comptent dans `notTeam`) ;
   routes `api/equipe/quinyx/ingest` (2 Mo, 20 / min / jeton) et `api/equipe/quinyx/config` (groupes activés).
 - Données : `server/data/quinyx.ts` (`listPlanning`, `myShifts` / `todayShiftOf` = rattachement **validé** seulement,
-  `quinyxSyncs`, `adminQuinyx`). Écrans : `/equipe/planning` (`components/team/planning.tsx` : `PlanningDay`,
+  `quinyxSyncs`, `adminQuinyx`). Écrans : `/ressources/planning` (`components/team/planning.tsx` : `PlanningDay`,
   `PlanningWeek` — grille `planning-grid` en desktop, `planning-week-list` en mobile —, `QuinyxFreshness`) ;
   `/admin/quinyx` (`components/admin/quinyx-admin.tsx`, actions `admin/quinyx/actions.ts`, l'adresse
   `…/schedule/<n°>` collée est réduite au numéro, un compte CSM = un agent Quinyx).

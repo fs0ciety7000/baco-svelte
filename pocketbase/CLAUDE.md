@@ -12,7 +12,7 @@ pocketbase migrate up $P                                   # appliquer les migra
 pocketbase superuser upsert <email> <mot de passe> $P      # compte superuser local
 pocketbase serve --http 127.0.0.1:8090 $P                  # serveur local
 CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P   # import de la sauvegarde Supabase (hors Git)
-PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (≈ 580 contrôles ; CSM_INTERNAL_SECRET pour « en tant que »)
+PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (≈ 617 contrôles ; CSM_INTERNAL_SECRET pour « en tant que »)
 node scripts/perms-equivalence.mjs pb_data/data.db         # rôles v3 : ancien calcul ↔ users.perms (0 écart attendu)
 pocketbase perms-check $P                                  # même contrôle en JSVM, LECTURE SEULE, code 1 si écart (prod : tâche Coolify)
 CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # Commandes + PMR, comptes gardés
@@ -58,6 +58,16 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   `pmr_zones.delete` = `pmr:delete`, `stations` lu avec `timetable:read`, `rail_lines.update` = `ptcar:update`. Le compte de
   service ne lit plus pmr_zones, spi_points, changelog, train_*, rail_lines, stations (inutilisés). `perms-check` (roles.pb.js,
   lib/perms-check.js) : console, aucune écriture (les commandes console n'appliquent pas les migrations).
+- **Référentiels du réseau** (`1760004700_referentiels_manage.js`, navigation v3, 14 oct. 2026) : écriture de `ptcar`,
+  `ebp_views`, `spi_points` (création, modification, suppression), `stations` (modification ; création / suppression
+  fermées : import seul) et `rail_lines` (modification, **création d'une ligne manuelle**, suppression d'une ligne
+  `manual = true` seulement) = `ACTIVE && (ADMIN || perms ~ '"referentiels:manage"')`, suffixes de champs inchangés.
+  Lectures inchangées ; `level_crossings` (Carte PN) inchangé. Les anciennes clés `ptcar:write/update/delete`,
+  `ebp:*` (hors lecture), `lignes:*` restent au catalogue (cachées) mais n'ont plus d'effet. Hook `timetable.pb.js` : une
+  ligne créée par l'API est forcée « manuelle » (numéro normalisé, `sig` / `*_auto` vidés, au moins deux gares sur le
+  tronc) ; l'import ne touche jamais une ligne manuelle. Référence d'équivalence : `referentiels:manage` = admin / sysop
+  (`perms-equivalence.mjs`, `lib/perms-check.js`). test-rules : PACO/RCCA et modérateur refusés, admin et rôle personnalisé
+  autorisés, anciens droits accordés sans effet.
 - **Suppression des bons** (`1760004410`, 14 oct. 2026) : `otto:delete` / `generate_taxi:delete` (Modérateur, admins), OU le
   créateur (`created_by`) avec `otto:write` / `generate_taxi:write`, bon pas `envoye`, **8 h** après `created` (hook
   `checkDelete`, lib/orders.js : pas d'arithmétique sur `@now` dans les règles). `order_events` supprimés avec le bon, liens du
