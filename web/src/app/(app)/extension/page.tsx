@@ -54,7 +54,7 @@ export default async function Page() {
   const signed = release?.files.some((f) => f.browser === "firefox-signed") ?? false;
 
   return (
-    <section className="flex max-w-4xl flex-col gap-4" aria-label="Extension DICOS">
+    <section className="flex max-w-4xl flex-col gap-4" aria-label="Extension CSM">
       <Card>
         <CardHeader
           eyebrow="Connecteur DICOS"

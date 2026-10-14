@@ -148,6 +148,8 @@ onRecordUpdateRequest((e) => {
 // (ex. L.26). Toujours « manuelle » : l'import ne l'écrase ni ne la supprime ; s'il construit un jour la même ligne, il
 // ne remplit que la version automatique (`stations_auto`).
 onRecordCreateRequest((e) => {
+	// Superuser (fiches de test, reprise manuelle) : enregistrement tel quel, comme avant 1760004700.
+	if (e.hasSuperuserAuth()) return e.next();
 	const t = require(`${__hooks}/lib/timetable.js`);
 	const line = String(e.record.getString('line')).trim().toUpperCase().replace(/^L\.?\s*/, '');
 	if (!/^[0-9A-Z]{1,12}$/.test(line)) throw new BadRequestError('Numéro de ligne invalide (ex. 26, 161A).');

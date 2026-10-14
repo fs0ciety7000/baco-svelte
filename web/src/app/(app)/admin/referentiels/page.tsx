@@ -33,7 +33,8 @@ export default async function Page() {
     (n, c) =>
       n +
       c.issues.reduce(
-        (m, i) => m + (c.id === "pn" && /Désactivés/.test(i.label) ? 0 : (i.count ?? 0)),
+        // Désactivés : un choix, pas une anomalie ; propositions : sous-ensemble des gares sans district (compté une fois).
+        (m, i) => m + (/^(Désactivés|Propositions)/.test(i.label) ? 0 : (i.count ?? 0)),
         0,
       ),
     0,

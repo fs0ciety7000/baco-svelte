@@ -307,7 +307,7 @@ function LineStations({ detail, trunk }: { detail: LineDetail; trunk: LineDetail
         {detail.oriented
           ? "Dans le sens des points kilométriques Infrabel (km aux gares de début ou de fin de section)."
           : "Ordre des trajets Infrabel (sens kilométrique non publié pour cette ligne)."}{" "}
-        District : Ressources › Gares.
+        District : Réseau › Gares.
       </p>
       <StationList stations={trunk} testId="line-stations" />
       {detail.branches.map((b) => {

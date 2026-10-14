@@ -21,7 +21,7 @@ export default async function Page() {
         <span className="font-mono text-fg tabular">{owners}</span> {pl(owners, "agent")}. Révoquer
         un jeton (poste perdu, départ d&apos;un agent) bloque l&apos;extension de cet appareil
         d&apos;ici une minute ; l&apos;agent peut en connecter une nouvelle depuis la page «
-        Extension DICOS ».
+        Extension CSM » (menu de son compte).
       </p>
       <TokenList tokens={tokens} admin title="" empty="Aucun appareil connecté pour l'instant." />
     </section>

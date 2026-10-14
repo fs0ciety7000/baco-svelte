@@ -11,6 +11,19 @@ export async function login(page: Page, next = "/") {
   await expect(page).toHaveURL(new RegExp(`${next === "/" ? "/$" : `${next}$`}`));
 }
 
+/** Compte admin de test (E2E_ADMIN_IDENTITY / E2E_ADMIN_PASSWORD) : gestion des référentiels (navigation v3). */
+export const adminIdentity = process.env.E2E_ADMIN_IDENTITY ?? "";
+const adminPassword = process.env.E2E_ADMIN_PASSWORD ?? "";
+
+export async function loginAdmin(page: Page, next = "/") {
+  await page.context().clearCookies();
+  await page.goto(`/connexion${next === "/" ? "" : `?suite=${encodeURIComponent(next)}`}`);
+  await page.getByLabel("E-mail ou identifiant").fill(adminIdentity);
+  await page.getByLabel("Mot de passe").fill(adminPassword);
+  await page.getByRole("button", { name: "Se connecter", exact: true }).click();
+  await expect(page).not.toHaveURL(/\/connexion/);
+}
+
 export async function noHorizontalScroll(page: Page) {
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,

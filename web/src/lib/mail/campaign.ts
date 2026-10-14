@@ -21,7 +21,7 @@ export const DEFAULT_CAMPAIGN = {
     "- la connexion par passkey (Windows Hello, Touch ID) et l'application installable sur téléphone.",
     "",
     "**À faire à ta première connexion**",
-    "- reconnecte l'extension DICOS à ton compte (PMR › Extension DICOS) ;",
+    "- reconnecte l'extension DICOS à ton compte (menu du compte › Extension CSM) ;",
     "- coche tes districts du jour.",
     "",
     "À partir de maintenant, utilise CSM pour tout ton travail.",

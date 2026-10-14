@@ -182,7 +182,7 @@ test("ligne « L.996 » et gare par abréviation", async ({ page, isMobile }) =>
   await noHorizontalScroll(page);
   await page.screenshot({ path: `test-results/palette-${isMobile ? "390" : "1440"}.png` });
   await station.click();
-  await expect(page).toHaveURL(/\/referentiels\/trains\?vue=gare&gare=Palette/);
+  await expect(page).toHaveURL(/\/reseau\/horaires\?vue=gare&gare=Palette/);
 });
 
 test("fournisseur et agent de l'équipe", async ({ page, isMobile }) => {

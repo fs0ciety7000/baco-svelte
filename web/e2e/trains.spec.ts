@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { login, noHorizontalScroll } from "./helpers";
+import { adminIdentity, login, loginAdmin, noHorizontalScroll } from "./helpers";
 
 // Ressources › Trains (référentiel des relations, 14 oct. 2026). Données de test écrites par le superuser (relation
 // fictive « IC98 » / « IC97 » selon le format, trains 998x1 / 998x2), supprimées à la fin ; l'import réel (GTFS +
@@ -196,6 +196,12 @@ test("gares : recherche par alias, district modifiable", async ({ page }, info) 
     path: `test-results/trains-gares-${info.project.name}.png`,
     fullPage: true,
   });
+  // Navigation v3 (14 oct. 2026) : lecture seule pour les PACO/RCCA ; le district se change avec referentiels:manage.
+  await expect(page.getByTestId("station-district")).toHaveCount(0);
+  test.skip(!adminIdentity, "E2E_ADMIN_IDENTITY non défini");
+  const q = encodeURIComponent(`Alias E2E ${info.project.name}`);
+  await loginAdmin(page, `/admin/referentiels/gares?q=${q}`);
+  await expect(page.getByText(name).filter({ visible: true }).first()).toBeVisible();
   const select = page.getByTestId("station-district").filter({ visible: true }).first();
   await select.selectOption("DSE");
   await expect(page.getByText(`${name} : district enregistré.`)).toBeVisible();
@@ -280,6 +286,12 @@ test("lignes : liste, filtres district et gare, gares dans l'ordre", async ({ pa
   );
   await noHorizontalScroll(page);
   await page.screenshot({ path: `test-results/lignes-fiche-${p}.png`, fullPage: true });
+
+  // Navigation v3 : lecture seule pour les PACO/RCCA ; la correction exige referentiels:manage (compte admin de test).
+  await expect(detail.getByTestId("line-edit")).toHaveCount(0);
+  test.skip(!adminIdentity, "E2E_ADMIN_IDENTITY non défini");
+  await loginAdmin(page, `/reseau/lignes?ligne=L.${LN}`);
+  await expect(detail.getByText(`${gare} – Terminus E2E`)).toBeVisible();
 
   // Correction manuelle (remplace Admin › Lignes et arrêts) : Terminus monte d'un cran, badge, puis retour à l'import.
   await detail.getByTestId("line-edit").click();

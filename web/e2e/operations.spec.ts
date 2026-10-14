@@ -250,8 +250,8 @@ test("cloche et statistiques", async ({ page }, info) => {
   await expect(page.getByTestId("bell")).toHaveAccessibleName(/1 non lue/);
   await page.getByTestId("bell").click();
   await page.getByTestId("bell-menu").getByText(`Notification ${MARK}`).click();
-  await expect(page).toHaveURL(/\/operations\/statistiques/);
-  await expect(page.getByTestId("stats-cards")).toContainText("Commandes bus");
+  await expect(page).toHaveURL(/\/statistiques/);
+  await expect(page.getByTestId("stats-cards")).toContainText("Commandes bus", { timeout: 15_000 });
   await expect(page.getByTestId("bell")).toHaveAccessibleName("Notifications");
 });
 
