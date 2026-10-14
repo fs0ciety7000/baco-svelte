@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Combobox } from "@/components/ui/combobox";
 import { DistrictPicker } from "@/components/ui/district-picker";
-import { Select } from "@/components/ui/input";
 import { Select as CustomSelect } from "@/components/ui/select";
 import { appendDistricts, DISTRICT_NAME_OPTIONS } from "@/lib/district-param";
 import { StatCard } from "@/components/ui/stat-card";

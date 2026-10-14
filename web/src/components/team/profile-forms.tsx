@@ -28,9 +28,7 @@ import { toast } from "@/components/ui/toast";
 import { useRoleLabel } from "@/components/shell/roles-context";
 import { DistrictPicker } from "@/components/ui/district-picker";
 import { DISTRICT_NAME_OPTIONS } from "@/lib/district-param";
-import { DUTY_DISTRICTS, DUTY_SHORT } from "@/lib/ops/log";
 import { DISTRICT_SHORT } from "@/lib/team";
-import { cn } from "@/lib/utils";
 import type { MyActivity, MyProfile } from "@/server/data/team";
 
 /** Recadre au centre en carré et réduit à 512 px (WebP, sinon JPEG) avant l'envoi : photo légère, jamais déformée. */

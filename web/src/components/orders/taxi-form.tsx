@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { AutosaveIndicator, FormSection, Segmented } from "@/components/ui/form-kit";
 import { Combobox } from "@/components/ui/combobox";
-import { Input, Select, Textarea } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
 import { Select as CustomSelect } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";

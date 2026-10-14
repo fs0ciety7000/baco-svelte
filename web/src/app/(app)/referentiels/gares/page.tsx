@@ -4,7 +4,7 @@ import { StationsBoard } from "@/components/referentiels/stations-board";
 import { Button } from "@/components/ui/button";
 import { FilterForm } from "@/components/ui/filter-form";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
-import { Input, Select } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
 import { Select as CustomSelect } from "@/components/ui/select";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { EmptyState } from "@/components/ui/misc";

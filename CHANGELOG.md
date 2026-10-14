@@ -12,6 +12,11 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 ### Améliorations
 
 - **Dates et heures toujours au format belge** (jj/mm/aaaa, 24 h), quelle que soit la langue du navigateur. Tape « 14102026 » ou « 14/10 » pour une date, « 1450 » pour 14:50. Les flèches ↑ ↓ changent le jour, le mois ou l'heure (par pas de 5 minutes). Un calendrier (semaine du lundi, jours fériés belges marqués) s'ouvre au bouton, en feuille du bas sur mobile. Bouton « Maintenant » pour l'heure, et « À confirmer » quand l'heure d'un bon n'est pas encore connue.
+- **Listes avec recherche** : société, chauffeur, ligne, gares et catégories se cherchent en tapant (accents et majuscules ignorés), au clavier comme à la souris ; sur mobile, la liste s'ouvre en feuille du bas avec la recherche en haut.
+- **Plusieurs districts à la fois dans les filtres** (bons, Missions PMR, Groupes, historique, Ma journée, relève, statistiques, B201, équipe, planning, admin) : des puces DSO / DSE / DCE à cocher, « Tous », et « Mes districts ».
+- **Nouvelles listes déroulantes** partout (statut, type, catégorie, rôle…) : même apparence dans tous les thèmes, libellés jamais coupés, clavier complet, feuille du bas sur mobile.
+- **Mobile, bons bus et taxi** : une seule action principale en bas de l'écran et un bouton « ⋯ » pour les autres actions ; « Annuler la commande » est séparée en bas de cette liste. La barre prend moins de place.
+- Les choix du type « Remplacement / Évacuation / Modif. planifiée » ne sont plus coupés sur petit écran.
 - **Périodes « Du / Au »** (bons, Missions PMR, audit, statistiques) : un seul champ avec les raccourcis Aujourd'hui, Demain, 7 jours, Semaine ; « Au » ne peut plus précéder « Du ».
 
 - **Administration dans la barre latérale** (administrateurs) : les pages sont accessibles directement, rangées en trois groupes (Comptes, Supervision, Réglages). La section se replie si tu ne t'en sers pas tous les jours. Sur écran moyen, l'entrée « Admin » ouvre un menu avec les mêmes pages. Sur mobile, elles sont dans « Plus ».

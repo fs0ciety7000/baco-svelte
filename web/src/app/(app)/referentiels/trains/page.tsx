@@ -18,7 +18,7 @@ import { FilterChip, ChipRow } from "@/components/ui/filters";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { StationInput } from "@/components/orders/station-input";
 import { Combobox } from "@/components/ui/combobox";
-import { Input, Select } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
 import { Select as CustomSelect } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";

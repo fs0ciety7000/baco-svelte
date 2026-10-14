@@ -1191,6 +1191,15 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   dans le profil (`preferences.notifications.hidden`, `lib/notification-prefs.ts` : `hiddenFilter`, travaux = titre
   « Travaux ( »). Demandes suivantes : suppression des bons (admin ; créateur PACO pendant 8 h) confiée au lot L2 ; « voir en
   tant que » pour l'admin (agent dédié).
+- 2026-10-14 — **Fusions du soir** : rôles v3 **L2** (règles en `perms`, `1760004400`, retour arrière `migrate down` vers
+  `lib/rules-v2.js`) et **L3** (collection `roles`, `users.role` en texte validé, garde-fous, `1760004500`), suppression des
+  bons par le créateur 8 h (`1760004410`, hook `checkDelete` ; bon envoyé : droit de suppression seul), **« voir en tant
+  que »** (route interne `/api/csm/impersonate`, cookie `csm_as`, lecture seule par le middleware et `createPb`, audit
+  `impersonate_*`), refonte **R2 / R4** (`Combobox`, `MultiSelect`, `DistrictPicker`, `CheckboxGroup`, `lib/district-param.ts`,
+  filtres multi-districts) et **R5 / R6** (Select personnalisé, `OrderActionBar` mobile, Segmented en grille, `SwitchField`).
+  582 contrôles de règles, 1053 tests unitaires. Restent : 6 `<select>` natifs (district d'édition, ligne de PN, bifurcation),
+  `ListToolbar`, `loading.tsx`, R7, L4-L6, **audit sécurité de L2 avant la prod**, `perms-check` sur préversion et prod.
+  Test E2E instable sous charge : Journal « publier… » / « répondre en fil » (passe en série).
 
 ---
 

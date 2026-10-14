@@ -10,7 +10,7 @@ import {
   FilterChip,
   FilterSubmit,
 } from "@/components/ui/filters";
-import { Input, Select } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
 import { Select as CustomSelect } from "@/components/ui/select";
 import { LiveHighlight } from "@/components/ui/live-highlight";
 import { EmptyState } from "@/components/ui/misc";
