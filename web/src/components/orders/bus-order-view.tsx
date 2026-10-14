@@ -5,7 +5,7 @@ import { OrderHistory } from "@/components/orders/order-history";
 import { can } from "@/lib/permissions";
 import { officeFor } from "@/lib/orders/mail";
 import type { SessionUser } from "@/server/auth";
-import { busReference, getBusOrder, listEvents } from "@/server/data/orders";
+import { busReference, deletionFor, getBusOrder, listEvents } from "@/server/data/orders";
 
 /** Fiche d'une commande bus (formulaire + historique), partagée par /commandes/bus/[id] et /commandes/nouveau?id=. */
 export async function BusOrderView({
@@ -38,6 +38,8 @@ export async function BusOrderView({
         coordinator={can(user, "bus:reopen")}
         reference={reference}
         officeEmail={officeFor(order.draft.district).email}
+        deletion={deletionFor((p) => can(user, p), user.id, meta, events, order.draft.relation)}
+        archived={meta.archived}
       />
       <section
         aria-labelledby="historique"

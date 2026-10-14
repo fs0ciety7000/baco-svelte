@@ -547,6 +547,9 @@ function fillTaxiOrder(r, t, taxiByName, usersByName) {
 	r.set('from_station', t.gare_origine || '');
 	r.set('to_station', t.gare_arrivee || '');
 	r.set('via_station', t.gare_via || '');
+	// Une seule gare via dans BACO : étape unique (même valeur que la migration 1760004620, sinon l'import différentiel
+	// verrait un écart sur chaque bon).
+	r.set('via_stations', String(t.gare_via || '').trim() ? [t.gare_via] : []);
 	r.set('return_from', t.gare_retour_origine || '');
 	r.set('return_to', t.gare_retour_arrivee || '');
 	r.set('taxi_name', t.taxi_nom || '');

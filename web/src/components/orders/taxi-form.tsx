@@ -11,6 +11,8 @@ import {
   duplicateOrder,
   findPmrClients,
   saveTaxiOrder,
+  suggestDossiers,
+  type DossierSuggestion,
 } from "@/app/(app)/commandes/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
@@ -39,7 +41,12 @@ import { TemplateDialog } from "./bus-form";
 import { PdfLink, SendDialog } from "./send-dialog";
 import { StartPanel, type StartPanelProps } from "./start-panel";
 import { OrderActionBar } from "./order-action-bar";
+import { ArchivedBadge } from "./archived-badge";
+import { useFormDeletion } from "./delete-order";
 import { StationInput } from "./station-input";
+import { ViaStationsField } from "./via-stations-field";
+import { cleanVias, routeWithVias } from "@/lib/orders/via";
+import { DOSSIER_HINT, normalizeDossier } from "@/lib/orders/dossier";
 import { TrainNumberField } from "./train-field";
 import type { OrderTrain } from "@/app/(app)/commandes/train-actions";
 import { stationsFromTrain } from "@/lib/orders/train-route";
@@ -72,6 +79,10 @@ export type TaxiFormProps = {
   };
   officeEmail: string;
   start?: Omit<StartPanelProps, "kind">;
+  /** Suppression permise à l'agent (`deletionFor`) ; absente pour un bon neuf. */
+  deletion?: { until: string | null; label: string } | null;
+  /** Bon clôturé depuis plus de 30 jours (visible dans Commandes › Archives). */
+  archived?: boolean;
 };
 
 export function TaxiForm(props: TaxiFormProps) {
@@ -110,6 +121,13 @@ export function TaxiForm(props: TaxiFormProps) {
   });
   const orderId = autosave.id;
   const number = autosave.number ?? props.number;
+  const del = useFormDeletion({
+    kind: "taxi",
+    serverDeletion: props.deletion,
+    initialId: props.orderId,
+    id: orderId,
+    number,
+  });
 
   const company = reference.companies.find((c) => c.id === d.taxi_company);
   // Liste longue avec recherche (refonte R2) : lieux desservis en aide (cherchables aussi).
@@ -171,7 +189,7 @@ export function TaxiForm(props: TaxiFormProps) {
   const summary = {
     trajet:
       d.from_station || d.to_station
-        ? `${d.trip_day} ${d.trip_time} · ${d.from_station || "?"} → ${d.to_station || "?"}${d.round_trip ? " · A-R" : ""}`
+        ? `${d.trip_day} ${d.trip_time} · ${routeWithVias(d.from_station, d.via_stations, d.to_station)}${d.round_trip ? " · A-R" : ""}`
         : "",
     passager: d.is_pmr
       ? `PMR${client ? ` · ${client.lastName} ${client.firstName}` : ""}`
@@ -198,6 +216,7 @@ export function TaxiForm(props: TaxiFormProps) {
               {number ? `Taxi n° ${number}` : "Nouveau bon taxi"}
             </span>
             <StatusBadge status={props.status} />
+            {props.archived ? <ArchivedBadge /> : null}
           </div>
           {editable ? (
             <AutosaveIndicator
@@ -254,18 +273,11 @@ export function TaxiForm(props: TaxiFormProps) {
                   : null
               }
             />
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Départ" required error={err("from_station")}>
                 <StationInput
                   value={d.from_station}
                   onChange={(v) => set("from_station", v)}
-                  refs={stationRefs}
-                />
-              </Field>
-              <Field label="Via">
-                <StationInput
-                  value={d.via_station}
-                  onChange={(v) => set("via_station", v)}
                   refs={stationRefs}
                 />
               </Field>
@@ -277,6 +289,12 @@ export function TaxiForm(props: TaxiFormProps) {
                 />
               </Field>
             </div>
+            <ViaStationsField
+              value={d.via_stations}
+              onChange={(v) => set("via_stations", v)}
+              refs={stationRefs}
+              disabled={!editable}
+            />
             <Segmented
               label="Sens"
               value={d.round_trip ? "ar" : "a"}
@@ -392,6 +410,19 @@ export function TaxiForm(props: TaxiFormProps) {
                     options={PMR_CAUSES.map((c) => ({ value: c, label: c }))}
                   />
                 </Field>
+                {props.canPmr ? (
+                  <DossierField
+                    value={d.pmr_file}
+                    onChange={(v) => set("pmr_file", v)}
+                    editable={editable}
+                    query={{
+                      day: d.trip_day,
+                      from: d.from_station,
+                      to: d.to_station,
+                      client: d.pmr_client,
+                    }}
+                  />
+                ) : null}
               </>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -428,13 +459,16 @@ export function TaxiForm(props: TaxiFormProps) {
                 </Field>
               </div>
             )}
-            <Field label="Référence / relation">
-              <Input
-                value={d.relation_number}
-                onChange={(e) => set("relation_number", e.target.value)}
-                maxLength={100}
-              />
-            </Field>
+            {/* Taxi PMR : le n° de dossier remplace la référence (14 oct. 2026) ; gardée si un ancien bon en a une. */}
+            {!d.is_pmr || d.relation_number ? (
+              <Field label="Référence / relation">
+                <Input
+                  value={d.relation_number}
+                  onChange={(e) => set("relation_number", e.target.value)}
+                  maxLength={100}
+                />
+              </Field>
+            ) : null}
           </FormSection>
 
           <FormSection
@@ -525,6 +559,8 @@ export function TaxiForm(props: TaxiFormProps) {
           onDuplicate={duplicate}
           onTemplate={() => setTplOpen(true)}
           listHref="/commandes/taxi"
+          deletion={del.deletion}
+          deleteLabel={del.label}
         />
       </form>
 
@@ -539,10 +575,16 @@ export function TaxiForm(props: TaxiFormProps) {
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-small">
           <dt className="text-fg-muted">Prise en charge</dt>
           <dd className="tabular">{d.trip_day ? `${d.trip_day} ${d.trip_time}` : "—"}</dd>
-          {d.via_station ? (
+          {cleanVias(d.via_stations).length ? (
             <>
               <dt className="text-fg-muted">Via</dt>
-              <dd>{d.via_station}</dd>
+              <dd data-testid="preview-via">{cleanVias(d.via_stations).join(" → ")}</dd>
+            </>
+          ) : null}
+          {d.is_pmr && d.pmr_file ? (
+            <>
+              <dt className="text-fg-muted">N° de dossier</dt>
+              <dd className="font-mono tabular">{d.pmr_file}</dd>
             </>
           ) : null}
           <dt className="text-fg-muted">Retour</dt>
@@ -568,6 +610,84 @@ export function TaxiForm(props: TaxiFormProps) {
         flush={autosave.flush}
       />
       <TemplateDialog open={tplOpen} onOpenChange={setTplOpen} kind="taxi" data={d} />
+    </div>
+  );
+}
+
+/**
+ * N° de dossier DICOS d'un taxi PMR (14 oct. 2026) : format AAAA-MM-JJ-NNNN, remis au format à la sortie du champ si
+ * c'est sans ambiguïté (`normalizeDossier`), message clair sinon (jamais bloquant) ; dossiers DICOS connus proposés
+ * (client lié, ou mission du jour à la gare de départ / d'arrivée).
+ */
+function DossierField({
+  value,
+  onChange,
+  editable,
+  query,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  editable: boolean;
+  query: { day: string; from: string; to: string; client: string };
+}) {
+  const check = normalizeDossier(value);
+  const [suggestions, setSuggestions] = useState<DossierSuggestion[]>([]);
+  const { day, from, to, client } = query;
+  useEffect(() => {
+    if (!editable || !day || (!from && !to && !client)) {
+      setSuggestions([]);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const res = await safeCall(suggestDossiers({ day, from, to, client }));
+      if (!cancelled) setSuggestions(res.ok ? res.data : []);
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [editable, day, from, to, client]);
+  const others = suggestions.filter((s) => s.ref !== check.value);
+  return (
+    <div className="flex min-w-0 flex-col gap-2">
+      <Field
+        label="Numéro de dossier"
+        hint={`${DOSSIER_HINT}, dossier DICOS du voyageur`}
+        error={check.ok ? undefined : check.message}
+      >
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={() => {
+            if (check.ok && check.value !== value) onChange(check.value);
+          }}
+          placeholder="2026-10-14-0134"
+          inputMode="numeric"
+          autoComplete="off"
+          maxLength={40}
+          className="font-mono"
+          data-testid="pmr-file"
+        />
+      </Field>
+      {editable && others.length ? (
+        <div className="flex flex-col gap-1.5" data-testid="dossier-suggestions">
+          <span className="text-small text-fg-muted">Dossiers DICOS proposés</span>
+          <ul className="flex flex-col gap-1">
+            {others.map((s) => (
+              <li key={s.ref}>
+                <button
+                  type="button"
+                  className="flex min-h-11 w-full cursor-pointer items-center rounded-control border border-border px-3 py-1.5 text-left text-small hover:bg-surface-2"
+                  onClick={() => onChange(s.ref)}
+                >
+                  {s.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </div>
   );
 }

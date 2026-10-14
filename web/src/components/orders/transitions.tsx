@@ -100,7 +100,7 @@ export function useOrderTransitions({
   const router = useRouter();
   const [pending, start] = useTransition();
   const [dialog, setDialog] = useState<Transition | null>(null);
-  const list = transitionsFor(status, { coordinator, statusBeforeCancel }).filter(
+  const list = transitionsFor(status, { coordinator, statusBeforeCancel, kind }).filter(
     // Seul « Valider l'envoi » (terminé → envoyé) est masqué : il passe par la feuille d'envoi.
     (t) => !(hideSend && status === "termine" && t.to === "envoye"),
   );

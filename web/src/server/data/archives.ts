@@ -98,6 +98,16 @@ export async function listArchiveBackups(): Promise<ArchiveBackup[]> {
   }));
 }
 
+/** PDF archivé de chaque bon (`kind-orderId` → id de l'archive), pour la liste des bons archivés. */
+export async function archivePdfIndex(): Promise<Record<string, string>> {
+  const pb = await pbForRequest();
+  const rows = await pb
+    .collection("order_pdfs")
+    .getFullList({ fields: "id,kind,order_id", batch: 1000 })
+    .catch(() => []);
+  return Object.fromEntries(rows.map((r) => [`${str(r.kind)}-${str(r.order_id)}`, r.id]));
+}
+
 /** Bons finalisés (envoyés) sans archive (rattrapage) : identifiants, au plus `limit`. */
 export async function unarchivedOrders(limit: number) {
   const pb = await pbForRequest();

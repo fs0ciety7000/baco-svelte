@@ -3,7 +3,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ArchiveAdminBar, ArchiveDelete } from "@/components/orders/archive-tools";
-import { ClearFilters, FilterSubmit } from "@/components/ui/filters";
+import { OrderList } from "@/components/orders/order-list";
+import { DateRangePicker } from "@/components/ui/date-field";
+import { ChipRow, ClearFilters, FilterChip, FilterSubmit } from "@/components/ui/filters";
+import { ORDER_ARCHIVE_DAYS } from "@/lib/orders/archive";
+import { isValidDay } from "@/lib/orders/time";
+import type { SessionUser } from "@/server/auth";
+import { listOrders } from "@/server/data/orders";
 import { Button } from "@/components/ui/button";
 import { FilterForm } from "@/components/ui/filter-form";
 import { Input } from "@/components/ui/input";
@@ -17,14 +23,133 @@ import { can, isAdmin } from "@/lib/permissions";
 import { pl } from "@/lib/utils";
 import { archivesEnabled } from "@/server/archives";
 import { requirePermission } from "@/server/auth";
-import { listArchiveBackups, listArchives, unarchivedOrders } from "@/server/data/archives";
+import {
+  archivePdfIndex,
+  listArchiveBackups,
+  listArchives,
+  unarchivedOrders,
+} from "@/server/data/archives";
 
 export const metadata: Metadata = { title: "Archives des bons · CSM" };
 
 // Archives des bons (demande du 11 oct. 2026) : récapitulatif des bons finalisés (référence TC_ / n° de taxi, trajet,
 // date) avec leur PDF, et sauvegardes zip mensuelles. Lecture : `archives:read`.
 
-type SP = { type?: string; mois?: string; q?: string; page?: string };
+// Depuis le 14 oct. 2026, deux vues : « Bons archivés » (défaut : bons envoyés / finalisés ou annulés depuis plus de 30
+// jours, sortis des listes courantes ; lien vers la fiche en lecture et vers le PDF d'archive) et « PDF des bons » (les
+// PDF archivés à la clôture et les sauvegardes mensuelles).
+
+type SP = {
+  vue?: string;
+  type?: string;
+  mois?: string;
+  q?: string;
+  page?: string;
+  du?: string;
+  au?: string;
+};
+
+function ArchiveTabs({ vue }: { vue: "bons" | "pdf" }) {
+  return (
+    <ChipRow aria-label="Vue des archives">
+      <FilterChip asChild pressed={vue === "bons"}>
+        <Link
+          href="/commandes/archives"
+          aria-current={vue === "bons" ? "page" : undefined}
+          data-testid="archives-tab-bons"
+        >
+          Bons archivés
+        </Link>
+      </FilterChip>
+      <FilterChip asChild pressed={vue === "pdf"}>
+        <Link
+          href="/commandes/archives?vue=pdf"
+          aria-current={vue === "pdf" ? "page" : undefined}
+          data-testid="archives-tab-pdf"
+        >
+          PDF des bons
+        </Link>
+      </FilterChip>
+    </ChipRow>
+  );
+}
+
+async function ArchivedOrders({ sp, user }: { sp: SP; user: SessionUser }) {
+  const canBus = can(user, "otto:read");
+  const canTaxi = can(user, "generate_taxi:read");
+  const type = sp.type === "bus" || sp.type === "taxi" ? sp.type : "all";
+  const from = isValidDay(sp.du ?? "") ? sp.du : undefined;
+  const to = isValidDay(sp.au ?? "") ? sp.au : undefined;
+  const [{ rows, total }, pdfs] = await Promise.all([
+    listOrders(
+      { kind: type, q: sp.q, from, to, archived: "only", limit: 100 },
+      { userId: user.id, canBus, canTaxi, canPmr: can(user, "pmr:read") },
+    ),
+    archivePdfIndex(),
+  ]);
+  return (
+    <>
+      <FilterForm
+        action="/commandes/archives"
+        role="search"
+        className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
+      >
+        <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-72">
+          <span className="text-small text-fg-muted">Recherche</span>
+          <span className="relative">
+            <Search
+              aria-hidden
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted"
+            />
+            <Input
+              name="q"
+              defaultValue={sp.q ?? ""}
+              placeholder="Gare, relation, n°…"
+              className="pl-9"
+              maxLength={100}
+            />
+          </span>
+        </label>
+        <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-36">
+          <span className="text-small text-fg-muted">Type</span>
+          <Select
+            name="type"
+            defaultValue={type === "all" ? "" : type}
+            options={[
+              { value: "", label: "Bus et taxis" },
+              ...(canBus ? [{ value: "bus", label: "Bus" }] : []),
+              ...(canTaxi ? [{ value: "taxi", label: "Taxis" }] : []),
+            ]}
+          />
+        </label>
+        <DateRangePicker
+          nameFrom="du"
+          nameTo="au"
+          defaultFrom={from ?? ""}
+          defaultTo={to ?? ""}
+          presets={["7d", "week"]}
+          fieldClassName="md:w-40"
+        />
+        <div className="col-span-2 flex gap-2">
+          <FilterSubmit />
+          {sp.q || sp.type || sp.du || sp.au ? <ClearFilters href="/commandes/archives" /> : null}
+        </div>
+      </FilterForm>
+      <p className="text-small text-fg-muted" aria-live="polite" data-testid="archived-count">
+        {total} {pl(total, "bon archivé", "bons archivés")} · envoyés ou annulés depuis plus de{" "}
+        {ORDER_ARCHIVE_DAYS} jours (date de service ci-dessous).
+      </p>
+      <div data-testid="archived-orders">
+        <OrderList
+          rows={rows}
+          total={total}
+          pdfFor={pdfs}
+          emptyText="Aucun bon archivé pour ces filtres. Un bon envoyé ou annulé arrive ici 30 jours après sa clôture."
+        />
+      </div>
+    </>
+  );
+}
 
 const monthLabel = new Intl.DateTimeFormat("fr-BE", {
   month: "long",
@@ -36,6 +161,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
   const user = await requirePermission("archives:read");
   const sp = await searchParams;
   const admin = isAdmin(user);
+  if (sp.vue !== "pdf") {
+    return (
+      <section className="flex min-w-0 flex-col gap-4" aria-label="Bons archivés">
+        <ArchiveTabs vue="bons" />
+        <ArchivedOrders sp={sp} user={user} />
+      </section>
+    );
+  }
   const canDelete = can(user, "archives:delete");
   const [list, backups, pending] = await Promise.all([
     listArchives(sp),
@@ -45,7 +178,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
   const pendingCount = pending ? pending.remaining : 0;
   const keep = (extra: Record<string, string>) => {
     const q = new URLSearchParams(
-      Object.entries({ type: sp.type, mois: sp.mois, q: sp.q, ...extra }).filter(
+      Object.entries({ vue: "pdf", type: sp.type, mois: sp.mois, q: sp.q, ...extra }).filter(
         (e): e is [string, string] => !!e[1],
       ),
     );
@@ -54,6 +187,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
 
   return (
     <section className="flex min-w-0 flex-col gap-5" aria-label="Archives des bons">
+      <ArchiveTabs vue="pdf" />
       {admin ? <ArchiveAdminBar pending={pendingCount} enabled={archivesEnabled()} /> : null}
 
       <FilterForm
@@ -61,6 +195,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         role="search"
         className="flex flex-wrap items-end gap-2"
       >
+        <input type="hidden" name="vue" value="pdf" />
         <label className="flex min-w-0 flex-1 flex-col gap-1 md:max-w-80">
           <span className="text-small text-fg-muted">Recherche</span>
           <span className="relative">
@@ -94,7 +229,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
           <MonthField name="mois" defaultValue={sp.mois ?? ""} />
         </label>
         <FilterSubmit />
-        {sp.q || sp.type || sp.mois ? <ClearFilters href="/commandes/archives" /> : null}
+        {sp.q || sp.type || sp.mois ? <ClearFilters href="/commandes/archives?vue=pdf" /> : null}
       </FilterForm>
 
       <p className="text-small text-fg-muted" aria-live="polite">

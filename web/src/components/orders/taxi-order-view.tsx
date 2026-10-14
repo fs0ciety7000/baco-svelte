@@ -5,7 +5,13 @@ import { TaxiForm } from "@/components/orders/taxi-form";
 import { can } from "@/lib/permissions";
 import { officeFor } from "@/lib/orders/mail";
 import type { SessionUser } from "@/server/auth";
-import { getTaxiOrder, listEvents, redactPmr, taxiReference } from "@/server/data/orders";
+import {
+  deletionFor,
+  getTaxiOrder,
+  listEvents,
+  redactPmr,
+  taxiReference,
+} from "@/server/data/orders";
 
 /** Fiche d'une commande taxi, partagée par /commandes/taxi/[id] et /commandes/taxi/nouveau?id=. */
 export async function TaxiOrderView({
@@ -54,6 +60,8 @@ export async function TaxiOrderView({
         client={client}
         reference={reference}
         officeEmail={officeFor(order.draft.district).email}
+        deletion={deletionFor((p) => can(user, p), user.id, meta, events)}
+        archived={meta.archived}
       />
       <section
         aria-labelledby="historique"

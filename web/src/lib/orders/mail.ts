@@ -1,4 +1,5 @@
 import { parseEmails, PMR_TYPES, type BusDraft, type TaxiDraft } from "./schemas";
+import { cleanVias } from "./via";
 import { formatLongDay, formatShortDay } from "./time";
 import { lineLabel } from "@/lib/lines";
 
@@ -256,7 +257,9 @@ export function taxiMail(detail: TaxiMailDetail, opts: MailOptions): OrderMail {
   const rows: Row[] = [
     ["Date et heure", at(d.trip_day, d.trip_time)],
     ["Départ", d.from_station || "—"],
-    ...(d.via_station ? [["Via", d.via_station] as Row] : []),
+    ...cleanVias(d.via_stations).map(
+      (v, i, all) => [all.length > 1 ? `Via ${i + 1}` : "Via", v] as Row,
+    ),
     ["Arrivée", d.to_station || "—"],
     ...(d.train_number ? [["N° de train", d.train_number] as Row] : []),
     [
@@ -273,6 +276,7 @@ export function taxiMail(detail: TaxiMailDetail, opts: MailOptions): OrderMail {
         ? `Oui${pmrType ? ` – ${pmrType}` : ""}${d.pmr_count ? ` (${d.pmr_count} PMR)` : ""}`
         : "Non",
     ],
+    ...(d.is_pmr && d.pmr_file ? [["N° de dossier", d.pmr_file] as Row] : []),
     ...(d.relation_number ? [["Référence", d.relation_number] as Row] : []),
     ...(d.reason ? [["Motif", d.reason] as Row] : []),
     ["Facturation", `À charge de ${d.billing || "SNCB"}`],

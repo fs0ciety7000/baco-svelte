@@ -1,4 +1,4 @@
-import { Search } from "lucide-react";
+import { FileText, Search } from "lucide-react";
 import Link from "next/link";
 
 import { DateRangePicker } from "@/components/ui/date-field";
@@ -21,16 +21,18 @@ import { appendDistricts, DISTRICT_NAME_OPTIONS, parseDistricts } from "@/lib/di
 import { DISTRICTS } from "@/lib/orders/schemas";
 import { ORDER_STATUSES, STATUS_LABEL, type OrderKind } from "@/lib/orders/status";
 import { addDays, brusselsDay, formatDay } from "@/lib/orders/time";
+import { routeWithVias } from "@/lib/orders/via";
 import type { OrderRow } from "@/server/data/orders";
 
+import { ArchivedBadge } from "./archived-badge";
 import { KindIconClient } from "./kind-icon";
 
 export function orderHref(r: { kind: OrderKind; id: string }) {
   return r.kind === "bus" ? `/commandes/bus/${r.id}` : `/commandes/taxi/${r.id}`;
 }
 
-export function routeLabel(r: OrderRow) {
-  return `${r.origin || "?"} → ${r.destination || "?"}`;
+export function routeLabel(r: Pick<OrderRow, "origin" | "destination"> & { via?: string[] }) {
+  return routeWithVias(r.origin, r.via ?? [], r.destination);
 }
 
 export type ListFilters = {
@@ -167,12 +169,15 @@ export function OrderList({
   total,
   emptyText,
   context = "",
+  pdfFor,
 }: {
   rows: OrderRow[];
   total: number;
   emptyText: string;
   /** Filtres affichés (signal des changements en direct seulement à filtres égaux). */
   context?: string;
+  /** Page Archives : PDF archivé de chaque bon (`kind-id` → id de l'archive) ; ajoute la colonne PDF. */
+  pdfFor?: Record<string, string>;
 }) {
   if (rows.length === 0) return <EmptyState title="Aucune commande" description={emptyText} />;
   return (
@@ -196,6 +201,7 @@ export function OrderList({
               <Th>Relation</Th>
               <Th numeric>Véh.</Th>
               <Th>Statut</Th>
+              {pdfFor ? <Th>PDF</Th> : null}
             </tr>
           </THead>
           <tbody data-testid="orders-table" data-hl-scope="orders">
@@ -227,8 +233,28 @@ export function OrderList({
                 <Td className="max-w-40 truncate text-fg-muted">{r.relation || "—"}</Td>
                 <Td numeric>{r.busCount}</Td>
                 <Td>
-                  <StatusBadge status={r.status} />
+                  <span className="inline-flex items-center gap-1.5">
+                    <StatusBadge status={r.status} />
+                    {r.archived ? <ArchivedBadge /> : null}
+                  </span>
                 </Td>
+                {pdfFor ? (
+                  <Td>
+                    {pdfFor[`${r.kind}-${r.id}`] ? (
+                      <a
+                        href={`/api/commandes/archives/${pdfFor[`${r.kind}-${r.id}`]}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="relative z-10 inline-flex min-h-11 items-center gap-1 link"
+                        aria-label={`PDF archivé du bon n° ${r.number}`}
+                      >
+                        <FileText aria-hidden className="size-4" /> PDF
+                      </a>
+                    ) : (
+                      <span className="text-fg-muted">—</span>
+                    )}
+                  </Td>
+                ) : null}
               </Tr>
             ))}
           </tbody>
@@ -255,9 +281,24 @@ export function OrderList({
                   </span>
                 }
                 meta={`n° ${r.number} · ${formatDay(r.day)}${r.time ? ` ${r.time}` : ""}${r.company ? ` · ${r.company}` : ""}`}
-                aside={<StatusBadge status={r.status} />}
+                aside={
+                  <span className="flex flex-col items-end gap-1">
+                    <StatusBadge status={r.status} />
+                    {r.archived ? <ArchivedBadge /> : null}
+                  </span>
+                }
               />
             </Link>
+            {pdfFor?.[`${r.kind}-${r.id}`] ? (
+              <a
+                href={`/api/commandes/archives/${pdfFor[`${r.kind}-${r.id}`]}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-flex min-h-11 items-center gap-1 px-1 text-small link"
+              >
+                <FileText aria-hidden className="size-4" /> PDF archivé
+              </a>
+            ) : null}
           </li>
         ))}
       </ul>

@@ -46,7 +46,7 @@ const ACTION: Record<string, Omit<Transition, "to">> = {
 /** Transitions proposées à un agent (le serveur revérifie tout). */
 export function transitionsFor(
   status: Status,
-  opts: { coordinator: boolean; statusBeforeCancel?: string },
+  opts: { coordinator: boolean; statusBeforeCancel?: string; kind?: OrderKind },
 ): Transition[] {
   const targets = [
     ...TRANSITIONS[status],
@@ -57,6 +57,9 @@ export function transitionsFor(
       ? { to, label: "Annuler la commande", tone: "danger" }
       : { to, ...(ACTION[`${status}>${to}`] ?? { label: STATUS_LABEL[to] }) },
   );
+  // Taxi : pas de bus à démobiliser (retour du 14 oct. 2026) → « Terminer » tout court.
+  if (opts.kind === "taxi")
+    for (const t of list) if (status === "brouillon" && t.to === "termine") t.label = "Terminer";
   if (status === "annule" && opts.coordinator && isStatus(opts.statusBeforeCancel)) {
     list.push({ to: opts.statusBeforeCancel, label: "Rétablir", primary: true });
   }
@@ -108,6 +111,37 @@ export function canDeleteOrder(
   if (order.status === "envoye" || order.wasSent) return false;
   const created = Date.parse(order.created.replace(" ", "T"));
   return Number.isFinite(created) && now - created <= ORDER_DELETE_WINDOW_MS;
+}
+
+/**
+ * Suppression proposée à l'agent : `null` si refusée ; sinon `until` = fin de la fenêtre de 8 h du créateur (ISO), ou
+ * `null` quand le droit de suppression du module la permet sans limite. Même règle que `canDeleteOrder`.
+ */
+export function orderDeletion(
+  can: (permission: string) => boolean,
+  userId: string,
+  order: {
+    kind: OrderKind;
+    created_by: string;
+    created: string;
+    status: string;
+    wasSent?: boolean;
+  },
+  now: number = Date.now(),
+): { until: string | null } | null {
+  if (!canDeleteOrder(can, userId, order, now)) return null;
+  const mod = order.kind === "taxi" ? "generate_taxi" : "otto";
+  if (can(`${mod}:delete`)) return { until: null };
+  const created = Date.parse(order.created.replace(" ", "T"));
+  return { until: new Date(created + ORDER_DELETE_WINDOW_MS).toISOString() };
+}
+
+/** « 7h05 » : temps restant avant `until` (ISO) ; vide si dépassé. */
+export function remainingLabel(until: string, now: number = Date.now()): string {
+  const ms = Date.parse(until) - now;
+  if (!Number.isFinite(ms) || ms <= 0) return "";
+  const minutes = Math.ceil(ms / 60_000);
+  return `${Math.floor(minutes / 60)}h${String(minutes % 60).padStart(2, "0")}`;
 }
 
 /** Une commande se modifie tant qu'elle n'est pas annulée (un bon finalisé se rouvre d'abord). */

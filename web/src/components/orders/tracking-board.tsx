@@ -17,6 +17,7 @@ import type { OrderRow } from "@/server/data/orders";
 
 import { KindIconClient } from "./kind-icon";
 import { OrderHistory } from "./order-history";
+import { DeleteOrderButton } from "./delete-order";
 import { TransitionButtons } from "./transitions";
 
 const href = (r: { kind: string; id: string }) =>
@@ -242,6 +243,20 @@ export function TrackingBoard({
                   router.refresh();
                 }}
               />
+              {panel.deletion ? (
+                <DeleteOrderButton
+                  kind={open.kind}
+                  id={open.id}
+                  label={panel.deletion.label}
+                  until={panel.deletion.until}
+                  size="sm"
+                  onDeleted={() => {
+                    setOpen(null);
+                    setPanel(null);
+                    router.refresh();
+                  }}
+                />
+              ) : null}
               <Button asChild size="sm" variant="ghost" className="ml-auto">
                 <Link href={href(open)}>
                   Ouvrir <ArrowUpRight aria-hidden />
@@ -267,7 +282,9 @@ export function TrackingBoard({
               <StatusBadge status={panel.meta.status} />
               {panel.meta.status === "brouillon" ? (
                 <span className="text-small text-fg-muted">
-                  Terminer quand les bus sont démobilisés, puis valider l&apos;envoi.
+                  {open?.kind === "taxi"
+                    ? "Terminer quand la course est faite, puis valider l'envoi."
+                    : "Terminer quand les bus sont démobilisés, puis valider l'envoi."}
                 </span>
               ) : null}
             </div>

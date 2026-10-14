@@ -14,7 +14,9 @@ import {
   type BusDraft,
   type TaxiDraft,
 } from "@/lib/orders/schemas";
-import { isStatus, type OrderKind, type Status } from "@/lib/orders/status";
+import { archiveCutoff, isArchivedOrder, orderClosedAt } from "@/lib/orders/archive";
+import { isStatus, orderDeletion, type OrderKind, type Status } from "@/lib/orders/status";
+import { viaList } from "@/lib/orders/via";
 import { foldStation, type StationRef } from "@/lib/stations/search";
 import { railBranches, railLineInfo, railStations } from "@/lib/timetable/rail-segments";
 import {
@@ -84,6 +86,10 @@ export type OrderMeta = {
   startedAt: string;
   endedAt: string;
   cancelledAt: string;
+  /** Créateur (identifiant brut, même sans fiche lisible). */
+  createdById: string;
+  /** Clôturé (envoyé ou annulé) depuis plus de 30 jours : hors des listes courantes (`isArchivedOrder`). */
+  archived: boolean;
 };
 
 const PEOPLE = "created_by,sent_by,confirmed_by,cancelled_by";
@@ -107,7 +113,41 @@ function meta(kind: OrderKind, r: RecordModel): OrderMeta {
     startedAt: str(r.started_at),
     endedAt: str(r.ended_at),
     cancelledAt: str(r.cancelled_at),
+    createdById: str(r.created_by),
+    archived: isArchivedOrder({
+      status: str(r.status),
+      sent_at: str(r.sent_at),
+      cancelled_at: str(r.cancelled_at),
+      ended_at: str(r.ended_at),
+      updated: str(r.updated),
+    }),
   };
+}
+
+/** Suppression proposée à l'agent pour une fiche (voir `orderDeletion`) + désignation du bon dans la confirmation. */
+export function deletionFor(
+  can: (permission: string) => boolean,
+  userId: string,
+  m: OrderMeta,
+  /** Historique du bon (`listEvents`) : un bon déjà envoyé une fois n'est plus supprimable par son créateur. */
+  events: readonly { to: string }[],
+  relation = "",
+): { until: string | null; label: string } | null {
+  const d = orderDeletion(can, userId, {
+    kind: m.kind,
+    created_by: m.createdById,
+    created: m.created,
+    status: m.status,
+    wasSent: events.some((e) => e.to === "envoye"),
+  });
+  if (!d) return null;
+  const label =
+    m.kind === "bus"
+      ? /^TC_/i.test(relation.trim())
+        ? relation.trim()
+        : `bus n° ${m.number}`
+      : `taxi n° ${m.number}`;
+  return { ...d, label };
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -195,7 +235,7 @@ export function taxiDraftFromRecord(r: RecordModel): TaxiDraft {
     return_time: ret.time,
     from_station: str(r.from_station),
     to_station: str(r.to_station),
-    via_station: str(r.via_station),
+    via_stations: viaList(r),
     return_from: str(r.return_from),
     return_to: str(r.return_to),
     taxi_company: str(r.taxi_company),
@@ -208,6 +248,7 @@ export function taxiDraftFromRecord(r: RecordModel): TaxiDraft {
     vehicles: num(r.vehicles) || 1,
     passenger_name: str(r.passenger_name),
     relation_number: str(r.relation_number),
+    pmr_file: str(r.pmr_file),
     train_number: str(r.train_number),
     billing: str(r.billing) || "SNCB",
     reason: str(r.reason),
@@ -307,7 +348,28 @@ export type OrderRow = {
   reason: string;
   /** Bus du bon (B201) ; vide pour un taxi. */
   buses: { planned?: string; confirmed?: string; cancelled?: boolean }[];
+  /** Gares via (taxi), dans l'ordre ; vide pour un bus. */
+  via: string[];
+  /** Clôturé depuis plus de 30 jours (`isArchivedOrder`). */
+  archived: boolean;
+  /** Date de clôture (envoi ou annulation), pour la page Archives. */
+  closedAt: string;
 };
+
+function archiveInfo(r: RecordModel): { archived: boolean; closedAt: string } {
+  const o = {
+    status: str(r.status),
+    sent_at: str(r.sent_at),
+    cancelled_at: str(r.cancelled_at),
+    ended_at: str(r.ended_at),
+    updated: str(r.updated),
+  };
+  const closed = orderClosedAt(o);
+  return {
+    archived: isArchivedOrder(o),
+    closedAt: Number.isFinite(closed) ? new Date(closed).toISOString() : "",
+  };
+}
 
 function busRow(r: RecordModel): OrderRow {
   const buses = arr(r.buses) as { planned?: string; cancelled?: boolean }[];
@@ -335,6 +397,8 @@ function busRow(r: RecordModel): OrderRow {
     updated: str(r.updated),
     reason: str(r.reason),
     buses,
+    via: [],
+    ...archiveInfo(r),
   };
 }
 
@@ -367,6 +431,8 @@ function taxiRow(r: RecordModel, canPmr = false): OrderRow {
     updated: str(r.updated),
     reason: r.is_pmr ? (canPmr ? str(r.pmr_reason) : "") : str(r.reason),
     buses: [],
+    via: viaList(r),
+    ...archiveInfo(r),
   };
 }
 
@@ -390,8 +456,29 @@ export const listSchema = z.object({
     .optional()
     .transform((d) => parseDistricts(d, DISTRICTS)),
   limit: z.coerce.number().int().min(1).max(500).default(200),
+  /** Bons clôturés depuis plus de 30 jours : exclus des listes courantes, seuls dans Archives, tous pour la B201. */
+  archived: z.enum(["exclude", "only", "include"]).default("exclude"),
 });
 export type ListInput = z.input<typeof listSchema>;
+
+/**
+ * Bons archivés (miroir de `isArchivedOrder`, lib/orders/archive.ts) : envoyés avant la limite (`sent_at`, sinon
+ * `ended_at`, sinon `updated`) ou annulés avant la limite (`cancelled_at`, sinon `updated`).
+ */
+export function archiveFilter(pb: PocketBase, now: number = Date.now()): string {
+  return pb.filter(
+    `((status = "envoye" && ((sent_at != "" && sent_at < {:c}) || (sent_at = "" && ended_at != "" && ended_at < {:c}) || (sent_at = "" && ended_at = "" && updated < {:c}))) || (status = "annule" && ((cancelled_at != "" && cancelled_at < {:c}) || (cancelled_at = "" && updated < {:c}))))`,
+    { c: archiveCutoff(now) },
+  );
+}
+
+/** Complément exact de `archiveFilter` (le filtre PocketBase n'a pas de négation de groupe). */
+export function activeFilter(pb: PocketBase, now: number = Date.now()): string {
+  return pb.filter(
+    `((status != "envoye" || (sent_at != "" && sent_at >= {:c}) || (sent_at = "" && ended_at != "" && ended_at >= {:c}) || (sent_at = "" && ended_at = "" && updated >= {:c})) && (status != "annule" || (cancelled_at != "" && cancelled_at >= {:c}) || (cancelled_at = "" && updated >= {:c})))`,
+    { c: archiveCutoff(now) },
+  );
+}
 
 /** Filtre PocketBase d'une collection pour une vue + des filtres (paramètres liés). */
 function buildFilter(
@@ -430,12 +517,15 @@ function buildFilter(
     default:
       break;
   }
+  if (p.archived === "only") parts.push(archiveFilter(pb));
+  else if (p.archived === "exclude") parts.push(activeFilter(pb));
   if (p.status) parts.push(pb.filter("status = {:s}", { s: p.status }));
   if (p.from || p.to) parts.push(bounds(p.from ?? "2000-01-01", p.to ?? "2100-01-01"));
   if (p.district.length) parts.push(anyDistrictFilter(pb, "district", p.district));
   if (p.q) {
     // Gares : recherche tolérante (accents, abréviation PtCar : `stationTerms`) ; le reste sur la saisie brute.
-    const stations = kind === "bus" ? ["origin", "destination"] : ["from_station", "to_station"];
+    const stations =
+      kind === "bus" ? ["origin", "destination"] : ["from_station", "to_station", "via_station"];
     const fields =
       kind === "bus"
         ? ["relation", "reason", "company.name"]
@@ -478,8 +568,8 @@ export async function listOrders(
         expand: kind === "bus" ? "company,created_by" : "taxi_company,created_by",
         fields:
           kind === "bus"
-            ? "id,number,status,order_date,call_time,origin,destination,relation,bus_count,buses,created_by,district,sent_at,ended_at,updated,reason,expand.company.name,expand.created_by.name"
-            : "id,number,status,trip_at,from_station,to_station,relation_number,taxi_name,vehicles,is_pmr,time_pending,created_by,author,district,sent_at,ended_at,updated,reason,pmr_reason,expand.taxi_company.name,expand.created_by.name",
+            ? "id,number,status,order_date,call_time,origin,destination,relation,bus_count,buses,created_by,district,sent_at,ended_at,cancelled_at,updated,reason,expand.company.name,expand.created_by.name"
+            : "id,number,status,trip_at,from_station,to_station,via_station,via_stations,relation_number,taxi_name,vehicles,is_pmr,time_pending,created_by,author,district,sent_at,ended_at,cancelled_at,updated,reason,pmr_reason,expand.taxi_company.name,expand.created_by.name",
       });
       return {
         rows: res.items.map(kind === "bus" ? busRow : taxiRowFor(!!ctx.canPmr)),
@@ -767,7 +857,14 @@ export function redactPmr<T extends TaxiOrderDetail>(o: T): T {
   return {
     ...o,
     client: null,
-    draft: { ...o.draft, pmr_client: "", pmr_type: "", pmr_reason: "", passenger_name: "" },
+    draft: {
+      ...o.draft,
+      pmr_client: "",
+      pmr_type: "",
+      pmr_reason: "",
+      pmr_file: "",
+      passenger_name: "",
+    },
     snapshot: { ...o.snapshot, pmrLastName: "", pmrFirstName: "", pmrPhone: "", pmrFile: "" },
   };
 }
