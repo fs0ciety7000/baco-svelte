@@ -3,14 +3,14 @@
 import type * as React from "react";
 
 import { modColor } from "@/design/module-color";
-import { LayoutGrid } from "lucide-react";
+import { LayoutGrid, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { activeModule } from "@/navigation";
+import { activeModule, CHANGELOG_LINK } from "@/navigation";
 
 import { useShell } from "./shell-context";
 
@@ -19,7 +19,7 @@ import { useShell } from "./shell-context";
  * respect de safe-area-inset-bottom. « Plus » ouvre les autres modules, l'administration et les actions.
  */
 export function MobileTabBar() {
-  const { modules, admin } = useShell();
+  const { modules, admin, version } = useShell();
   const pathname = usePathname();
   const [more, setMore] = useState(false);
   const active = activeModule(pathname, modules);
@@ -109,6 +109,21 @@ export function MobileTabBar() {
               </li>
             );
           })}
+          <li className="border-t border-border pt-2">
+            <Link
+              href={CHANGELOG_LINK.href}
+              onClick={() => setMore(false)}
+              data-testid="more-changelog"
+              className="flex h-12 items-center gap-3 text-body-lg font-medium"
+            >
+              <Sparkles className="size-5 text-fg-muted" aria-hidden /> {CHANGELOG_LINK.label}
+              {version ? (
+                <span className="ml-auto font-mono text-small font-normal text-fg-subtle tabular">
+                  Version {version}
+                </span>
+              ) : null}
+            </Link>
+          </li>
         </ul>
       </Sheet>
     </>

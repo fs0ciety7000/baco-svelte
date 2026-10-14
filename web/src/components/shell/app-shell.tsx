@@ -2,7 +2,9 @@
 
 import { type ReactNode, Suspense } from "react";
 
+import { UpdateDialog } from "@/components/changelog/update-dialog";
 import type { UiPreferences } from "@/design/preferences";
+import type { ReleaseSummary } from "@/lib/changelog";
 
 import { CommandPalette } from "./command-palette";
 import { MobileTabBar } from "./mobile-tabbar";
@@ -20,14 +22,20 @@ import type { ShellUser } from "./types";
 export function AppShell({
   user,
   ui,
+  version = null,
+  update = null,
   children,
 }: {
   user: ShellUser;
   ui: UiPreferences;
+  /** Version livrée (CHANGELOG.md), en pied de la barre latérale et dans « Plus ». */
+  version?: string | null;
+  /** Dernière version pas encore vue par l'agent : fenêtre « CSM a été mis à jour » (une fois). */
+  update?: ReleaseSummary | null;
   children: ReactNode;
 }) {
   return (
-    <ShellProvider user={user} initialUi={ui}>
+    <ShellProvider user={user} initialUi={ui} version={version}>
       <ShellStatusProvider enabled>
         <a
           href="#contenu"
@@ -57,6 +65,7 @@ export function AppShell({
         <PageTransition />
         <MobileTabBar />
         <CommandPalette />
+        {update ? <UpdateDialog release={update} /> : null}
       </ShellStatusProvider>
     </ShellProvider>
   );

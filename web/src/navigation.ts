@@ -215,15 +215,19 @@ export const MODULES: NavModule[] = [
         keywords: ["mot de passe", "compte"],
         hideFor: ["screen"],
       },
-      {
-        href: "/equipe/nouveautes",
-        label: "Nouveautés",
-        hideFor: ["guest", "screen"],
-        keywords: ["changelog"],
-      },
     ],
   },
 ];
+
+/**
+ * Nouveautés de CSM (CHANGELOG.md + annonces de l'équipe), hors module depuis le 14 oct. 2026 : lien en pied de la
+ * barre latérale, dans « Plus » (mobile) et dans ⌘K. Ouverte à tout agent connecté (le rôle « Écran » ne voit que /tv).
+ */
+export const CHANGELOG_LINK = {
+  href: "/changelog",
+  label: "Nouveautés",
+  keywords: ["changelog", "mise à jour", "version", "annonces"],
+} as const;
 
 export const ADMIN: NavModule = {
   id: "admin",

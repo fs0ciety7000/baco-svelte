@@ -4,10 +4,12 @@ import type { ReactNode } from "react";
 
 import { AppShell } from "@/components/shell/app-shell";
 import { parseUiCookie, UI_COOKIE } from "@/design/preferences";
+import { pendingRelease, releaseSummary, seenVersion } from "@/lib/changelog";
 import { brusselsDay } from "@/lib/orders/time";
-import { can } from "@/lib/permissions";
+import { can, isScreen } from "@/lib/permissions";
 import { userDistricts } from "@/lib/team";
 import { maintenanceState, requireUser } from "@/server/auth";
+import { releases } from "@/server/changelog";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
@@ -23,9 +25,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         today: user.duty_day === today,
       }
     : null;
+  // Fenêtre « CSM a été mis à jour » : dernière version du changelog pas encore vue par ce compte (jamais pour l'écran).
+  const all = releases();
+  const pending = isScreen(user) ? null : pendingRelease(all, seenVersion(user.preferences));
   return (
     <AppShell
       ui={ui}
+      version={all[0]?.version ?? null}
+      update={pending ? releaseSummary(pending) : null}
       user={{
         id: user.id,
         name: user.name,

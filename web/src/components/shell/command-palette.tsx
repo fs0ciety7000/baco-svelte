@@ -9,6 +9,7 @@ import {
   MessageSquare,
   Monitor,
   Palette,
+  Sparkles,
   TrainFront,
   UserRound,
   Users,
@@ -28,6 +29,8 @@ import {
 } from "@/components/ui/command";
 import { Kbd } from "@/components/ui/misc";
 import { THEMES, themeById, type ThemeChoice } from "@/design/tokens";
+
+import { CHANGELOG_LINK } from "@/navigation";
 
 import { useShell } from "./shell-context";
 
@@ -170,6 +173,12 @@ export function CommandPalette() {
                         </CommandItem>
                       )),
                 )}
+                <CommandItem
+                  value={`${CHANGELOG_LINK.label} ${CHANGELOG_LINK.keywords.join(" ")}`}
+                  onSelect={() => go(CHANGELOG_LINK.href)}
+                >
+                  <Sparkles /> {CHANGELOG_LINK.label}
+                </CommandItem>
               </CommandGroup>
               {admin ? (
                 <CommandGroup heading="Administration">

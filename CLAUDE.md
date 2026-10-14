@@ -115,6 +115,11 @@ node scripts/supabase-backup.mjs /home/user/csm-backup
    dès qu'ils existent (commandes et conventions propres au dossier).
 9. **Données personnelles** (PMR, comptes, empreintes) : jamais dans Git, jamais dans un artefact publié ;
    archives chiffrées (`age`) hors dépôt (`/csm-backup*` est ignoré).
+10. **Changelog** : à chaque mise à jour livrée, ajouter une entrée au `CHANGELOG.md` (racine ; `## [AAAA.MM.JJ] — titre`,
+   sous-sections Nouveautés / Améliorations / Corrections / Sécurité) **dans le même commit**, écrite pour les agents (pas
+   de jargon interne, aucune donnée personnelle ni secret), puis `cd web && npm run changelog` (copie embarquée
+   `web/src/generated/changelog-source.ts`, refaite aussi par `npm run build` ; un test échoue si elle est périmée). Une
+   nouvelle version en tête déclenche la fenêtre « CSM a été mis à jour » une fois par compte.
 
 
 ## 5. Conventions de code
@@ -1018,6 +1023,14 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   (EXTRA) ignoré, lignes d'un trajet partiel, passages sans arrêt déduits d'Infrabel. 396 contrôles de règles.
   Nouveau lot demandé (feuille de route CSM-V2 §7, étapes 11-13) : districts des gares en base, gares frontière, bons bus /
   taxi et Lignes branchés sur le référentiel, CHANGELOG.md + `/changelog` + modale de mise à jour.
+- 2026-10-14 — **Changelog** (demande de l'utilisateur) : `CHANGELOG.md` à la racine (versions datées AAAA.MM.JJ, amorcé avec
+  les livraisons du 9 au 14 oct.), page **`/changelog`** « Nouveautés » hors module (tout agent connecté, jamais l'Écran ;
+  `/equipe/nouveautes` redirige en 308, l'onglet Équipe › Nouveautés disparaît) ; les **annonces de l'équipe** (collection
+  `changelog`, admin / sysop / modérateur) restent sur la page, onglet « Annonces de l'équipe » (masqué à l'invité comme
+  avant). Lien en pied de barre latérale avec la version, entrée dans « Plus » (mobile) et ⌘K. **Fenêtre « CSM a été mis à
+  jour »** une fois par version et par compte (`users.preferences.changelogSeen`), **comptes neufs compris** (choix par
+  défaut, à confirmer) ; ouvrir `/changelog` vaut lecture. Image Docker construite depuis `web/` seul → copie embarquée
+  générée (`npm run changelog`). E2E : les comptes E2E communs ont « tout vu » (`e2e/global-setup.ts`).
 
 - 2026-10-14 — **Référentiel des gares et districts** (étapes 11 de la feuille de route) : collection `stations` (`1760003700`),
   construite par l'import quotidien (gares de l'horaire SNCB + abréviation et noms Infrabel, UIC, pays, lignes, alias :

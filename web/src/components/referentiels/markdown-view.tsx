@@ -51,6 +51,11 @@ function bold(text: string, key: string): ReactNode[] {
   return out;
 }
 
+/** Une ligne de texte avec gras et liens http(s) (puces du changelog). */
+export function MarkdownInline({ text }: { text: string }) {
+  return <>{inline(text, "i")}</>;
+}
+
 export function MarkdownView({ content, className }: { content: string; className?: string }) {
   const lines = String(content ?? "").split(/\r?\n/);
   const blocks: ReactNode[] = [];

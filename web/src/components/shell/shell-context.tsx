@@ -19,6 +19,8 @@ export type ShellData = {
   admin: NavModule | null;
   actions: QuickAction[];
   ui: UiPreferences;
+  /** Version livrée de CSM (« 2026.10.14 »), null si le changelog est vide. */
+  version: string | null;
   setUi: (ui: UiPreferences) => void;
   paletteOpen: boolean;
   setPaletteOpen: (open: boolean) => void;
@@ -31,10 +33,12 @@ const ShellContext = createContext<ShellData | null>(null);
 export function ShellProvider({
   user,
   initialUi,
+  version = null,
   children,
 }: {
   user: ShellUser;
   initialUi: UiPreferences;
+  version?: string | null;
   children: ReactNode;
 }) {
   const [ui, setUi] = useState(initialUi);
@@ -46,11 +50,12 @@ export function ShellProvider({
       admin: adminModule(user),
       actions: quickActions(user),
       ui,
+      version,
       setUi,
       paletteOpen,
       setPaletteOpen,
     }),
-    [user, ui, paletteOpen],
+    [user, ui, version, paletteOpen],
   );
   return <ShellContext.Provider value={value}>{children}</ShellContext.Provider>;
 }

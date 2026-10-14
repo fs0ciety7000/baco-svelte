@@ -30,7 +30,7 @@ const dateFmt = new Intl.DateTimeFormat("fr-BE", {
 
 type Draft = { id: string | null; title: string; type: ChangelogType; content: string };
 
-/** Nouveautés de CSM : fil chronologique, Markdown sûr ; publication par admin, sysop et coordinateurs. */
+/** Annonces de l’équipe (page Nouveautés) : fil chronologique, Markdown sûr ; publication par admin, sysop et coordinateurs. */
 export function ChangelogBoard({ items, canEdit }: { items: ChangelogEntry[]; canEdit: boolean }) {
   const router = useRouter();
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -40,16 +40,16 @@ export function ChangelogBoard({ items, canEdit }: { items: ChangelogEntry[]; ca
     start(async () => {
       const r = await saveChangelog(draft.id, draft);
       if (!r.ok) return void toast.error(r.error);
-      toast.success(draft.id ? "Nouveauté modifiée." : "Nouveauté publiée.");
+      toast.success(draft.id ? "Annonce modifiée." : "Annonce publiée.");
       setDraft(null);
       router.refresh();
     });
   const remove = (id: string) =>
     start(async () => {
-      if (!window.confirm("Supprimer cette nouveauté ?")) return;
+      if (!window.confirm("Supprimer cette annonce ?")) return;
       const r = await deleteChangelog(id);
       if (!r.ok) return void toast.error(r.error);
-      toast.success("Nouveauté supprimée.");
+      toast.success("Annonce supprimée.");
       router.refresh();
     });
   return (
@@ -57,14 +57,14 @@ export function ChangelogBoard({ items, canEdit }: { items: ChangelogEntry[]; ca
       {canEdit ? (
         <div>
           <Button onClick={() => setDraft({ id: null, title: "", type: "nouveau", content: "" })}>
-            <Plus aria-hidden /> Publier une nouveauté
+            <Plus aria-hidden /> Publier une annonce
           </Button>
         </div>
       ) : null}
       {items.length === 0 ? (
         <EmptyState
-          title="Pas encore de nouveautés"
-          description="Les évolutions de CSM apparaîtront ici."
+          title="Pas encore d’annonce"
+          description="Les annonces de l’équipe apparaîtront ici."
         />
       ) : (
         <ol
@@ -115,8 +115,8 @@ export function ChangelogBoard({ items, canEdit }: { items: ChangelogEntry[]; ca
       )}
       <Dialog open={!!draft} onOpenChange={(o) => !o && setDraft(null)}>
         <DialogContent
-          eyebrow="Nouveautés"
-          title={draft?.id ? "Modifier la nouveauté" : "Publier une nouveauté"}
+          eyebrow="Annonces de l’équipe"
+          title={draft?.id ? "Modifier l’annonce" : "Publier une annonce"}
           description="Texte en Markdown simple (titres, listes, gras, liens)."
         >
           {draft ? (

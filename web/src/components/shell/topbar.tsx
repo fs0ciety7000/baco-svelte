@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/misc";
-import { activeModule } from "@/navigation";
+import { activeModule, CHANGELOG_LINK } from "@/navigation";
 
 import { DutyChip } from "@/components/ops/duty-districts";
 
@@ -38,7 +38,7 @@ export function Topbar() {
       </Link>
       <p className="min-w-0 truncate text-body font-semibold text-fg md:shrink-0 md:text-body-lg">
         <span className="font-normal text-fg-muted md:hidden">· </span>
-        {mod?.label ?? "Accueil"}
+        {mod?.label ?? (pathname === CHANGELOG_LINK.href ? CHANGELOG_LINK.label : "Accueil")}
       </p>
       {mod && mod.tabs.length > 1 ? (
         <div className="hidden h-full min-w-0 flex-1 md:flex">

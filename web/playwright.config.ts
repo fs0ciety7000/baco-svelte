@@ -3,12 +3,15 @@ import { defineConfig, devices } from "@playwright/test";
 // Pas de webServer automatique : lancer le serveur à part (npm run dev / npm start).
 export default defineConfig({
   testDir: "./e2e",
+  // Comptes de test : fenêtre « CSM a été mis à jour » déjà vue (voir e2e/global-setup.ts).
+  globalSetup: "./e2e/global-setup.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
-    baseURL: "http://localhost:3000",
+    // E2E_BASE_URL : autre port en local (plusieurs serveurs sur la même machine) ; défaut = celui de la CI.
+    baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3000",
     trace: "on-first-retry",
     locale: "fr-BE",
   },

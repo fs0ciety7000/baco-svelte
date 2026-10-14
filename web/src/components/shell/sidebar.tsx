@@ -3,11 +3,12 @@
 import type * as React from "react";
 
 import { modColor } from "@/design/module-color";
+import { Sparkles } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
-import { activeModule } from "@/navigation";
+import { activeModule, CHANGELOG_LINK } from "@/navigation";
 
 import { useShell } from "./shell-context";
 import { useShellStatus } from "./shell-status";
@@ -31,12 +32,13 @@ function ago(iso: string, now: number): { text: string; stale: boolean } {
  * 1280 px, 232 px au-delà. L'entrée active porte un trait accent à gauche.
  */
 export function Sidebar() {
-  const { modules } = useShell();
+  const { modules, version } = useShell();
   const { status, live } = useShellStatus();
   const pathname = usePathname();
   const active = activeModule(pathname, modules);
   const counts = status?.counts as Record<string, number | undefined> | undefined;
   const dicos = status?.dicosAt ? ago(status.dicosAt, Date.now()) : null;
+  const onChangelog = pathname === CHANGELOG_LINK.href;
 
   return (
     <nav
@@ -127,6 +129,25 @@ export function Sidebar() {
           </span>
         ) : null}
       </div>
+      {/* Nouveautés et version livrée : discret, sous l'état des flux (icône seule sur le rail). */}
+      <Link
+        href={CHANGELOG_LINK.href}
+        aria-current={onChangelog ? "page" : undefined}
+        data-testid="sidebar-changelog"
+        title={version ? `${CHANGELOG_LINK.label} · version ${version}` : CHANGELOG_LINK.label}
+        className={cn(
+          "flex min-h-11 flex-col items-center justify-center gap-0.5 border-t border-border px-2 py-2 text-small text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg xl:flex-row xl:justify-start xl:gap-2 xl:px-4",
+          onChangelog && "bg-surface-2 text-fg",
+        )}
+      >
+        <Sparkles aria-hidden className="size-4 shrink-0" />
+        <span>{CHANGELOG_LINK.label}</span>
+        {version ? (
+          <span className="hidden font-mono text-fg-subtle tabular xl:ml-auto xl:inline">
+            v{version}
+          </span>
+        ) : null}
+      </Link>
     </nav>
   );
 }

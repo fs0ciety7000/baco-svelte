@@ -438,3 +438,20 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `referentiels/gares/actions.ts`, `ptcar:update`) ; `districtForStation` consulte d'abord `setDistrictOverrides` chargé par
   `server/station-districts.ts` (`loadStationDistricts()` en tête de l'ingestion DICOS) ; `resolveStationTerms` lit aussi
   `stations` (noms NL, alias des gares frontière). E2E dans `e2e/trains.spec.ts` (mode série : fixtures partagées).
+
+## Changelog / Nouveautés (14 oct. 2026)
+
+- Source : `../CHANGELOG.md` (racine). L'image Docker est construite depuis `web/` seul : **copie embarquée**
+  `src/generated/changelog-source.ts` écrite par `npm run changelog` (`scripts/changelog.mjs`, aussi en `prebuild` ; garde la
+  copie si la racine est absente). `src/lib/changelog.test.ts` échoue si la copie est périmée ou si une version est mal formée.
+- Logique pure `lib/changelog.ts` (`parseChangelog`, `compareVersions`, `pendingRelease`, `seenVersion`, `releaseSummary` ;
+  testés), lecture serveur `server/changelog.ts` (`releases()`, `currentVersion()` ; jamais dans le bundle client).
+- Page `app/(app)/changelog/page.tsx` (hors module : `requireUser()`, l'Écran part sur /tv ; onglets « Mises à jour » et
+  « Annonces de l'équipe » = `ChangelogBoard`, masqué à l'invité). `/equipe/nouveautes` → `permanentRedirect`. Lien unique
+  `CHANGELOG_LINK` (`navigation.ts`) : pied de `Sidebar` (version), « Plus » mobile, ⌘K, libellé de la barre du haut.
+  Rendu : `components/changelog/release-notes.tsx` (`MarkdownInline` de `markdown-view.tsx` : gras et liens seulement).
+- Fenêtre « CSM a été mis à jour » : `(app)/layout.tsx` passe `update` (dernière version non vue, résumé 3 puces par section)
+  à `AppShell` → `UpdateDialog` (portail Radix, rien dans le HTML serveur) ; fermer / OK / « Voir tout » / arriver sur
+  `/changelog` appellent `acknowledgeChangelog` (`app/changelog-actions.ts` : `preferences.changelogSeen`, jamais en arrière ni
+  au-delà de la version livrée). E2E : `e2e/global-setup.ts` met `changelogSeen = 9999.12.31` aux comptes E2E communs ;
+  `e2e/changelog.spec.ts` crée ses comptes jetables. `E2E_BASE_URL` change le port de Playwright en local.
