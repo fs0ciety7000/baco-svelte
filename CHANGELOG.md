@@ -11,7 +11,7 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
   - **Accueil** : À traiter et Statistiques.
   - **Opérations** : Journal (ouvert d'office), Ma journée, Relève.
   - **Commandes** : Suivi « À envoyer » (ouvert d'office), Bus, Taxi, Archives, Fournisseurs.
-  - **PMR** : Missions, Groupes, Clients, Matériel, Historique.
+  - **PMR & Groupes** : Missions, Groupes, Clients, Matériel, Historique.
   - Nouveau module **Réseau** : Trains en direct, Horaires, Lignes, Gares, PtCar, EBP, Carte PN.
   - **Ressources** : Contacts, Collègues, Planning, Procédures et documents, B201.
   - Mon profil et l'extension CSM sont dans le menu de ton compte (ta photo en haut à droite).
@@ -47,6 +47,9 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 ### Corrections
 
+- Plus d'écran « CSM est momentanément indisponible » au hasard en changeant de module.
+- Les listes déroulantes sur mobile ne se referment plus quand on fait défiler leurs options.
+- Les districts du jour changés dans un onglet se mettent à jour dans les autres onglets CSM ouverts.
 - Bon taxi : l'action principale s'appelle « Terminer » (et non « Terminer (bus démobilisés) »).
 - Pendant une mise à jour de CSM (une trentaine de secondes), la page d'erreur réessaie toute seule dès que le serveur répond, au lieu de rester sur « momentanément indisponible ».
 
