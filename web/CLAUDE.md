@@ -751,3 +751,21 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   un 403 `x-csm-readonly` ou `csm_ro_hit`, liens d'export bloqués au clic, rechargement à l'expiration. « Revenir à mon compte »
   = formulaire HTML → route de fin (audit `impersonate_stop`, cookie effacé, retour sur la fiche). Expiration constatée par le
   middleware : fin tracée aussi. La déconnexion termine le mode. E2E : `e2e/impersonate.spec.ts` (`E2E_SHOTS_DIR` pour les captures).
+
+## Réseau : PN Infrabel et zones SPI (lot A, 15 oct. 2026)
+
+- Logique pure `src/lib/network/` (testée : `network.test.ts`, `pn.test.ts`) : `geo.ts` (haversine, plan local km),
+  `crossings.ts` (`parseInfrabelCrossing` du CSV « geoow », `matchCrossings` : n° Infrabel → ligne + numéro → proximité
+  150 m même ligne ; `estimateBk` : BK interpolée entre gares à km connus de `rail_lines`, écart médian 0,2 km / p90
+  0,9 km contre les BK BACO), `spi.ts` (`assignStationZones` : manuel > carte (`spi-seed.ts` → `src/data/spi-zone-seed.json`,
+  relevé de la carte COI interne — jamais le PDF dans Git) > graphe des lignes ≤ 25 km > proximité ; `crossingZone`),
+  `voronoi.ts` (cellules de Voronoï bornées à 6 km, frontières entre zones), `pn.ts` (recherche, tris, `bkLabel`,
+  `pnNumber` / `PN_NUMBER_RE`, `clusterPoints`).
+- Calcul `src/server/network/import.ts` (`runNetworkImport({ crossings })`, un à la fois, ne lève jamais : `error` dans
+  le résumé, posé dans `app_settings.timetable.network`) : appelé à la fin de l'import quotidien (`step: "reseau"`) et
+  par Administration › Référentiels › Zones SPI (`zones-actions.ts`). Routes internes `/api/csm/network/*`.
+- Données `server/data/network.ts` (`listSpiZones`, `spiShapes` gardé 5 min, `listZoneStations`) ; route
+  `GET /api/reseau/zones-spi` (`carte_pn:read` ou `referentiels:manage`). Tuiles ouvertes aussi à `referentiels:manage`.
+- Écrans : `/reseau/pn` (`PnBoard` + `PnMap` réutilisable : `points`, `zones`, `showZones`, `fitKey`, survol croisé ;
+  URL `?q=&district=&zone=&ligne=&pn=&zones=1&vue=carte` par `history.replaceState`), fiche de ligne (section PN triée
+  par BK, `data-testid="line-crossings"`), `/admin/referentiels/zones-spi` (`SpiZonesAdmin`). E2E `e2e/reseau-pn.spec.ts`.

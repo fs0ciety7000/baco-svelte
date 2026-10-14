@@ -1,7 +1,5 @@
 import "server-only";
 
-import { z } from "zod";
-
 import { zoneShapes, type ZoneShapes } from "@/lib/network/voronoi";
 import { env } from "@/server/env";
 
@@ -94,15 +92,6 @@ export type ZoneStationRow = {
   source: string;
   updated: string;
 };
-
-export const zoneStationFilter = z.object({
-  q: z.string().trim().max(60).default(""),
-  zone: z
-    .string()
-    .regex(/^$|^[A-Z]{2,6}$|^aucune$/)
-    .default(""),
-  source: z.enum(["", "carte", "graphe", "proximite", "manuel"]).default(""),
-});
 
 export async function listZoneStations(): Promise<ZoneStationRow[]> {
   const pb = await pbForRequest();

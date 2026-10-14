@@ -375,3 +375,14 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   **30 min, non renouvelable** (`auth-refresh` rend le même jeton), invalidé si la cible est désactivée (nouvelle `tokenKey`).
   La lecture seule est imposée par Next (le jeton seul a tous les droits de la cible : ne jamais le donner au navigateur).
   `audit_log.action` accepte `impersonate_start` / `impersonate_stop` (`user` = admin, `record` = cible, `changes` vide).
+- **Réseau : PN Infrabel et zones SPI** (`1760004800_spi_zones.js`, `network.pb.js`, `lib/network.js`, 15 oct. 2026) :
+  `spi_zones` (19 zones de la carte COI devenue SPI, code = abréviation PtCar de la gare de référence, district, couleur,
+  `polygon` GeoJSON facultatif posé à la main) ; lecture `spi:read` OU `carte_pn:read` OU `timetable:read`, écriture
+  `referentiels:manage` (code figé). `stations.spi_zone` + `spi_zone_source` (carte / graphe / proximite / manuel) : un
+  agent qui change la zone la rend manuelle (`spi_zone_auto: true` = retour au calcul), zone inconnue refusée.
+  `level_crossings` : `infrabel_id` (unique si posé), `commune`, `signal`, `bk_estimated`, `zone_source` (baco / auto /
+  manuel), `infrabel_seen`, source `infrabel`, numéro « 12A » ; ces champs et la source `infrabel` sont refusés dans le
+  corps d'une requête d'agent ; zone changée = manuelle, BK changée = plus estimée (hook, sauf superuser). Routes internes
+  (secret) `GET /api/csm/network/state`, `POST …/zones`, `…/crossings` (complète un PN rapproché sans toucher l'adresse ni
+  une zone baco / manuelle ; conflit ligne + numéro = pas de création), `…/crossing-zones`, `…/crossings/finish`
+  (désactive les PN Infrabel absents du fichier, seulement si ≥ 1000 lus). Audit de `spi_zones`. 634 contrôles de règles.

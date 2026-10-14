@@ -38,6 +38,7 @@ le 11 oct.** : il ne vit plus que sur `main` (BACO en production) et la branche 
 | 4 | Données : schéma PocketBase, règles d'accès, import | ✅ **bascule faite le 10 oct.** : sauvegarde Supabase fraîche (GET seuls) → base construite en local (`csm-import` + référentiels) → restaurée sur `pb-csm` ; comptages vérifiés (29 comptes + connecteur, 300 bons bus, 445 prestations, 1148 PtCar…) |
 | 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 **Commandes** livré en session 3 (schéma + 66 contrôles de règles, bus, taxi, envoi `.eml` + PDF, suivi, B201, E2E) : **validé le 8 oct.**, cycle v3 brouillon → terminé → envoyé le 14 oct. ; **PMR validé le 8 oct.** (schéma + 105 contrôles de règles, prestations, collage DICOS, clients, matériel, E2E) ; **Opérations validé le 8 oct.** (trains en direct iRail, Journal (ex-main courante), carte PN, statistiques, cloche ; 149 contrôles de règles, 46 E2E) ; **DICOS / Missions PMR validé** (extension + ingestion, lecture seule, trajet/IN-OUT/district/copier) ; **Annuaire et données (ex-Référentiels) livré** (annuaire, lignes, PtCar, EBP, procédures + documents ; 7 collections ; 173 contrôles de règles ; audit + revue passés ; données v1 importées sur l'instance de test) ; **Équipe et Admin validés le 10 oct.** (+ vue admin des appareils connectés) |
 | 5b | Référentiel des relations de trains (Ressources › Trains) | 🔄 préversion le 14 oct. — GTFS SNCB + Infrabel, import quotidien par Next, 3 collections, écran 3 vues ; Ressources › Lignes tirées du référentiel (`rail_lines`) |
+| 5d | Réseau : PN Infrabel + zones SPI (lot A du plan du 15 oct.) | 🔄 15 oct. (branche `reseau-pn-spi`, non poussée) — 1 290 PN Infrabel (CC0) dont 183 rapprochés des 211 PN BACO, zones SPI des gares (carte COI relevée), Carte PN refaite, admin Zones SPI |
 | 5c | Horaires Quinyx (Équipe › Planning) | 🔄 1er lot le 14 oct. (branche `claude/quinyx-horaires`, PR vers `csm-preview`) — extension 1.8.0, ingestion, 4 collections, planning, admin, districts du jour proposés, widget « Fin de service » réel ; cadrage `docs/design/CADRAGE-QUINYX.md` |
 | 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | ✅ 8 oct. — **PRODUCTION en ligne le 10 oct. : https://csm.fs0ciety.org** (`csm-web-prod` + `csm-pocketbase-prod`, environnement Coolify `prod`, branche **`csm-prod`**, données BACO importées le 10 oct., sauvegardes R2) ; **test-csm = preview** (branche de session) ; projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
 | — | Hotfix sécurité BACO (`supabase/migrations/20261008120000_security_hotfix.sql`) | ✅ appliqué par l'utilisateur (SQL Editor) le 8 oct., vérifié : 0 ERROR (36 avant). Suite **non appliquée** : `20261008130000_hotfix_followup.sql` (test NULL de `get_my_role()`) et `20261008140000_pn_data_update_fix.sql` (XSS stocké carte PN), accord requis ; protection des mots de passe compromis encore désactivée |
@@ -1267,6 +1268,17 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   pour un taxi, **bouton « Supprimer le bon »** (menu « ⋯ », feuille mobile, panneau du Suivi ; créateur 8 h si jamais envoyé),
   **archivage** : bon envoyé ou annulé depuis plus de 30 jours hors des listes courantes, visible dans Commandes › Archives
   (« Bons archivés »), fiche et ⌘K avec badge « Archivé », rien de supprimé ; la B201 garde tous les bons.
+
+- 2026-10-15 — **Réseau : PN Infrabel et zones SPI** (lot A, `docs/design/PLAN-2026-10-15.md`). PN : données ouvertes
+  Infrabel « geoow » (CC0, 1 369 PN dont 1 290 « L-ligne-n° » ; zones portuaires sans ligne ignorées ; **pas de BK dans le
+  fichier** → BK estimée le long de la ligne, affichée « ≈ ») ; essai local : 183 des 211 PN BACO rapprochés (181 par
+  ligne + numéro, 2 par proximité), 1 107 créés, 28 PN BACO absents du fichier gardés. Zones SPI (ex-COI) : 19 zones et
+  districts donnés par l'utilisateur ; carte PDF interne lue hors dépôt (QGIS → SVG, recalage Lambert 72 sur 438 noms de
+  gares, couleur de la ligne sous chaque gare) → 681 gares / PANG rattachées « d'après la carte », 72 à la gare la plus
+  proche, 76 sans zone (étranger, sans position) ; seul le résultat gare → zone est versionné. Zones dessinées par
+  cellules de Voronoï des gares (calcul maison). « Zone commune FBMZ et FBN » de la carte non reprise (aucune gare).
+  Gares de Hal à Uccle en FBMZ et Flawinne / Floreffe en FNR alors que le référentiel des districts les met en DSO : la
+  carte fait foi pour la zone, districts inchangés (à revoir par l'équipe).
 
 ---
 
