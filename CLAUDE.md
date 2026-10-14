@@ -1215,6 +1215,12 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   format `admin~cible~exp~scellé`). 594 contrôles de règles. `perms-check` sur la préversion : 38 comptes, 0 écart.
   Téléphonie : **Genesys Cloud** (`tel:` E.164, extension de navigateur « Click-to-Dial ») ou Etrali au choix (`lib/telephony.ts`).
   Audit de navigation rendu (`docs/design/AUDIT-NAVIGATION.md`), en attente de validation.
+- 2026-10-14 — **Nouvelle arborescence validée** (`docs/design/AUDIT-NAVIGATION.md`, décisions en tête) : Accueil (À traiter,
+  Statistiques) · Opérations (Journal par défaut, Ma journée, Relève) · Commandes (Suivi « À envoyer » par défaut, Bus, Taxi,
+  Archives, Fournisseurs) · PMR · **Réseau** (Trains en direct, Horaires, Lignes, Gares, PtCar, EBP, Carte PN) · Ressources
+  (Contacts, Collègues, Planning, Procédures et documents, **B201**) · Administration (+ **Référentiels**). Gares et PtCar
+  **non fusionnés** ; PtCar / EBP / SPI modifiables aussi par les PACO/RCCA ; module Équipe supprimé (profil et extension dans
+  le menu du compte) ; anciennes routes redirigées. Mise en œuvre après fusion des lots en cours.
 
 ---
 

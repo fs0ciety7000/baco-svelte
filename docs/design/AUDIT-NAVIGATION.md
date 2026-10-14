@@ -1,3 +1,12 @@
+> **Décisions de l'utilisateur (14 oct. 2026)** : proposition recommandée **validée** avec ces changements :
+> - **Trains en direct** va dans **Réseau** (pas dans Opérations) ;
+> - **B201** va dans **Ressources** (pas dans Commandes) ;
+> - Q5 : **Gares et PtCar restent deux onglets séparés** (pas de fusion) ;
+> - Q7 : modifier PtCar / EBP / SPI reste **ouvert aux PACO/RCCA** (pas réservé aux modérateurs) ;
+> - tout le reste validé (Réseau, Statistiques dans l'Accueil, Journal et Suivi « À envoyer » par défaut, module Équipe
+>   supprimé, Mon profil et Extension dans le menu du compte, Admin › Référentiels pour admin / sysop / modérateurs,
+>   renommages, nouvelles URL avec redirections).
+
 # Audit de la navigation de CSM et proposition d'arborescence (14 oct. 2026)
 
 > Statut : **proposition à valider**. Rien n'a été modifié dans le dépôt.
