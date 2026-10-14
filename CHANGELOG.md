@@ -7,7 +7,7 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 ### Nouveautés
 
-- **Équipe › Planning** : les horaires publiés dans Quinyx (PACO, RCCA, EXTRA) de toute l'équipe, par jour (matin, après-midi, nuit, extra, qui est en service) ou par semaine, avec le district de chaque prestation. Ils arrivent par l'extension CSM (version 1.8.0) quand un agent ouvre son planning Quinyx ; ni repos, ni absences, ni coordonnées ne sont repris.
+- **Équipe › Planning** : les horaires publiés dans Quinyx (PACO, RCCA, EXTRA) des agents qui ont un compte CSM, par jour (matin, après-midi, nuit, extra, qui est en service) ou par semaine, avec le district de chaque prestation. Ils arrivent par l'extension CSM (version 1.8.0) quand un agent ouvre son planning Quinyx ; ni repos, ni absences, ni coordonnées ne sont repris. Une synchro faite par un agent profite à toute l'équipe : pas besoin que chacun synchronise.
 - **Ton district du jour proposé d'après ton horaire Quinyx** (tu peux toujours en choisir un autre), et le widget « Fin de service » suit ton horaire réel.
 - **Administration › Quinyx** : groupes Quinyx à lire, table des lieux → districts (Mons et OCC SO → DSO, Namur et OCC SE → DSE) et rattachement des agents Quinyx aux comptes CSM (proposé d'après le nom, à valider).
 - **Ressources › Trains** : référentiel des relations de trains (IC, L, P…), avec leurs séries, leurs jours de circulation et la liste de leurs arrêts, mis à jour chaque jour. Par gare : les trains qui s'y arrêtent et ceux qui passent sans arrêt. Par ligne : les relations et les gares desservies.

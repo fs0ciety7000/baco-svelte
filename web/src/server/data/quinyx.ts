@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { RecordModel } from "pocketbase";
+import { cache } from "react";
 
 import { addDays, brusselsDay, pbDate } from "@/lib/orders/time";
 import { agentName, type QuinyxKind } from "@/lib/quinyx/model";
@@ -90,17 +91,19 @@ export async function myShifts(userId: string, from: string, to: string): Promis
   return rows.map(planningShift);
 }
 
-/** Prestation d'aujourd'hui (ou de la nuit commencée la veille et pas finie) pour l'agent, sinon null. */
-export async function todayShiftOf(userId: string): Promise<PlanningShift | null> {
+/**
+ * Prestation du jour de l'agent : en cours, sinon la prochaine d'aujourd'hui, sinon la dernière d'aujourd'hui (nuit de
+ * la veille comprise tant qu'elle dure). Une seule lecture par requête (layout + accueil : `cache`).
+ */
+export const todayShiftOf = cache(async (userId: string): Promise<PlanningShift | null> => {
   const today = brusselsDay();
   const list = await myShifts(userId, addDays(today, -1), today).catch(() => []);
   const now = Date.now();
-  return (
-    list.find((s) => Date.parse(s.start) <= now && now < Date.parse(s.end)) ??
-    list.find((s) => s.day === today) ??
-    null
-  );
-}
+  const live = list.find((s) => Date.parse(s.start) <= now && now < Date.parse(s.end));
+  if (live) return live;
+  const todays = list.filter((s) => s.day === today);
+  return todays.find((s) => Date.parse(s.start) > now) ?? todays.at(-1) ?? null;
+});
 
 export type QuinyxSync = { label: string; at: string; from: string; to: string; count: number };
 

@@ -54,7 +54,7 @@
     },
     {
       "matches": [
-        "https://web.quinyx.com/*"
+        "https://web.quinyx.com/schedule*"
       ],
       "js": [
         "src/quinyx-inject.js"

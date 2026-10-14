@@ -49,7 +49,12 @@
     if (!/^\d{1,15}$/.test(String(group))) return { error: "Groupe Quinyx invalide." };
     try {
       const pub = await get(`/extapi/v1/schedule/publish-date/by-group/${group}`, group);
-      const publishedUntil = String((pub && (pub.unitPublishDate || pub.publishDate)) || "").slice(0, 10);
+      // Date de publication : la plus prudente des deux (groupe / unité), valeurs par défaut (« 0001-01-01 ») écartées.
+      const dates = [pub && pub.publishDate, pub && pub.unitPublishDate]
+        .map((d) => String(d || "").slice(0, 10))
+        .filter((d) => DAY.test(d) && d >= "2000-01-01")
+        .sort();
+      const publishedUntil = dates[0] || "";
       const from = addDays(today(), -7);
       if (!DAY.test(publishedUntil)) return { error: "Date de publication Quinyx introuvable." };
       // Période lue : de J-7 à la veille de la date de publication, 60 jours au plus.
@@ -62,7 +67,7 @@
         get(`/extapi/v1/organisation/group/${group}/sections`, group),
         get(`/extapi/v1/schedule/shifttypes/by-group/${group}/with-cross-scheduling-local-shifttypes?startDateTime=${from}T00:00:00&endDateTime=${addDays(to, 1)}T00:00:00`, group),
         get(`/extapi/v1/shifts/by-group/${group}?${q}`, group),
-        get(`/extapi/v2/employee/workersof/by-group/${group}?${q}`, group).catch(() => []),
+        get(`/extapi/v2/employee/workersof/by-group/${group}?${q}`, group),
       ]);
       const typeName = new Map((Array.isArray(types) ? types : []).map((t) => [String(t.id), String(t.name || "")]));
       const kept = (Array.isArray(shifts) ? shifts : []).filter(
@@ -73,19 +78,24 @@
           CAPTURE(typeName.get(String(s.shiftTypeId))) &&
           String(s.begin || "").slice(0, 10) < publishedUntil,
       );
-      const people = new Set(kept.map((s) => String(s.employeeId)));
+      const MAX = 1500;
+      const people = new Set(kept.slice(0, MAX).map((s) => String(s.employeeId)));
+      const workerList = Array.isArray(workers) ? workers : [];
       const usedTypes = new Set(kept.map((s) => String(s.shiftTypeId)));
       const unit = (Array.isArray(sections) ? sections : []).find((s) => String(s.id) === String(group));
       return {
         batch: {
           ...base,
           unit: String((unit && unit.name) || "").slice(0, 160),
-          sections: (Array.isArray(sections) ? sections : []).slice(0, 200).map((s) => ({ id: Number(s.id) || 0, name: String(s.name || "").slice(0, 120) })),
+          sections: (Array.isArray(sections) ? sections : []).slice(0, 100).map((s) => ({ id: Number(s.id) || 0, name: String(s.name || "").slice(0, 120) })),
           types: [...usedTypes].map((id) => ({ id: Number(id) || 0, name: String(typeName.get(id) || "").slice(0, 120) })),
-          employees: (Array.isArray(workers) ? workers : [])
+          employees: workerList
             .filter((w) => w && people.has(String(w.id)))
+            .slice(0, 300)
             .map((w) => ({ id: Number(w.id) || 0, firstname: String(w.firstname || "").slice(0, 80), lastname: String(w.lastname || "").slice(0, 80) })),
-          shifts: kept.slice(0, 5000).map((s) => ({
+          // Agents que ce compte Quinyx voit (identifiants seuls) : CSM ne retire une prestation disparue que pour eux.
+          visible: workerList.slice(0, 500).map((w) => Number(w && w.id) || 0).filter((n) => n > 0),
+          shifts: kept.slice(0, MAX).map((s) => ({
             id: Number(s.id) || 0,
             groupId: Number(s.groupId) || 0,
             begin: String(s.begin || "").slice(0, 19),
@@ -94,7 +104,8 @@
             employeeId: Number(s.employeeId) || 0,
             status: "ASSIGNED",
           })),
-          complete: true,
+          // Liste tronquée : lot incomplet, CSM ne retire rien.
+          complete: kept.length <= MAX,
         },
       };
     } catch (e) {

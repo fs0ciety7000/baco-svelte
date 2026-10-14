@@ -5,7 +5,9 @@ import type { RecordModel } from "pocketbase";
 
 import { pbDate } from "@/lib/orders/time";
 import {
+  isTeamAccount,
   mapQuinyxBatch,
+  removalAllowed,
   suggestUser,
   type MappedShift,
   type Place,
@@ -81,12 +83,38 @@ export type IngestCounts = {
   updated: number;
   unchanged: number;
   removed: number;
+  /** Retrait des prestations disparues refusé (lot partiel suspect) : à revoir dans Administration › Quinyx. */
+  removalSkipped: boolean;
+  /** Prestations écartées : agent sans compte PACO/RCCA dans CSM (ni rattaché, ni proposé). */
+  notTeam: number;
   agents: number;
   failed: number;
 };
 
+// Un seul lot à la fois par groupe (deux agents qui synchronisent en même temps), registre partagé entre les copies
+// du module (route et actions).
+const running: Set<string> = ((
+  globalThis as { __csmQuinyxRunning?: Set<string> }
+).__csmQuinyxRunning ??= new Set());
+
 /** Écrit un lot (un groupe, une période). `complete` : retire les prestations de la période disparues de Quinyx. */
 export async function ingestQuinyx(
+  pb: PocketBase,
+  batch: QuinyxBatch,
+  who: ConnectorAuth,
+  version: string,
+): Promise<IngestCounts | { error: string; status: number }> {
+  if (running.has(batch.group))
+    return { error: "Synchro de ce groupe déjà en cours, réessaie dans une minute.", status: 409 };
+  running.add(batch.group);
+  try {
+    return await ingestGroup(pb, batch, who, version);
+  } finally {
+    running.delete(batch.group);
+  }
+}
+
+async function ingestGroup(
   pb: PocketBase,
   batch: QuinyxBatch,
   who: ConnectorAuth,
@@ -113,6 +141,8 @@ export async function ingestQuinyx(
     updated: 0,
     unchanged: 0,
     removed: 0,
+    removalSkipped: false,
+    notTeam: 0,
     agents: 0,
     failed: 0,
   };
@@ -129,20 +159,20 @@ export async function ingestQuinyx(
       .getFullList({ filter: orFilter(pb, "quinyx_id", part) }))
       existing.set(String(r.quinyx_id), r);
   }
-  const needUsers = mapped.agents.some((a) => {
-    const r = existing.get(a.quinyx_id);
-    return !r || (!r.user && !r.confirmed);
-  });
-  const users = needUsers
-    ? (
-        await pb
-          .collection("users")
-          .getFullList({
-            fields: "id,name,role",
-            filter: 'role != "disabled" && role != "connector" && role != "screen"',
-          })
-      ).map((u) => ({ id: u.id, name: String(u.name ?? "") }))
-    : [];
+  // Comptes de l'équipe (PACO/RCCA, modérateurs, admins) : seuls candidats à la proposition, et seuls dont les
+  // horaires sont gardés.
+  const team = (
+    await pb.collection("users").getFullList({
+      fields: "id,name,role",
+      filter: 'role != "disabled" && role != "connector" && role != "screen" && role != "guest"',
+    })
+  )
+    .filter((u) => isTeamAccount(u.role))
+    .map((u) => ({ id: u.id, name: String(u.name ?? "") }));
+  const teamIds = new Set(team.map((u) => u.id));
+  const users = team;
+  /** Agents Quinyx reconnus comme membres de l'équipe CSM (rattachés, sinon proposés). */
+  const teamAgents = new Set<string>();
   const now = new Date().toISOString();
   for (const a of mapped.agents) {
     const r = existing.get(a.quinyx_id);
@@ -150,20 +180,31 @@ export async function ingestQuinyx(
       -20,
     );
     const suggestion = !r || (!r.user && !r.confirmed) ? suggestUser(a, users) : undefined;
+    const account = r?.confirmed
+      ? String(r.user ?? "")
+      : (suggestion ?? String(r?.user_suggested ?? ""));
+    if (account && teamIds.has(account)) teamAgents.add(a.quinyx_id);
     try {
       if (!r) {
-        const n = await pb.collection("quinyx_agents").create({
-          ...a,
-          groups,
-          last_seen: now,
-          user_suggested: suggestion || "",
-        });
+        const n = await pb
+          .collection("quinyx_agents")
+          .create({ ...a, groups, last_seen: now, user_suggested: suggestion || "" })
+          .catch(async (e) => {
+            // Créé entre-temps par une autre synchro : on reprend la fiche existante.
+            const again = await pb
+              .collection("quinyx_agents")
+              .getFirstListItem(pb.filter("quinyx_id = {:q}", { q: a.quinyx_id }))
+              .catch(() => null);
+            if (!again) throw e;
+            return again;
+          });
         agentIds.set(a.quinyx_id, n.id);
         c.agents++;
       } else {
-        // Noms vides (agent absent de la liste du groupe) : on garde ceux déjà connus.
+        // Noms vides (agent absent de la liste du groupe) : on garde ceux déjà connus. Agent rattaché : nom figé (un
+        // lot forgé ne peut pas le renommer pour détourner la proposition de compte).
         const patch: Record<string, unknown> = { last_seen: now, groups };
-        if (a.first_name || a.last_name) {
+        if ((a.first_name || a.last_name) && !r.confirmed) {
           patch.first_name = a.first_name;
           patch.last_name = a.last_name;
         }
@@ -184,10 +225,24 @@ export async function ingestQuinyx(
       f: batch.from,
       t: end,
     }),
+    expand: "agent",
   });
   const byId = new Map(stored.map((r) => [String(r.quinyx_id), r]));
+  // Prestations déplacées hors de la période lue : retrouvées par paquets, dans CE groupe seulement.
+  const missing = mapped.shifts.map((s) => s.quinyx_id).filter((q) => !byId.has(q));
+  for (const part of chunks(missing, 40))
+    for (const r of await pb.collection("quinyx_shifts").getFullList({
+      filter: `${pb.filter("group_id = {:g}", { g: batch.group })} && (${orFilter(pb, "quinyx_id", part)})`,
+    }))
+      byId.set(String(r.quinyx_id), r);
   const seen = new Set<string>();
   for (const s of mapped.shifts) {
+    // Horaires gardés seulement pour les agents qui ont un compte PACO/RCCA dans CSM (les autres : nom seul, pour que
+    // l'admin puisse les rattacher à la main ; une prestation déjà stockée disparaît comme une prestation retirée).
+    if (!teamAgents.has(s.employee)) {
+      c.notTeam++;
+      continue;
+    }
     const agent = agentIds.get(s.employee);
     if (!agent) {
       c.failed++;
@@ -196,16 +251,21 @@ export async function ingestQuinyx(
     seen.add(s.quinyx_id);
     const rec = shiftRecord(s, agent);
     try {
-      let cur = byId.get(s.quinyx_id) ?? null;
-      // Prestation déplacée hors de la période lue : retrouvée par son identifiant.
-      if (!cur)
-        cur = await pb
-          .collection("quinyx_shifts")
-          .getFirstListItem(pb.filter("quinyx_id = {:q}", { q: s.quinyx_id }))
-          .catch(() => null);
+      const cur = byId.get(s.quinyx_id) ?? null;
       if (!cur) {
-        await pb.collection("quinyx_shifts").create({ quinyx_id: s.quinyx_id, ...rec });
-        c.created++;
+        try {
+          await pb.collection("quinyx_shifts").create({ quinyx_id: s.quinyx_id, ...rec });
+          c.created++;
+        } catch (e) {
+          // Créée entre-temps (autre groupe qui porte la même prestation) : relue et mise à jour dans ce groupe.
+          const again = await pb
+            .collection("quinyx_shifts")
+            .getFirstListItem(pb.filter("quinyx_id = {:q}", { q: s.quinyx_id }))
+            .catch(() => null);
+          if (!again) throw e;
+          await pb.collection("quinyx_shifts").update(again.id, rec);
+          c.updated++;
+        }
       } else if (changed(cur, rec)) {
         await pb.collection("quinyx_shifts").update(cur.id, rec);
         c.updated++;
@@ -215,12 +275,32 @@ export async function ingestQuinyx(
     }
   }
 
+  c.kept = mapped.shifts.length - c.notTeam;
+
   // --- Prestations disparues (désaffectées, supprimées, changées en repos) : retirées sur un lot complet ---
-  // Garde-fou : un lot complet sans aucune prestation alors que CSM en a beaucoup = accès Quinyx réduit, pas un
-  // planning vidé ; rien n'est retiré.
-  if (batch.complete && !c.failed && !(mapped.shifts.length === 0 && stored.length > 10)) {
-    for (const r of stored) {
-      if (seen.has(String(r.quinyx_id))) continue;
+  // Seulement dans les sections reçues (un agent qui ne voit qu'une section n'efface pas les autres), et jamais plus de
+  // 30 % de la période d'un coup (accès Quinyx réduit, lot tronqué ou forgé : rien n'est retiré, l'admin le voit).
+  // Et seulement pour les agents que ce compte Quinyx voit (`visible`) : sans liste, rien n'est retiré.
+  const sections = new Set(["", ...batch.sections.map((s) => s.name.trim())]);
+  const visible = new Set(batch.visible ?? []);
+  const qidOf = (r: RecordModel) =>
+    String((r.expand?.agent as RecordModel | undefined)?.quinyx_id ?? "");
+  // Prestations d'un agent évalué dans ce lot mais hors équipe CSM (compte détaché, rôle changé) : retirées sans
+  // plafond, ce ne sont pas des disparitions.
+  const judged = new Set(mapped.agents.map((a) => a.quinyx_id));
+  const excluded = stored.filter((r) => judged.has(qidOf(r)) && !teamAgents.has(qidOf(r)));
+  const excludedIds = new Set(excluded.map((r) => r.id));
+  const gone = stored.filter(
+    (r) =>
+      !excludedIds.has(r.id) &&
+      !seen.has(String(r.quinyx_id)) &&
+      sections.has(String(r.section ?? "")) &&
+      visible.has(qidOf(r)),
+  );
+  const capped = gone.length > 0 && !removalAllowed(stored.length - excluded.length, gone.length);
+  if (batch.complete && !c.failed && capped) c.removalSkipped = true;
+  if (batch.complete && !c.failed) {
+    for (const r of [...excluded, ...(capped ? [] : gone)]) {
       try {
         await pb.collection("quinyx_shifts").delete(r.id);
         c.removed++;
@@ -230,13 +310,15 @@ export async function ingestQuinyx(
     }
   }
 
+  // Fraîcheur posée seulement sur une synchro sans erreur (sinon « synchronisé il y a 2 min » mentirait).
+  if (c.failed) return c;
   await pb
     .collection("quinyx_groups")
     .update(group.id, {
       last_sync: now,
       last_from: batch.from,
       last_to: end,
-      last_count: mapped.shifts.length,
+      last_count: c.kept,
       last_by: who.kind === "personal" ? who.userId : "",
       last_version: version,
     })

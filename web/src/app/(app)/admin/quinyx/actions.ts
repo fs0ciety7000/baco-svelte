@@ -86,8 +86,22 @@ export async function updateQuinyxGroup(
   });
 }
 
+/** Retire un groupe et ses prestations (sinon le Planning les montrerait jusqu'à la purge de 90 jours). */
 export async function deleteQuinyxGroup(id: string): Promise<Result> {
-  return run((pb) => pb.collection("quinyx_groups").delete(pbId.parse(id)));
+  return run(async (pb) => {
+    const g = await pb
+      .collection("quinyx_groups")
+      .getOne(pbId.parse(id), { fields: "id,group_id" });
+    for (;;) {
+      const page = await pb.collection("quinyx_shifts").getList(1, 200, {
+        filter: pb.filter("group_id = {:g}", { g: String(g.group_id) }),
+        fields: "id",
+      });
+      for (const s of page.items) await pb.collection("quinyx_shifts").delete(s.id);
+      if (page.items.length < 200) break;
+    }
+    await pb.collection("quinyx_groups").delete(g.id);
+  });
 }
 
 export async function addQuinyxPlace(input: {

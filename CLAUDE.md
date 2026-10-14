@@ -1133,6 +1133,10 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   `1760004200` (`quinyx_groups`, `quinyx_places`, `quinyx_agents`, `quinyx_shifts`), purge `quinyx-retention`
   (90 j / 180 j, à valider DPO), **Équipe › Planning**, **Administration › Quinyx**, district du jour proposé d'après la
   prestation, widget « Fin de service » sur l'horaire réel. Date de publication Quinyx traitée comme exclue (à confirmer).
+  Revues sécurité + adversariale : retrait des prestations disparues limité aux agents visibles du compte Quinyx
+  (`visible`), aux sections reçues et à 30 %, un lot à la fois par groupe, bornes de période et d'heures, création
+  concurrente relue, date de publication la plus prudente. **Horaires gardés seulement pour les comptes CSM de
+  l'équipe** (paco, moderator, admin, sysop ; précision de l'utilisateur) ; une synchro profite à tous.
   Cadrage `docs/design/CADRAGE-QUINYX.md`, note DPO §2-3-5. PR vers `csm-preview` (demandée par l'utilisateur).
 
 ---

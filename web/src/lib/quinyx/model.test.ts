@@ -9,6 +9,8 @@ import {
   shiftKind,
   suggestUser,
   type QuinyxBatch,
+  removalAllowed,
+  isTeamAccount,
   brusselsClock,
   weekDays,
   weekRows,
@@ -248,5 +250,37 @@ describe("vue planning", () => {
     ]);
     expect(rows.map((r) => r.name)).toEqual(["Alice", "Bruno"]);
     expect(rows[0]!.byDay.get("2026-10-13")).toHaveLength(1);
+  });
+});
+
+describe("bornes du lot", () => {
+  it("heure invalide refusée, durée > 24 h ignorée", () => {
+    const b = batch();
+    expect(
+      quinyxBatchSchema.safeParse({
+        ...b,
+        shifts: [{ ...b.shifts[0]!, begin: "2026-10-05T99:99:00" }],
+      }).success,
+    ).toBe(false);
+    const long = batch({ shifts: [{ ...b.shifts[0]!, end: "2026-10-07T14:00:00" }] });
+    expect(mapQuinyxBatch(long, PLACES).shifts).toHaveLength(0);
+  });
+});
+
+describe("retrait des prestations disparues", () => {
+  it("5 au plus sur une petite période, 30 % au-delà", () => {
+    expect(removalAllowed(8, 5)).toBe(true);
+    expect(removalAllowed(8, 6)).toBe(false);
+    expect(removalAllowed(400, 120)).toBe(true);
+    expect(removalAllowed(400, 397)).toBe(false);
+  });
+});
+
+describe("comptes de l'équipe", () => {
+  it("PACO/RCCA, modérateur, admin ; jamais invité, écran ni connecteur", () => {
+    expect(["paco", "moderator", "admin", "sysop"].every(isTeamAccount)).toBe(true);
+    expect(["guest", "screen", "connector", "disabled", "", undefined].some(isTeamAccount)).toBe(
+      false,
+    );
   });
 });

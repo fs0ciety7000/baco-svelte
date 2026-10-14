@@ -71,7 +71,8 @@ export function placeDistrict(text: string, places: Place[]): string {
 // --- Lot envoyé par l'extension (un groupe Quinyx, une période) ---
 
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-const localDateTime = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?/);
+// Heure locale complète et valide (audit du 14 oct. 2026 : « 99:99 » faisait échouer tout le lot).
+const localDateTime = z.string().regex(/^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/);
 const id = z
   .union([z.number().int().nonnegative(), z.string().regex(/^\d{1,15}$/)])
   .transform(String);
@@ -84,9 +85,10 @@ export const quinyxBatchSchema = z.object({
   /** Date de publication Quinyx (`publish-date`) : le planning est publié AVANT ce jour (prudence, à confirmer). */
   publishedUntil: day,
   unit: z.string().max(160).catch(""),
-  sections: z.array(z.object({ id, name })).max(200),
-  types: z.array(z.object({ id, name })).max(1000),
-  employees: z.array(z.object({ id, firstname: name, lastname: name })).max(2000),
+  // Bornes réalistes (un groupe ≈ 15 agents, 300 prestations par mois) : un lot coûte une requête par prestation.
+  sections: z.array(z.object({ id, name })).max(100),
+  types: z.array(z.object({ id, name })).max(300),
+  employees: z.array(z.object({ id, firstname: name, lastname: name })).max(300),
   shifts: z
     .array(
       z.object({
@@ -99,8 +101,13 @@ export const quinyxBatchSchema = z.object({
         status: z.string().max(20).optional(),
       }),
     )
-    .max(5000),
-  /** Dernier lot de la période pour ce groupe : les prestations disparues de Quinyx sont alors retirées de CSM. */
+    .max(1500),
+  /**
+   * Agents que le compte Quinyx de l'expéditeur voit dans le groupe (identifiants seuls, sans nom) : une prestation
+   * disparue n'est retirée que pour eux (un compte qui ne voit que ses propres prestations n'efface pas les autres).
+   */
+  visible: z.array(id).max(500).optional(),
+  /** Lot complet (rien de tronqué) : les prestations disparues de Quinyx sont alors retirées de CSM. */
   complete: z.boolean().optional(),
 });
 export type QuinyxBatch = z.infer<typeof quinyxBatchSchema>;
@@ -154,7 +161,8 @@ export function mapQuinyxBatch(
     const endTime = s.end.slice(11, 16);
     const start = brusselsToUtc(d, startTime);
     const end = brusselsToUtc(s.end.slice(0, 10), endTime);
-    if (end <= start) {
+    // Durée de 0 à 24 h seulement (fin avant le début, ou prestation de plusieurs jours : ignorée).
+    if (end <= start || Date.parse(end) - Date.parse(start) > 24 * 3600_000) {
       ignored++;
       continue;
     }
@@ -274,3 +282,19 @@ export const DUTY_NAME: Record<string, string> = {
   DSE: "Sud-Est",
   DCE: "Centre",
 };
+
+/** Part maximale de la période retirée d'un coup (au-delà : lot partiel ou forgé, rien n'est retiré). */
+export const MAX_REMOVAL_SHARE = 0.3;
+/** Les prestations disparues peuvent-elles être retirées ? (5 au moins, sinon 30 % de celles de la période.) */
+export function removalAllowed(stored: number, toRemove: number): boolean {
+  return toRemove <= Math.max(5, Math.floor(stored * MAX_REMOVAL_SHARE));
+}
+
+/**
+ * Comptes CSM dont on garde les horaires (demande du 14 oct. 2026 : « seulement les PACO / RCCA de CSM ») : PACO/RCCA,
+ * Modérateur, et les administrateurs qui travaillent aussi en PACO. Jamais Invité, Écran, connecteur ni désactivé.
+ */
+export const TEAM_ROLES = ["paco", "moderator", "admin", "sysop"] as const;
+export function isTeamAccount(role: unknown): boolean {
+  return (TEAM_ROLES as readonly unknown[]).includes(role);
+}

@@ -256,7 +256,9 @@ function fmtQuinyx(r) {
   const lines = (Array.isArray(r.groups) ? r.groups : []).slice(0, 20).map((g) =>
     g && g.error
       ? `${escapeHtml(String(g.label || "Groupe"))} : <span class="err">${escapeHtml(String(g.error))}</span>`
-      : `${escapeHtml(String((g && g.label) || "Groupe"))} : <b>${num(g.kept)}</b> prestation(s) jusqu'au ${escapeHtml(String((g && g.to) || ""))} · ${num(g.created)} nouvelle(s), ${num(g.updated)} maj, ${num(g.removed)} retirée(s)`,
+      : `${escapeHtml(String((g && g.label) || "Groupe"))} : <b>${num(g.kept)}</b> prestation(s) jusqu'au ${escapeHtml(String((g && g.to) || ""))} · ${num(g.created)} nouvelle(s), ${num(g.updated)} maj, ${num(g.removed)} retirée(s)${num(g.notTeam) ? ` · ${num(g.notTeam)} hors équipe CSM` : ""}${
+          num(g.failed) ? ` · <span class="err">${num(g.failed)} en échec, resynchronise</span>` : ""
+        }${g.removalSkipped ? ` · <span class="err">retraits suspendus (lot partiel)</span>` : ""}`,
   );
   return `<span class="ok">✓ ${escapeHtml(when)}</span><br>${lines.join("<br>") || "Aucun groupe lu."}`;
 }

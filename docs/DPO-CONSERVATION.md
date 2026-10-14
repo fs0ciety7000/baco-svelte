@@ -82,4 +82,7 @@ le code source, ni présente dans les captures d'écran ou les documents de trav
 8. Horaires Quinyx (ajoutés le 14 oct. 2026) : les prestations publiées des PACO / RCCA sont visibles de toute
    l'équipe dans CSM (comme dans Quinyx pour les membres du groupe). Durée proposée : **90 jours**, puis suppression.
    Faut-il une information des agents (note de service) ? La lecture se fait avec la session Quinyx d'un agent qui a
-   déjà accès au planning de son groupe ; aucune donnée d'absence ni de santé n'est reprise.
+   déjà accès au planning de son groupe ; aucune donnée d'absence ni de santé n'est reprise. Seuls les horaires des
+   agents qui ont un compte CSM de l'équipe (PACO/RCCA, modérateur, administrateur) sont gardés ; pour les autres
+   agents du groupe Quinyx, seuls le prénom et le nom sont enregistrés (rattachement manuel par l'admin), fiche
+   supprimée après 180 jours.

@@ -40,8 +40,26 @@ L'extension déjà installée chez les agents (« CSM — Connecteur DICOS », *
 **Côté CSM** (source unique, testée) : `web/src/lib/quinyx/model.ts` retrie et convertit (`mapQuinyxBatch`) ; l'ingestion
 (`web/src/server/quinyx-ingest.ts`) est idempotente (identifiant de prestation Quinyx unique), borne le corps (2 Mo, 5 000
 prestations, 62 jours) et le débit (20 lots / min / jeton), refuse un groupe non configuré, et sur un lot complet
-retire les prestations de la période disparues de Quinyx (désaffectées, supprimées, changées en repos) — sauf si le lot
-est vide alors que CSM en a plus de 10 (accès Quinyx réduit, pas un planning vidé).
+retire les prestations de la période disparues de Quinyx (désaffectées, supprimées, changées en repos), avec trois
+garde-fous (revues du 14 oct.) : seulement pour les **agents que le compte Quinyx de l'expéditeur voit** (`visible`,
+identifiants sans nom : un compte qui ne voit que ses prestations n'efface pas celles des collègues), seulement dans
+les **sections reçues**, et jamais plus de **30 %** de la période d'un coup (au-delà : « retraits suspendus », rien
+n'est retiré). Un lot tronqué (> 1 500 prestations) part `complete: false`. Un seul lot à la fois par groupe ; une
+synchro avec une erreur ne met pas à jour la date « synchronisé il y a… ». Période acceptée : J-10 à J+70, 62 jours
+au plus ; heures validées, prestation de plus de 24 h ignorée.
+
+**Seulement l'équipe CSM** (précision de l'utilisateur, 14 oct.) : une prestation n'est gardée que si son agent est
+rattaché à un compte CSM PACO/RCCA, Modérateur ou administrateur (ou, avant validation, proposé pour un tel compte par
+le nom). Les autres (collègues sans compte CSM) : prénom et nom seuls, pour que l'admin puisse les rattacher à la main ;
+leurs prestations déjà stockées sont retirées. Le popup affiche « N hors équipe CSM ».
+
+**Partage** : les horaires synchronisés par un agent sont enregistrés dans CSM et visibles de toute l'équipe ; chaque
+synchro les met à jour. Il suffit qu'un agent qui voit le planning complet du groupe ouvre Quinyx (au plus toutes les
+3 h) pour que tous en profitent.
+
+**Risque résiduel accepté** (comme pour DICOS) : tout agent qui a un jeton de connecteur (PACO / RCCA) peut envoyer un
+lot forgé pour un groupe configuré ; les garde-fous ci-dessus en limitent l'effet (période bornée, 30 %, nom d'un agent
+rattaché figé, rattachement validé par un admin). Un droit dédié « Quinyx » pourra être ajouté si besoin.
 
 Écartés : lecture des cookies par l'extension ou par le serveur (interdit, non nécessaire) ; export iCal par agent (pas
 de vue d'équipe, 1 lien par agent à gérer) ; saisie manuelle (doublon).
@@ -87,7 +105,15 @@ règles (`pocketbase/scripts/test-rules.mjs`).
 - **Districts du jour** : tant que l'agent n'a pas coché ses districts du jour, la fenêtre propose celui de sa
   prestation Quinyx (DSO / DSE / DCE) ; l'agent garde la main.
 
-## 6. Questions ouvertes pour l'utilisateur
+## 6. Limites connues
+
+- Une prestation qui remonte par deux groupes configurés (groupe et une de ses sections) change de groupe à chaque
+  synchro : ne configurer que le groupe parent (la page « schedule » de Quinyx).
+- Le badge « En service » est calculé à l'ouverture de la page (pas de mise à jour à la minute) ; le widget « Fin de
+  service » garde la prestation chargée à l'ouverture de l'accueil (recharger après minuit).
+- Date de publication : la plus prudente de `publishDate` / `unitPublishDate`, traitée comme exclue (question 1).
+
+## 7. Questions ouvertes pour l'utilisateur
 
 1. **Date de publication** : Quinyx renvoie « publié jusqu'au 15/11 ». CSM la traite comme **exclue** (prestations du
    14/11 et avant). Le 15/11 est-il déjà publié ? (si oui, une ligne à changer.)

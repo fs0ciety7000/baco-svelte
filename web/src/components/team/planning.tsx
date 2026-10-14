@@ -3,7 +3,7 @@ import { CalendarClock } from "lucide-react";
 import { Avatar } from "@/components/shell/avatar";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
-import { formatDay, sinceLabel } from "@/lib/orders/time";
+import { brusselsToUtc, formatDay, sinceLabel } from "@/lib/orders/time";
 import {
   KIND_LABEL,
   KIND_ORDER,
@@ -103,8 +103,10 @@ export function PlanningDay({
   const now = Date.now();
   const dayShifts = shifts.filter((s) => s.day === day);
   // Nuit commencée la veille : affichée tant qu'elle n'est pas finie (aujourd'hui) ou toujours pour un autre jour.
+  // Prestation commencée la veille et finie après minuit (nuit, extra de nuit).
+  const dayStart = Date.parse(brusselsToUtc(day, "00:00"));
   const eve = shifts.filter(
-    (s) => s.day < day && s.kind === "nuit" && (!isToday || Date.parse(s.end) > now),
+    (s) => s.day < day && Date.parse(s.end) > dayStart && (!isToday || Date.parse(s.end) > now),
   );
   const blocks: { id: string; title: string; list: PlanningShift[] }[] = [];
   if (eve.length) blocks.push({ id: "veille", title: "Nuit de la veille", list: eve });

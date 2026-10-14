@@ -122,7 +122,7 @@ export function QuinyxGroups({ groups }: { groups: QuinyxGroupRow[] }) {
                 onClick={() => {
                   if (
                     confirm(
-                      `Retirer le groupe « ${g.label} » ? Les prestations déjà reçues restent jusqu'à leur purge.`,
+                      `Retirer le groupe « ${g.label} » ? Ses prestations sont retirées du planning.`,
                     )
                   )
                     act(() => deleteQuinyxGroup(g.id), "Groupe retiré.");
