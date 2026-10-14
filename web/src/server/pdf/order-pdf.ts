@@ -13,6 +13,7 @@ import {
 import { busStops, c3Label, officeFor, pmrTypeLabel, type PacoOffice } from "@/lib/orders/mail";
 import { parseEmails, type BusDraft, type TaxiDraft } from "@/lib/orders/schemas";
 import type { Status } from "@/lib/orders/status";
+import { cleanVias } from "@/lib/orders/via";
 import { brusselsDay, brusselsTime, formatLongDay, formatShortDay } from "@/lib/orders/time";
 import type { OrderMeta, PmrClient, TaxiCompany } from "@/server/data/orders";
 
@@ -500,7 +501,8 @@ export async function taxiOrderPdf(detail: TaxiPdfDetail, ctx: PdfContext): Prom
   l.section("Trajet");
   l.field("Aller", when(d.trip_day, d.trip_time), { bold: true });
   l.field("Départ", d.from_station);
-  if (d.via_station) l.field("Via", d.via_station);
+  const vias = cleanVias(d.via_stations);
+  vias.forEach((v, i) => l.field(vias.length > 1 ? `Via ${i + 1}` : "Via", v));
   l.field("Arrivée", d.to_station);
   if (d.train_number) l.field("N° de train", d.train_number);
   if (d.round_trip) {
@@ -520,11 +522,11 @@ export async function taxiOrderPdf(detail: TaxiPdfDetail, ctx: PdfContext): Prom
     l.field("Type", pmrTypeLabel(detail.client?.type || d.pmr_type));
     l.field("Nombre de PMR", String(d.pmr_count));
     l.field("Cause", d.pmr_reason);
-    if (s.pmrFile) l.field("N° de dossier", s.pmrFile);
+    if (d.pmr_file || s.pmrFile) l.field("N° de dossier", d.pmr_file || s.pmrFile);
   }
 
   l.section("Référence et motif");
-  l.field("Référence / relation", d.relation_number);
+  if (!d.is_pmr || d.relation_number) l.field("Référence / relation", d.relation_number);
   l.field("Motif", d.reason);
 
   l.section("Facturation");

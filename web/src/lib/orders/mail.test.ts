@@ -154,6 +154,28 @@ describe("taxiMail", () => {
     ])
       expect(m.text).toContain(s);
   });
+
+  it("plusieurs gares via numérotées, n° de dossier d'un taxi PMR", () => {
+    const t = taxiMail(
+      {
+        ...taxi,
+        draft: {
+          ...taxi.draft,
+          via_stations: ["Frameries", "", "Ghlin"],
+          pmr_file: "2026-10-14-0134",
+        },
+      },
+      { agentName: "Agent Exemple" },
+    );
+    expect(t.text).toContain("Via 1 : Frameries");
+    expect(t.text).toContain("Via 2 : Ghlin");
+    expect(t.text).toContain("N° de dossier : 2026-10-14-0134");
+    const standard = taxiMail(
+      { ...taxi, draft: { ...taxi.draft, is_pmr: false, pmr_file: "2026-10-14-0134" } },
+      { agentName: "Agent Exemple" },
+    );
+    expect(standard.text).not.toContain("N° de dossier");
+  });
 });
 
 describe("e-mail de clôture (cycle v3 du 14 oct. 2026)", () => {

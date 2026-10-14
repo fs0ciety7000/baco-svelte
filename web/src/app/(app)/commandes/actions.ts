@@ -17,8 +17,16 @@ import {
   type BusDraft,
   type TaxiDraft,
 } from "@/lib/orders/schemas";
+import { normalizeDossier } from "@/lib/orders/dossier";
 import { canDeleteOrder, isStatus, type OrderKind } from "@/lib/orders/status";
-import { brusselsDay, brusselsToUtc, brusselsTime, formatShortDay } from "@/lib/orders/time";
+import { cleanVias, routeWithVias, viaText } from "@/lib/orders/via";
+import {
+  addDays,
+  brusselsDay,
+  brusselsToUtc,
+  brusselsTime,
+  formatShortDay,
+} from "@/lib/orders/time";
 import { primaryDistrict } from "@/lib/team";
 import { archiveOrder } from "@/server/archives";
 import { requireUser, type SessionUser } from "@/server/auth";
@@ -28,6 +36,7 @@ import {
   busDraftToRecord,
   busReference,
   COLLECTION,
+  deletionFor,
   getBusOrder,
   getTaxiOrder,
   listEvents,
@@ -138,7 +147,9 @@ async function taxiBody(draft: TaxiDraft, user: SessionUser, creating: boolean) 
   const body: Record<string, unknown> = {
     from_station: draft.from_station,
     to_station: draft.to_station,
-    via_station: draft.via_station,
+    // Gares via : liste ordonnée + copie texte (recherche, anciens écrans, import différentiel).
+    via_stations: cleanVias(draft.via_stations),
+    via_station: viaText(draft.via_stations),
     return_from: draft.round_trip ? draft.return_from : "",
     return_to: draft.round_trip ? draft.return_to : "",
     trip_at: draft.trip_day ? brusselsToUtc(draft.trip_day, draft.trip_time || "00:00") : "",
@@ -156,6 +167,8 @@ async function taxiBody(draft: TaxiDraft, user: SessionUser, creating: boolean) 
     pmr_type: draft.is_pmr ? draft.pmr_type : "",
     pmr_count: draft.is_pmr ? draft.pmr_count : 0,
     pmr_reason: draft.is_pmr ? draft.pmr_reason : "",
+    // N° de dossier DICOS : remis au format si sans ambiguïté, sinon gardé tel quel (validation douce).
+    pmr_file: draft.is_pmr ? normalizeDossier(draft.pmr_file).value : "",
     passengers: draft.passengers,
     vehicles: draft.vehicles,
     passenger_name: draft.passenger_name,
@@ -369,6 +382,8 @@ export async function duplicateOrder(input: {
       trip_day: brusselsDay(),
       confirmed_time: "",
       return_day: d.round_trip ? brusselsDay() : "",
+      // Nouveau trajet = autre dossier DICOS.
+      pmr_file: "",
     };
     const r = await pb
       .collection("taxi_orders")
@@ -418,6 +433,7 @@ export async function saveTemplate(
         pmr_client: "",
         passenger_name: "",
         pmr_reason: "",
+        pmr_file: "",
         notes: "",
         taxi_email: "",
       };
@@ -438,7 +454,11 @@ export async function saveTemplate(
  * `otto:delete` / `generate_taxi:delete` (Modérateur, admins), ou au créateur du bon (droit d'écriture du module) pendant
  * 8 h après la création, tant que le bon n'est pas envoyé / finalisé. L'historique part avec le bon ; le PDF archivé reste.
  */
-export async function deleteOrder(kind: OrderKind, id: string): Promise<ActionResult> {
+export async function deleteOrder(
+  kind: OrderKind,
+  id: string,
+  opts: { redirect?: boolean } = {},
+): Promise<ActionResult> {
   let target = "/commandes";
   try {
     const k = kindSchema.parse(kind);
@@ -469,6 +489,8 @@ export async function deleteOrder(kind: OrderKind, id: string): Promise<ActionRe
     unstable_rethrow(e);
     return fail(e);
   }
+  // Panneau du Suivi : pas de redirection, le panneau se ferme et la liste se rafraîchit.
+  if (opts.redirect === false) return { ok: true };
   redirect(target);
 }
 
@@ -557,6 +579,82 @@ export async function createPmrClient(
 // ---------------------------------------------------------------------------------------------------
 // Panneau de détail du suivi (lecture, avec le jeton de l'agent)
 
+export type DossierSuggestion = { ref: string; label: string };
+
+const dossierQuerySchema = z.object({
+  day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  from: z.string().trim().max(200).default(""),
+  to: z.string().trim().max(200).default(""),
+  client: z
+    .string()
+    .regex(/^$|^[a-z0-9-]{15,36}$/)
+    .default(""),
+});
+
+/**
+ * N° de dossier DICOS proposés pour un taxi PMR (14 oct. 2026) : missions PMR (`pmr_assists`) liées au client choisi, ou
+ * du jour du taxi (± 1 jour) dont une gare est celle du départ ou de l'arrivée du taxi ; trajets en taxi d'abord. Jamais
+ * de nom : n° de dossier, trajet, heure, train. Avec `pmr:read` seulement.
+ */
+export async function suggestDossiers(
+  input: z.input<typeof dossierQuerySchema>,
+): Promise<ActionResult<DossierSuggestion[]>> {
+  try {
+    const p = dossierQuerySchema.parse(input);
+    const user = await requireUser();
+    if (!can(user, "pmr:read") || !can(user, "generate_taxi:read")) return { ok: true, data: [] };
+    if (!p.client && !p.from && !p.to) return { ok: true, data: [] };
+    const pb = await pbForRequest();
+    const near: string[] = [];
+    for (const s of [p.from, p.to].filter(Boolean))
+      near.push(pb.filter("station ~ {:s} || other_station ~ {:s}", { s }));
+    const byPlace = near.length
+      ? pb.filter("day >= {:a} && day <= {:b}", {
+          a: addDays(p.day, -1),
+          b: addDays(p.day, 1),
+        }) + ` && (${near.join(" || ")})`
+      : "";
+    const ors = [
+      ...(p.client ? [pb.filter("client = {:c}", { c: p.client })] : []),
+      ...(byPlace ? [`(${byPlace})`] : []),
+    ];
+    const rows = await pb.collection("pmr_assists").getList(1, 30, {
+      filter: `dicos_ref != "" && anonymized = false && (${ors.join(" || ")})`,
+      sort: "-day,time",
+      fields: "dicos_ref,day,time,arr_time,train,station,other_station,transport,client,status",
+      skipTotal: true,
+    });
+    const score = (r: (typeof rows.items)[number]) =>
+      (p.client && r.client === p.client ? 0 : 2) +
+      (r.transport === "taxi" ? 0 : 1) +
+      (r.day === p.day ? 0 : 1);
+    const seen = new Set<string>();
+    const out: DossierSuggestion[] = [];
+    for (const r of [...rows.items].sort((a, b) => score(a) - score(b))) {
+      const ref = String(r.dicos_ref ?? "");
+      if (!ref || seen.has(ref)) continue;
+      seen.add(ref);
+      const route = [r.station, r.other_station].filter(Boolean).join(" → ");
+      out.push({
+        ref,
+        label: [
+          ref,
+          route,
+          `${formatShortDay(String(r.day))}${r.time ? ` ${r.time}` : ""}`,
+          r.transport === "taxi" ? "taxi" : r.train ? `train ${r.train}` : "",
+          r.status === "annulee" ? "annulée" : "",
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      });
+      if (out.length >= 5) break;
+    }
+    return { ok: true, data: out };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
 export type OrderPanel = {
   meta: Awaited<ReturnType<typeof getBusOrder>>["meta"];
   events: OrderEvent[];
@@ -564,6 +662,8 @@ export type OrderPanel = {
   buses: BusDraft["buses"];
   companyId: string;
   drivers: { id: string; name: string; company: string }[];
+  /** Suppression permise à l'agent (bouton du panneau). */
+  deletion: { until: string | null; label: string } | null;
 };
 
 export async function loadOrderPanel(input: {
@@ -588,6 +688,7 @@ export async function loadOrderPanel(input: {
           meta: o.meta,
           events,
           companyId: d.company,
+          deletion: deletionFor((p) => can(user, p), user.id, o.meta, d.relation),
           buses: d.buses,
           drivers: ref.drivers.filter((x) => x.company === d.company),
           facts: [
@@ -636,6 +737,7 @@ export async function loadOrderPanel(input: {
         meta: o.meta,
         events,
         companyId: d.taxi_company,
+        deletion: deletionFor((p) => can(user, p), user.id, o.meta),
         buses: [],
         drivers: [],
         facts: [
@@ -645,8 +747,10 @@ export async function loadOrderPanel(input: {
           },
           {
             label: "Trajet",
-            value: `${d.from_station || "?"}${d.via_station ? ` → ${d.via_station}` : ""} → ${d.to_station || "?"}`,
+            value: routeWithVias(d.from_station, d.via_stations, d.to_station),
           },
+          ...(d.is_pmr && d.pmr_file ? [{ label: "N° de dossier", value: d.pmr_file }] : []),
+          ...(d.relation_number ? [{ label: "Référence", value: d.relation_number }] : []),
           ...(d.train_number ? [{ label: "Train", value: d.train_number }] : []),
           ...(d.round_trip
             ? [

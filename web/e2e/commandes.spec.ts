@@ -494,6 +494,162 @@ test("taxi : création liée à une société, aller-retour pré-inversé", asyn
   ).toBe(true);
 });
 
+// Captures demandées pour la revue (hors dépôt) : dossier de l'agent, sinon test-results.
+const SHOTS = process.env.E2E_SHOTS_DIR ?? "test-results";
+
+async function agentId(): Promise<string> {
+  const a = await pb(
+    "GET",
+    `/api/collections/users/records?filter=${encodeURIComponent(`email="${identity}"`)}`,
+  );
+  return a.items[0].id as string;
+}
+
+test("taxi PMR : deux gares via (ordonnées) et n° de dossier", async ({ page }, info) => {
+  const p = info.project.name;
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page, "/commandes/taxi/nouveau");
+  await page.getByRole("combobox", { name: "Départ", exact: true }).fill("Mons");
+  await page.getByRole("combobox", { name: "Arrivée", exact: true }).fill("Tournai");
+  // Liste ordonnée d'étapes : ajout, saisie, descendre / monter.
+  await page.getByTestId("via-add").click();
+  await page.getByTestId("via-input-0").fill("Frameries");
+  await page.getByTestId("via-add").click();
+  await page.getByTestId("via-input-1").fill("Ghlin");
+  await page.getByTestId("via-input-1").press("Tab");
+  await page.getByTestId("via-down-0").click();
+  await expect(page.getByTestId("via-input-0")).toHaveValue("Ghlin");
+  await expect(page.getByTestId("via-input-1")).toHaveValue("Frameries");
+  await page.getByTestId("via-up-1").click();
+  await expect(page.getByTestId("via-input-0")).toHaveValue("Frameries");
+  // Une 3e étape ajoutée puis retirée.
+  await page.getByTestId("via-add").click();
+  await page.getByTestId("via-remove-2").click();
+  await expect(page.getByTestId("via-input-2")).toHaveCount(0);
+
+  // Taxi PMR : « Numéro de dossier » (AAAA-MM-JJ-NNNN), saisie remise au format, message si hors format.
+  await page.getByRole("radio", { name: "PMR", exact: true }).click();
+  await expect(page.getByText("Référence / relation")).toHaveCount(0);
+  const file = page.getByTestId("pmr-file");
+  await file.fill("1234");
+  await file.press("Tab");
+  await expect(page.getByText(/N° de dossier inattendu/)).toBeVisible();
+  await file.fill("20261014134");
+  await file.press("Tab");
+  await expect(file).toHaveValue("2026-10-14-0134");
+  await expect(page.getByText(/N° de dossier inattendu/)).toHaveCount(0);
+  await expect(page.getByTestId("autosave")).toHaveAttribute("data-state", "saved", {
+    timeout: 10_000,
+  });
+  const id = new URL(page.url()).searchParams.get("id") ?? "";
+  expect(id).not.toBe("");
+  fixtures.push({ col: "taxi_orders", id });
+  const rec = await pb("GET", `/api/collections/taxi_orders/records/${id}`);
+  expect(rec.via_stations).toEqual(["Frameries", "Ghlin"]);
+  expect(rec.via_station).toBe("Frameries · Ghlin");
+  expect(rec.pmr_file).toBe("2026-10-14-0134");
+
+  await page.reload();
+  await expect(page.getByTestId("via-input-0")).toHaveValue("Frameries");
+  await expect(page.getByTestId("via-input-1")).toHaveValue("Ghlin");
+  await expect(page.getByTestId("pmr-file")).toHaveValue("2026-10-14-0134");
+  if (p === "desktop")
+    await expect(page.getByTestId("preview-via")).toHaveText("Frameries → Ghlin");
+  await noHorizontalScroll(page);
+  await page.screenshot({ path: `${SHOTS}/taxi-pmr-via-dossier-${p}.png`, fullPage: true });
+
+  // Repris dans le panneau du Suivi (trajet complet + n° de dossier).
+  if (p === "desktop") {
+    const n = /n° (\d+)/.exec((await page.getByTestId("order-number").textContent()) ?? "")?.[1];
+    await page.goto("/commandes/suivi?vue=en-cours&type=taxi");
+    await page.getByRole("button", { name: `Ouvrir la commande taxi n° ${n}` }).click();
+    const panel = page.getByTestId("order-panel");
+    await expect(panel).toContainText("Mons → Frameries → Ghlin → Tournai");
+    await expect(panel).toContainText("2026-10-14-0134");
+  }
+  expect(errors).toEqual([]);
+});
+
+test("suppression d'un bon par son créateur (confirmation, retour à la liste)", async ({
+  page,
+}, info) => {
+  const p = info.project.name;
+  await login(page, "/commandes/taxi/nouveau");
+  await page.getByRole("combobox", { name: "Départ", exact: true }).fill("Mons");
+  await expect(page.getByTestId("autosave")).toHaveAttribute("data-state", "saved", {
+    timeout: 10_000,
+  });
+  const id = new URL(page.url()).searchParams.get("id") ?? "";
+  const n = /n° (\d+)/.exec((await page.getByTestId("order-number").textContent()) ?? "")?.[1];
+  fixtures.push({ col: "taxi_orders", id });
+  // Fiche rechargée : droit calculé par le serveur.
+  await page.goto(`/commandes/taxi/${id}`);
+  if (p === "desktop") {
+    await page
+      .getByTestId("order-action-bar")
+      .getByRole("button", { name: "Plus d'actions" })
+      .first()
+      .click();
+    await page.getByTestId("menu-delete-order").click();
+  } else {
+    await page.getByTestId("order-more").click();
+    await expect(page.getByTestId("sheet-delete-order")).toBeVisible();
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: `${SHOTS}/feuille-actions-supprimer-${p}.png` });
+    await page.getByTestId("sheet-delete-order").click();
+  }
+  await expect(page.getByTestId("delete-order-question")).toHaveText(
+    `Supprimer définitivement le bon taxi n° ${n} ?`,
+  );
+  if (p === "desktop") await page.screenshot({ path: `${SHOTS}/supprimer-confirmation-${p}.png` });
+  await page.getByTestId("delete-order-confirm").click();
+  await expect(page).toHaveURL(/\/commandes\/taxi$/, { timeout: 10_000 });
+  const res = await fetch(`${PB}/api/collections/taxi_orders/records/${id}`, {
+    headers: { authorization: root },
+  });
+  expect(res.status).toBe(404);
+});
+
+test("bon envoyé il y a plus de 30 jours : dans Archives, plus dans le Suivi", async ({
+  page,
+}, info) => {
+  const p = info.project.name;
+  const day = (offset: number) => new Date(Date.now() + offset * 86_400_000).toISOString();
+  const station = `Archivegare ${suffix} ${p}`;
+  const old = await pb("POST", "/api/collections/taxi_orders/records", {
+    status: "envoye",
+    created_by: await agentId(),
+    from_station: station,
+    to_station: "Tournai",
+    via_stations: ["Ath"],
+    via_station: "Ath",
+    trip_at: day(-41).replace("T", " "),
+    sent_at: day(-40).replace("T", " "),
+    trip_type: "aller",
+  });
+  fixtures.push({ col: "taxi_orders", id: old.id });
+  await login(page, `/commandes/taxi?q=${encodeURIComponent(station)}`);
+  await expect(page.getByTestId("orders-count")).toHaveText(/^\s*0\s+commandes/);
+  await page.goto("/commandes/suivi?vue=toutes&type=taxi");
+  await expect(
+    page.getByRole("button", { name: `Ouvrir la commande taxi n° ${old.number}` }),
+  ).toHaveCount(0);
+  await page.goto("/commandes/archives");
+  const list = page.getByTestId("archived-orders");
+  await expect(list).toContainText(station);
+  await expect(list.getByTestId("archived-badge").first()).toBeVisible();
+  await noHorizontalScroll(page);
+  await page.screenshot({ path: `${SHOTS}/archives-bons-${p}.png`, fullPage: true });
+  // Filtre par type et recherche.
+  await page.goto(`/commandes/archives?type=taxi&q=${encodeURIComponent(station)}`);
+  await expect(page.getByTestId("archived-count")).toContainText("1 bon archivé");
+  // Lien direct vers la fiche : lecture seule, badge « Archivé ».
+  await page.goto(`/commandes/taxi/${old.id}`);
+  await expect(page.getByTestId("archived-badge")).toBeVisible();
+  await expect(page.getByText("Lecture seule")).toBeVisible();
+});
+
 for (const t of ["nuit", "jour"] as const) {
   test(`captures ${t}`, async ({ page }, info) => {
     await login(page);

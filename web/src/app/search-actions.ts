@@ -5,7 +5,9 @@ import { unstable_rethrow } from "next/navigation";
 
 import { lineLabel } from "@/lib/lines";
 import { plainText } from "@/lib/ops/chat-markdown";
+import { isArchivedOrder } from "@/lib/orders/archive";
 import { addDays, brusselsDay, formatDay, isValidDay, pbDate } from "@/lib/orders/time";
+import { routeWithVias, viaList } from "@/lib/orders/via";
 import { can, isAdmin, type PermissionSubject } from "@/lib/permissions";
 import {
   orderPaletteGroups,
@@ -244,6 +246,17 @@ async function crossings({ pb, p, q }: Ctx): Promise<SearchGroup | null> {
   );
 }
 
+/** Bon clôturé depuis plus de 30 jours : toujours trouvé par ⌘K, signalé « Archivé ». */
+function archivedOf(o: Record<string, unknown>): boolean {
+  return isArchivedOrder({
+    status: str(o.status),
+    sent_at: str(o.sent_at),
+    cancelled_at: str(o.cancelled_at),
+    ended_at: str(o.ended_at),
+    updated: str(o.updated),
+  });
+}
+
 async function busOrders({ pb, p, q, terms }: Ctx): Promise<SearchGroup> {
   // N° de bon, n° de train, relation (n° TC) ; gares de départ / d'arrivée (recherche tolérante).
   const ors = [stationFilter(pb, ["origin", "destination"], terms, { fields: ["relation"], q })];
@@ -252,7 +265,8 @@ async function busOrders({ pb, p, q, terms }: Ctx): Promise<SearchGroup> {
   const r = await pb.collection("bus_orders").getList(1, LIMIT, {
     filter: ors.filter(Boolean).join(" || "),
     sort: "-order_date,-created",
-    fields: "id,number,origin,destination,order_date,relation,train_number",
+    fields:
+      "id,number,origin,destination,order_date,relation,train_number,status,sent_at,ended_at,cancelled_at,updated",
     skipTotal: true,
   });
   return group(
@@ -266,6 +280,7 @@ async function busOrders({ pb, p, q, terms }: Ctx): Promise<SearchGroup> {
           isValidDay(day) ? formatDay(day) : "",
           o.relation,
           o.train_number ? `train ${str(o.train_number)}` : "",
+          archivedOf(o) ? "Archivé" : "",
         ),
         href: `/commandes/bus/${o.id}`,
       };
@@ -277,7 +292,7 @@ async function busOrders({ pb, p, q, terms }: Ctx): Promise<SearchGroup> {
 async function taxiOrders({ pb, p, q, terms }: Ctx): Promise<SearchGroup> {
   // Jamais les champs PMR du taxi (nom du voyageur) : n°, train, relation, société, gares seulement.
   const ors = [
-    stationFilter(pb, ["from_station", "to_station"], terms, {
+    stationFilter(pb, ["from_station", "to_station", "via_station"], terms, {
       fields: ["relation_number", "taxi_name"],
       q,
     }),
@@ -287,7 +302,8 @@ async function taxiOrders({ pb, p, q, terms }: Ctx): Promise<SearchGroup> {
   const r = await pb.collection("taxi_orders").getList(1, LIMIT, {
     filter: ors.filter(Boolean).join(" || "),
     sort: "-trip_at,-number",
-    fields: "id,number,from_station,to_station,trip_at,taxi_name,train_number",
+    fields:
+      "id,number,from_station,to_station,via_station,via_stations,trip_at,taxi_name,train_number,status,sent_at,ended_at,cancelled_at,updated",
     skipTotal: true,
   });
   return group(
@@ -296,11 +312,12 @@ async function taxiOrders({ pb, p, q, terms }: Ctx): Promise<SearchGroup> {
       const at = pbDate(str(o.trip_at));
       return {
         kind: "taxi",
-        label: `Taxi ${o.number ?? ""} · ${str(o.from_station) || "?"} → ${str(o.to_station) || "?"}`,
+        label: `Taxi ${o.number ?? ""} · ${routeWithVias(str(o.from_station), viaList(o), str(o.to_station))}`,
         meta: join(
           at ? formatDay(brusselsDay(at)) : "",
           o.taxi_name,
           o.train_number ? `train ${str(o.train_number)}` : "",
+          archivedOf(o) ? "Archivé" : "",
         ),
         href: `/commandes/taxi/${o.id}`,
       };

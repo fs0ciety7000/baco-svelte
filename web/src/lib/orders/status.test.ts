@@ -1,12 +1,31 @@
 import { describe, expect, it } from "vitest";
 
-import { canDeleteOrder, isEditable, reopenPermission, transitionsFor } from "./status";
+import {
+  canDeleteOrder,
+  isEditable,
+  orderDeletion,
+  remainingLabel,
+  reopenPermission,
+  transitionsFor,
+} from "./status";
 
 describe("cycle des bons v3 (brouillon / en cours → terminé → envoyé / finalisé)", () => {
   it("brouillon : terminer (action principale) ou annuler", () => {
     const list = transitionsFor("brouillon", { coordinator: false });
     expect(list.map((t) => t.to)).toEqual(["termine", "annule"]);
     expect(list[0]).toMatchObject({ label: "Terminer (bus démobilisés)", primary: true });
+  });
+
+  it("taxi : « Terminer » tout court (pas de bus à démobiliser)", () => {
+    const list = transitionsFor("brouillon", { coordinator: false, kind: "taxi" });
+    expect(list[0]).toMatchObject({ to: "termine", label: "Terminer", primary: true });
+    expect(transitionsFor("brouillon", { coordinator: false, kind: "bus" })[0]?.label).toBe(
+      "Terminer (bus démobilisés)",
+    );
+    // La table partagée n'est pas modifiée par l'appel taxi.
+    expect(transitionsFor("brouillon", { coordinator: false })[0]?.label).toBe(
+      "Terminer (bus démobilisés)",
+    );
   });
 
   it("terminé : valider l'envoi, revenir en cours ou annuler", () => {
@@ -62,6 +81,17 @@ describe("suppression d'un bon (14 oct. 2026)", () => {
     expect(
       canDeleteOrder(has("otto:write"), "u1", order({ created: "2026-10-14 03:59:00.000Z" }), now),
     ).toBe(false);
+  });
+
+  it("bouton « Supprimer le bon » : fenêtre du créateur affichée, sans limite avec le droit", () => {
+    expect(orderDeletion(has("otto:write"), "u1", order(), now)).toEqual({
+      until: "2026-10-14T16:00:00.000Z",
+    });
+    expect(orderDeletion(has("otto:delete"), "x", order(), now)).toEqual({ until: null });
+    expect(orderDeletion(has("otto:write"), "u2", order(), now)).toBeNull();
+    expect(remainingLabel("2026-10-14T16:00:00.000Z", now)).toBe("4h00");
+    expect(remainingLabel("2026-10-14T12:05:30.000Z", now)).toBe("0h06");
+    expect(remainingLabel("2026-10-14T11:00:00.000Z", now)).toBe("");
   });
 
   it("réouverture : une permission par type de bon", () => {

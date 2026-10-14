@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { VIA_MAX } from "./via";
+
 // Schémas partagés client / serveur des commandes. Le brouillon accepte une saisie incomplète
 // (enregistrement automatique) ; `checkBusForSend` / `checkTaxiForSend` listent ce qui manque pour l'envoi.
 
@@ -109,36 +111,54 @@ export const PMR_TYPES = [
   { value: "MR", label: "Marche difficile" },
 ] as const;
 
-export const taxiDraftSchema = z.object({
-  trip_day: day,
-  trip_time: time,
-  round_trip: z.boolean().default(false),
-  return_day: day,
-  return_time: time,
-  from_station: text(200),
-  to_station: text(200),
-  via_station: text(200),
-  return_from: text(200),
-  return_to: text(200),
-  taxi_company: id,
-  /** Adresse saisie à la main si la société n'en a pas. */
-  taxi_email: text(500),
-  is_pmr: z.boolean().default(false),
-  pmr_client: id,
-  pmr_type: text(100),
-  pmr_count: count(50),
-  passengers: count(100).default(1),
-  vehicles: count(20).default(1),
-  passenger_name: text(200),
-  relation_number: text(100),
-  train_number: trainNumber,
-  billing: text(200).default("SNCB"),
-  reason: text(2000),
-  pmr_reason: text(2000),
-  confirmed_time: time,
-  district: districtSchema,
-  notes: text(4000),
-});
+/**
+ * Anciens brouillons et modèles (avant le 14 oct. 2026) : une seule gare `via_station` (texte) → `via_stations`.
+ * Une valeur qui n'est pas un objet passe telle quelle (zod la refuse ou applique les valeurs par défaut).
+ */
+function legacyTaxiInput(v: unknown): unknown {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return v;
+  const o = v as Record<string, unknown>;
+  if (Array.isArray(o.via_stations) || typeof o.via_station !== "string") return v;
+  const { via_station, ...rest } = o;
+  return { ...rest, via_stations: (via_station as string).trim() ? [via_station] : [] };
+}
+
+export const taxiDraftSchema = z.preprocess(
+  legacyTaxiInput,
+  z.object({
+    trip_day: day,
+    trip_time: time,
+    round_trip: z.boolean().default(false),
+    return_day: day,
+    return_time: time,
+    from_station: text(200),
+    to_station: text(200),
+    /** Gares via, dans l'ordre du trajet (lignes vides gardées pendant la saisie, retirées à l'enregistrement). */
+    via_stations: z.array(z.string().trim().max(200)).max(VIA_MAX).default([]),
+    return_from: text(200),
+    return_to: text(200),
+    taxi_company: id,
+    /** Adresse saisie à la main si la société n'en a pas. */
+    taxi_email: text(500),
+    is_pmr: z.boolean().default(false),
+    pmr_client: id,
+    pmr_type: text(100),
+    pmr_count: count(50),
+    passengers: count(100).default(1),
+    vehicles: count(20).default(1),
+    passenger_name: text(200),
+    relation_number: text(100),
+    /** Taxi PMR : n° de dossier DICOS (AAAA-MM-JJ-NNNN, `normalizeDossier`) ; colonne `pmr_file` (purgée à 12 mois). */
+    pmr_file: text(100),
+    train_number: trainNumber,
+    billing: text(200).default("SNCB"),
+    reason: text(2000),
+    pmr_reason: text(2000),
+    confirmed_time: time,
+    district: districtSchema,
+    notes: text(4000),
+  }),
+);
 export type TaxiDraft = z.infer<typeof taxiDraftSchema>;
 
 export type Missing = { field: string; message: string };

@@ -48,6 +48,8 @@ import { useAutosave } from "@/lib/orders/use-autosave";
 import { PdfLink, SendDialog } from "./send-dialog";
 import { StartPanel, type StartPanelProps } from "./start-panel";
 import { OrderActionBar } from "./order-action-bar";
+import { useFormDeletion } from "./delete-order";
+import { ArchivedBadge } from "./archived-badge";
 import { lineLabel } from "@/lib/lines";
 import { StationInput } from "./station-input";
 import { TrainNumberField } from "./train-field";
@@ -73,6 +75,10 @@ export type BusFormProps = {
   };
   officeEmail: string;
   start?: Omit<StartPanelProps, "kind">;
+  /** Suppression permise à l'agent (`deletionFor`) ; absente pour un bon neuf. */
+  deletion?: { until: string | null; label: string } | null;
+  /** Bon clôturé depuis plus de 30 jours (visible dans Commandes › Archives). */
+  archived?: boolean;
 };
 
 export function BusForm(props: BusFormProps) {
@@ -112,6 +118,14 @@ export function BusForm(props: BusFormProps) {
   });
   const orderId = autosave.id;
   const number = autosave.number ?? props.number;
+  const del = useFormDeletion({
+    kind: "bus",
+    serverDeletion: props.deletion,
+    initialId: props.orderId,
+    id: orderId,
+    number,
+    relation: d.relation,
+  });
 
   const company = reference.companies.find((c) => c.id === d.company);
   const missing = useMemo(
@@ -380,6 +394,7 @@ export function BusForm(props: BusFormProps) {
               {number ? `C3 n° ${number}` : "Nouveau bon"}
             </span>
             <StatusBadge status={props.status} />
+            {props.archived ? <ArchivedBadge /> : null}
           </div>
           {editable ? (
             <AutosaveIndicator
@@ -864,6 +879,8 @@ export function BusForm(props: BusFormProps) {
           onDuplicate={duplicate}
           onTemplate={() => setTplOpen(true)}
           listHref="/commandes"
+          deletion={del.deletion}
+          deleteLabel={del.label}
         />
       </form>
 

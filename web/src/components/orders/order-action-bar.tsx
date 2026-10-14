@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Copy, FileText, MoreHorizontal, Save, Send, Undo2 } from "lucide-react";
+import { ArrowLeft, Copy, FileText, MoreHorizontal, Save, Send, Trash2, Undo2 } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 
@@ -11,6 +11,7 @@ import type { BusLine } from "@/lib/orders/schemas";
 import { mainActionOf, type OrderKind, type Status } from "@/lib/orders/status";
 import { cn } from "@/lib/utils";
 
+import { useDeleteOrder, useRemaining } from "./delete-order";
 import { TransitionButton, useOrderTransitions } from "./transitions";
 
 const itemClass =
@@ -38,6 +39,8 @@ export function OrderActionBar({
   onDuplicate,
   onTemplate,
   listHref,
+  deletion,
+  deleteLabel,
 }: {
   kind: OrderKind;
   orderId?: string;
@@ -54,8 +57,16 @@ export function OrderActionBar({
   onDuplicate: () => void;
   onTemplate: () => void;
   listHref: string;
+  /** Suppression permise (`orderDeletion`) : `until` = fin de la fenêtre de 8 h du créateur, `null` = sans limite. */
+  deletion?: { until: string | null } | null;
+  /** Désignation du bon dans la confirmation (« TC_1234 », « taxi n° 12 »). */
+  deleteLabel?: string;
 }) {
   const [menuOpen, setMenuOpen] = React.useState(false);
+  const del = useDeleteOrder({ kind, id: orderId ?? "", label: deleteLabel ?? "" });
+  const remaining = useRemaining(deletion?.until);
+  const canDelete = !!orderId && !!deletion;
+  const deleteHint = remaining ? `Supprimable encore ${remaining}` : "";
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const tr = useOrderTransitions({
     kind,
@@ -176,6 +187,21 @@ export function OrderActionBar({
             >
               Retour à la liste
             </Link>
+            {canDelete ? (
+              <button
+                role="menuitem"
+                type="button"
+                className="mt-1 flex min-h-11 cursor-pointer flex-col items-start justify-center border-t border-border px-3 py-1.5 text-left text-body text-danger hover:bg-surface-2"
+                onClick={del.open}
+                disabled={del.pending}
+                data-testid="menu-delete-order"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Trash2 aria-hidden className="size-4" /> Supprimer le bon
+                </span>
+                {deleteHint ? <span className="text-hint text-fg-muted">{deleteHint}</span> : null}
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -237,7 +263,7 @@ export function OrderActionBar({
           <Link className={itemClass} href={listHref} onClick={() => setSheetOpen(false)}>
             <ArrowLeft aria-hidden className="size-4 text-fg-muted" /> Retour à la liste
           </Link>
-          {destructive.length ? (
+          {destructive.length || canDelete ? (
             <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3">
               {destructive.map((t) => (
                 <Button
@@ -252,11 +278,29 @@ export function OrderActionBar({
                   {t.label}
                 </Button>
               ))}
+              {canDelete ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full border border-danger/60 text-danger"
+                    disabled={del.pending}
+                    onClick={fromSheet(del.open)}
+                    data-testid="sheet-delete-order"
+                  >
+                    <Trash2 aria-hidden /> Supprimer le bon
+                  </Button>
+                  {deleteHint ? (
+                    <p className="text-center text-hint text-fg-muted">{deleteHint}</p>
+                  ) : null}
+                </>
+              ) : null}
             </div>
           ) : null}
         </div>
       </Sheet>
       {tr.dialog}
+      {del.dialog}
     </ActionBar>
   );
 }

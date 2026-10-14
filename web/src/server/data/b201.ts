@@ -116,7 +116,15 @@ export async function b201Data(day: string, districts: string[], user: SessionUs
   // La nuit (21 h – 6 h) déborde sur le lendemain matin : on lit aussi le lendemain avant 6 h.
   const [{ rows }, report] = await Promise.all([
     listOrders(
-      { kind: "all", from: day, to: addDays(day, 1), district: districts, limit: 500 },
+      // Remise d'un jour passé : bons archivés compris.
+      {
+        kind: "all",
+        from: day,
+        to: addDays(day, 1),
+        district: districts,
+        limit: 500,
+        archived: "include",
+      },
       ctx,
     ),
     pb
