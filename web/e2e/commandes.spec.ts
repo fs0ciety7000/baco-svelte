@@ -28,7 +28,7 @@ async function pb(method: string, path: string, body?: unknown) {
   return res.status === 204 ? null : res.json();
 }
 
-test.beforeAll(async () => {
+test.beforeAll(async ({}, info) => {
   const su = await pb("POST", "/api/collections/_superusers/auth-with-password", {
     identity: suEmail,
     password: suPassword,
@@ -97,7 +97,78 @@ test.beforeAll(async () => {
       fixtures.push({ col: "line_stations", id: r.id });
     }
   }
+  trains = await trainFixtures(info.project.name);
 });
+
+// Référentiel des trains (14 oct. 2026) : gares et train fictifs propres à chaque format (la base de la CI est vide, la
+// base locale a un vrai import : noms et n° qui n'existent pas ailleurs).
+async function trainFixtures(p: string) {
+  const n = p === "desktop" ? 99831 : 99832;
+  const name = (s: string) => `${s} E2E ${p}`;
+  const fold = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  for (const [col, filter] of [
+    ["train_services", `key="${n}:e2e-cmd"`],
+    ["stations", `key~"e2e ${p}"`],
+  ] as const) {
+    const old = await pb(
+      "GET",
+      `/api/collections/${col}/records?perPage=50&filter=${encodeURIComponent(filter)}`,
+    );
+    for (const r of old?.items ?? []) await pb("DELETE", `/api/collections/${col}/records/${r.id}`);
+  }
+  const [alpha, bravo, charlie, delta] = ["Alpha", "Bravo", "Charlie", "Delta"].map(name);
+  const deltaNl = name("Delta-Noord");
+  const svc = await pb("POST", "/api/collections/train_services/records", {
+    key: `${n}:e2e-cmd`,
+    number: n,
+    type: "IC",
+    relation: "IC99",
+    relation_source: "infrabel",
+    series: "99800-99849",
+    origin: alpha,
+    terminus: delta,
+    days: 127,
+    stops: [
+      { n: alpha, d: "08:00", l: "96" },
+      { n: bravo, a: "08:10", d: "08:11", l: "96" },
+      { n: charlie, p: 1, l: "97" },
+      { n: delta, t: deltaNl, a: "08:30" },
+    ],
+    lines: ["96", "97"],
+    lines_source: "infrabel",
+    first_dep: "08:00",
+    last_arr: "08:30",
+    stations_key: `|${[alpha, bravo, delta, deltaNl].map(fold).join("|")}|`,
+    pass_key: `|${fold(charlie)}|`,
+    lines_key: "|96|97|",
+  });
+  fixtures.push({ col: "train_services", id: svc.id });
+  for (const [st, nl] of [
+    [alpha, ""],
+    [delta, deltaNl],
+  ] as const) {
+    const r = await pb("POST", "/api/collections/stations/records", {
+      key: fold(st),
+      name: st,
+      name_nl: nl,
+      country: "BE",
+      aliases: nl ? [nl] : [],
+      search_key: `|${[st, nl].filter(Boolean).map(fold).join("|")}|`,
+      lines: ["96"],
+      served: true,
+    });
+    fixtures.push({ col: "stations", id: r.id });
+  }
+  return { n, alpha, bravo, charlie, delta, deltaNl };
+}
+
+let trains: Awaited<ReturnType<typeof trainFixtures>> | null = null;
 
 test.afterAll(async () => {
   // Commandes créées par le test (rattachées aux sociétés de démo), puis les fiches de démo.
@@ -126,7 +197,7 @@ async function theme(page: Page, name: string) {
     {
       name: "csm_ui",
       value: JSON.stringify({ theme: name, density: "confortable" }),
-      url: "http://localhost:3000",
+      url: process.env.E2E_BASE_URL ?? "http://localhost:3000",
     },
   ]);
 }
@@ -227,6 +298,77 @@ test("modèle partagé : envoi possible sans modification", async ({ page }, inf
     await dialog.getByRole("button", { name: "Terminer (bus démobilisés)" }).click();
   await page.getByTestId("prepare-send").click();
   await expect(page.getByTestId("validate-send")).toBeEnabled();
+});
+
+test("bus : n° de train, gares et arrêts tirés du référentiel des trains", async ({
+  page,
+}, info) => {
+  const t = trains!;
+  const p = info.project.name;
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page, "/commandes/nouveau");
+  await page.getByLabel("Motif").fill(`Train ${t.n} (essai)`);
+  await expect(page.getByTestId("autosave")).toHaveAttribute("data-state", "saved", {
+    timeout: 10_000,
+  });
+  fixtures.push({ col: "bus_orders", id: new URL(page.url()).searchParams.get("id") ?? "" });
+
+  // N° de train dans un bon sans gare : gares, lignes et arrêts repris d'office.
+  await page.getByTestId("train-number").fill(String(t.n));
+  await expect(page.getByTestId("train-info")).toContainText(`IC ${t.n}`);
+  await expect(page.getByLabel("Origine")).toHaveValue(t.alpha);
+  await expect(page.getByLabel("Destination")).toHaveValue(t.delta);
+  for (const line of ["L.96", "L.97"])
+    await expect(page.getByRole("button", { name: line, exact: true })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  const stops = page.getByTestId("route-stops");
+  await expect(stops.getByRole("button", { name: t.bravo })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  // Passage sans arrêt : jamais proposé comme arrêt.
+  await expect(stops.getByRole("button", { name: t.charlie })).toHaveCount(0);
+  await expect(page.getByTestId("route-source")).toContainText("Arrêts des trains");
+  await snap(page, `train-${p}`, p);
+
+  // Annulable, puis repris à la demande.
+  await page.getByTestId("train-undo").click();
+  await expect(page.getByLabel("Origine")).toHaveValue("");
+  await page.getByTestId("train-apply").click();
+  await expect(page.getByLabel("Origine")).toHaveValue(t.alpha);
+
+  // Nom NL (alias) accepté, nom FR retenu ; arrêts recalculés d'après les trains.
+  await page.getByTestId("route-stops").getByRole("button", { name: t.bravo }).click();
+  await page.getByLabel("Destination").fill(t.deltaNl);
+  await page.getByLabel("Motif").focus();
+  await expect(page.getByLabel("Destination")).toHaveValue(t.delta);
+  await expect(stops.getByRole("button", { name: t.bravo })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByTestId("autosave")).toHaveAttribute("data-state", "saved", {
+    timeout: 10_000,
+  });
+  expect(errors).toEqual([]);
+});
+
+test("taxi : n° de train", async ({ page }, info) => {
+  test.skip(info.project.name !== "desktop", "parcours en desktop");
+  const t = trains!;
+  await login(page, "/commandes/taxi/nouveau");
+  await page.getByTestId("train-number").fill(String(t.n));
+  await expect(page.getByRole("combobox", { name: "Départ", exact: true })).toHaveValue(t.alpha);
+  await expect(page.getByRole("combobox", { name: "Arrivée", exact: true })).toHaveValue(t.delta);
+  await expect(page.getByLabel("Heure de prise en charge")).toHaveValue("08:00");
+  await expect(page.getByTestId("autosave")).toHaveAttribute("data-state", "saved", {
+    timeout: 10_000,
+  });
+  fixtures.push({ col: "taxi_orders", id: new URL(page.url()).searchParams.get("id") ?? "" });
+  await page.reload();
+  await expect(page.getByTestId("train-number")).toHaveValue(String(t.n));
 });
 
 test("taxi : création liée à une société, aller-retour pré-inversé", async ({ page }, info) => {

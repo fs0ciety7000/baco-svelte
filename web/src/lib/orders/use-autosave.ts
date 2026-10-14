@@ -100,7 +100,13 @@ export function useAutosave<T>({
   useEffect(() => {
     if (!enabled) return;
     const json = JSON.stringify(value);
-    if (json === last.current) return;
+    if (json === last.current) {
+      // Saisie revenue à l'état enregistré (arrêt décoché puis recoché…) : plus rien à enregistrer.
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = null;
+      if (!inflight.current) setState((s) => (s === "dirty" ? (id.current ? "saved" : "idle") : s));
+      return;
+    }
     setState("dirty");
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {

@@ -2,6 +2,17 @@
 
 export type LineInfo = { line: string; stations: string[] };
 
+/** Identité d'une ligne : « L.96 » (référentiel BACO), « 96 » (référentiel des trains) et « l 96 » se rejoignent. */
+export const lineId = (line: string) =>
+  String(line ?? "")
+    .trim()
+    .replace(/^L\.?\s*/i, "")
+    .toUpperCase();
+
+/** Vrai si la liste contient la ligne (quelle que soit son écriture). */
+export const sameLine = (lines: string[], line: string) =>
+  lines.some((l) => lineId(l) === lineId(line));
+
 // Comparaison tolérante (11 oct. 2026) : accents, casse, tirets et espaces ignorés (« bruxelles midi » = « Bruxelles-Midi »).
 const norm = (s: string) =>
   s

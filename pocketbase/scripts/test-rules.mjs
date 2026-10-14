@@ -177,8 +177,13 @@ try {
 	check('numéro de bon attribué', bo.status === 200 && bo.json.number > 0, `n° ${bo.json?.number}`);
 	const bid = bo.json.id;
 	const patch = (token, body) => api('PATCH', `/api/collections/bus_orders/records/${bid}`, { token, body });
+	// N° de train (1760003800) : chiffres seulement, 6 au plus.
+	let t = await patch(u.token, { train_number: '1706' });
+	check('n° de train enregistré', t.status === 200 && t.json.train_number === '1706', `HTTP ${t.status}`);
+	t = await patch(u.token, { train_number: 'IC1706' });
+	check('n° de train non numérique refusé', t.status === 400, `HTTP ${t.status}`);
 	// Cycle v3 (14 oct. 2026) : brouillon / en cours → terminé (bus démobilisés) → envoyé / finalisé ; annulé.
-	let t = await patch(u.token, { status: 'envoye' });
+	t = await patch(u.token, { status: 'envoye' });
 	check('brouillon → envoyé refusé (passer par « terminé »)', t.status === 400, `HTTP ${t.status}`);
 	t = await patch(roles.otto_agent.token, { status: 'termine' });
 	check("l'invité ne termine pas (lecture seule)", t.status >= 400, `HTTP ${t.status}`);

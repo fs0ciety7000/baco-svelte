@@ -2,6 +2,7 @@ import "server-only";
 
 import type { RecordModel } from "pocketbase";
 
+import { keysOf, type RouteTrain } from "@/lib/orders/train-route";
 import { foldStation } from "@/lib/stations/search";
 import {
   DAY_FILTERS,
@@ -396,4 +397,77 @@ export async function listStations(
     sort: "name",
   });
   return { rows: res.items.map(stationRow), total: res.totalItems };
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Bons de commande (bus, taxi) : trajet tiré des trains (14 oct. 2026)
+
+const ROUTE_FIELDS = "number,type,relation,origin,terminus,days,stops";
+
+function routeTrain(r: RecordModel): RouteTrain {
+  return {
+    number: num(r.number),
+    type: str(r.type),
+    relation: str(r.relation),
+    origin: str(r.origin),
+    terminus: str(r.terminus),
+    days: num(r.days),
+    stops: arr(r.stops),
+  };
+}
+
+/**
+ * Noms repliés d'une gare saisie : la saisie, et si le référentiel des gares la reconnaît (nom FR / NL, alias comme
+ * « Maubeuge », abréviation PtCar), son nom FR, son nom NL et ses alias. Exact (pas de « contient »).
+ */
+export async function exactStationKeys(input: string): Promise<Set<string>> {
+  const raw = input.trim().slice(0, 80);
+  const keys = keysOf(raw);
+  const k = foldStation(raw);
+  if (!k) return keys;
+  const pb = await pbForRequest();
+  try {
+    const res = await pb.collection("stations").getList(1, 3, {
+      filter: pb.filter("search_key ~ {:k} || abbr = {:a}", {
+        k: `|${k}|`,
+        a: raw.toUpperCase(),
+      }),
+      fields: "name,name_nl,aliases",
+      skipTotal: true,
+    });
+    for (const r of res.items)
+      for (const n of [str(r.name), str(r.name_nl), ...arr<string>(r.aliases)]) {
+        const f = foldStation(n);
+        if (f) keys.add(f);
+      }
+  } catch {
+    // Référentiel absent ou illisible : la saisie seule.
+  }
+  return keys;
+}
+
+/** Trains qui passent par les deux gares (arrêt ou passage), 400 au plus ; l'ordre est vérifié par `trainRoute`. */
+export async function trainsThrough(dep: Set<string>, arr: Set<string>): Promise<RouteTrain[]> {
+  const pb = await pbForRequest();
+  const a = keyFilter(pb, ["stations_key", "pass_key"], dep);
+  const b = keyFilter(pb, ["stations_key", "pass_key"], arr);
+  if (!a || !b) return [];
+  const res = await pb.collection("train_services").getList(1, 400, {
+    filter: `${a} && ${b}`,
+    fields: ROUTE_FIELDS,
+    skipTotal: true,
+  });
+  return res.items.map(routeTrain);
+}
+
+/** Variantes d'un n° de train, pour un bon. */
+export async function trainVariants(number: number): Promise<RouteTrain[]> {
+  if (!Number.isInteger(number) || number <= 0 || number > 99999) return [];
+  const pb = await pbForRequest();
+  const res = await pb.collection("train_services").getList(1, 10, {
+    filter: pb.filter("number = {:n}", { n: number }),
+    fields: ROUTE_FIELDS,
+    skipTotal: true,
+  });
+  return res.items.map(routeTrain);
 }

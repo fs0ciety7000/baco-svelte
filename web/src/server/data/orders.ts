@@ -13,6 +13,7 @@ import {
   type TaxiDraft,
 } from "@/lib/orders/schemas";
 import { isStatus, type OrderKind, type Status } from "@/lib/orders/status";
+import { foldStation, type StationRef } from "@/lib/stations/search";
 import {
   addDays,
   brusselsDay,
@@ -116,6 +117,7 @@ export function busDraftFromRecord(r: RecordModel): BusDraft {
     order_date: str(r.order_date).slice(0, 10),
     call_time: str(r.call_time).slice(0, 5),
     relation: str(r.relation),
+    train_number: str(r.train_number),
     origin: str(r.origin),
     destination: str(r.destination),
     direct: !!r.direct,
@@ -203,6 +205,7 @@ export function taxiDraftFromRecord(r: RecordModel): TaxiDraft {
     vehicles: num(r.vehicles) || 1,
     passenger_name: str(r.passenger_name),
     relation_number: str(r.relation_number),
+    train_number: str(r.train_number),
     billing: str(r.billing) || "SNCB",
     reason: str(r.reason),
     pmr_reason: str(r.pmr_reason),
@@ -579,6 +582,34 @@ async function stationAbbrs(
   }
 }
 
+/**
+ * Gares proposées dans le champ de gare des bons (14 oct. 2026) : le référentiel des gares d'abord (nom FR en premier =
+ * nom retenu, puis nom NL, alias des gares frontière, abréviation PtCar), puis les gares du référentiel des lignes qu'il
+ * ne connaît pas. Sans référentiel des gares (base neuve) : les gares des lignes et les abréviations PtCar.
+ */
+async function orderStationRefs(pb: PocketBase, lineNames: string[]): Promise<StationRef[]> {
+  let refs: StationRef[] = [];
+  try {
+    const rows = await pb
+      .collection("stations")
+      .getFullList({ fields: "name,name_nl,abbr,aliases", sort: "name", batch: 1000 });
+    refs = rows
+      .map((r) => ({
+        ...(str(r.abbr) ? { abbr: str(r.abbr) } : {}),
+        names: [str(r.name), str(r.name_nl), ...strings(r.aliases)].filter(Boolean),
+      }))
+      .filter((r) => r.names.length);
+  } catch {
+    refs = [];
+  }
+  const known = new Set(refs.flatMap((r) => r.names.map(foldStation)));
+  const rest = lineNames.filter((n) => !known.has(foldStation(n)));
+  if (refs.length) return [...refs, ...rest.map((n) => ({ names: [n] }))];
+  const abbrs = await stationAbbrs(pb, rest);
+  const byName = new Map(abbrs.map((a) => [a.name, a.abbr]));
+  return rest.map((n) => (byName.has(n) ? { abbr: byName.get(n)!, names: [n] } : { names: [n] }));
+}
+
 export const busReference = cache(async () => {
   const pb = await pbForRequest();
   const [companies, drivers, stations, companyLines] = await Promise.all([
@@ -615,8 +646,7 @@ export const busReference = cache(async () => {
       phone: str(d.phone),
     })) satisfies Driver[],
     lines: lineList,
-    stations: stationNames,
-    abbrs: await stationAbbrs(pb, stationNames),
+    stationRefs: await orderStationRefs(pb, stationNames),
     companyLines: companyLines.map((l) => ({ company: str(l.company), line: str(l.line) })),
   };
 });
@@ -633,8 +663,7 @@ export const taxiReference = cache(async () => {
   );
   return {
     companies: companies.map(taxiCompany),
-    stations: stationNames,
-    abbrs: await stationAbbrs(pb, stationNames),
+    stationRefs: await orderStationRefs(pb, stationNames),
   };
 });
 export type TaxiReference = Awaited<ReturnType<typeof taxiReference>>;

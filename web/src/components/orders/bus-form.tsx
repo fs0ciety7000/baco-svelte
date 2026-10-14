@@ -3,7 +3,7 @@
 import { Copy, FileText, MoreHorizontal, Plus, Save, Send, Trash2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { pl } from "@/lib/utils";
 
@@ -37,15 +37,25 @@ import {
 } from "@/lib/orders/schemas";
 import { safeCall } from "@/lib/orders/safe-call";
 import { isEditable, type Status } from "@/lib/orders/status";
-import { routeBetween, stopsBetween, suggestLines, type LineInfo } from "@/lib/orders/stops";
+import { orderTrainRoute, type OrderTrain } from "@/app/(app)/commandes/train-actions";
+import {
+  lineId,
+  routeBetween,
+  sameLine,
+  stopsBetween,
+  suggestLines,
+  type LineInfo,
+} from "@/lib/orders/stops";
+import { stationsFromTrain, type TrainRoute } from "@/lib/orders/train-route";
 import { useAutosave } from "@/lib/orders/use-autosave";
 
 import { PdfLink, SendDialog } from "./send-dialog";
 import { StartPanel, type StartPanelProps } from "./start-panel";
 import { TransitionButtons } from "./transitions";
 import { lineLabel } from "@/lib/lines";
-import { StationInput, useStationRefs } from "./station-input";
-import { foldStation } from "@/lib/stations/search";
+import { StationInput } from "./station-input";
+import { TrainNumberField } from "./train-field";
+import { foldStation, type StationRef } from "@/lib/stations/search";
 
 export type BusFormProps = {
   /** Identifiant de l'écran « nouveau » (clé React + URL), pour qu'un 2e « Nouveau » reparte de zéro. */
@@ -62,8 +72,7 @@ export type BusFormProps = {
     companies: { id: string; name: string; email: string; phone: string }[];
     drivers: { id: string; company: string; name: string; phone: string }[];
     lines: LineInfo[];
-    stations: string[];
-    abbrs: { abbr: string; name: string }[];
+    stationRefs: StationRef[];
     companyLines: { company: string; line: string }[];
   };
   officeEmail: string;
@@ -72,7 +81,7 @@ export type BusFormProps = {
 
 export function BusForm(props: BusFormProps) {
   const { reference, canWrite } = props;
-  const stationRefs = useStationRefs(reference.stations, reference.abbrs);
+  const stationRefs = reference.stationRefs;
   const router = useRouter();
   const [d, setD] = useState<BusDraft>(props.initial);
   const [sendOpen, setSendOpen] = useState(false);
@@ -117,50 +126,127 @@ export function BusForm(props: BusFormProps) {
   const err = (field: string) =>
     showErrors ? missing.find((m) => m.field === field)?.message : undefined;
 
-  // Lignes : celles de l'itinéraire d'abord, puis celles qui desservent O ou D, puis celles de la société.
+  // Trajet tiré du référentiel des trains (14 oct. 2026) : le serveur cherche les trains qui passent par les deux gares
+  // (Server Action, le navigateur ne reçoit que le résultat) ; repli sur le réseau des lignes (`routeBetween`) quand aucun
+  // train ne les relie. Les lignes et arrêts ne sont posés d'office qu'après un changement de gare par le rédacteur
+  // (jamais à l'ouverture d'un bon existant) ; tout reste modifiable.
+  const placeKey = (o: string, dst: string, day: string) =>
+    `${foldStation(o)}|${foldStation(dst)}|${day}`;
+  const [trainInfo, setTrainInfo] = useState<{ key: string; route: TrainRoute | null } | null>(
+    null,
+  );
+  const fetchedKey = useRef("");
+  const applyPending = useRef(false);
+  const trainRoute =
+    trainInfo?.key === placeKey(d.origin, d.destination, d.order_date) ? trainInfo.route : null;
+
+  /** Lignes et arrêts posés d'office : d'après les trains, sinon d'après le réseau des lignes. */
+  const autoRoute = (route: TrainRoute | null, x: BusDraft) => {
+    if (route) {
+      const leg = x.direct ? route.direct : route.omnibus;
+      return { lines: leg.lines, stops: leg.stops };
+    }
+    const r = routeBetween(reference.lines, x.origin, x.destination);
+    return r ? { lines: r.lines, stops: x.direct ? r.transfers : r.stops } : null;
+  };
+  const autoRouteRef = useRef(autoRoute);
+  useEffect(() => {
+    autoRouteRef.current = autoRoute;
+  });
+
+  useEffect(() => {
+    const o = d.origin.trim();
+    const dst = d.destination.trim();
+    if (o.length < 2 || dst.length < 2 || foldStation(o) === foldStation(dst)) return;
+    const key = placeKey(o, dst, d.order_date);
+    if (fetchedKey.current === key) return;
+    let live = true;
+    const t = setTimeout(async () => {
+      const route = await orderTrainRoute({ origin: o, destination: dst, day: d.order_date }).catch(
+        () => null,
+      );
+      if (!live) return;
+      fetchedKey.current = key;
+      setTrainInfo({ key, route });
+      if (!applyPending.current) return;
+      setD((x) => {
+        if (placeKey(x.origin, x.destination, x.order_date) !== key) return x;
+        const next = autoRouteRef.current(route, x);
+        if (!next) return x;
+        applyPending.current = false;
+        return { ...x, ...next };
+      });
+    }, 300);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+  }, [d.origin, d.destination, d.order_date]);
+
+  // Lignes : celles des trains (ou de l'itinéraire du réseau) d'abord, puis celles qui desservent O ou D, puis celles
+  // de la société ; « L.96 » et « 96 » ne font qu'une.
   const route = useMemo(
     () => routeBetween(reference.lines, d.origin, d.destination),
     [reference.lines, d.origin, d.destination],
   );
   const suggested = useMemo(
-    () => [...(route?.lines ?? []), ...suggestLines(reference.lines, d.origin, d.destination)],
-    [route, reference.lines, d.origin, d.destination],
+    () => [
+      ...(trainRoute ? [...trainRoute.omnibus.lines, ...trainRoute.direct.lines] : []),
+      ...(route?.lines ?? []),
+      ...suggestLines(reference.lines, d.origin, d.destination),
+    ],
+    [trainRoute, route, reference.lines, d.origin, d.destination],
   );
   const lineChoices = useMemo(() => {
     const own = reference.companyLines.filter((l) => l.company === d.company).map((l) => l.line);
-    return [...new Set([...d.lines, ...suggested, ...own])].slice(0, 24);
+    const seen = new Set<string>();
+    return [...d.lines, ...suggested, ...own]
+      .filter((l) => {
+        const k = lineId(l);
+        if (!k || seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      })
+      .slice(0, 24);
   }, [reference.companyLines, d.company, d.lines, suggested]);
 
-  // Arrêts intermédiaires (11 oct. 2026) : itinéraire à travers le réseau, sur plusieurs lignes au besoin (Mons →
-  // Charleroi-Central = L.118 puis L.112 puis L.124), limité aux lignes cochées s'il y en a ; repli sur une ligne unique.
-  // Bus direct : seulement les gares de correspondance (La Louvière-Sud, Marchienne-au-Pont) ; les autres arrêts restent
-  // proposés en puces pour en ajouter à la main.
+  // Repli (réseau des lignes, 11 oct. 2026) : itinéraire sur plusieurs lignes au besoin, limité aux lignes cochées s'il y
+  // en a ; bus direct = gares de correspondance seulement.
+  const refLines = (lines: string[]) =>
+    reference.lines.filter((l) => sameLine(lines, l.line)).map((l) => l.line);
   const routeFor = (lines: string[], origin: string, destination: string) =>
-    routeBetween(reference.lines, origin, destination, lines.length ? lines : undefined);
+    routeBetween(reference.lines, origin, destination, refLines(lines));
   const stopsFor = (lines: string[], origin: string, destination: string, direct: boolean) => {
     const r = routeFor(lines, origin, destination);
     if (r) return direct ? r.transfers : r.stops;
-    return direct ? [] : stopsBetween(reference.lines, lines, origin, destination);
+    return direct ? [] : stopsBetween(reference.lines, refLines(lines), origin, destination);
   };
-  const autoStops = useMemo(
-    () =>
-      routeFor(d.lines, d.origin, d.destination)?.stops ??
-      stopsBetween(reference.lines, d.lines, d.origin, d.destination),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [reference.lines, d.lines, d.origin, d.destination],
-  );
 
   // Gares des lignes cochées (origine et destination exclues), dans l'ordre de chaque ligne.
   const lineStations = useMemo(() => {
     const ends = new Set([foldStation(d.origin), foldStation(d.destination)]);
     return reference.lines
-      .filter((l) => d.lines.includes(l.line))
+      .filter((l) => sameLine(d.lines, l.line))
       .map((l) => ({
         line: l.line,
         stations: l.stations.filter((st) => !ends.has(foldStation(st))),
       }))
       .filter((l) => l.stations.length);
   }, [reference.lines, d.lines, d.origin, d.destination]);
+
+  // Arrêts proposés : gares où au moins un train s'arrête entre les deux (dans l'ordre du trajet), sinon l'itinéraire du
+  // réseau ; un arrêt déjà coché ailleurs (bon repris, saisie antérieure) reste visible.
+  const autoStops = useMemo(() => {
+    const base = trainRoute
+      ? trainRoute.proposed
+      : (routeFor(d.lines, d.origin, d.destination)?.stops ??
+        stopsBetween(reference.lines, refLines(d.lines), d.origin, d.destination));
+    const known = new Set(
+      [...base, ...lineStations.flatMap((l) => l.stations)].map((s) => foldStation(s)),
+    );
+    return [...base, ...d.stops.filter((s) => !known.has(foldStation(s)))];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trainRoute, reference.lines, d.lines, d.origin, d.destination, d.stops, lineStations]);
 
   // Ajouter / retirer un arrêt : ordre de l'itinéraire d'abord, puis celui des lignes cochées.
   const toggleStop = (stop: string, on: boolean) =>
@@ -176,24 +262,56 @@ export function BusForm(props: BusFormProps) {
       return { ...x, stops };
     });
 
-  // Origine / destination : itinéraire recalculé, lignes empruntées cochées d'office, arrêts déduits.
-  const setPlace = (field: "origin" | "destination", value: string) =>
-    setD((x) => {
-      const next = { ...x, [field]: value };
-      const r = routeBetween(reference.lines, next.origin, next.destination);
-      if (!r) return next;
-      return { ...next, lines: r.lines, stops: x.direct ? r.transfers : r.stops };
-    });
+  // Origine / destination : lignes et arrêts posés d'office dès que le trajet est connu (réponse du serveur, ou tout de
+  // suite si ce trajet vient d'être calculé). Une simple correction d'écriture (« mons » → « Mons ») ne touche à rien.
+  const setPlace = (field: "origin" | "destination", value: string) => {
+    const next = { ...d, [field]: value };
+    const key = placeKey(next.origin, next.destination, next.order_date);
+    if (key === placeKey(d.origin, d.destination, d.order_date)) return set(field, value);
+    if (trainInfo?.key === key) {
+      applyPending.current = false;
+      const auto = autoRoute(trainInfo.route, next);
+      return setD((x) => ({ ...x, [field]: value, ...(auto ?? {}) }));
+    }
+    applyPending.current = true;
+    set(field, value);
+  };
 
-  // Omnibus / direct : arrêts recalculés (direct = correspondances seulement).
+  // Omnibus / direct : arrêts recalculés (trains : le plus omnibus ou le plus direct ; repli : correspondances).
   const setDirect = (direct: boolean) =>
-    setD((x) => ({ ...x, direct, stops: stopsFor(x.lines, x.origin, x.destination, direct) }));
+    setD((x) => ({
+      ...x,
+      direct,
+      stops: trainRoute
+        ? (direct ? trainRoute.direct : trainRoute.omnibus).stops
+        : stopsFor(x.lines, x.origin, x.destination, direct),
+    }));
 
-  // Cocher / décocher une ligne : itinéraire limité aux lignes cochées (aucune cochée : itinéraire libre).
+  // Cocher / décocher une ligne. Repli sur le réseau : itinéraire limité aux lignes cochées (aucune : libre). Trajet
+  // tiré des trains : les arrêts ne bougent pas (ils viennent des trains, pas des lignes).
   const toggleLine = (line: string, on: boolean) => {
-    const lines = on ? [...d.lines, line] : d.lines.filter((l) => l !== line);
+    const lines = on ? [...d.lines, line] : d.lines.filter((l) => lineId(l) !== lineId(line));
+    if (trainRoute) return set("lines", lines);
     const stops = stopsFor(lines, d.origin, d.destination, d.direct);
     setD((x) => ({ ...x, lines, stops }));
+  };
+
+  // N° de train : gares (gardées si le train y passe), lignes et arrêts du train ; annulable.
+  const [trainUndo, setTrainUndo] = useState<BusDraft | null>(null);
+  const applyTrain = (t: OrderTrain) => {
+    const s = stationsFromTrain(t, d.origin, d.destination);
+    if (!s.leg) return;
+    applyPending.current = false;
+    setTrainUndo(d);
+    setD({
+      ...d,
+      train_number: String(t.number),
+      origin: s.origin,
+      destination: s.destination,
+      lines: s.leg.lines,
+      stops: s.leg.stops,
+      stops_mode: "auto",
+    });
   };
   const setBus = (i: number, patch: Partial<BusLine>) =>
     setD((x) => ({ ...x, buses: x.buses.map((b, j) => (j === i ? { ...b, ...patch } : b)) }));
@@ -329,13 +447,30 @@ export function BusForm(props: BusFormProps) {
             summary={summary.trajet}
             state={err("origin") || err("destination") ? "error" : undefined}
           >
+            <TrainNumberField
+              value={d.train_number}
+              onChange={(v) => {
+                set("train_number", v);
+                setTrainUndo(null);
+              }}
+              day={d.order_date}
+              disabled={!editable}
+              autoApply={!d.destination.trim()}
+              onApply={applyTrain}
+              onUndo={
+                trainUndo
+                  ? () => {
+                      setD(trainUndo);
+                      setTrainUndo(null);
+                    }
+                  : null
+              }
+            />
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Origine" required error={err("origin")}>
                 <StationInput
                   value={d.origin}
                   onChange={(v) => setPlace("origin", v)}
-                  stations={reference.stations}
-                  abbrs={reference.abbrs}
                   refs={stationRefs}
                   disabled={!editable}
                 />
@@ -344,8 +479,6 @@ export function BusForm(props: BusFormProps) {
                 <StationInput
                   value={d.destination}
                   onChange={(v) => setPlace("destination", v)}
-                  stations={reference.stations}
-                  abbrs={reference.abbrs}
                   refs={stationRefs}
                   disabled={!editable}
                 />
@@ -380,7 +513,7 @@ export function BusForm(props: BusFormProps) {
                   {lineChoices.map((l) => (
                     <ToggleChip
                       key={l}
-                      pressed={d.lines.includes(l)}
+                      pressed={sameLine(d.lines, l)}
                       onPressedChange={(on) => toggleLine(l, on)}
                       disabled={!editable}
                     >
@@ -422,8 +555,14 @@ export function BusForm(props: BusFormProps) {
                 <>
                   {autoStops.length ? (
                     <div className="flex flex-col gap-1.5">
-                      <span className="text-small text-fg-muted">
-                        Itinéraire {d.direct ? "(direct : correspondances cochées)" : ""}
+                      <span className="text-small text-fg-muted" data-testid="route-source">
+                        {trainRoute
+                          ? `Arrêts des trains entre les deux gares (${trainRoute.trains} ${pl(trainRoute.trains, "train")}) · cochés : ${
+                              d.direct
+                                ? `direct, ${trainRoute.direct.type} ${trainRoute.direct.number}`
+                                : `omnibus, ${trainRoute.omnibus.type} ${trainRoute.omnibus.number}`
+                            }`
+                          : `Itinéraire par les lignes${d.direct ? " (direct : correspondances cochées)" : ""}`}
                       </span>
                       <div className="flex flex-wrap gap-2" data-testid="route-stops">
                         {autoStops.map((st) => (
@@ -438,6 +577,11 @@ export function BusForm(props: BusFormProps) {
                         ))}
                       </div>
                     </div>
+                  ) : trainRoute ? (
+                    <p className="text-small text-fg-muted">
+                      Aucun train ne s&apos;arrête entre ces deux gares : ajoute des arrêts depuis
+                      les gares des lignes ci-dessous, ou passe en saisie libre.
+                    </p>
                   ) : (
                     <p className="text-small text-fg-muted">
                       Aucun itinéraire trouvé : choisis les arrêts dans les gares des lignes
@@ -635,8 +779,6 @@ export function BusForm(props: BusFormProps) {
                         <StationInput
                           value={b.origin}
                           onChange={(v) => setBus(i, { origin: v })}
-                          stations={reference.stations}
-                          abbrs={reference.abbrs}
                           refs={stationRefs}
                           disabled={!editable}
                         />
@@ -645,8 +787,6 @@ export function BusForm(props: BusFormProps) {
                         <StationInput
                           value={b.destination}
                           onChange={(v) => setBus(i, { destination: v })}
-                          stations={reference.stations}
-                          abbrs={reference.abbrs}
                           refs={stationRefs}
                           disabled={!editable}
                         />
@@ -871,6 +1011,12 @@ function BusPreview({
         <dd>{C3_TYPES.find((t) => t.value === d.c3_type)?.label}</dd>
         <dt className="text-fg-muted">Date</dt>
         <dd className="tabular">{d.order_date || "—"}</dd>
+        {d.train_number ? (
+          <>
+            <dt className="text-fg-muted">Train</dt>
+            <dd className="tabular">{d.train_number}</dd>
+          </>
+        ) : null}
         <dt className="text-fg-muted">Desserte</dt>
         <dd>
           {d.direct

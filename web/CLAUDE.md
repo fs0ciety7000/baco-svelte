@@ -401,6 +401,21 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   cochées » (`lineStations`, puces par ligne, ouverte d'office sans itinéraire) ; un arrêt coché est rangé dans l'ordre de
   l'itinéraire puis des lignes (`toggleStop`). Un direct avec arrêts les imprime (PDF « DIRECT », e-mail « Direct, arrêts : … ») ;
   sans arrêt : « Direct (sans arrêt) ». Lignes affichées par `lineLabel()` (`lib/lines.ts`) : jamais « L.L.132 ».
+- **Bons et référentiel des trains** (14 oct. 2026) : `StationInput` ne prend plus que `refs` (`reference.stationRefs`,
+  `orderStationRefs` dans `server/data/orders.ts` : `stations` d'abord — premier nom = FR retenu, puis NL et alias, abréviation
+  —, puis les gares de `line_stations` absentes ; sans `stations`, gares des lignes + PtCar) ; `stationCandidates(q, refs, max,
+  true)` et `canonicalStation(value, refs)` (`lib/stations/search.ts`) renvoient le nom FR. Trajet : Server Actions
+  `commandes/train-actions.ts` (`orderTrainRoute` : `exactStationKeys` + `trainsThrough` (400 trains au plus, `stations_key` /
+  `pass_key`) ; `orderTrain` : `trainVariants` + `pickVariant` selon le jour ; débit 240/min) ; logique pure
+  `lib/orders/train-route.ts` (`legOf`, `reverseLegOf`, `trainRoute`, `mergeOrder`, `dayBit`, `stationsFromTrain`, testés). La
+  ligne d'un arrêt (`l`) est celle du tronçon qui en part : lignes d'un trajet = `l` du départ à la veille de l'arrivée.
+  `bus-form.tsx` : `trainInfo` (clé gares + jour), `applyPending` (posé par `setPlace`, consommé à la réponse ; une simple
+  correction de casse ne touche à rien) ; avec un trajet tiré des trains, cocher une ligne ne recalcule pas les arrêts et
+  Omnibus / Direct prend le train omnibus / direct. Lignes comparées par `lineId` / `sameLine` (`lib/orders/stops.ts` :
+  « L.96 » = « 96 »). `TrainNumberField` (`components/orders/train-field.tsx`, `data-testid` `train-number`, `train-info`,
+  `train-apply`, `train-undo`) : reprise d'office si la gare d'arrivée est vide, jamais pour un bon rouvert ; `train_number`
+  dans les brouillons (chiffres seulement, saisie partielle nettoyée par zod). E2E : fixtures « Alpha / Bravo / Charlie /
+  Delta E2E <format> », trains 99831 / 99832. `E2E_BASE_URL` change le port de Playwright en local.
 - **Widget « Fin de service »** (`service`, 11 oct. 2026) : `lib/shift.ts` (AM 06–14, PM 14–22, Nuit 22–06, Extra 08–16,
   heures de Bruxelles ; `shiftDayFor` : nuit choisie après minuit = nuit de la veille ; `shiftState`, `isStale` après 6 h ;
   testés), choix dans `users.preferences.shift` (`saveShift`, `dashboard-actions.ts`), `components/dashboard/shift-widget.tsx`
