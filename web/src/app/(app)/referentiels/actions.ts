@@ -4,6 +4,13 @@ import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 
 import { can } from "@/lib/permissions";
+import {
+  MAX_FAVORITES,
+  pushRecent,
+  readDirectoryPrefs,
+  toggleFavorite,
+  type DirectoryPrefs,
+} from "@/lib/referentiels/directory";
 import { contactSchema, procedureSchema } from "@/lib/referentiels/model";
 import { requireUser, type SessionUser } from "@/server/auth";
 import { pbForRequest } from "@/server/data/orders";
@@ -98,6 +105,63 @@ export async function loadContact(id: string): Promise<Result<Contact>> {
   try {
     await need("repertoire:read");
     return { ok: true, data: await getContact(id) };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/**
+ * Favoris et récents de l'annuaire, dans les préférences de l'agent (`preferences.directory`, jeton de l'agent : un
+ * agent n'écrit que son propre compte). Relecture avant écriture pour ne pas écraser une autre préférence.
+ */
+async function updateDirectoryPrefs(
+  user: SessionUser,
+  change: (p: DirectoryPrefs) => DirectoryPrefs,
+): Promise<DirectoryPrefs> {
+  const pb = await pbForRequest();
+  const record = await pb.collection("users").getOne(user.id, { fields: "preferences" });
+  const prefs = ((record.preferences as Record<string, unknown> | null) ?? {}) as Record<
+    string,
+    unknown
+  >;
+  const next = change(readDirectoryPrefs(prefs));
+  await pb.collection("users").update(user.id, { preferences: { ...prefs, directory: next } });
+  return next;
+}
+
+export async function toggleContactFavorite(id: string): Promise<Result<{ favorites: string[] }>> {
+  try {
+    const user = await need("repertoire:read");
+    const cid = pbId.parse(id);
+    // Fiches supprimées depuis : retirées des favoris (elles occuperaient des places).
+    const pb = await pbForRequest();
+    const existing = new Set(
+      (await pb.collection("directory_contacts").getFullList({ fields: "id", batch: 1000 })).map(
+        (r) => r.id,
+      ),
+    );
+    let full = false;
+    const next = await updateDirectoryPrefs(user, (p) => {
+      const kept = p.favorites.filter((f) => existing.has(f));
+      const favorites = toggleFavorite(kept, cid);
+      full = !kept.includes(cid) && !favorites.includes(cid);
+      return { ...p, favorites };
+    });
+    if (full) return { ok: false, error: `${MAX_FAVORITES} favoris au maximum.` };
+    return { ok: true, data: { favorites: next.favorites } };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Fiche consultée (ouverte, appelée, numéro copié) : en tête des récents. Jamais en « Voir en tant que ». */
+export async function noteContactViewed(id: string): Promise<Result> {
+  try {
+    const user = await need("repertoire:read");
+    if (user.impersonatedBy) return { ok: true };
+    const cid = pbId.parse(id);
+    await updateDirectoryPrefs(user, (p) => ({ ...p, recent: pushRecent(p.recent, cid) }));
+    return { ok: true };
   } catch (e) {
     return fail(e);
   }

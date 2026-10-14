@@ -1,25 +1,18 @@
 "use client";
 
-import { Pencil, Plus, Save, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { Pencil, Save, Trash2 } from "lucide-react";
+import { useState, useTransition } from "react";
 
 import {
   deleteContact,
   findContactDuplicates,
-  loadContact,
   saveContact,
 } from "@/app/(app)/referentiels/actions";
-import { PhoneLink } from "@/components/pmr/phone-link";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { Combobox } from "@/components/ui/combobox";
 import { Input, Textarea } from "@/components/ui/input";
-import { EmptyState, Skeleton } from "@/components/ui/misc";
-import { Sheet } from "@/components/ui/sheet";
-import { Badge } from "@/components/ui/status-badge";
-import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
 import { toast } from "@/components/ui/toast";
 import { safeCall } from "@/lib/orders/safe-call";
 import type { ContactInput } from "@/lib/referentiels/model";
@@ -27,7 +20,7 @@ import type { Contact } from "@/server/data/referentiels";
 
 export type Facets = { categories: string[]; zones: string[]; groups: string[] };
 
-const toInput = (c?: Contact | null): ContactInput => ({
+export const toInput = (c?: Contact | null): ContactInput => ({
   name: c?.name ?? "",
   phone: c?.phone ?? "",
   email: c?.email ?? "",
@@ -37,219 +30,8 @@ const toInput = (c?: Contact | null): ContactInput => ({
   note: c?.note ?? "",
 });
 
-/** Annuaire général (lecture par tous, écriture coordinateurs) : liste groupée, fiche en panneau, création avec
- *  détection de doublon. */
-export function ContactBoard({
-  rows,
-  facets,
-  canWrite,
-  canUpdate = canWrite,
-  canDelete = false,
-}: {
-  rows: Contact[];
-  facets: Facets;
-  canWrite: boolean;
-  /** Modification (`repertoire:update`) et suppression (`repertoire:delete`), rôles v2. */
-  canUpdate?: boolean;
-  canDelete?: boolean;
-}) {
-  const router = useRouter();
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<Contact | null>(null);
-  const [createOpen, setCreateOpen] = useState(false);
-  const wanted = useRef<string | null>(null);
-
-  const load = useCallback(async (id: string) => {
-    wanted.current = id;
-    const res = await safeCall(loadContact(id));
-    if (wanted.current !== id) return;
-    if (res.ok) setDetail(res.data);
-    else toast.error(res.error);
-  }, []);
-  useEffect(() => {
-    if (openId) void load(openId);
-  }, [openId, load]);
-
-  // Regroupement par « groupe » (repliable via <details> natif).
-  const groups = [...new Set(rows.map((r) => r.group || "Sans groupe"))];
-
-  return (
-    <>
-      {canWrite ? (
-        <div>
-          <Button variant="primary" onClick={() => setCreateOpen(true)} data-testid="contact-new">
-            <Plus aria-hidden /> Nouveau contact
-          </Button>
-        </div>
-      ) : null}
-      {rows.length === 0 ? (
-        <EmptyState title="Aucun contact" description="Aucun contact pour ces filtres." />
-      ) : (
-        groups.map((g) => {
-          const list = rows.filter((r) => (r.group || "Sans groupe") === g);
-          return (
-            <details key={g} open className="flex flex-col gap-2">
-              <summary className="label-mono cursor-pointer text-fg-muted">
-                {g} · {list.length}
-              </summary>
-              <div className="mt-2 hidden md:block">
-                <Table>
-                  <THead>
-                    <tr>
-                      <Th>Nom</Th>
-                      <Th>Catégorie</Th>
-                      <Th>Zone</Th>
-                      <Th>Téléphone</Th>
-                      <Th>E-mail</Th>
-                    </tr>
-                  </THead>
-                  <tbody data-testid="contacts-table">
-                    {list.map((c) => (
-                      <Tr key={c.id} className="cursor-pointer" onClick={() => setOpenId(c.id)}>
-                        <Td className="font-medium">
-                          <button
-                            type="button"
-                            className="cursor-pointer text-left focus-visible:outline-1 focus-visible:outline-accent"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenId(c.id);
-                            }}
-                          >
-                            {c.name}
-                          </button>
-                        </Td>
-                        <Td>{c.category ? <Badge tone="info">{c.category}</Badge> : "—"}</Td>
-                        <Td className="text-fg-muted">{c.zone || "—"}</Td>
-                        <Td className="font-mono tabular" onClick={(e) => e.stopPropagation()}>
-                          {c.phone ? <PhoneLink phone={c.phone} /> : "—"}
-                        </Td>
-                        <Td
-                          className="max-w-56 truncate text-fg-muted"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {c.email ? (
-                            <a className="hover:underline" href={`mailto:${c.email}`}>
-                              {c.email}
-                            </a>
-                          ) : (
-                            "—"
-                          )}
-                        </Td>
-                      </Tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </div>
-              <ul className="mt-2 flex flex-col gap-2 md:hidden" data-testid="contacts-cards">
-                {list.map((c) => (
-                  <li key={c.id}>
-                    <button
-                      type="button"
-                      className="block w-full cursor-pointer text-left"
-                      onClick={() => setOpenId(c.id)}
-                    >
-                      <ListCard
-                        title={c.name}
-                        meta={`${c.category || "—"}${c.zone ? ` · ${c.zone}` : ""}${c.phone ? ` · ${c.phone}` : ""}`}
-                      />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </details>
-          );
-        })
-      )}
-
-      <Sheet
-        open={!!openId}
-        onOpenChange={(o) => {
-          if (!o) {
-            setOpenId(null);
-            setDetail(null);
-            wanted.current = null;
-          }
-        }}
-        eyebrow="Annuaire"
-        title={detail?.name ?? "Contact"}
-        description={
-          detail ? [detail.category, detail.zone].filter(Boolean).join(" · ") : undefined
-        }
-      >
-        {!detail ? (
-          <div className="flex flex-col gap-3" aria-busy="true">
-            <Skeleton className="h-5 w-2/3" />
-            <Skeleton className="h-24 w-full" />
-          </div>
-        ) : (
-          <div className="flex flex-col gap-5" data-testid="contact-panel">
-            {detail.phone ? <PhoneLink phone={detail.phone} /> : null}
-            {detail.email ? (
-              <a className="link" href={`mailto:${detail.email}`}>
-                {detail.email}
-              </a>
-            ) : null}
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-body">
-              <dt className="text-small text-fg-muted">Catégorie</dt>
-              <dd>{detail.category || "—"}</dd>
-              <dt className="text-small text-fg-muted">Groupe</dt>
-              <dd>{detail.group || "—"}</dd>
-              <dt className="text-small text-fg-muted">Zone</dt>
-              <dd>{detail.zone || "—"}</dd>
-              {detail.note ? (
-                <>
-                  <dt className="text-small text-fg-muted">Remarque</dt>
-                  <dd className="whitespace-pre-line">{detail.note}</dd>
-                </>
-              ) : null}
-            </dl>
-            {canUpdate || canDelete ? (
-              <ContactActions
-                contact={detail}
-                canUpdate={canUpdate}
-                canDelete={canDelete}
-                facets={facets}
-                onSaved={() => {
-                  void load(detail.id);
-                  router.refresh();
-                }}
-                onDeleted={() => {
-                  setOpenId(null);
-                  setDetail(null);
-                  router.refresh();
-                }}
-              />
-            ) : null}
-          </div>
-        )}
-      </Sheet>
-
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent
-          title="Nouveau contact"
-          description="Les contacts proches sont signalés avant d'enregistrer."
-        >
-          <ContactForm
-            id={null}
-            initial={toInput(null)}
-            facets={facets}
-            onOpen={(id) => {
-              setCreateOpen(false);
-              setOpenId(id);
-            }}
-            onSaved={(id) => {
-              setCreateOpen(false);
-              setOpenId(id);
-              router.refresh();
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
-
-function ContactActions({
+/** Modifier / supprimer une fiche (droits `repertoire:update` / `repertoire:delete`), dans le panneau de l'annuaire. */
+export function ContactActions({
   contact,
   facets,
   canUpdate,
@@ -319,7 +101,8 @@ function ContactActions({
   );
 }
 
-function ContactForm({
+/** Création (avec détection de doublon) et modification d'une fiche de l'annuaire. */
+export function ContactForm({
   id,
   initial,
   facets,

@@ -286,3 +286,23 @@ nouvel écran (liste aux couleurs du système, format mm/dd/yyyy et « 02:50 PM 
 - **CheckboxGroup** : `fieldset` + légende `text-small fg-muted`, cases Radix (forme du thème), libellé cliquable de 44 px
   au doigt, « Tout cocher » en lien.
 - Rien ne bouge en mouvement réduit (ouverture `pop-in` des Popover seulement).
+
+## Annuaire — refonte du 14 oct. 2026
+
+Principe de refonte validé par l'utilisateur (« plus agréable à utiliser / rechercher ») ; détail et audit :
+`docs/design/REFONTE-ANNUAIRE.md`.
+
+- **Recherche en tête** : champ de 48 px (`text-body-lg`, icône 20 px, `Kbd` « / » à droite, croix d'effacement de 40 px),
+  aide d'une ligne en `text-small fg-muted` sous le champ (desktop). « Nouveau contact » passe en **secondaire** à droite
+  du champ (« + » carré en mobile) : la page n'a plus de bouton primaire.
+- **Surlignage** des correspondances : fond `warn` à 30 % (même rendu que la recherche du Journal), texte `fg`.
+- **Lignes de liste** (et non tableau) dans un cadre `rounded-box` à filets : étoile (`fg-subtle`, pleine `accent` quand
+  favori — état sélectionné), nom en `text-body` medium, ligne d'aide `text-small fg-muted` (catégorie · groupe · zone ;
+  le groupe n'est pas répété dans sa section), numéro en **mono tabulaire** de taille courante, actions icônes 32 px
+  (copier → coche `ok`, e-mail). Ligne ouverte en `accent-soft`. Catégories en **puces de filtre** avec compteur
+  (`fg-subtle`), plus de badge `info` par ligne.
+- **Mobile** : lignes de 56 px au moins, numéro sous le nom, **bouton d'appel carré de 44 px** (`border-strong`) à droite.
+- **Favoris / Consultés récemment** en deux colonnes dès 1280 px, au-dessus de la liste, seulement sans saisie ni filtre ;
+  index des groupes en une rangée de puces qui défile.
+- **Fiche** : bloc téléphone sur `surface-2` (numéro en `text-h3` mono, « Appeler » primaire + « Copier le numéro »
+  secondaire), puis e-mail, favori, détails.

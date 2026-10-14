@@ -579,7 +579,8 @@ async function contacts({ pb, q }: Ctx): Promise<SearchGroup> {
       kind: "contacts",
       label: str(c.name),
       meta: join(c.group, c.phone) || "Annuaire",
-      href: `/referentiels?q=${enc(str(c.name) || q)}`,
+      // Fiche ouverte directement dans l'annuaire (panneau, refonte du 14 oct. 2026).
+      href: `/referentiels?q=${enc(str(c.name) || q)}&id=${c.id}`,
     })),
     `/referentiels?q=${enc(q)}`,
   );

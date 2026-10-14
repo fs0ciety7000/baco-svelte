@@ -142,11 +142,25 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - Données : `src/server/data/referentiels.ts` (lectures serveur, filtres `pb.filter` liés), `src/lib/referentiels/model.ts`
   (schémas zod contacts / procédures / documents). Écritures : `src/app/(app)/referentiels/actions.ts` (contacts,
   procédures, documents + upload `FormData`, restauration de version **réservée aux coordinateurs**).
-- Écrans (`src/app/(app)/referentiels/`) : `/` **Annuaire** (liste groupée, filtres catégorie/zone/groupe, fiche en
-  panneau, création avec détection de doublon — coordinateurs) ; `/lignes` (district DSE/DSO/DCE **majoritaire** + ligne
+- Écrans (`src/app/(app)/referentiels/`) : `/` **Annuaire** (refonte du 14 oct. 2026, `../docs/design/REFONTE-ANNUAIRE.md` :
+  `components/referentiels/directory-board.tsx` ; formulaires / actions de fiche dans `contact-board.tsx`) ; `/lignes` (district DSE/DSO/DCE **majoritaire** + ligne
   d'un clic, sections Gares/PN/SPI, lien Carte PN) ; `/ptcar` et `/ebp` (`ReferenceTable` : recherche serveur paginée,
   cartes < 640 px, EBP « incomplètes ») ; `/documents` (**Procédures** Markdown + **Documents**, `Segmented` par `?vue=`,
   filtre catégorie). Composants `src/components/referentiels/*`.
+- **Annuaire** : `listDirectory()` lit **toutes** les fiches (borné, ≈ 400) + les gares (`stations`, hors PANG) et joint à
+  chaque fiche les alias des gares qu'elle cite (abréviation PtCar, nom NL : `stationAliasesFor`, mots entiers) ; la
+  recherche tourne **dans le navigateur** à chaque frappe (`lib/referentiels/directory.ts`, pur et testé : repli accents /
+  casse / ligatures, mots dans le désordre tous requis, numéro en forme nationale `+32` / `0032` → `0`, fautes tolérées
+  **seulement au second passage** si rien ne correspond exactement, `keep` = filtres de la page appliqués avant ce second
+  passage, classement, surlignage `highlightText` / `highlightPhone`, `suggestQuery` pour l'état vide). État dans l'URL
+  (`q`, `category`, `zone`, `group`, `id`) par `history.replaceState`, rejoué au rendu serveur (lien partageable, ⌘K ouvre
+  la fiche par `?id=`). Favoris (60) et « Consultés récemment » (8) dans **`users.preferences.directory`**
+  (`readDirectoryPrefs`, actions `toggleContactFavorite` / `noteContactViewed`, jamais en « Voir en tant que ») ; les
+  écritures de préférences passent **en file** côté client (lire-modifier-écrire : deux actions simultanées s'écrasaient) ;
+  les bonus de classement viennent des préférences du chargement (une étoile ne réordonne pas la liste sous le curseur).
+  Lignes : étoile, nom + catégorie / groupe / zone, numéro (`etrali:` desktop, bouton `tel:` 44 px mobile), copie, e-mail ;
+  clavier : « / » focalise, ↓ / ↑ parcourent, Entrée ouvre le premier, Échap efface. E2E `e2e/annuaire.spec.ts` (attendre
+  la Server Action **qui porte l'id de la fiche** avant de recharger : la barre latérale poste aussi ses compteurs).
 - **Markdown** : `markdown-view.tsx` rend un sous-ensemble SÛR en **éléments React** (aucun `dangerouslySetInnerHTML`,
   liens bornés http(s)) — pas de dépendance ni de surface XSS.
 - **Fichiers** : servis par `GET /api/referentiels/documents/[id]` avec le jeton de l'agent (fichier PocketBase
