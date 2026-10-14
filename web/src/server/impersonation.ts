@@ -1,10 +1,13 @@
 import "server-only";
 
+import { sealActingToken } from "@/server/acting-seal";
+
 import { cookies } from "next/headers";
 
 import {
   AS_COOKIE,
   AS_COOKIE_MAX_AGE_S,
+  actingAad,
   actingCookieValue,
   parseActingCookie,
 } from "@/lib/impersonation";
@@ -45,7 +48,16 @@ export async function startImpersonation(targetId: string): Promise<string | nul
     return typeof body.message === "string" && res.status !== 404
       ? body.message
       : "Impossible de voir CSM en tant que ce compte.";
-  (await cookies()).set(AS_COOKIE, actingCookieValue(adminId, body.token), {
+  const payload = tokenPayload(body.token);
+  if (!payload?.id || !payload.exp) return "Impossible de voir CSM en tant que ce compte.";
+  const meta = { adminId, targetId: payload.id, exp: payload.exp };
+  const value = actingCookieValue(
+    adminId,
+    payload.id,
+    payload.exp,
+    sealActingToken(body.token, actingAad(meta)),
+  );
+  (await cookies()).set(AS_COOKIE, value, {
     httpOnly: true,
     secure: env.CSM_COOKIE_SECURE,
     sameSite: "strict",
@@ -81,7 +93,7 @@ export async function stopImpersonation(): Promise<string | null> {
   jar.delete(AS_COOKIE);
   if (!as) return null;
   const own = await readOwnSessionToken();
-  const targetId = tokenPayload(as.token)?.id ?? null;
+  const targetId = as.targetId;
   if (own && tokenPayload(own)?.id === as.adminId && targetId)
     await auditImpersonationStop(own, targetId);
   return targetId;

@@ -285,6 +285,13 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   (fait pour Quinyx le 14 oct.), et demander à l'utilisateur de se déconnecter du service ensuite.
 - (v2) **Identifiants Quinyx (groupes, employés) jamais dans Git** : les groupes se saisissent dans Administration ›
   Quinyx ; l'extension les demande à CSM (`/api/equipe/quinyx/config`). E2E et tests : identifiants fictifs.
+- (v2) **PocketBase JSVM : `e.json(...)` renvoie `undefined`** : une fonction partagée qui « renvoie » une réponse de refus
+  (`return e.json(403…)` puis `if (denied) return denied;`) ne stoppe RIEN, le gestionnaire continue et écrit sa réponse à la
+  suite (faille critique de « voir en tant que », 14 oct. : jeton d'un autre agent sans secret). Toujours **lever** une erreur
+  (`throw new ForbiddenError(…)`) hors du gestionnaire, ou `return e.json(…)` directement dans le gestionnaire.
+- (v2) **Chaque push sur `csm-preview` redéploie** (PocketBase s'arrête ~30 s quand `pocketbase/**` change, pas de mise à jour
+  sans coupure avec un volume) : regrouper les envois vers la préversion ; les pages d'erreur réessaient seules
+  (`lib/use-auto-retry.ts`).
 - (v2) Playwright : un libellé avec astérisque requis (`Arrivée *`) ne répond pas à `getByLabel(…, { exact: true })` ;
   passer par `getByRole(…, { name, exact: true })`.
 
@@ -1200,6 +1207,14 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   582 contrôles de règles, 1053 tests unitaires. Restent : 6 `<select>` natifs (district d'édition, ligne de PN, bifurcation),
   `ListToolbar`, `loading.tsx`, R7, L4-L6, **audit sécurité de L2 avant la prod**, `perms-check` sur préversion et prod.
   Test E2E instable sous charge : Journal « publier… » / « répondre en fil » (passe en série).
+- 2026-10-14 — **Audit sécurité rôles v3 / « voir en tant que »** (agent, attaques sur copie locale) : **critique corrigé**
+  (route `/api/csm/impersonate` : `guard()` lève une erreur au lieu de renvoyer `e.json`), sysop bloqué sur les comptes admin /
+  sysop (`assertCanManage`, hook + web), `disabled_role` et rôles techniques contrôlés (`assertSpecial`, `dicos:write` superuser
+  seul), bon déjà envoyé (historique `order_events`) non supprimable par son créateur, filtres / tris sur `grants|denies|
+  disabled_role` refusés aux non-admins, jeton de la cible **scellé** dans `csm_as` (AES-256-GCM, `server/acting-seal.ts`,
+  format `admin~cible~exp~scellé`). 594 contrôles de règles. `perms-check` sur la préversion : 38 comptes, 0 écart.
+  Téléphonie : **Genesys Cloud** (`tel:` E.164, extension de navigateur « Click-to-Dial ») ou Etrali au choix (`lib/telephony.ts`).
+  Audit de navigation rendu (`docs/design/AUDIT-NAVIGATION.md`), en attente de validation.
 
 ---
 

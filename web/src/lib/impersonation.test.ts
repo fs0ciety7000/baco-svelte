@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   STOP_PATH,
+  actingAad,
   actingBlock,
   actingCookieValue,
+  actingExpired,
   impersonationRefusal,
   isBlockedRead,
   isPbRead,
@@ -16,29 +18,37 @@ const ADMIN = "abcdefghijklmno";
 const UUID = "0f8b1c2d-3e4f-5a6b-7c8d-9e0f1a2b3c4d";
 
 describe("cookie du mode", () => {
+  const SEALED = "A".repeat(60);
   it("aller-retour", () => {
-    expect(parseActingCookie(actingCookieValue(ADMIN, JWT))).toEqual({
+    expect(parseActingCookie(actingCookieValue(ADMIN, UUID, 1760000000, SEALED))).toEqual({
       adminId: ADMIN,
-      token: JWT,
+      targetId: UUID,
+      exp: 1760000000,
+      sealed: SEALED,
     });
-    expect(parseActingCookie(actingCookieValue(UUID, JWT))).toEqual({ adminId: UUID, token: JWT });
+  });
+  it("le jeton n'est jamais en clair dans le cookie", () => {
+    expect(parseActingCookie(`${ADMIN}~${JWT}`)).toBeNull();
+    expect(parseActingCookie(`${ADMIN}~${UUID}~1760000000~${JWT}`)).toBeNull();
   });
   it("refuse les valeurs mal formées", () => {
     for (const v of [
       undefined,
       null,
       "",
-      JWT,
-      `${ADMIN}~`,
-      `~${JWT}`,
-      `court~${JWT}`,
-      `${ADMIN.toUpperCase()}~${JWT}`,
-      `${ADMIN}~pas-un-jeton`,
-      `${ADMIN}~a.b`,
-      `${ADMIN}~${JWT}~x`,
-      `${ADMIN}~${"a".repeat(5000)}.b.c`,
+      `${ADMIN}~${UUID}~1760000000`,
+      `court~${UUID}~1760000000~${SEALED}`,
+      `${ADMIN}~${UUID}~abc~${SEALED}`,
+      `${ADMIN}~${UUID}~1760000000~court`,
+      `${ADMIN}~${UUID}~1760000000~${SEALED}~x`,
+      `${ADMIN.toUpperCase()}~${UUID}~1760000000~${SEALED}`,
     ])
       expect(parseActingCookie(v)).toBeNull();
+  });
+  it("expiration et données liées", () => {
+    expect(actingExpired({ exp: 100 }, 101_000)).toBe(true);
+    expect(actingExpired({ exp: 100 }, 99_000)).toBe(false);
+    expect(actingAad({ adminId: ADMIN, targetId: UUID, exp: 5 })).toBe(`${ADMIN}~${UUID}~5`);
   });
 });
 

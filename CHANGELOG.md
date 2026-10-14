@@ -32,6 +32,10 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 - Pendant une mise à jour de CSM (une trentaine de secondes), la page d'erreur réessaie toute seule dès que le serveur répond, au lieu de rester sur « momentanément indisponible ».
 
+### Sécurité
+
+- « Voir en tant que » et gestion des comptes renforcés après un audit : un compte Administrateur ne peut être modifié que par un administrateur, les rôles techniques sont protégés, et un bon déjà envoyé ne peut plus être supprimé par son créateur, même après réouverture.
+
 ## [2026.10.14] — Cycle des bons, trains et nouveautés
 
 ### Nouveautés

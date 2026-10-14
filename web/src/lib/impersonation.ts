@@ -1,7 +1,12 @@
 // « Voir en tant que » (Administration, 14 oct. 2026) : logique pure partagée par le middleware (runtime edge), le
 // serveur et le navigateur. Aucune importation : lu tel quel par le middleware.
 
-/** Cookie httpOnly du mode : `<id de l'admin>~<jeton statique de la cible>` (le cookie de session de l'admin reste intact). */
+/**
+ * Cookie httpOnly du mode : `<id de l'admin>~<id de la cible>~<expiration (s)>~<jeton de la cible CHIFFRÉ>` (le cookie de
+ * session de l'admin reste intact). Le jeton est scellé côté serveur (AES-256-GCM, `server/acting-seal.ts`) : visible dans
+ * les outils du navigateur, il ne servirait à rien hors de CSM (audit sécurité du 14 oct. 2026). Le middleware n'a besoin
+ * que de l'admin, de la cible et de l'expiration, en clair.
+ */
 export const AS_COOKIE = "csm_as";
 /** Durée du jeton de la cible (non renouvelable). */
 export const AS_TTL_S = 30 * 60;
@@ -15,22 +20,39 @@ export const READ_ONLY_HIT_COOKIE = "csm_ro_hit";
 export const STOP_PATH = "/api/admin/en-tant-que/fin";
 
 const ID = /^[a-z0-9-]{15,36}$/;
-const JWT = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+const SEALED = /^[A-Za-z0-9_-]{40,4000}$/;
 
-export function actingCookieValue(adminId: string, token: string): string {
-  return `${adminId}~${token}`;
+export type ActingCookie = { adminId: string; targetId: string; exp: number; sealed: string };
+
+export function actingCookieValue(
+  adminId: string,
+  targetId: string,
+  exp: number,
+  sealed: string,
+): string {
+  return `${adminId}~${targetId}~${exp}~${sealed}`;
 }
 
 /** Lit le cookie du mode ; `null` s'il est absent ou mal formé. */
-export function parseActingCookie(
-  value: string | null | undefined,
-): { adminId: string; token: string } | null {
+export function parseActingCookie(value: string | null | undefined): ActingCookie | null {
   if (!value || value.length > 4096) return null;
-  const i = value.indexOf("~");
-  if (i < 0) return null;
-  const adminId = value.slice(0, i);
-  const token = value.slice(i + 1);
-  return ID.test(adminId) && JWT.test(token) ? { adminId, token } : null;
+  const parts = value.split("~");
+  if (parts.length !== 4) return null;
+  const [adminId = "", targetId = "", rawExp = "", sealed = ""] = parts;
+  const exp = /^\d{9,11}$/.test(rawExp) ? Number(rawExp) : NaN;
+  if (!ID.test(adminId) || !ID.test(targetId) || !Number.isFinite(exp) || !SEALED.test(sealed))
+    return null;
+  return { adminId, targetId, exp, sealed };
+}
+
+/** Jeton de la cible expiré (d'après l'expiration en clair, vérifiée aussi par PocketBase). */
+export function actingExpired(as: { exp: number }, now: number = Date.now()): boolean {
+  return as.exp * 1000 <= now;
+}
+
+/** Données liées au scellement (empêche de recoller le jeton d'une autre cible ou d'un autre admin). */
+export function actingAad(as: { adminId: string; targetId: string; exp: number }): string {
+  return `${as.adminId}~${as.targetId}~${as.exp}`;
 }
 
 const ADMINS = new Set(["admin", "sysop"]);

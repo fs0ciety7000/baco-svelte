@@ -5,16 +5,18 @@ const ADMINS = ['admin', 'sysop'];
 // Rôles qu'on ne peut pas emprunter : autres administrateurs, compte de service, compte désactivé.
 const FORBIDDEN = ['admin', 'sysop', 'connector', 'disabled'];
 
-/** Secret interne + appelant admin / sysop actif ; renvoie la réponse de refus, ou null. */
+/**
+ * Secret interne + appelant admin / sysop actif ; LÈVE une erreur sinon. Ne jamais « renvoyer » `e.json(...)` depuis une
+ * fonction partagée : en JSVM `e.json()` vaut `undefined`, le gestionnaire continuait et renvoyait le jeton à la suite du
+ * refus (audit sécurité du 14 oct. 2026, faille critique corrigée).
+ */
 function guard(e) {
 	const secret = String($os.getenv('CSM_INTERNAL_SECRET') || '');
 	const given = String(e.request.header.get('x-csm-internal') || '');
-	if (secret.length < 32 || !$security.equal(given, secret)) return e.json(404, { message: 'Not found.' });
+	if (secret.length < 32 || !$security.equal(given, secret)) throw new NotFoundError('Not found.');
 	const auth = e.auth;
-	if (!auth || auth.collection().name !== 'users') return e.json(401, { message: 'Connexion requise.' });
-	if (ADMINS.indexOf(auth.getString('role')) === -1)
-		return e.json(403, { message: 'Réservé aux administrateurs.' });
-	return null;
+	if (!auth || auth.collection().name !== 'users') throw new UnauthorizedError('Connexion requise.');
+	if (ADMINS.indexOf(auth.getString('role')) === -1) throw new ForbiddenError('Réservé aux administrateurs.');
 }
 
 /** Motif du refus d'une cible (texte), ou '' si elle est valide. */

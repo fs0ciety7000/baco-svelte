@@ -39,20 +39,28 @@ onRecordUpdate((e) => {
 // au moins un administrateur actif (rôle `admin`) : ni désactivation, ni rétrogradation, ni suppression du dernier.
 // Requêtes seulement : l'import en ligne de commande (remise à zéro) n'est pas bloqué.
 onRecordCreateRequest((e) => {
-	require(`${__hooks}/lib/roles.js`).assertCanAssign(e.auth, e.record.getString('role'), '');
+	const roles = require(`${__hooks}/lib/roles.js`);
+	roles.assertCanAssign(e.auth, e.record.getString('role'), '');
+	roles.assertCanAssign(e.auth, e.record.getString('disabled_role'), '');
+	roles.assertSpecial(e.auth, e.record, null);
 	e.next();
 }, 'users');
 
 onRecordUpdateRequest((e) => {
 	const roles = require(`${__hooks}/lib/roles.js`);
 	const before = e.record.original();
+	roles.assertCanManage(e.auth, before);
 	roles.assertCanAssign(e.auth, e.record.getString('role'), before.getString('role'));
+	roles.assertCanAssign(e.auth, e.record.getString('disabled_role'), before.getString('disabled_role'));
+	roles.assertSpecial(e.auth, e.record, before);
 	roles.assertNotLastAdmin(e.app, before, e.record.getString('role'));
 	e.next();
 }, 'users');
 
 onRecordDeleteRequest((e) => {
-	require(`${__hooks}/lib/roles.js`).assertNotLastAdmin(e.app, e.record, '');
+	const roles = require(`${__hooks}/lib/roles.js`);
+	roles.assertCanManage(e.auth, e.record);
+	roles.assertNotLastAdmin(e.app, e.record, '');
 	e.next();
 }, 'users');
 
@@ -132,3 +140,15 @@ onBootstrap((e) => {
 		console.log('users.perms : recalcul au démarrage impossible', err);
 	}
 });
+
+// `grants`, `denies`, `disabled_role` sont masqués aux non-admins à la réponse (onRecordEnrich) ; un filtre ou un tri
+// permettrait pourtant de les deviner (audit sécurité du 14 oct. 2026) → refusés dans la recherche, hors admin / sysop.
+// `perms` reste filtrable (mentions : agents qui lisent l'équipe).
+onRecordsListRequest((e) => {
+	const auth = e.auth;
+	if (!auth || auth.isSuperuser() || ['admin', 'sysop'].indexOf(auth.getString('role')) !== -1) return e.next();
+	const q = e.requestInfo().query || {};
+	const text = `${q.filter || ''} ${q.sort || ''}`;
+	if (/\b(grants|denies|disabled_role)\b/.test(text)) throw new BadRequestError('Filtre non autorisé.');
+	e.next();
+}, 'users');
