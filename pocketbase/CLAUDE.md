@@ -91,7 +91,7 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   hook et **refusés dans le corps des requêtes**. Chaque transition écrit `order_events` (lecture seule ; anciens statuts
   gardés). Création toujours en `brouillon`, au nom de l'agent. `number` = n° de bon, attribué par une seule instruction
   SQL atomique sur `_order_counters` ; = ancien id pour les bus importés. Rôle Écran : lit les bons bus en brouillon ou
-  terminés. `time_pending` (taxi) : heure de prise en charge non saisie.
+  terminés. `time_pending` / `return_time_pending` (taxi) : heure de prise en charge / de retour non saisie.
   `updated_by` de `pmr_clients` / `b201_reports` et l'attribution BACO des bus (`sent_by_name`, `validated_by`,
   `legacy_id`) ne sont pas forgeables.
 - **Piège des index** : un champ nombre vide vaut **0**, pas NULL → un index unique `WHERE legacy_id IS NOT NULL`

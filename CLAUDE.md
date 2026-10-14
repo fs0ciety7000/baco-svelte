@@ -990,11 +990,6 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   assistés sont validés ; badges IN / OUT cochés. Filtre de statut en **cases à cocher multiples**. Les lignes déjà mal
   marquées se corrigent à la synchro suivante.
 
-- 2026-10-14 — **« Valider l'envoi » = brouillon Outlook + « Envoyé »** (demande de l'utilisateur ; revient sur le « Terminé »
-  direct du 9 oct.) : un clic ouvre le .eml (adresse du fournisseur, message avec date / trajet / n° TC, PDF joint) et passe
-  le bon en « Envoyé » ; confirmation et clôture ensuite. Conséquence : ces bons entrent dans « À confirmer », l'alerte H-2 et
-  la relance.
-
 - 2026-10-14 — **« Valider l'envoi »** (demande de l'utilisateur) : un bouton qui ouvre le brouillon Outlook (`.eml` X-Unsent,
   adresse du fournisseur, message généré avec date / trajet / n° TC, PDF joint) et passe le bon en « Envoyé ».
 - 2026-10-14 — **Cycle des bons v3** (décision de l'utilisateur) : **1. Brouillon / en cours** (`brouillon`) → **2. Terminé**
@@ -1003,8 +998,11 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   l'alerte H-2 (`bus-h2`) et la relance fournisseur. Conversion (migration `1760003400`) : ancien terminé et ancien envoyé →
   envoyé / finalisé ; confirmé et en cours → brouillon / en cours ; l'historique garde les anciens libellés. Suivi : vues
   « À envoyer » (terminés), « Aujourd'hui », « En cours », « Toutes » ; accueil, Relève et `/tv` comptent les bons à envoyer.
-  E-mail fournisseur = récapitulatif, sans demande de confirmation. 378 contrôles de règles. Bug connu (antérieur) : une
-  heure de retour taxi vide est enregistrée 00:00.
+  E-mail fournisseur = récapitulatif, sans demande de confirmation. 378 contrôles de règles.
+- 2026-10-14 — **Heure de retour taxi vide** : enregistrée 00:00 et le bon bloqué (« le retour doit suivre l'aller ») →
+  `taxi_orders.return_time_pending` (`1760003500`, comme `time_pending` pour l'aller ; brouillons déjà à minuit repris).
+  Gel de BACO reporté (décision de l'utilisateur). L.26 absente aussi des données BACO : stations à fournir ou à saisir
+  dans Admin › Lignes et arrêts.
 
 ---
 

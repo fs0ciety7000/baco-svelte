@@ -241,6 +241,12 @@ test("taxi : création liée à une société, aller-retour pré-inversé", asyn
   await page.getByRole("radio", { name: "Aller-retour" }).click();
   await expect(page.getByLabel("Départ du retour")).toHaveValue("Tournai");
   await page.getByLabel("Société de taxi").selectOption({ label: `${TAXI_COMPANY} — Mons` });
+  // Heure de retour vide : relue vide, jamais « 00:00 » (régression du 14 oct. 2026).
+  await expect(page.getByTestId("autosave")).toHaveAttribute("data-state", "saved", {
+    timeout: 10_000,
+  });
+  await page.reload();
+  await expect(page.getByLabel("Heure du retour")).toHaveValue("");
   await page.getByLabel("Heure du retour").fill("23:30");
   // Cycle v3 : le trajet fait, le bon passe « Terminé », puis « Valider l'envoi ».
   await page.getByTestId("transition-termine").click();

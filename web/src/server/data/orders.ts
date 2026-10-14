@@ -181,6 +181,7 @@ export function taxiDraftFromRecord(r: RecordModel): TaxiDraft {
   // Heure non saisie : trip_at porte le jour à minuit, l'heure reste vide (jamais « 00:00 » par défaut).
   if (r.time_pending) trip.time = "";
   const ret = splitInstant(r.return_at);
+  if (r.return_time_pending) ret.time = "";
   return taxiDraftSchema.parse({
     trip_day: trip.day,
     trip_time: trip.time,

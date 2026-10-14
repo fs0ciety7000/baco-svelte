@@ -146,6 +146,7 @@ async function taxiBody(draft: TaxiDraft, user: SessionUser, creating: boolean) 
       draft.round_trip && draft.return_day
         ? brusselsToUtc(draft.return_day, draft.return_time || "00:00")
         : "",
+    return_time_pending: draft.round_trip && !!draft.return_day && !draft.return_time,
     trip_type: draft.round_trip ? "aller-retour" : "aller",
     taxi_company: draft.taxi_company || null,
     taxi_email: draft.taxi_email,
