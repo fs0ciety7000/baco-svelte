@@ -3,6 +3,8 @@ import "server-only";
 import type { RecordModel } from "pocketbase";
 import { z } from "zod";
 
+import { compareByBk } from "@/lib/network/pn";
+
 import {
   stationAliasesFor,
   stationAliasIndex,
@@ -260,7 +262,15 @@ export type LineDetail = {
     gap: boolean;
   }[];
   branches: RailBranch[];
-  crossings: { id: string; number: string; bk: number; address: string; zone: string }[];
+  crossings: {
+    id: string;
+    number: string;
+    bk: number;
+    bkEstimated: boolean;
+    address: string;
+    commune: string;
+    zone: string;
+  }[];
   spi: { id: string; place: string; zone: string; address: string; notes: string }[];
 };
 
@@ -287,7 +297,7 @@ export async function getLineDetail(raw: string): Promise<LineDetail | null> {
     stationDistricts(pb),
     pb
       .collection("level_crossings")
-      .getFullList({ filter: orLine("line"), sort: "number", batch: 1000 })
+      .getFullList({ filter: `(${orLine("line")}) && active = true`, batch: 1000 })
       .catch(() => []),
     pb
       .collection("spi_points")
@@ -316,13 +326,30 @@ export async function getLineDetail(raw: string): Promise<LineDetail | null> {
       gap: !!s.g,
     })),
     branches: rec && Array.isArray(rec.branches) ? (rec.branches as RailBranch[]) : [],
-    crossings: crossings.map((c) => ({
-      id: c.id,
-      number: str(c.number),
-      bk: num(c.bk),
-      address: str(c.address),
-      zone: str(c.zone),
-    })),
+    // Le long de la ligne : BK croissante (relevée ou estimée), PN sans BK à la fin.
+    crossings: crossings
+      .map((c) => ({
+        id: c.id,
+        line: str(c.line),
+        number: str(c.number),
+        bk: num(c.bk),
+        bkEstimated: c.bk_estimated === true,
+        address: str(c.address),
+        commune: str(c.commune),
+        zone: str(c.zone),
+        lat: 0,
+        lon: 0,
+      }))
+      .sort(compareByBk)
+      .map(({ id, number, bk, bkEstimated, address, commune, zone }) => ({
+        id,
+        number,
+        bk,
+        bkEstimated,
+        address,
+        commune,
+        zone,
+      })),
     spi: spi.map((s) => ({
       id: s.id,
       place: str(s.place),

@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/status-badge";
 import { ListCard } from "@/components/ui/table";
 import { parseDistricts } from "@/lib/district-param";
 import { lineLabel } from "@/lib/lines";
+import { bkLabel } from "@/lib/network/pn";
 import { DISTRICT_LABEL } from "@/lib/pmr/districts";
 import { pl } from "@/lib/utils";
 import { can } from "@/lib/permissions";
@@ -247,29 +248,50 @@ function LineView({
         )}
       </details>
 
-      <details className="flex flex-col gap-2">
+      <details className="flex flex-col gap-2" data-testid="line-crossings">
         <summary className="label-mono cursor-pointer text-fg-muted">
           Passages à niveau · {detail.crossings.length}
         </summary>
         <div className="mt-2 flex flex-col gap-2">
           {detail.crossings.length === 0 ? (
             <p className="text-small text-fg-muted">Aucun PN au référentiel pour cette ligne.</p>
+          ) : (
+            <p className="text-small text-fg-muted">
+              Dans l&apos;ordre des bornes kilométriques ; « ≈ » : BK estimée le long de la ligne
+              (PN des données ouvertes Infrabel).
+            </p>
+          )}
+          {detail.crossings.length ? (
+            <ol className="flex flex-col divide-y divide-border rounded-box border border-border">
+              {detail.crossings.map((c) => (
+                <li key={c.id}>
+                  <Link
+                    href={`/reseau/pn?pn=${c.id}`}
+                    className="flex min-h-11 items-center gap-3 px-3 py-1.5 transition-colors hover:bg-surface-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                    aria-label={`PN ${c.number} sur la carte`}
+                  >
+                    <span
+                      className={`w-20 shrink-0 font-mono text-small tabular ${c.bkEstimated ? "text-fg-muted" : ""}`}
+                    >
+                      {c.bk ? bkLabel(c.bk, c.bkEstimated) : "—"}
+                    </span>
+                    <span className="w-16 shrink-0 font-mono text-small font-semibold tabular">
+                      PN {c.number}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">{c.address || c.commune || "—"}</span>
+                    {c.zone ? (
+                      <span className="shrink-0 font-mono text-small text-fg-muted">{c.zone}</span>
+                    ) : null}
+                    <MapPin aria-hidden className="size-4 shrink-0 text-fg-muted" />
+                  </Link>
+                </li>
+              ))}
+            </ol>
           ) : null}
-          {detail.crossings.map((c) => (
-            <div key={c.id} className="flex items-start gap-2 border border-border px-2 py-1.5">
-              <span className="font-mono text-small tabular">PN {c.number}</span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate">{c.address || "—"}</p>
-                <p className="text-small text-fg-muted">
-                  {c.bk ? `BK ${c.bk}` : ""} {c.zone ? `· ${c.zone}` : ""}
-                </p>
-              </div>
-            </div>
-          ))}
           {detail.crossings.length ? (
             <Button asChild variant="ghost" size="sm" className="self-start border border-border">
-              <Link href={`/reseau/pn?q=${encodeURIComponent(label)}`}>
-                <MapPin aria-hidden className="size-4" /> Ouvrir dans la Carte PN
+              <Link href={`/reseau/pn?ligne=${encodeURIComponent(label)}`}>
+                <MapPin aria-hidden className="size-4" /> Tous les PN de la {label} sur la carte
               </Link>
             </Button>
           ) : null}

@@ -129,8 +129,16 @@ export function runNetworkImport(opts: { crossings?: boolean } = {}): Promise<Ne
       error: (e instanceof Error ? e.message : String(e)).slice(0, 300),
     }))
     .then(async (summary) => {
-      // Résumé gardé avec l'état de l'import (Administration › Référentiels › Imports).
-      await internal("timetable/status", { patch: { network: summary } }).catch(() => null);
+      // Résumé gardé avec l'état de l'import (Administration › Référentiels › Imports) ; un recalcul des zones seules
+      // garde le bilan du dernier import des PN.
+      const prev = await internal<{ network?: NetworkSummary }>("timetable/status").catch(
+        () => ({}),
+      );
+      const network =
+        summary.crossings || summary.error
+          ? summary
+          : { ...summary, crossings: (prev as { network?: NetworkSummary }).network?.crossings };
+      await internal("timetable/status", { patch: { network } }).catch(() => null);
       if (summary.error) console.error("[network]", summary.error);
       return summary;
     })
@@ -166,11 +174,21 @@ async function doRun(withCrossings: boolean): Promise<NetworkSummary> {
   }));
 
   const summary: NetworkSummary = { at, stations: stationCounts };
-  if (!withCrossings) return summary;
+  if (!withCrossings) {
+    // Zones seulement (après une correction dans l'administration) : zones des PN recalculées, sans appel à Infrabel.
+    const items = state.crossings
+      .filter((c) => c.zoneSource !== "baco" && c.zoneSource !== "manuel")
+      .map((c) => ({ id: c.id, zone: crossingZone(c, zoned), before: c.zone }))
+      .filter((c) => c.zone !== c.before)
+      .map(({ id, zone }) => ({ id, zone }));
+    await inBatches(items, 400, (batch) => internal("network/crossing-zones", { items: batch }));
+    return summary;
+  }
 
   // PN Infrabel.
   const infra = await readInfrabelCrossings();
-  if (infra.length < 500) throw new Error(`Fichier Infrabel des PN incomplet (${infra.length} PN).`);
+  if (infra.length < 500)
+    throw new Error(`Fichier Infrabel des PN incomplet (${infra.length} PN).`);
   const match = matchCrossings(state.crossings, infra);
   const pos = new Map(state.stations.map((s) => [s.name, s]));
   const lineStations = new Map(

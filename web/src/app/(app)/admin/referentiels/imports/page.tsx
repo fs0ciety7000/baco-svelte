@@ -44,6 +44,20 @@ export default async function Page() {
         ["Chemins Infrabel", String(s.paths ?? "—")],
         ["Gares", String(s.stations ?? "—")],
         ["Lignes", String(s.lines ?? "—")],
+        [
+          "PN Infrabel (données ouvertes)",
+          s.network?.crossings
+            ? `${s.network.crossings.infrabel} lus · ${s.network.crossings.matched} rapprochés · ${s.network.crossings.created} nouveaux · ${s.network.crossings.deactivated} désactivés`
+            : "—",
+        ],
+        [
+          "Zones SPI des gares",
+          s.network?.stations
+            ? Object.entries(s.network.stations)
+                .map(([k, v]) => `${k} ${v}`)
+                .join(" · ")
+            : "—",
+        ],
       ]
     : [];
   return (
@@ -68,6 +82,9 @@ export default async function Page() {
               <Badge tone="info">Mise à jour en cours{s?.step ? ` : ${s.step}` : ""}</Badge>
             ) : null}
             {s?.warning ? <Badge tone="warn">{s.warning}</Badge> : null}
+            {s?.network?.error ? (
+              <Badge tone="warn">Réseau (PN, zones SPI) : {s.network.error}</Badge>
+            ) : null}
           </p>
           {rows.length ? (
             <dl className="grid gap-x-6 gap-y-1 text-body sm:grid-cols-[max-content_1fr]">
