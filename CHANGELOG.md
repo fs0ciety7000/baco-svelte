@@ -7,6 +7,11 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 ### Nouveautés
 
+- **Annuaire refait** : la recherche part dès la première lettre et tolère accents, fautes de frappe et mots dans le désordre ; elle trouve un numéro quel que soit son format (espaces, /, +32), une gare par son abréviation (FMS) ou son nom néerlandais. Résultats classés et surlignés, appel et copie du numéro en un clic, **favoris** et **contacts consultés récemment**, fiche avec numéro en grand. « / » pour chercher, ↑ ↓ pour parcourir, Entrée pour ouvrir.
+- **Bon taxi : plusieurs gares « via »** (ajout, ordre, retrait), reprises sur le PDF, l'e-mail et le Suivi.
+- **Taxi PMR : « Numéro de dossier »** (format 2026-10-14-0134, remis en forme à la saisie), avec les dossiers DICOS du jour proposés.
+- **Supprimer un bon** bus ou taxi : administrateurs et modérateurs, et l'agent qui l'a créé pendant 8 h (« Supprimable encore 7 h 05 »), tant qu'il n'a jamais été envoyé.
+- **Bons archivés après un mois** : un bon envoyé ou annulé depuis plus de 30 jours quitte les listes et le Suivi ; il reste dans **Commandes › Archives** (recherche, type, période), et un lien direct vers sa fiche marche toujours (badge « Archivé »).
 - **Administration › Rôles** : crée tes propres rôles à partir d'un rôle existant, coche les droits rédigés en phrases simples (« Peut supprimer un bon bus »), vois en direct ce que le rôle peut et ne peut pas faire, compare deux rôles, et annule un changement depuis l'historique. Un rôle encore attribué ne se supprime qu'en réaffectant ses agents.
 - **Fiche d'un agent** : ses « ajustements » (droits en plus ou retirés par rapport à son rôle) s'affichent en phrases et s'ajoutent ou se retirent d'un clic, avec le résumé de tout ce que la personne peut faire. La grille technique reste disponible en « Vue experte ».
 - **Téléphoner avec Genesys Cloud** : les numéros (annuaire, missions PMR, équipe…) s'ouvrent dans Genesys Cloud au clic (lien `tel:` au format international +32…), comme avant avec Etrali. Il faut l'extension Genesys Cloud du navigateur, avec « Click-to-Dial » activé. Affichage › « Téléphoner en un clic » : choisis Genesys Cloud (par défaut) ou Etrali. Sur mobile, le téléphone compose toujours le numéro.
@@ -32,6 +37,7 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 ### Corrections
 
+- Bon taxi : l'action principale s'appelle « Terminer » (et non « Terminer (bus démobilisés) »).
 - Pendant une mise à jour de CSM (une trentaine de secondes), la page d'erreur réessaie toute seule dès que le serveur répond, au lieu de rester sur « momentanément indisponible ».
 
 ### Sécurité

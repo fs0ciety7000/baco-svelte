@@ -704,7 +704,9 @@ function RowSection({
  */
 function callHrefs(phone: string) {
   const n = dialable(phone);
-  return n ? { desk: `tel:${e164(phone)}`, etrali: `etrali:${n}`, mobile: `tel:${e164(phone)}` } : null;
+  return n
+    ? { desk: `tel:${e164(phone)}`, etrali: `etrali:${n}`, mobile: `tel:${e164(phone)}` }
+    : null;
 }
 
 function deskCall(e: React.MouseEvent<HTMLAnchorElement>, etrali: string) {
