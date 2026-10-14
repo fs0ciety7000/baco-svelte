@@ -10,9 +10,9 @@ import {
 } from "./navigation";
 
 describe("navigation", () => {
-  it("6 modules au plus, 5 dans la barre mobile (Annuaire compris, 9 oct. 2026)", () => {
+  it("6 modules au plus, 4 dans la barre mobile + « Plus » (14 oct. 2026)", () => {
     expect(MODULES.length).toBeLessThanOrEqual(6);
-    expect(MODULES.filter((m) => m.mobile).length).toBe(5);
+    expect(MODULES.filter((m) => m.mobile).length).toBe(4);
   });
 
   it("filtre selon les permissions : l'invité ne voit que les commandes bus et taxi (rôles v2)", () => {
