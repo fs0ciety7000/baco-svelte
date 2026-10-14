@@ -14,7 +14,7 @@ import type { ReactNode } from "react";
 
 import { parseUiCookie, UI_COOKIE } from "@/design/preferences";
 import { themeById } from "@/design/tokens";
-import { ROLE_LABEL } from "@/lib/team";
+import { roleLabel } from "@/lib/roles";
 import { env } from "@/server/env";
 import { resolveActing } from "@/server/session";
 
@@ -105,7 +105,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         {showActing ? (
           <ActingBanner
             name={acting.target?.name ?? ""}
-            role={acting.target ? (ROLE_LABEL[acting.target.role] ?? acting.target.role) : ""}
+            role={acting.target ? roleLabel(acting.target.role) : ""}
             stale={!acting.actor}
             expiresAt={acting.exp ? acting.exp * 1000 : null}
           />

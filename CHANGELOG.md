@@ -5,6 +5,10 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 ## [2026.10.14.1] — Dates au format belge, administration plus accessible
 
+### Nouveautés
+
+- **Administration › Utilisateurs › fiche : « Voir en tant que »** (administrateurs). Tu vois CSM exactement comme cet agent (menus, onglets, données accessibles), pour vérifier ses droits. Lecture seule stricte, 30 minutes au plus, bandeau « Revenir à mon compte » en haut de chaque page ; chaque début et fin est noté dans le journal d'audit. Impossible sur un autre administrateur.
+
 ### Améliorations
 
 - **Dates et heures toujours au format belge** (jj/mm/aaaa, 24 h), quelle que soit la langue du navigateur. Tape « 14102026 » ou « 14/10 » pour une date, « 1450 » pour 14:50. Les flèches ↑ ↓ changent le jour, le mois ou l'heure (par pas de 5 minutes). Un calendrier (semaine du lundi, jours fériés belges marqués) s'ouvre au bouton, en feuille du bas sur mobile. Bouton « Maintenant » pour l'heure, et « À confirmer » quand l'heure d'un bon n'est pas encore connue.
