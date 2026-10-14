@@ -1080,6 +1080,16 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   la table BACO classe déjà des gares flamandes en DSO / DSE (Gand-Saint-Pierre, Waregem, Louvain, Hasselt), les propositions
   s'en inspirent : à revoir par les coordinateurs. **Nouveau GTFS** : le serveur vérifie toutes les 3 h (requête HEAD,
   `Last-Modified`) et relance l'import aussitôt (tous les référentiels).
+- 2026-10-14 — **⌘K granulaire dans tous les modules** (demande de l'utilisateur) : `paletteSearch` renvoie des **groupes
+  par module** (« Ressources › Gares », « Commandes › Fournisseurs »…, 5 résultats par groupe + « Voir tout » vers la recherche
+  de la page). Lecture de la saisie (`lib/search/palette.ts`, testée) : 2 à 5 chiffres = n° de train (+ bons, PN), « IC14 » /
+  « S1 » = relation, « L.96 » = ligne seule, « L36 » = ligne ET relation omnibus, 2 à 5 lettres = abréviation de gare ; le
+  groupe le plus probable passe en tête et son premier résultat est actif. Groupes ajoutés et droit : Gares, Lignes,
+  Relations, Trains (onglets Ressources, hors invité / Écran), Procédures et Documents (`documents:read`), EBP (`ebp:read`),
+  PN (`carte_pn:read`), Bons taxi (`generate_taxi:read`), Fournisseurs (onglet, `otto:read` hors invité ; taxi avec
+  `generate_taxi:read`), Archives (`archives:read`), Agents (onglet Équipe, champs de l'annuaire seulement), Ma journée à la gare
+  trouvée (`journal:read`), Comptes (admin / sysop) ; bons bus cherchés aussi par `train_number`. Aucun nom de voyageur
+  (missions, taxis). `Promise.allSettled` : un groupe en erreur est omis.
 
 ---
 

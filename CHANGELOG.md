@@ -19,6 +19,7 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 - **Nouveau cycle des bons bus et taxi** : « Brouillon / en cours » → « Terminé » (bus démobilisés, heures de démobilisation proposées) → « Envoyé / finalisé ». L'étape « Confirmé » disparaît.
 - **« Valider l'envoi »** : un seul bouton prépare le brouillon Outlook (adresse du fournisseur, récapitulatif, PDF joint) et passe le bon en « Envoyé / finalisé ». Le bon est alors verrouillé ; un coordinateur peut le rouvrir.
+- **Recherche ⌘K dans tous les modules** : gares (nom, néerlandais, abréviation comme « FMS »), lignes (« L.96 »), relations (« IC14 », « S1 »), n° de train, bons bus et taxi (n° de bon, n° de train, n° TC, gares), fournisseurs, archives, passages à niveau, EBP, procédures et documents, collègues de l'équipe et « Ma journée » à une gare. Les résultats sont rangés par module, 5 au plus par rubrique avec « Voir tout », et tu ne vois que ce à quoi tu as accès.
 - **Suivi des bons** : vues « À envoyer », « Aujourd'hui », « En cours » et « Toutes ». L'accueil, la relève et l'écran commun comptent les bons à envoyer.
 
 ### Corrections

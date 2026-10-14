@@ -205,7 +205,14 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `CollapsibleFilters` (repliés en mobile, en ligne en desktop) ; `FormAutoSubmit` dans chaque formulaire de filtres ;
   pluriels avec `pl(n, "mission")`. En-tête de module : `ModuleLayout` (une ligne), `eyebrow` = information utile.
 - Lot 3 : `SyncStatus` (`components/pmr/sync-status.tsx`) + `dicosSyncState()` ; ⌘K `paletteSearch()`
-  (`app/search-actions.ts`, 5 résultats par type, droits de l'agent) ; `PageShortcuts` (« / », « N » via
+  (`app/search-actions.ts`, droits de l'agent ; **granulaire depuis le 14 oct. 2026** : renvoie `SearchGroup[]` — un groupe
+  par type, en-tête « Module › Type », 5 résultats, `more` = « Voir tout » vers `?q=` de la page —, chaque groupe gardé par
+  `can()` ou `routeOk()` (onglet de `visibleModules`, comme `requireRoute`), requêtes `getList(…, ≤ 20)` + `fields`, filtres
+  liés, `Promise.allSettled`. Lecture de la saisie, ordre des groupes, rang des gares : `lib/search/palette.ts`
+  (`parsePaletteQuery`, `paletteGroupOrder`, `rankStations`, testés). Tout nouveau groupe : entrée dans `PALETTE_GROUPS` +
+  icône `HIT_ICON` (`command-palette.tsx`), jamais de donnée nominative PMR. Résultat actif contrôlé (premier résultat à
+  l'arrivée). `data-testid="palette-group-<id>"` ; E2E `e2e/palette.spec.ts` (données fictives IC96 / 99961 / L.996 / ZPQ,
+  IC95 / 99951 / L.995 / ZPR en mobile)) ; `PageShortcuts` (« / », « N » via
   `data-shortcut="new"`) ; Journal `markAllRead`. E2E `e2e/ux.spec.ts`.
 - Lot 4 : `<LiveHighlight scope sigs context />` + `data-hl-scope` sur le conteneur et `data-hl` sur l'élément visible
   (la carte, pas un `<li>` transparent) ; `useCopy()` / `CopyButton` / `CopyIcon` (`components/pmr/copy.tsx`) pour
