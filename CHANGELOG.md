@@ -9,11 +9,11 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 - **Menus réorganisés** :
   - **Accueil** : À traiter et Statistiques.
-  - **Opérations** : Journal (ouvert d'office), Ma journée, Relève.
+  - **Opérations** : Journal (ouvert d'office), Ma journée, B201.
   - **Commandes** : Suivi « À envoyer » (ouvert d'office), Bus, Taxi, Archives, Fournisseurs.
   - **PMR & Groupes** : Missions, Groupes, Clients, Matériel, Historique.
   - Nouveau module **Réseau** : Trains en direct, Horaires, Lignes, Gares, PtCar, EBP, Carte PN.
-  - **Ressources** : Contacts, Collègues, Planning, Procédures et documents, B201.
+  - **Ressources** : Contacts, Collègues, Planning, Procédures et documents.
   - Mon profil et l'extension CSM sont dans le menu de ton compte (ta photo en haut à droite).
   - Les anciens liens et favoris mènent automatiquement à la bonne page. Les compteurs de la barre latérale ouvrent directement ce qu'ils comptent (Journal, bons à envoyer).
 - **Administration › Référentiels** (administrateurs) : tableau de bord qualité et écrans pour gérer gares et districts, lignes (dont l'ajout d'une ligne absente de l'horaire), PtCar, EBP, points SPI, passages à niveau (désactivation) et mise à jour des horaires.
@@ -28,6 +28,9 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 - **Passages à niveau complets** : tous les PN du réseau (données ouvertes Infrabel), avec leur ligne, leur borne kilométrique (calculée entre les bornes kilométriques Infrabel, à quelques dizaines de mètres près ; « ≈ » quand elle n'est qu'estimée), leur commune et leur adresse. Les PN de l'ancienne carte absents de la liste Infrabel sont désactivés (un administrateur peut les réactiver). La **Carte PN** est refaite : recherche par n°, ligne ou commune, liste et fiche à côté de la carte, filtres par ligne et par district.
 - **Ressources › Lignes** : la fiche d'une ligne montre ses passages à niveau, dans l'ordre de la ligne.
 - **Zones SPI** : les 19 zones (ex-COI) sont dessinées sur un vrai plan (rues, communes, échelle), en zones semi-transparentes colorées par district (Sud-Ouest, Sud-Est, Centre, Nord-Ouest, Nord-Est) ; chaque gare et chaque PN indique sa zone. Les administrateurs peuvent corriger le nom, la couleur et les gares d'une zone (Administration › Référentiels › Zones SPI).
+- **Opérations › B201** (remplace la Relève et l'ancienne B201) : la synthèse de la relève du jour (bons à envoyer, missions à venir, trains en retard, ALEA à encoder, urgences et consignes) et les **notes du jour en Markdown** (gras, titres, listes, liens, aperçu), enregistrées automatiquement, avec « Modifié à … par … » et les versions du jour pour reprendre un ancien texte. « Copier » et « Épingler au Journal » incluent les notes ; le PDF de la B201 aussi. Les anciens commentaires par période sont repris. Les anciens liens (Relève, Ressources › B201) mènent à la nouvelle page.
+- **Fournisseurs** : les lignes desservies se choisissent en une fois dans la liste des lignes du référentiel (« L.96 — Bruxelles-Midi – Quévy »), avec recherche ; une ancienne ligne absente du référentiel est gardée et signalée.
+- **Missions PMR et Groupes : où en est la journée** : une ligne « Maintenant · 14:32 · prochaine dans 8 min » dans la liste, les prises en charge passées estompées, la prochaine signalée, et une mini-frise 6 h – 22 h (densité par demi-heure, clic pour aller à l'heure, « Aller à maintenant »).
 - **Administration › Utilisateurs › fiche : « Voir en tant que »** (administrateurs). Tu vois CSM exactement comme cet agent (menus, onglets, données accessibles), pour vérifier ses droits. Lecture seule stricte, 30 minutes au plus, bandeau « Revenir à mon compte » en haut de chaque page ; chaque début et fin est noté dans le journal d'audit. Impossible sur un autre administrateur.
 
 ### Améliorations
@@ -51,6 +54,7 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 ### Corrections
 
+- Missions PMR et Groupes : le tableau n'est plus coupé à droite ; il défile dans son cadre avec l'en-tête, la colonne Train et le bouton Copier toujours visibles.
 - Plus d'écran « CSM est momentanément indisponible » au hasard en changeant de module.
 - Les listes déroulantes sur mobile ne se referment plus quand on fait défiler leurs options.
 - Les districts du jour changés dans un onglet se mettent à jour dans les autres onglets CSM ouverts.
