@@ -49,9 +49,9 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 ## Navigation v3 (14 oct. 2026, `../docs/design/AUDIT-NAVIGATION.md`)
 
 - `src/navigation.ts` : Accueil (À traiter `/` · Statistiques `/statistiques`), Opérations (Journal par défaut · Ma journée ·
-  Relève), Commandes (Suivi par défaut · Bus · Taxi · Archives · Fournisseurs), PMR (Missions · Groupes · Clients · Matériel ·
+  **B201** `/operations/b201`, ex-Relève), Commandes (Suivi par défaut · Bus · Taxi · Archives · Fournisseurs), PMR (Missions · Groupes · Clients · Matériel ·
   Historique), **Réseau** (`/reseau` = Trains en direct · `/reseau/horaires` · `lignes` · `gares` · `ptcar` · `ebp` · `pn`),
-  **Ressources** (`/ressources` = Contacts · `/ressources/equipe` Collègues · `planning` · `documents` · `b201`). Module
+  **Ressources** (`/ressources` = Contacts · `/ressources/equipe` Collègues · `planning` · `documents` ; la B201 est passée dans Opérations le 15 oct. 2026). Module
   Équipe supprimé. Un onglet peut exiger plusieurs clés (`permission: [...]`) ou **l'une d'elles** (`anyOf`, Suivi : bus OU
   taxi). `ACCOUNT_LINKS` / `accountLinks(user)` (Mon profil `/profil`, Mon planning, Extension CSM `/extension`) : menu du
   compte (`ShellData.account`), ⌘K, et `requireRoute` les accepte comme des onglets. `activeModule` = **plus long préfixe**
@@ -147,6 +147,24 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `aleaDwell` (`pmr/actions.ts`) : horaire **ATMS** (`train_schedules`, poussé par l'extension via
   `POST /api/pmr/schedules/ingest`, mapping `lib/pmr/atms.ts`) d'abord, **iRail** en repli (60 trains max, 3 en parallèle). `copy.tsx` (`copyLabel`,
   `CopyButton`), `train-chip.tsx` (train en première colonne).
+- **Tableaux larges** (15 oct. 2026, tableau coupé à droite) : `ScrollTable` (`components/ui/scroll-table.tsx`, client) =
+  défilement dans le cadre (hauteur bornée à l'écran : en-tête collé, barre horizontale fine visible), ombres de bord
+  (`scrollEdges`, `lib/scroll-edges.ts`, testé), `stickyFirst` (Train) et `stickyLast` (Copier) collants, zone
+  focalisable nommée, `@container` : colonnes secondaires masquées par `hidden @5xl:table-cell` (District) / `@6xl`
+  (Réf. DICOS), visibles dans le panneau. Une ligne pleine largeur porte `data-band` (exclue des colonnes collantes).
+  Utilisé par Missions PMR et Groupes (et `/design`).
+- **Où en est-on dans la journée ?** (15 oct. 2026, Missions PMR et Groupes) : les pages passent `now`
+  (`brusselsMinutes(new Date())`) et `today` ; `useNowMinute(now)` (`components/pmr/day-progress.tsx`) part de la valeur du
+  serveur (pas d'écart d'hydratation) et se relit toutes les 30 s et au retour sur l'onglet. `NowLine` (`data-testid=now-line`,
+  ligne `<tr data-band>` ou `<li>`) insérée avant la première mission à venir, heure + « prochaine dans N min », point
+  `animate-pulse-dot` (seule boucle, tolérée par `motion.spec.ts`), trait redessiné (GSAP, mouvement réduit respecté) quand
+  il descend ; lignes passées `data-past` estompées (`[&>td>*]:opacity-60` : le fond des cellules collantes reste opaque),
+  prochaine `data-next` + `NextBadge`. `DayStrip` (`day-strip`) : densité des prises en charge (IN au départ, OUT à
+  l'arrivée) par demi-heure sur 6 h – 22 h au moins, curseur `strip-cursor` (transition CSS), clic sur une tranche =
+  défilement vers la première mission de l'heure (`scrollToMission`, puis `highlightElements`), « Aller à maintenant »
+  (`go-now`). Logique pure `lib/pmr/now-line.ts` (`nowSplit`, `dayPhase`, `untilLabel`, `stripRange`, `stripBuckets`,
+  `stripTicks`, `indexAtMinute` ; testée). Pas de repère sans regroupement par jour (Historique). E2E
+  `e2e/pmr-journee.spec.ts` (horloge fixée par `page.clock.install`).
 - E2E `e2e/pmr.spec.ts` (fixtures superuser, captures `test-results/pmr-*`).
 
 ## Module Opérations (étape 5, session 3)
@@ -383,7 +401,22 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `data-print="hide"`, `FilterForm` et `ChipRow` masqués, vue tableau imprimée, fil du Journal en entier) ; bouton
   « Imprimer » dans le Journal.
 - E2E Admin : `e2e/admin.spec.ts` (compte `E2E_ADMIN_IDENTITY` / `E2E_ADMIN_PASSWORD`, créé par la CI).
-- **Relève de service** (`/operations/releve`, `journal:read`) : `server/data/handover.ts` (`buildHandover`, districts du jour
+- **B201** (15 oct. 2026, `/operations/b201`, onglet `anyOf: [journal:read, b201:read]` ; `/operations/releve`,
+  `/ressources/b201`, `/commandes/b201` redirigent en 308) : la Relève renommée, qui remplace l'ancienne remise B201 de
+  Ressources. Un jour (`?jour=`, ← / → / T par `B201Keys`) et des districts (codes ou noms, ceux du jour par défaut,
+  `tous`) ; sommaire en puces ; **Synthèse de la relève** (`HandoverView`, aujourd'hui seulement : c'est un instantané ;
+  la copie / l'épinglage ajoutent les notes, `handoverText(…, { notes })`) ; **Notes et commentaires du jour**
+  (`components/ops/b201-board.tsx` → `MarkdownEditor`, `components/ops/markdown-editor.tsx` : barre d'outils gras /
+  italique / titre / listes / lien, Ctrl+B / I, aperçu `ChatMarkdown`, côte à côte dès 1024 px, onglets Écrire / Aperçu
+  plus étroit ; enregistrement automatique `useAutosave` + verrou optimiste, conflit = message avec l'auteur ; « Modifié à …
+  par … » ; **versions du jour** restaurables, tenues par le hook PocketBase) ; **Transports du jour** (commandes + saisies
+  hors outil, comme l'ancienne remise ; les commentaires par période ont disparu, repris en Markdown). Logique pure
+  `lib/ops/b201.ts` (`legacyNotesToMarkdown`, `b201NotesOf` : relit `notes` si `content` est vide, `applyFormat`,
+  `markdownToPdfLines`, `parseVersions` ; testée, avec le hook `pocketbase/pb_hooks/lib/b201.js`). Action `saveB201`
+  (`commandes/actions.ts`) : `{ day, content, manual, expectedUpdated }`. PDF `/api/commandes/b201/{jour}/pdf` : notes
+  (Markdown aplati, `Layout.paragraph`), synthèse de la relève (jour même, `journal:read`), transports par période.
+  Toujours **une fiche par jour** (le district ne filtre que l'affichage). E2E `e2e/b201.spec.ts`.
+- **Synthèse de la relève** (ex-« Relève de service », dans la B201, `journal:read`) : `server/data/handover.ts` (`buildHandover`, districts du jour
   ou `?district=DSO|DSE|DCE|tous`) → bons bus / taxi terminés à envoyer, en cours ; missions et groupes
   à venir (jusqu'à demain 10 h) ; trains en retard ; ALEA du jour non encodés ; urgences 12 h + consignes ; perturbations
   iRail 12 h. Texte copiable `handoverText` (`lib/ops/handover.ts`, testé), « Épingler au Journal » (`pinHandover` :
@@ -560,6 +593,12 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   actions `commandes/fournisseurs/actions.ts` (création `:write`, modification `:update`, suppression `:delete`, listes
   taxi saisies une valeur par ligne), composant `components/orders/supplier-board.tsx` (liste, panneau, dialogues). Le
   bouton Supprimer est grisé si un bon cite la société (le hook PocketBase refuse de toute façon).
+  **Lignes desservies** (15 oct. 2026) : `CompanyLines` = `MultiSelect` (recherche) alimenté par `railLineOptions()`
+  (`rail_lines` → « L.96 — extrémités », `server/data/suppliers.ts`), enregistrement en masse par `setBusCompanyLines`
+  (ajouts `otto:write` et seulement des lignes du référentiel, écrites « L.96 » ; retraits `otto:delete`) ; plus de saisie
+  libre (`saveBusChild` « line » refuse une ligne hors référentiel). Anciennes valeurs : reconnues par numéro (« 96 » =
+  « L.96 ») sinon gardées « hors référentiel » (retirables). Logique pure `lib/orders/company-lines.ts` (testée). E2E
+  `e2e/fournisseurs.spec.ts`.
 - **Supervision** (Admin › Santé) : `server/supervision.ts` (`readSupervision` → route interne PocketBase
   `/api/csm/health`, secret `CSM_INTERNAL_SECRET`, page `requireAdmin()` seulement), verdicts purs `lib/supervision.ts`
   (`cronVerdict` : en retard au-delà de 2 périodes + 5 min, `backupVerdict` : < 26 h / < 50 h, `archivesVerdict` ;

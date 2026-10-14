@@ -4,13 +4,17 @@ import { ClientResponseError } from "pocketbase";
 import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 
+import { lineLabel } from "@/lib/lines";
+import { diffCompanyLines } from "@/lib/orders/company-lines";
 import { parseEmails } from "@/lib/orders/schemas";
+import { lineId } from "@/lib/orders/stops";
 import { can } from "@/lib/permissions";
 import { requireUser } from "@/server/auth";
 import { pbForRequest } from "@/server/data/orders";
 import {
   getBusSupplier,
   getTaxiSupplier,
+  railLineOptions,
   type BusSupplier,
   type TaxiSupplier,
 } from "@/server/data/suppliers";
@@ -154,12 +158,57 @@ export async function saveBusChild(
   try {
     const { kind, ...data } = childSchema.parse(input);
     await allowed("bus", id ? "update" : "write");
+    // Lignes : référentiel seulement (15 oct. 2026), écriture canonique « L.96 ».
+    if ("line" in data) {
+      const ref = (await railLineOptions()).find((o) => lineId(o.value) === lineId(data.line));
+      if (!ref) return { ok: false, error: `Ligne absente du référentiel : ${data.line}.` };
+      data.line = ref.value;
+    }
     const pb = await pbForRequest();
     const col = pb.collection(CHILD[kind]);
     const r = id
       ? await col.update(idSchema.parse(id), data)
       : await col.create({ ...data, company: idSchema.parse(company) });
     return { ok: true, data: { id: r.id } };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/**
+ * Lignes desservies d'une société de bus, en masse (15 oct. 2026) : `lines` = choix complet (libellés « L.96 » du
+ * référentiel `rail_lines`, ou valeurs déjà enregistrées hors référentiel). Ajouts = `otto:write`, retraits =
+ * `otto:delete` ; une ligne nouvelle doit exister dans le référentiel (plus de saisie libre).
+ */
+export async function setBusCompanyLines(
+  company: string,
+  lines: string[],
+): Promise<Result<{ added: number; removed: number }>> {
+  try {
+    const id = idSchema.parse(company);
+    const wanted = z.array(z.string().trim().min(1).max(50)).max(200).parse(lines);
+    const user = await allowed("bus", "read");
+    const pb = await pbForRequest();
+    const stored = (
+      await pb
+        .collection("bus_company_lines")
+        .getFullList({ filter: pb.filter("company = {:id}", { id }), fields: "id,line" })
+    ).map((l) => ({ id: l.id, line: String(l.line ?? "") }));
+    const { add, remove } = diffCompanyLines(stored, wanted);
+    if (add.length && !can(user, "otto:write"))
+      return { ok: false, error: "Droit manquant pour ajouter une ligne." };
+    if (remove.length && !can(user, "otto:delete"))
+      return { ok: false, error: "Droit manquant pour retirer une ligne." };
+    if (add.length) {
+      const known = new Set((await railLineOptions()).map((o) => lineId(o.value)));
+      const unknown = add.filter((l) => !known.has(lineId(l)));
+      if (unknown.length)
+        return { ok: false, error: `Ligne absente du référentiel : ${unknown.join(", ")}.` };
+    }
+    for (const line of add)
+      await pb.collection("bus_company_lines").create({ company: id, line: lineLabel(line) });
+    for (const rid of remove) await pb.collection("bus_company_lines").delete(rid);
+    return { ok: true, data: { added: add.length, removed: remove.length } };
   } catch (e) {
     return fail(e);
   }

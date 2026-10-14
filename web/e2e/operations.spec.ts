@@ -284,7 +284,7 @@ test("ma journée et relève : frise du jour, filtre de gare, synthèse", async 
   await noHorizontalScroll(page);
   await page.goto("/operations/journee?district=tous&gare=Quévy");
   await expect(page.getByRole("link", { name: new RegExp(`E2E ${suffix}`) })).toHaveCount(0);
-  await page.goto("/operations/releve?district=tous");
+  await page.goto("/operations/b201?district=tous");
   await expect(page.getByText("Missions et groupes à venir").first()).toBeVisible();
   await noHorizontalScroll(page);
   // Écran commun : plein écran, sans menus, aucun nom de voyageur.

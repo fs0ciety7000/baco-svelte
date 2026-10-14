@@ -1,6 +1,6 @@
 > **Décisions de l'utilisateur (14 oct. 2026)** : proposition recommandée **validée** avec ces changements :
 > - **Trains en direct** va dans **Réseau** (pas dans Opérations) ;
-> - **B201** va dans **Ressources** (pas dans Commandes) ;
+> - **B201** va dans **Ressources** (pas dans Commandes) ; **15 oct. 2026 : la Relève devient « B201 » dans Opérations** (`/operations/b201`, notes du jour en Markdown) et remplace Ressources › B201 ;
 > - Q5 : **Gares et PtCar restent deux onglets séparés** (pas de fusion) ;
 > - Q7 (corrigé par l'utilisateur) : PtCar / EBP / SPI **en lecture seule pour les PACO/RCCA**, **modifiables par admin /
 >   sysop seulement**, et de même pour **les gares (districts, lignes, type) et les lignes** (décision suivante de

@@ -7,7 +7,7 @@ import { ChipRow, FilterChip } from "@/components/ui/filters";
 import { can } from "@/lib/permissions";
 import { pl } from "@/lib/utils";
 import { requireRoute } from "@/server/auth";
-import { listSuppliers, type SupplierKind } from "@/server/data/suppliers";
+import { listSuppliers, railLineOptions, type SupplierKind } from "@/server/data/suppliers";
 
 export const metadata: Metadata = { title: "Fournisseurs · CSM" };
 
@@ -25,7 +25,11 @@ export default async function Page({
   const canTaxi = can(user, "generate_taxi:read");
   const kind: SupplierKind = (sp.type === "taxi" && canTaxi) || !canBus ? "taxi" : "bus";
   const q = (sp.q ?? "").trim().slice(0, 60);
-  const rows = await listSuppliers(kind, q);
+  const [rows, lineOptions] = await Promise.all([
+    listSuppliers(kind, q),
+    // Lignes desservies d'une société de bus : choisies dans le référentiel des lignes (15 oct. 2026).
+    kind === "bus" ? railLineOptions() : Promise.resolve([]),
+  ]);
   const perm = kind === "bus" ? "otto" : "generate_taxi";
   return (
     <section className="flex flex-col gap-4" aria-label="Fournisseurs">
@@ -63,6 +67,7 @@ export default async function Page({
         canWrite={can(user, `${perm}:write`)}
         canUpdate={can(user, `${perm}:update`)}
         canDelete={can(user, `${perm}:delete`)}
+        lineOptions={lineOptions}
       />
     </section>
   );

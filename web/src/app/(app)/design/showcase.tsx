@@ -43,7 +43,8 @@ import {
   statusColor,
   type OrderStatus,
 } from "@/components/ui/status-badge";
-import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
+import { ScrollTable } from "@/components/ui/scroll-table";
+import { ListCard, Td, Th, THead, Tr } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/toast";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -458,7 +459,8 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
 
       <Section id="listes" title="Tableau dense et cartes mobiles">
         <div className="hidden md:block">
-          <Table>
+          {/* ScrollTable (15 oct. 2026) : défilement horizontal dans le cadre, première colonne collante, ombres. */}
+          <ScrollTable label="Bons de commande" stickyFirst tableClassName="min-w-[56rem]">
             <THead>
               <tr>
                 <Th>N° BC</Th>
@@ -489,7 +491,7 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
                 </Tr>
               ))}
             </tbody>
-          </Table>
+          </ScrollTable>
         </div>
         <div className="flex flex-col gap-2 md:hidden">
           {ORDERS.slice(0, 4).map((o) => (

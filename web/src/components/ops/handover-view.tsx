@@ -92,17 +92,20 @@ export function HandoverView({
   author,
   at,
   canPin,
+  notes = "",
 }: {
   data: Handover;
   scope: string;
   author: string;
   at: string;
   canPin: boolean;
+  /** Notes de la B201 du jour (Markdown) : ajoutées au texte copié ou épinglé. */
+  notes?: string;
 }) {
   const router = useRouter();
   const copy = useCopy();
   const [pending, start] = useTransition();
-  const text = handoverText(data, { author, at, scope });
+  const text = handoverText(data, { author, at, scope, notes });
   const orders = data.toSend.length + data.running.length;
   return (
     <div className="flex flex-col gap-4" data-testid="handover">

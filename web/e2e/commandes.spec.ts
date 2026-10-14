@@ -678,7 +678,7 @@ for (const t of ["nuit", "jour"] as const) {
     await expect(page.getByTestId("order-panel")).toBeVisible();
     await page.screenshot({ path: `test-results/commandes-${t}-suivi-panneau-${p}.png` });
     await page.keyboard.press("Escape");
-    await page.goto("/ressources/b201");
+    await page.goto("/operations/b201");
     await snap(page, `${t}-b201`, p);
   });
 }

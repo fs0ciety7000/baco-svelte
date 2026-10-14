@@ -7,6 +7,7 @@ import { can } from "@/lib/permissions";
 import { pl } from "@/lib/utils";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
 import { effectiveDistricts } from "@/lib/pmr/district-filter";
+import { brusselsMinutes } from "@/lib/pmr/now-line";
 import { userDistricts } from "@/lib/team";
 import { requirePermission } from "@/server/auth";
 import { listGroups } from "@/server/data/groups";
@@ -82,6 +83,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
         delays={delays}
         canMark={can(user, "deplacements:write")}
         groups={groups}
+        now={brusselsMinutes(new Date())}
+        today={today}
       />
     </section>
   );

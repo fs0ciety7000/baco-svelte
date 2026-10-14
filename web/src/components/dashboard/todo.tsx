@@ -163,7 +163,7 @@ export function TodoQueue({ items }: { items: TodoItem[] }) {
         )}
         {items.length > shown.length ? (
           <p className="border-t border-border px-3 py-2 text-small text-fg-muted">
-            Et {items.length - shown.length} de plus : Relève de service et Suivi des bons.
+            Et {items.length - shown.length} de plus : B201 (relève) et Suivi des bons.
           </p>
         ) : null}
       </CardContent>

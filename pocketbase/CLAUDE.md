@@ -368,6 +368,14 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   `guest` et `screen`** (le connecteur compris). Connecteur = rôle `connector` **et** `dicos:write`. Cron
   `quinyx-retention` (3 h 25 UTC) : prestations > 90 j, agents sans prestation et non vus depuis 180 j. Audit :
   `quinyx_places` (et création / suppression de `quinyx_groups`).
+- **B201, notes Markdown** (`1760004830_b201_notes.js`, `b201.pb.js`, `lib/b201.js`, 15 oct. 2026) : `b201_reports.content`
+  (texte 20 000, Markdown du Journal) et `versions` (JSON `{ at, by, content }`, 30 au plus, plus récente d'abord) ; toujours
+  une fiche par `day`, règles `b201:*` inchangées. `versions` est **écrit par le hook seul** (valeur du corps ignorée, `[]` à
+  la création) : l'état précédent est gardé quand le texte change et que l'auteur change, ou 10 min après la dernière version
+  du même auteur (l'enregistrement automatique écrit souvent). Migration : anciens `notes` (matin, après-midi, nuit, service
+  suivant) convertis en Markdown dans `content` par SQL (un titre `###` par période non vide ; `updated` et audit intacts) ;
+  `notes` gardé (archive, import et import différentiel, qui ne remplissent pas `content` : le web relit `notes` si
+  `content` est vide). Contrôles test-rules : versions forgées ignorées, version gardée au changement d'auteur.
 - **« Voir en tant que »** (`1760004470_audit_impersonate.js`, `impersonate.pb.js`, `lib/impersonate.js`, 14 oct. 2026) : routes
   internes `POST /api/csm/impersonate` (`{ target }` → `{ token, id, name, role }`) et `/api/csm/impersonate/stop`, secret
   `CSM_INTERNAL_SECRET` (404 sinon) **et** jeton de l'appelant (`Authorization`), qui doit être admin / sysop (401 / 403) ;

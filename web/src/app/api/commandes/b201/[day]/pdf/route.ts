@@ -1,20 +1,31 @@
-import { parseDistricts } from "@/lib/district-param";
 import { DISTRICTS } from "@/lib/orders/schemas";
 import { z } from "zod";
 
+import { parseDistricts } from "@/lib/district-param";
+import { handoverText } from "@/lib/ops/handover";
+import { markdownToPdfLines } from "@/lib/ops/b201";
 import { contentDisposition } from "@/lib/orders/eml";
-import { isValidDay, PERIODS } from "@/lib/orders/time";
+import { brusselsDay, brusselsTime, isValidDay, PERIODS } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
 import { getCurrentUser } from "@/server/auth";
 import { b201Data, entriesByPeriod, SERVICE_LABEL } from "@/server/data/b201";
+import { buildHandover, handoverDistricts } from "@/server/data/handover";
 import { b201Pdf } from "@/server/pdf/order-pdf";
 
-// PDF de la remise B201 d'un jour (lecture seule, données lues avec le jeton de l'agent).
+// PDF de la B201 d'un jour (lecture seule, données lues avec le jeton de l'agent) : notes du jour (Markdown aplati),
+// synthèse de la relève (jour même, avec `journal:read`) et transports par période. Districts : codes ou noms, répétés ;
+// aucun = tous (lien de la page : districts affichés).
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const HEADERS = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
+
+const fmt = new Intl.DateTimeFormat("fr-BE", {
+  timeZone: "Europe/Brussels",
+  hour: "2-digit",
+  minute: "2-digit",
+});
 
 export async function GET(request: Request, { params }: { params: Promise<{ day: string }> }) {
   const user = await getCurrentUser();
@@ -25,19 +36,40 @@ export async function GET(request: Request, { params }: { params: Promise<{ day:
     .safeParse((await params).day);
   if (!day.success || !can(user, "b201:read"))
     return new Response("Introuvable", { status: 404, headers: HEADERS });
-  // Un ou plusieurs districts (paramètre répété) ; vide = tous.
-  const districts = parseDistricts(new URL(request.url).searchParams.getAll("district"), DISTRICTS);
+  // Un ou plusieurs districts (paramètre répété, codes ou noms) ; vide = tous.
+  const raw = new URL(request.url).searchParams.getAll("district");
+  const districts = parseDistricts(raw, DISTRICTS);
   const district = districts.join(" + ");
   const data = await b201Data(day.data, districts, user);
   const groups = entriesByPeriod(data);
+  // Synthèse de la relève : instantané « maintenant », donc seulement pour la B201 du jour.
+  let handover: ReturnType<typeof markdownToPdfLines> | undefined;
+  if (day.data === brusselsDay() && can(user, "journal:read")) {
+    const codes = handoverDistricts(user, raw.length ? raw : "tous");
+    const h = await buildHandover(user, codes).catch(() => null);
+    if (h)
+      handover = markdownToPdfLines(
+        handoverText(h, {
+          author: user.name || user.username || user.email,
+          at: brusselsTime(new Date(h.generatedAt)),
+          scope: codes.length ? codes.join(" · ") : "tous districts",
+        }),
+      );
+  }
+  const updated = data.updated ? new Date(data.updated.replace(" ", "T")) : null;
   const pdf = await b201Pdf(
     {
       day: day.data,
       district,
+      notes: markdownToPdfLines(data.content),
+      notesMeta:
+        updated && !Number.isNaN(updated.getTime())
+          ? `Dernière modification à ${fmt.format(updated)}${data.updatedByName ? ` par ${data.updatedByName}` : ""}.`
+          : undefined,
+      handover,
       periods: PERIODS.map((p) => ({
         label: p.label,
         range: p.range,
-        note: data.notes[p.id],
         entries: groups[p.id].map((e) => ({
           service: SERVICE_LABEL[e.service],
           time: e.time,
@@ -47,7 +79,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ day:
           manual: !e.orderId,
         })),
       })),
-      next: data.notes.suivant,
     },
     { agentName: user.name || user.username },
   );
@@ -57,7 +88,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ day:
       "Content-Type": "application/pdf",
       "Content-Disposition": contentDisposition(
         "inline",
-        `${day.data} · Remise B201${district ? ` · ${district}` : ""}.pdf`,
+        `${day.data} · B201${district ? ` · ${district}` : ""}.pdf`,
       ),
     },
   });

@@ -2,20 +2,23 @@
 
 import { useState } from "react";
 
-import { pl } from "@/lib/utils";
+import { cn, pl } from "@/lib/utils";
 import { LiveHighlight } from "@/components/ui/live-highlight";
 import { Sheet } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/status-badge";
-import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
+import { ScrollTable } from "@/components/ui/scroll-table";
+import { ListCard, Td, Th, THead, Tr } from "@/components/ui/table";
 import { formatDay } from "@/lib/orders/time";
 import { inDistricts, districtsLabel } from "@/lib/pmr/district-filter";
 import { DISTRICT_LABEL } from "@/lib/pmr/districts";
 import { aleaGroupBlocks } from "@/lib/pmr/model";
 import { groupEnds, groupLegOf, groupTotal, groupTrain } from "@/lib/pmr/legs";
+import { dayPhase, indexAtMinute, nowSplit } from "@/lib/pmr/now-line";
 import { missionImpact, type TrainStates } from "@/lib/pmr/train-delay";
 import type { GroupMission } from "@/server/data/groups";
 
 import { AleaButton } from "./alea-export";
+import { DayStrip, NextBadge, NowLine, scrollToMission, useNowMinute } from "./day-progress";
 import { HIGHLIGHT, IoBadges } from "./assist-board";
 import { PhoneLink } from "./phone-link";
 import { AbsentBadge } from "./absent-badge";
@@ -55,8 +58,13 @@ export function GroupBoard({
   district = "",
   delays,
   canMark = false,
+  now,
+  today,
 }: {
   rows: GroupMission[];
+  /** Minute courante (Bruxelles) au rendu serveur et jour courant : repère « maintenant » et mini-frise (15 oct. 2026). */
+  now?: number;
+  today?: string;
   /** Peut cocher « encodé » dans l'export ALEA. */
   canMark?: boolean;
   district?: string;
@@ -65,6 +73,22 @@ export function GroupBoard({
 }) {
   const [open, setOpen] = useState<GroupMission | null>(null);
   const days = [...new Set(rows.map((r) => r.day))];
+  const nowMin = useNowMinute(now ?? 0);
+  const timed = now !== undefined && !!today;
+  const startOf = (g: GroupMission) => g.time || g.arrTime;
+  const nowItem = (g: GroupMission) => ({
+    start: startOf(g),
+    end: (legOf(g).outA && g.arrTime) || undefined,
+  });
+  const todayRows = timed ? rows.filter((r) => r.day === today) : [];
+  const pickups = todayRows
+    .filter((g) => g.status !== "annulee")
+    .flatMap((g) => {
+      const l = legOf(g);
+      const t = [l.inA ? g.time : "", l.outA ? g.arrTime : ""].filter(Boolean);
+      return t.length ? t : [startOf(g)];
+    });
+  const todaySplit = nowSplit(todayRows.map(nowItem), nowMin, "today");
   return (
     <>
       <LiveHighlight
@@ -84,15 +108,48 @@ export function GroupBoard({
           compute={() => aleaGroupBlocks(groupEnds(rows, district))}
         />
       </div>
+      {todayRows.length ? (
+        <DayStrip
+          times={pickups}
+          now={nowMin}
+          done={todaySplit.past.filter(Boolean).length}
+          total={todayRows.length}
+          onPick={(minute) => {
+            if (minute === null) return scrollToMission(null);
+            const i = indexAtMinute(todayRows.map(startOf), minute);
+            scrollToMission(todayRows[i]?.id ?? null);
+          }}
+        />
+      ) : null}
       {days.map((d) => {
         const list = rows.filter((r) => r.day === d);
+        const split = timed
+          ? nowSplit(list.map(nowItem), nowMin, dayPhase(d, today!))
+          : { insertAt: -1, next: -1, past: list.map(() => false) };
+        const nextTime = split.next >= 0 && list[split.next] ? startOf(list[split.next]!) : "";
+        const nowLine = (variant: "row" | "card") =>
+          split.insertAt >= 0 ? (
+            <NowLine
+              key="maintenant"
+              now={nowMin}
+              nextTime={nextTime}
+              index={split.insertAt}
+              variant={variant}
+              colSpan={9}
+            />
+          ) : null;
         return (
           <section key={d} className="flex flex-col gap-2" aria-label={formatDay(d)}>
             <h2 className="label-mono text-fg-muted first-letter:uppercase">
               {formatDay(d)} · {list.length} {pl(list.length, "trajet")}
             </h2>
             <div className="hidden md:block">
-              <Table>
+              {/* Défilement horizontal propre (15 oct. 2026) : train collant, en-tête collé. */}
+              <ScrollTable
+                label={`Groupes du ${formatDay(d)}`}
+                stickyFirst
+                data-testid="groups-scroll"
+              >
                 <THead>
                   <tr>
                     <Th>Train</Th>
@@ -100,19 +157,27 @@ export function GroupBoard({
                     <Th>Trajet (départ → arrivée)</Th>
                     <Th>Sens</Th>
                     <Th>Groupe</Th>
-                    <Th>Adultes</Th>
-                    <Th>Enfants</Th>
-                    <Th>Seniors</Th>
+                    <Th numeric>Adultes</Th>
+                    <Th numeric>Enfants</Th>
+                    <Th numeric>Seniors</Th>
                     <Th>Statut</Th>
                   </tr>
                 </THead>
                 <tbody data-testid="groups-table" data-hl-scope="groups">
-                  {list.map((g) => (
+                  {list.map((g, i) => [
+                    i === split.insertAt ? nowLine("row") : null,
                     <Tr
                       key={g.id}
                       data-hl={g.id}
+                      data-past={split.past[i] || undefined}
+                      data-next={i === split.next || undefined}
                       selected={open?.id === g.id}
-                      className="cursor-pointer"
+                      className={cn(
+                        "cursor-pointer",
+                        split.past[i] &&
+                          open?.id !== g.id &&
+                          "[&>td]:text-fg-muted [&>td>*]:opacity-60",
+                      )}
                       onClick={() => setOpen(g)}
                     >
                       <Td>
@@ -121,8 +186,11 @@ export function GroupBoard({
                           <DelayBadge impact={missionImpact(g, delays)} />
                         </span>
                       </Td>
-                      <Td className="font-mono tabular">{g.time || g.arrTime || "—"}</Td>
-                      <Td>
+                      <Td className="font-mono whitespace-nowrap tabular">
+                        {g.time || g.arrTime || "—"}
+                        {i === split.next ? <NextBadge /> : null}
+                      </Td>
+                      <Td className="min-w-52 max-w-80">
                         <Route g={g} district={district} />
                       </Td>
                       <Td>
@@ -140,23 +208,34 @@ export function GroupBoard({
                           {g.groupName || "Groupe"}
                         </button>
                       </Td>
-                      <Td className="tabular">{g.adults}</Td>
-                      <Td className="tabular">{g.children}</Td>
-                      <Td className="tabular">{g.seniors}</Td>
+                      <Td numeric>{g.adults}</Td>
+                      <Td numeric>{g.children}</Td>
+                      <Td numeric>{g.seniors}</Td>
                       <Td>
                         <span className="inline-flex flex-wrap items-center gap-1.5">
                           <Badge tone={STATUS[g.status].tone}>{STATUS[g.status].label}</Badge>
                           {g.absent ? <AbsentBadge /> : null}
                         </span>
                       </Td>
-                    </Tr>
-                  ))}
+                    </Tr>,
+                  ])}
+                  {split.insertAt === list.length ? nowLine("row") : null}
                 </tbody>
-              </Table>
+              </ScrollTable>
             </div>
             <ul className="flex flex-col gap-2 md:hidden" data-hl-scope="groups">
-              {list.map((g) => (
-                <li key={g.id} className="min-w-0">
+              {list.map((g, i) => [
+                i === split.insertAt ? nowLine("card") : null,
+                <li
+                  key={g.id}
+                  className={cn(
+                    "min-w-0",
+                    split.past[i] && "opacity-60",
+                    i === split.next && "[&_[data-hl]]:ring-1 [&_[data-hl]]:ring-info",
+                  )}
+                  data-past={split.past[i] || undefined}
+                  data-next={i === split.next || undefined}
+                >
                   <button
                     type="button"
                     className="w-full cursor-pointer text-left"
@@ -176,8 +255,9 @@ export function GroupBoard({
                       aside={<Badge tone={STATUS[g.status].tone}>{STATUS[g.status].label}</Badge>}
                     />
                   </button>
-                </li>
-              ))}
+                </li>,
+              ])}
+              {split.insertAt === list.length ? nowLine("card") : null}
             </ul>
           </section>
         );

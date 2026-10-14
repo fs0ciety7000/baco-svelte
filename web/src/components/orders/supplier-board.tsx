@@ -2,7 +2,7 @@
 
 import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import {
   deleteBusChild,
@@ -12,6 +12,7 @@ import {
   saveBusChild,
   saveBusCompany,
   saveTaxiCompany,
+  setBusCompanyLines,
   type BusChildKind,
   type BusCompanyInput,
   type TaxiCompanyInput,
@@ -22,9 +23,11 @@ import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { Input, Textarea } from "@/components/ui/input";
 import { EmptyState, Skeleton } from "@/components/ui/misc";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { Sheet } from "@/components/ui/sheet";
 import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
 import { toast } from "@/components/ui/toast";
+import { companyLineChoices, diffCompanyLines, type LineOption } from "@/lib/orders/company-lines";
 import { safeCall } from "@/lib/orders/safe-call";
 import { pl } from "@/lib/utils";
 import type {
@@ -44,7 +47,13 @@ export function SupplierBoard({
   canWrite,
   canUpdate,
   canDelete,
-}: { kind: SupplierKind; rows: SupplierRow[] } & Rights) {
+  lineOptions = [],
+}: {
+  kind: SupplierKind;
+  rows: SupplierRow[];
+  /** Lignes du référentiel (`rail_lines`) pour les lignes desservies d'une société de bus. */
+  lineOptions?: LineOption[];
+} & Rights) {
   const router = useRouter();
   const [openId, setOpenId] = useState<string | null>(null);
   const [bus, setBus] = useState<BusSupplier | null>(null);
@@ -180,6 +189,7 @@ export function SupplierBoard({
           <BusPanel
             s={bus}
             rights={rights}
+            lineOptions={lineOptions}
             onChanged={() => {
               void load(bus.id);
               router.refresh();
@@ -264,11 +274,13 @@ const mails = (list: string[]) =>
 function BusPanel({
   s,
   rights,
+  lineOptions,
   onChanged,
   onDeleted,
 }: {
   s: BusSupplier;
   rights: Rights;
+  lineOptions: LineOption[];
   onChanged: () => void;
   onDeleted: () => void;
 }) {
@@ -322,11 +334,10 @@ function BusPanel({
         rights={rights}
         onChanged={onChanged}
       />
-      <ChildSection
-        title="Lignes desservies"
-        kind="line"
+      <CompanyLines
         company={s.id}
-        items={s.lines.map((l) => ({ id: l.id, name: l.line, phone: "" }))}
+        stored={s.lines}
+        referential={lineOptions}
         rights={rights}
         onChanged={onChanged}
       />
@@ -637,6 +648,118 @@ function ChildForm({
         </Button>
       ) : null}
     </form>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Lignes desservies (15 oct. 2026) : choix multiple dans le référentiel `rail_lines`, enregistré en une fois.
+
+function CompanyLines({
+  company,
+  stored,
+  referential,
+  rights,
+  onChanged,
+}: {
+  company: string;
+  stored: { id: string; line: string }[];
+  referential: LineOption[];
+  rights: Rights;
+  onChanged: () => void;
+}) {
+  const choices = useMemo(() => companyLineChoices(referential, stored), [referential, stored]);
+  const [values, setValues] = useState(choices.selected);
+  const [pending, start] = useTransition();
+  // Fiche rechargée (après enregistrement ou temps réel) : le choix repart de ce qui est enregistré.
+  const key = choices.selected.join("|");
+  useEffect(() => setValues(key ? key.split("|") : []), [key]);
+  const diff = diffCompanyLines(stored, values);
+  const dirty = diff.add.length + diff.remove.length > 0;
+  const canEdit = rights.canWrite || rights.canDelete;
+  const labelOf = (v: string) => choices.options.find((o) => o.value === v);
+  const save = () =>
+    start(async () => {
+      const res = await safeCall(setBusCompanyLines(company, values));
+      if (!res.ok) return void toast.error(res.error);
+      toast.success(
+        `Lignes enregistrées (${res.data.added} ajoutée${res.data.added > 1 ? "s" : ""}, ${res.data.removed} retirée${res.data.removed > 1 ? "s" : ""}).`,
+      );
+      onChanged();
+    });
+  return (
+    <section
+      className="flex flex-col gap-2"
+      aria-label="Lignes desservies"
+      data-testid="company-lines"
+    >
+      <h3 className="label-mono text-fg-muted">Lignes desservies · {choices.selected.length}</h3>
+      {choices.selected.length === 0 ? <p className="text-small text-fg-muted">Aucune.</p> : null}
+      <ul className="flex flex-wrap gap-1.5">
+        {choices.selected.map((v) => {
+          const o = labelOf(v);
+          return (
+            <li
+              key={v}
+              className="inline-flex max-w-full items-center gap-1 rounded-control border border-border px-2 py-1 text-small"
+              title={o?.hint ? `${o.label} (${o.hint})` : o?.label}
+            >
+              <span className="font-mono">{v}</span>
+              {o && o.label !== v ? (
+                <span className="truncate text-fg-muted">{o.label.slice(v.length + 3)}</span>
+              ) : null}
+              {o?.hint ? <span className="text-hint text-warn">· {o.hint}</span> : null}
+            </li>
+          );
+        })}
+      </ul>
+      {canEdit ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <MultiSelect
+            aria-label="Choisir les lignes desservies"
+            label="Lignes desservies"
+            data-testid="company-lines-select"
+            options={choices.options}
+            values={values}
+            onValuesChange={setValues}
+            searchable
+            noun="ligne"
+            allLabel="Aucune ligne"
+            summary={
+              values.length ? `Modifier les lignes (${values.length})` : "Choisir des lignes…"
+            }
+            className="min-w-0 flex-1 basis-56"
+          />
+          {dirty ? (
+            <>
+              <Button
+                size="sm"
+                variant="primary"
+                loading={pending}
+                onClick={save}
+                data-testid="company-lines-save"
+              >
+                <Check aria-hidden className="size-4" /> Enregistrer
+                <span className="font-mono tabular">
+                  {diff.add.length ? ` +${diff.add.length}` : ""}
+                  {diff.remove.length ? ` −${diff.remove.length}` : ""}
+                </span>
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setValues(choices.selected)}>
+                Annuler
+              </Button>
+            </>
+          ) : null}
+        </div>
+      ) : null}
+      {canEdit && !referential.length ? (
+        <p className="text-hint text-fg-muted">
+          Référentiel des lignes indisponible : seules les lignes déjà enregistrées sont proposées.
+        </p>
+      ) : null}
+      {dirty && diff.remove.length && !rights.canDelete ? (
+        <p className="text-hint text-warn">Retirer une ligne demande le droit de suppression.</p>
+      ) : null}
+    </section>
   );
 }
 

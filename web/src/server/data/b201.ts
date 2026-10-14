@@ -2,6 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 
+import { b201NotesOf, parseVersions } from "@/lib/ops/b201";
 import { can } from "@/lib/permissions";
 import { addDays, periodOf, type Period } from "@/lib/orders/time";
 
@@ -47,13 +48,6 @@ export const manualEntrySchema = z.object({
 });
 export type ManualEntry = z.infer<typeof manualEntrySchema>;
 
-export const notesSchema = z.object({
-  matin: z.string().max(5000).default(""),
-  apres_midi: z.string().max(5000).default(""),
-  nuit: z.string().max(5000).default(""),
-  suivant: z.string().max(5000).default(""),
-});
-export type B201Notes = z.infer<typeof notesSchema>;
 
 type BusLine = { planned?: string; confirmed?: string; cancelled?: boolean };
 
@@ -132,6 +126,11 @@ export async function b201Data(day: string, districts: string[], user: SessionUs
       .getFirstListItem(pb.filter("day = {:day}", { day }))
       .catch(() => null),
   ]);
+  const versions = parseVersions(report?.versions);
+  const names = await authorNames(pb, [
+    ...(report?.updated_by ? [String(report.updated_by)] : []),
+    ...versions.map((v) => v.by),
+  ]);
   // Les bus viennent de la liste (pas de 2e requête : un filtre « id = … || … » casse au-delà de ~130 ids).
   const buses = new Map<string, BusLine[]>(
     rows.filter((r) => r.kind === "bus").map((r) => [r.id, r.buses]),
@@ -150,13 +149,33 @@ export async function b201Data(day: string, districts: string[], user: SessionUs
   return {
     entries: all,
     manual,
-    notes: notesSchema.catch(notesSchema.parse({})).parse(report?.notes ?? {}),
+    /** Notes du jour en Markdown (anciens commentaires par période convertis si la fiche n'a pas encore de Markdown). */
+    content: b201NotesOf(report?.content, report?.notes),
+    versions: versions.map((v) => ({ ...v, byName: names.get(v.by) ?? "" })),
+    updatedByName: report?.updated_by ? (names.get(String(report.updated_by)) ?? "") : "",
     reportId: report?.id ?? null,
     updated: (report?.updated as string | undefined) ?? null,
     hasLegacy: !!report && report.legacy && Object.keys(report.legacy as object).length > 0,
   };
 }
 export type B201Data = Awaited<ReturnType<typeof b201Data>>;
+
+/** Noms affichables des auteurs (annuaire de l'équipe : nom seul) ; inconnu ou illisible = absent. */
+async function authorNames(
+  pb: Awaited<ReturnType<typeof pbForRequest>>,
+  ids: string[],
+): Promise<Map<string, string>> {
+  const wanted = [...new Set(ids.filter((id) => /^[a-z0-9-]{15,36}$/.test(id)))].slice(0, 40);
+  const out = new Map<string, string>();
+  if (!wanted.length) return out;
+  const filter = wanted.map((id, i) => pb.filter(`id = {:i${i}}`, { [`i${i}`]: id })).join(" || ");
+  const list = await pb
+    .collection("users")
+    .getFullList({ filter, fields: "id,name,username" })
+    .catch(() => []);
+  for (const u of list) out.set(u.id, String(u.name || u.username || ""));
+  return out;
+}
 
 export const SERVICE_LABEL: Record<Service, string> = {
   bus: "Bus",

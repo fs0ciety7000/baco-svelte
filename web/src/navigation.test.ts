@@ -33,7 +33,7 @@ describe("navigation", () => {
       "ressources",
     ]);
     expect(tabs("accueil")).toEqual(["À traiter", "Statistiques"]);
-    expect(tabs("operations")).toEqual(["Journal", "Ma journée", "Relève"]);
+    expect(tabs("operations")).toEqual(["Journal", "Ma journée", "B201"]);
     expect(tabs("commandes")).toEqual(["Suivi", "Bus", "Taxi", "Archives", "Fournisseurs"]);
     expect(tabs("pmr")).toEqual(["Missions", "Groupes", "Clients", "Matériel", "Historique"]);
     expect(tabs("reseau")).toEqual([
@@ -50,7 +50,6 @@ describe("navigation", () => {
       "Collègues",
       "Planning",
       "Procédures et documents",
-      "B201",
     ]);
   });
 
@@ -133,7 +132,10 @@ describe("navigation", () => {
       "Horaires",
     );
     expect(activeTab("/reseau", activeModule("/reseau", mods)!)?.label).toBe("Trains en direct");
-    expect(activeModule("/ressources/b201", mods)?.id).toBe("ressources");
+    expect(activeModule("/operations/b201", mods)?.id).toBe("operations");
+    expect(activeTab("/operations/b201", activeModule("/operations/b201", mods)!)?.label).toBe(
+      "B201",
+    );
     expect(activeModule("/ressources/documents/voir/x", mods)?.id).toBe("ressources");
     expect(activeModule("/groupes", mods)?.id).toBe("pmr");
     expect(activeModule("/profil", mods)).toBeUndefined();
