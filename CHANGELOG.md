@@ -7,6 +7,8 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 ### Nouveautés
 
+- **Administration › Rôles** : crée tes propres rôles à partir d'un rôle existant, coche les droits rédigés en phrases simples (« Peut supprimer un bon bus »), vois en direct ce que le rôle peut et ne peut pas faire, compare deux rôles, et annule un changement depuis l'historique. Un rôle encore attribué ne se supprime qu'en réaffectant ses agents.
+- **Fiche d'un agent** : ses « ajustements » (droits en plus ou retirés par rapport à son rôle) s'affichent en phrases et s'ajoutent ou se retirent d'un clic, avec le résumé de tout ce que la personne peut faire. La grille technique reste disponible en « Vue experte ».
 - **Téléphoner avec Genesys Cloud** : les numéros (annuaire, missions PMR, équipe…) s'ouvrent dans Genesys Cloud au clic (lien `tel:` au format international +32…), comme avant avec Etrali. Il faut l'extension Genesys Cloud du navigateur, avec « Click-to-Dial » activé. Affichage › « Téléphoner en un clic » : choisis Genesys Cloud (par défaut) ou Etrali. Sur mobile, le téléphone compose toujours le numéro.
 - **Administration › Utilisateurs › fiche : « Voir en tant que »** (administrateurs). Tu vois CSM exactement comme cet agent (menus, onglets, données accessibles), pour vérifier ses droits. Lecture seule stricte, 30 minutes au plus, bandeau « Revenir à mon compte » en haut de chaque page ; chaque début et fin est noté dans le journal d'audit. Impossible sur un autre administrateur.
 
