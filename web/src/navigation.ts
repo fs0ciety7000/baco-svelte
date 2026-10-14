@@ -5,6 +5,7 @@ import {
   Car,
   Database,
   HeartPulse,
+  KeyRound,
   Home,
   ListFilter,
   Mail,
@@ -254,6 +255,7 @@ export const ADMIN: NavModule = {
   icon: ShieldCheck,
   tabs: [
     { href: "/admin", label: "Utilisateurs", group: "Comptes", icon: UserCog },
+    { href: "/admin/roles", label: "Rôles", group: "Comptes", icon: KeyRound },
     {
       href: "/admin/extension",
       label: "Appareils connectés",

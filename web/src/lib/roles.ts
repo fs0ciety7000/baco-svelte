@@ -130,6 +130,16 @@ export function roleLabel(key: string, roles: RoleMeta[] = DEFAULT_ROLES): strin
   return roleMeta(key, roles)?.label ?? key;
 }
 
+/** Pastille de couleur d'un rôle (listes, Administration › Rôles). */
+export const ROLE_DOT: Record<RoleColor, string> = {
+  accent: "bg-accent",
+  info: "bg-info",
+  ok: "bg-ok",
+  warn: "bg-warn",
+  progress: "bg-progress",
+  neutral: "bg-fg-muted",
+};
+
 const RING: Record<RoleColor, string> = {
   accent: "ring-accent",
   info: "ring-info",
