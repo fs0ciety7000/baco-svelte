@@ -153,6 +153,18 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   focalisable nommée, `@container` : colonnes secondaires masquées par `hidden @5xl:table-cell` (District) / `@6xl`
   (Réf. DICOS), visibles dans le panneau. Une ligne pleine largeur porte `data-band` (exclue des colonnes collantes).
   Utilisé par Missions PMR et Groupes (et `/design`).
+- **Où en est-on dans la journée ?** (15 oct. 2026, Missions PMR et Groupes) : les pages passent `now`
+  (`brusselsMinutes(new Date())`) et `today` ; `useNowMinute(now)` (`components/pmr/day-progress.tsx`) part de la valeur du
+  serveur (pas d'écart d'hydratation) et se relit toutes les 30 s et au retour sur l'onglet. `NowLine` (`data-testid=now-line`,
+  ligne `<tr data-band>` ou `<li>`) insérée avant la première mission à venir, heure + « prochaine dans N min », point
+  `animate-pulse-dot` (seule boucle, tolérée par `motion.spec.ts`), trait redessiné (GSAP, mouvement réduit respecté) quand
+  il descend ; lignes passées `data-past` estompées (`[&>td>*]:opacity-60` : le fond des cellules collantes reste opaque),
+  prochaine `data-next` + `NextBadge`. `DayStrip` (`day-strip`) : densité des prises en charge (IN au départ, OUT à
+  l'arrivée) par demi-heure sur 6 h – 22 h au moins, curseur `strip-cursor` (transition CSS), clic sur une tranche =
+  défilement vers la première mission de l'heure (`scrollToMission`, puis `highlightElements`), « Aller à maintenant »
+  (`go-now`). Logique pure `lib/pmr/now-line.ts` (`nowSplit`, `dayPhase`, `untilLabel`, `stripRange`, `stripBuckets`,
+  `stripTicks`, `indexAtMinute` ; testée). Pas de repère sans regroupement par jour (Historique). E2E
+  `e2e/pmr-journee.spec.ts` (horloge fixée par `page.clock.install`).
 - E2E `e2e/pmr.spec.ts` (fixtures superuser, captures `test-results/pmr-*`).
 
 ## Module Opérations (étape 5, session 3)

@@ -31,11 +31,13 @@ import {
   type AssistStatus,
 } from "@/lib/pmr/model";
 import { aleaEnds, groupEnds, legOf, type Leg } from "@/lib/pmr/legs";
+import { dayPhase, indexAtMinute, nowSplit } from "@/lib/pmr/now-line";
 import { missionImpact, type TrainStates } from "@/lib/pmr/train-delay";
 import type { GroupMission } from "@/server/data/groups";
 import type { Assist, PmrEvent } from "@/server/data/pmr";
 
 import { AleaButton } from "./alea-export";
+import { DayStrip, NextBadge, NowLine, scrollToMission, useNowMinute } from "./day-progress";
 import { CopyButton } from "./copy";
 import { PhoneLink } from "./phone-link";
 import { AbsentBadge } from "./absent-badge";
@@ -178,8 +180,13 @@ export function AssistBoard({
   delays,
   canMark = false,
   groups,
+  now,
+  today,
 }: {
   rows: Assist[];
+  /** Minute courante (Bruxelles) au rendu serveur et jour courant : repère « maintenant » et mini-frise (15 oct. 2026). */
+  now?: number;
+  today?: string;
   /** Groupes de la même période (avec `pmr:read`) : export ALEA commun PMR + groupes. */
   groups?: GroupMission[];
   /** Peut cocher « encodé » dans l'export ALEA (droit d'écrire les missions). */
@@ -196,6 +203,8 @@ export function AssistBoard({
   const [open, setOpen] = useState<Assist | null>(null);
   const [panel, setPanel] = useState<{ assist: Assist; events: PmrEvent[] } | null>(null);
   const wanted = useRef<string | null>(null);
+  const nowMin = useNowMinute(now ?? 0);
+  const timed = now !== undefined && !!today && groupByDay;
 
   const load = useCallback(async (id: string) => {
     wanted.current = id;
@@ -238,6 +247,21 @@ export function AssistBoard({
     return `${l.depDistrict || "hors"} → ${l.arrDistrict}`;
   };
 
+  // Repère « maintenant » (15 oct. 2026) : prises en charge du jour (IN au départ, OUT à l'arrivée) pour la mini-frise.
+  const todayRows = timed ? rows.filter((r) => r.day === today) : [];
+  const pickups = todayRows
+    .filter((a) => a.status !== "annulee")
+    .flatMap((a) => {
+      const l = legOf(a);
+      const t = [l.inA ? a.time : "", l.outA ? a.arrTime || a.time : ""].filter(Boolean);
+      return t.length ? t : [a.time];
+    });
+  const nowItem = (a: Assist) => ({
+    start: a.time,
+    end: (legOf(a).outA && a.arrTime) || undefined,
+  });
+  const todaySplit = nowSplit(todayRows.map(nowItem), nowMin, "today");
+
   return (
     <>
       <LiveHighlight
@@ -266,8 +290,40 @@ export function AssistBoard({
           <AleaExport rows={rows} district={district} canMark={canMark} />
         </div>
       </div>
+      {todayRows.length ? (
+        <DayStrip
+          times={pickups}
+          now={nowMin}
+          done={todaySplit.past.filter(Boolean).length}
+          total={todayRows.length}
+          onPick={(minute) => {
+            if (minute === null) return scrollToMission(null);
+            const i = indexAtMinute(
+              todayRows.map((a) => a.time),
+              minute,
+            );
+            scrollToMission(todayRows[i]?.id ?? null);
+          }}
+        />
+      ) : null}
       {days.map((d) => {
         const list = d ? rows.filter((r) => r.day === d) : rows;
+        const split =
+          timed && d
+            ? nowSplit(list.map(nowItem), nowMin, dayPhase(d, today!))
+            : { insertAt: -1, next: -1, past: list.map(() => false) };
+        const nextTime = split.next >= 0 ? (list[split.next]?.time ?? "") : "";
+        const nowLine = (variant: "row" | "card") =>
+          split.insertAt >= 0 ? (
+            <NowLine
+              key="maintenant"
+              now={nowMin}
+              nextTime={nextTime}
+              index={split.insertAt}
+              variant={variant}
+              colSpan={groupByDay ? 9 : 10}
+            />
+          ) : null;
         return (
           <section
             key={d || "tout"}
@@ -303,13 +359,22 @@ export function AssistBoard({
                   </tr>
                 </THead>
                 <tbody data-testid="assists-table" data-hl-scope="assists">
-                  {list.map((a) => (
+                  {list.map((a, i) => [
+                    i === split.insertAt ? nowLine("row") : null,
                     <Tr
                       key={a.id}
                       data-hl={a.id}
+                      data-past={split.past[i] || undefined}
+                      data-next={i === split.next || undefined}
                       selected={open?.id === a.id}
                       statusColor={toneVar[ASSIST_STATUS[a.status].tone]}
-                      className="cursor-pointer"
+                      className={cn(
+                        "cursor-pointer",
+                        // Mission passée estompée (fond des cellules gardé opaque : colonnes collantes).
+                        split.past[i] &&
+                          open?.id !== a.id &&
+                          "[&>td]:text-fg-muted [&>td>*]:opacity-60",
+                      )}
                       onClick={() => show(a)}
                     >
                       <Td>
@@ -321,7 +386,7 @@ export function AssistBoard({
                       {!groupByDay ? (
                         <Td className="font-mono tabular">{formatDay(a.day)}</Td>
                       ) : null}
-                      <Td className="font-mono tabular">
+                      <Td className="font-mono whitespace-nowrap tabular">
                         <button
                           type="button"
                           className="cursor-pointer focus-visible:outline-1 focus-visible:outline-accent"
@@ -333,6 +398,7 @@ export function AssistBoard({
                         >
                           {a.time || "--:--"}
                         </button>
+                        {i === split.next ? <NextBadge /> : null}
                       </Td>
                       <Td className="min-w-52 max-w-80">
                         <RouteText a={a} district={district} barred={a.status === "annulee"} />
@@ -361,8 +427,9 @@ export function AssistBoard({
                       <Td>
                         <CopyButton text={copyTextOf(a, district)} />
                       </Td>
-                    </Tr>
-                  ))}
+                    </Tr>,
+                  ])}
+                  {split.insertAt === list.length ? nowLine("row") : null}
                 </tbody>
               </ScrollTable>
             </div>
@@ -371,10 +438,20 @@ export function AssistBoard({
               data-testid="assists-cards"
               data-hl-scope="assists"
             >
-              {list.map((a) => (
+              {list.map((a, i) => [
+                i === split.insertAt ? nowLine("card") : null,
                 // Carte mobile (audit UI du 9 oct. 2026) : train + heure + statut, trajet en entier sur sa ligne,
                 // détails, bouton Copier dans la carte (en bas à droite).
-                <li key={a.id} className="relative min-w-0">
+                <li
+                  key={a.id}
+                  className={cn(
+                    "relative min-w-0",
+                    split.past[i] && "opacity-60",
+                    i === split.next && "[&>button]:ring-1 [&>button]:ring-info",
+                  )}
+                  data-past={split.past[i] || undefined}
+                  data-next={i === split.next || undefined}
+                >
                   <button
                     type="button"
                     data-hl={a.id}
@@ -389,6 +466,7 @@ export function AssistBoard({
                       <DelayBadge impact={missionImpact(a, delays)} />
                       {a.absent ? <AbsentBadge /> : null}
                       <span className="font-mono tabular">{a.time || "--:--"}</span>
+                      {i === split.next ? <NextBadge /> : null}
                       <span className="-mr-11 ml-auto">
                         <AssistBadge status={a.status} />
                       </span>
@@ -408,8 +486,9 @@ export function AssistBoard({
                   <span className="absolute right-2 bottom-2">
                     <CopyButton text={copyTextOf(a, district)} />
                   </span>
-                </li>
-              ))}
+                </li>,
+              ])}
+              {split.insertAt === list.length ? nowLine("card") : null}
             </ul>
           </section>
         );

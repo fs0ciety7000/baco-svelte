@@ -6,6 +6,7 @@ import { SyncStatus } from "@/components/pmr/sync-status";
 import { EmptyState } from "@/components/ui/misc";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
 import { effectiveDistricts } from "@/lib/pmr/district-filter";
+import { brusselsMinutes } from "@/lib/pmr/now-line";
 import { userDistricts } from "@/lib/team";
 import { requireRoute } from "@/server/auth";
 import { resolveCancelledPref } from "@/server/pmr-prefs";
@@ -82,6 +83,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
           district={district}
           delays={delays}
           canMark={can(user, "deplacements:write")}
+          now={brusselsMinutes(new Date())}
+          today={today}
         />
       )}
     </section>
