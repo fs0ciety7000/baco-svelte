@@ -52,10 +52,21 @@ routerAdd('POST', '/api/csm/timetable/finish', (e) => {
 	const relations = Array.isArray(body.relations) ? body.relations : [];
 	if (services.length < 500 || relations.length < 20)
 		return e.json(400, { message: 'Construction incomplète : rien supprimé.' });
+	// Lignes (1760003850) : seulement si la construction en a produit assez (sinon les lignes de la veille restent).
+	const lines = Array.isArray(body.lines) ? body.lines : [];
 	return e.json(200, {
 		services: t.prune($app, 'train_services', services),
-		relations: t.prune($app, 'train_relations', relations)
+		relations: t.prune($app, 'train_relations', relations),
+		lines: lines.length >= 20 ? t.pruneLines($app, lines) : null
 	});
+});
+
+// Lignes et leurs gares dans l'ordre (1760003850) : upsert par n° de ligne (rien n'est écrit si `sig` est inchangée).
+routerAdd('POST', '/api/csm/timetable/lines', (e) => {
+	const t = require(`${__hooks}/lib/timetable.js`);
+	if (!t.allowed(e)) return e.json(404, { message: 'Not found.' });
+	const body = e.requestInfo().body || {};
+	return e.json(200, t.upsertLines($app, Array.isArray(body.items) ? body.items : []));
 });
 
 // Référentiel des gares (1760003700) : upsert par l'import (le district d'une fiche modifiée à la main est gardé).

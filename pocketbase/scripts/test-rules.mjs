@@ -993,7 +993,7 @@ try {
 		// Lectures nominatives ou hors /tv : refusées, même avec un droit accordé.
 		await api('PATCH', `/api/collections/users/records/${sc.json.id}`, { token: root, body: { grants: ['pmr:read', 'generate_taxi:read', 'repertoire:read', 'dicos:write'] } });
 		const stok2 = (await api('POST', '/api/collections/users/auth-with-password', { body: { identity: sc.json.email, password: spass } })).json?.token;
-		for (const c of ['stations', 'train_services', 'train_relations', 'train_paths', 'taxi_orders', 'group_missions', 'pmr_mission', 'pmr_clients', 'pmr_assist_legacy', 'directory_contacts', 'audit_log', 'line_stations', 'changelog', 'order_events', 'pmr_events', 'connector_tokens', 'train_schedules', 'b201_reports', 'level_crossings']) {
+		for (const c of ['stations', 'train_services', 'train_relations', 'train_paths', 'rail_lines', 'taxi_orders', 'group_missions', 'pmr_mission', 'pmr_clients', 'pmr_assist_legacy', 'directory_contacts', 'audit_log', 'line_stations', 'changelog', 'order_events', 'pmr_events', 'connector_tokens', 'train_schedules', 'b201_reports', 'level_crossings']) {
 			const r = await api('GET', `/api/collections/${c}/records?perPage=1`, { token: stok2 });
 			check(`écran ne lit pas ${c} (même avec un droit accordé)`, r.status !== 200 || r.json.totalItems === 0, `HTTP ${r.status} ${r.json?.totalItems}`);
 		}
@@ -1193,6 +1193,28 @@ try {
 		const cw = await api('POST', `/api/collections/${c}/records`, { token: roles.admin.token, body: { key: `x-${suffix}`, number: 1 } });
 		check(`admin n'écrit pas ${c} par l'API`, cw.status >= 400, `HTTP ${cw.status}`);
 	}
+	// Lignes (1760003850) : comme train_services ; écrites par la route interne seulement (création, modification,
+	// suppression refusées même à un admin).
+	const rlRec = await api('POST', '/api/collections/rail_lines/records', { token: root, body: { line: `T${suffix}`.slice(0, 12).toUpperCase(), name: 'A – B', stations: [{ n: 'A' }, { n: 'B' }], count: 2 } });
+	check('superuser crée une ligne de test', rlRec.status === 200, `HTTP ${rlRec.status}`);
+	if (rlRec.status === 200) {
+		const rid = rlRec.json.id;
+		const rp = await api('GET', `/api/collections/rail_lines/records/${rid}`, { token: roles.user.token });
+		check('PACO/RCCA lit une ligne', rp.status === 200 && rp.json.stations?.length === 2, `HTTP ${rp.status}`);
+		const rm = await api('GET', `/api/collections/rail_lines/records/${rid}`, { token: roles.modo.token });
+		check('modérateur lit une ligne', rm.status === 200, `HTTP ${rm.status}`);
+		const rg = await api('GET', `/api/collections/rail_lines/records/${rid}`, { token: roles.reader.token });
+		check("invité ne lit pas une ligne", rg.status === 404 || rg.status === 403, `HTTP ${rg.status}`);
+		const rc = await api('POST', '/api/collections/rail_lines/records', { token: roles.admin.token, body: { line: 'X1', name: 'X' } });
+		check("admin ne crée pas de ligne par l'API", rc.status >= 400, `HTTP ${rc.status}`);
+		const ru = await api('PATCH', `/api/collections/rail_lines/records/${rid}`, { token: roles.admin.token, body: { name: 'Modifiée' } });
+		check("admin ne modifie pas une ligne par l'API", ru.status >= 400, `HTTP ${ru.status}`);
+		const rd = await api('DELETE', `/api/collections/rail_lines/records/${rid}`, { token: roles.admin.token });
+		check("admin ne supprime pas une ligne par l'API", rd.status >= 400, `HTTP ${rd.status}`);
+		await api('DELETE', `/api/collections/rail_lines/records/${rid}`, { token: root });
+	}
+	const rlNo = await api('GET', '/api/collections/rail_lines/records?perPage=1');
+	check('anonyme ne lit pas les lignes', rlNo.status !== 200 || rlNo.json.totalItems === 0, `HTTP ${rlNo.status}`);
 	// Référentiel des gares (1760003700) : lecture des agents, district seul modifiable (ptcar:update), import seul crée.
 	const stRec = await api('POST', '/api/collections/stations/records', { token: root, body: { key: `gare test ${suffix}`, name: `Gare test ${suffix}`, country: 'BE' } });
 	check('superuser crée une gare de test', stRec.status === 200, `HTTP ${stRec.status}`);
@@ -1220,7 +1242,7 @@ try {
 	}
 	const tpaths = await api('GET', '/api/collections/train_paths/records?perPage=1', { token: roles.admin.token });
 	check("train_paths fermé à l'API (même admin)", tpaths.status !== 200 || tpaths.json.totalItems === 0, `HTTP ${tpaths.status} ${tpaths.json?.totalItems}`);
-	for (const [method, route] of [['GET', '/api/csm/timetable/status'], ['POST', '/api/csm/timetable/services'], ['POST', '/api/csm/timetable/finish'], ['GET', '/api/csm/timetable/paths']]) {
+	for (const [method, route] of [['GET', '/api/csm/timetable/status'], ['POST', '/api/csm/timetable/services'], ['POST', '/api/csm/timetable/finish'], ['GET', '/api/csm/timetable/paths'], ['POST', '/api/csm/timetable/lines']]) {
 		const r = await api(method, route, { token: roles.admin.token, body: method === 'POST' ? { items: [] } : undefined });
 		check(`route interne ${route} fermée sans secret (même admin)`, r.status === 404, `HTTP ${r.status}`);
 		const w = await fetch(`${PB}${route}`, { method, headers: { 'x-csm-internal': 'mauvais-secret-mauvais-secret-mauvais' } });

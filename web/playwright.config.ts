@@ -8,7 +8,8 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
-    baseURL: "http://localhost:3000",
+    // Autre port en local (plusieurs serveurs sur la même machine) : E2E_BASE_URL.
+    baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3000",
     trace: "on-first-retry",
     locale: "fr-BE",
   },

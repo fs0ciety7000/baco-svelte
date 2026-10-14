@@ -3,10 +3,12 @@ import "server-only";
 import type { RecordModel } from "pocketbase";
 import { z } from "zod";
 
-import { stationMatchesAny } from "@/lib/stations/search";
+import { foldStation, stationMatchesAny } from "@/lib/stations/search";
+import { lineDistrict } from "@/lib/timetable/lines";
 
 import { resolveStationTerms, stationFilter } from "../stations";
 import { pbForRequest } from "./orders";
+import { normLine } from "./timetable";
 
 // Accès aux données Référentiels, avec le jeton de l'agent (règles PocketBase). Tout est lu côté serveur : le
 // navigateur ne parle qu'au domaine CSM. Les écritures passent par des Server Actions (actions.ts).
@@ -125,97 +127,158 @@ export async function similarContacts(name: string, phone: string): Promise<Cont
 }
 
 // ---------------------------------------------------------------------------------------------------
-// Lignes (line_stations + level_crossings + spi_points)
+// Lignes (rail_lines du référentiel des trains + stations + level_crossings + spi_points)
+//
+// Depuis le 14 oct. 2026, l'onglet Lignes lit les lignes construites chaque matin par l'import du référentiel des trains
+// (toutes les lignes vues chez Infrabel, gares dans l'ordre) et non plus la table BACO `line_stations` (36 lignes du sud),
+// qui reste la source des itinéraires des bons bus et d'Admin › Lignes et arrêts. District d'une ligne = majorité des
+// districts de ses gares (Ressources › Gares).
 
-export type LineRef = { line: string; district: string; stations: number };
+export type LineRef = {
+  line: string;
+  name: string;
+  district: string;
+  stations: number;
+  branches: number;
+  /** Gares de la ligne qui correspondent à la recherche de gare. */
+  matches: string[];
+};
 
-/** Lignes distinctes (depuis line_stations), avec district et nombre de gares. Tri naturel (L.1 < L.10). */
-export async function listLines(): Promise<LineRef[]> {
-  const pb = await pbForRequest();
+type RailStation = { n: string; a?: string; km?: number; b?: number; g?: number };
+type RailBranch = { b: number; from: string; to: string };
+
+const railStations = (v: unknown): RailStation[] =>
+  Array.isArray(v)
+    ? v.filter((s): s is RailStation => !!s && typeof s === "object" && typeof s.n === "string")
+    : [];
+
+/** District de chaque gare (nom FR, NL, alias → district), lu dans `stations`. */
+async function stationDistricts(
+  pb: Awaited<ReturnType<typeof pbForRequest>>,
+): Promise<(name: string) => string> {
   const items = await pb
-    .collection("line_stations")
-    .getFullList({ fields: "line,district", batch: 1000 });
-  // District par ligne = district MAJORITAIRE de ses gares (une ligne à cheval sur deux districts ne disparaît pas
-  // du filtre de l'autre selon l'ordre de lecture).
-  const by = new Map<string, { stations: number; districts: Record<string, number> }>();
-  for (const i of items) {
-    const line = str(i.line);
-    if (!line) continue;
-    const cur = by.get(line) ?? { stations: 0, districts: {} };
-    cur.stations += 1;
-    const d = str(i.district);
-    if (d) cur.districts[d] = (cur.districts[d] ?? 0) + 1;
-    by.set(line, cur);
+    .collection("stations")
+    .getFullList({ fields: "name,name_nl,aliases,district", batch: 1000 })
+    .catch(() => []);
+  const by = new Map<string, string>();
+  for (const r of items) {
+    const d = str(r.district);
+    if (!d) continue;
+    const names = [str(r.name), str(r.name_nl), ...(Array.isArray(r.aliases) ? r.aliases : [])];
+    for (const n of names) {
+      const k = foldStation(str(n));
+      if (k && !by.has(k)) by.set(k, d);
+    }
   }
-  return [...by.entries()]
-    .map(([line, v]) => ({
-      line,
-      stations: v.stations,
-      district: Object.entries(v.districts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "",
-    }))
-    .sort((a, b) => a.line.localeCompare(b.line, "fr", { numeric: true }));
+  return (name) => by.get(foldStation(name)) ?? "";
 }
 
-/** Lignes qui desservent une gare (recherche tolérante : accents, casse, abréviation PtCar). */
-export async function linesForStation(
-  gare: string,
-): Promise<{ line: string; stations: string[] }[]> {
-  const terms = await resolveStationTerms(gare);
-  if (!terms.length) return [];
+/** Toutes les lignes, avec district majoritaire ; `gare` : seulement celles qui la desservent (recherche tolérante). */
+export async function listLines(gare = ""): Promise<LineRef[]> {
   const pb = await pbForRequest();
-  const items = await pb
-    .collection("line_stations")
-    .getFullList({ fields: "line,station", batch: 1000 });
-  const by = new Map<string, Set<string>>();
-  for (const i of items) {
-    const station = str(i.station);
-    if (!stationMatchesAny(station, terms)) continue;
-    const set = by.get(str(i.line)) ?? new Set<string>();
-    set.add(station);
-    by.set(str(i.line), set);
+  const q = gare.trim().slice(0, 60);
+  const [items, districtOf, terms] = await Promise.all([
+    pb
+      .collection("rail_lines")
+      .getFullList({ fields: "line,name,stations,branches", batch: 1000 })
+      .catch(() => []),
+    stationDistricts(pb),
+    q ? resolveStationTerms(q) : Promise.resolve([] as string[]),
+  ]);
+  const abbr = q.toUpperCase();
+  const rows: LineRef[] = [];
+  for (const r of items) {
+    const stations = railStations(r.stations);
+    const matches = q
+      ? stations
+          .filter((s) => s.a === abbr || (terms.length > 0 && stationMatchesAny(s.n, terms)))
+          .map((s) => s.n)
+      : [];
+    if (q && !matches.length) continue;
+    rows.push({
+      line: str(r.line),
+      name: str(r.name),
+      district: lineDistrict(
+        stations.map((s) => s.n),
+        districtOf,
+      ).district,
+      stations: stations.length,
+      branches: Array.isArray(r.branches) ? r.branches.length : 0,
+      matches: [...new Set(matches)],
+    });
   }
-  return [...by.entries()]
-    .map(([line, set]) => ({ line, stations: [...set].sort((a, b) => a.localeCompare(b, "fr")) }))
-    .sort((a, b) => a.line.localeCompare(b.line, "fr", { numeric: true }));
+  return rows.sort((a, b) => a.line.localeCompare(b.line, "fr", { numeric: true }));
 }
 
 export type LineDetail = {
   line: string;
+  name: string;
   district: string;
-  stations: { id: string; station: string; position: number; hasOrder: boolean }[];
+  /** Sens donné par les points kilométriques Infrabel. */
+  oriented: boolean;
+  stations: {
+    name: string;
+    abbr: string;
+    km: number | null;
+    district: string;
+    branch: number;
+    /** Le tronc reprend ici après une section parcourue sous un autre n° de ligne. */
+    gap: boolean;
+  }[];
+  branches: RailBranch[];
   crossings: { id: string; number: string; bk: number; address: string; zone: string }[];
   spi: { id: string; place: string; zone: string; address: string; notes: string }[];
 };
 
-export async function getLineDetail(line: string): Promise<LineDetail | null> {
+/** « 96 », « L.96 » → libellés possibles d'une ligne dans les référentiels BACO (PN : « L.96 », SPI : libre). */
+function lineVariants(line: string): string[] {
+  return [...new Set([line, `L.${line}`, `L${line}`, `L ${line}`])];
+}
+
+export async function getLineDetail(raw: string): Promise<LineDetail | null> {
+  const l = normLine(z.string().trim().min(1).max(50).parse(raw));
+  if (!/^[0-9A-Z]{1,12}$/.test(l)) return null;
   const pb = await pbForRequest();
-  const l = z.string().trim().min(1).max(50).parse(line);
-  const [stations, crossings, spi] = await Promise.all([
-    pb.collection("line_stations").getFullList({
-      filter: pb.filter("line = {:l}", { l }),
-      sort: "position,station",
-      batch: 1000,
-    }),
+  const variants = lineVariants(l);
+  const orLine = (field: string) =>
+    pb.filter(
+      `(${variants.map((_, i) => `${field} = {:v${i}}`).join(" || ")})`,
+      Object.fromEntries(variants.map((v, i) => [`v${i}`, v])),
+    );
+  const [rec, districtOf, crossings, spi] = await Promise.all([
+    pb
+      .collection("rail_lines")
+      .getFirstListItem(pb.filter("line = {:l}", { l }))
+      .catch(() => null),
+    stationDistricts(pb),
     pb
       .collection("level_crossings")
-      .getFullList({ filter: pb.filter("line = {:l}", { l }), sort: "number", batch: 1000 })
+      .getFullList({ filter: orLine("line"), sort: "number", batch: 1000 })
       .catch(() => []),
     pb
       .collection("spi_points")
-      .getFullList({ filter: pb.filter("line = {:l}", { l }), sort: "place", batch: 1000 })
+      .getFullList({ filter: orLine("line"), sort: "place", batch: 1000 })
       .catch(() => []),
   ]);
-  if (!stations.length && !crossings.length && !spi.length) return null;
-  const district = stations.map((s) => str(s.district)).find(Boolean) ?? "";
+  const stations = rec ? railStations(rec.stations) : [];
+  if (!rec && !crossings.length && !spi.length) return null;
   return {
     line: l,
-    district,
+    name: rec ? str(rec.name) : "",
+    district: lineDistrict(
+      stations.map((s) => s.n),
+      districtOf,
+    ).district,
+    oriented: !!rec?.oriented,
     stations: stations.map((s) => ({
-      id: s.id,
-      station: str(s.station),
-      position: num(s.position),
-      hasOrder: num(s.position) > 0,
+      name: s.n,
+      abbr: s.a ?? "",
+      km: typeof s.km === "number" ? s.km : null,
+      district: districtOf(s.n),
+      branch: typeof s.b === "number" ? s.b : 0,
+      gap: !!s.g,
     })),
+    branches: rec && Array.isArray(rec.branches) ? (rec.branches as RailBranch[]) : [],
     crossings: crossings.map((c) => ({
       id: c.id,
       number: str(c.number),

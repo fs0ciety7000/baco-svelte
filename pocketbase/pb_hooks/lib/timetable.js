@@ -264,3 +264,70 @@ function stationDistricts(app) {
 
 module.exports.upsertStations = upsertStations;
 module.exports.stationDistricts = stationDistricts;
+
+// --- Lignes (gares dans l'ordre, 1760003850) --------------------------------------------------------------------------
+
+function upsertLines(app, items) {
+	const col = app.findCollectionByNameOrId('rail_lines');
+	let saved = 0;
+	let same = 0;
+	app.runInTransaction((tx) => {
+		for (const it of items) {
+			const line = str(it.line, 12).trim().toUpperCase();
+			if (!/^[0-9A-Z]{1,12}$/.test(line)) continue;
+			const sig = str(it.sig, 20);
+			let rec;
+			try {
+				rec = tx.findFirstRecordByData('rail_lines', 'line', line);
+				if (sig && rec.getString('sig') === sig) {
+					same++;
+					continue;
+				}
+			} catch (_) {
+				rec = new Record(col);
+				rec.set('line', line);
+			}
+			const stations = (Array.isArray(it.stations) ? it.stations : []).slice(0, 200).map((s) => {
+				const o = { n: str(s && s.n, 120) };
+				if (s && s.a) o.a = str(s.a, 12);
+				const km = s ? Number(s.km) : NaN;
+				if (s && s.km != null && Number.isFinite(km)) o.km = Math.round(km * 10) / 10;
+				if (s && Number.isInteger(s.b) && s.b > 0) o.b = Math.min(s.b, 99);
+				if (s && s.g) o.g = 1;
+				return o;
+			});
+			const branches = (Array.isArray(it.branches) ? it.branches : []).slice(0, 99).map((b) => ({
+				b: Math.max(1, Math.min(99, Math.floor(Number(b && b.b) || 1))),
+				from: str(b && b.from, 120),
+				to: str(b && b.to, 120)
+			}));
+			rec.set('name', str(it.name, 300));
+			rec.set('stations', stations);
+			rec.set('branches', branches);
+			rec.set('count', stations.length);
+			rec.set('oriented', !!it.oriented);
+			rec.set('sig', sig);
+			tx.save(rec);
+			saved++;
+		}
+	});
+	return { saved, same, total: app.countRecords('rail_lines') };
+}
+
+// Lignes absentes de la construction du jour : supprimées (le nombre minimal est contrôlé par la route).
+function pruneLines(app, lines) {
+	const keep = {};
+	for (const l of lines) keep[String(l)] = true;
+	let deleted = 0;
+	app.runInTransaction((tx) => {
+		for (const r of tx.findAllRecords('rail_lines')) {
+			if (keep[r.getString('line')]) continue;
+			tx.delete(r);
+			deleted++;
+		}
+	});
+	return { deleted, total: app.countRecords('rail_lines') };
+}
+
+module.exports.upsertLines = upsertLines;
+module.exports.pruneLines = pruneLines;

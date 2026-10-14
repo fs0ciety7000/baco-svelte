@@ -12,7 +12,7 @@ pocketbase migrate up $P                                   # appliquer les migra
 pocketbase superuser upsert <email> <mot de passe> $P      # compte superuser local
 pocketbase serve --http 127.0.0.1:8090 $P                  # serveur local
 CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P   # import de la sauvegarde Supabase (hors Git)
-PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (406 contrôles)
+PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (418 contrôles)
 CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # Commandes + PMR, comptes gardés
 CSM_IMPORT_SCOPE=pmr CSM_IMPORT_RESET=1 pocketbase csm-import … $P        # PMR seul (zones, matériel, prestations)
 CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # main courante + 211 PN de BACO
@@ -279,3 +279,9 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   `district_manual: false` = retour à l'automatique). Création / suppression : import seulement (route interne
   `POST /api/csm/timetable/stations`, district gardé si manuel) ; `GET /api/csm/stations/districts` pour l'ingestion DICOS.
   Audit des modifications (`audit.pb.js`).
+- **Lignes** (`1760003850_rail_lines.js`, 14 oct. 2026) : `rail_lines` (line = n° normalisé unique « 96 », name = extrémités,
+  stations JSON ordonné `{n, a?, km?, b?, g?}` : tronc puis embranchements `b`, `g` = reprise après un trou ; branches
+  `{b, from, to}`, count, oriented, sig). Lecture comme `train_services` (ni invité, ni Écran, ni désactivé) ; **aucune
+  écriture par l'API** : route interne `POST /api/csm/timetable/lines` (upsert par n°, rien si `sig` identique) ; `…/finish`
+  supprime les lignes absentes si la liste `lines` reçue en compte au moins 20. Pas de district stocké (calculé côté web
+  depuis `stations`). `line_stations` (BACO) inchangée : bons bus et Admin › Lignes et arrêts.
