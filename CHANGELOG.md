@@ -3,9 +3,12 @@
 Toutes les évolutions de CSM visibles par les agents, de la plus récente à la plus ancienne.
 Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
-## [2026.10.14.1] — Administration plus accessible
+## [2026.10.14.1] — Dates au format belge, administration plus accessible
 
 ### Améliorations
+
+- **Dates et heures toujours au format belge** (jj/mm/aaaa, 24 h), quelle que soit la langue du navigateur. Tape « 14102026 » ou « 14/10 » pour une date, « 1450 » pour 14:50. Les flèches ↑ ↓ changent le jour, le mois ou l'heure (par pas de 5 minutes). Un calendrier (semaine du lundi, jours fériés belges marqués) s'ouvre au bouton, en feuille du bas sur mobile. Bouton « Maintenant » pour l'heure, et « À confirmer » quand l'heure d'un bon n'est pas encore connue.
+- **Périodes « Du / Au »** (bons, Missions PMR, audit, statistiques) : un seul champ avec les raccourcis Aujourd'hui, Demain, 7 jours, Semaine ; « Au » ne peut plus précéder « Du ».
 
 - **Administration dans la barre latérale** (administrateurs) : les pages sont accessibles directement, rangées en trois groupes (Comptes, Supervision, Réglages). La section se replie si tu ne t'en sers pas tous les jours. Sur écran moyen, l'entrée « Admin » ouvre un menu avec les mêmes pages. Sur mobile, elles sont dans « Plus ».
 - La barre du haut affiche « Administration › page » ; le menu de ton profil garde un seul lien « Administration ».

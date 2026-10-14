@@ -1169,6 +1169,12 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   non-admins, lu par `can()` ; contrôle d'équivalence `pocketbase/scripts/perms-equivalence.mjs` (0 écart sur la base de
   dev). Aucun changement de droit ni de règle. Vérifié : une souscription temps réel suit un changement de droits fait par
   `$app.save()` (pas par SQL direct). 482 contrôles de règles.
+- 2026-10-14 — **Refonte R1 + R3 livrés** (agent) : `@radix-ui/react-popover` **1.2.0** figé (seule version dont les
+  dépendances internes sont déjà installées ; publiée le 5 oct.), `Popover` / `PickerSurface` (Popover en desktop, feuille Vaul
+  < 768 px ou tactile), `Listbox` (APG), pont formulaire `useFormBridge` (champ caché + `change` après un choix seulement),
+  `Select` (le `Select` natif d'`input.tsx` coexiste jusqu'au lot R5), `Calendar` (fériés belges + Pâques / Pentecôte),
+  `DateField`, `TimeField` (pas de 5 min, `pending`), `DateRangePicker` (raccourcis), `MonthField` ; logique `lib/dates/calendar.ts`.
+  **36 champs natifs date / heure / mois migrés** (plus aucun dans `web/src`), filtres Du / Au en `DateRangePicker`. E2E : `frDate()`.
 
 ---
 
