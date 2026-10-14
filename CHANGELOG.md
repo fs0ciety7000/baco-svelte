@@ -9,6 +9,8 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 - **Administration dans la barre latérale** (administrateurs) : les pages sont accessibles directement, rangées en trois groupes (Comptes, Supervision, Réglages). La section se replie si tu ne t'en sers pas tous les jours. Sur écran moyen, l'entrée « Admin » ouvre un menu avec les mêmes pages. Sur mobile, elles sont dans « Plus ».
 - La barre du haut affiche « Administration › page » ; le menu de ton profil garde un seul lien « Administration ».
+- **Barre du haut plus légère** sur les écrans de moins de 1536 px : le bouton « + Nouveau » laisse sa place aux onglets. Tu crées toujours un bon depuis la recherche (Ctrl+K › Créer) ou depuis le module. « En ligne maintenant » n'affiche plus que l'icône.
+- **Mobile : barre du bas à 5 entrées** (Accueil, Bons, PMR, Opérations, Plus). « Ressources » est dans « Plus », avec Équipe et l'Administration.
 - **Synchro DICOS** : l'heure et le nom affichés sont ceux de la dernière synchro faite par un agent de l'équipe, quel qu'il soit. Si un jour de la période n'a pas été synchronisé depuis plus d'une heure, CSM le signale à part.
 
 ## [2026.10.14] — Cycle des bons, trains et nouveautés

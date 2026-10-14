@@ -15,7 +15,7 @@ import { activeModule, CHANGELOG_LINK, tabGroups } from "@/navigation";
 import { useShell } from "./shell-context";
 
 /**
- * Barre d'onglets mobile (< 768 px) : 5 modules (Annuaire compris, 9 oct. 2026) + « Plus ». Libellé mono, trait accent en haut de l'actif,
+ * Barre d'onglets mobile (< 768 px) : 4 modules (Accueil, Bons, PMR, Opérations ; 14 oct. 2026) + « Plus ». Libellé mono, trait accent en haut de l'actif,
  * respect de safe-area-inset-bottom. « Plus » ouvre les autres modules, l'administration et les actions.
  */
 export function MobileTabBar() {
@@ -23,7 +23,7 @@ export function MobileTabBar() {
   const pathname = usePathname();
   const [more, setMore] = useState(false);
   const active = activeModule(pathname, modules);
-  const primary = modules.filter((m) => m.mobile).slice(0, 5);
+  const primary = modules.filter((m) => m.mobile).slice(0, 4);
   const others = [...modules.filter((m) => !primary.includes(m)), ...(admin ? [admin] : [])];
   const moreActive = !!active && !primary.some((m) => m.id === active.id);
 

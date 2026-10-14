@@ -71,8 +71,8 @@ export function OnlinePresence() {
           className="relative gap-2 px-2.5"
         >
           <Users className="size-5" aria-hidden />
-          <Pulse className="absolute top-2 right-2 md:static" />
-          <span className="hidden tabular text-small md:inline">{agents ? count : "…"}</span>
+          <Pulse className="absolute top-2 right-2 2xl:static" />
+          <span className="hidden tabular text-small 2xl:inline">{agents ? count : "…"}</span>
         </Button>
       </Menu.Trigger>
       <Menu.Portal>

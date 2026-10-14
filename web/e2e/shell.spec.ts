@@ -31,13 +31,13 @@ test("navigation principale et onglets en routes", async ({ page, isMobile }, te
   await login(page);
   if (isMobile) {
     const bar = page.getByRole("navigation", { name: "Navigation principale" });
-    // Libellés courts affichés (11 oct. 2026), noms complets annoncés.
-    await expect(bar.getByRole("link")).toHaveText(["Accueil", "Bons", "PMR", "Opér.", "Données"]);
+    // Barre du bas à 5 entrées (14 oct. 2026) : 4 modules + « Plus » ; libellé court affiché, nom complet annoncé.
+    await expect(bar.getByRole("link")).toHaveText(["Accueil", "Bons", "PMR", "Opérations"]);
     await expect(bar.getByRole("link", { name: "Commandes", exact: true })).toBeVisible();
     await bar.getByRole("button", { name: "Plus" }).click();
     const sheet = page.getByRole("dialog", { name: "Plus" });
-    // « Ressources » est dans la barre du bas depuis le 9 oct. 2026 : plus dans « Plus ».
-    await expect(sheet.getByRole("link", { name: "Ressources", exact: true })).toHaveCount(0);
+    // « Ressources » revient dans « Plus » le 14 oct. 2026 (barre du bas à 5 entrées).
+    await expect(sheet.getByRole("link", { name: "Ressources", exact: true })).toBeVisible();
     await expect(sheet.getByRole("link", { name: "Équipe", exact: true })).toBeVisible();
     // PACO/RCCA : pas d'administration.
     await expect(sheet.getByRole("link", { name: "Administration" })).toHaveCount(0);

@@ -91,8 +91,8 @@ export function Topbar() {
         {actions.length > 0 ? (
           <Menu.Root>
             <Menu.Trigger asChild>
-              <Button variant="secondary" className="hidden md:inline-flex" aria-label="Nouveau">
-                <Plus /> <span className="hidden 2xl:inline">Nouveau</span>
+              <Button variant="secondary" className="hidden 2xl:inline-flex" aria-label="Nouveau">
+                <Plus /> Nouveau
               </Button>
             </Menu.Trigger>
             <Menu.Portal>

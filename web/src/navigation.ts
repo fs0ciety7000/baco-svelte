@@ -42,7 +42,7 @@ export type NavModule = {
   /** Libellé court (barre d'onglets mobile). */
   shortLabel?: string;
   icon: LucideIcon;
-  /** Présent dans la barre d'onglets mobile (5 au maximum, le reste va dans « Plus »). */
+  /** Présent dans la barre d'onglets mobile (4 au maximum + « Plus », le reste va dans « Plus »). */
   mobile?: boolean;
   tabs: NavTab[];
 };
@@ -125,7 +125,6 @@ export const MODULES: NavModule[] = [
   },
   {
     id: "operations",
-    shortLabel: "Opér.",
     href: "/operations",
     label: "Opérations",
     icon: Train,
@@ -170,8 +169,7 @@ export const MODULES: NavModule[] = [
     href: "/referentiels",
     // « Ressources » depuis le 11 oct. 2026 (ex-« Annuaire et données », demande de l'utilisateur).
     label: "Ressources",
-    // Barre du bas en mobile (décision du 9 oct. 2026).
-    mobile: true,
+    // Dans « Plus » en mobile depuis le 14 oct. 2026 (barre du bas à 5 entrées : Accueil, Bons, PMR, Opérations, Plus).
     icon: Database,
     tabs: [
       {
