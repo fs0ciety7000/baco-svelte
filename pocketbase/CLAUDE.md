@@ -288,3 +288,8 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
 - **N° de train d'un bon** (`1760003800_order_train.js`, 14 oct. 2026) : `bus_orders.train_number` et
   `taxi_orders.train_number` (texte, 6 chiffres au plus, motif `^[0-9]*$`), règles du bon inchangées ; non repris de BACO
   (import et import différentiel ne le touchent pas).
+- **Gares v2** (`1760003950_stations_v2.js`, 14 oct. 2026) : district DSO / DSE / DCE / DNO / DNE, `kind` (gare / pang /
+  etranger, posé par l'import s'il est vide), `lat` / `lon`, `district_suggested` + `suggestion` (route interne
+  `POST /api/csm/stations/suggest`, `suggestDistricts` de `lib/timetable.js` ; appelée par l'import et après une attribution),
+  `lines_manual`. Le hook accepte district, lignes et type (lignes → `lines_manual` ; district → `district_manual`, proposition
+  effacée) ; propositions, noms, coordonnées refusés.

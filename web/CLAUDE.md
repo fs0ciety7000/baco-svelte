@@ -480,3 +480,8 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `line_stations` reste lue par les bons bus (`lib/orders/stops.ts`, `server/data/orders.ts`), `resolveStationTerms`,
   `districtStations` (ops) et Admin › Lignes et arrêts (note : ne touche pas Ressources › Lignes). E2E : test « lignes » de
   `e2e/trains.spec.ts` (ligne fictive 998 / 997) ; `E2E_BASE_URL` change le port de Playwright en local.
+- **Gares v2** (14 oct. 2026) : `StationsBoard` (`components/referentiels/stations-board.tsx` : sélection multiple,
+  attribution en masse, validation des propositions, lignes et type) ; actions `applyDistricts` (400 au plus, par 8),
+  `setStationLines`, `setStationKind` (`referentiels/gares/actions.ts`, puis recalcul des propositions) ; `STATION_DISTRICTS`
+  (5) dans `lib/timetable/stations.ts` (les filtres d'équipe restent sur `DISTRICTS`, 3). Nouveau GTFS : `remoteGtfsModified()`
+  (HEAD) dans `scheduler.ts` toutes les 3 h, comparé à `gtfsModified` de l'état.

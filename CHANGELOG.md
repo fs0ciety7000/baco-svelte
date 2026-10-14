@@ -8,7 +8,11 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 ### Nouveautés
 
 - **Ressources › Trains** : référentiel des relations de trains (IC, L, P…), avec leurs séries, leurs jours de circulation et la liste de leurs arrêts, mis à jour chaque jour. Par gare : les trains qui s'y arrêtent et ceux qui passent sans arrêt. Par ligne : les relations et les gares desservies.
+- **Ressources › Lignes** : toutes les lignes du réseau (plus seulement les 36 lignes du sud), gares dans l'ordre avec leurs points kilométriques, district déduit des gares, liens vers les trains de la ligne et de chaque gare.
+- **Bons bus et taxi : trajet tiré du référentiel des trains** : les gares se cherchent aussi par leur nom néerlandais ou un alias (Bergen → Mons) ; les lignes et les arrêts sont proposés d'après les trains qui relient les deux gares (omnibus ou direct), toujours modifiables ; nouveau champ « N° de train » qui remplit le trajet (et l'heure pour un taxi), annulable, repris sur le PDF et l'e-mail.
 - **Ressources › Gares** : toutes les gares desservies, avec leur nom néerlandais, leur abréviation, leur pays et leurs lignes. Le district de chaque gare se corrige ici ; les missions DICOS l'utilisent. Les gares frontière (Maubeuge, Aachen, Luxembourg…) se retrouvent aussi sans leur suffixe de pays.
+- **Districts des gares** : toutes les gares et PANG (points d'arrêt non gardés), avec 5 districts (DSO, DSE, DCE, DNO, DNE). CSM propose un district pour les gares qui n'en ont pas (gares voisines et lignes communes) : un coordinateur le valide gare par gare ou en masse, ou attribue un district à une sélection. Lignes et type de chaque gare modifiables.
+- Les référentiels (trains, gares, lignes) se mettent à jour chaque matin et dès que la SNCB publie un nouvel horaire.
 - **Page Nouveautés** : toutes les évolutions de CSM au même endroit, accessible depuis le bas de la barre latérale (ou « Plus » sur mobile). Une fenêtre te résume la dernière mise à jour à ta première connexion après celle-ci.
 
 ### Améliorations

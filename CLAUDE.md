@@ -1067,6 +1067,20 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   « Annuler la reprise » ; taxi : heure = départ du train. Sur le PDF, l'e-mail et le panneau du Suivi. Corrigé en route :
   l'indicateur d'enregistrement restait « Modifié » quand la saisie revenait à l'état enregistré. 409 contrôles de règles.
 
+- 2026-10-14 — **Gares v2** (demande de l'utilisateur : « chaque gare et PANG, ligne et district, éditables par admin /
+  coordinateur / modérateur ; assigner facilement le district des 377 gares sans district ») : réponses de l'utilisateur
+  = **5 districts SNCB** (DSO, DSE, DCE + DNO Nord-Ouest, DNE Nord-Est ; les filtres et alertes de l'équipe restent sur
+  DSO / DSE / DCE : `DISTRICTS` de `lib/pmr/districts.ts` inchangé, DNO / DNE donnent « » pour les missions) et
+  **proposition automatique + validation**. Migration `1760003950` : `kind` (gare / pang / etranger), `lat` / `lon`,
+  `district_suggested` + `suggestion` (calculées par la route interne `/api/csm/stations/suggest` : 6 gares connues les plus
+  proches à 30 km au plus, poids ×2 si ligne commune, majorité 60 % ; sans coordonnées : district majoritaire des lignes),
+  `lines_manual`. L'import ajoute toutes les gares et PANG d'Infrabel (lignes relevées sur les chemins). Ressources › Gares :
+  sélection multiple, « Attribuer à la sélection », « Valider les propositions », lignes et type modifiables (droit
+  `ptcar:update`). Local : 829 gares (425 gares, 328 PANG, 52 étrangères), 314 propositions sur 521 sans district. Attention :
+  la table BACO classe déjà des gares flamandes en DSO / DSE (Gand-Saint-Pierre, Waregem, Louvain, Hasselt), les propositions
+  s'en inspirent : à revoir par les coordinateurs. **Nouveau GTFS** : le serveur vérifie toutes les 3 h (requête HEAD,
+  `Last-Modified`) et relance l'import aussitôt (tous les référentiels).
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)
