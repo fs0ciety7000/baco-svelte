@@ -9,7 +9,9 @@ import { Avatar } from "@/components/shell/avatar";
 import { Input, Select } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
-import { DISTRICT_SHORT, ROLE_LABEL } from "@/lib/team";
+import { FULL_ROLE_KEYS, roleLabel } from "@/lib/roles";
+import { DISTRICT_SHORT } from "@/lib/team";
+import { listRoles } from "@/server/data/roles";
 import { requireRoute } from "@/server/auth";
 import { listTeam } from "@/server/data/team";
 
@@ -20,7 +22,10 @@ type SP = { q?: string; district?: string };
 export default async function Page({ searchParams }: { searchParams: Promise<SP> }) {
   await requireRoute("/equipe");
   const f = await searchParams;
-  const rows = await listTeam({ q: f.q ?? "", district: f.district as never });
+  const [rows, roles] = await Promise.all([
+    listTeam({ q: f.q ?? "", district: f.district as never }),
+    listRoles(),
+  ]);
   return (
     <section className="flex flex-col gap-4" aria-label="Annuaire de l'équipe">
       <FilterForm
@@ -86,7 +91,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
                   {m.status ? <Badge tone="info">{m.status}</Badge> : null}
                 </span>
                 <span className="truncate text-small text-fg-muted">
-                  {m.fonction || ROLE_LABEL[m.role] || "—"}
+                  {m.fonction || roleLabel(m.role, roles) || "—"}
                 </span>
                 {m.workPhone ? (
                   <span className="text-small">
@@ -100,8 +105,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
                     {m.districts.map((d) => DISTRICT_SHORT[d] ?? d).join(" · ")}
                   </Badge>
                 ) : null}
-                {m.role === "admin" || m.role === "sysop" ? (
-                  <span className="label-mono text-fg-muted">{ROLE_LABEL[m.role]}</span>
+                {FULL_ROLE_KEYS.includes(m.role) ? (
+                  <span className="label-mono text-fg-muted">{roleLabel(m.role, roles)}</span>
                 ) : null}
               </div>
             </li>

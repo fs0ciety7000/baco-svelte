@@ -12,8 +12,9 @@ pocketbase migrate up $P                                   # appliquer les migra
 pocketbase superuser upsert <email> <mot de passe> $P      # compte superuser local
 pocketbase serve --http 127.0.0.1:8090 $P                  # serveur local
 CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P   # import de la sauvegarde Supabase (hors Git)
-PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (482 contrôles)
+PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (558 contrôles)
 node scripts/perms-equivalence.mjs pb_data/data.db         # rôles v3 : ancien calcul ↔ users.perms (0 écart attendu)
+pocketbase perms-check $P                                  # même contrôle en JSVM, LECTURE SEULE, code 1 si écart (prod : tâche Coolify)
 CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # Commandes + PMR, comptes gardés
 CSM_IMPORT_SCOPE=pmr CSM_IMPORT_RESET=1 pocketbase csm-import … $P        # PMR seul (zones, matériel, prestations)
 CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # main courante + 211 PN de BACO
@@ -36,7 +37,7 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   passkeys, sessions, jetons, coche ALEA). Un `X:write` accordé / retiré avant la migration l'est aussi en `X:update`.
   Nouveautés (`changelog`) : admin, sysop, modérateur. Les règles réécrites testent `(paco || moderator)`. `users.districts` (1 à 3, admin seul) : filtres et alertes
   (`dutyDistricts` : jour coché → districts permanents → `district`). La migration réécrit les règles en place par
-  remplacement de motifs : toute nouvelle collection doit écrire directement `paco` / `guest`.
+  remplacement de motifs (périmé depuis le lot L2 : écrire une permission du catalogue, jamais un rôle).
 - **Rôles v3, lots L0-L1** (14 oct. 2026, `docs/design/CADRAGE-ROLES-V3.md`) : **`users.perms`** (JSON, migration
   `1760004300`) = permissions effectives, **écrites par le hook seul** (`users.pb.js` → `lib/perms.js`, chargé par
   `require()`) à chaque création / modification d'un compte, à partir de `role`, `grants`, `denies` ; une valeur envoyée
@@ -45,9 +46,36 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   rôles par défaut : **`lib/catalog.js`, copie générée** depuis `web/src/lib/permissions/catalog.ts` par `npm run catalog`
   (web/) — ne jamais l'éditer à la main. `onRecordEnrich` masque `perms` / `grants` / `denies` d'un autre agent aux
   non-admins (le compte `connector` lit `perms`, pas grants / denies ; l'agent lit les siens) ; `@request.auth.*` des
-  règles n'est pas touché. **Les règles ne testent pas encore `perms`** (lot L2). Une écriture SQL directe sur `users` ne
-  rafraîchit pas la fiche `@request.auth` des souscriptions temps réel ouvertes (`$app.save()`, lui, la rafraîchit).
-- **Règles** : construites avec `can(perm, rôles)` (rôle par défaut, `grants` / `denies` par agent).
+  règles n'est pas touché. Une écriture SQL directe sur `users` ne rafraîchit pas la fiche `@request.auth` des souscriptions
+  temps réel ouvertes (`$app.save()`, lui, la rafraîchit).
+- **Rôles v3, lot L2** (`1760004400_rules_perms.js`) : **toutes les règles testent `perms`** : `can(P)` =
+  `ACTIVE && (ADMIN || @request.auth.perms ~ '"P"')` (clé TOUJOURS entre guillemets). Restent en dur : `ADMIN` (admin, sysop),
+  `screen` (lectures bornées + `&& role != "screen"` partout), `connector` (aucune permission de module : `grants ~ '"dicos:write"'`,
+  et `role = "connector"` pour lire `quinyx_*`), `disabled`. 47 collections réécrites explicitement ; `down` remet les règles v2
+  exactes (`lib/rules-v2.js`, ne pas modifier). Hooks : `perms.has(record, clé)` (lib/perms.js) — `journal:moderate` (`isCoord`),
+  `bus:reopen` / `taxi:reopen` (`isCoordinator(auth, record)`), destinataires (`hasJournalRead`, `hasPerm(u, clé)`). **Toute
+  nouvelle règle** s'écrit avec une clé du catalogue (jamais `role = "paco"` / `grants ~`). Corrections : `audit_log` ADMIN seul,
+  `pmr_zones.delete` = `pmr:delete`, `stations` lu avec `timetable:read`, `rail_lines.update` = `ptcar:update`. Le compte de
+  service ne lit plus pmr_zones, spi_points, changelog, train_*, rail_lines, stations (inutilisés). `perms-check` (roles.pb.js,
+  lib/perms-check.js) : console, aucune écriture (les commandes console n'appliquent pas les migrations).
+- **Suppression des bons** (`1760004410`, 14 oct. 2026) : `otto:delete` / `generate_taxi:delete` (Modérateur, admins), OU le
+  créateur (`created_by`) avec `otto:write` / `generate_taxi:write`, bon pas `envoye`, **8 h** après `created` (hook
+  `checkDelete`, lib/orders.js : pas d'arithmétique sur `@now` dans les règles). `order_events` supprimés avec le bon, liens du
+  Journal vidés (relation facultative), PDF archivé (`order_pdfs`, identifiant texte) gardé.
+- **Rôles v3, lot L3** (`1760004500_roles.js`, `roles.pb.js`, `lib/roles.js`) : collection **`roles`** (`key` unique figée,
+  `label`, `description`, `color` accent/info/ok/warn/progress/neutral, `perms` JSON, `system`, `locked`, `based_on`, `sort`,
+  `updated_by` posé par hook ; lue par tout agent actif). 8 rôles système (admin / sysop verrouillés « tout », moderator / paco
+  / guest modifiables, screen / connector / disabled verrouillés sans droit). **`users.role` et `disabled_role` = texte** validé
+  par hook contre `roles.key` (changement de type fait en SQL sur `_collections.fields` : PocketBase refuse « Field type cannot be
+  changed » ; même id, colonne TEXT inchangée). `lib/perms.js` lit les permissions du rôle dans `roles` (repli : catalogue si la
+  collection manque). Garde-fous (hooks) : gestion des rôles admin / sysop seuls ; verrouillé non modifiable par l'API (même
+  superuser) ; système non supprimable ; rôle attribué (ou à la réactivation) non supprimable ; clé figée ; clés hors catalogue
+  refusées, dépendances ajoutées ; modifier un rôle recalcule ses agents par `app.save()` dans la transaction ; `admin` / `sysop`
+  attribués par un **admin** (ou superuser) seulement — un sysop ne le peut pas ; **dernier admin actif** (rôle `admin`) ni
+  désactivé, ni rétrogradé, ni supprimé (requêtes seulement : l'import CLI n'est pas bloqué). `app_settings.roles_catalog` : une
+  clé nouvelle du catalogue est ajoutée au démarrage aux rôles système qui la portent par défaut (jamais retirée). Audit : `roles`.
+- **Règles** : depuis le lot L2, `can(P)` = `ACTIVE && (ADMIN || @request.auth.perms ~ '"P"')` (voir ci-dessus) ; avant,
+  `can(perm, rôles)` (rôle par défaut, `grants` / `denies` par agent).
   `users.role`, `grants`, `denies`, `banned_until`, `email` ne sont modifiables que par un admin.
 - **Identifiants** : les UUID Supabase sont conservés (`users.id` accepte 15 à 36 caractères `[a-z0-9-]`) ;
   les tables à clé numérique gardent l'ancienne clé dans `legacy_id`.

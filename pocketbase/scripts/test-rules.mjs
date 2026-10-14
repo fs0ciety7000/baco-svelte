@@ -1672,6 +1672,114 @@ try {
 		for (const g of gone) if (g) auditIds.push(g);
 	}
 
+	// --- Rôles v3, lot L3 (1760004500) : collection `roles`, rôle des comptes validé, garde-fous dans les hooks ---
+	{
+		const mk = async (key, role) => {
+			const pass = `Test-${suffix}-${key}`;
+			const r = await api('POST', '/api/collections/users/records', {
+				token: root,
+				body: { email: `test-${key}-${suffix}@csm.invalid`, password: pass, passwordConfirm: pass, name: `Test ${key}`, username: `t${key}${suffix}`, role, verified: true }
+			});
+			if (r.status !== 200) return null;
+			created.push(r.json.id);
+			const tok = (await api('POST', '/api/collections/users/auth-with-password', { body: { identity: r.json.email, password: pass } })).json?.token;
+			return { id: r.json.id, token: tok };
+		};
+		const getPerms = async (id) => (await api('GET', `/api/collections/users/records/${id}`, { token: root })).json?.perms ?? null;
+		const sys = await api('GET', '/api/collections/roles/records?perPage=50&sort=sort', { token: roles.user.token });
+		const sysKeys = (sys.json?.items ?? []).map((r) => r.key).join(',');
+		check('rôles système lisibles par un agent', sys.status === 200 && sysKeys.startsWith('admin,sysop,moderator,paco,guest,screen,connector,disabled'), sysKeys);
+		const pacoRole = (sys.json?.items ?? []).find((r) => r.key === 'paco');
+		const adminRole = (sys.json?.items ?? []).find((r) => r.key === 'admin');
+		check('rôle PACO/RCCA : système, modifiable ; admin : verrouillé', pacoRole?.system === true && pacoRole?.locked === false && adminRole?.locked === true);
+
+		const key = `t-${suffix}`;
+		const byPaco = await api('POST', '/api/collections/roles/records', { token: roles.user.token, body: { key: `${key}x`, label: 'X', perms: [] } });
+		check('PACO/RCCA ne crée pas de rôle', byPaco.status >= 400, `HTTP ${byPaco.status}`);
+		const md = roles.modo;
+		const byModo = await api('POST', '/api/collections/roles/records', { token: md.token, body: { key: `${key}y`, label: 'Y', perms: [] } });
+		check('modérateur ne crée pas de rôle', byModo.status >= 400, `HTTP ${byModo.status}`);
+		const unknown = await api('POST', '/api/collections/roles/records', { token: roles.admin.token, body: { key: `${key}z`, label: 'Z', perms: ['otto:read', 'pirate:read'] } });
+		check('permission hors catalogue refusée', unknown.status === 400, `HTTP ${unknown.status}`);
+		const badKey = await api('POST', '/api/collections/roles/records', { token: roles.admin.token, body: { key: 'Mauvais Nom', label: 'Z', perms: [] } });
+		check('identifiant de rôle invalide refusé', badKey.status === 400, `HTTP ${badKey.status}`);
+		const nr = await api('POST', '/api/collections/roles/records', {
+			token: roles.admin.token,
+			body: { key, label: 'Coordinateur de test', color: 'info', perms: ['otto:read', 'journal:moderate'], system: true, locked: true, updated_by: roles.user.id }
+		});
+		check(
+			'admin crée un rôle : dépendances ajoutées, ni système ni verrouillé, auteur posé',
+			nr.status === 200 && nr.json.perms?.join() === 'otto:read,journal:read,journal:moderate' && nr.json.system === false && nr.json.locked === false && nr.json.updated_by === roles.admin.id,
+			`HTTP ${nr.status} ${JSON.stringify(nr.json?.perms)} ${nr.json?.updated_by === roles.admin.id}`
+		);
+		const rid = nr.json?.id;
+		const dup = await api('POST', '/api/collections/roles/records', { token: roles.admin.token, body: { key, label: 'Doublon' } });
+		check('identifiant de rôle unique', dup.status === 400, `HTTP ${dup.status}`);
+		const auditRole = await api('GET', `/api/collections/audit_log/records?filter=${encodeURIComponent(`record="${rid}"`)}`, { token: roles.admin.token });
+		check('création de rôle tracée dans l audit', auditRole.json?.items?.[0]?.collection === 'roles', `${auditRole.json?.items?.length}`);
+
+		// Agent du rôle créé : ses droits suivent le rôle, à la requête suivante (sans reconnexion).
+		const a = await mk('l3a', 'guest');
+		const asg = await api('PATCH', `/api/collections/users/records/${a.id}`, { token: roles.admin.token, body: { role: key } });
+		check('admin attribue le rôle créé ; perms = permissions du rôle', asg.status === 200 && (await getPerms(a.id))?.join() === 'otto:read,journal:read,journal:moderate', `HTTP ${asg.status} ${JSON.stringify(await getPerms(a.id))}`);
+		let w = await api('POST', '/api/collections/bus_orders/records', { token: a.token, body: { status: 'brouillon', created_by: a.id } });
+		check('rôle créé sans otto:write : pas de bon', w.status >= 400, `HTTP ${w.status}`);
+		const up = await api('PATCH', `/api/collections/roles/records/${rid}`, { token: roles.admin.token, body: { perms: ['otto:read', 'otto:write', 'journal:moderate'] } });
+		check('admin ajoute une permission au rôle ; agents recalculés', up.status === 200 && (await getPerms(a.id))?.includes('otto:write'), `HTTP ${up.status}`);
+		w = await api('POST', '/api/collections/bus_orders/records', { token: a.token, body: { status: 'brouillon', created_by: a.id } });
+		check('… droit valable à la requête suivante, sans reconnexion', w.status === 200, `HTTP ${w.status}`);
+		if (w.json?.id) {
+			await api('DELETE', `/api/collections/bus_orders/records/${w.json.id}`, { token: root });
+			auditIds.push(w.json.id);
+		}
+		const forgedRole = await api('PATCH', `/api/collections/users/records/${a.id}`, { token: roles.admin.token, body: { perms: ['otto:delete'] } });
+		check('perms forgé ignoré (rôle créé)', forgedRole.status === 200 && !(await getPerms(a.id))?.includes('otto:delete'));
+		const k2 = await api('PATCH', `/api/collections/roles/records/${rid}`, { token: roles.admin.token, body: { key: `${key}-b` } });
+		check('identifiant d un rôle figé', k2.status === 400, `HTTP ${k2.status}`);
+		const sysFlag = await api('PATCH', `/api/collections/roles/records/${rid}`, { token: roles.admin.token, body: { locked: true } });
+		check('indicateur verrouillé non modifiable', sysFlag.status === 400, `HTTP ${sysFlag.status}`);
+		const byPacoUp = await api('PATCH', `/api/collections/roles/records/${rid}`, { token: roles.user.token, body: { label: 'X' } });
+		check('PACO/RCCA ne modifie pas un rôle', byPacoUp.status >= 400, `HTTP ${byPacoUp.status}`);
+		const lockedUp = await api('PATCH', `/api/collections/roles/records/${adminRole?.id}`, { token: roles.admin.token, body: { label: 'Chef' } });
+		check('rôle verrouillé (admin) non modifiable, même par un admin', lockedUp.status === 403, `HTTP ${lockedUp.status}`);
+		const pacoUp = await api('PATCH', `/api/collections/roles/records/${pacoRole?.id}`, { token: roles.admin.token, body: { description: `${pacoRole?.description} ` } });
+		const pacoBack = await api('PATCH', `/api/collections/roles/records/${pacoRole?.id}`, { token: roles.admin.token, body: { description: pacoRole?.description } });
+		check('rôle système non verrouillé (PACO/RCCA) modifiable par un admin', pacoUp.status === 200 && pacoBack.status === 200, `HTTP ${pacoUp.status}/${pacoBack.status}`);
+		const sysDel = await api('DELETE', `/api/collections/roles/records/${pacoRole?.id}`, { token: roles.admin.token });
+		check('rôle système non supprimable', sysDel.status === 400, `HTTP ${sysDel.status}`);
+		const usedDel = await api('DELETE', `/api/collections/roles/records/${rid}`, { token: roles.admin.token });
+		check('rôle attribué non supprimable (nombre d agents donné)', usedDel.status === 400 && /1 agent/.test(usedDel.json?.message ?? ''), `HTTP ${usedDel.status} ${usedDel.json?.message}`);
+		const unk = await api('PATCH', `/api/collections/users/records/${a.id}`, { token: roles.admin.token, body: { role: 'pirate' } });
+		check('rôle inconnu refusé', unk.status === 400, `HTTP ${unk.status}`);
+		await api('PATCH', `/api/collections/users/records/${a.id}`, { token: roles.admin.token, body: { role: 'guest' } });
+		check('agent réaffecté : perms du rôle Invité', (await getPerms(a.id))?.join() === 'otto:read,generate_taxi:read');
+		const freeDel = await api('DELETE', `/api/collections/roles/records/${rid}`, { token: roles.admin.token });
+		check('rôle libre supprimé par un admin', freeDel.status === 204, `HTTP ${freeDel.status}`);
+		if (rid) auditIds.push(rid);
+
+		// Attribuer admin / sysop : un administrateur seulement (pas un sysop).
+		const so = await mk('l3s', 'sysop');
+		const soAdm = await api('PATCH', `/api/collections/users/records/${a.id}`, { token: so.token, body: { role: 'admin' } });
+		const soSys = await api('PATCH', `/api/collections/users/records/${a.id}`, { token: so.token, body: { role: 'sysop' } });
+		const soPaco = await api('PATCH', `/api/collections/users/records/${a.id}`, { token: so.token, body: { role: 'paco' } });
+		check('sysop n attribue ni admin ni sysop ; attribue PACO/RCCA', soAdm.status === 403 && soSys.status === 403 && soPaco.status === 200, `HTTP ${soAdm.status}/${soSys.status}/${soPaco.status}`);
+		const adSys = await api('PATCH', `/api/collections/users/records/${a.id}`, { token: roles.admin.token, body: { role: 'sysop' } });
+		check('admin attribue sysop', adSys.status === 200, `HTTP ${adSys.status}`);
+		await api('PATCH', `/api/collections/users/records/${a.id}`, { token: roles.admin.token, body: { role: 'guest' } });
+
+		// Dernier administrateur actif : refusé seulement s'il n'en reste aucun autre (base de test : on ne touche pas aux vrais).
+		const others = await api('GET', `/api/collections/users/records?perPage=1&filter=${encodeURIComponent(`role = "admin" && id != "${roles.admin.id}"`)}`, { token: root });
+		const ad2 = await mk('l3d', 'admin');
+		const demote = await api('PATCH', `/api/collections/users/records/${ad2.id}`, { token: roles.admin.token, body: { role: 'paco' } });
+		check('rétrograder un administrateur quand il en reste d autres', demote.status === 200, `HTTP ${demote.status}`);
+		if (others.json?.totalItems === 0) {
+			const last = await api('PATCH', `/api/collections/users/records/${roles.admin.id}`, { token: root, body: { role: 'disabled', disabled_role: 'admin' } });
+			check('dernier administrateur actif : désactivation refusée', last.status === 400, `HTTP ${last.status}`);
+		} else {
+			check(`dernier administrateur : contrôlé par vitest (${others.json?.totalItems} autre(s) admin réel(s) ici)`, true);
+		}
+	}
+
 	// Admin : supprime.
 	const adel =await api('DELETE', `/api/collections/bus_orders/records/${order.json.id}`, { token: roles.admin.token });
 	check('admin supprime', adel.status === 204, `HTTP ${adel.status}`);

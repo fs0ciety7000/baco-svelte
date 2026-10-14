@@ -8,8 +8,10 @@ import { UserEditor } from "@/components/admin/user-editor";
 import { UserPasskeys } from "@/components/admin/user-passkeys";
 import { requireAdmin } from "@/server/auth";
 import { TokenList } from "@/components/pmr/extension-connect";
+import { assignableRoles } from "@/lib/roles";
 import { getUser } from "@/server/data/admin";
 import { pbForRequest } from "@/server/data/orders";
+import { listRoles } from "@/server/data/roles";
 import { listMyConnectorTokens } from "@/server/extension";
 
 export const metadata: Metadata = { title: "Compte · Administration · CSM" };
@@ -49,6 +51,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         user={user}
         isSelf={user.id === me.id}
         resetMail={await passwordResetEnabled()}
+        roles={assignableRoles(await listRoles())}
+        canAssignFull={me.role === "admin"}
       />
       <section
         className="flex flex-col gap-2 rounded-box border border-border bg-surface p-4"

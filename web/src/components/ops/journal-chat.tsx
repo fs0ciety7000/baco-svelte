@@ -38,7 +38,7 @@ import {
   retireEntry,
   setRead,
 } from "@/app/(app)/operations/actions";
-import { avatarRing } from "@/components/shell/avatar";
+import { useAvatarRing } from "@/components/shell/avatar";
 import { LiveHighlight } from "@/components/ui/live-highlight";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
@@ -163,6 +163,7 @@ export function JournalChat({
   /** Mots recherchés, surlignés dans les messages. */
   highlight?: string[];
 }) {
+  const avatarRing = useAvatarRing();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();

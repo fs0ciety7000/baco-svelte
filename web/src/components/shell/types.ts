@@ -21,16 +21,6 @@ export type ShellUser = {
   } | null;
 };
 
-export const ROLE_LABEL: Record<Role, string> = {
-  admin: "Administrateur",
-  sysop: "Sysop",
-  moderator: "Modérateur",
-  paco: "PACO/RCCA",
-  guest: "Invité",
-  screen: "Écran",
-  disabled: "Désactivé",
-};
-
 export function initials(name: string, email: string): string {
   const source = name.trim() || email.split("@")[0] || "?";
   const parts = source.split(/[\s._-]+/).filter(Boolean);

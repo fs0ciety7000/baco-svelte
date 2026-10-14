@@ -11,7 +11,11 @@ onRecordCreate((e) => {
 		const raw = e.record.getString(f).trim();
 		if (!raw.startsWith('[')) e.record.set(f, []);
 	}
-	e.record.set('perms', require(`${__hooks}/lib/perms.js`).permsOf(e.record));
+	// Lot L3 : `role` (texte) doit exister dans la collection `roles` (de même `disabled_role`).
+	const roles = require(`${__hooks}/lib/roles.js`);
+	roles.assertRoleExists(e.app, e.record.getString('role'), 'role');
+	roles.assertRoleExists(e.app, e.record.getString('disabled_role'), 'disabled_role');
+	e.record.set('perms', require(`${__hooks}/lib/perms.js`).permsOf(e.record, e.app));
 	e.next();
 }, 'users');
 
@@ -21,7 +25,34 @@ onRecordUpdate((e) => {
 		const raw = e.record.getString(f).trim();
 		if (!raw.startsWith('[')) e.record.set(f, []);
 	}
-	e.record.set('perms', require(`${__hooks}/lib/perms.js`).permsOf(e.record));
+	// Lot L3 : un rôle changé doit exister dans `roles` (les fiches inchangées ne sont pas bloquées).
+	const roles = require(`${__hooks}/lib/roles.js`);
+	const before = e.record.original();
+	for (const f of ['role', 'disabled_role']) {
+		if (e.record.getString(f) !== before.getString(f)) roles.assertRoleExists(e.app, e.record.getString(f), f);
+	}
+	e.record.set('perms', require(`${__hooks}/lib/perms.js`).permsOf(e.record, e.app));
+	e.next();
+}, 'users');
+
+// Lot L3, garde-fous des requêtes (admin, superuser compris) : `admin` / `sysop` attribués par un administrateur seulement ;
+// au moins un administrateur actif (rôle `admin`) : ni désactivation, ni rétrogradation, ni suppression du dernier.
+// Requêtes seulement : l'import en ligne de commande (remise à zéro) n'est pas bloqué.
+onRecordCreateRequest((e) => {
+	require(`${__hooks}/lib/roles.js`).assertCanAssign(e.auth, e.record.getString('role'), '');
+	e.next();
+}, 'users');
+
+onRecordUpdateRequest((e) => {
+	const roles = require(`${__hooks}/lib/roles.js`);
+	const before = e.record.original();
+	roles.assertCanAssign(e.auth, e.record.getString('role'), before.getString('role'));
+	roles.assertNotLastAdmin(e.app, before, e.record.getString('role'));
+	e.next();
+}, 'users');
+
+onRecordDeleteRequest((e) => {
+	require(`${__hooks}/lib/roles.js`).assertNotLastAdmin(e.app, e.record, '');
 	e.next();
 }, 'users');
 
@@ -85,7 +116,7 @@ onBootstrap((e) => {
 		const perms = require(`${__hooks}/lib/perms.js`);
 		let n = 0;
 		for (const r of $app.findAllRecords('users')) {
-			const next = JSON.stringify(perms.permsOf(r));
+			const next = JSON.stringify(perms.permsOf(r, $app));
 			let cur = null;
 			try {
 				cur = JSON.stringify(JSON.parse(r.getString('perms') || 'null'));

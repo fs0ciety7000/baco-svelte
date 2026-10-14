@@ -3,7 +3,8 @@
 > Statut : **validé par l'utilisateur** (14 oct. 2026). Réponses au §5 : admin seul gère les rôles (délégation plus
 > tard) ; Sysop gardé distinct ; pas de portée par district ; pas de droits temporaires ; granularité du §2.3 acceptée ;
 > suppression d'un rôle utilisé refusée avec réaffectation proposée ; Modérateur et PACO/RCCA modifiables mais non
-> supprimables ; couleur du rôle = anneau d'avatar. **Lots L0 et L1 livrés** (catalogue, `users.perms`) : voir l'annexe.
+> supprimables ; couleur du rôle = anneau d'avatar. **Lots L0 à L3 livrés** (catalogue, `users.perms`, règles en `perms`,
+> collection `roles`) : voir l'annexe (§F pour L2-L3). Prochain : L4 (écran Administration › Rôles).
 > Ébauche visuelle : `scratchpad/roles-v3/ebauche.html` (hors dépôt, noms fictifs).
 
 Demande de l'utilisateur (14 oct.) : « Granularité, ajout de nouvelles permissions, possibilité de créer rôles et
@@ -425,3 +426,52 @@ Atomes communs : `ACTIVE` = `@request.auth.id != "" && role != "disabled"` ; `AD
   rafraîchit pas : au lot L3, le recalcul des agents d'un rôle modifié doit passer par `$app.save()`.
 - Le recalcul de `perms` après un changement du catalogue est automatique (démarrage de `serve`) ; ajouter un contrôle
   `test-rules` par nouvelle clé.
+
+### F. Lots L2 et L3 livrés (14 oct. 2026)
+
+**L2 — règles en `perms`** (`pb_migrations/1760004400_rules_perms.js`) : 47 collections réécrites explicitement, collection par
+collection (aucune regex) : `can(P)` = `ACTIVE && (ADMIN || @request.auth.perms ~ '"P"')`. Restent en dur `ADMIN`, `screen`,
+`connector` (`grants ~ '"dicos:write"'` ; `role = "connector"` pour lire `quinyx_*`), `disabled`. `down` = règles v2 exactes
+(`pb_hooks/lib/rules-v2.js`, vérifié : `migrate down` rend les 47 collections identiques octet pour octet).
+Hooks : `isCoord` → `journal:moderate`, `isCoordinator(auth, record)` → `bus:reopen` / `taxi:reopen`, `hasJournalRead` /
+`hasPerm` → `perms`. Web : `can()` à la place de `isCoordinator`, `isJournalModerator`, `canEditChangelog`, `hideFor` (sauf
+Écran), `role === "guest"` (présence, planning, annonces, export des gares, mentions, horaires Quinyx).
+
+Corrections de l'annexe B appliquées (validées) :
+
+| Règle | Avant | Après | Qui gagne / perd |
+|---|---|---|---|
+| `audit_log` list / view | ADMIN ou `grants ~ audit:read` | ADMIN seul | un agent à qui `audit:read` aurait été accordé à la main le perd (clé retirée du catalogue le 11 oct.) |
+| `pmr_zones.delete` | ADMIN seul | `pmr:delete` | le Modérateur (et tout `pmr:delete` accordé) gagne la suppression d'une zone (pas de bouton) |
+| `stations` list / view | tout agent actif (invité compris) | `timetable:read` | l'invité perd la lecture des gares (onglet et export lui étaient déjà fermés) |
+| `rail_lines.update` | `ptcar:update` sauf invité | `ptcar:update` | un invité à qui `ptcar:read` + `ptcar:update` sont accordés peut modifier une ligne (comme `stations`) |
+
+Effet de bord voulu : le compte de service ne lit plus `pmr_zones`, `spi_points`, `changelog`, `train_services`,
+`train_relations`, `rail_lines`, `stations` (jamais utilisés par l'ingestion).
+
+**Ajout de l'utilisateur (14 oct.) — suppression des bons** (`1760004410_order_delete_creator.js`, hook `checkDelete`) :
+droit de suppression du module (Modérateur, admins) comme avant, OU le créateur avec le droit d'écriture du module pendant 8 h
+après la création, bon pas envoyé / finalisé (un bon envoyé ne se supprime que par un titulaire de `otto:delete` /
+`generate_taxi:delete`). Server Action `deleteOrder(kind, id)`.
+
+**Contrôle sur les vraies bases** : `pocketbase perms-check --dir /pb_data` (console, lecture seule ; les commandes console
+n'appliquent pas les migrations) compare l'ancien calcul v2 à `users.perms` compte par compte et clé par clé, n'affiche que
+des identifiants et des nombres, code 1 s'il y a un écart. Base de dev locale : 0 écart (avant et après L3). À lancer sur la
+préversion puis la prod (tâche planifiée Coolify) après le déploiement de L2-L3. Note : une fois des rôles modifiés ou créés
+(L4), `perms-check` signale les écarts voulus ; c'est un outil de bascule.
+
+**L3 — collection `roles`** (`1760004500_roles.js`, `roles.pb.js`, `lib/roles.js`) : voir §2.4. `users.role` /
+`disabled_role` en texte (définition JSON du champ changée en SQL : PocketBase refuse un changement de type). Permissions des
+rôles système = rôles par défaut du catalogue (équivalence vérifiée par `perms-check` et `catalog.test.ts`). Garde-fous dans
+les hooks : gestion admin / sysop, verrouillé, système, utilisé (message avec le nombre d'agents), clé figée, catalogue fermé,
+recalcul des agents par `app.save()`, `admin` / `sysop` attribués par un admin seulement (choix : un sysop ne le peut pas),
+dernier admin actif (rôle `admin`). Couleurs par défaut : accent pour admin / sysop, neutre pour les autres (aucun changement
+visible ; l'admin choisira au lot L4). Web : `lib/roles.ts`, `server/data/roles.ts`, `RolesProvider`.
+
+**Contrôles** : `test-rules.mjs` 482 → 558 (attentes changées : « invité lit une gare » → refusé ; trois contrôles de
+suppression visent désormais le bon d'un AUTRE agent, le créateur pouvant supprimer le sien 8 h). Vitest 933.
+
+**Mise en préversion** : migrations dans l'ordre 1760004400 → 1760004410 → 1760004500 (appliquées au démarrage de `serve`).
+Retour arrière : sauvegarde PocketBase juste avant le déploiement ; sinon `pocketbase migrate down 3` (rend les règles v2 et
+`users.role` en liste, supprime `roles`) puis redéploiement du code précédent (le web L2-L3 lit `perms`, compatible avec les
+règles v2).

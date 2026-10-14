@@ -3,15 +3,8 @@
 import { Check, Minus, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  ACTION_LABEL,
-  ACTIONS,
-  PERMISSION_MODULES,
-  roleHas,
-  type Action,
-  type Role,
-} from "@/lib/permissions";
-import { ROLE_LABEL } from "@/lib/team";
+import { ACTION_LABEL, ACTIONS, PERMISSION_MODULES, type Action } from "@/lib/permissions";
+import { FULL_ROLE_KEYS, type RoleMeta } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
 /** État d'un droit pour un compte : hérité du rôle, accordé (grants) ou retiré (denies). */
@@ -34,19 +27,21 @@ export function PermissionMatrix({
   value,
   onChange,
 }: {
-  role: Role;
+  /** Rôle du compte (collection `roles`, lot L3) : libellé et permissions héritées. */
+  role: RoleMeta;
   value: Record<string, Tri>;
   onChange: (next: Record<string, Tri>) => void;
 }) {
-  const full = role === "admin" || role === "sysop";
+  const full = FULL_ROLE_KEYS.includes(role.key);
+  const roleHas = (key: string) => full || role.perms.includes(key);
   const overrides = Object.values(value).filter((v) => v !== "defaut").length;
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <p className="max-w-prose text-small text-fg-muted">
           {full
-            ? `${ROLE_LABEL[role]} : tous les droits, sans exception.`
-            : `Chaque case hérite du rôle ${ROLE_LABEL[role]} ; un clic l'accorde, un deuxième la retire, un troisième la rend au rôle.`}
+            ? `${role.label} : tous les droits, sans exception.`
+            : `Chaque case hérite du rôle ${role.label} ; un clic l'accorde, un deuxième la retire, un troisième la rend au rôle.`}
         </p>
         {!full && overrides > 0 ? (
           <Button variant="ghost" size="sm" onClick={() => onChange({})}>
@@ -84,7 +79,7 @@ export function PermissionMatrix({
                     key={a}
                     module={m.label}
                     action={a}
-                    byRole={roleHas(role, `${m.key}:${a}`)}
+                    byRole={roleHas(`${m.key}:${a}`)}
                     state={full ? "defaut" : (value[`${m.key}:${a}`] ?? "defaut")}
                     disabled={full}
                     onCycle={() => {
@@ -100,7 +95,7 @@ export function PermissionMatrix({
                         a === "write" &&
                         next === "accorde" &&
                         m.actions.includes("update") &&
-                        !roleHas(role, upd) &&
+                        !roleHas(upd) &&
                         copy[upd] !== "accorde"
                       )
                         copy[upd] = "accorde";
