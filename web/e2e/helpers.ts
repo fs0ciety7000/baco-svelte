@@ -17,3 +17,12 @@ export async function noHorizontalScroll(page: Page) {
   );
   expect(overflow, "défilement horizontal de page").toBeLessThanOrEqual(0);
 }
+
+/**
+ * Champs date personnalisés (refonte R3) : la date s'affiche et se tape en `jj/mm/aaaa` (valeur ISO dans le champ
+ * caché). `frDate("2026-10-14")` → « 14/10/2026 », pour `fill` ou `toHaveValue` sur un DateField.
+ */
+export function frDate(iso: string): string {
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}

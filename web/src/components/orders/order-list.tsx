@@ -1,6 +1,7 @@
 import { Search } from "lucide-react";
 import Link from "next/link";
 
+import { DateRangePicker } from "@/components/ui/date-field";
 import { FilterForm } from "@/components/ui/filter-form";
 import {
   ChipRow,
@@ -128,14 +129,14 @@ export function FilterBar({
               ))}
             </Select>
           </label>
-          <label className="flex min-w-0 flex-col gap-1 md:w-40">
-            <span className="text-small text-fg-muted">Du</span>
-            <Input type="date" name="du" defaultValue={filters.du} />
-          </label>
-          <label className="flex min-w-0 flex-col gap-1 md:w-40">
-            <span className="text-small text-fg-muted">Au</span>
-            <Input type="date" name="au" defaultValue={filters.au} />
-          </label>
+          <DateRangePicker
+            nameFrom="du"
+            nameTo="au"
+            defaultFrom={filters.du ?? ""}
+            defaultTo={filters.au ?? ""}
+            presets={["today", "tomorrow", "7d", "week"]}
+            fieldClassName="md:w-40"
+          />
           <div className="col-span-2 flex gap-2">
             <FilterSubmit />
             <ClearFilters href={action} />

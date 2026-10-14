@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 
 import { toggleFavoriteStation, unwatchTrain, watchTrain } from "@/app/(app)/operations/actions";
 import { Button } from "@/components/ui/button";
+import { DateField } from "@/components/ui/date-field";
 import { Segmented } from "@/components/ui/form-kit";
 import { Input } from "@/components/ui/input";
 import { EmptyState, Skeleton } from "@/components/ui/misc";
@@ -23,6 +24,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/status-badge";
 import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TimeField } from "@/components/ui/time-field";
 import { toast } from "@/components/ui/toast";
 import {
   delayLabel,
@@ -409,11 +411,11 @@ export function LiveBoard({
                 <div className="grid max-w-sm grid-cols-2 gap-2">
                   <label className="flex flex-col gap-1 text-small text-fg-muted">
                     Jour
-                    <Input type="date" value={day} onChange={(e) => setDay(e.target.value)} />
+                    <DateField value={day} onValueChange={setDay} label="Jour" />
                   </label>
                   <label className="flex flex-col gap-1 text-small text-fg-muted">
                     Heure
-                    <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+                    <TimeField value={time} onValueChange={setTime} />
                   </label>
                 </div>
               ) : null}

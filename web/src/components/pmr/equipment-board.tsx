@@ -23,6 +23,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/status-badge";
 import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
 import { toast } from "@/components/ui/toast";
+import { DateField } from "@/components/ui/date-field";
 import { safeCall } from "@/lib/orders/safe-call";
 import { formatShortDay, pbDate } from "@/lib/orders/time";
 import {
@@ -503,11 +504,7 @@ function EquipmentDialog({
               />
             </Field>
             <Field label="Validité (fin)">
-              <Input
-                type="date"
-                value={f.valid_until}
-                onChange={(e) => set("valid_until", e.target.value)}
-              />
+              <DateField value={f.valid_until} onValueChange={(v) => set("valid_until", v)} />
             </Field>
             <Field label="État">
               <Select

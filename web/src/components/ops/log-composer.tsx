@@ -34,8 +34,10 @@ import {
 } from "@/app/(app)/operations/actions";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DateField } from "@/components/ui/date-field";
 import { Field } from "@/components/ui/field";
 import { Input, Select, Textarea } from "@/components/ui/input";
+import { TimeField } from "@/components/ui/time-field";
 import { toast } from "@/components/ui/toast";
 import { CATEGORY, LOG_CATEGORIES, ATTACHMENT_MAX, type LogCategory } from "@/lib/ops/log";
 import { safeCall } from "@/lib/orders/safe-call";
@@ -601,18 +603,16 @@ export function LogComposer({
           >
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <Field label="Jour de l'événement">
-                <Input
-                  type="date"
+                <DateField
                   value={day}
-                  onChange={(e) => (setDay(e.target.value), setTimeSet(true))}
+                  onValueChange={(v) => (setDay(v), setTimeSet(true))}
                   required
                 />
               </Field>
               <Field label="Heure">
-                <Input
-                  type="time"
+                <TimeField
                   value={time}
-                  onChange={(e) => (setTime(e.target.value), setTimeSet(true))}
+                  onValueChange={(v) => (setTime(v), setTimeSet(true))}
                   required
                 />
               </Field>
@@ -649,14 +649,10 @@ export function LogComposer({
               {pin ? (
                 <div className="grid grid-cols-2 gap-3 md:max-w-sm">
                   <Field label="Jour">
-                    <Input type="date" value={pinDay} onChange={(e) => setPinDay(e.target.value)} />
+                    <DateField value={pinDay} onValueChange={setPinDay} />
                   </Field>
                   <Field label="Heure">
-                    <Input
-                      type="time"
-                      value={pinTime}
-                      onChange={(e) => setPinTime(e.target.value)}
-                    />
+                    <TimeField value={pinTime} onValueChange={setPinTime} />
                   </Field>
                 </div>
               ) : null}
@@ -939,10 +935,10 @@ export function LogComposer({
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Field label="Jour de l'événement">
-          <Input type="date" value={day} onChange={(e) => setDay(e.target.value)} required />
+          <DateField value={day} onValueChange={setDay} required />
         </Field>
         <Field label="Heure">
-          <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} required />
+          <TimeField value={time} onValueChange={setTime} required />
         </Field>
         <Field label="Train (facultatif)">
           <Input
@@ -976,10 +972,10 @@ export function LogComposer({
         {pin ? (
           <div className="grid grid-cols-2 gap-3 md:max-w-sm">
             <Field label="Jour">
-              <Input type="date" value={pinDay} onChange={(e) => setPinDay(e.target.value)} />
+              <DateField value={pinDay} onValueChange={setPinDay} />
             </Field>
             <Field label="Heure">
-              <Input type="time" value={pinTime} onChange={(e) => setPinTime(e.target.value)} />
+              <TimeField value={pinTime} onValueChange={setPinTime} />
             </Field>
           </div>
         ) : null}

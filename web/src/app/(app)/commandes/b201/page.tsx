@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, FileText } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { DateField } from "@/components/ui/date-field";
 import { FilterForm } from "@/components/ui/filter-form";
 import { B201Editor } from "@/components/orders/b201-editor";
 import { B201Keys } from "@/components/orders/b201-keys";
@@ -47,12 +48,12 @@ export default async function Page({
             <label className="sr-only" htmlFor="b201-jour">
               Jour
             </label>
-            <input
+            <DateField
               id="b201-jour"
-              type="date"
               name="jour"
               defaultValue={day}
-              className="h-control border border-border-strong bg-surface px-3 text-body text-fg"
+              label="Jour"
+              className="w-40"
             />
             {district ? <input type="hidden" name="district" value={district} /> : null}
             <Button type="submit" variant="ghost" size="sm">

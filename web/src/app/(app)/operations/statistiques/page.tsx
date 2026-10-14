@@ -3,13 +3,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { pl } from "@/lib/utils";
+import { DateRangePicker } from "@/components/ui/date-field";
 import { FilterForm } from "@/components/ui/filter-form";
 import { ChipRow, CollapsibleFilters, FilterChip } from "@/components/ui/filters";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { BarList, StackedBars } from "@/components/ops/charts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Input, Select } from "@/components/ui/input";
+import { Select } from "@/components/ui/input";
 import { StatCard } from "@/components/ui/stat-card";
 import { Table, Td, Th, THead, Tr } from "@/components/ui/table";
 import { addDays, brusselsDay, formatDay } from "@/lib/orders/time";
@@ -75,14 +76,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
           <CollapsibleFilters
             active={[filters.district, filters.type, filters.societe].filter(Boolean).length}
           >
-            <label className="flex min-w-0 flex-col gap-1 md:w-40">
-              <span className="text-small text-fg-muted">Du</span>
-              <Input type="date" name="du" defaultValue={from} />
-            </label>
-            <label className="flex min-w-0 flex-col gap-1 md:w-40">
-              <span className="text-small text-fg-muted">Au</span>
-              <Input type="date" name="au" defaultValue={to} />
-            </label>
+            <DateRangePicker
+              nameFrom="du"
+              nameTo="au"
+              defaultFrom={from ?? ""}
+              defaultTo={to ?? ""}
+              presets={["last7", "week"]}
+              fieldClassName="md:w-40"
+            />
             <label className="flex min-w-0 flex-col gap-1 md:w-36">
               <span className="text-small text-fg-muted">District</span>
               <Select name="district" defaultValue={filters.district ?? ""}>

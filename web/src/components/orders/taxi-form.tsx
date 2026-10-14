@@ -29,6 +29,8 @@ import { ActionBar, AutosaveIndicator, FormSection, Segmented } from "@/componen
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";
+import { DateField } from "@/components/ui/date-field";
+import { TimeField } from "@/components/ui/time-field";
 import {
   BILLING,
   checkTaxiForSend,
@@ -226,18 +228,10 @@ export function TaxiForm(props: TaxiFormProps) {
           >
             <div className="grid grid-cols-2 gap-3">
               <Field label="Date" required error={err("trip")}>
-                <Input
-                  type="date"
-                  value={d.trip_day}
-                  onChange={(e) => set("trip_day", e.target.value)}
-                />
+                <DateField value={d.trip_day} onValueChange={(v) => set("trip_day", v)} />
               </Field>
               <Field label="Heure de prise en charge" required>
-                <Input
-                  type="time"
-                  value={d.trip_time}
-                  onChange={(e) => set("trip_time", e.target.value)}
-                />
+                <TimeField value={d.trip_time} onValueChange={(v) => set("trip_time", v)} pending />
               </Field>
             </div>
             <TrainNumberField
@@ -297,17 +291,13 @@ export function TaxiForm(props: TaxiFormProps) {
                 <legend className="label-mono px-1 text-fg-muted">Retour</legend>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Date du retour" error={err("return")}>
-                    <Input
-                      type="date"
-                      value={d.return_day}
-                      onChange={(e) => set("return_day", e.target.value)}
-                    />
+                    <DateField value={d.return_day} onValueChange={(v) => set("return_day", v)} />
                   </Field>
                   <Field label="Heure du retour">
-                    <Input
-                      type="time"
+                    <TimeField
                       value={d.return_time}
-                      onChange={(e) => set("return_time", e.target.value)}
+                      onValueChange={(v) => set("return_time", v)}
+                      pending
                     />
                   </Field>
                   <Field label="Départ du retour">
@@ -522,11 +512,7 @@ export function TaxiForm(props: TaxiFormProps) {
               />
             </Field>
             <Field label="Heure confirmée par le taxi" className="max-w-48">
-              <Input
-                type="time"
-                value={d.confirmed_time}
-                onChange={(e) => set("confirmed_time", e.target.value)}
-              />
+              <TimeField value={d.confirmed_time} onValueChange={(v) => set("confirmed_time", v)} />
             </Field>
           </FormSection>
         </fieldset>
