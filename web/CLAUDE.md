@@ -575,6 +575,12 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   actions `commandes/fournisseurs/actions.ts` (création `:write`, modification `:update`, suppression `:delete`, listes
   taxi saisies une valeur par ligne), composant `components/orders/supplier-board.tsx` (liste, panneau, dialogues). Le
   bouton Supprimer est grisé si un bon cite la société (le hook PocketBase refuse de toute façon).
+  **Lignes desservies** (15 oct. 2026) : `CompanyLines` = `MultiSelect` (recherche) alimenté par `railLineOptions()`
+  (`rail_lines` → « L.96 — extrémités », `server/data/suppliers.ts`), enregistrement en masse par `setBusCompanyLines`
+  (ajouts `otto:write` et seulement des lignes du référentiel, écrites « L.96 » ; retraits `otto:delete`) ; plus de saisie
+  libre (`saveBusChild` « line » refuse une ligne hors référentiel). Anciennes valeurs : reconnues par numéro (« 96 » =
+  « L.96 ») sinon gardées « hors référentiel » (retirables). Logique pure `lib/orders/company-lines.ts` (testée). E2E
+  `e2e/fournisseurs.spec.ts`.
 - **Supervision** (Admin › Santé) : `server/supervision.ts` (`readSupervision` → route interne PocketBase
   `/api/csm/health`, secret `CSM_INTERNAL_SECRET`, page `requireAdmin()` seulement), verdicts purs `lib/supervision.ts`
   (`cronVerdict` : en retard au-delà de 2 périodes + 5 min, `backupVerdict` : < 26 h / < 50 h, `archivesVerdict` ;

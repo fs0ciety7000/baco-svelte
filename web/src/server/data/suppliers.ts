@@ -4,6 +4,7 @@ import type { RecordModel } from "pocketbase";
 import { z } from "zod";
 
 import { parseEmails } from "@/lib/orders/schemas";
+import { railLineOption, type LineOption } from "@/lib/orders/company-lines";
 import { foldStation } from "@/lib/stations/search";
 
 import { pbForRequest } from "./orders";
@@ -152,4 +153,20 @@ export async function getTaxiSupplier(id: string): Promise<TaxiSupplier> {
     notes: strings(c.notes),
     orders,
   };
+}
+
+/**
+ * Lignes du référentiel (`rail_lines`) proposées pour les lignes desservies d'une société de bus (15 oct. 2026).
+ * Référentiel illisible (invité) ou vide : liste vide, les lignes enregistrées restent affichées.
+ */
+export async function railLineOptions(): Promise<LineOption[]> {
+  const pb = await pbForRequest();
+  const list = await pb
+    .collection("rail_lines")
+    .getFullList({ fields: "line,name", sort: "line" })
+    .catch(() => [] as RecordModel[]);
+  return list
+    .map((l) => railLineOption({ line: str(l.line), name: str(l.name) }))
+    .filter((o) => o.value)
+    .sort((a, b) => a.value.localeCompare(b.value, "fr", { numeric: true }));
 }
