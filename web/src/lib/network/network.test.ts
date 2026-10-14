@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  bkFromPosts,
   crossingNumber,
+  kmPostsFrom,
   estimateBk,
   matchCrossings,
   numberKey,
@@ -10,7 +12,13 @@ import {
   type InfrabelCrossing,
 } from "./crossings";
 import { fromLocal, haversineKm, toLocal } from "./geo";
-import { assignStationZones, crossingZone, lineGraph, zonesOfDistricts, type ZoneStation } from "./spi";
+import {
+  assignStationZones,
+  crossingZone,
+  lineGraph,
+  zonesOfDistricts,
+  type ZoneStation,
+} from "./spi";
 import { boundedCells, clipHalfPlane, polygonArea, zoneGeoJson, zoneShapes } from "./voronoi";
 
 const row = (o: Partial<Record<string, string>>) => ({
@@ -42,9 +50,10 @@ describe("PN Infrabel", () => {
       line: "L.90C",
       number: "12A",
     });
-    expect(
-      parseInfrabelCrossing(row({ fld_geo_x: "", fld_geo_y: "" }))?.lat,
-    ).toBeCloseTo(50.705138, 5);
+    expect(parseInfrabelCrossing(row({ fld_geo_x: "", fld_geo_y: "" }))?.lat).toBeCloseTo(
+      50.705138,
+      5,
+    );
   });
   it("ignore les zones portuaires et les positions hors Belgique", () => {
     expect(parseInfrabelCrossing(row({ fld_naam_ramses: "Antwerpen-DS-Alaska-269" }))).toBeNull();
@@ -126,8 +135,47 @@ describe("BK estimée", () => {
   });
 });
 
+describe("BK par les bornes kilométriques", () => {
+  const at = (x: number, y = 0) => fromLocal([x, y]);
+  const csvRow = (line: string, name: string, x: number, y = 0) => {
+    const g = at(x, y);
+    return { linecalfa: line, name, geo_point_2d: `${g.lat}, ${g.lon}` };
+  };
+  it("regroupe les bornes par ligne (voies moyennées) et ignore les lignes techniques", () => {
+    const m = kmPostsFrom([
+      csvRow("94", "11", 1, 0.01),
+      csvRow("94", "11", 1, -0.01),
+      csvRow("94", "10", 0),
+      csvRow("94/1", "3", 0),
+      csvRow("", "3", 0),
+      csvRow("90c", "x", 0),
+    ]);
+    expect([...m.keys()]).toEqual(["94"]);
+    expect(m.get("94")!.map((p) => p.km)).toEqual([10, 11]);
+    expect(toLocal(m.get("94")![1]!)[1]).toBeCloseTo(0, 4);
+  });
+  it("interpole entre les deux bornes qui encadrent le PN", () => {
+    const posts = kmPostsFrom([
+      csvRow("1", "10", 0),
+      csvRow("1", "11", 1),
+      csvRow("1", "12", 2),
+      csvRow("1", "20", 10),
+    ]).get("1")!;
+    expect(bkFromPosts(at(1.25, 0.05), posts)).toBeCloseTo(11.25, 2);
+    // trou de 8 km entre 12 et 20 : pas d'interpolation, point trop loin des segments gardés
+    expect(bkFromPosts(at(6), posts)).toBeNull();
+    expect(bkFromPosts(at(1, 0.5), posts)).toBeNull();
+    expect(bkFromPosts(at(1), [])).toBeNull();
+  });
+});
+
 describe("zones SPI", () => {
-  const st = (key: string, x: number, y: number, extra: Partial<ZoneStation> = {}): ZoneStation => ({
+  const st = (
+    key: string,
+    x: number,
+    y: number,
+    extra: Partial<ZoneStation> = {},
+  ): ZoneStation => ({
     key,
     name: key.toUpperCase(),
     ...fromLocal([x, y]),
@@ -148,7 +196,11 @@ describe("zones SPI", () => {
   ];
   const lines = [{ line: "1", stations: [{ n: "A" }, { n: "B" }, { n: "C" }, { n: "D" }] }];
   it("carte, puis graphe le long des lignes, puis proximité ; manuel gardé", () => {
-    const z = assignStationZones(stations, lines, { a: "FCR", d: "FTY", e: "XXX" }, ["FCR", "FTY", "FMS"]);
+    const z = assignStationZones(stations, lines, { a: "FCR", d: "FTY", e: "XXX" }, [
+      "FCR",
+      "FTY",
+      "FMS",
+    ]);
     expect(z.get("a")).toEqual({ zone: "FCR", source: "carte" });
     expect(z.get("b")).toEqual({ zone: "FCR", source: "graphe" });
     expect(z.get("c")).toEqual({ zone: "FTY", source: "graphe" });
@@ -181,10 +233,13 @@ describe("zones SPI", () => {
   });
   it("zones d'un district", () => {
     expect([
-      ...zonesOfDistricts(["DSO"], [
-        { code: "FMS", district: "DSO" },
-        { code: "FNR", district: "DSE" },
-      ]),
+      ...zonesOfDistricts(
+        ["DSO"],
+        [
+          { code: "FMS", district: "DSO" },
+          { code: "FNR", district: "DSE" },
+        ],
+      ),
     ]).toEqual(["FMS"]);
   });
 });
@@ -249,6 +304,9 @@ describe("dessin des zones", () => {
     const x = toLocal({ lat: s.borders[0]!.path[0][0], lon: s.borders[0]!.path[0][1] })[0];
     expect(x).toBeCloseTo(4.5, 2);
     expect(s.labels.FMS![0]).toBeCloseTo(fromLocal([1.5, 0]).lat, 4);
+    // contour extérieur : côtés du disque, jamais la frontière partagée
+    expect(s.outlines.FMS!.length).toBeGreaterThan(5);
+    expect(s.outlines.FCR!.length).toBeGreaterThan(5);
     const gj = zoneGeoJson(s.cells.FCR!);
     expect(gj.type).toBe("MultiPolygon");
     expect(gj.coordinates[0]![0]![0]).toEqual(gj.coordinates[0]![0]!.at(-1));

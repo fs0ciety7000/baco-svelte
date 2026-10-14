@@ -3,7 +3,10 @@ import "server-only";
 import { brusselsDay } from "@/lib/orders/time";
 import { csvReader } from "@/lib/timetable/csv";
 import {
+  bkFromPosts,
   estimateBk,
+  kmPostsFrom,
+  type KmPost,
   matchCrossings,
   parseInfrabelCrossing,
   type InfrabelCrossing,
@@ -29,6 +32,9 @@ import { env } from "@/server/env";
 
 const INFRABEL_PN_URL =
   "https://opendata.infrabel.be/api/explore/v2.1/catalog/datasets/geoow/exports/csv?delimiter=%3B";
+/** Bornes kilométriques par ligne (CC0, ≈ 830 Ko) : BK des PN interpolée entre deux bornes. */
+const INFRABEL_KM_URL =
+  "https://opendata.infrabel.be/api/explore/v2.1/catalog/datasets/relatie-tussen-kilometerpalen-en-lijnen/exports/csv?delimiter=%3B&select=name,linecalfa,geo_point_2d";
 export const INFRABEL_PN_SOURCE =
   "https://opendata.infrabel.be/explore/dataset/geoow/ (licence CC0)";
 
@@ -43,11 +49,13 @@ type State = {
     lon: number;
     bk: number;
     bkEstimated: boolean;
+    bkSource?: string;
     zone: string;
     zoneSource: string;
     source: string;
     infrabelId: string;
     active: boolean;
+    infrabelSeen?: string;
   }[];
   zones: { code: string; district: string }[];
 };
@@ -64,7 +72,13 @@ export type NetworkSummary = {
     updated: number;
     conflicts: number;
     deactivated: number;
+    /** PN repris de BACO absents du fichier Infrabel, désactivés (réversible). */
+    retired?: number;
+    /** BK interpolées entre les bornes kilométriques Infrabel. */
+    bkPosts?: number;
     bkEstimated: number;
+    /** Bornes kilométriques illisibles : BK estimées seulement. */
+    kmPostsError?: string;
   };
   error?: string;
 };
@@ -104,6 +118,27 @@ export async function readInfrabelCrossings(): Promise<InfrabelCrossing[]> {
     }
   }
   return out;
+}
+
+/** Bornes kilométriques Infrabel par ligne ; vide si le fichier est injoignable (repli sur l'estimation). */
+export async function readKmPosts(): Promise<Map<string, KmPost[]>> {
+  const res = await fetch(INFRABEL_KM_URL, {
+    headers: { "user-agent": env.CSM_USER_AGENT },
+    cache: "no-store",
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!res.ok) throw new Error(`opendata.infrabel.be (bornes) : HTTP ${res.status}.`);
+  const text = await res.text();
+  if (text.length > 10_000_000) throw new Error("Fichier des bornes démesuré.");
+  const read = csvReader(";");
+  const rows: Record<string, string>[] = [];
+  for (const line of text.split(/\r?\n/)) {
+    const r = read(line);
+    if (r) rows.push(r);
+  }
+  const posts = kmPostsFrom(rows);
+  if (posts.size < 50) throw new Error(`Bornes kilométriques incomplètes (${posts.size} lignes).`);
+  return posts;
 }
 
 async function inBatches<T>(items: T[], size: number, fn: (batch: T[]) => Promise<unknown>) {
@@ -202,14 +237,26 @@ async function doRun(withCrossings: boolean): Promise<NetworkSummary> {
         }),
     ]),
   );
+  // BK : bornes kilométriques de la ligne d'abord (≈ 50 m), estimation le long des gares en repli (« ≈ »).
+  let posts = new Map<string, KmPost[]>();
+  let kmPostsError = "";
+  try {
+    posts = await readKmPosts();
+  } catch (e) {
+    kmPostsError = (e instanceof Error ? e.message : String(e)).slice(0, 200);
+  }
   let bkEstimated = 0;
+  let bkPosts = 0;
   const items = infra.map((pn) => {
-    const bk = estimateBk(pn, lineStations.get(lineKey(pn.line)) ?? []);
-    if (bk) bkEstimated++;
+    const fromPosts = bkFromPosts(pn, posts.get(lineKey(pn.line)) ?? []);
+    const estimated = fromPosts ? null : estimateBk(pn, lineStations.get(lineKey(pn.line)) ?? []);
+    if (fromPosts) bkPosts++;
+    else if (estimated) bkEstimated++;
     return {
       id: match.byInfrabel.get(pn.infrabelId) ?? "",
       ...pn,
-      bk: bk ?? 0,
+      bk: fromPosts ?? estimated ?? 0,
+      bkSource: fromPosts ? "bornes" : estimated ? "estimee" : "",
       zone: crossingZone(pn, zoned),
     };
   });
@@ -224,12 +271,16 @@ async function doRun(withCrossings: boolean): Promise<NetworkSummary> {
     totals.updated += r.updated;
     totals.conflicts += r.conflicts;
   });
-  const fin = await internal<{ deactivated: number }>("network/crossings/finish", {
-    day,
-    seen: infra.length,
-  });
-  // PN connus sans pendant Infrabel (repris de BACO sans zone, saisis dans CSM) : zone calculée s'ils en manquent.
+  // PN repris de BACO sans pendant Infrabel : désactivés (décision du 15 oct. 2026 ; réversibles, jamais supprimés).
   const matched = new Set(match.byInfrabel.values());
+  const retire = state.crossings
+    .filter((c) => c.source === "baco" && c.active && !c.infrabelId && !matched.has(c.id))
+    .map((c) => c.id);
+  const fin = await internal<{ deactivated: number; retired?: number }>(
+    "network/crossings/finish",
+    { day, seen: infra.length, retire },
+  );
+  // PN connus sans pendant Infrabel (repris de BACO sans zone, saisis dans CSM) : zone calculée s'ils en manquent.
   const others = state.crossings
     .filter((c) => !matched.has(c.id) && c.zoneSource !== "baco" && c.zoneSource !== "manuel")
     .map((c) => ({ id: c.id, zone: crossingZone(c, zoned), before: c.zone }))
@@ -246,7 +297,10 @@ async function doRun(withCrossings: boolean): Promise<NetworkSummary> {
     updated: totals.updated,
     conflicts: totals.conflicts,
     deactivated: fin.deactivated,
+    retired: fin.retired ?? 0,
+    bkPosts,
     bkEstimated,
+    ...(kmPostsError ? { kmPostsError } : {}),
   };
   return summary;
 }

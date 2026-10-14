@@ -47,7 +47,7 @@ export default async function Page() {
         [
           "PN Infrabel (données ouvertes)",
           s.network?.crossings
-            ? `${s.network.crossings.infrabel} lus · ${s.network.crossings.matched} rapprochés · ${s.network.crossings.created} nouveaux · ${s.network.crossings.deactivated} désactivés`
+            ? `${s.network.crossings.infrabel} lus · ${s.network.crossings.matched} rapprochés · ${s.network.crossings.created} nouveaux · ${s.network.crossings.deactivated + (s.network.crossings.retired ?? 0)} désactivés · BK : ${s.network.crossings.bkPosts ?? 0} par les bornes, ${s.network.crossings.bkEstimated} estimées${s.network.crossings.kmPostsError ? ` (bornes : ${s.network.crossings.kmPostsError})` : ""}`
             : "—",
         ],
         [

@@ -1279,6 +1279,11 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   cellules de Voronoï des gares (calcul maison). « Zone commune FBMZ et FBN » de la carte non reprise (aucune gare).
   Gares de Hal à Uccle en FBMZ et Flawinne / Floreffe en FNR alors que le référentiel des districts les met en DSO : la
   carte fait foi pour la zone, districts inchangés (à revoir par l'équipe).
+- 2026-10-15 — **Réponses sur le lot A** : noms et couleurs des zones validés ; pas de zone commune FBMZ / FBN ; **la carte
+  fait foi** → graine des districts (`station-seed.json`) : Buizingen, Huizingen, Halle-Goederen, Moensberg, Bruxelles-Midi
+  → DCE (Bruxelles-Midi rattaché à FBMZ), Flawinne, Floreffe, Ham-sur-Sambre, Moustier → DSE ; les 28 PN BACO absents
+  d'Infrabel **désactivés** (réversible) ; **BK réelle** : interpolée entre les bornes kilométriques Infrabel (CC0), 1 112 PN
+  sur 1 290, estimation « ≈ » en repli (53) ; **vrai fond de carte** (tuiles OSM relayées) sous les zones.
 
 ---
 

@@ -766,6 +766,12 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   par Administration › Référentiels › Zones SPI (`zones-actions.ts`). Routes internes `/api/csm/network/*`.
 - Données `server/data/network.ts` (`listSpiZones`, `spiShapes` gardé 5 min, `listZoneStations`) ; route
   `GET /api/reseau/zones-spi` (`carte_pn:read` ou `referentiels:manage`). Tuiles ouvertes aussi à `referentiels:manage`.
+- **BK des PN** (suite du 15 oct.) : `kmPostsFrom` / `bkFromPosts` (`crossings.ts`) interpolent la BK entre les bornes
+  kilométriques Infrabel de la ligne (jeu « relatie-tussen-kilometerpalen-en-lijnen », CC0 ; écart médian 5 m, p90 92 m
+  contre les BK BACO ; > 300 m du tracé = repli `estimateBk` « ≈ ») ; `level_crossings.bk_source` = bornes / estimee / « »
+  (relevée) ; `bkLabel` / `bkNote` (`pn.ts`). PN BACO sans pendant Infrabel : désactivés par l'import (`retire`).
+- **Fond de carte** : tuiles OpenStreetMap relayées (`/api/operations/tuiles`), zones en polygones semi-transparents avec
+  contour (`ZoneShapes.outlines`) et frontières en tirets, échelle métrique ; animations Leaflet coupées en mouvement réduit.
 - Écrans : `/reseau/pn` (`PnBoard` + `PnMap` réutilisable : `points`, `zones`, `showZones`, `fitKey`, survol croisé ;
   URL `?q=&district=&zone=&ligne=&pn=&zones=1&vue=carte` par `history.replaceState`), fiche de ligne (section PN triée
   par BK, `data-testid="line-crossings"`), `/admin/referentiels/zones-spi` (`SpiZonesAdmin`). E2E `e2e/reseau-pn.spec.ts`.

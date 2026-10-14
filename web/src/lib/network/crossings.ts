@@ -65,7 +65,9 @@ export function parseInfrabelCrossing(row: Record<string, string>): InfrabelCros
   let lat = num(row.fld_geo_y);
   let lon = num(row.fld_geo_x);
   if (!(lat > 0)) {
-    const pos = /(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/.exec(row.position_du_passage_a_niveau ?? "");
+    const pos = /(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/.exec(
+      row.position_du_passage_a_niveau ?? "",
+    );
     if (pos) {
       lat = num(pos[1]);
       lon = num(pos[2]);
@@ -159,7 +161,9 @@ export function estimateBk(
   const local = pts.map((s) => toLocal(s));
   const cum: number[] = [0];
   for (let i = 1; i < local.length; i++)
-    cum.push(cum[i - 1]! + Math.hypot(local[i]![0] - local[i - 1]![0], local[i]![1] - local[i - 1]![1]));
+    cum.push(
+      cum[i - 1]! + Math.hypot(local[i]![0] - local[i - 1]![0], local[i]![1] - local[i - 1]![1]),
+    );
   const known = pts
     .map((s, i) => ({ i, km: typeof s.km === "number" ? s.km : null }))
     .filter((k): k is { i: number; km: number } => k.km !== null);
@@ -196,4 +200,62 @@ export function estimateBk(
   if (span <= 0) return null;
   const km = lo.km + ((best.along - cum[lo.i]!) / span) * (hi.km - lo.km);
   return km > 0 && km < 1000 ? Math.round(km * 1000) / 1000 : null;
+}
+
+// --- BK par les bornes kilométriques Infrabel ------------------------------------------------------------------
+// Jeu « relatie-tussen-kilometerpalen-en-lijnen » (CC0, ≈ 6 000 bornes : n° de ligne, km de la borne, position). La BK
+// d'un PN est interpolée entre les deux bornes consécutives de SA ligne qui l'encadrent (une borne par km) : écart
+// médian de 5 m, 90 % sous 100 m contre les BK relevées de BACO. Repli : `estimateBk` (gares, « ≈ »).
+
+export type KmPost = LatLon & { km: number };
+
+/** Lignes du CSV des bornes → ligne (« 94 », « 90C ») → bornes triées par km (positions des voies moyennées). */
+export function kmPostsFrom(rows: Iterable<Record<string, string>>): Map<string, KmPost[]> {
+  const acc = new Map<string, Map<number, { lat: number; lon: number; n: number }>>();
+  for (const r of rows) {
+    const line = (r.linecalfa ?? "").trim().toUpperCase();
+    const name = (r.name ?? "").trim();
+    if (!/^\d{1,3}[A-Z]?$/.test(line) || !/^\d{1,3}$/.test(name)) continue;
+    const pos = /(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/.exec(r.geo_point_2d ?? "");
+    if (!pos) continue;
+    const lat = Number(pos[1]);
+    const lon = Number(pos[2]);
+    if (!hasPosition({ lat, lon })) continue;
+    const km = Number(name);
+    const byKm = acc.get(line) ?? new Map<number, { lat: number; lon: number; n: number }>();
+    const cur = byKm.get(km) ?? { lat: 0, lon: 0, n: 0 };
+    cur.lat += lat;
+    cur.lon += lon;
+    cur.n++;
+    byKm.set(km, cur);
+    acc.set(line, byKm);
+  }
+  const out = new Map<string, KmPost[]>();
+  for (const [line, byKm] of acc)
+    out.set(
+      line,
+      [...byKm.entries()]
+        .map(([km, v]) => ({ km, lat: v.lat / v.n, lon: v.lon / v.n }))
+        .sort((a, b) => a.km - b.km),
+    );
+  return out;
+}
+
+/**
+ * BK d'un point entre les bornes de sa ligne : segment entre deux bornes consécutives (2 km d'écart au plus) le plus
+ * proche, km interpolé. `null` si le point est à plus de `maxKm` de tout segment (PN mal placé, ligne sans bornes).
+ */
+export function bkFromPosts(point: LatLon, posts: KmPost[], maxKm = 0.3): number | null {
+  if (posts.length < 2 || !hasPosition(point)) return null;
+  const p = toLocal(point);
+  let best: { dist: number; km: number } | null = null;
+  for (let i = 0; i + 1 < posts.length; i++) {
+    const a = posts[i]!;
+    const b = posts[i + 1]!;
+    if (b.km - a.km > 2) continue;
+    const { t, dist } = projectOnSegment(p, toLocal(a), toLocal(b));
+    if (!best || dist < best.dist) best = { dist, km: a.km + t * (b.km - a.km) };
+  }
+  if (!best || best.dist > maxKm) return null;
+  return Math.round(best.km * 1000) / 1000;
 }

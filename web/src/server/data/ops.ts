@@ -534,6 +534,8 @@ export type LevelCrossing = {
   signal: string;
   /** BK calculée le long de la ligne (pas relevée sur le terrain). */
   bkEstimated: boolean;
+  /** « bornes » : BK interpolée entre les bornes kilométriques Infrabel ; « estimee » ; « » = relevée. */
+  bkSource: string;
   /** « baco » (reprise), « auto » (calculée), « manuel » (choisie par l'équipe), « » (aucune). */
   zoneSource: string;
 };
@@ -557,6 +559,7 @@ function crossing(r: RecordModel): LevelCrossing {
     commune: str(r.commune),
     signal: str(r.signal),
     bkEstimated: r.bk_estimated === true,
+    bkSource: str(r.bk_source),
     zoneSource: str(r.zone_source),
   };
 }
@@ -572,14 +575,12 @@ export function compareCrossings(a: LevelCrossing, b: LevelCrossing) {
 
 export async function listCrossings(): Promise<LevelCrossing[]> {
   const pb = await pbForRequest();
-  const items = await pb
-    .collection("level_crossings")
-    .getFullList({
-      filter: "active = true",
-      batch: 1000,
-      fields:
-        "id,line,number,bk,address,lat,lon,zone,notes,source,updated,infrabel_id,commune,signal,bk_estimated,zone_source",
-    });
+  const items = await pb.collection("level_crossings").getFullList({
+    filter: "active = true",
+    batch: 1000,
+    fields:
+      "id,line,number,bk,address,lat,lon,zone,notes,source,updated,infrabel_id,commune,signal,bk_estimated,bk_source,zone_source",
+  });
   return items.map(crossing).sort(compareCrossings);
 }
 

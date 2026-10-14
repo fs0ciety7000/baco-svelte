@@ -1342,6 +1342,12 @@ try {
 			check('BK saisie par l équipe : plus une estimation', pnB.status === 200 && pnB.json.bk_estimated === false, `HTTP ${pnB.status} ${pnB.json?.bk_estimated}`);
 			const pnE = await api('PATCH', `/api/collections/level_crossings/records/${pnZ.json.id}`, { token: roles.moderator.token, body: { bk_estimated: true, updated_by: roles.moderator.id } });
 			check('BK estimée non forgeable', pnE.status >= 400, `HTTP ${pnE.status}`);
+			const pnBs = await api('PATCH', `/api/collections/level_crossings/records/${pnZ.json.id}`, { token: roles.moderator.token, body: { bk_source: 'bornes', updated_by: roles.moderator.id } });
+			check('origine de la BK non forgeable', pnBs.status >= 400, `HTTP ${pnBs.status}`);
+			// PN désactivé par l'import (absent d'Infrabel) puis réactivé à la main : gardé (l'import ne le désactive plus).
+			await api('PATCH', `/api/collections/level_crossings/records/${pnZ.json.id}`, { token: root, body: { active: false, infrabel_seen: 'absent' } });
+			const pnR = await api('PATCH', `/api/collections/level_crossings/records/${pnZ.json.id}`, { token: roles.moderator.token, body: { active: true, updated_by: roles.moderator.id } });
+			check('PN absent d Infrabel réactivé à la main = gardé', pnR.status === 200 && pnR.json.infrabel_seen === 'garde', `HTTP ${pnR.status} ${pnR.json?.infrabel_seen}`);
 			await api('DELETE', `/api/collections/level_crossings/records/${pnZ.json.id}`, { token: root });
 		}
 	}

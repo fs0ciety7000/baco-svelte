@@ -33,7 +33,9 @@ async function pb(method: string, path: string, body?: unknown) {
 const shot = async (page: import("@playwright/test").Page, name: string, project: string) => {
   if (!process.env.SHOTS) return;
   await page.waitForTimeout(600);
-  await page.screenshot({ path: `${process.env.SHOTS}/${name}-${project}.png` });
+  await page.screenshot({
+    path: `${process.env.SHOTS}/${process.env.SHOTS_PREFIX ?? ""}${name}-${project}.png`,
+  });
 };
 
 test.beforeAll(async ({}, info) => {

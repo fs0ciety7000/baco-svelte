@@ -257,8 +257,8 @@ function LineView({
             <p className="text-small text-fg-muted">Aucun PN au référentiel pour cette ligne.</p>
           ) : (
             <p className="text-small text-fg-muted">
-              Dans l&apos;ordre des bornes kilométriques ; « ≈ » : BK estimée le long de la ligne
-              (PN des données ouvertes Infrabel).
+              Dans l&apos;ordre des bornes kilométriques. BK des PN Infrabel calculée entre les
+              bornes kilométriques ; « ≈ » : estimée le long de la ligne (pas de borne proche).
             </p>
           )}
           {detail.crossings.length ? (

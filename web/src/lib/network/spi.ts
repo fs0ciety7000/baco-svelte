@@ -109,7 +109,8 @@ export function assignStationZones(
   for (const s of stations) if (!byName.has(s.name)) byName.set(s.name, s);
 
   for (const s of stations) {
-    if (s.source === "manuel" && valid.has(s.zone)) out.set(s.key, { zone: s.zone, source: "manuel" });
+    if (s.source === "manuel" && valid.has(s.zone))
+      out.set(s.key, { zone: s.zone, source: "manuel" });
     else if (valid.has(seed[s.key] ?? "")) out.set(s.key, { zone: seed[s.key]!, source: "carte" });
   }
 
@@ -178,7 +179,8 @@ function nearestZone(
     const z = zones.get(a.key)?.zone;
     if (!z) continue;
     const d = haversineKm(p, a);
-    if (d <= NEAR_LINE_KM && a.lines.some((l) => own.has(l)) && (!line || d < line.d)) line = { d, z };
+    if (d <= NEAR_LINE_KM && a.lines.some((l) => own.has(l)) && (!line || d < line.d))
+      line = { d, z };
     if (d <= NEAR_ANY_KM && (!any || d < any.d)) any = { d, z };
   }
   return line?.z ?? any?.z ?? "";

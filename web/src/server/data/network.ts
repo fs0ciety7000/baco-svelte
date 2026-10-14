@@ -49,7 +49,7 @@ const TTL = 5 * 60_000;
 
 /** Dessin des zones (cellules par zone, frontières, étiquettes). Vide si le secret interne manque. */
 export async function spiShapes(): Promise<ZoneShapes> {
-  const empty: ZoneShapes = { cells: {}, borders: [], labels: {} };
+  const empty: ZoneShapes = { cells: {}, borders: [], labels: {}, outlines: {} };
   if (env.CSM_INTERNAL_SECRET.length < 32) return empty;
   const cached = g.__csmSpiShapes;
   if (cached && Date.now() - cached.at < TTL) return cached.shapes;

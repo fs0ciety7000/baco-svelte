@@ -27,11 +27,7 @@ export function pnNumber(raw: string): string {
   return s === "bis" || s === "ter" ? `${n} ${s}` : `${n}${s.toUpperCase()}`;
 }
 
-const fold = (s: string) =>
-  s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
+const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 /**
  * Recherche libre : « 12 », « PN 12 L94 », « L.94 », « 12 L.94 », « L-94-12 » (n° Infrabel), ou des mots de l'adresse /
@@ -84,10 +80,21 @@ export function compareByBk(a: PnLike, b: PnLike): number {
   return compareByNumber(a, b);
 }
 
-/** BK affichée : « 12.345 », « ≈ 12.3 » si elle est estimée, « — » sans BK. */
+/**
+ * BK affichée : « 12.345 » (relevée, ou interpolée entre les bornes kilométriques Infrabel), « ≈ 12.3 » si elle est
+ * estimée le long des gares, « — » sans BK.
+ */
 export function bkLabel(bk: number, estimated: boolean): string {
+  // (la source « bornes » s'affiche comme une BK relevée : précision de l'ordre de 50 m)
   if (!bk) return "—";
   return estimated ? `≈ ${bk.toFixed(1)}` : bk.toFixed(3);
+}
+
+/** Mention de l'origine d'une BK calculée (fiche d'un PN). */
+export function bkNote(source: string, estimated: boolean): string {
+  if (source === "bornes") return "calculée entre les bornes kilométriques Infrabel";
+  if (source === "estimee" || estimated) return "estimée le long de la ligne";
+  return "";
 }
 
 // --- Regroupement ------------------------------------------------------------------------------------------------
@@ -110,7 +117,11 @@ export type Cluster<T> =
 export function clusterPoints<T extends { id: string; lat: number; lon: number }>(
   points: T[],
   zoom: number,
-  { cellPx = 56, fromZoom = 13, keep }: { cellPx?: number; fromZoom?: number; keep?: string | null } = {},
+  {
+    cellPx = 56,
+    fromZoom = 13,
+    keep,
+  }: { cellPx?: number; fromZoom?: number; keep?: string | null } = {},
 ): Cluster<T>[] {
   if (zoom >= fromZoom) return points.map((item) => ({ kind: "point", item }));
   const cells = new Map<string, T[]>();

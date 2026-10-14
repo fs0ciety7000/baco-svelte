@@ -33,7 +33,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";
 import { DISTRICT_CODE_OPTIONS, type DistrictOption } from "@/lib/district-param";
-import { bkLabel, compareByNumber, filterCrossings } from "@/lib/network/pn";
+import { bkLabel, bkNote, compareByNumber, filterCrossings } from "@/lib/network/pn";
 import { zonesOfDistricts } from "@/lib/network/spi";
 import { safeCall } from "@/lib/orders/safe-call";
 import { useMediaQuery } from "@/lib/use-media-query";
@@ -572,9 +572,9 @@ export function PnBoard({
                 <dt className="text-fg-muted">BK</dt>
                 <dd className="font-mono tabular">
                   {bkLabel(sel.bk, sel.bkEstimated)}
-                  {sel.bk && sel.bkEstimated ? (
+                  {sel.bk && bkNote(sel.bkSource, sel.bkEstimated) ? (
                     <span className="ml-2 font-sans text-small text-fg-muted">
-                      estimée le long de la ligne
+                      {bkNote(sel.bkSource, sel.bkEstimated)}
                     </span>
                   ) : null}
                 </dd>

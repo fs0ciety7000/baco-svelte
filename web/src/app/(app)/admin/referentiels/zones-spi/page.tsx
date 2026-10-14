@@ -30,7 +30,7 @@ export default async function Page() {
   const c = status?.network?.crossings;
   if (c)
     summary.push(
-      `PN Infrabel : ${c.infrabel} (${c.matched} rapprochés de PN connus, ${c.bkEstimated} BK estimées)`,
+      `PN Infrabel : ${c.infrabel} (${c.matched} rapprochés de PN connus, BK : ${c.bkPosts ?? 0} par les bornes, ${c.bkEstimated} estimées ; ${c.retired ?? 0} PN BACO absents désactivés)`,
     );
   return <SpiZonesAdmin zones={zones} stations={stations} summary={summary} />;
 }

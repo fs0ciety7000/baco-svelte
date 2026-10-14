@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   bkLabel,
+  bkNote,
   clusterPoints,
   compareByBk,
   compareByNumber,
@@ -71,6 +72,11 @@ describe("tri et BK", () => {
     expect(pnNumber("007")).toBe("7");
     expect(PN_NUMBER_RE.test(pnNumber("12 quater!"))).toBe(false);
   });
+  it("origine de la BK", () => {
+    expect(bkNote("bornes", false)).toMatch(/bornes kilométriques/);
+    expect(bkNote("estimee", true)).toMatch(/estimée/);
+    expect(bkNote("", false)).toBe("");
+  });
   it("BK affichée", () => {
     expect(bkLabel(12.345, false)).toBe("12.345");
     expect(bkLabel(12.345, true)).toBe("≈ 12.3");
@@ -93,7 +99,9 @@ describe("regroupement des marqueurs", () => {
   });
   it("le point sélectionné reste seul", () => {
     const low = clusterPoints(pts, 8, { keep: "a" });
-    expect(low.filter((c) => c.kind === "point").map((c) => c.kind === "point" && c.item.id)).toContain("a");
+    expect(
+      low.filter((c) => c.kind === "point").map((c) => c.kind === "point" && c.item.id),
+    ).toContain("a");
     expect(low.some((c) => c.kind === "cluster")).toBe(false);
   });
   it("projection Web Mercator", () => {

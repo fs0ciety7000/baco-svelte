@@ -15,6 +15,8 @@ export type ZoneShapes = {
   borders: { zones: [string, string]; path: [[number, number], [number, number]] }[];
   /** Zone → point d'étiquette (barycentre de ses gares). */
   labels: Record<string, [number, number]>;
+  /** Zone → contour extérieur (côtés sans voisine) : segments [[lat, lon], [lat, lon]]. */
+  outlines: Record<string, [[number, number], [number, number]][]>;
 };
 
 const SIDES = 20;
@@ -55,10 +57,7 @@ const ll = (p: Pt): [number, number] => {
 };
 
 /** Cellule de Voronoï bornée de chaque point (plan local), avec l'indice de la voisine de chaque côté (−1 = bord). */
-export function boundedCells(
-  pts: Pt[],
-  radiusKm: number,
-): { poly: Pt[]; neighbors: number[] }[] {
+export function boundedCells(pts: Pt[], radiusKm: number): { poly: Pt[]; neighbors: number[] }[] {
   // Grille d'accès : voisines à moins de 2 rayons seulement.
   const cell = radiusKm * 2;
   const grid = new Map<string, number[]>();
@@ -86,7 +85,11 @@ export function boundedCells(
     for (const j of near) {
       const q = pts[j]!;
       if (dist2(q, p) > 4 * radiusKm * radiusKm) break;
-      poly = clipHalfPlane(poly, [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2], [q[0] - p[0], q[1] - p[1]]);
+      poly = clipHalfPlane(
+        poly,
+        [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2],
+        [q[0] - p[0], q[1] - p[1]],
+      );
       if (poly.length < 3) break;
     }
     // Voisine de chaque côté : le milieu du côté est équidistant de p et d'elle.
@@ -130,7 +133,7 @@ export function zoneShapes(points: ZonePoint[], radiusKm = 6): ZoneShapes {
     kept.map((k) => k.p),
     radiusKm,
   );
-  const out: ZoneShapes = { cells: {}, borders: [], labels: {} };
+  const out: ZoneShapes = { cells: {}, borders: [], labels: {}, outlines: {} };
   const sums = new Map<string, { lat: number; lon: number; n: number }>();
   cells.forEach(({ poly, neighbors }, i) => {
     const z = kept[i]!.zone;
@@ -143,7 +146,11 @@ export function zoneShapes(points: ZonePoint[], radiusKm = 6): ZoneShapes {
     (out.cells[z] ??= []).push(poly.map(ll));
     poly.forEach((a, k) => {
       const j = neighbors[k]!;
-      if (j < 0 || j < i) return; // chaque côté partagé une seule fois
+      if (j < 0) {
+        (out.outlines[z] ??= []).push([ll(a), ll(poly[(k + 1) % poly.length]!)]);
+        return;
+      }
+      if (j < i) return; // chaque côté partagé une seule fois
       const other = kept[j]!.zone;
       if (other === z) return;
       out.borders.push({

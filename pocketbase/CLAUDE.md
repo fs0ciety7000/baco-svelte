@@ -385,4 +385,8 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   corps d'une requête d'agent ; zone changée = manuelle, BK changée = plus estimée (hook, sauf superuser). Routes internes
   (secret) `GET /api/csm/network/state`, `POST …/zones`, `…/crossings` (complète un PN rapproché sans toucher l'adresse ni
   une zone baco / manuelle ; conflit ligne + numéro = pas de création), `…/crossing-zones`, `…/crossings/finish`
-  (désactive les PN Infrabel absents du fichier, seulement si ≥ 1000 lus). Audit de `spi_zones`. 634 contrôles de règles.
+  (désactive les PN Infrabel absents du fichier, seulement si ≥ 1000 lus). Audit de `spi_zones`.
+  `1760004810_pn_bk_source.js` : `bk_source` (bornes / estimee ; vide = BK relevée, jamais recalculée ; non forgeable) ;
+  `…/crossings/finish` reçoit `retire` (PN `baco` actifs sans `infrabel_id` non rapprochés) → `active = false`,
+  `infrabel_seen = "absent"` ; réactivé par un agent → `"garde"` (hook), plus jamais désactivé par l'import ; rapproché plus
+  tard → réactivé. 642 contrôles de règles.

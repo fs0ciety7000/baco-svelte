@@ -48,11 +48,13 @@ function state(app) {
 		lon: r.getFloat('lon'),
 		bk: r.getFloat('bk'),
 		bkEstimated: r.getBool('bk_estimated'),
+		bkSource: r.getString('bk_source'),
 		zone: r.getString('zone'),
 		zoneSource: r.getString('zone_source'),
 		source: r.getString('source'),
 		infrabelId: r.getString('infrabel_id'),
-		active: r.getBool('active')
+		active: r.getBool('active'),
+		infrabelSeen: r.getString('infrabel_seen')
 	}));
 	const zones = app.findAllRecords('spi_zones').map((r) => ({ code: r.getString('code'), district: r.getString('district') }));
 	return { stations, lines, crossings, zones };
@@ -146,7 +148,7 @@ function upsertCrossings(app, items, day) {
 			}
 			const before = JSON.stringify([
 				rec.getString('infrabel_id'), rec.getFloat('lat'), rec.getFloat('lon'), rec.getString('commune'), rec.getString('signal'),
-				rec.getFloat('bk'), rec.getBool('bk_estimated'), rec.getString('zone'), rec.getString('zone_source'), rec.getBool('active')
+				rec.getFloat('bk'), rec.getBool('bk_estimated'), rec.getString('bk_source'), rec.getString('zone'), rec.getString('zone_source'), rec.getBool('active')
 			]);
 			rec.set('infrabel_id', infrabelId);
 			if (isNew || !rec.getFloat('lat') || rec.getString('source') === 'infrabel') {
@@ -155,10 +157,14 @@ function upsertCrossings(app, items, day) {
 			}
 			rec.set('commune', str(it.commune, 120));
 			rec.set('signal', str(it.signal, 80));
+			// BK calculée (bornes kilométriques, sinon estimée) : jamais à la place d'une BK relevée (BACO, équipe).
 			const bk = num(it.bk);
-			if (bk > 0 && bk < 1000 && (!rec.getFloat('bk') || rec.getBool('bk_estimated'))) {
+			const bkSource = it.bkSource === 'bornes' ? 'bornes' : it.bkSource === 'estimee' ? 'estimee' : '';
+			const computed = !rec.getFloat('bk') || rec.getBool('bk_estimated') || rec.getString('bk_source') !== '';
+			if (bk > 0 && bk < 1000 && bkSource && computed) {
 				rec.set('bk', Math.round(bk * 1000) / 1000);
-				rec.set('bk_estimated', true);
+				rec.set('bk_source', bkSource);
+				rec.set('bk_estimated', bkSource === 'estimee');
 			}
 			const zone = str(it.zone, 6);
 			const zs = rec.getString('zone_source');
@@ -166,10 +172,11 @@ function upsertCrossings(app, items, day) {
 				rec.set('zone', zone);
 				rec.set('zone_source', zone ? 'auto' : '');
 			}
-			if (rec.getString('source') === 'infrabel') rec.set('active', true);
+			// PN Infrabel, ou PN BACO désactivé parce qu'absent du fichier et de nouveau rapproché : actif.
+			if (rec.getString('source') === 'infrabel' || rec.getString('infrabel_seen') === 'absent') rec.set('active', true);
 			const after = JSON.stringify([
 				rec.getString('infrabel_id'), rec.getFloat('lat'), rec.getFloat('lon'), rec.getString('commune'), rec.getString('signal'),
-				rec.getFloat('bk'), rec.getBool('bk_estimated'), rec.getString('zone'), rec.getString('zone_source'), rec.getBool('active')
+				rec.getFloat('bk'), rec.getBool('bk_estimated'), rec.getString('bk_source'), rec.getString('zone'), rec.getString('zone_source'), rec.getBool('active')
 			]);
 			const seenChanged = rec.getString('infrabel_seen') !== day;
 			rec.set('infrabel_seen', day);
@@ -215,15 +222,31 @@ function setCrossingZones(app, items) {
  * Fin de l'import des PN : les PN créés depuis Infrabel absents du fichier du jour sont désactivés (supprimés ou
  * fermés : jamais effacés, le Journal peut les citer) ; seulement si le fichier en comptait assez.
  */
-function finishCrossings(app, day, seen) {
+function finishCrossings(app, day, seen, retire) {
 	if (!DAY_RE.test(day || '')) throw new BadRequestError('Jour invalide.');
-	if (num(seen) < 1000) return { deactivated: 0, skipped: true };
+	if (num(seen) < 1000) return { deactivated: 0, retired: 0, skipped: true };
 	const stale = app.findRecordsByFilter('level_crossings', "source = 'infrabel' && active = true && infrabel_seen != {:d}", '', 0, 0, { d: day });
 	for (const r of stale) {
 		r.set('active', false);
 		app.save(r);
 	}
-	return { deactivated: stale.length };
+	// PN repris de BACO sans pendant Infrabel (décision du 15 oct. 2026) : désactivés, jamais supprimés ; un PN réactivé à
+	// la main (`garde`) ou déjà rapproché n'est pas touché.
+	let retired = 0;
+	for (const id of (Array.isArray(retire) ? retire : []).slice(0, 500)) {
+		let r;
+		try {
+			r = app.findRecordById('level_crossings', str(id, 20));
+		} catch (_) {
+			continue;
+		}
+		if (r.getString('source') !== 'baco' || !r.getBool('active') || r.getString('infrabel_id') || r.getString('infrabel_seen') === 'garde') continue;
+		r.set('active', false);
+		r.set('infrabel_seen', 'absent');
+		app.save(r);
+		retired++;
+	}
+	return { deactivated: stale.length, retired };
 }
 
 module.exports = { state, setStationZones, upsertCrossings, setCrossingZones, finishCrossings };

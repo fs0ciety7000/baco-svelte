@@ -267,6 +267,7 @@ export type LineDetail = {
     number: string;
     bk: number;
     bkEstimated: boolean;
+    bkSource: string;
     address: string;
     commune: string;
     zone: string;
@@ -334,6 +335,7 @@ export async function getLineDetail(raw: string): Promise<LineDetail | null> {
         number: str(c.number),
         bk: num(c.bk),
         bkEstimated: c.bk_estimated === true,
+        bkSource: str(c.bk_source),
         address: str(c.address),
         commune: str(c.commune),
         zone: str(c.zone),
@@ -341,11 +343,12 @@ export async function getLineDetail(raw: string): Promise<LineDetail | null> {
         lon: 0,
       }))
       .sort(compareByBk)
-      .map(({ id, number, bk, bkEstimated, address, commune, zone }) => ({
+      .map(({ id, number, bk, bkEstimated, bkSource, address, commune, zone }) => ({
         id,
         number,
         bk,
         bkEstimated,
+        bkSource,
         address,
         commune,
         zone,

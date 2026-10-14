@@ -11,6 +11,9 @@ import type { ZoneShapes } from "@/lib/network/voronoi";
 export type MapZone = { code: string; name: string; color: string; polygon?: unknown };
 export type MapPoint = { id: string; lat: number; lon: number; zone: string; label: string };
 
+const reducedMotion = () =>
+  typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 /** Anneaux [lat, lon] d'un GeoJSON Polygon / MultiPolygon posé à la main (autre forme : ignorée). */
 function geoJsonRings(g: unknown): [number, number][][] {
   const o = g as { type?: string; coordinates?: unknown } | null;
@@ -85,6 +88,10 @@ export function PnMap({
       const m = lf
         .map(el.current, {
           preferCanvas: true,
+          // Mouvement réduit : pas d'animation de zoom ni de fondu des tuiles.
+          zoomAnimation: !reducedMotion(),
+          fadeAnimation: !reducedMotion(),
+          markerZoomAnimation: !reducedMotion(),
           zoomControl: true,
           attributionControl: true,
           minZoom: 7,
@@ -92,6 +99,7 @@ export function PnMap({
         })
         .setView([50.55, 4.4], 8);
       m.attributionControl.setPrefix(false);
+      lf.control.scale({ imperial: false, position: "bottomleft" }).addTo(m);
       m.createPane("zones").style.zIndex = "350";
       // Codes des zones au-dessus des PN (petits, sans clic).
       const labels = m.createPane("zoneLabels");
@@ -121,9 +129,7 @@ export function PnMap({
       const touched = () => (moved.current = true);
       el.current.addEventListener("wheel", touched, { passive: true });
       el.current.addEventListener("touchstart", touched, { passive: true });
-      m.getContainer()
-        .querySelector(".leaflet-control-zoom")
-        ?.addEventListener("click", touched);
+      m.getContainer().querySelector(".leaflet-control-zoom")?.addEventListener("click", touched);
       const ro = new ResizeObserver(() => {
         m.invalidateSize();
         if (!moved.current) {
@@ -173,13 +179,11 @@ export function PnMap({
           keyboard: false,
           title: `${c.count} passages à niveau`,
         })
-          .on("click", () =>
-            m.flyToBounds(lf.latLngBounds(c.items.map((p) => [p.lat, p.lon])), {
-              padding: [40, 40],
-              maxZoom: 15,
-              duration: 0.4,
-            }),
-          )
+          .on("click", () => {
+            const b = lf.latLngBounds(c.items.map((p) => [p.lat, p.lon]));
+            if (reducedMotion()) m.fitBounds(b, { padding: [40, 40], maxZoom: 15, animate: false });
+            else m.flyToBounds(b, { padding: [40, 40], maxZoom: 15, duration: 0.4 });
+          })
           .addTo(group);
         continue;
       }
@@ -226,7 +230,7 @@ export function PnMap({
     if (!lf || !m) return;
     const sel = points.find((p) => p.id === selected && p.lat);
     if (sel) {
-      m.setView([sel.lat, sel.lon], Math.max(m.getZoom(), 14), { animate: true });
+      m.setView([sel.lat, sel.lon], Math.max(m.getZoom(), 14), { animate: !reducedMotion() });
       lastFit.current = fitKey;
       return;
     }
@@ -273,6 +277,8 @@ export function PnMap({
         interactive: false,
       }).addTo(group);
     }
+    // Zones en polygones semi-transparents par-dessus le plan (les rues restent lisibles), contour de la couleur de
+    // la zone, frontière entre deux zones en trait fin.
     for (const [code, cells] of Object.entries(s.cells)) {
       if (manual.has(code)) continue;
       const color = colorOf(code);
@@ -280,18 +286,27 @@ export function PnMap({
         renderer,
         stroke: false,
         fillColor: color,
-        fillOpacity: 0.2,
+        fillOpacity: 0.16,
         interactive: false,
       }).addTo(group);
+      const edges = s.outlines?.[code] ?? [];
+      if (edges.length)
+        lf.polyline(edges, {
+          renderer,
+          color,
+          weight: 2,
+          opacity: 0.85,
+          interactive: false,
+        }).addTo(group);
     }
     for (const b of s.borders) {
       if (manual.has(b.zones[0]) || manual.has(b.zones[1])) continue;
       lf.polyline(b.path, {
         renderer,
         color: muted,
-        weight: 1.4,
+        weight: 1.5,
         opacity: 0.9,
-        dashArray: "5 4",
+        dashArray: "6 4",
         interactive: false,
       }).addTo(group);
     }

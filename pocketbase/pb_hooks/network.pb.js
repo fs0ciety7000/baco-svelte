@@ -38,7 +38,7 @@ routerAdd('POST', '/api/csm/network/crossings/finish', (e) => {
 	if (!t.allowed(e)) return e.json(404, { message: 'Not found.' });
 	const n = require(`${__hooks}/lib/network.js`);
 	const body = e.requestInfo().body || {};
-	return e.json(200, n.finishCrossings($app, String(body.day || ''), body.seen));
+	return e.json(200, n.finishCrossings($app, String(body.day || ''), body.seen, body.retire));
 });
 
 // PN modifié par un agent (Carte PN, administration) : une zone changée devient « manuelle » (jamais recalculée) ; corps
@@ -49,8 +49,13 @@ onRecordUpdateRequest((e) => {
 	const body = e.requestInfo().body || {};
 	if (body.zone_auto === true) e.record.set('zone_source', '');
 	else if (e.record.getString('zone') !== before.getString('zone')) e.record.set('zone_source', e.record.getString('zone') ? 'manuel' : '');
-	// BK saisie par l'équipe : n'est plus une estimation (jamais recalculée ensuite).
-	if (e.record.getFloat('bk') !== before.getFloat('bk')) e.record.set('bk_estimated', false);
+	// BK saisie par l'équipe : relevée (jamais recalculée ensuite).
+	if (e.record.getFloat('bk') !== before.getFloat('bk')) {
+		e.record.set('bk_estimated', false);
+		e.record.set('bk_source', '');
+	}
+	// PN BACO désactivé par l'import (absent d'Infrabel) puis réactivé à la main : l'import ne le désactive plus.
+	if (e.record.getBool('active') && !before.getBool('active') && e.record.getString('infrabel_seen') === 'absent') e.record.set('infrabel_seen', 'garde');
 	e.next();
 }, 'level_crossings');
 onRecordCreateRequest((e) => {

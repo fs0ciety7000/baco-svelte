@@ -671,7 +671,7 @@
     "k": "gare"
   },
   "bruxelles midi": {
-    "d": "DSO",
+    "d": "DCE",
     "k": "gare"
   },
   "bruxelles nord": {
@@ -699,7 +699,7 @@
     "k": "pang"
   },
   "buizingen": {
-    "d": "DSO",
+    "d": "DCE",
     "k": "gare"
   },
   "burst": {
@@ -1087,7 +1087,7 @@
     "k": "pang"
   },
   "flawinne": {
-    "d": "DSO",
+    "d": "DSE",
     "k": "gare"
   },
   "flemalle annexe": {
@@ -1111,7 +1111,7 @@
     "k": "pang"
   },
   "floreffe": {
-    "d": "DSO",
+    "d": "DSE",
     "k": "pang"
   },
   "florenville": {
@@ -1385,7 +1385,7 @@
     "k": "gare"
   },
   "halle goederen": {
-    "d": "",
+    "d": "DCE",
     "k": "gare"
   },
   "ham": {
@@ -1401,7 +1401,7 @@
     "k": "pang"
   },
   "ham sur sambre": {
-    "d": "DSO",
+    "d": "DSE",
     "k": "pang"
   },
   "hambos": {
@@ -1598,7 +1598,7 @@
     "k": "pang"
   },
   "huizingen": {
-    "d": "",
+    "d": "DCE",
     "k": "pang"
   },
   "huy": {
@@ -2199,7 +2199,7 @@
     "k": "pang"
   },
   "moensberg": {
-    "d": "",
+    "d": "DCE",
     "k": "pang"
   },
   "mol": {
@@ -2274,7 +2274,7 @@
     "d": ""
   },
   "moustier": {
-    "d": "DSO",
+    "d": "DSE",
     "k": "pang"
   },
   "moustier garage": {
