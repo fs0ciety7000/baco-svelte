@@ -25,6 +25,15 @@ const SCREENS: [string, RegExp][] = [
   ["/admin/extension", /Jetons de l'extension/],
   ["/admin/journal", /Catégorie donnée aux messages automatiques/],
   ["/admin/sante", /État/],
+  // Administration › Référentiels (navigation v3).
+  ["/admin/referentiels", /à vérifier/],
+  ["/admin/referentiels/gares", /gare/],
+  ["/admin/referentiels/lignes", /Nouvelle ligne/],
+  ["/admin/referentiels/ptcar", /Ajouter un PtCar/],
+  ["/admin/referentiels/ebp", /Ajouter une correspondance EBP/],
+  ["/admin/referentiels/spi", /Ajouter un point SPI/],
+  ["/admin/referentiels/pn", /Carte PN/],
+  ["/admin/referentiels/imports", /Import quotidien/],
 ];
 
 test("écrans d'administration", async ({ page }) => {
@@ -69,4 +78,59 @@ test("compte : création, désactivation, réactivation", async ({ page }, info)
   await expect(page.getByRole("button", { name: "Réactiver" })).toBeVisible();
   await page.getByRole("button", { name: "Réactiver" }).click();
   await expect(page.getByRole("button", { name: "Désactiver le compte" })).toBeVisible();
+});
+
+test("référentiels : PtCar (créer, modifier, supprimer) et ligne manuelle", async ({
+  page,
+}, info) => {
+  const tag =
+    `${info.project.name === "desktop" ? "D" : "M"}${Date.now().toString(36).slice(-5)}`.toUpperCase();
+  const abbr = `ZE${tag}`.slice(0, 12);
+  await loginAdmin(page);
+  await page.goto("/admin/referentiels");
+  await expect(page.getByTestId("ref-quality")).toBeVisible();
+  await expect(page.getByTestId("ref-card-gares")).toBeVisible();
+  await expect(page.getByTestId("ref-admin-nav")).toBeVisible();
+  await noHorizontalScroll(page);
+
+  // PtCar : création (abréviation en majuscules), modification, suppression confirmée.
+  await page.goto("/admin/referentiels/ptcar");
+  await page.getByTestId("ref-create").click();
+  const panel = page.getByRole("dialog").last();
+  await panel.getByLabel("Abréviation").fill(abbr.toLowerCase());
+  await panel.getByLabel("Nom (FR)").fill(`Gare E2E ${tag}`);
+  await panel.getByTestId("ref-save").click();
+  await expect(page.getByText("Fiche créée")).toBeVisible();
+  await page.goto(`/admin/referentiels/ptcar?q=${abbr}`);
+  const scope = page.getByTestId(
+    info.project.name === "desktop" ? "ref-table-ptcar" : "ref-cards-ptcar",
+  );
+  await expect(scope).toContainText(abbr);
+  await scope.getByRole("button", { name: new RegExp(`^Modifier ${abbr}`) }).click();
+  const edit = page.getByRole("dialog").last();
+  await edit.getByLabel("Nom (NL)").fill(`Station E2E ${tag}`);
+  await edit.getByTestId("ref-save").click();
+  await expect(page.getByText("Fiche enregistrée")).toBeVisible();
+  await expect(scope).toContainText(`Station E2E ${tag}`);
+  await scope.getByRole("button", { name: new RegExp(`^Supprimer ${abbr}`) }).click();
+  await page.getByTestId("ref-delete-confirm").click();
+  await expect(page.getByText("Fiche supprimée")).toBeVisible();
+  await expect(page.getByRole("main")).not.toContainText(`Gare E2E ${tag}`);
+
+  // Ligne absente de l'horaire : créée « manuelle », puis supprimée.
+  const line = `9${Date.now().toString().slice(-3)}${info.project.name === "desktop" ? "D" : "M"}`;
+  await page.goto("/admin/referentiels/lignes");
+  await page.getByTestId("line-create").click();
+  await page.getByTestId("line-number").fill(line);
+  await page.getByTestId("line-stations").fill("Gare A E2E\nGare B E2E");
+  await page.getByTestId("line-save").click();
+  await expect(page.getByText(`L.${line} créée`)).toBeVisible();
+  await page.goto(`/admin/referentiels/lignes?q=${line}`);
+  await expect(page.getByRole("main")).toContainText("Manuelle");
+  await page
+    .getByRole("button", { name: `Supprimer L.${line}` })
+    .filter({ visible: true })
+    .click();
+  await page.getByRole("button", { name: "Supprimer définitivement" }).click();
+  await expect(page.getByText(`L.${line} supprimée`)).toBeVisible();
 });

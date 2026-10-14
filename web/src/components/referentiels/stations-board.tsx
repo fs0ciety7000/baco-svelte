@@ -25,7 +25,7 @@ const trainsHref = (gare: string) => `/reseau/horaires?vue=gare&gare=${encodeURI
 
 /**
  * Ressources › Gares : liste avec sélection multiple (attribution d'un district en masse, validation des propositions),
- * district, lignes et type modifiables gare par gare (droit PtCar : modification).
+ * district, lignes et type modifiables gare par gare (droit « Modifier les référentiels du réseau »).
  */
 export function StationsBoard({ rows, canEdit }: { rows: StationRow[]; canEdit: boolean }) {
   const router = useRouter();

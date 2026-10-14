@@ -3,6 +3,7 @@ import {
   Bus,
   CalendarClock,
   CalendarDays,
+  Database,
   Car,
   HeartPulse,
   KeyRound,
@@ -318,6 +319,15 @@ export const ADMIN: NavModule = {
       label: "Appareils connectés",
       group: "Comptes",
       icon: MonitorSmartphone,
+    },
+    {
+      // Tableau de bord qualité puis un écran par référentiel du réseau (navigation v3, 14 oct. 2026).
+      href: "/admin/referentiels",
+      label: "Référentiels",
+      group: "Référentiels",
+      icon: Database,
+      permission: "referentiels:manage",
+      keywords: ["gares", "districts", "lignes", "PtCar", "EBP", "SPI", "PN", "imports", "qualité"],
     },
     { href: "/admin/sante", label: "Santé", group: "Supervision", icon: HeartPulse },
     { href: "/admin/audit", label: "Journal d'audit", group: "Supervision", icon: ScrollText },

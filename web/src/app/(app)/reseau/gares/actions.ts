@@ -24,7 +24,7 @@ const district = z.enum(["DSO", "DSE", "DCE", "DNO", "DNE", "", "auto"]);
 async function editor() {
   const user = await requireUser();
   if (!can(user, "referentiels:manage"))
-    throw new Error("DROIT:Modification réservée (droit PtCar : modification).");
+    throw new Error("DROIT:Modification réservée (droit « Modifier les référentiels du réseau »).");
   return user;
 }
 

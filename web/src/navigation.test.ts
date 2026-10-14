@@ -102,9 +102,16 @@ describe("navigation", () => {
     expect(visibleModules({ role: "moderator" })).toHaveLength(6);
   });
 
-  it("administration réservée à l'admin", () => {
+  it("administration réservée à l'admin ; Référentiels ouvert à qui a referentiels:manage", () => {
     expect(adminModule({ role: "guest" })).toBeNull();
     expect(adminModule({ role: "admin" })?.href).toBe("/admin");
+    expect(adminModule({ role: "admin" })?.tabs.map((t) => t.group)).toContain("Référentiels");
+    const ref = adminModule({ role: "gest-ref", perms: ["referentiels:manage"] });
+    expect(ref?.href).toBe("/admin/referentiels");
+    expect(ref?.tabs.map((t) => t.href)).toEqual(["/admin/referentiels"]);
+    expect(activeModule("/admin/referentiels/ptcar", visibleModules({ role: "admin" }))?.id).toBe(
+      "admin",
+    );
   });
 
   it("actions rapides selon les droits d'écriture", () => {
