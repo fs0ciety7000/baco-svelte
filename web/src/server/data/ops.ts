@@ -3,6 +3,7 @@ import "server-only";
 import type { RecordModel } from "pocketbase";
 import { z } from "zod";
 
+import { hiddenCategories, hiddenFilter } from "@/lib/notification-prefs";
 import { parseFavorites, type FavoriteStation } from "@/lib/ops/irail";
 import { plainText } from "@/lib/ops/chat-markdown";
 import { LOG_CATEGORIES, type LogCategory } from "@/lib/ops/log";
@@ -474,11 +475,13 @@ export type Notification = {
 export async function notificationScope(): Promise<string> {
   const user = await getCurrentUser();
   const mine = user ? userDistricts(user, brusselsDay()).filter(Boolean) : [];
-  if (!mine.length) return "";
   const pb = await pbForRequest();
-  return `(districts:length = 0 || ${mine
-    .map((d) => pb.filter("districts ~ {:d}", { d }))
-    .join(" || ")})`;
+  // Notification d'un district : visible seulement si l'un des districts du jour de l'agent y figure (sans district choisi :
+  // aucune). Sans district (mention personnelle, train suivi, système) : toujours. Puis les catégories masquées du profil.
+  const district = mine.length
+    ? `(districts:length = 0 || ${mine.map((d) => pb.filter("districts ~ {:d}", { d })).join(" || ")})`
+    : "districts:length = 0";
+  return [district, hiddenFilter(hiddenCategories(user?.preferences))].filter(Boolean).join(" && ");
 }
 
 export async function listNotifications(

@@ -9,6 +9,7 @@ import { requireUser } from "@/server/auth";
 import { pbForRequest } from "@/server/data/orders";
 import { createPb } from "@/server/pocketbase";
 import { HOME_CHOICES } from "@/lib/home";
+import { NOTIFICATION_CATEGORIES, type NotificationCategory } from "@/lib/notification-prefs";
 import { brusselsDay } from "@/lib/orders/time";
 import { deviceLabel, maskIp } from "@/lib/sessions";
 import { env } from "@/server/env";
@@ -222,6 +223,40 @@ export async function setMyHome(input: unknown): Promise<Result> {
         ? (me.preferences as Record<string, unknown>)
         : {};
     await pb.collection("users").update(user.id, { preferences: { ...prefs, home: href } });
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Catégories de notifications masquées (profil) ; la cloche se recharge côté client. */
+export async function setHiddenNotifications(input: unknown): Promise<Result> {
+  try {
+    const user = await requireUser();
+    const hidden = z
+      .array(
+        z.enum(
+          NOTIFICATION_CATEGORIES.map((c) => c.id) as [
+            NotificationCategory,
+            ...NotificationCategory[],
+          ],
+        ),
+      )
+      .max(NOTIFICATION_CATEGORIES.length)
+      .parse(input);
+    const pb = await pbForRequest();
+    const me = await pb.collection("users").getOne(user.id, { fields: "preferences" });
+    const prefs =
+      me.preferences && typeof me.preferences === "object"
+        ? (me.preferences as Record<string, unknown>)
+        : {};
+    const notifications =
+      prefs.notifications && typeof prefs.notifications === "object"
+        ? (prefs.notifications as Record<string, unknown>)
+        : {};
+    await pb.collection("users").update(user.id, {
+      preferences: { ...prefs, notifications: { ...notifications, hidden: [...new Set(hidden)] } },
+    });
     return { ok: true };
   } catch (e) {
     return fail(e);

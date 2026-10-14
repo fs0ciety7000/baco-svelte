@@ -1175,6 +1175,13 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   `Select` (le `Select` natif d'`input.tsx` coexiste jusqu'au lot R5), `Calendar` (fériés belges + Pâques / Pentecôte),
   `DateField`, `TimeField` (pas de 5 min, `pending`), `DateRangePicker` (raccourcis), `MonthField` ; logique `lib/dates/calendar.ts`.
   **36 champs natifs date / heure / mois migrés** (plus aucun dans `web/src`), filtres Du / Au en `DateRangePicker`. E2E : `frDate()`.
+- 2026-10-14 — **Notifications triées à l'affichage** (demande : « doivent s'afficher / alerter en fonction des districts
+  sélectionnés ») : urgences, mentions @district, perturbations / travaux iRail, retards des trains de mission et changements
+  DICOS sont envoyés à **tous** les agents qui ont le droit (avec `notifications.districts`) ; `notificationScope()` ne montre
+  que ceux des districts du jour (sans district choisi : seulement les notifications sans district). **Catégories masquables**
+  dans le profil (`preferences.notifications.hidden`, `lib/notification-prefs.ts` : `hiddenFilter`, travaux = titre
+  « Travaux ( »). Demandes suivantes : suppression des bons (admin ; créateur PACO pendant 8 h) confiée au lot L2 ; « voir en
+  tant que » pour l'admin (agent dédié).
 
 ---
 

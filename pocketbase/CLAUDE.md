@@ -307,7 +307,7 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
 - **Notifications par district** (`1760004000_notification_districts.js`, 14 oct. 2026) : `notifications.districts` (noms
   « Sud-Ouest »…, 0 à 3), 9e argument de `notify()` ; posé pour les urgences (district de l'entrée), perturbations iRail,
   retards des trains de mission, changements DICOS et mentions @district ; vide pour les mentions personnelles, trains suivis
-  et alertes système. Refusé dans le corps des requêtes (`updateRule`). La cloche (web) filtre sur les districts du jour.
+  et alertes système. Refusé dans le corps des requêtes (`updateRule`). La cloche (web) filtre sur les districts du jour. **Depuis le 14 oct. au soir, les destinataires ne sont plus choisis par district** (`urgentRecipients`, `districtRecipients`, `irailJournal`, `missionTrains`, alertes DICOS) : tout agent qui a le droit reçoit la notification, le tri se fait à l'affichage.
   `stationIndex` (iRail) lit `stations` (FR + NL, DSO / DSE / DCE) puis `line_stations`.
 - **Lignes modifiables** (`1760004100_rail_lines_edit.js`, 14 oct. 2026) : `rail_lines.manual`, `stations_auto`, `branches_auto`,
   `name_auto`, `updated_by` ; `updateRule` = `ptcar:update` (comme `stations`) + `updated_by` = appelant, ni invité ni Écran.

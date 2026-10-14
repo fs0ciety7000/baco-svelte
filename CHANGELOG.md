@@ -14,6 +14,8 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 - La barre du haut affiche « Administration › page » ; le menu de ton profil garde un seul lien « Administration ».
 - **Barre du haut plus légère** sur les écrans de moins de 1536 px : le bouton « + Nouveau » laisse sa place aux onglets. Tu crées toujours un bon depuis la recherche (Ctrl+K › Créer) ou depuis le module. « En ligne maintenant » n'affiche plus que l'icône.
 - **Mobile : barre du bas à 5 entrées** (Accueil, Bons, PMR, Opérations, Plus). « Ressources » est dans « Plus », avec Équipe et l'Administration.
+- **Notifications selon tes districts du jour, en direct** : perturbations et travaux iRail, retards des trains des missions PMR et des groupes, changements DICOS, urgences et mentions @DSO… arrivent à toute l'équipe concernée, et la cloche ne te montre que celles de tes districts du jour. Si tu changes de district en cours de journée, tu vois aussitôt les alertes de tes nouveaux districts (avant, tu ne recevais que celles du district coché au moment de l'alerte). Sans district choisi, la cloche ne montre que tes alertes personnelles.
+- **Mon profil › Notifications** : affiche ou masque chaque catégorie dans la cloche (urgences, mentions, perturbations iRail, travaux iRail, retards des trains, changements DICOS, alertes système). Une catégorie masquée ne déclenche plus de notification du navigateur.
 - **Synchro DICOS** : l'heure et le nom affichés sont ceux de la dernière synchro faite par un agent de l'équipe, quel qu'il soit. Si un jour de la période n'a pas été synchronisé depuis plus d'une heure, CSM le signale à part.
 
 ## [2026.10.14] — Cycle des bons, trains et nouveautés

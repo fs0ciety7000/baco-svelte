@@ -167,19 +167,12 @@ function dutyDistricts(u, today) {
 	return u.getString('district') ? [u.getString('district')] : [];
 }
 
-// Destinataires d'une entrée urgente : agents qui lisent le journal et travaillent aujourd'hui dans le district de
-// l'entrée (entrée sans district, ou agent sans district connu : tous).
+// Destinataires d'une entrée urgente : tous les agents qui lisent le journal. Depuis le 14 oct. 2026, le tri par district
+// se fait à l'affichage (la cloche ne montre que les notifications des districts du jour de l'agent, `notifications.districts`) :
+// un agent qui change de districts voit aussitôt les alertes de ses nouveaux districts.
 function urgentRecipients(app, district, exclude) {
 	const list = app.findRecordsByFilter('users', 'role != "disabled" && role != "connector"', '', 500, 0);
-	const today = brusselsDay();
-	const out = [];
-	for (const u of list) {
-		if (exclude.indexOf(u.id) !== -1 || !hasJournalRead(u)) continue;
-		const mine = dutyDistricts(u, today);
-		if (district && mine.length && mine.indexOf(district) === -1) continue;
-		out.push(u.id);
-	}
-	return out;
+	return list.filter((u) => exclude.indexOf(u.id) === -1 && hasJournalRead(u)).map((u) => u.id);
 }
 
 // --- Perturbations et travaux iRail → Journal (cron `irail-journal`) ---
@@ -272,9 +265,9 @@ function irailJournal(app) {
 		const category = journalCategory(app, 'irail', `${title} ${description}`, restored ? 'info' : planned ? 'travaux' : '', 'perturbation');
 		const emoji = restored ? '✅' : planned ? '🚧' : '⚠️';
 		const districts = districtsIn(index, title, description);
-		const recipients = districts.length
-			? users.filter((u) => dutyDistricts(u, today).some((x) => districts.indexOf(x) !== -1)).map((u) => u.id)
-			: [];
+		// Tous les lecteurs du journal reçoivent la notification avec ses districts ; la cloche la montre selon les districts
+		// du jour de chacun (14 oct. 2026). Sans district reconnu : pas de notification (le message reste au Journal).
+		const recipients = districts.length ? users.map((u) => u.id) : [];
 		const r = new Record(collection);
 		r.set('body', `${emoji} **${title.replace(/\*/g, '')}**${description ? `\n${description}` : ''}`.slice(0, 4000));
 		r.set('category', category);
@@ -352,12 +345,11 @@ function districtTagsIn(body) {
 	return out;
 }
 
-// Agents qui lisent le journal et travaillent aujourd'hui dans ce district (districts du jour, sinon du profil).
+// Mention d'un district : tous les agents qui lisent le journal ; la cloche n'affiche la notification (districts = [district])
+// qu'aux agents dont les districts du jour le contiennent (tri à l'affichage depuis le 14 oct. 2026).
 function districtRecipients(app, tag, exclude) {
-	const name = DISTRICT_TAGS[tag];
 	const list = app.findRecordsByFilter('users', 'role != "disabled" && role != "connector"', '', 500, 0);
-	const today = brusselsDay();
-	return list.filter((u) => exclude.indexOf(u.id) === -1 && hasJournalRead(u) && dutyDistricts(u, today).indexOf(name) !== -1).map((u) => u.id);
+	return list.filter((u) => exclude.indexOf(u.id) === -1 && hasJournalRead(u)).map((u) => u.id);
 }
 
 function planNotifications(app, record, mentions, urgent) {
@@ -629,10 +621,9 @@ function missionTrains(app, at) {
 		// Enregistré avant d'envoyer : un échec d'écriture ne rejoue pas les mêmes alertes au passage suivant.
 		app.save(rec);
 		if (pending && pending.names.length) {
-			// Seulement les agents dont les districts du jour croisent ceux des gares concernées (pas de diffusion générale).
+			// Tous les agents concernés par les missions, avec les districts des gares : la cloche n'affiche que celles des
+			// districts du jour de chacun (tri à l'affichage depuis le 14 oct. 2026 ; jamais sans district).
 			for (const u of users) {
-				const mine = dutyDistricts(u, today);
-				if (!mine.some((d) => pending.names.indexOf(d) !== -1)) continue;
 				notify(app, u.id, 'train', pending.title, pending.body, `/pmr?q=${encodeURIComponent(train.replace(/^[A-Z]+/, ''))}`, 'mission_trains', `${train}:${today}`.slice(0, 40), pending.names);
 				sent++;
 			}

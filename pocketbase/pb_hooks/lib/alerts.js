@@ -128,8 +128,8 @@ function dicosChangeAlert(app, before, record, kind, auth) {
 					: `DICOS : ${what} déplacé${kind === 'groupe' ? '' : 'e'} à ${c.station} (${c.from || '--:--'} → ${c.time || '--:--'})`;
 		const body = `${c.io === 'IN' ? 'Embarquement' : 'Débarquement'} · ${train} · ${people}`;
 		const sourceId = `${record.id}:${c.change.slice(0, 3)}:${c.io}:${c.time}`.slice(0, 40);
+		// Tous les agents qui lisent les missions ; la cloche filtre sur les districts du jour (14 oct. 2026).
 		for (const u of users) {
-			if (ops.dutyDistricts(u, today).indexOf(name) === -1) continue;
 			const dup = app.countRecords('notifications', $dbx.exp("user = {:u} AND source = 'dicos' AND source_id = {:s}", { u: u.id, s: sourceId }));
 			if (dup) continue;
 			ops.notify(app, u.id, 'dicos', title, body, link, 'dicos', sourceId, [name]);

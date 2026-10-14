@@ -1,5 +1,6 @@
 "use client";
 
+import type { NotificationCategory } from "@/lib/notification-prefs";
 import { DUTY_CHANGED } from "@/lib/team";
 import { Camera, KeyRound, MapPin, PlugZap, Save, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -16,6 +17,7 @@ import { setDutyDistricts } from "@/app/(app)/operations/actions";
 import { Avatar } from "@/components/shell/avatar";
 import { PasskeysCard } from "@/components/team/passkeys";
 import { HomeCard, SessionsCard, StatusCard } from "@/components/team/profile-extras";
+import { NotificationPrefsCard } from "@/components/team/notification-prefs-card";
 import { useShell } from "@/components/shell/shell-context";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Button } from "@/components/ui/button";
@@ -231,6 +233,7 @@ export function ProfileForms({
   passkeys,
   status,
   home,
+  hiddenNotifications,
 }: {
   profile: MyProfile;
   activity: MyActivity;
@@ -239,6 +242,7 @@ export function ProfileForms({
   passkeys: boolean;
   status: string;
   home: string;
+  hiddenNotifications: NotificationCategory[];
 }) {
   const router = useRouter();
   const { ui, setUi } = useShell();
@@ -316,6 +320,7 @@ export function ProfileForms({
         <DutyCard initial={duty} />
         <StatusCard initial={status} />
         <HomeCard initial={home} />
+        <NotificationPrefsCard initial={hiddenNotifications} />
         <ActivityCard activity={activity} />
       </div>
       <Card className="lg:col-span-2">

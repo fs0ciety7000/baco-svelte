@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ProfileForms } from "@/components/team/profile-forms";
 import { brusselsDay } from "@/lib/orders/time";
 import { homeOf } from "@/lib/home";
+import { hiddenCategories } from "@/lib/notification-prefs";
 import { can } from "@/lib/permissions";
 import { statusOf } from "@/lib/team";
 import { requireRoute } from "@/server/auth";
@@ -24,6 +25,7 @@ export default async function Page() {
       passkeys={passkeysEnabled()}
       status={statusOf(user.status, user.status_day, brusselsDay())}
       home={homeOf(user.preferences)}
+      hiddenNotifications={hiddenCategories(user.preferences)}
     />
   );
 }
