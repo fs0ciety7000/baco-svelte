@@ -51,6 +51,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         role: user.role,
         grants: user.grants ?? [],
         denies: user.denies ?? [],
+        perms: user.perms ?? null,
         duty,
       }}
     >

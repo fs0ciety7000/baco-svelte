@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/changelog.mjs",
+    "prebuild": "node scripts/changelog.mjs && node --experimental-strip-types --no-warnings scripts/catalog.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -16,7 +16,8 @@
     "e2e": "playwright test",
     "start:standalone": "cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/ && node .next/standalone/server.js",
     "tokens": "node --experimental-strip-types --no-warnings scripts/tokens.ts",
-    "changelog": "node scripts/changelog.mjs"
+    "changelog": "node scripts/changelog.mjs",
+    "catalog": "node --experimental-strip-types --no-warnings scripts/catalog.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

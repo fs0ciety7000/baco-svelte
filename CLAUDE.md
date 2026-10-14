@@ -1152,6 +1152,15 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   était celle du jour le moins récent et le nom celui du dernier envoi. Constat : la préversion n'avait reçu que la synchro
   de 03:43 (utilisateur) et la **prod n'a jamais reçu de synchro** (extensions encore branchées sur test-csm).
 
+- 2026-10-14 — **Rôles v3, lots L0 et L1** (plan `docs/design/CADRAGE-ROLES-V3.md` validé : admin seul gère les rôles, Sysop
+  distinct, ni portée par district ni droits temporaires, rôle utilisé non supprimable, Modérateur et PACO/RCCA modifiables
+  non supprimables, couleur du rôle = anneau d'avatar). **L0** : catalogue `web/src/lib/permissions/catalog.ts` (69 clés :
+  56 v2 + 13 nouvelles), copie des hooks `pocketbase/pb_hooks/lib/catalog.js` par `npm run catalog`, inventaire de tous les
+  tests de rôle (annexe du cadrage). **L1** : `users.perms` calculé par hook seul (migration `1760004300`), masqué aux
+  non-admins, lu par `can()` ; contrôle d'équivalence `pocketbase/scripts/perms-equivalence.mjs` (0 écart sur la base de
+  dev). Aucun changement de droit ni de règle. Vérifié : une souscription temps réel suit un changement de droits fait par
+  `$app.save()` (pas par SQL direct). 482 contrôles de règles.
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)

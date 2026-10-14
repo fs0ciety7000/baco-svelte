@@ -1366,6 +1366,67 @@ try {
 		}
 	}
 
+	// Rôles v3, lot L1 : `users.perms` calculé par le hook seul (lib/perms.js), jamais null, masqué aux non-admins.
+	{
+		const getPerms = async (id) => (await api('GET', `/api/collections/users/records/${id}`, { token: root })).json?.perms;
+		const mkUser = async (key, body) => {
+			const pass = `Test-${suffix}-p${key}`;
+			const r = await api('POST', '/api/collections/users/records', {
+				token: root,
+				body: { email: `test-p${key}-${suffix}@csm.invalid`, password: pass, passwordConfirm: pass, name: `Test p${key}`, username: `tp${key}${suffix}`, verified: true, ...body }
+			});
+			if (r.status !== 200) return null;
+			created.push(r.json.id);
+			const tok = (await api('POST', '/api/collections/users/auth-with-password', { body: { identity: r.json.email, password: pass } })).json?.token;
+			return { id: r.json.id, token: tok, json: r.json };
+		};
+		const bare = await mkUser('bare', { role: 'screen' });
+		check('compte « à nu » : perms = [] (jamais null)', Array.isArray(await getPerms(bare?.id)) && (await getPerms(bare?.id)).length === 0, JSON.stringify(await getPerms(bare?.id)));
+		const forged = await mkUser('forge', { role: 'guest', perms: ['otto:delete', 'pmr:read'] });
+		const fp = await getPerms(forged?.id);
+		check('perms forgé à la création (superuser) ignoré', Array.isArray(fp) && fp.join() === 'otto:read,generate_taxi:read', JSON.stringify(fp));
+		const pacoP = await getPerms(roles.user.id);
+		check(
+			'PACO/RCCA : perms calculé (création, modification, pas de suppression ni de modération)',
+			Array.isArray(pacoP) && pacoP.includes('otto:write') && pacoP.includes('bus:reopen') && !pacoP.includes('otto:delete') && !pacoP.includes('journal:moderate'),
+			`${pacoP?.length} clés`
+		);
+		const modoP = await getPerms(roles.modo.id);
+		check('modérateur : suppression, modération du Journal, annonces', modoP?.includes('otto:delete') && modoP?.includes('journal:moderate') && modoP?.includes('changelog:write'), `${modoP?.length} clés`);
+		const selfForge = await api('PATCH', `/api/collections/users/records/${roles.user.id}`, { token: roles.user.token, body: { perms: ['otto:delete', 'journal:moderate'] } });
+		const afterSelf = await getPerms(roles.user.id);
+		check('agent : perms forgé ignoré', !afterSelf?.includes('otto:delete') && !afterSelf?.includes('journal:moderate') && afterSelf?.length === pacoP?.length, `HTTP ${selfForge.status}`);
+		const adminForge = await api('PATCH', `/api/collections/users/records/${forged?.id}`, { token: roles.admin.token, body: { perms: ['pmr:read'] } });
+		check('admin : perms forgé ignoré', adminForge.status === 200 && (await getPerms(forged?.id)).join() === 'otto:read,generate_taxi:read', `HTTP ${adminForge.status}`);
+		await api('PATCH', `/api/collections/users/records/${forged?.id}`, { token: roles.admin.token, body: { role: 'paco' } });
+		const asPaco = await getPerms(forged?.id);
+		check('changement de rôle : perms recalculé', asPaco?.includes('otto:write') && asPaco?.includes('journal:read') && !asPaco?.includes('otto:delete'), `${asPaco?.length} clés`);
+		await api('PATCH', `/api/collections/users/records/${forged?.id}`, { token: roles.admin.token, body: { grants: ['otto:delete'], denies: ['journal:write', 'pmr:read'] } });
+		const gd = await getPerms(forged?.id);
+		check('grants / denies : perms recalculé', gd?.includes('otto:delete') && !gd?.includes('journal:write') && !gd?.includes('pmr:read') && gd?.includes('journal:read'), JSON.stringify(gd?.filter((k) => /^(otto|journal|pmr):/.test(k))));
+		await api('PATCH', `/api/collections/users/records/${forged?.id}`, { token: roles.admin.token, body: { grants: ['pmr:read'], denies: ['pmr:read', 'otto:read'] } });
+		const dep = await getPerms(forged?.id);
+		check('accordé l\'emporte sur retiré ; lecture retirée = actions retirées', dep?.includes('pmr:read') && !dep?.includes('otto:read') && !dep?.includes('otto:write') && !dep?.includes('bus:reopen'), JSON.stringify(dep?.filter((k) => /^(otto|bus|pmr):/.test(k))));
+		await api('PATCH', `/api/collections/users/records/${forged?.id}`, { token: roles.admin.token, body: { role: 'disabled' } });
+		check('compte désactivé : perms = []', (await getPerms(forged?.id))?.length === 0);
+		// Masquage : un agent ne lit ni les perms, ni les grants / denies d'un autre ; les siens, oui ; l'admin, tout.
+		const otherView = await api('GET', `/api/collections/users/records/${roles.modo.id}`, { token: roles.user.token });
+		check('agent ne lit pas perms / grants / denies d\'un autre', otherView.status === 200 && !('perms' in otherView.json) && !('grants' in otherView.json) && !('denies' in otherView.json), Object.keys(otherView.json ?? {}).join(','));
+		const otherList = await api('GET', `/api/collections/users/records?perPage=200&filter=${encodeURIComponent(`id = "${roles.modo.id}"`)}`, { token: roles.user.token });
+		check('liste des agents : perms masqué', otherList.json?.items?.length === 1 && !('perms' in otherList.json.items[0]), `${otherList.json?.items?.length}`);
+		const selfView = await api('GET', `/api/collections/users/records/${roles.user.id}`, { token: roles.user.token });
+		check('agent lit ses propres perms (fiche « mon profil », can() côté web)', Array.isArray(selfView.json?.perms) && Array.isArray(selfView.json?.grants), Object.keys(selfView.json ?? {}).length + ' champs');
+		const adminView = await api('GET', `/api/collections/users/records/${roles.user.id}`, { token: roles.admin.token });
+		check('admin lit perms / grants / denies des agents', Array.isArray(adminView.json?.perms) && Array.isArray(adminView.json?.denies));
+		// La règle lit la base, pas la réponse masquée : un agent garde ses droits (denies de `denied` toujours appliqué).
+		const stillDenied = await api('POST', '/api/collections/bus_orders/records', { token: roles.denied.token, body: { status: 'brouillon', created_by: roles.denied.id } });
+		check('masquage sans effet sur @request.auth des règles (droit retiré appliqué)', stillDenied.status >= 400, `HTTP ${stillDenied.status}`);
+		const conn = await mkUser('conn', { role: 'connector', grants: ['dicos:write'] });
+		const connView = await api('GET', `/api/collections/users/records/${roles.user.id}`, { token: conn?.token });
+		check('compte de service : lit perms (jeton d\'extension) mais ni grants ni denies', Array.isArray(connView.json?.perms) && !('grants' in connView.json) && !('denies' in connView.json), Object.keys(connView.json ?? {}).join(','));
+		check('compte de service : aucun droit de module', (await getPerms(conn?.id))?.length === 0);
+	}
+
 	// Admin : supprime.
 	const adel =await api('DELETE', `/api/collections/bus_orders/records/${order.json.id}`, { token: roles.admin.token });
 	check('admin supprime', adel.status === 204, `HTTP ${adel.status}`);

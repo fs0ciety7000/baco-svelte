@@ -32,6 +32,9 @@ const userSchema = z.object({
   role: z.enum(ROLES).catch("guest"),
   grants: z.array(z.string()).nullable().default([]),
   denies: z.array(z.string()).nullable().default([]),
+  // Permissions effectives (rôles v3, lot L1) : écrites par le hook PocketBase seul ; absentes (ancienne instance) =
+  // `can()` refait l'ancien calcul depuis role / grants / denies.
+  perms: z.array(z.string()).nullish(),
   district: z.string().default(""),
   // Districts permanents (un, deux ou les trois), réglés par l'admin : filtres et alertes par défaut.
   districts: z.array(z.string()).nullable().default([]),
