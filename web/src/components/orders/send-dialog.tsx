@@ -54,7 +54,7 @@ export function SendDialog({
 
   /**
    * « Valider l'envoi » (14 oct. 2026) : ouvre le brouillon Outlook (.eml : adresse du fournisseur, PDF joint, message
-   * généré) — ou le PDF seul sans adresse — puis passe le bon en « Envoyé ». Il reste à confirmer puis clôturer.
+   * généré) — ou le PDF seul sans adresse — puis passe le bon en « Envoyé / finalisé » (clôture, PDF archivé).
    */
   const validate = () =>
     start(async () => {
@@ -87,7 +87,7 @@ export function SendDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         eyebrow="Envoi au fournisseur"
-        title="Préparer l'envoi"
+        title="Valider l'envoi"
         description={
           noMail
             ? "Aucune adresse e-mail pour ce fournisseur : le bon est téléchargé en PDF, à transmettre (téléphone, autre canal)."

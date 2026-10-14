@@ -9,17 +9,16 @@ const bus = (id: string, day: string) =>
     origin: "Mons",
     destination: "Namur",
     call_time: "06:10",
-    status: "envoye",
+    status: "termine",
   }) as never;
 
 describe("todoItems", () => {
-  it("trie par gravité et marque les bons à clôturer", () => {
+  it("trie par gravité ; bons terminés à envoyer (orange au-delà de 2 jours)", () => {
     const items = todoItems({
       today: "2026-10-11",
-      nowMin: 12 * 60,
       stats: {
         active: 2,
-        toConfirm: 2,
+        toSend: 2,
         today: 0,
         running: 0,
         pending: [bus("b1", "2026-10-12"), bus("b2", "2026-10-03")],
@@ -68,24 +67,15 @@ describe("todoItems", () => {
         },
       ],
     });
-    expect(items.map((i) => i.severity)).toEqual(["danger", "warn", "warn", "info", "neutral"]);
+    expect(items.map((i) => i.severity)).toEqual(["danger", "warn", "info", "info", "neutral"]);
     expect(items[0]!.title).toBe("IC 2116 +18 min");
-    expect(items.find((i) => i.key === "bus-b2")!.action).toBe("Clôturer");
-    expect(items.find((i) => i.key === "bus-b1")!.action).toBe("Confirmer");
-    expect(items.some((i) => i.key === "notif-n2")).toBe(false);
-  });
-
-  it("bon envoyé dont le départ est dans moins de 2 h : rouge", () => {
-    const items = todoItems({
-      today: "2026-10-11",
-      nowMin: 5 * 60,
-      stats: { pending: [bus("b3", "2026-10-11")] } as never,
-      impacts: null,
-      mentions: null,
-      log: null,
+    expect(items.find((i) => i.key === "bus-b2")).toMatchObject({
+      action: "Envoyer",
+      title: "Bon bus terminé à envoyer",
+      when: "il y a 8 jours",
     });
-    expect(items[0]!.severity).toBe("danger");
-    expect(items[0]!.title).toContain("d'urgence (départ 06:10)");
+    expect(items.find((i) => i.key === "bus-b1")!.severity).toBe("info");
+    expect(items.some((i) => i.key === "notif-n2")).toBe(false);
   });
 
   it("vide sans données", () => {

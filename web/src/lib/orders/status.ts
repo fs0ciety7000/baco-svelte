@@ -1,40 +1,30 @@
-// Cycle de vie des commandes (miroir d'affichage de pocketbase/pb_hooks/lib/orders.js, qui fait foi).
-// brouillon → envoyé → confirmé → en cours → terminé, ou annulé. Pas de « facturé » (décision du 8 oct. 2026).
-// Valider l'envoi passe directement à « terminé » (décision du 9 oct. 2026) ; « envoyé » ne concerne plus que les
-// commandes déjà envoyées avant ce changement.
+// Cycle de vie des commandes (miroir d'affichage de pocketbase/pb_hooks/lib/orders.js, qui fait foi). Cycle v3,
+// décision de l'utilisateur du 14 oct. 2026 :
+//   1. « Brouillon / en cours » (bon préparé, bus engagés) ;
+//   2. « Terminé » (le ou les bus sont démobilisés) ;
+//   3. « Envoyé / finalisé » (clôture : e-mail semi-automatique au fournisseur, PDF archivé).
+// Plus annulé. « Confirmé » et « En cours » n'existent plus (migration `1760003400`).
 
-export const ORDER_STATUSES = [
-  "brouillon",
-  "envoye",
-  "confirme",
-  "en_cours",
-  "termine",
-  "annule",
-] as const;
+export const ORDER_STATUSES = ["brouillon", "termine", "envoye", "annule"] as const;
 export type Status = (typeof ORDER_STATUSES)[number];
 export type OrderKind = "bus" | "taxi";
 
 export const STATUS_LABEL: Record<Status, string> = {
-  brouillon: "Brouillon",
-  envoye: "Envoyé",
-  confirme: "Confirmé",
-  en_cours: "En cours",
+  brouillon: "Brouillon / en cours",
   termine: "Terminé",
+  envoye: "Envoyé / finalisé",
   annule: "Annulé",
 };
 
 const TRANSITIONS: Record<Status, Status[]> = {
-  brouillon: ["envoye", "annule"],
-  // « Clôturer » : seulement 5 jours après la date de service (option `closable`, le hook PocketBase vérifie).
-  envoye: ["brouillon", "confirme", "termine", "annule"],
-  confirme: ["envoye", "en_cours", "termine", "annule"],
-  en_cours: ["termine"],
-  termine: [],
+  brouillon: ["termine", "annule"],
+  termine: ["envoye", "brouillon", "annule"],
+  envoye: [],
   annule: [],
 };
+// Rouvrir un bon finalisé : coordinateurs (dont les PACO/RCCA, décision du 11 oct. 2026).
 const COORDINATOR: Partial<Record<Status, Status[]>> = {
-  en_cours: ["confirme", "annule"],
-  termine: ["en_cours"],
+  envoye: ["termine"],
 };
 
 export type Transition = {
@@ -47,39 +37,21 @@ export type Transition = {
 };
 
 const ACTION: Record<string, Omit<Transition, "to">> = {
-  "brouillon>envoye": { label: "Marquer envoyé", primary: true },
-  "envoye>confirme": { label: "Confirmer", primary: true },
-  "envoye>brouillon": { label: "Revenir en brouillon", tone: "back" },
-  "envoye>termine": { label: "Clôturer sans confirmation" },
-  "confirme>en_cours": { label: "Démarrer", primary: true },
-  "confirme>termine": { label: "Terminer" },
-  "confirme>envoye": { label: "Annuler la confirmation", tone: "back" },
-  "en_cours>termine": { label: "Terminer", primary: true },
-  "en_cours>confirme": { label: "Revenir à confirmé", tone: "back" },
-  "termine>en_cours": { label: "Rouvrir", tone: "back" },
+  "brouillon>termine": { label: "Terminer (bus démobilisés)", primary: true },
+  "termine>envoye": { label: "Valider l'envoi", primary: true },
+  "termine>brouillon": { label: "Revenir en cours", tone: "back" },
+  "envoye>termine": { label: "Rouvrir", tone: "back" },
 };
 
 /** Transitions proposées à un agent (le serveur revérifie tout). */
-/** Délai de clôture d'un bon envoyé jamais confirmé (jours après la date de service ; le hook fait foi). */
-export const CLOSE_DAYS = 5;
-
-/** Un bon envoyé peut être clôturé (et est signalé « à clôturer ») 5 jours après sa date de service. */
-export function isClosable(status: Status, serviceDay: string | undefined, today: string): boolean {
-  if (status !== "envoye" || !serviceDay || !/^\d{4}-\d{2}-\d{2}$/.test(serviceDay)) return false;
-  return (
-    (Date.parse(`${today}T12:00:00Z`) - Date.parse(`${serviceDay}T12:00:00Z`)) / 86_400_000 >=
-    CLOSE_DAYS
-  );
-}
-
 export function transitionsFor(
   status: Status,
-  opts: { coordinator: boolean; statusBeforeCancel?: string; closable?: boolean },
+  opts: { coordinator: boolean; statusBeforeCancel?: string },
 ): Transition[] {
   const targets = [
     ...TRANSITIONS[status],
     ...(opts.coordinator ? (COORDINATOR[status] ?? []) : []),
-  ].filter((to) => !(status === "envoye" && to === "termine" && !opts.closable));
+  ];
   const list: Transition[] = targets.map((to) =>
     to === "annule"
       ? { to, label: "Annuler la commande", tone: "danger" }
@@ -91,6 +63,12 @@ export function transitionsFor(
   return list;
 }
 
+/** Libellé d'un statut de l'historique : y compris les statuts retirés en v3 (« Confirmé », « En cours »). */
+export function historyLabel(code: string): string {
+  if (isStatus(code)) return STATUS_LABEL[code];
+  return ({ confirme: "Confirmé", en_cours: "En cours" } as Record<string, string>)[code] ?? code;
+}
+
 export function isStatus(v: unknown): v is Status {
   return typeof v === "string" && (ORDER_STATUSES as readonly string[]).includes(v);
 }
@@ -100,7 +78,7 @@ export function isCoordinator(role: string): boolean {
   return role === "admin" || role === "sysop" || role === "moderator" || role === "paco";
 }
 
-/** Une commande se modifie jusqu'à « terminé » sans « déverrouiller » ; annulée = lecture seule. */
+/** Une commande se modifie tant qu'elle n'est pas annulée (un bon finalisé se rouvre d'abord). */
 export function isEditable(status: Status): boolean {
-  return status !== "annule";
+  return status !== "annule" && status !== "envoye";
 }

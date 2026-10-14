@@ -6,9 +6,7 @@ const empty: Handover = {
   generatedAt: "2026-10-10T18:00:00Z",
   today: "2026-10-10",
   districts: ["DSO"],
-  urgent: [],
-  toConfirm: [],
-  toClose: [],
+  toSend: [],
   running: [],
   upcoming: [],
   upcomingTotal: 0,
@@ -56,26 +54,22 @@ describe("texte de la relève", () => {
     expect(t).toContain("… et 2 de plus");
     expect(t).not.toContain("Rien d'ouvert");
   });
-  it("bons à confirmer d'urgence en tête", () => {
+  it("bons terminés à envoyer en tête, puis en cours", () => {
     const o = {
       id: "b1",
       kind: "bus" as const,
       label: "Bus n° 12 Mons → Ath",
-      day: "dim. 11/10",
+      day: "ven. 09/10",
       time: "14:00",
-      late: 0,
+      late: 1,
       href: "/commandes/bus/b1",
     };
     const t = handoverText(
-      {
-        ...empty,
-        urgent: [{ ...o, minutes: 45 }],
-        toConfirm: [{ ...o, id: "b2", label: "Bus n° 13" }],
-      },
+      { ...empty, toSend: [o], running: [{ ...o, id: "b2", label: "Bus n° 13", late: 0 }] },
       { author: "A", at: "13:15", scope: "DSO" },
     );
-    expect(t).toContain("**Bons à confirmer d'urgence (1)**");
-    expect(t).toContain("Bus n° 12 Mons → Ath · départ 14:00 (dans 45 min)");
-    expect(t.indexOf("d'urgence")).toBeLessThan(t.indexOf("**Bons à confirmer (1)**"));
+    expect(t).toContain("**Bons terminés à envoyer (1)**");
+    expect(t).toContain("Bus n° 12 Mons → Ath · ven. 09/10 (depuis 1 j)");
+    expect(t.indexOf("à envoyer")).toBeLessThan(t.indexOf("**Bons en cours (1)**"));
   });
 });

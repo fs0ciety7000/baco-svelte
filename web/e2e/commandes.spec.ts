@@ -139,7 +139,7 @@ async function snap(page: Page, name: string, project: string) {
 
 let busUrl = "";
 
-test("bus : création, enregistrement automatique, envoi, confirmation", async ({ page }, info) => {
+test("bus : création, enregistrement automatique, fin, envoi", async ({ page }, info) => {
   test.skip(info.project.name !== "desktop", "parcours complet en desktop ; mobile en captures");
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -185,6 +185,13 @@ test("bus : création, enregistrement automatique, envoi, confirmation", async (
   await page.getByRole("button", { name: "Ajouter un bus" }).click();
   await expect(page.getByTestId("bus-row")).toHaveCount(2);
 
+  // Cycle v3 (14 oct. 2026) : brouillon / en cours → Terminé (démobilisation) → Envoyé / finalisé.
+  await page.getByTestId("transition-termine").click();
+  const finish = page.getByRole("dialog");
+  await expect(finish.getByText("Terminer la commande")).toBeVisible();
+  await finish.getByLabel("Démobilisation").first().fill("17:45");
+  await finish.getByRole("button", { name: "Terminer (bus démobilisés)" }).click();
+  await expect(page.getByTestId("prepare-send")).toBeVisible();
   await page.getByTestId("prepare-send").click();
   await expect(page.getByTestId("send-to")).toHaveText("planning@autocars-demo.invalid");
 
@@ -201,8 +208,8 @@ test("bus : création, enregistrement automatique, envoi, confirmation", async (
   const download = page.waitForEvent("download");
   await page.getByTestId("validate-send").click();
   await download;
-  // Valider l'envoi = brouillon Outlook + bon « Envoyé » (14 oct. 2026).
-  await expect(page.getByText("Envoyé", { exact: true }).first()).toBeVisible();
+  // Valider l'envoi = brouillon Outlook + bon « Envoyé / finalisé » (14 oct. 2026).
+  await expect(page.getByText("Envoyé / finalisé", { exact: true }).first()).toBeVisible();
   void number;
   expect(errors).toEqual([]);
 });
@@ -212,6 +219,12 @@ test("modèle partagé : envoi possible sans modification", async ({ page }, inf
   await login(page, "/commandes/nouveau");
   await page.goto(`/commandes/nouveau?modele=${templateId}`);
   await expect(page.getByLabel("Motif")).toHaveValue("Travaux");
+  // Modèle non modifié : « Créer le bon » l'enregistre, puis Terminer et Valider l'envoi.
+  await page.getByTestId("create-order").click();
+  await page.getByTestId("transition-termine").click();
+  const dialog = page.getByRole("dialog");
+  if (await dialog.isVisible().catch(() => false))
+    await dialog.getByRole("button", { name: "Terminer (bus démobilisés)" }).click();
   await page.getByTestId("prepare-send").click();
   await expect(page.getByTestId("validate-send")).toBeEnabled();
 });
@@ -228,13 +241,9 @@ test("taxi : création liée à une société, aller-retour pré-inversé", asyn
   await page.getByRole("radio", { name: "Aller-retour" }).click();
   await expect(page.getByLabel("Départ du retour")).toHaveValue("Tournai");
   await page.getByLabel("Société de taxi").selectOption({ label: `${TAXI_COMPANY} — Mons` });
-  await page.getByTestId("prepare-send").click();
-  // Contrôle avant envoi : l'heure du retour manque.
-  await expect(
-    page.getByRole("dialog").getByText("Date et heure du retour manquantes"),
-  ).toBeVisible();
-  await page.keyboard.press("Escape");
   await page.getByLabel("Heure du retour").fill("23:30");
+  // Cycle v3 : le trajet fait, le bon passe « Terminé », puis « Valider l'envoi ».
+  await page.getByTestId("transition-termine").click();
   await page.getByTestId("prepare-send").click();
   await expect(page.getByTestId("send-to")).toHaveText("dispatch@taxis-demo.invalid");
   // Dialogue centré dans la fenêtre (régression : `.chamfer` écrasait `fixed`, dialogue en bas de page).

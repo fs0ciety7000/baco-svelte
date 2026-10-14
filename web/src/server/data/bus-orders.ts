@@ -2,19 +2,14 @@ import "server-only";
 
 import { z } from "zod";
 
+import { ORDER_STATUSES } from "@/lib/orders/status";
+
 import { createPb } from "../pocketbase";
 import { readSessionToken } from "../session";
 
 // Accès aux commandes bus : uniquement côté serveur, avec le jeton de l'agent (règles PocketBase).
 
-export const ORDER_STATUSES = [
-  "brouillon",
-  "envoye",
-  "confirme",
-  "en_cours",
-  "termine",
-  "annule",
-] as const;
+export { ORDER_STATUSES } from "@/lib/orders/status";
 
 const busOrderSchema = z.object({
   id: z.string(),

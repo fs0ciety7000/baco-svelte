@@ -25,14 +25,15 @@ export async function dashboardStats() {
         .collection("bus_orders")
         .getList(1, 1, { filter: pb.filter(filter, params), fields: "id" })
     ).totalItems;
-  const [active, toConfirm, today, running] = await Promise.all([
-    count('status != "termine" && status != "annule"'),
-    count('status = "envoye"'),
+  // Cycle v3 (14 oct. 2026) : en cours = brouillon ; à envoyer = terminé (bus démobilisés, e-mail pas encore parti).
+  const [active, toSend, today, running] = await Promise.all([
+    count('status = "brouillon" || status = "termine"'),
+    count('status = "termine"'),
     count("order_date >= {:start} && order_date < {:end}", { start, end }),
-    count('status = "en_cours"'),
+    count('status = "brouillon"'),
   ]);
-  const pending = await listBusOrders({ status: "envoye" });
-  return { active, toConfirm, today, running, pending: pending.items.slice(0, 5) };
+  const pending = await listBusOrders({ status: "termine" });
+  return { active, toSend, today, running, pending: pending.items.slice(0, 5) };
 }
 
 export type DashboardStats = Awaited<ReturnType<typeof dashboardStats>>;

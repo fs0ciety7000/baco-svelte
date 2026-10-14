@@ -68,7 +68,7 @@ const ORDERS: {
     date: "08/10 06:40",
     route: "Mons → La Louvière-Centre",
     ref: "TC_0000412",
-    status: "en_cours",
+    status: "brouillon",
     buses: 3,
   },
   {
@@ -77,7 +77,7 @@ const ORDERS: {
     date: "08/10 05:55",
     route: "Namur → Ciney",
     ref: "TC_0000411",
-    status: "confirme",
+    status: "termine",
     buses: 2,
   },
   {
@@ -190,8 +190,8 @@ function ThemeSample({ themeId }: { themeId: (typeof THEMES)[number]["id"] }) {
       <p className="display text-h3">Commandes</p>
       <p className="text-body text-fg-muted">Texte secondaire lisible à 14 px.</p>
       <div className="flex flex-wrap gap-2">
-        <StatusBadge status="confirme" />
-        <StatusBadge status="en_cours" />
+        <StatusBadge status="brouillon" />
+        <StatusBadge status="termine" />
         <StatusBadge status="annule" />
       </div>
       <Input placeholder="Gare d'origine" aria-label={`Exemple de champ, thème ${t.label}`} />
@@ -287,7 +287,7 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
           />
           <StatCard
             className="min-w-44 snap-start"
-            label="À confirmer"
+            label="À envoyer"
             value={counts.toConfirm}
             tone="warn"
             hint="depuis 30 min"
@@ -559,7 +559,7 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
                 Fermer
               </Button>
               <Button variant="primary" className="flex-1">
-                Marquer en cours
+                Valider l&apos;envoi
               </Button>
             </>
           }
@@ -567,7 +567,7 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-body">
             <dt className="text-fg-muted">Statut</dt>
             <dd>
-              <StatusBadge status="confirme" />
+              <StatusBadge status="termine" />
             </dd>
             <dt className="text-fg-muted">Transporteur</dt>
             <dd>Société fictive</dd>
@@ -581,7 +581,7 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
         <div className="grid gap-4 md:grid-cols-2">
           <EmptyState
             title="Aucune commande"
-            description="Rien à confirmer pour l'instant. Les nouvelles commandes apparaîtront ici en direct."
+            description="Rien à envoyer pour l'instant. Les nouvelles commandes apparaîtront ici en direct."
             action={
               <Button variant="primary" size="sm">
                 <Plus /> Nouveau BC

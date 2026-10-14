@@ -492,32 +492,40 @@ export function TaxiForm(props: TaxiFormProps) {
                 maxLength={2000}
               />
             </Field>
-            {props.status !== "brouillon" ? (
-              <Field label="Heure confirmée par le taxi" className="max-w-48">
-                <Input
-                  type="time"
-                  value={d.confirmed_time}
-                  onChange={(e) => set("confirmed_time", e.target.value)}
-                />
-              </Field>
-            ) : null}
+            <Field label="Heure confirmée par le taxi" className="max-w-48">
+              <Input
+                type="time"
+                value={d.confirmed_time}
+                onChange={(e) => set("confirmed_time", e.target.value)}
+              />
+            </Field>
           </FormSection>
         </fieldset>
 
         <ActionBar>
-          {editable && props.status === "brouillon" ? (
+          {/* Cycle v3 (14 oct. 2026) : « Terminer » en cours, puis « Valider l'envoi » une fois le trajet fait. */}
+          {editable && props.status === "termine" ? (
             <Button
               type="button"
               variant="primary"
               onClick={() => void prepareSend()}
               data-testid="prepare-send"
             >
-              <Send aria-hidden /> Préparer l&apos;envoi
+              <Send aria-hidden /> Valider l&apos;envoi
+            </Button>
+          ) : null}
+          {editable && !orderId ? (
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => void autosave.flush({ create: true })}
+              data-testid="create-order"
+            >
+              Créer le bon
             </Button>
           ) : null}
           {orderId ? (
             <TransitionButtons
-              serviceDay={d.trip_day}
               kind="taxi"
               id={orderId}
               status={props.status}

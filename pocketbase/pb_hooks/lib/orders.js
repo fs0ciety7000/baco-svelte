@@ -1,36 +1,27 @@
-// Cycle de vie des commandes bus et taxi (docs/design/AUDIT-UX-COMMANDES.md §4, décisions du 8 octobre 2026).
-// brouillon → envoyé → confirmé → en cours → terminé, ou annulé. Pas de « facturé ».
-// 9 oct. 2026 : valider l'envoi passait directement à « terminé » ; depuis le 14 oct. 2026, il passe à « envoyé »
-// (brouillon Outlook ouvert, demande de l'utilisateur). brouillon → terminé reste permis (anciens écrans, imports).
+// Cycle de vie des commandes bus et taxi, v3 (décision de l'utilisateur du 14 oct. 2026, migration `1760003400`) :
+// brouillon (« Brouillon / en cours ») → terminé (bus démobilisés) → envoyé (« Envoyé / finalisé » : e-mail
+// semi-automatique au fournisseur, PDF archivé), ou annulé. Plus de « confirmé » ni d'« en cours ».
 
 const KIND = { bus_orders: 'bus', taxi_orders: 'taxi' };
 
 // Transitions permises à tout agent qui écrit des commandes.
 const TRANSITIONS = {
-	brouillon: ['envoye', 'termine', 'annule'],
-	// « Clôturer » un bon jamais confirmé (décision du 9 oct. 2026) : 5 jours après la date de service (voir CLOSE_DAYS).
-	envoye: ['brouillon', 'confirme', 'termine', 'annule'],
-	confirme: ['envoye', 'en_cours', 'termine', 'annule'],
-	en_cours: ['termine'],
-	termine: [],
+	brouillon: ['termine', 'annule'],
+	termine: ['envoye', 'brouillon', 'annule'],
+	envoye: [],
 	annule: []
 };
-// Délai avant de pouvoir clôturer un bon envoyé jamais confirmé (jours après la date de service).
-const CLOSE_DAYS = 5;
 
 // Transitions réservées aux coordinateurs : admin, sysop, modérateur et PACO/RCCA (rôles v2 du 11 oct. 2026).
-// « en cours → confirmé » aussi : sinon un agent contournerait l'annulation réservée (en cours → confirmé → annulé).
+// Rouvrir un bon finalisé (les PACO/RCCA le gardent, décision du 11 oct. 2026).
 const COORDINATOR = {
-	en_cours: ['confirme', 'annule'],
-	termine: ['en_cours']
+	envoye: ['termine']
 };
 
 // Horodatage posé à l'arrivée dans un statut.
 const STAMP = {
-	envoye: ['sent_at', 'sent_by'],
-	confirme: ['confirmed_at', 'confirmed_by'],
-	en_cours: ['started_at', 'started_by'],
 	termine: ['ended_at', 'ended_by'],
+	envoye: ['sent_at', 'sent_by'],
 	annule: ['cancelled_at', 'cancelled_by']
 };
 
@@ -51,6 +42,8 @@ function checkTransition(app, record, from, to, auth) {
 		if (from === 'annule' && !isCoordinator(auth)) {
 			throw new BadRequestError('Commande annulée : rétablissez-la avant de la modifier.');
 		}
+		// Bon finalisé (e-mail parti, PDF archivé) : on le rouvre (→ terminé) avant toute modification.
+		if (from === 'envoye') throw new BadRequestError('Bon finalisé : rouvre-le avant de le modifier.');
 		return false;
 	}
 	let allowed = (TRANSITIONS[from] || []).indexOf(to) !== -1;
@@ -64,15 +57,6 @@ function checkTransition(app, record, from, to, auth) {
 		allowed = true;
 	}
 	if (!allowed) throw new BadRequestError(`Transition impossible : ${from} → ${to}.`);
-	if (from === 'envoye' && to === 'termine') {
-		const raw = record.getString(record.collection().name === 'bus_orders' ? 'order_date' : 'trip_at');
-		const day = Date.parse(String(raw).slice(0, 10) + 'T12:00:00Z');
-		if (!day || Date.now() - day < CLOSE_DAYS * 86400000) {
-			throw new BadRequestError(
-				`Clôture possible ${CLOSE_DAYS} jours après la date de service : confirme d'abord le bon (ou annule-le).`
-			);
-		}
-	}
 
 	if (to === 'annule' && !record.getString('cancel_reason').trim()) {
 		throw new BadRequestError("Le motif d'annulation est obligatoire.");
@@ -115,11 +99,6 @@ function stamp(record, from, to, auth) {
 		record.set(fields[0], now());
 		record.set(fields[1], by);
 	}
-	// Envoi validé directement en « terminé » : l'heure d'envoi est aussi posée (suivi, statistiques).
-	if (to === 'termine' && from === 'brouillon' && !record.getString('sent_at')) {
-		record.set('sent_at', now());
-		record.set('sent_by', by);
-	}
 	if (to === 'annule') record.set('status_before_cancel', from);
 	if (from === 'annule') {
 		record.set('cancelled_at', '');
@@ -127,7 +106,7 @@ function stamp(record, from, to, auth) {
 		record.set('status_before_cancel', '');
 	}
 	// Retour en arrière : l'étape quittée n'a plus d'horodatage (l'historique la garde).
-	const order = ['brouillon', 'envoye', 'confirme', 'en_cours', 'termine'];
+	const order = ['brouillon', 'termine', 'envoye'];
 	if (from !== 'annule' && order.indexOf(to) < order.indexOf(from)) {
 		const undone = STAMP[from];
 		if (undone) {
@@ -177,33 +156,4 @@ function companyUses(app, collection, id) {
 	return row.n;
 }
 
-// Relance d'un fournisseur (11 oct. 2026) : bon « envoyé » jamais confirmé. L'agent prépare lui-même le brouillon
-// `.eml` (aucun envoi par CSM) ; la relance est notée dans l'historique (`order_events`, de « envoyé » à « envoyé »).
-const REMIND_GAP_MS = 2 * 60 * 1000;
-
-/**
- * Note une relance : bon visible et modifiable par l'agent (règle `updateRule` de la collection, évaluée par
- * PocketBase), statut « envoyé », pas de relance dans les 2 dernières minutes. Renvoie le nombre de relances.
- */
-function remind(app, kind, id, auth, info) {
-	const table = kind === 'bus' ? 'bus_orders' : 'taxi_orders';
-	let record;
-	try {
-		record = app.findRecordById(table, id);
-	} catch (_) {
-		throw new NotFoundError('Commande introuvable.');
-	}
-	const col = record.collection();
-	if (!auth || auth.isSuperuser() || !app.canAccessRecord(record, info, col.viewRule) || !app.canAccessRecord(record, info, col.updateRule))
-		throw new NotFoundError('Commande introuvable.');
-	if (record.getString('status') !== 'envoye') throw new BadRequestError('Seul un bon envoyé et non confirmé se relance.');
-	const events = app.findRecordsByFilter('order_events', 'kind = {:k} && order = {:id} && from = "envoye" && to = "envoye"', '-at', 50, 0, { k: kind, id: id });
-	if (events.length) {
-		const last = new Date(events[0].getString('at').replace(' ', 'T')).getTime();
-		if (Date.now() - last < REMIND_GAP_MS) throw new BadRequestError('Relance déjà notée il y a moins de 2 minutes.');
-	}
-	writeEvent(app, record, 'envoye', 'envoye', auth, `Relance n° ${events.length + 1} (brouillon e-mail préparé)`);
-	return events.length + 1;
-}
-
-module.exports = { checkTransition, stamp, writeEvent, nextNumber, recipient, isCoordinator, companyUses, remind, TRANSITIONS, COORDINATOR };
+module.exports = { checkTransition, stamp, writeEvent, nextNumber, recipient, isCoordinator, companyUses, TRANSITIONS, COORDINATOR };

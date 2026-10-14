@@ -9,7 +9,6 @@ const EXPECTED = {
 	'mission-trains': 3,
 	'irail-journal': 5,
 	'order-pdf-r2': 5,
-	'bus-h2': 5,
 	'dicos-stale': 10,
 	'pmr-retention': 1440,
 	'notifications-purge': 1440,

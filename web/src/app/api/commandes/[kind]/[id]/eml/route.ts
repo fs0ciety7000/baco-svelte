@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import { buildEml, contentDisposition } from "@/lib/orders/eml";
 import { busMail, taxiMail, type OrderMail } from "@/lib/orders/mail";
-import { brusselsDay, pbDate } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
 import { getCurrentUser } from "@/server/auth";
 import {
@@ -16,8 +15,8 @@ import {
 import { busOrderPdf, taxiOrderPdf } from "@/server/pdf/order-pdf";
 
 // Brouillon d'e-mail `.eml` (X-Unsent) avec le bon PDF joint : Outlook l'ouvre, l'agent vérifie
-// l'expéditeur et envoie lui-même. Lecture seule : le statut n'est jamais modifié ici (l'agent confirme
-// l'envoi ensuite dans CSM).
+// l'expéditeur et envoie lui-même. Lecture seule : le statut n'est jamais modifié ici (« Valider l'envoi » passe le bon
+// en « Envoyé / finalisé » par la Server Action `transitionOrder`).
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,30 +46,17 @@ export async function GET(
     return plain("Introuvable", 404);
 
   const agentName = user.name || user.username;
-  // `?relance=1` : brouillon de relance (bon envoyé non confirmé). La relance est notée dans l'historique par la
-  // Server Action `remindSupplier`, jamais ici (GET sans effet).
-  const reminder = new URL(request.url).searchParams.get("relance") === "1";
-  const sentDayOf = (sentAt: string) => {
-    const d = pbDate(sentAt);
-    return d ? brusselsDay(d) : "";
-  };
   try {
     let pdf: Uint8Array;
     let mail: OrderMail;
     if (kind === "bus") {
       const [order, ref] = await Promise.all([getBusOrder(id), busReference()]);
       pdf = await busOrderPdf(order, { agentName: orderAgent(order.meta), drivers: ref.drivers });
-      mail = busMail(order, {
-        agentName,
-        reminder: reminder ? { sentDay: sentDayOf(order.meta.sentAt) } : undefined,
-      });
+      mail = busMail(order, { agentName });
     } else {
       const order = await getTaxiOrder(id).then((o) => (can(user, "pmr:read") ? o : redactPmr(o)));
       pdf = await taxiOrderPdf(order, { agentName: orderAgent(order.meta) });
-      mail = taxiMail(order, {
-        agentName,
-        reminder: reminder ? { sentDay: sentDayOf(order.meta.sentAt) } : undefined,
-      });
+      mail = taxiMail(order, { agentName });
     }
     const eml = buildEml({
       ...mail,
@@ -82,7 +68,7 @@ export async function GET(
         "Content-Type": "message/rfc822",
         "Content-Disposition": contentDisposition(
           "attachment",
-          `${reminder ? "Relance · " : ""}${mail.filename.replace(/\.pdf$/, "")}.eml`,
+          `${mail.filename.replace(/\.pdf$/, "")}.eml`,
         ),
       },
     });

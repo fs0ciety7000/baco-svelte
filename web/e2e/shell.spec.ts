@@ -46,7 +46,7 @@ test("navigation principale et onglets en routes", async ({ page, isMobile }, te
     await expect(page).toHaveURL(/\/equipe\/profil$/);
   } else {
     const side = page.getByRole("navigation", { name: "Navigation principale" });
-    // Les compteurs (non lus, à confirmer…) suivent le libellé du module.
+    // Les compteurs (non lus, à envoyer…) suivent le libellé du module.
     await expect(side.getByRole("list").getByRole("link")).toHaveText([
       /^Accueil/,
       /^Commandes/,

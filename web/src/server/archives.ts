@@ -11,7 +11,7 @@ import {
 } from "@/server/data/orders";
 import { busOrderPdf, taxiOrderPdf } from "@/server/pdf/order-pdf";
 
-// Archives des bons (demande du 11 oct. 2026) : à la clôture d'un bon (statut « terminé »), son PDF est produit ici
+// Archives des bons (demande du 11 oct. 2026) : à la clôture d'un bon (statut « envoyé / finalisé » depuis le 14 oct. 2026), son PDF est produit ici
 // avec le jeton de l'agent, puis rangé par PocketBase (route interne `/api/csm/archives/store` : volume + copie R2).
 // Le PDF d'un taxi est archivé SANS les données PMR nominatives : l'archive est gardée sans limite de durée, alors que
 // le nominatif PMR est anonymisé après 12 mois (note DPO).
@@ -22,7 +22,7 @@ export function archivesEnabled(): boolean {
 
 type Archived = { ok: true; id: string; r2: boolean } | { ok: false; error: string };
 
-/** Produit et range le PDF d'un bon terminé. Ne lève pas : un échec n'empêche jamais la clôture. */
+/** Produit et range le PDF d'un bon finalisé. Ne lève pas : un échec n'empêche jamais la clôture. */
 export async function archiveOrder(
   kind: "bus" | "taxi",
   id: string,
@@ -38,7 +38,7 @@ export async function archiveOrder(
     let district: string;
     if (kind === "bus") {
       const [order, ref] = await Promise.all([getBusOrder(id), busReference()]);
-      if (order.meta.status !== "termine") return { ok: false, error: "Bon non terminé." };
+      if (order.meta.status !== "envoye") return { ok: false, error: "Bon non finalisé." };
       pdf = await busOrderPdf(order, { agentName: orderAgent(order.meta), drivers: ref.drivers });
       filename = busFilename(order.draft);
       reference = order.draft.relation.trim() || `Bon bus n° ${order.meta.number}`;
@@ -47,7 +47,7 @@ export async function archiveOrder(
       district = order.draft.district;
     } else {
       const order = redactPmr(await getTaxiOrder(id));
-      if (order.meta.status !== "termine") return { ok: false, error: "Bon non terminé." };
+      if (order.meta.status !== "envoye") return { ok: false, error: "Bon non finalisé." };
       pdf = await taxiOrderPdf(order, { agentName: orderAgent(order.meta) });
       filename = taxiFilename(order.draft);
       reference = `Taxi n° ${order.meta.number}`;

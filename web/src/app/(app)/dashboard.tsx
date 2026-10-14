@@ -39,12 +39,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/misc";
 import { StatCard } from "@/components/ui/stat-card";
-import { Badge, StatusBadge, statusColor } from "@/components/ui/status-badge";
+import { StatusBadge, statusColor } from "@/components/ui/status-badge";
 import { ListCard } from "@/components/ui/table";
 import { toast } from "@/components/ui/toast";
 import { type DashboardLayout, type WidgetId } from "@/design/dashboard-layout";
 import { useStaggerIn } from "@/lib/motion";
-import { CLOSE_DAYS } from "@/lib/orders/status";
 import { brusselsDay, daysBetween, formatDay, isValidDay } from "@/lib/orders/time";
 import { cn, pl } from "@/lib/utils";
 import type { FavoriteStation } from "@/lib/ops/irail";
@@ -62,7 +61,7 @@ const TITLES: Record<WidgetId, { eyebrow: string; title: string; wide?: boolean 
   impacts: { eyebrow: "PMR et groupes", title: "Missions impactées", wide: true },
   "pmr-jour": { eyebrow: "PMR et groupes", title: "Aujourd'hui en PMR" },
   mentions: { eyebrow: "Pour toi", title: "Mentions et alertes" },
-  "a-confirmer": { eyebrow: "Commandes", title: "À confirmer", wide: true },
+  "a-confirmer": { eyebrow: "Commandes", title: "À envoyer", wide: true },
   raccourcis: { eyebrow: "Actions", title: "Raccourcis" },
   trains: { eyebrow: "Opérations", title: "Trains perturbés" },
   "main-courante": { eyebrow: "Opérations", title: "Journal" },
@@ -114,17 +113,17 @@ function WidgetBody({
             onClick={() => router.push("/commandes")}
           />
           <StatCard
-            label="À confirmer"
-            value={stats.toConfirm}
+            label="À envoyer"
+            value={stats.toSend}
             tone="warn"
-            onClick={() => router.push("/commandes?statut=envoye")}
+            onClick={() => router.push("/commandes?statut=termine")}
           />
           <StatCard label="Aujourd'hui" value={stats.today} tone="info" />
           <StatCard
             label="En cours"
             value={stats.running}
             tone="ok"
-            onClick={() => router.push("/commandes?statut=en_cours")}
+            onClick={() => router.push("/commandes?statut=brouillon")}
           />
         </div>
       );
@@ -132,10 +131,7 @@ function WidgetBody({
       if (!stats) return <EmptyState title="Accès restreint" />;
       if (stats.pending.length === 0)
         return (
-          <EmptyState
-            title="Rien à confirmer"
-            description="Toutes les commandes envoyées sont confirmées."
-          />
+          <EmptyState title="Rien à envoyer" description="Aucun bon terminé en attente d'envoi." />
         );
       return (
         <div className="flex flex-col gap-2">
@@ -170,7 +166,6 @@ function WidgetBody({
                       aside={
                         <span className="inline-flex flex-col items-end gap-1">
                           <StatusBadge status={o.status} />
-                          {late >= CLOSE_DAYS ? <Badge tone="warn">À clôturer</Badge> : null}
                         </span>
                       }
                       className="hover:bg-surface-2"
@@ -181,7 +176,7 @@ function WidgetBody({
             })}
           </ul>
           <Link href="/commandes/suivi" className="link self-start text-small">
-            Tout le suivi ({stats.toConfirm} à confirmer)
+            Tout le suivi ({stats.toSend} à envoyer)
           </Link>
         </div>
       );
@@ -376,7 +371,7 @@ export function Dashboard({
       }
     });
 
-  // « Vue du jour » et « À confirmer » sont repris par la bande de compteurs et la file « À traiter » (11 oct. 2026).
+  // « Vue du jour » et « À envoyer » sont repris par la bande de compteurs et la file « À traiter » (11 oct. 2026).
   const absorbed = (id: WidgetId) => id === "commandes" || id === "a-confirmer";
   const shown: WidgetId[] = (
     editing ? layout.order : layout.order.filter((id) => !layout.hidden.includes(id))

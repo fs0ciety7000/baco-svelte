@@ -270,8 +270,8 @@ export async function transitionOrder(
     });
     const body: Record<string, unknown> = { status: p.to };
 
-    // Envoi : mêmes contrôles que la feuille d'envoi (le hook vérifie aussi l'adresse).
-    if (p.to === "envoye" && current.status === "brouillon") {
+    // Envoi (terminé → envoyé / finalisé) : mêmes contrôles que la feuille d'envoi.
+    if (p.to === "envoye" && current.status === "termine") {
       const missing =
         p.kind === "bus"
           ? checkBusForSend(busDraftFromRecord(current), {
@@ -286,7 +286,7 @@ export async function transitionOrder(
     }
     if (p.to === "annule") body.cancel_reason = p.cancelReason ?? "";
 
-    // Confirmation / démobilisation : heures et plaques saisies dans la même requête.
+    // Fin (bus démobilisés) : heures de démobilisation saisies dans la même requête.
     if (p.kind === "bus" && (p.details?.buses || p.details?.demob)) {
       const buses = busDraftFromRecord(current).buses;
       // Le dialogue est pré-rempli avec les valeurs actuelles : ce qui est envoyé remplace (effacer est permis).
@@ -307,9 +307,9 @@ export async function transitionOrder(
       body.confirmed_time = p.details.confirmed_time;
 
     await col.update(p.id, body);
-    // Bon terminé : PDF archivé (volume + R2) APRÈS la réponse (la clôture n'attend pas la production du PDF). Un échec
-    // n'annule pas la clôture : rattrapé depuis la page Archives (« Archiver les bons terminés »).
-    if (p.to === "termine" && current.status !== "termine") {
+    // Bon finalisé (envoyé, cycle v3 du 14 oct. 2026) : PDF archivé (volume + R2) APRÈS la réponse (la clôture n'attend
+    // pas la production du PDF). Un échec n'annule pas la clôture : rattrapé depuis la page Archives.
+    if (p.to === "envoye" && current.status !== "envoye") {
       const user = await requireUser();
       const { kind, id } = p;
       after(async () => {
@@ -318,32 +318,6 @@ export async function transitionOrder(
       });
     }
     return { ok: true };
-  } catch (e) {
-    return fail(e);
-  }
-}
-
-/**
- * Relance du fournisseur (11 oct. 2026) : bon envoyé non confirmé. Note la relance dans l'historique (`order_events`,
- * route PocketBase `/api/csm/orders/{kind}/{id}/reminder` : droits de modification du bon, 2 min entre deux relances)
- * puis le navigateur télécharge le brouillon `.eml` (`/eml?relance=1`). Aucun envoi par CSM (contrainte e-mail).
- */
-export async function remindSupplier(input: {
-  kind: OrderKind;
-  id: string;
-}): Promise<ActionResult<{ count: number; emlUrl: string }>> {
-  try {
-    const kind = kindSchema.parse(input.kind);
-    const id = idSchema.parse(input.id);
-    await writer(kind, "update");
-    const pb = await pbForRequest();
-    const res = (await pb.send(`/api/csm/orders/${kind}/${id}/reminder`, { method: "POST" })) as {
-      count?: number;
-    };
-    return {
-      ok: true,
-      data: { count: Number(res.count) || 1, emlUrl: `/api/commandes/${kind}/${id}/eml?relance=1` },
-    };
   } catch (e) {
     return fail(e);
   }

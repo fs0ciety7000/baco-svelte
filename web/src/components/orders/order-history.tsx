@@ -1,6 +1,6 @@
 import { Timeline } from "@/components/ui/form-kit";
 import { statusColor } from "@/components/ui/status-badge";
-import { STATUS_LABEL } from "@/lib/orders/status";
+import { historyLabel, isStatus } from "@/lib/orders/status";
 import { pbDate } from "@/lib/orders/time";
 import type { OrderEvent } from "@/server/data/orders";
 
@@ -22,22 +22,22 @@ export function OrderHistory({ events }: { events: OrderEvent[] }) {
         const d = pbDate(e.at);
         return {
           id: e.id,
-          color: statusColor(e.to),
+          color: isStatus(e.to) ? statusColor(e.to) : "var(--fg-muted)",
           // Relance du fournisseur : événement « envoyé → envoyé » (11 oct. 2026).
           title:
             e.from === e.to ? (
               <>
                 <strong className="font-semibold">Relance du fournisseur</strong> · bon toujours{" "}
-                {STATUS_LABEL[e.to].toLowerCase()}
+                {historyLabel(e.to).toLowerCase()}
               </>
             ) : e.from ? (
               <>
-                {STATUS_LABEL[e.from as keyof typeof STATUS_LABEL] ?? e.from} →{" "}
-                <strong className="font-semibold">{STATUS_LABEL[e.to]}</strong>
+                {historyLabel(e.from)} →{" "}
+                <strong className="font-semibold">{historyLabel(e.to)}</strong>
               </>
             ) : (
               <>
-                Création · <strong className="font-semibold">{STATUS_LABEL[e.to]}</strong>
+                Création · <strong className="font-semibold">{historyLabel(e.to)}</strong>
               </>
             ),
           meta: `${e.by}${d ? ` · ${at.format(d)}` : ""}${e.legacy ? " · repris de BACO" : ""}`,

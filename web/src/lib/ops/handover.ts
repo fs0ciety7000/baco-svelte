@@ -11,8 +11,6 @@ export type HandoverOrder = {
   time: string;
   late: number;
   href: string;
-  /** Bon « à confirmer d'urgence » : minutes avant le premier départ (négatif = passé). */
-  minutes?: number;
 };
 
 export type HandoverLeg = {
@@ -50,10 +48,9 @@ export type Handover = {
   /** Jour de service (Bruxelles) de la relève. */
   today: string;
   districts: string[];
-  /** Bons bus envoyés, pas confirmés, premier départ dans 2 h au plus (ou passé depuis 1 h) : `busUrgency`. */
-  urgent: HandoverOrder[];
-  toConfirm: HandoverOrder[];
-  toClose: HandoverOrder[];
+  /** Cycle v3 (14 oct. 2026) : bons terminés (bus démobilisés) dont l'e-mail de clôture n'est pas encore parti. */
+  toSend: HandoverOrder[];
+  /** Bons « brouillon / en cours » dont le jour de service est aujourd'hui ou passé. */
   running: HandoverOrder[];
   upcoming: HandoverLeg[];
   upcomingTotal: number;
@@ -63,12 +60,6 @@ export type Handover = {
   log: HandoverLog[];
   disturbances: HandoverLog[];
 };
-
-/** « dans 45 min » / « passé de 10 min » (bon à confirmer d'urgence). */
-export function urgencyText(o: Pick<HandoverOrder, "minutes">): string {
-  if (o.minutes === undefined) return "";
-  return o.minutes >= 0 ? ` (dans ${o.minutes} min)` : ` (passé de ${-o.minutes} min)`;
-}
 
 const io = (v: "IN" | "OUT") => (v === "IN" ? "embarquement" : "débarquement");
 const delayText = (i: Impact) => (i.cancelled ? "supprimé" : `+${i.delay} min`);
@@ -85,22 +76,14 @@ export function handoverText(
     if (more > 0) out.push(`- … et ${more} de plus`);
   };
   section(
-    `Bons à confirmer d'urgence (${h.urgent.length})`,
-    h.urgent.slice(0, 8).map((o) => `${o.label} · départ ${o.time}${urgencyText(o)}`),
-    h.urgent.length - 8,
+    `Bons terminés à envoyer (${h.toSend.length})`,
+    h.toSend
+      .slice(0, 8)
+      .map((o) => `${o.label} · ${o.day}${o.late > 0 ? ` (depuis ${o.late} j)` : ""}`),
+    h.toSend.length - 8,
   );
   section(
-    `Bons à confirmer (${h.toConfirm.length})`,
-    h.toConfirm.slice(0, 8).map((o) => `${o.label} · ${o.day}${o.time ? ` ${o.time}` : ""}`),
-    h.toConfirm.length - 8,
-  );
-  section(
-    `Bons à clôturer (${h.toClose.length})`,
-    h.toClose.slice(0, 8).map((o) => `${o.label} · envoyé il y a ${o.late} j`),
-    h.toClose.length - 8,
-  );
-  section(
-    `Services de bus en cours (${h.running.length})`,
+    `Bons en cours (${h.running.length})`,
     h.running.slice(0, 8).map((o) => `${o.label}${o.time ? ` · ${o.time}` : ""}`),
     h.running.length - 8,
   );

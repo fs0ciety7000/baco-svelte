@@ -208,7 +208,6 @@ export function BusForm(props: BusFormProps) {
   const companyDrivers = reference.drivers.filter((dr) => dr.company === d.company);
   const [extraDrivers, setExtraDrivers] = useState<typeof reference.drivers>([]);
   const drivers = [...companyDrivers, ...extraDrivers.filter((x) => x.company === d.company)];
-  const sentOrLater = props.status !== "brouillon";
 
   const prepareSend = async () => {
     setShowErrors(true);
@@ -579,44 +578,40 @@ export function BusForm(props: BusFormProps) {
                         onChange={(e) => setBus(i, { actual: e.target.value })}
                       />
                     </Field>
-                    {sentOrLater ? (
-                      <>
-                        <Field label="Heure confirmée">
-                          <Input
-                            type="time"
-                            value={b.confirmed}
-                            onChange={(e) => setBus(i, { confirmed: e.target.value })}
-                          />
-                        </Field>
-                        <Field label="Démobilisation">
-                          <Input
-                            type="time"
-                            value={b.demob}
-                            onChange={(e) => setBus(i, { demob: e.target.value })}
-                          />
-                        </Field>
-                        <Field label="Plaque">
-                          <Input
-                            value={b.plate}
-                            onChange={(e) => setBus(i, { plate: e.target.value.toUpperCase() })}
-                            maxLength={40}
-                          />
-                        </Field>
-                        <Field label="Chauffeur" className="sm:col-span-2">
-                          <Select
-                            value={b.driver}
-                            onChange={(e) => setBus(i, { driver: e.target.value })}
-                          >
-                            <option value="">—</option>
-                            {drivers.map((dr) => (
-                              <option key={dr.id} value={dr.id}>
-                                {dr.name}
-                              </option>
-                            ))}
-                          </Select>
-                        </Field>
-                      </>
-                    ) : null}
+                    <Field label="Heure confirmée">
+                      <Input
+                        type="time"
+                        value={b.confirmed}
+                        onChange={(e) => setBus(i, { confirmed: e.target.value })}
+                      />
+                    </Field>
+                    <Field label="Démobilisation">
+                      <Input
+                        type="time"
+                        value={b.demob}
+                        onChange={(e) => setBus(i, { demob: e.target.value })}
+                      />
+                    </Field>
+                    <Field label="Plaque">
+                      <Input
+                        value={b.plate}
+                        onChange={(e) => setBus(i, { plate: e.target.value.toUpperCase() })}
+                        maxLength={40}
+                      />
+                    </Field>
+                    <Field label="Chauffeur" className="sm:col-span-2">
+                      <Select
+                        value={b.driver}
+                        onChange={(e) => setBus(i, { driver: e.target.value })}
+                      >
+                        <option value="">—</option>
+                        {drivers.map((dr) => (
+                          <option key={dr.id} value={dr.id}>
+                            {dr.name}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
                   </div>
                   <div className="flex flex-wrap gap-x-6 gap-y-2">
                     <label className="flex min-h-11 cursor-pointer items-center gap-2 text-body">
@@ -626,15 +621,13 @@ export function BusForm(props: BusFormProps) {
                       />
                       Trajet spécifique
                     </label>
-                    {sentOrLater ? (
-                      <label className="flex min-h-11 cursor-pointer items-center gap-2 text-body">
-                        <Checkbox
-                          checked={b.cancelled}
-                          onCheckedChange={(v) => setBus(i, { cancelled: v === true })}
-                        />
-                        Bus annulé
-                      </label>
-                    ) : null}
+                    <label className="flex min-h-11 cursor-pointer items-center gap-2 text-body">
+                      <Checkbox
+                        checked={b.cancelled}
+                        onCheckedChange={(v) => setBus(i, { cancelled: v === true })}
+                      />
+                      Bus annulé
+                    </label>
                   </div>
                   {b.specific_route ? (
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -677,7 +670,7 @@ export function BusForm(props: BusFormProps) {
               >
                 <Plus aria-hidden /> Ajouter un bus
               </Button>
-              {sentOrLater && d.company ? (
+              {d.company ? (
                 <NewDriverButton
                   companyId={d.company}
                   onAdded={(dr) => setExtraDrivers((x) => [...x, dr])}
@@ -733,27 +726,35 @@ export function BusForm(props: BusFormProps) {
         </fieldset>
 
         <ActionBar>
-          {editable && props.status === "brouillon" ? (
+          {/* Cycle v3 (14 oct. 2026) : « Terminer » en cours, puis « Valider l'envoi » une fois les bus démobilisés. */}
+          {editable && props.status === "termine" ? (
             <Button
               type="button"
               variant="primary"
               onClick={() => void prepareSend()}
               data-testid="prepare-send"
             >
-              <Send aria-hidden /> Préparer l&apos;envoi
+              <Send aria-hidden /> Valider l&apos;envoi
+            </Button>
+          ) : null}
+          {editable && !orderId ? (
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => void autosave.flush({ create: true })}
+              data-testid="create-order"
+            >
+              Créer le bon
             </Button>
           ) : null}
           {orderId ? (
             <TransitionButtons
-              serviceDay={d.order_date}
               kind="bus"
               id={orderId}
               status={props.status}
               statusBeforeCancel={props.statusBeforeCancel}
               coordinator={props.coordinator}
               buses={d.buses}
-              drivers={reference.drivers}
-              companyId={d.company}
               before={autosave.flush}
               hideSend
             />

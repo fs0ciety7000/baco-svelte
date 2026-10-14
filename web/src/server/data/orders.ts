@@ -294,6 +294,8 @@ export type OrderRow = {
   authorId: string;
   district: string;
   sentAt: string;
+  /** Fin du service (bus démobilisés) : ancienneté dans la vue « À envoyer ». */
+  endedAt: string;
   updated: string;
   reason: string;
   /** Bus du bon (B201) ; vide pour un taxi. */
@@ -322,6 +324,7 @@ function busRow(r: RecordModel): OrderRow {
     authorId: str(r.created_by),
     district: str(r.district),
     sentAt: str(r.sent_at),
+    endedAt: str(r.ended_at),
     updated: str(r.updated),
     reason: str(r.reason),
     buses,
@@ -353,13 +356,15 @@ function taxiRow(r: RecordModel, canPmr = false): OrderRow {
     authorId: str(r.created_by),
     district: str(r.district),
     sentAt: str(r.sent_at),
+    endedAt: str(r.ended_at),
     updated: str(r.updated),
     reason: r.is_pmr ? (canPmr ? str(r.pmr_reason) : "") : str(r.reason),
     buses: [],
   };
 }
 
-export const VIEWS = ["a-confirmer", "aujourdhui", "en-cours", "brouillons", "toutes"] as const;
+// Cycle v3 (14 oct. 2026) : à envoyer = terminé ; en cours = brouillon / en cours.
+export const VIEWS = ["a-envoyer", "aujourdhui", "en-cours", "toutes"] as const;
 export type View = (typeof VIEWS)[number];
 
 export const listSchema = z.object({
@@ -404,19 +409,15 @@ function buildFilter(
           b: toPbInstant(brusselsToUtc(addDays(to, 1))),
         });
   switch (p.view) {
-    case "a-confirmer":
-      parts.push('status = "envoye"');
+    case "a-envoyer":
+      parts.push('status = "termine"');
       break;
     case "aujourdhui":
-      parts.push('status != "annule" && status != "brouillon"');
+      parts.push('status != "annule"');
       parts.push(bounds(today, today));
       break;
     case "en-cours":
-      parts.push('status = "en_cours"');
-      break;
-    case "brouillons":
       parts.push('status = "brouillon"');
-      parts.push(pb.filter("created_by = {:me}", { me: userId }));
       break;
     default:
       break;
@@ -444,8 +445,7 @@ function buildFilter(
 }
 
 function sortFor(kind: OrderKind, view: View): string {
-  if (view === "a-confirmer") return "sent_at";
-  if (view === "brouillons") return "-updated";
+  if (view === "a-envoyer") return "ended_at";
   if (view === "aujourdhui" || view === "en-cours")
     return kind === "bus" ? "order_date,call_time" : "trip_at";
   return kind === "bus" ? "-order_date,-number" : "-trip_at,-number";
@@ -470,8 +470,8 @@ export async function listOrders(
         expand: kind === "bus" ? "company,created_by" : "taxi_company,created_by",
         fields:
           kind === "bus"
-            ? "id,number,status,order_date,call_time,origin,destination,relation,bus_count,buses,created_by,district,sent_at,updated,reason,expand.company.name,expand.created_by.name"
-            : "id,number,status,trip_at,from_station,to_station,relation_number,taxi_name,vehicles,is_pmr,time_pending,created_by,author,district,sent_at,updated,reason,pmr_reason,expand.taxi_company.name,expand.created_by.name",
+            ? "id,number,status,order_date,call_time,origin,destination,relation,bus_count,buses,created_by,district,sent_at,ended_at,updated,reason,expand.company.name,expand.created_by.name"
+            : "id,number,status,trip_at,from_station,to_station,relation_number,taxi_name,vehicles,is_pmr,time_pending,created_by,author,district,sent_at,ended_at,updated,reason,pmr_reason,expand.taxi_company.name,expand.created_by.name",
       });
       return {
         rows: res.items.map(kind === "bus" ? busRow : taxiRowFor(!!ctx.canPmr)),
@@ -487,10 +487,8 @@ export async function listOrders(
 function compareRows(view: View) {
   const key = (r: OrderRow) => `${r.day}T${r.time || "99:99"}`;
   switch (view) {
-    case "a-confirmer":
-      return (a: OrderRow, b: OrderRow) => a.sentAt.localeCompare(b.sentAt);
-    case "brouillons":
-      return (a: OrderRow, b: OrderRow) => b.updated.localeCompare(a.updated);
+    case "a-envoyer":
+      return (a: OrderRow, b: OrderRow) => a.endedAt.localeCompare(b.endedAt);
     case "aujourdhui":
     case "en-cours":
       return (a: OrderRow, b: OrderRow) => key(a).localeCompare(key(b));
@@ -531,7 +529,8 @@ export async function viewCounts(ctx: {
 export type OrderEvent = {
   id: string;
   from: string;
-  to: Status;
+  /** Statut atteint (code brut : l'historique garde les statuts retirés en v3). */
+  to: string;
   at: string;
   by: string;
   note: string;
@@ -548,7 +547,7 @@ export async function listEvents(kind: OrderKind, id: string): Promise<OrderEven
   return items.map((e) => ({
     id: e.id,
     from: str(e.from),
-    to: isStatus(e.to) ? e.to : "brouillon",
+    to: str(e.to),
     at: str(e.at),
     by: person(e, "by")?.name ?? (e.legacy ? "BACO" : "Système"),
     note: str(e.note),

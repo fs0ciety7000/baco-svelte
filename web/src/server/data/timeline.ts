@@ -116,7 +116,7 @@ export async function buildTimeline(
     );
 
   for (const o of orders) {
-    if (o.status === "brouillon" || o.status === "annule") continue;
+    if (o.status === "annule") continue; // Cycle v3 : « brouillon / en cours » = bus engagés.
     const district = DUTY_SHORT[o.district] ?? "";
     if (codes.length && district && !codes.includes(district)) continue;
     if (o.origin) stations.add(o.origin);

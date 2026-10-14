@@ -29,19 +29,22 @@ function keepCreated(app, table, id, value) {
 	app.db().newQuery(`UPDATE ${table} SET created = {:created} WHERE id = {:id}`).bind({ created: created, id: id }).execute();
 }
 
-// Statut unifié des commandes (docs/PROPOSITION.md §5) depuis statut + colonne kanban de la v1.
-// Règles de AUDIT-UX-COMMANDES §4 : envoyé + heure confirmée → confirmé ; kanban en route → en cours ;
-// kanban terminé, ou date passée avec démobilisation saisie → terminé. `is_mail_sent` est abandonné.
+// Statut des commandes, cycle v3 (14 oct. 2026 : brouillon / en cours → terminé → envoyé / finalisé). Depuis la v1 :
+// kanban terminé, ou date passée avec démobilisation saisie → envoyé / finalisé (même conversion que la migration
+// `1760003400` : ancien « terminé » et ancien « envoyé ») ; en route ou confirmé → brouillon / en cours.
 function busStatus(row, today) {
 	if (row.status === 'brouillon') return 'brouillon';
 	const buses = row.bus_data || [];
-	if (row.kanban_status === 'termine') return 'termine';
+	if (row.kanban_status === 'termine') return 'envoye';
 	const demob = buses.some((b) => b && b.heure_demob) || !!row.heure_demob;
-	if (row.date_commande && row.date_commande < today && demob) return 'termine';
-	if (row.kanban_status === 'en_approche' || row.kanban_status === 'sur_place') return 'en_cours';
+	if (row.date_commande && row.date_commande < today && demob) return 'envoye';
+	if (row.kanban_status === 'en_approche' || row.kanban_status === 'sur_place') return 'brouillon';
 	const confirmed = buses.some((b) => b && b.heure_confirmee) || !!row.heure_confirmee;
-	return confirmed ? 'confirme' : 'envoye';
+	return confirmed ? 'brouillon' : 'envoye';
 }
+
+// Statut d'un bon taxi v1 vers le cycle v3 (mêmes conversions).
+const TAXI_STATUS = { brouillon: 'brouillon', envoye: 'envoye', confirme: 'brouillon', en_cours: 'brouillon', termine: 'envoye', annule: 'annule' };
 
 const DISTRICT_CODES = { DSO: 'Sud-Ouest', DSE: 'Sud-Est', DCE: 'Centre' };
 const DISTRICTS = ['Sud-Ouest', 'Sud-Est', 'Centre'];
@@ -536,7 +539,7 @@ function fillTaxiOrder(r, t, taxiByName, usersByName) {
 		r.set('created_by', author.id);
 		if (DISTRICTS.indexOf(author.district) !== -1) r.set('district', author.district);
 	}
-	r.set('status', ['brouillon', 'envoye', 'confirme', 'en_cours', 'termine', 'annule'].indexOf(t.status) !== -1 ? t.status : 'brouillon');
+	r.set('status', TAXI_STATUS[t.status] || 'brouillon');
 	r.set('author', t.redacteur || '');
 	r.set('trip_at', toDate(t.date_trajet));
 	r.set('return_at', toDate(t.date_retour));

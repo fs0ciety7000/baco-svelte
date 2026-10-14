@@ -13,10 +13,9 @@ import { LiveRefresh } from "../live-refresh";
 export const metadata: Metadata = { title: "Suivi commun · CSM" };
 
 const VIEW_LABEL: Record<View, string> = {
-  "a-confirmer": "À confirmer",
+  "a-envoyer": "À envoyer",
   aujourdhui: "Aujourd'hui",
   "en-cours": "En cours",
-  brouillons: "Mes brouillons",
   toutes: "Toutes",
 };
 const KINDS = [
@@ -32,7 +31,7 @@ export default async function Page({
 }) {
   const user = await requireRoute("/commandes/suivi");
   const sp = await searchParams;
-  const view: View = VIEWS.find((v) => v === sp.vue) ?? "a-confirmer";
+  const view: View = VIEWS.find((v) => v === sp.vue) ?? "a-envoyer";
   const kind = KINDS.find((k) => k.id === sp.type)?.id ?? "all";
   const ctx = {
     userId: user.id,
@@ -98,8 +97,7 @@ export default async function Page({
       <TrackingBoard
         rows={rows}
         coordinator={isCoordinator(user.role)}
-        showSince={view === "a-confirmer"}
-        canRemind={{ bus: can(user, "otto:update"), taxi: can(user, "generate_taxi:update") }}
+        showSince={view === "a-envoyer"}
       />
       {total > rows.length ? (
         <p className="text-small text-fg-muted">

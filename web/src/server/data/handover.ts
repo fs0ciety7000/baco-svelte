@@ -10,8 +10,6 @@ import type {
   HandoverLog,
   HandoverOrder,
 } from "@/lib/ops/handover";
-import { CLOSE_DAYS } from "@/lib/orders/status";
-import { busUrgency } from "@/lib/orders/urgency";
 import {
   addDays,
   brusselsDay,
@@ -59,64 +57,45 @@ const hhmm = (v: string) => {
 async function orders(
   user: SessionUser,
   screen: boolean,
-): Promise<Pick<Handover, "urgent" | "toConfirm" | "toClose" | "running">> {
-  const out = {
-    urgent: [] as HandoverOrder[],
-    toConfirm: [] as HandoverOrder[],
-    toClose: [] as HandoverOrder[],
-    running: [] as HandoverOrder[],
-  };
+): Promise<Pick<Handover, "toSend" | "running">> {
+  const out = { toSend: [] as HandoverOrder[], running: [] as HandoverOrder[] };
   const pb = await pbForRequest();
-  const now = new Date();
-  const today = brusselsDay(now);
-  const [h, m] = brusselsTime(now).split(":").map(Number);
-  const nowMin = (h ?? 0) * 60 + (m ?? 0);
+  const today = brusselsDay(new Date());
+  // Cycle v3 (14 oct. 2026) : à envoyer = terminé ; en cours = brouillon du jour (ou passé). Un brouillon pour un jour
+  // à venir n'est pas encore « en cours ».
+  const place = (status: string, day: string, o: HandoverOrder) => {
+    if (status === "termine") out.toSend.push(o);
+    else if (!day || day <= today) out.running.push(o);
+  };
   // Écran (poste partagé) : bons bus ouverts seulement (règle PocketBase), jamais les taxis (copie nominative PMR).
   if (screen || can(user, "otto:read")) {
     const rows = await pb
       .collection("bus_orders")
       .getFullList({
-        filter: 'status = "envoye" || status = "en_cours"',
+        filter: 'status = "brouillon" || status = "termine"',
         sort: "order_date",
-        fields: "id,status,number,order_date,call_time,origin,destination,relation,buses",
+        fields: "id,status,number,order_date,call_time,origin,destination,relation",
         batch: 200,
       })
       .catch(() => [] as RecordModel[]);
     for (const r of rows) {
       const day = str(r.order_date).slice(0, 10);
-      const late = day ? Math.max(0, daysBetween(day, today)) : 0;
-      const o: HandoverOrder = {
+      place(str(r.status), day, {
         id: r.id,
         kind: "bus",
         label: `Bus${r.number ? ` n° ${r.number}` : ""} ${str(r.origin) || "?"} → ${str(r.destination) || "?"}${r.relation ? ` (${str(r.relation)})` : ""}`,
         day: day ? formatDay(day) : "",
         time: str(r.call_time),
-        late,
+        late: day ? Math.max(0, daysBetween(day, today)) : 0,
         href: `/commandes/bus/${r.id}`,
-      };
-      const urgency = busUrgency(
-        {
-          status: str(r.status),
-          day,
-          callTime: str(r.call_time),
-          buses: Array.isArray(r.buses)
-            ? (r.buses as { planned?: string; cancelled?: boolean }[])
-            : [],
-        },
-        today,
-        nowMin,
-      );
-      if (urgency) out.urgent.push({ ...o, time: urgency.time, minutes: urgency.minutes });
-      else if (r.status === "en_cours") out.running.push(o);
-      else if (late >= CLOSE_DAYS) out.toClose.push(o);
-      else out.toConfirm.push(o);
+      });
     }
   }
   if (!screen && can(user, "taxi:read")) {
     const rows = await pb
       .collection("taxi_orders")
       .getFullList({
-        filter: 'status = "envoye" || status = "en_cours"',
+        filter: 'status = "brouillon" || status = "termine"',
         sort: "trip_at",
         fields: "id,status,trip_at,from_station,to_station,taxi_name",
         batch: 200,
@@ -125,19 +104,15 @@ async function orders(
     for (const r of rows) {
       const at = pbDate(str(r.trip_at));
       const day = at ? brusselsDay(at) : "";
-      const late = day ? Math.max(0, daysBetween(day, today)) : 0;
-      const o: HandoverOrder = {
+      place(str(r.status), day, {
         id: r.id,
         kind: "taxi",
         label: `Taxi ${str(r.from_station) || "?"} → ${str(r.to_station) || "?"}${r.taxi_name ? ` (${str(r.taxi_name)})` : ""}`,
         day: day ? formatDay(day) : "",
         time: at ? brusselsTime(at) : "",
-        late,
+        late: day ? Math.max(0, daysBetween(day, today)) : 0,
         href: `/commandes/taxi/${r.id}`,
-      };
-      if (r.status === "en_cours") out.running.push(o);
-      else if (late >= CLOSE_DAYS) out.toClose.push(o);
-      else out.toConfirm.push(o);
+      });
     }
   }
   return out;

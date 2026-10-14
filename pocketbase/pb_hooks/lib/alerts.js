@@ -1,13 +1,9 @@
 // Alertes et fiabilité DICOS (demande du 11 oct. 2026), chargées par require() depuis orders.pb.js et pmr.pb.js :
-// - bus envoyé mais pas confirmé à H-2 (cron `bus-h2`) ;
 // - changements DICOS de dernière minute (mission nouvelle, annulée ou déplacée dans les 3 h) ;
 // - missions vues par une synchro DICOS (`last_seen_sync`, base de « Absente de DICOS » côté web).
-// Les fonctions pures (busUrgency, dicosChanges) ont leur miroir testé côté web : `web/src/lib/orders/urgency.ts` et
-// `web/src/lib/pmr/dicos-changes.ts`. Toute modification se fait des deux côtés.
+// La fonction pure dicosChanges a son miroir testé côté web : `web/src/lib/pmr/dicos-changes.ts`. Toute modification se fait des deux côtés.
 
 const HHMM = /^(\d{2}):(\d{2})$/;
-const H2 = 120; // minutes avant le premier départ
-const AFTER = 60; // minutes après le départ prévu : au-delà, plus d'alerte
 const DICOS_HORIZON = 180; // minutes : changement DICOS « de dernière minute »
 
 function minutesOf(hhmm) {
@@ -15,83 +11,6 @@ function minutesOf(hhmm) {
 	return m ? +m[1] * 60 + +m[2] : -1;
 }
 
-function dayDiff(from, to) {
-	const a = Date.parse(`${from}T12:00:00Z`);
-	const b = Date.parse(`${to}T12:00:00Z`);
-	if (!isFinite(a) || !isFinite(b)) return NaN;
-	return Math.round((b - a) / 86400000);
-}
-
-// Premier départ prévu d'un bon : plus petite heure prévue des bus non annulés, sinon l'heure d'appel.
-function firstDeparture(callTime, buses) {
-	const times = [];
-	for (const b of buses || []) if (b && !b.cancelled && HHMM.test(String(b.planned || ''))) times.push(String(b.planned));
-	times.sort();
-	if (times.length) return times[0];
-	return HHMM.test(String(callTime || '')) ? String(callTime) : '';
-}
-
-// Bon bus « à confirmer d'urgence » : envoyé, pas confirmé, premier départ dans 2 h au plus ou passé depuis 1 h au plus.
-// `o` = { status, day: AAAA-MM-JJ (jour de service), callTime, buses: [{ planned, cancelled }] } ; `today` et `nowMin`
-// en heure de Bruxelles. Renvoie { time, minutes } (minutes avant le départ, négatif = passé) ou null.
-function busUrgency(o, today, nowMin) {
-	if (!o || o.status !== 'envoye' || !o.day) return null;
-	const time = firstDeparture(o.callTime, o.buses);
-	if (!time) return null;
-	const diff = dayDiff(today, o.day);
-	if (!isFinite(diff)) return null;
-	const minutes = diff * 1440 + minutesOf(time) - nowMin;
-	if (minutes > H2 || minutes < -AFTER) return null;
-	return { time: time, minutes: minutes };
-}
-
-function parseBuses(record) {
-	try {
-		const v = JSON.parse(record.getString('buses') || '[]');
-		return Array.isArray(v) ? v : [];
-	} catch (_) {
-		return [];
-	}
-}
-
-// Cron `bus-h2` (toutes les 5 min) : une notification `systeme` par bon (dédupliquée sur `source_id` = id du bon, tous
-// destinataires confondus) aux agents qui peuvent confirmer (`otto:update`) et travaillent aujourd'hui dans le district
-// du bon (districts du jour, sinon permanents ; bon sans district, ou agent sans district connu : tous).
-function busH2Alert(app, at) {
-	const ops = require(`${__hooks}/lib/operations.js`);
-	const date = at || new Date();
-	const today = ops.brusselsDay(date);
-	const nowMin = Math.floor(ops.brusselsHour(date) * 60);
-	const from = new Date(Date.parse(`${today}T00:00:00Z`) - 86400000).toISOString().replace('T', ' ');
-	const to = new Date(Date.parse(`${today}T00:00:00Z`) + 86400000).toISOString().replace('T', ' ');
-	const rows = app.findRecordsByFilter('bus_orders', 'status = "envoye" && order_date >= {:from} && order_date <= {:to}', 'order_date', 200, 0, { from: from, to: to });
-	if (!rows.length) return 0;
-	let users = null;
-	let sent = 0;
-	for (const r of rows) {
-		const u = busUrgency({ status: r.getString('status'), day: r.getString('order_date').slice(0, 10), callTime: r.getString('call_time'), buses: parseBuses(r) }, today, nowMin);
-		if (!u) continue;
-		const already = app.countRecords('notifications', $dbx.exp("source = 'bus-h2' AND source_id = {:id}", { id: r.id }));
-		if (already) continue;
-		if (!users) {
-			users = app
-				.findRecordsByFilter('users', 'role != "disabled" && role != "connector" && role != "screen"', '', 500, 0)
-				.filter((x) => ops.hasPerm(x, 'otto:update', ['moderator', 'paco']));
-		}
-		const district = r.getString('district');
-		const number = r.getInt('number');
-		const label = `Bus${number ? ` n° ${number}` : ''}`;
-		const route = `${r.getString('origin') || '?'} → ${r.getString('destination') || '?'}`;
-		const when = u.minutes >= 0 ? `départ ${u.time}` : `départ prévu ${u.time}, passé`;
-		for (const x of users) {
-			const mine = ops.dutyDistricts(x, today);
-			if (district && mine.length && mine.indexOf(district) === -1) continue;
-			ops.notify(app, x.id, 'systeme', `${label} non confirmé : ${when}`, `${route}. Le bon est envoyé mais la société ne l'a pas confirmé.`, `/commandes/bus/${r.id}`, 'bus-h2', r.id);
-			sent++;
-		}
-	}
-	return sent;
-}
 
 // --- Changements DICOS de dernière minute ---
 
@@ -268,9 +187,6 @@ function markSeen(app, kind, ids, at, by) {
 
 module.exports = {
 	minutesOf,
-	firstDeparture,
-	busUrgency,
-	busH2Alert,
 	legsOf,
 	dicosChanges,
 	snap,

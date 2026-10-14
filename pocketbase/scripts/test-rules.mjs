@@ -177,58 +177,42 @@ try {
 	check('numéro de bon attribué', bo.status === 200 && bo.json.number > 0, `n° ${bo.json?.number}`);
 	const bid = bo.json.id;
 	const patch = (token, body) => api('PATCH', `/api/collections/bus_orders/records/${bid}`, { token, body });
-	// Envoi validé = terminé directement, même sans adresse e-mail (PDF seul) — décision du 9 oct. 2026.
-	const direct = await api('POST', '/api/collections/bus_orders/records', {
-		token: u.token,
-		body: { status: 'brouillon', created_by: u.id, company: noMail.json.id, reason: 'Test envoi direct' }
-	});
-	const dt = await api('PATCH', `/api/collections/bus_orders/records/${direct.json.id}`, { token: u.token, body: { status: 'termine' } });
-	check(
-		'brouillon → terminé sans e-mail (heure d\'envoi posée)',
-		dt.status === 200 && !!dt.json.sent_at && dt.json.sent_by === u.id && !!dt.json.ended_at,
-		`HTTP ${dt.status}`
-	);
-	let t = await patch(u.token, { company: withMail.json.id, status: 'envoye' });
-	check('brouillon → envoyé', t.status === 200 && t.json.sent_by === u.id && !!t.json.sent_at, `HTTP ${t.status}`);
-	t = await patch(u.token, { sent_by: roles.admin.id });
-	check('sent_by non modifiable', t.status >= 400, `HTTP ${t.status}`);
+	// Cycle v3 (14 oct. 2026) : brouillon / en cours → terminé (bus démobilisés) → envoyé / finalisé ; annulé.
+	let t = await patch(u.token, { status: 'envoye' });
+	check('brouillon → envoyé refusé (passer par « terminé »)', t.status === 400, `HTTP ${t.status}`);
+	t = await patch(roles.otto_agent.token, { status: 'termine' });
+	check("l'invité ne termine pas (lecture seule)", t.status >= 400, `HTTP ${t.status}`);
 	t = await patch(u.token, { status: 'termine' });
-	check('envoyé → terminé refusé avant 5 jours (clôture)', t.status === 400, `HTTP ${t.status}`);
-	// Clôture d'un bon envoyé jamais confirmé : permise 5 jours après la date de service.
-	const old = await api('POST', '/api/collections/bus_orders/records', {
-		token: u.token,
-		body: {
-			status: 'brouillon',
-			created_by: u.id,
-			company: withMail.json.id,
-			reason: 'Test clôture',
-			order_date: new Date(Date.now() - 10 * 86400000).toISOString().slice(0, 10) + ' 00:00:00.000Z'
-		}
-	});
-	await api('PATCH', `/api/collections/bus_orders/records/${old.json?.id}`, { token: u.token, body: { status: 'envoye' } });
-	const closed = await api('PATCH', `/api/collections/bus_orders/records/${old.json?.id}`, { token: u.token, body: { status: 'termine' } });
-	check('envoyé → terminé (clôture) après 5 jours', closed.status === 200 && !!closed.json.ended_at, `HTTP ${closed.status} ${JSON.stringify(closed.json).slice(0, 120)}`);
-	t = await patch(roles.otto_agent.token, { status: 'confirme' });
-	check("l'invité ne confirme pas (lecture seule)", t.status >= 400, `HTTP ${t.status}`);
-	t = await patch(u.token, { status: 'confirme' });
-	check('PACO/RCCA confirme', t.status === 200 && t.json.confirmed_by === u.id, `HTTP ${t.status}`);
-	t = await patch(u.token, { status: 'en_cours' });
-	check('confirmé → en cours', t.status === 200 && !!t.json.started_at, `HTTP ${t.status}`);
+	check('brouillon → terminé (heure de fin posée)', t.status === 200 && t.json.ended_by === u.id && !!t.json.ended_at, `HTTP ${t.status}`);
+	t = await patch(u.token, { status: 'brouillon' });
+	check('terminé → brouillon (retour, heure de fin effacée)', t.status === 200 && !t.json.ended_at, `HTTP ${t.status}`);
+	t = await patch(u.token, { status: 'termine' });
 	t = await patch(u.token, { validated_by: u.id, sent_by_name: 'X' });
 	check('attribution reprise de BACO non modifiable', t.status >= 400, `HTTP ${t.status}`);
+	// Envoi permis sans adresse e-mail (PDF seul) — décision du 9 oct. 2026.
+	t = await patch(u.token, { status: 'envoye' });
+	check('terminé → envoyé sans e-mail (heure d\'envoi posée)', t.status === 200 && t.json.sent_by === u.id && !!t.json.sent_at, `HTTP ${t.status}`);
+	t = await patch(u.token, { sent_by: roles.admin.id });
+	check('sent_by non modifiable', t.status >= 400, `HTTP ${t.status}`);
+	t = await patch(u.token, { reason: 'Modif après envoi' });
+	check('bon finalisé non modifiable (rouvrir d\'abord)', t.status === 400, `HTTP ${t.status}`);
+	t = await patch(u.token, { status: 'annule', cancel_reason: 'Après envoi' });
+	check('envoyé / finalisé : annulation refusée', t.status === 400, `HTTP ${t.status}`);
+	// Rouvrir un bon finalisé : coordinateurs, dont les PACO/RCCA (décision du 11 oct. 2026).
+	t = await patch(u.token, { status: 'termine' });
+	check('PACO/RCCA rouvre un bon envoyé (→ terminé)', t.status === 200 && !t.json.sent_at, `HTTP ${t.status}`);
 	t = await patch(u.token, { status: 'annule' });
 	check('annulation sans motif refusée', t.status === 400, `HTTP ${t.status}`);
-	// Rôles v2 : les PACO/RCCA ont les transitions des anciens coordinateurs.
 	t = await patch(u.token, { status: 'annule', cancel_reason: 'Test annulation' });
-	check('PACO/RCCA annule après « en cours » avec motif', t.status === 200 && t.json.status_before_cancel === 'en_cours', `HTTP ${t.status}`);
+	check('annulation avec motif depuis « terminé »', t.status === 200 && t.json.status_before_cancel === 'termine', `HTTP ${t.status}`);
 	t = await patch(roles.otto_agent.token, { reason: 'Modif après annulation' });
 	check("l'invité ne modifie pas une commande annulée", t.status >= 400, `HTTP ${t.status}`);
-	t = await patch(roles.admin.token, { status: 'confirme' });
+	t = await patch(roles.admin.token, { status: 'brouillon' });
 	check('rétablir vers un autre statut que le précédent refusé', t.status === 400, `HTTP ${t.status}`);
-	t = await patch(u.token, { status: 'en_cours' });
+	t = await patch(u.token, { status: 'termine' });
 	check('PACO/RCCA rétablit au statut précédent', t.status === 200 && !t.json.cancelled_at, `HTTP ${t.status}`);
 	t = await patch(u.token, { status: 'confirme' });
-	check('PACO/RCCA : « en cours → confirmé » permis (coordinateur)', t.status === 200, `HTTP ${t.status}`);
+	check('« confirmé » n\'existe plus', t.status >= 400, `HTTP ${t.status}`);
 	// Numéros de bon : créations simultanées sans doublon.
 	const burst = await Promise.all(
 		Array.from({ length: 12 }, () =>
@@ -245,8 +229,8 @@ try {
 		token: roles.reader.token
 	});
 	const chain = (ev.json?.items ?? []).map((i) => i.to).join(',');
-	check('historique horodaté lisible (invité)', chain === 'brouillon,envoye,confirme,en_cours,annule,en_cours,confirme', chain);
-	check("historique : auteur de l'envoi", ev.json?.items?.[1]?.by === u.id && ev.json?.items?.[1]?.from === 'brouillon');
+	check('historique horodaté lisible (invité)', chain === 'brouillon,termine,brouillon,termine,envoye,termine,annule,termine', chain);
+	check("historique : auteur de la fin", ev.json?.items?.[1]?.by === u.id && ev.json?.items?.[1]?.from === 'brouillon');
 	const evc = await api('POST', '/api/collections/order_events/records', {
 		token: roles.admin.token,
 		body: { kind: 'bus', order: bid, to: 'termine', at: new Date().toISOString() }
@@ -1015,15 +999,19 @@ try {
 		}
 		// Bons bus : ouverts seulement (envoyés / en cours), pas les brouillons.
 		const draft = await api('POST', '/api/collections/bus_orders/records', { token: u.token, body: { status: 'brouillon', created_by: u.id, reason: 'Brouillon écran' } });
+		// Cycle v3 : l'écran lit les bons ouverts (brouillon / en cours, terminé), pas les finalisés.
 		const sDraft = await api('GET', `/api/collections/bus_orders/records/${draft.json?.id}`, { token: stok2 });
-		check("écran ne lit pas un brouillon de bon", sDraft.status === 404, `HTTP ${sDraft.status}`);
-		const sent = await api('PATCH', `/api/collections/bus_orders/records/${draft.json?.id}`, { token: u.token, body: { status: 'envoye', company: scCo.json?.id } });
-		const sSent = await api('GET', `/api/collections/bus_orders/records/${draft.json?.id}`, { token: stok2 });
-		check('écran lit un bon envoyé', sent.status === 200 && sSent.status === 200, `HTTP ${sent.status}/${sSent.status} ${JSON.stringify(sent.json).slice(0, 160)}`);
+		check('écran lit un bon en cours', sDraft.status === 200, `HTTP ${sDraft.status}`);
+		const ended = await api('PATCH', `/api/collections/bus_orders/records/${draft.json?.id}`, { token: u.token, body: { status: 'termine', company: scCo.json?.id } });
+		const sEnded = await api('GET', `/api/collections/bus_orders/records/${draft.json?.id}`, { token: stok2 });
+		check('écran lit un bon terminé', ended.status === 200 && sEnded.status === 200, `HTTP ${ended.status}/${sEnded.status} ${JSON.stringify(ended.json).slice(0, 160)}`);
 		const sCreate = await api('POST', '/api/collections/bus_orders/records', { token: stok2, body: { status: 'brouillon', created_by: sc.json.id } });
 		check("écran ne crée pas de bon", sCreate.status >= 400, `HTTP ${sCreate.status}`);
-		const sConfirm = await api('PATCH', `/api/collections/bus_orders/records/${draft.json?.id}`, { token: stok2, body: { status: 'confirme' } });
-		check("écran ne confirme pas de bon", sConfirm.status >= 400, `HTTP ${sConfirm.status}`);
+		const sSend = await api('PATCH', `/api/collections/bus_orders/records/${draft.json?.id}`, { token: stok2, body: { status: 'envoye' } });
+		check("écran n'envoie pas de bon", sSend.status >= 400, `HTTP ${sSend.status}`);
+		await api('PATCH', `/api/collections/bus_orders/records/${draft.json?.id}`, { token: u.token, body: { status: 'envoye' } });
+		const sSent = await api('GET', `/api/collections/bus_orders/records/${draft.json?.id}`, { token: stok2 });
+		check("écran ne lit pas un bon finalisé", sSent.status === 404, `HTTP ${sSent.status}`);
 		if (draft.json?.id) await api('DELETE', `/api/collections/bus_orders/records/${draft.json.id}`, { token: root });
 		// Journal : urgences, épinglés, iRail seulement.
 		const plain = await api('POST', '/api/collections/ops_log/records', { token: u.token, body: { body: 'Message ordinaire écran', category: 'info', author: u.id } });
@@ -1131,24 +1119,6 @@ try {
 			for (const x of await notes('dicos')) await api('DELETE', `/api/collections/notifications/records/${x.id}`, { token: root });
 		}
 
-		// Bus non confirmé à H-2 : cron `bus-h2` lancé à la main (superuser).
-		const t60 = inMin(60);
-		if (t60) {
-			const h2 = await api('POST', '/api/collections/bus_orders/records', {
-				token: u.token,
-				body: { status: 'brouillon', created_by: u.id, reason: 'Test H-2', company: scCo.json?.id, district: 'Sud-Ouest', order_date: `${brussels.day} 00:00:00.000Z`, buses: [{ planned: t60 }, { planned: '00:01', cancelled: true }] }
-			});
-			await api('PATCH', `/api/collections/bus_orders/records/${h2.json?.id}`, { token: u.token, body: { status: 'envoye' } });
-			// Le cron lancé par l'API tourne en arrière-plan : on attend sa fin avant de relancer et de compter.
-			const run1 = await api('POST', '/api/crons/bus-h2', { token: root });
-			await new Promise((r) => setTimeout(r, 1500));
-			await api('POST', '/api/crons/bus-h2', { token: root });
-			await new Promise((r) => setTimeout(r, 1500));
-			const hn = (await api('GET', `/api/collections/notifications/records?perPage=50&filter=${encodeURIComponent(`source = "bus-h2" && source_id = "${h2.json?.id}"`)}`, { token: root })).json?.items ?? [];
-			check('bus envoyé non confirmé à H-2 → une alerte par agent, une seule fois', run1.status === 204 && hn.filter((x) => x.user === u.id).length === 1 && !hn.some((x) => x.user === sc.json?.id || x.user === roles.reader.id), `HTTP ${run1.status} ${hn.length}`);
-			for (const x of hn) await api('DELETE', `/api/collections/notifications/records/${x.id}`, { token: root });
-			if (h2.json?.id) await api('DELETE', `/api/collections/bus_orders/records/${h2.json.id}`, { token: root });
-		}
 	}
 	if (scCo.json?.id) await api('DELETE', `/api/collections/bus_companies/records/${scCo.json.id}`, { token: root });
 
@@ -1189,21 +1159,6 @@ try {
 	});
 	const spBusDel = await api('DELETE', `/api/collections/bus_companies/records/${spBus.json?.id}`, { token: roles.modo.token });
 	check('société citée par un bon : suppression refusée', spBusDel.status === 400, `HTTP ${spBusDel.status}`);
-	const rmDraft = await api('POST', `/api/csm/orders/bus/${spOrder.json?.id}/reminder`, { token: u.token });
-	check('relance refusée pour un brouillon', rmDraft.status === 400, `HTTP ${rmDraft.status}`);
-	await api('PATCH', `/api/collections/bus_orders/records/${spOrder.json?.id}`, { token: u.token, body: { status: 'envoye' } });
-	const rmAnon = await api('POST', `/api/csm/orders/bus/${spOrder.json?.id}/reminder`);
-	check('relance refusée sans connexion', rmAnon.status === 401, `HTTP ${rmAnon.status}`);
-	const rmGuest = await api('POST', `/api/csm/orders/bus/${spOrder.json?.id}/reminder`, { token: roles.reader.token });
-	check('invité ne relance pas (pas de droit de modification)', rmGuest.status === 404, `HTTP ${rmGuest.status}`);
-	const rmDenied = await api('POST', `/api/csm/orders/bus/${spOrder.json?.id}/reminder`, { token: roles.denied.token });
-	check('PACO sans otto:write retiré relance (droit de modification gardé)', rmDenied.status === 200, `HTTP ${rmDenied.status}`);
-	const rmAgain = await api('POST', `/api/csm/orders/bus/${spOrder.json?.id}/reminder`, { token: u.token });
-	check('deuxième relance dans les 2 minutes refusée', rmAgain.status === 400, `HTTP ${rmAgain.status}`);
-	const rmEv = await api('GET', `/api/collections/order_events/records?filter=${encodeURIComponent(`order="${spOrder.json?.id}" && from="envoye" && to="envoye"`)}`, { token: u.token });
-	check('relance notée dans l\'historique (auteur, note)', rmEv.json?.totalItems === 1 && rmEv.json.items[0].by === roles.denied.id && /Relance n° 1/.test(rmEv.json.items[0].note), JSON.stringify(rmEv.json?.items?.[0] ?? {}));
-	const rmBad = await api('POST', '/api/csm/orders/bus/inexistant0000000/reminder', { token: u.token });
-	check('relance d\'un bon inexistant : 404', rmBad.status === 404, `HTTP ${rmBad.status}`);
 	await api('DELETE', `/api/collections/bus_orders/records/${spOrder.json?.id}`, { token: root });
 	auditIds.push(spOrder.json?.id);
 	const spBusDelOk = await api('DELETE', `/api/collections/bus_companies/records/${spBus.json?.id}`, { token: roles.modo.token });

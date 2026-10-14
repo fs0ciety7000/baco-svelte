@@ -14,16 +14,12 @@ const toneVar: Record<Tone, string> = {
   progress: "var(--progress)",
 };
 
-// L'accent est réservé à l'action (bouton primaire, sélection, focus) : « Confirmé » a sa couleur `progress`
-// (audit du 9 oct. 2026 : confirmé se confondait avec « en cours » / « envoyé »).
-// Statut unifié des commandes bus et taxi. Pas de « facturé » : une commande dont l'envoi est confirmé est
-// facturée d'office (décision utilisateur du 8 octobre 2026).
+// L'accent est réservé à l'action (bouton primaire, sélection, focus). Statut unifié des commandes bus et taxi, cycle v3
+// (14 oct. 2026) : en cours (info), terminé = à envoyer (progress), envoyé / finalisé (ok), annulé (danger).
 export const ORDER_STATUS = {
-  brouillon: { label: "Brouillon", tone: "neutral" },
-  envoye: { label: "Envoyé", tone: "info" },
-  confirme: { label: "Confirmé", tone: "progress" },
-  en_cours: { label: "En cours", tone: "warn" },
-  termine: { label: "Terminé", tone: "ok" },
+  brouillon: { label: "Brouillon / en cours", tone: "info" },
+  termine: { label: "Terminé", tone: "progress" },
+  envoye: { label: "Envoyé / finalisé", tone: "ok" },
   annule: { label: "Annulé", tone: "danger" },
 } as const satisfies Record<string, { label: string; tone: Tone }>;
 

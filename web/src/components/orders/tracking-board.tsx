@@ -1,20 +1,18 @@
 "use client";
 
-import { ArrowUpRight, MailWarning } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { loadOrderPanel, remindSupplier, type OrderPanel } from "@/app/(app)/commandes/actions";
+import { loadOrderPanel, type OrderPanel } from "@/app/(app)/commandes/actions";
 import { Button } from "@/components/ui/button";
 import { EmptyState, Kbd, Skeleton } from "@/components/ui/misc";
 import { Sheet } from "@/components/ui/sheet";
-import { Badge, StatusBadge, statusColor } from "@/components/ui/status-badge";
+import { StatusBadge, statusColor } from "@/components/ui/status-badge";
 import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
-import { toast } from "@/components/ui/toast";
-import { safeCall } from "@/lib/orders/safe-call";
-import { isClosable, STATUS_LABEL } from "@/lib/orders/status";
-import { brusselsDay, formatDay, pbDate, sinceLabel } from "@/lib/orders/time";
+import { STATUS_LABEL } from "@/lib/orders/status";
+import { formatDay, pbDate, sinceLabel } from "@/lib/orders/time";
 import type { OrderRow } from "@/server/data/orders";
 
 import { KindIconClient } from "./kind-icon";
@@ -32,39 +30,20 @@ export function TrackingBoard({
   rows,
   coordinator,
   showSince,
-  canRemind = { bus: false, taxi: false },
 }: {
   rows: OrderRow[];
   coordinator: boolean;
-  /** Vue « À confirmer » : ancienneté de l'envoi. */
+  /** Vue « À envoyer » : ancienneté de la fin (bus démobilisés). */
   showSince: boolean;
-  /** Relance du fournisseur (droit de modification du bon : `otto:update` / `generate_taxi:update`). */
-  canRemind?: { bus: boolean; taxi: boolean };
 }) {
-  const today = brusselsDay();
   const router = useRouter();
   const [active, setActive] = useState(0);
   const [open, setOpen] = useState<OrderRow | null>(null);
   const [panel, setPanel] = useState<OrderPanel | null>(null);
   const [error, setError] = useState<string | null>(null);
   const rowRefs = useRef<(HTMLElement | null)[]>([]);
-  const [reminding, setReminding] = useState(false);
-
-  // Relance en un geste : la relance est notée dans l'historique, puis le brouillon .eml est téléchargé.
-  const remind = async (r: OrderRow) => {
-    setReminding(true);
-    const res = await safeCall(remindSupplier({ kind: r.kind, id: r.id }));
-    setReminding(false);
-    if (!res.ok) return void toast.error(res.error);
-    window.location.assign(res.data.emlUrl);
-    toast.success(
-      `Relance n° ${res.data.count} notée : vérifie l'expéditeur (boîte fonctionnelle) puis envoie le brouillon.`,
-    );
-    void load(r);
-  };
-
   // Dernière commande demandée : une réponse arrivée en retard pour une autre ligne est ignorée (sinon
-  // « Confirmer » enverrait les bus d'une commande sur une autre).
+  // « Terminer » enverrait les démobilisations d'une commande sur une autre).
   const wanted = useRef<string | null>(null);
   const load = useCallback(async (r: OrderRow) => {
     setError(null);
@@ -183,15 +162,10 @@ export function TrackingBoard({
                 <Td className="max-w-36 truncate text-fg-muted">{r.author || "—"}</Td>
                 <Td>
                   <span className="flex flex-col items-start gap-0.5">
-                    <span className="inline-flex flex-wrap items-center gap-1">
-                      <StatusBadge status={r.status} />
-                      {isClosable(r.status, r.day, today) ? (
-                        <Badge tone="warn">À clôturer</Badge>
-                      ) : null}
-                    </span>
-                    {showSince && r.sentAt ? (
+                    <StatusBadge status={r.status} />
+                    {showSince && r.endedAt ? (
                       <span className="text-hint text-fg-muted">
-                        {sinceLabel(pbDate(r.sentAt) ?? new Date())}
+                        {sinceLabel(pbDate(r.endedAt) ?? new Date())}
                       </span>
                     ) : null}
                   </span>
@@ -224,15 +198,8 @@ export function TrackingBoard({
                     {r.origin || "?"} → {r.destination || "?"}
                   </span>
                 }
-                meta={`n° ${r.number} · ${formatDay(r.day)}${r.company ? ` · ${r.company}` : ""}${showSince && r.sentAt ? ` · ${sinceLabel(pbDate(r.sentAt) ?? new Date())}` : ""}`}
-                aside={
-                  <span className="inline-flex flex-col items-end gap-1">
-                    <StatusBadge status={r.status} />
-                    {isClosable(r.status, r.day, today) ? (
-                      <Badge tone="warn">À clôturer</Badge>
-                    ) : null}
-                  </span>
-                }
+                meta={`n° ${r.number} · ${formatDay(r.day)}${r.company ? ` · ${r.company}` : ""}${showSince && r.endedAt ? ` · ${sinceLabel(pbDate(r.endedAt) ?? new Date())}` : ""}`}
+                aside={<StatusBadge status={r.status} />}
               />
             </button>
           </li>
@@ -262,33 +229,18 @@ export function TrackingBoard({
           open && panel ? (
             <div className="flex w-full flex-wrap gap-2">
               <TransitionButtons
-                serviceDay={open.day}
                 kind={open.kind}
                 id={open.id}
                 status={panel.meta.status}
                 statusBeforeCancel={panel.meta.statusBeforeCancel}
                 coordinator={coordinator}
                 buses={panel.buses}
-                drivers={panel.drivers}
-                companyId={panel.companyId}
-                hideSend
                 size="sm"
                 onDone={() => {
                   void load(open);
                   router.refresh();
                 }}
               />
-              {panel.meta.status === "envoye" && canRemind[open.kind] ? (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  loading={reminding}
-                  onClick={() => void remind(open)}
-                  data-testid="order-remind"
-                >
-                  <MailWarning aria-hidden /> Relancer le fournisseur
-                </Button>
-              ) : null}
               <Button asChild size="sm" variant="ghost" className="ml-auto">
                 <Link href={href(open)}>
                   Ouvrir <ArrowUpRight aria-hidden />
@@ -314,7 +266,7 @@ export function TrackingBoard({
               <StatusBadge status={panel.meta.status} />
               {panel.meta.status === "brouillon" ? (
                 <span className="text-small text-fg-muted">
-                  Envoi depuis la fiche (brouillon Outlook).
+                  Terminer quand les bus sont démobilisés, puis valider l&apos;envoi.
                 </span>
               ) : null}
             </div>

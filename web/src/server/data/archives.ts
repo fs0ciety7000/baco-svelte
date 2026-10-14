@@ -98,7 +98,7 @@ export async function listArchiveBackups(): Promise<ArchiveBackup[]> {
   }));
 }
 
-/** Bons terminés sans archive (rattrapage) : identifiants, au plus `limit`. */
+/** Bons finalisés (envoyés) sans archive (rattrapage) : identifiants, au plus `limit`. */
 export async function unarchivedOrders(limit: number) {
   const pb = await pbForRequest();
   const done = new Set(
@@ -111,7 +111,7 @@ export async function unarchivedOrders(limit: number) {
   for (const kind of ["bus", "taxi"] as const) {
     const rows = await pb
       .collection(kind === "bus" ? "bus_orders" : "taxi_orders")
-      .getFullList({ filter: 'status = "termine"', fields: "id", sort: "created" });
+      .getFullList({ filter: 'status = "envoye"', fields: "id", sort: "created" });
     for (const r of rows) {
       if (done.has(`${kind}:${r.id}`)) continue;
       if (out.length < limit) out.push({ kind, id: r.id });

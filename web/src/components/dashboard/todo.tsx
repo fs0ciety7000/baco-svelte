@@ -5,8 +5,6 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/misc";
 import type { LogDigest } from "@/components/ops/dashboard-widgets";
-import { CLOSE_DAYS } from "@/lib/orders/status";
-import { busUrgency } from "@/lib/orders/urgency";
 import { brusselsDay, daysBetween, formatDay, isValidDay } from "@/lib/orders/time";
 import { cn, pl } from "@/lib/utils";
 import type { DashboardStats } from "@/server/data/dashboard";
@@ -37,18 +35,15 @@ const STRIPE: Record<Severity, string> = {
   neutral: "bg-border-strong",
 };
 
-/** File « À traiter » : retards / suppressions, bons à confirmer ou à clôturer, mentions non lues, consignes. */
+/** File « À traiter » : retards / suppressions, bons terminés à envoyer, mentions non lues, consignes. */
 export function todoItems(input: {
   stats: DashboardStats | null;
   impacts: ImpactedMission[] | null;
   mentions: Notification[] | null;
   log: LogDigest[] | null;
   today?: string;
-  /** Minutes depuis minuit à Bruxelles (bons à confirmer d'urgence, H-2). */
-  nowMin?: number;
 }): TodoItem[] {
   const today = input.today ?? brusselsDay();
-  const nowMin = input.nowMin ?? brusselsMinutes();
   const out: TodoItem[] = [];
   for (const m of input.impacts ?? []) {
     const cancelled = m.impact.cancelled;
@@ -62,28 +57,24 @@ export function todoItems(input: {
       action: "Ouvrir",
     });
   }
+  // Cycle v3 (14 oct. 2026) : bons terminés (bus démobilisés) à finaliser par l'envoi de l'e-mail au fournisseur.
   for (const o of input.stats?.pending ?? []) {
     const day = o.order_date.slice(0, 10);
     const late = isValidDay(day) ? daysBetween(day, today) : 0;
-    const closable = late >= CLOSE_DAYS;
-    // Départ dans 2 h au plus sans confirmation : rouge, comme l'alerte « bus-h2 » de la cloche.
-    const urgent = busUrgency({ status: o.status, day, callTime: o.call_time }, today, nowMin);
     out.push({
       key: `bus-${o.id}`,
-      severity: urgent ? "danger" : "warn",
-      title: urgent
-        ? `Bon bus à confirmer d'urgence (départ ${urgent.time})`
-        : `Bon bus ${closable ? "à clôturer" : "non confirmé"}`,
+      severity: late >= 2 ? "warn" : "info",
+      title: "Bon bus terminé à envoyer",
       detail: [
         `${o.origin || "?"} → ${o.destination || "?"}`,
         isValidDay(day) ? `service ${formatDay(day)}` : "",
-        o.call_time,
+        o.relation,
       ]
         .filter(Boolean)
         .join(" · "),
       when: late > 0 ? `il y a ${late} ${pl(late, "jour")}` : "",
       href: `/commandes/bus/${o.id}`,
-      action: closable ? "Clôturer" : "Confirmer",
+      action: "Envoyer",
     });
   }
   for (const n of input.mentions ?? []) {
@@ -116,19 +107,6 @@ export function todoItems(input: {
     });
   }
   return out.sort((a, b) => RANK[a.severity] - RANK[b.severity]);
-}
-
-function brusselsMinutes(now = new Date()): number {
-  const [h, m] = new Intl.DateTimeFormat("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-    timeZone: "Europe/Brussels",
-  })
-    .format(now)
-    .split(":")
-    .map(Number);
-  return (h ?? 0) * 60 + (m ?? 0);
 }
 
 function hhmm(iso: string): string {
@@ -213,12 +191,12 @@ export function KpiStrip({
   if (stats) {
     cells.push(
       {
-        label: "Bons à confirmer",
-        value: stats.toConfirm,
-        tone: stats.toConfirm ? "warn" : undefined,
+        label: "Bons à envoyer",
+        value: stats.toSend,
+        tone: stats.toSend ? "warn" : undefined,
         href: "/commandes/suivi",
       },
-      { label: "Bons en cours", value: stats.running, href: "/commandes?statut=en_cours" },
+      { label: "Bons en cours", value: stats.running, href: "/commandes?statut=brouillon" },
       { label: "Bons du jour", value: stats.today, href: "/commandes" },
     );
   }

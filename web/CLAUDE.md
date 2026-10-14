@@ -266,14 +266,14 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   « Imprimer » dans le Journal.
 - E2E Admin : `e2e/admin.spec.ts` (compte `E2E_ADMIN_IDENTITY` / `E2E_ADMIN_PASSWORD`, créé par la CI).
 - **Relève de service** (`/operations/releve`, `journal:read`) : `server/data/handover.ts` (`buildHandover`, districts du jour
-  ou `?district=DSO|DSE|DCE|tous`) → bons bus / taxi à confirmer, à clôturer (≥ `CLOSE_DAYS`), en cours ; missions et groupes
+  ou `?district=DSO|DSE|DCE|tous`) → bons bus / taxi terminés à envoyer, en cours ; missions et groupes
   à venir (jusqu'à demain 10 h) ; trains en retard ; ALEA du jour non encodés ; urgences 12 h + consignes ; perturbations
   iRail 12 h. Texte copiable `handoverText` (`lib/ops/handover.ts`, testé), « Épingler au Journal » (`pinHandover` :
   consigne épinglée 12 h). Trajets et bouts ALEA partagés : **`lib/pmr/legs.ts`** (`legOf`, `groupLegOf`, `aleaEnds`,
   `groupEnds`) — plus dans les composants.
 - **Frise « Ma journée »** (`/operations/journee`, `journal:read`, chaque type selon ses droits) : `server/data/timeline.ts`
   (`buildTimeline` : bouts IN / OUT, retard par bout via `missionImpact` sur une copie IN seul / OUT seul, bons du jour hors
-  brouillon / annulé), placement pur `lib/ops/timeline.ts` (`span` retard compris, `packLanes`, `hourRange` 6 h – 22 h au
+  annulé), placement pur `lib/ops/timeline.ts` (`span` retard compris, `packLanes`, `hourRange` 6 h – 22 h au
   moins, `nextIndex` ; testé), composant `components/ops/day-timeline.tsx` (desktop horizontal `hidden md:block`, mobile
   agenda `md:hidden` : les deux sont dans le DOM, viser `timeline-desktop` / `timeline-mobile` dans les tests).
 - **Notifications du navigateur** : `lib/browser-notify.ts` (préférence `csm-notifications-navigateur`, types `urgent` /
@@ -335,7 +335,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   Chrome ne s'ouvre pas), `?dl=1` téléchargement. Visionneuse `/referentiels/documents/voir/<id>` (cadre même origine) :
   `next.config.ts` ne pose pas `X-Frame-Options: DENY` et le middleware ne pose pas sa CSP sur ce seul chemin (la route
   pose `SAMEORIGIN` + `frame-ancestors 'self'`). Envoi possible depuis le formulaire d'une procédure (document lié).
-- **Archives des bons** : `server/archives.ts` (`archiveOrder` appelé par `transitionOrder` quand le bon passe « terminé » ;
+- **Archives des bons** : `server/archives.ts` (`archiveOrder` appelé par `transitionOrder` quand le bon passe « envoyé / finalisé » ;
   ne bloque jamais la clôture ; taxi archivé avec `redactPmr`), page `/commandes/archives` (`archives:read`), routes de
   téléchargement `/api/commandes/archives/<id>` (`?dl=1`) et `/api/commandes/archives/sauvegardes/<id>`, actions admin
   `archivePending` / `backupNow`, suppression `archives:delete`.
@@ -359,10 +359,6 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   Exclu de l'annuaire Équipe, de « En ligne maintenant » (`listOnline` + le flux `/api/events` ne le compte pas), des
   mentions et des campagnes. Admin : rôle « Écran » dans les listes, matrice des droits remplacée par une note.
   `isScreen()` dans `lib/permissions.ts`.
-- **À confirmer d'urgence (H-2)** : `lib/orders/urgency.ts` (`busUrgency`, `firstDeparture`, testés ; miroir du cron
-  PocketBase `bus-h2`) ; `Handover.urgent` (bons retirés de `toConfirm` / `running`, `minutes` avant le départ,
-  `urgencyText`), section en tête de la Relève (`handover-urgent`) et du texte copiable, liste « À confirmer d'urgence »
-  dans le panneau « Bons ouverts » de `/tv` (`tv-urgent`).
 - **Absente de DICOS** : l'ingestion envoie les identifiants vus (`seen`) avec chaque `dicos_syncs` ; `isAbsentFromDicos` /
   `latestSessions` (`lib/pmr/sync-state.ts`, testés) ; `dicosSessions()` + `Assist.absent` / `GroupMission.absent` posés par
   `listAssists` / `listGroups` (une requête `dicos_syncs` de plus, vide sans `pmr:read`) ; `AbsentBadge`
@@ -376,11 +372,6 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   actions `commandes/fournisseurs/actions.ts` (création `:write`, modification `:update`, suppression `:delete`, listes
   taxi saisies une valeur par ligne), composant `components/orders/supplier-board.tsx` (liste, panneau, dialogues). Le
   bouton Supprimer est grisé si un bon cite la société (le hook PocketBase refuse de toute façon).
-- **Relance en un geste** (Suivi, panneau d'un bon « envoyé ») : action `remindSupplier` (route PocketBase
-  `/api/csm/orders/{kind}/{id}/reminder` avec le jeton de l'agent : droit de modification, événement `order_events`
-  « envoyé → envoyé ») puis téléchargement de `/api/commandes/{kind}/{id}/eml?relance=1` (même `.eml` X-Unsent, PDF
-  joint, texte de relance au vouvoiement : `MailOptions.reminder`, `reminderSubject`, `reminderIntro` dans
-  `lib/orders/mail.ts`, testés). `OrderHistory` affiche « Relance du fournisseur » quand `from === to`.
 - **Supervision** (Admin › Santé) : `server/supervision.ts` (`readSupervision` → route interne PocketBase
   `/api/csm/health`, secret `CSM_INTERNAL_SECRET`, page `requireAdmin()` seulement), verdicts purs `lib/supervision.ts`
   (`cronVerdict` : en retard au-delà de 2 périodes + 5 min, `backupVerdict` : < 26 h / < 50 h, `archivesVerdict` ;
@@ -422,7 +413,14 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `Leg.inDone` / `outDone` → badge IN / OUT coché (`IoBadges`). **Filtre de statut à cases multiples** (Missions PMR,
   Groupes, Historique) : `statut=a&statut=b` ou « a,b », `parseStatuses` (`lib/pmr/model.ts`), `statusFilter`
   (`server/data/pmr.ts`) ; aucune case = tous (« Masquer les annulées » s'applique alors).
-- **« Valider l'envoi »** (14 oct. 2026, `components/orders/send-dialog.tsx`) : un seul bouton qui enregistre, télécharge le
-  brouillon Outlook (`/eml` : X-Unsent, adresse du fournisseur, message généré, PDF joint ; sans adresse : PDF seul) puis
-  passe le bon **brouillon → envoyé** (plus « terminé ») ; suite : confirmer, en cours, terminé (ou clôture 5 j après).
-  `TRANSITIONS.brouillon` = envoyé / annulé côté web ; le hook garde brouillon → terminé permis. E2E : `validate-send`.
+- **Cycle des bons v3** (14 oct. 2026, `lib/orders/status.ts`, miroir du hook) : `brouillon` « Brouillon / en cours » →
+  `termine` « Terminé » (bus démobilisés ; `TransitionButtons` ouvre le dialogue des heures de démobilisation) → `envoye`
+  « Envoyé / finalisé » (verrouillé : `isEditable` faux ; « Rouvrir » = coordinateurs) ; `annule`. « Valider l'envoi »
+  (`send-dialog.tsx`, bouton `validate-send`, affiché seulement sur un bon terminé : `prepare-send`) enregistre, télécharge
+  le brouillon Outlook (`/eml` : X-Unsent, adresse du fournisseur, récapitulatif, PDF joint ; sans adresse : PDF seul) puis
+  passe le bon en envoyé ; depuis le panneau du Suivi, `TransitionButtons` télécharge le `.eml` avant la transition.
+  Archive PDF au passage → envoyé (`server/archives.ts` exige `envoye`). Bon neuf : bouton `create-order` « Créer le bon ».
+  `historyLabel()` affiche les anciens statuts (Confirmé, En cours) de l'historique. Suivi : vues `a-envoyer` (défaut,
+  terminés par `ended_at`), `aujourdhui`, `en-cours`, `toutes`. Accueil (`todo.tsx`) : « Bon bus terminé à envoyer »,
+  KPI « Bons à envoyer » ; Relève `Handover { toSend, running }` ; barre latérale : bons terminés. Plus d'alerte H-2
+  (`urgency.ts` supprimé) ni de relance fournisseur. Bons pris en compte par B201 et Ma journée : tout sauf annulé.

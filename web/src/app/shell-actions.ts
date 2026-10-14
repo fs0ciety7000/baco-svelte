@@ -34,8 +34,8 @@ export async function shellStatus(): Promise<ShellStatus | null> {
   if (bus || taxi)
     tasks.push(
       Promise.all([
-        bus ? count("bus_orders", 'status = "envoye"') : 0,
-        taxi ? count("taxi_orders", 'status = "envoye"') : 0,
+        bus ? count("bus_orders", 'status = "termine"') : 0,
+        taxi ? count("taxi_orders", 'status = "termine"') : 0,
       ]).then(([a, b]) => void (out.counts.commandes = a + b)),
     );
   if (can(user, "deplacements:read"))

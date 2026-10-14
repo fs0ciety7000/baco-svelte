@@ -10,7 +10,7 @@ import { toast } from "@/components/ui/toast";
 import { safeCall } from "@/lib/orders/safe-call";
 import { pl } from "@/lib/utils";
 
-/** Administrateurs : archivage des bons terminés sans PDF (par paquets) et sauvegarde immédiate. */
+/** Administrateurs : archivage des bons finalisés sans PDF (par paquets) et sauvegarde immédiate. */
 export function ArchiveAdminBar({ pending, enabled }: { pending: number; enabled: boolean }) {
   const router = useRouter();
   const [busy, start] = useTransition();
@@ -24,8 +24,8 @@ export function ArchiveAdminBar({ pending, enabled }: { pending: number; enabled
     <div className="flex flex-wrap items-center gap-2 border border-border bg-surface-2 px-3 py-2">
       <span className="min-w-0 flex-1 text-small text-fg-muted">
         {pending
-          ? `${pending} ${pl(pending, "bon terminé", "bons terminés")} sans PDF archivé.`
-          : "Tous les bons terminés sont archivés."}
+          ? `${pending} ${pl(pending, "bon finalisé", "bons finalisés")} sans PDF archivé.`
+          : "Tous les bons finalisés sont archivés."}
       </span>
       {pending ? (
         <Button
@@ -45,7 +45,7 @@ export function ArchiveAdminBar({ pending, enabled }: { pending: number; enabled
             })
           }
         >
-          <Archive aria-hidden /> Archiver les bons terminés
+          <Archive aria-hidden /> Archiver les bons finalisés
         </Button>
       ) : null}
       <Button

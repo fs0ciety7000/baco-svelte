@@ -238,7 +238,6 @@ export function TvBoard({
     const m = minutes(l.time);
     return nowMin === null || m === null || m - nowMin <= H3;
   });
-  const orders = data.urgent.length + data.toConfirm.length + data.toClose.length;
   return (
     <div ref={scopeRef} className="grid gap-4 lg:h-[calc(100dvh-3rem)] lg:grid-rows-[auto_1fr]">
       <header className="flex flex-wrap items-end gap-x-6 gap-y-1">
@@ -327,34 +326,15 @@ export function TvBoard({
           <Panel
             icon={<Bus aria-hidden className="size-6" />}
             title="Bons ouverts"
-            count={orders + data.running.length}
-            tone={data.urgent.length ? "danger" : data.toClose.length ? "warn" : "neutral"}
+            count={data.toSend.length + data.running.length}
+            tone={data.toSend.length ? "warn" : "neutral"}
           >
-            {data.urgent.length ? (
-              <ul className="mb-2 flex flex-col gap-1" data-testid="tv-urgent">
-                <li className="text-[1.15rem] font-semibold text-danger">
-                  À confirmer d&apos;urgence ({data.urgent.length})
-                </li>
-                {data.urgent.slice(0, 3).map((o) => (
-                  <li key={o.id} className="flex items-baseline gap-2 text-[1.15rem]">
-                    <span className="w-14 shrink-0 font-mono font-bold text-danger tabular">
-                      {o.time}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate">{o.label}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            <p className="text-[1.15rem]">
-              <span className="font-mono tabular">{data.toConfirm.length}</span> à confirmer ·{" "}
-              <span className="font-mono tabular">{data.running.length}</span> en cours
-              {data.toClose.length ? (
-                <>
-                  {" "}
-                  · <span className="font-mono text-warn tabular">{data.toClose.length}</span> à
-                  clôturer
-                </>
-              ) : null}
+            <p className="text-[1.15rem]" data-testid="tv-orders">
+              <span className="font-mono tabular">{data.running.length}</span> en cours ·{" "}
+              <span className={cn("font-mono tabular", data.toSend.length && "text-warn")}>
+                {data.toSend.length}
+              </span>{" "}
+              à envoyer
             </p>
             <p className="mt-1 flex items-center gap-2 text-[1.05rem] text-fg-muted">
               <Users aria-hidden className="size-5" /> ALEA à encoder :{" "}

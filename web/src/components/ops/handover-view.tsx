@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";
-import { handoverText, urgencyText, type Handover, type HandoverOrder } from "@/lib/ops/handover";
+import { handoverText, type Handover, type HandoverOrder } from "@/lib/ops/handover";
 import { safeCall } from "@/lib/orders/safe-call";
 import { cn, pl } from "@/lib/utils";
 
@@ -73,9 +73,6 @@ function Orders({ items }: { items: HandoverOrder[] }) {
               {o.day}
               {o.time ? ` ${o.time}` : ""}
             </span>
-            {o.minutes !== undefined ? (
-              <span className="shrink-0 text-small text-danger">{urgencyText(o).trim()}</span>
-            ) : null}
             {o.late > 0 ? (
               <span className="shrink-0 text-small text-warn">
                 {o.late} {pl(o.late, "jour")}
@@ -106,8 +103,7 @@ export function HandoverView({
   const copy = useCopy();
   const [pending, start] = useTransition();
   const text = handoverText(data, { author, at, scope });
-  const orders =
-    data.urgent.length + data.toConfirm.length + data.toClose.length + data.running.length;
+  const orders = data.toSend.length + data.running.length;
   return (
     <div className="flex flex-col gap-4" data-testid="handover">
       <div className="flex flex-wrap items-center gap-2" data-print="hide">
@@ -147,35 +143,19 @@ export function HandoverView({
           title="Commandes ouvertes"
           count={orders}
           tone="warn"
-          empty="Aucun bon à confirmer, à clôturer ni en cours."
+          empty="Aucun bon en cours ni à envoyer."
         >
           <div className="flex flex-col gap-3">
-            {data.urgent.length ? (
-              <div data-testid="handover-urgent">
-                <p className="label-mono text-danger">
-                  À confirmer d&apos;urgence, départ dans 2 h ({data.urgent.length})
-                </p>
-                <Orders items={data.urgent} />
+            {data.toSend.length ? (
+              <div data-testid="handover-to-send">
+                <p className="label-mono text-warn">Terminés, à envoyer ({data.toSend.length})</p>
+                <Orders items={data.toSend} />
               </div>
             ) : null}
             {data.running.length ? (
               <div>
-                <p className="label-mono text-fg-muted">
-                  Services en cours ({data.running.length})
-                </p>
+                <p className="label-mono text-fg-muted">En cours ({data.running.length})</p>
                 <Orders items={data.running} />
-              </div>
-            ) : null}
-            {data.toConfirm.length ? (
-              <div>
-                <p className="label-mono text-fg-muted">À confirmer ({data.toConfirm.length})</p>
-                <Orders items={data.toConfirm} />
-              </div>
-            ) : null}
-            {data.toClose.length ? (
-              <div>
-                <p className="label-mono text-warn">À clôturer ({data.toClose.length})</p>
-                <Orders items={data.toClose} />
               </div>
             ) : null}
           </div>

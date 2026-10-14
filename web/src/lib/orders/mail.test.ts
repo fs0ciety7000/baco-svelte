@@ -7,8 +7,6 @@ import {
   escapeHtml,
   officeFor,
   PACO_OFFICES,
-  reminderIntro,
-  reminderSubject,
   taxiMail,
   type BusMailDetail,
   type TaxiMailDetail,
@@ -158,33 +156,17 @@ describe("taxiMail", () => {
   });
 });
 
-describe("relance du fournisseur (bon envoyé non confirmé)", () => {
-  it("bus : objet préfixé, rappel de l'envoi, vouvoiement, PDF rejoint", () => {
-    const m = busMail(bus, { agentName: "Agent Test", reminder: { sentDay: "2026-10-06" } });
-    expect(m.subject.startsWith("Relance – Réquisitoire bus C3 n° 42")).toBe(true);
-    expect(m.text).toContain("Nous vous avons transmis le");
-    expect(m.text).toContain("réquisitoire C3 n° 42");
-    expect(m.text).toContain("nous n'avons pas encore reçu votre confirmation");
-    expect(m.text).toContain("Pourriez-vous nous confirmer");
-    expect(m.text).toContain("de nouveau joint en PDF");
-    expect(m.text).not.toMatch(/\btu\b|\bton\b|\btes\b/);
-    expect(m.to).toEqual(["planning@bus-exemple.be", "dispatch@bus-exemple.be"]);
-  });
-
-  it("taxi : même mécanique, sans double préfixe", () => {
-    const m = taxiMail(taxi, { agentName: "Agent Test", reminder: { sentDay: "" } });
-    expect(m.subject.startsWith("Relance – Commande taxi n° 7")).toBe(true);
-    expect(reminderSubject(m.subject)).toBe(m.subject);
-    expect(m.text).toContain("Nous vous avons transmis notre commande de taxi n° 7");
-    expect(m.html).toContain("Pourriez-vous nous confirmer");
-  });
-
-  it("sans relance : texte d'origine inchangé", () => {
+describe("e-mail de clôture (cycle v3 du 14 oct. 2026)", () => {
+  it("récapitulatif, plus de demande de confirmation, vouvoiement", () => {
     const m = busMail(bus, { agentName: "Agent Test" });
-    expect(m.subject.startsWith("Réquisitoire")).toBe(true);
-    expect(m.text).toContain("Merci de nous confirmer la prise en charge");
-    expect(reminderIntro("x", "")).toBe(
-      "Nous vous avons transmis x. Sauf erreur de notre part, nous n'avons pas encore reçu votre confirmation.",
+    expect(m.subject.startsWith("Réquisitoire bus C3 n° 42")).toBe(true);
+    expect(m.text).toContain(
+      "le récapitulatif de notre réquisitoire de bus de remplacement C3 n° 42",
     );
+    expect(m.text).toContain("Le bon de commande est joint en PDF.");
+    expect(m.text).not.toContain("confirmer");
+    expect(m.text).not.toMatch(/\btu\b|\bton\b|\btes\b/);
+    const t = taxiMail(taxi, { agentName: "Agent Test" });
+    expect(t.text).toContain("le récapitulatif de notre commande de taxi n° 7");
   });
 });

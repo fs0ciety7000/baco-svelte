@@ -12,7 +12,7 @@ pocketbase migrate up $P                                   # appliquer les migra
 pocketbase superuser upsert <email> <mot de passe> $P      # compte superuser local
 pocketbase serve --http 127.0.0.1:8090 $P                  # serveur local
 CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P   # import de la sauvegarde Supabase (hors Git)
-PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (384 contrôles)
+PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (378 contrôles)
 CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # Commandes + PMR, comptes gardés
 CSM_IMPORT_SCOPE=pmr CSM_IMPORT_RESET=1 pocketbase csm-import … $P        # PMR seul (zones, matériel, prestations)
 CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # main courante + 211 PN de BACO
@@ -80,17 +80,18 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
 - **Piège des fichiers** : PocketBase efface les fichiers d'une fiche supprimée *après* la validation de la
   transaction. Purger puis réimporter des fiches de même identifiant dans une seule transaction perd les fichiers
   → purge et import dans deux transactions (`lib/import.js`).
-- **Module Commandes** (`1760000200_commandes.js`, `orders.pb.js`, `lib/orders.js`) : statut unifié
-  `brouillon → envoye → confirme → en_cours → termine`, ou `annule`. Les transitions sont contrôlées par hook
-  (table dans `lib/orders.js` ; retour d'un cran permis ; `en_cours → annule`, `termine → en_cours` et « rétablir »
-  réservés aux coordinateurs moderator/admin/sysop ; motif d'annulation obligatoire ; envoi permis sans e-mail
-  fournisseur depuis le 9 oct. : PDF seul). Les horodatages `*_at` / `*_by`, `number` et `status_before_cancel` sont posés par le hook et
-  **refusés dans le corps des requêtes** (règles). Chaque transition écrit `order_events` (lecture seule pour tous).
-  Création toujours en `brouillon`, au nom de l'agent. `number` = n° de bon, attribué par une seule instruction
-  SQL atomique sur la table interne `_order_counters` (pas de doublon en création simultanée, testé à 12 requêtes) ;
-  = ancien id pour les bus importés. `en_cours → confirmé` est réservé aux coordinateurs (sinon contournement de
-  l'annulation). **`envoye → termine`** (« clôturer » un bon jamais confirmé) seulement 5 jours après la date de service
-  (`CLOSE_DAYS`, décision du 9 oct. 2026). Rétablir une annulée ne réhorodate pas. `time_pending` (taxi) : heure de prise en charge non saisie.
+- **Module Commandes** (`1760000200_commandes.js`, `orders.pb.js`, `lib/orders.js`) : **cycle v3** (`1760003400`, 14 oct.
+  2026) `brouillon` (brouillon / en cours) → `termine` (bus démobilisés) → `envoye` (envoyé / finalisé), ou `annule`.
+  Transitions par hook (table `TRANSITIONS` de `lib/orders.js`) : brouillon → terminé / annulé ; terminé → envoyé /
+  brouillon / annulé ; `envoye → termine` (« Rouvrir ») et « rétablir » une annulée réservés aux coordinateurs ; un bon
+  envoyé n'est **plus modifiable** (400) avant d'être rouvert ; motif d'annulation obligatoire ; envoi permis sans e-mail
+  fournisseur (PDF seul). « Confirmé », « En cours », la clôture à 5 jours, l'alerte `bus-h2` et la route de relance
+  n'existent plus (anciens statuts convertis : terminé / envoyé → envoyé, confirmé / en cours → brouillon). Les horodatages
+  `*_at` / `*_by` (`ended_*` au passage à terminé, `sent_*` à envoyé), `number` et `status_before_cancel` sont posés par le
+  hook et **refusés dans le corps des requêtes**. Chaque transition écrit `order_events` (lecture seule ; anciens statuts
+  gardés). Création toujours en `brouillon`, au nom de l'agent. `number` = n° de bon, attribué par une seule instruction
+  SQL atomique sur `_order_counters` ; = ancien id pour les bus importés. Rôle Écran : lit les bons bus en brouillon ou
+  terminés. `time_pending` (taxi) : heure de prise en charge non saisie.
   `updated_by` de `pmr_clients` / `b201_reports` et l'attribution BACO des bus (`sent_by_name`, `validated_by`,
   `legacy_id`) ne sont pas forgeables.
 - **Piège des index** : un champ nombre vide vaut **0**, pas NULL → un index unique `WHERE legacy_id IS NOT NULL`
@@ -219,10 +220,6 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   `otto:write` / `generate_taxi:write`, modification `:update`, suppression `:delete`) ; `legacy_id` **refusé dans le
   corps** (création et modification) ; `bus_companies.notes` (2000). Hook `orders.pb.js` : une société citée par un bon
   ne se supprime pas (400, `companyUses` dans `lib/orders.js`).
-- **Relance d'un fournisseur** : route `POST /api/csm/orders/{kind}/{id}/reminder` (`$apis.requireAuth('users')`,
-  `lib/orders.js` → `remind`) : bon visible ET modifiable par l'appelant (`$app.canAccessRecord` avec `viewRule` puis
-  `updateRule` de la collection : un refus = 404), statut `envoye` seulement, 2 min entre deux relances ; écrit
-  `order_events` de `envoye` à `envoye` (note « Relance n° N »). Aucun e-mail envoyé : Next produit le `.eml`.
 - **Battements des tâches planifiées** (`1760003110_cron_runs.js`, `lib/heartbeat.js`) : **tout `cronAdd` passe par
   `require(lib/heartbeat.js).run($app, '<nom>', () => { … })`** (erreur capturée, journalisée, notée ; jamais relancée)
   → fiche `cron_runs` (nom unique, début, fin, durée, `ok`, erreur, nombre de passages), lue par admin / sysop, jamais
@@ -241,18 +238,14 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
 
 - **Rôle « Écran »** (`1760003000_screen_role.js`, 11 oct. 2026) : `screen` = compte d'affichage du poste partagé, qui ne voit
   que `/tv`. La migration a ajouté `&& @request.auth.role != "screen"` à **toutes** les règles (lecture, écriture,
-  suppression) puis rouvert des lectures bornées : sa fiche `users`, `app_settings` clé `maintenance`, `bus_orders` envoyés /
-  en cours, `pmr_assists` non anonymisées, `mission_trains`, `alea_marks`, `dicos_syncs`, `ops_log` actifs urgents / épinglés
+  suppression) puis rouvert des lectures bornées : sa fiche `users`, `app_settings` clé `maintenance`, `bus_orders` en brouillon /
+  terminés, `pmr_assists` non anonymisées, `mission_trains`, `alea_marks`, `dicos_syncs`, `ops_log` actifs urgents / épinglés
   / iRail ; `user_sessions` inchangée. Rien de nominatif (ni `taxi_orders`, ni `group_missions`, ni `pmr_mission`,
   `pmr_clients`…) et **aucun droit accordé (`grants`) ne s'applique**. **Toute nouvelle collection** doit écrire elle-même
   `&& @request.auth.role != "screen"` dans ses règles. Hooks : `hasJournalRead` / `hasPerm` (lib/operations.js) refusent
   `screen` (jamais destinataire d'une notification).
 - **Alertes et fiabilité DICOS** (`1760003010_dicos_presence_alerts.js`, `lib/alerts.js`, 11 oct. 2026) :
-  - cron **`bus-h2`** (`orders.pb.js`, toutes les 5 min) : bon bus `envoye` dont le premier départ prévu (plus petite heure
-    `buses[].planned` non annulée, sinon `call_time`, jour = `order_date`) est dans 2 h au plus ou passé depuis 1 h au plus →
-    notification `systeme` (`source = "bus-h2"`, `source_id` = id du bon, **une fois par bon** tous destinataires
-    confondus) aux agents `otto:update` du district du bon (districts du jour → permanents ; bon sans district ou agent
-    sans district : tous). Miroir web testé : `web/src/lib/orders/urgency.ts`.
+  - (cron `bus-h2` retiré avec le cycle v3 du 14 oct. 2026.)
   - **changements DICOS de dernière minute** (hooks `pmr_assists` / `group_missions` de `pmr.pb.js`, écriture du compte
     `dicos:write` seulement) : mission nouvelle (seulement si une synchro complète du jour existe déjà, sinon la première
     synchro du matin alerterait tout), annulée, rétablie, déplacée ou bout IN / OUT ajouté / retiré, **aujourd'hui et dans

@@ -1,22 +1,31 @@
 import { describe, expect, it } from "vitest";
 
-import { isClosable, transitionsFor } from "./status";
+import { isEditable, transitionsFor } from "./status";
 
-describe("clôture d'un bon envoyé jamais confirmé (5 jours)", () => {
-  it("n'est pas proposée avant 5 jours après la date de service", () => {
-    expect(isClosable("envoye", "2026-10-05", "2026-10-09")).toBe(false);
-    const list = transitionsFor("envoye", { coordinator: false, closable: false });
-    expect(list.map((t) => t.to)).not.toContain("termine");
+describe("cycle des bons v3 (brouillon / en cours → terminé → envoyé / finalisé)", () => {
+  it("brouillon : terminer (action principale) ou annuler", () => {
+    const list = transitionsFor("brouillon", { coordinator: false });
+    expect(list.map((t) => t.to)).toEqual(["termine", "annule"]);
+    expect(list[0]).toMatchObject({ label: "Terminer (bus démobilisés)", primary: true });
   });
 
-  it("est proposée à partir de 5 jours", () => {
-    expect(isClosable("envoye", "2026-10-04", "2026-10-09")).toBe(true);
-    const list = transitionsFor("envoye", { coordinator: false, closable: true });
-    expect(list.find((t) => t.to === "termine")?.label).toBe("Clôturer sans confirmation");
+  it("terminé : valider l'envoi, revenir en cours ou annuler", () => {
+    const list = transitionsFor("termine", { coordinator: false });
+    expect(list.map((t) => t.to)).toEqual(["envoye", "brouillon", "annule"]);
+    expect(list[0]?.label).toBe("Valider l'envoi");
   });
 
-  it("ne concerne que les bons envoyés", () => {
-    expect(isClosable("confirme", "2026-09-01", "2026-10-09")).toBe(false);
-    expect(isClosable("envoye", "", "2026-10-09")).toBe(false);
+  it("envoyé / finalisé : seul un coordinateur rouvre ; plus modifiable", () => {
+    expect(transitionsFor("envoye", { coordinator: false })).toEqual([]);
+    expect(transitionsFor("envoye", { coordinator: true }).map((t) => t.label)).toEqual([
+      "Rouvrir",
+    ]);
+    expect(isEditable("envoye")).toBe(false);
+    expect(isEditable("termine")).toBe(true);
+  });
+
+  it("annulé : rétablir au statut précédent (coordinateur)", () => {
+    const list = transitionsFor("annule", { coordinator: true, statusBeforeCancel: "termine" });
+    expect(list).toEqual([{ to: "termine", label: "Rétablir", primary: true }]);
   });
 });

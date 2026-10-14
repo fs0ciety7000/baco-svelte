@@ -12,9 +12,9 @@ import { activeModule } from "@/navigation";
 import { useShell } from "./shell-context";
 import { useShellStatus } from "./shell-status";
 
-// Compteur par module : ce qui attend l'agent (bons à confirmer, missions impactées, non lus du Journal).
+// Compteur par module : ce qui attend l'agent (bons terminés à envoyer, missions impactées, non lus du Journal).
 const COUNT_TONE: Record<string, { tone: string; title: string }> = {
-  commandes: { tone: "text-warn bg-warn/12", title: "bons envoyés à confirmer" },
+  commandes: { tone: "text-warn bg-warn/12", title: "bons terminés à envoyer" },
   pmr: { tone: "text-danger bg-danger/12", title: "missions impactées par un retard" },
   operations: { tone: "text-info bg-info/12", title: "messages non lus au Journal (24 h)" },
 };

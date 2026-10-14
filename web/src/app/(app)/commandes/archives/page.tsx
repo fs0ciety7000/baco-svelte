@@ -19,7 +19,7 @@ import { listArchiveBackups, listArchives, unarchivedOrders } from "@/server/dat
 
 export const metadata: Metadata = { title: "Archives des bons · CSM" };
 
-// Archives des bons (demande du 11 oct. 2026) : récapitulatif des bons terminés (référence TC_ / n° de taxi, trajet,
+// Archives des bons (demande du 11 oct. 2026) : récapitulatif des bons finalisés (référence TC_ / n° de taxi, trajet,
 // date) avec leur PDF, et sauvegardes zip mensuelles. Lecture : `archives:read`.
 
 type SP = { type?: string; mois?: string; q?: string; page?: string };
@@ -98,7 +98,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
       {list.rows.length === 0 ? (
         <EmptyState
           title="Aucun bon archivé"
-          description="Les bons terminés apparaissent ici avec leur PDF."
+          description="Les bons finalisés (envoyés) apparaissent ici avec leur PDF."
         />
       ) : (
         <>

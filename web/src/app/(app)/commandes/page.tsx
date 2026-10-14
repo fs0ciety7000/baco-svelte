@@ -22,7 +22,7 @@ export default async function CommandesBusPage({
   const user = await requirePermission("otto:read");
   const sp = await searchParams;
   // Période par défaut J-1 → J+6 quand l'URL ne donne aucune borne (11 oct. 2026) ; `?du=&au=` = toutes les dates.
-  // Recherche ou statut demandés (liens « à confirmer », « en cours », n° de bon) : toutes les dates, sinon un bon
+  // Recherche ou statut demandés (liens « à envoyer », « en cours », n° de bon) : toutes les dates, sinon un bon
   // ancien n'était plus trouvé (relecture du 11 oct. 2026). Les champs de date affichent la semaine par défaut et sont
   // renvoyés avec la recherche : la semaine par défaut est alors ignorée, une autre période est respectée.
   const today = brusselsDay();

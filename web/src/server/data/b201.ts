@@ -61,7 +61,7 @@ type BusLine = { planned?: string; confirmed?: string; cancelled?: boolean };
 function entriesFromRows(rows: OrderRow[], buses: Map<string, BusLine[]>): B201Entry[] {
   const out: B201Entry[] = [];
   for (const r of rows) {
-    if (r.status === "brouillon" || r.status === "annule") continue;
+    if (r.status === "annule") continue; // Cycle v3 : « brouillon / en cours » = bus engagés, repris.
     if (r.kind === "bus") {
       const list = (buses.get(r.id) ?? []).filter((b) => !b.cancelled);
       const lines = list.length ? list : [{ planned: r.time }];
