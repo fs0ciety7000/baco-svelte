@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import { Field } from "./field";
 import { renderInForm, setupPickerEnv, STATUTS } from "./picker-test-utils";
-import { Select } from "./select";
+import { labelText, Select } from "./select";
 
 beforeAll(setupPickerEnv);
 
@@ -94,5 +94,15 @@ describe("Select", () => {
     fireEvent.click(screen.getByText("externe"));
     expect(screen.getByRole("combobox")).toHaveTextContent("Terminé");
     expect(changes).toEqual([]);
+  });
+
+  it("libellé englobant (filtres) : le titre de la liste ne reprend pas l'option choisie", () => {
+    render(
+      <label>
+        <span>Action</span>
+        <Select name="action" options={STATUTS} defaultValue="termine" />
+      </label>,
+    );
+    expect(labelText(screen.getByRole("combobox"))).toBe("Action");
   });
 });

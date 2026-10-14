@@ -45,8 +45,20 @@ export function labelText(el: HTMLElement | null): string {
   if (!el) return "";
   const byFor = el.id ? document.querySelector(`label[for="${CSS.escape(el.id)}"]`) : null;
   const wrapping = el.closest("label");
-  const text = (byFor ?? wrapping)?.textContent ?? el.getAttribute("aria-label") ?? "";
-  return text.replace(/\s*\*\s*$/, "").trim();
+  const source = byFor ?? wrapping;
+  let text = el.getAttribute("aria-label") ?? "";
+  if (source) {
+    // `<label>` englobant : son texte contient aussi le libellé choisi du déclencheur, à retirer.
+    const clone = source.cloneNode(true) as HTMLElement;
+    clone
+      .querySelectorAll('[data-slot="select"], input, select, textarea')
+      .forEach((n) => n.remove());
+    text = clone.textContent ?? text;
+  }
+  return text
+    .replace(/\s+/g, " ")
+    .replace(/\s*\*\s*$/, "")
+    .trim();
 }
 
 /**

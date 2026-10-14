@@ -17,6 +17,7 @@ import { FilterForm } from "@/components/ui/filter-form";
 import { FilterChip, ChipRow } from "@/components/ui/filters";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Input, Select } from "@/components/ui/input";
+import { Select as CustomSelect } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
 import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
@@ -206,14 +207,18 @@ async function RelationsView({ sp, q }: { sp: Search; q: string }) {
         <FormAutoSubmit live />
         <label className="flex min-w-0 flex-col gap-1 md:w-36">
           <span className="text-small text-fg-muted">Type</span>
-          <Select name="type" defaultValue={type}>
-            <option value="">Tous</option>
-            <option value="IC">IC</option>
-            <option value="L">L</option>
-            <option value="S">S</option>
-            <option value="P">P</option>
-            <option value="AUTRES">Autres</option>
-          </Select>
+          <CustomSelect
+            name="type"
+            defaultValue={type}
+            options={[
+              { value: "", label: "Tous" },
+              { value: "IC", label: "IC" },
+              { value: "L", label: "L" },
+              { value: "S", label: "S" },
+              { value: "P", label: "P" },
+              { value: "AUTRES", label: "Autres" },
+            ]}
+          />
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-36">
           <span className="text-small text-fg-muted">Ligne</span>

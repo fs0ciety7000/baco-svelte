@@ -14,7 +14,8 @@ import {
 } from "@/app/(app)/equipe/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Input, Select } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";
 import { HOME_CHOICES } from "@/lib/home";
@@ -108,8 +109,7 @@ export function HomeCard({ initial }: { initial: string }) {
             defaultValue={initial}
             disabled={pending}
             aria-label="Page d'accueil"
-            onChange={(e) => {
-              const v = e.target.value;
+            onValueChange={(v) => {
               start(async () => {
                 const r = await setMyHome(v);
                 if (!r.ok) return void toast.error(r.error);
@@ -117,13 +117,8 @@ export function HomeCard({ initial }: { initial: string }) {
                 router.refresh();
               });
             }}
-          >
-            {HOME_CHOICES.map((c) => (
-              <option key={c.href} value={c.href}>
-                {c.label}
-              </option>
-            ))}
-          </Select>
+            options={HOME_CHOICES.map((c) => ({ value: c.href, label: c.label }))}
+          />
         </label>
         <p className="flex items-center gap-1.5 text-small text-fg-muted">
           <Home aria-hidden className="size-4" /> « Accueil » dans le menu reste le tableau de bord.

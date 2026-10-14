@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Segmented } from "@/components/ui/form-kit";
 import { Input, Select, Textarea } from "@/components/ui/input";
+import { Select as CustomSelect } from "@/components/ui/select";
 import { EmptyState, Skeleton } from "@/components/ui/misc";
 import { Sheet } from "@/components/ui/sheet";
 import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
@@ -182,19 +183,18 @@ export function PnBoard({
           />
         </label>
         <div className="grid grid-cols-2 gap-2 md:flex">
-          <Select
-            aria-label="Zone"
-            value={zone}
-            onChange={(e) => (setZone(e.target.value), syncUrl({ zone: e.target.value || null }))}
-            className="md:w-32"
-          >
-            <option value="">Toutes zones</option>
-            {zones.map((z) => (
-              <option key={z} value={z}>
-                {z}
-              </option>
-            ))}
-          </Select>
+          <div className="md:w-32">
+            <CustomSelect
+              aria-label="Zone"
+              label="Zone"
+              value={zone}
+              onValueChange={(v) => (setZone(v), syncUrl({ zone: v || null }))}
+              options={[
+                { value: "", label: "Toutes zones" },
+                ...zones.map((z) => ({ value: z, label: z })),
+              ]}
+            />
+          </div>
           <Select
             aria-label="Ligne"
             value={line}
@@ -410,14 +410,11 @@ function CrossingForm({
           <Input value={d.bk} onChange={set("bk")} inputMode="decimal" />
         </Field>
         <Field label="Zone">
-          <Select value={d.zone} onChange={set("zone")}>
-            <option value="">—</option>
-            {zones.map((z) => (
-              <option key={z} value={z}>
-                {z}
-              </option>
-            ))}
-          </Select>
+          <CustomSelect
+            value={d.zone}
+            onValueChange={(zone) => setD({ ...d, zone })}
+            options={[{ value: "", label: "—" }, ...zones.map((z) => ({ value: z, label: z }))]}
+          />
         </Field>
       </div>
       <Field label="Adresse">

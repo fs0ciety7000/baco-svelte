@@ -7,7 +7,8 @@ import { ClearFilters, FilterSubmit } from "@/components/ui/filters";
 import { DateRangePicker } from "@/components/ui/date-field";
 import { FilterForm } from "@/components/ui/filter-form";
 import { Button } from "@/components/ui/button";
-import { Input, Select } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
 import { requireAdmin } from "@/server/auth";
@@ -69,14 +70,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-40">
           <span className="text-small text-fg-muted">Action</span>
-          <Select name="action" defaultValue={p.action ?? ""}>
-            <option value="">Toutes</option>
-            {Object.entries(ACTION).map(([k, a]) => (
-              <option key={k} value={k}>
-                {a.label}
-              </option>
-            ))}
-          </Select>
+          <Select
+            name="action"
+            defaultValue={p.action ?? ""}
+            options={[
+              { value: "", label: "Toutes" },
+              ...Object.entries(ACTION).map(([k, a]) => ({ value: k, label: a.label })),
+            ]}
+          />
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-48">
           <span className="text-small text-fg-muted">Fiche (identifiant)</span>

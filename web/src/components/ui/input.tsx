@@ -32,7 +32,8 @@ function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
   );
 }
 
-// Select natif stylé : fiable au clavier, au lecteur d'écran et sur mobile (sélecteur du système).
+// Select natif stylé : ANCIEN, à ne plus utiliser (`Select` de `./select.tsx`). Reste seulement dans les écrans des
+// lots R2 / R4 de la refonte (districts, listes longues : société, chauffeur, ligne, gares), à retirer ensuite.
 function Select({ className, children, ...props }: React.ComponentProps<"select">) {
   return (
     <div className="relative">

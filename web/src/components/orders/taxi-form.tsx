@@ -27,6 +27,7 @@ import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { ActionBar, AutosaveIndicator, FormSection, Segmented } from "@/components/ui/form-kit";
 import { Input, Select, Textarea } from "@/components/ui/input";
+import { Select as CustomSelect } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";
 import { DateField } from "@/components/ui/date-field";
@@ -356,14 +357,11 @@ export function TaxiForm(props: TaxiFormProps) {
                 />
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   <Field label="Type">
-                    <Select value={d.pmr_type} onChange={(e) => set("pmr_type", e.target.value)}>
-                      <option value="">—</option>
-                      {PMR_TYPES.map((t) => (
-                        <option key={t.value} value={t.value}>
-                          {t.label}
-                        </option>
-                      ))}
-                    </Select>
+                    <CustomSelect
+                      value={d.pmr_type}
+                      onValueChange={(v) => set("pmr_type", v)}
+                      options={[{ value: "", label: "—" }, ...PMR_TYPES]}
+                    />
                   </Field>
                   <Field label="Nombre de PMR" required error={err("pmr_count")}>
                     <Input
@@ -387,14 +385,12 @@ export function TaxiForm(props: TaxiFormProps) {
                   </Field>
                 </div>
                 <Field label="Cause PMR" required error={err("pmr_reason")}>
-                  <Select value={d.pmr_reason} onChange={(e) => set("pmr_reason", e.target.value)}>
-                    <option value="">Choisir…</option>
-                    {PMR_CAUSES.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </Select>
+                  <CustomSelect
+                    value={d.pmr_reason}
+                    onValueChange={(v) => set("pmr_reason", v)}
+                    placeholder="Choisir…"
+                    options={PMR_CAUSES.map((c) => ({ value: c, label: c }))}
+                  />
                 </Field>
               </>
             ) : (
@@ -496,13 +492,11 @@ export function TaxiForm(props: TaxiFormProps) {
             defaultOpen={!props.orderId}
           >
             <Field label="Facturation">
-              <Select value={d.billing} onChange={(e) => set("billing", e.target.value)}>
-                {BILLING.map((b) => (
-                  <option key={b} value={b}>
-                    {b}
-                  </option>
-                ))}
-              </Select>
+              <CustomSelect
+                value={d.billing}
+                onValueChange={(v) => v && set("billing", v)}
+                options={BILLING.map((b) => ({ value: b, label: b }))}
+              />
             </Field>
             <Field label="Motif / remarques">
               <Textarea
@@ -856,14 +850,11 @@ function NewClientDialog({
               />
             </Field>
             <Field label="Type">
-              <Select value={f.type} onChange={(e) => setF({ ...f, type: e.target.value })}>
-                <option value="">—</option>
-                {PMR_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
-                  </option>
-                ))}
-              </Select>
+              <CustomSelect
+                value={f.type}
+                onValueChange={(v) => setF({ ...f, type: v })}
+                options={[{ value: "", label: "—" }, ...PMR_TYPES]}
+              />
             </Field>
           </div>
           <DialogFooter>

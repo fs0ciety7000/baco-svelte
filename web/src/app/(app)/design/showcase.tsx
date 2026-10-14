@@ -30,7 +30,8 @@ import {
   Timeline,
   ToggleChip,
 } from "@/components/ui/form-kit";
-import { Input, Select, Textarea } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { EmptyState, Kbd, PageHeader, Skeleton } from "@/components/ui/misc";
 import { Sheet } from "@/components/ui/sheet";
@@ -367,11 +368,14 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
               <Input placeholder="Ex. La Louvière-Centre" />
             </Field>
             <Field label="Motif">
-              <Select defaultValue="travaux">
-                <option value="travaux">Travaux</option>
-                <option value="incident">Incident</option>
-                <option value="greve">Grève</option>
-              </Select>
+              <Select
+                defaultValue="travaux"
+                options={[
+                  { value: "travaux", label: "Travaux" },
+                  { value: "incident", label: "Incident" },
+                  { value: "greve", label: "Grève" },
+                ]}
+              />
             </Field>
             <Field label="Nombre de bus">
               <Input type="number" min={1} defaultValue={2} inputMode="numeric" />

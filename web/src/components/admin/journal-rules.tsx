@@ -5,10 +5,11 @@ import { useState, useTransition } from "react";
 
 import { reclassBacoMessages, saveJournalRules } from "@/app/(app)/admin/actions";
 import { Button } from "@/components/ui/button";
-import { Input, Select } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { toast } from "@/components/ui/toast";
 import { RULE_SOURCES, type JournalRule, type RuleSource } from "@/lib/ops/journal-rules";
-import { CATEGORY, LOG_CATEGORIES, type LogCategory } from "@/lib/ops/log";
+import { CATEGORY, LOG_CATEGORIES } from "@/lib/ops/log";
 import { safeCall } from "@/lib/orders/safe-call";
 
 /** Éditeur des règles de tri automatique du Journal (Administration › Journal). */
@@ -42,14 +43,9 @@ export function JournalRulesEditor({ initial }: { initial: JournalRule[] }) {
               <span className="text-small text-fg-muted">Source</span>
               <Select
                 value={r.source}
-                onChange={(e) => set(i, { source: e.target.value as RuleSource })}
-              >
-                {Object.entries(RULE_SOURCES).map(([k, label]) => (
-                  <option key={k} value={k}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
+                onValueChange={(v) => v && set(i, { source: v as RuleSource })}
+                options={Object.entries(RULE_SOURCES).map(([k, label]) => ({ value: k, label }))}
+              />
             </label>
             <label className="flex min-w-0 flex-col gap-1">
               <span className="text-small text-fg-muted">Mots-clés (séparés par des virgules)</span>
@@ -64,14 +60,9 @@ export function JournalRulesEditor({ initial }: { initial: JournalRule[] }) {
               <span className="text-small text-fg-muted">Catégorie</span>
               <Select
                 value={r.category}
-                onChange={(e) => set(i, { category: e.target.value as LogCategory })}
-              >
-                {LOG_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {CATEGORY[c].label}
-                  </option>
-                ))}
-              </Select>
+                onValueChange={(v) => v && set(i, { category: v })}
+                options={LOG_CATEGORIES.map((c) => ({ value: c, label: CATEGORY[c].label }))}
+              />
             </label>
             <span className="flex items-center gap-1">
               <Button

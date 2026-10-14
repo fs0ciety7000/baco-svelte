@@ -14,7 +14,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
-import { Input, Select, Textarea } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { EmptyState, Skeleton } from "@/components/ui/misc";
 import { Sheet } from "@/components/ui/sheet";
 import { Badge, StatusBadge } from "@/components/ui/status-badge";
@@ -343,15 +344,12 @@ function ClientEditor({
         <Field label="Type">
           <Select
             value={f.type}
-            onChange={(e) => setF({ ...f, type: e.target.value as ClientInput["type"] })}
-          >
-            <option value="">—</option>
-            {PMR_TYPE_CODES.map((t) => (
-              <option key={t} value={t}>
-                {t} · {PMR_TYPE_LABEL[t]}
-              </option>
-            ))}
-          </Select>
+            onValueChange={(v) => setF({ ...f, type: v as ClientInput["type"] })}
+            options={[
+              { value: "", label: "—" },
+              ...PMR_TYPE_CODES.map((t) => ({ value: t, label: `${t} · ${PMR_TYPE_LABEL[t]}` })),
+            ]}
+          />
         </Field>
       </div>
       {f.type === "AUTRE" ? (

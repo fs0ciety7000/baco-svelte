@@ -5,7 +5,8 @@ import { pl } from "@/lib/utils";
 import { ClearFilters, FilterSubmit } from "@/components/ui/filters";
 import { FilterForm } from "@/components/ui/filter-form";
 import { ContactBoard } from "@/components/referentiels/contact-board";
-import { Input, Select } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { can } from "@/lib/permissions";
 import { requirePermission } from "@/server/auth";
 import { contactFacets, listContacts } from "@/server/data/referentiels";
@@ -52,36 +53,36 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-44">
           <span className="text-small text-fg-muted">Catégorie</span>
-          <Select name="category" defaultValue={f.category ?? ""}>
-            <option value="">Toutes</option>
-            {facets.categories.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </Select>
+          <Select
+            name="category"
+            defaultValue={f.category ?? ""}
+            options={[
+              { value: "", label: "Toutes" },
+              ...facets.categories.map((c) => ({ value: c, label: c })),
+            ]}
+          />
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-40">
           <span className="text-small text-fg-muted">Zone</span>
-          <Select name="zone" defaultValue={f.zone ?? ""}>
-            <option value="">Toutes</option>
-            {facets.zones.map((z) => (
-              <option key={z} value={z}>
-                {z}
-              </option>
-            ))}
-          </Select>
+          <Select
+            name="zone"
+            defaultValue={f.zone ?? ""}
+            options={[
+              { value: "", label: "Toutes" },
+              ...facets.zones.map((z) => ({ value: z, label: z })),
+            ]}
+          />
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-44">
           <span className="text-small text-fg-muted">Groupe</span>
-          <Select name="group" defaultValue={f.group ?? ""}>
-            <option value="">Tous</option>
-            {facets.groups.map((g) => (
-              <option key={g} value={g}>
-                {g}
-              </option>
-            ))}
-          </Select>
+          <Select
+            name="group"
+            defaultValue={f.group ?? ""}
+            options={[
+              { value: "", label: "Tous" },
+              ...facets.groups.map((g) => ({ value: g, label: g })),
+            ]}
+          />
         </label>
         <div className="col-span-2 flex gap-2">
           <FilterSubmit />

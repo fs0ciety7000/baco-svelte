@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { Segmented, Timeline } from "@/components/ui/form-kit";
 import { Input, Select, Textarea } from "@/components/ui/input";
+import { Select as CustomSelect } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/misc";
 import { Sheet } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/status-badge";
@@ -460,27 +461,24 @@ function EquipmentDialog({
               />
             </Field>
             <Field label="Zone">
-              <Select value={f.zone} onChange={(e) => set("zone", e.target.value)}>
-                <option value="">—</option>
-                {zones.map((z) => (
-                  <option key={z.id} value={z.id}>
-                    {z.code}
-                  </option>
-                ))}
-              </Select>
+              <CustomSelect
+                value={f.zone}
+                onValueChange={(v) => set("zone", v)}
+                options={[
+                  { value: "", label: "—" },
+                  ...zones.map((z) => ({ value: z.id, label: z.code })),
+                ]}
+              />
             </Field>
             <Field label="Assistance">
-              <Select
+              <CustomSelect
                 value={f.assistance}
-                onChange={(e) => set("assistance", e.target.value as EquipmentInput["assistance"])}
-              >
-                <option value="">—</option>
-                {Object.entries(ASSISTANCE_LABEL).map(([v, l]) => (
-                  <option key={v} value={v}>
-                    {l}
-                  </option>
-                ))}
-              </Select>
+                onValueChange={(v) => set("assistance", v as EquipmentInput["assistance"])}
+                options={[
+                  { value: "", label: "—" },
+                  ...Object.entries(ASSISTANCE_LABEL).map(([v, l]) => ({ value: v, label: l })),
+                ]}
+              />
             </Field>
             <Field label="Type de rampe">
               <Input
@@ -507,16 +505,14 @@ function EquipmentDialog({
               <DateField value={f.valid_until} onValueChange={(v) => set("valid_until", v)} />
             </Field>
             <Field label="État">
-              <Select
+              <CustomSelect
                 value={f.state}
-                onChange={(e) => set("state", e.target.value as EquipmentState)}
-              >
-                {EQUIPMENT_STATES.map((s) => (
-                  <option key={s} value={s}>
-                    {EQUIPMENT_STATE[s].label}
-                  </option>
-                ))}
-              </Select>
+                onValueChange={(v) => v && set("state", v)}
+                options={EQUIPMENT_STATES.map((s) => ({
+                  value: s,
+                  label: EQUIPMENT_STATE[s].label,
+                }))}
+              />
             </Field>
           </div>
           <label className="flex min-h-11 cursor-pointer items-center gap-2 text-body">

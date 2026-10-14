@@ -5,7 +5,8 @@ import Link from "next/link";
 import { FilterSubmit } from "@/components/ui/filters";
 import { FilterForm } from "@/components/ui/filter-form";
 import { EquipmentBoard } from "@/components/pmr/equipment-board";
-import { Input, Select } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { can, isCoordinator } from "@/lib/permissions";
 import { brusselsDay } from "@/lib/orders/time";
 import { cn } from "@/lib/utils";
@@ -88,14 +89,14 @@ export default async function Page({
         </label>
         <label className="flex min-w-0 flex-col gap-1 md:w-32">
           <span className="text-small text-fg-muted">Zone</span>
-          <Select name="zone" defaultValue={sp.zone ?? ""}>
-            <option value="">Toutes</option>
-            {zones.map((z) => (
-              <option key={z.id} value={z.id}>
-                {z.code}
-              </option>
-            ))}
-          </Select>
+          <Select
+            name="zone"
+            defaultValue={sp.zone ?? ""}
+            options={[
+              { value: "", label: "Toutes" },
+              ...zones.map((z) => ({ value: z.id, label: z.code })),
+            ]}
+          />
         </label>
         <FilterSubmit />
       </FilterForm>

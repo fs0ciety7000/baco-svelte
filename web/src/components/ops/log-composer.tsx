@@ -36,7 +36,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DateField } from "@/components/ui/date-field";
 import { Field } from "@/components/ui/field";
-import { Input, Select, Textarea } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { TimeField } from "@/components/ui/time-field";
 import { toast } from "@/components/ui/toast";
 import { CATEGORY, LOG_CATEGORIES, ATTACHMENT_MAX, type LogCategory } from "@/lib/ops/log";
@@ -439,15 +440,11 @@ export function LogComposer({
               <div className="grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)] gap-2">
                 <Select
                   aria-label="Type d'objet"
+                  label="Type d'objet"
                   value={linkKind}
-                  onChange={(e) => setLinkKind(e.target.value as LinkedObject["kind"])}
-                >
-                  {linkKinds.map((k) => (
-                    <option key={k} value={k}>
-                      {KIND_LABEL[k]}
-                    </option>
-                  ))}
-                </Select>
+                  onValueChange={(v) => v && setLinkKind(v)}
+                  options={linkKinds.map((k) => ({ value: k, label: KIND_LABEL[k] }))}
+                />
                 <span className="relative">
                   <Search
                     aria-hidden
@@ -703,16 +700,10 @@ export function LogComposer({
             <span className="sr-only">Catégorie</span>
             <Select
               value={category}
-              onChange={(e) => setCategory(e.target.value as LogCategory)}
-              className="h-control-sm"
+              onValueChange={(v) => v && setCategory(v)}
               data-testid="log-category-select"
-            >
-              {LOG_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {CATEGORY[c].label}
-                </option>
-              ))}
-            </Select>
+              options={LOG_CATEGORIES.map((c) => ({ value: c, label: CATEGORY[c].label }))}
+            />
           </label>
           <button
             type="button"

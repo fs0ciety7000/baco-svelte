@@ -9,7 +9,8 @@ import { MarkdownView } from "@/components/referentiels/markdown-view";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
-import { Input, Select, Textarea } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";
@@ -131,14 +132,9 @@ export function ChangelogBoard({ items, canEdit }: { items: ChangelogEntry[]; ca
               <Field label="Type">
                 <Select
                   value={draft.type}
-                  onChange={(e) => setDraft({ ...draft, type: e.target.value as ChangelogType })}
-                >
-                  {Object.entries(TYPES).map(([k, t]) => (
-                    <option key={k} value={k}>
-                      {t.label}
-                    </option>
-                  ))}
-                </Select>
+                  onValueChange={(v) => v && setDraft({ ...draft, type: v as ChangelogType })}
+                  options={Object.entries(TYPES).map(([k, t]) => ({ value: k, label: t.label }))}
+                />
               </Field>
               <Field label="Contenu">
                 <Textarea

@@ -8,7 +8,8 @@ import { createUser } from "@/app/(app)/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
-import { Input, Select } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { toast } from "@/components/ui/toast";
 import { ROLE_LABEL } from "@/lib/team";
 
@@ -108,13 +109,11 @@ export function UserCreate() {
               />
             </Field>
             <Field label="Rôle">
-              <Select value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })}>
-                {ROLE_CHOICES.map((r) => (
-                  <option key={r} value={r}>
-                    {ROLE_LABEL[r]}
-                  </option>
-                ))}
-              </Select>
+              <Select
+                value={f.role}
+                onValueChange={(role) => setF({ ...f, role })}
+                options={ROLE_CHOICES.map((r) => ({ value: r, label: ROLE_LABEL[r] ?? r }))}
+              />
             </Field>
             <Field
               label="Districts"
