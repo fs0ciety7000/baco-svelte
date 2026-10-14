@@ -507,3 +507,28 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - **Référentiel des gares par défaut** : `src/data/station-seed.json` (`stationSeed(key)`, test de validité), régénéré par
   `node scripts/station-seed.mjs <export.json>` depuis `/api/referentiels/gares/export?format=json` de la préversion.
 
+## Horaires Quinyx (14 oct. 2026)
+
+- Cadrage : `../docs/design/CADRAGE-QUINYX.md`. Logique pure `lib/quinyx/model.ts` (testée) : `quinyxBatchSchema`
+  (lot de l'extension : un groupe, une période ≤ 62 j), `isCapturedCode` (PACO_ / RCCA_ / EXTRA seulement),
+  `shiftKind`, `placeDistrict` (motif le plus long en mots entiers), `mapQuinyxBatch` (affectées, captées, jour <
+  `publishedUntil` **inclus**, heures de Bruxelles → UTC par `brusselsToUtc`), `suggestUser` (nom complet identique,
+  une seule correspondance), `weekDays`, `weekRows`, `brusselsClock`, `DUTY_NAME` (DSO → « Sud-Ouest »…).
+- Ingestion : `server/quinyx-ingest.ts` (`connectorRequest` = jeton de connecteur + débit + compte de service,
+  réutilisable ; `ingestQuinyx` : groupe configuré et activé sinon 404, agents créés / mis à jour avec proposition,
+  upsert par `quinyx_id` (recherche par paquets dans le groupe, création concurrente relue), retrait des prestations
+  disparues sur un lot `complete` sans erreur, limité aux agents `visible`, aux sections reçues et à 30 % (`removalAllowed`),
+  un lot à la fois par groupe, `last_sync` posé seulement sans erreur ; prestations gardées seulement si l'agent est
+  rattaché, ou proposé, à un compte de l'équipe : `isTeamAccount`, `TEAM_ROLES` ; les autres comptent dans `notTeam`) ;
+  routes `api/equipe/quinyx/ingest` (2 Mo, 20 / min / jeton) et `api/equipe/quinyx/config` (groupes activés).
+- Données : `server/data/quinyx.ts` (`listPlanning`, `myShifts` / `todayShiftOf` = rattachement **validé** seulement,
+  `quinyxSyncs`, `adminQuinyx`). Écrans : `/equipe/planning` (`components/team/planning.tsx` : `PlanningDay`,
+  `PlanningWeek` — grille `planning-grid` en desktop, `planning-week-list` en mobile —, `QuinyxFreshness`) ;
+  `/admin/quinyx` (`components/admin/quinyx-admin.tsx`, actions `admin/quinyx/actions.ts`, l'adresse
+  `…/schedule/<n°>` collée est réduite au numéro, un compte CSM = un agent Quinyx).
+- Districts du jour : `(app)/layout.tsx` → `duty.suggested` (prestation du jour) tant que le jour n'est pas coché ;
+  `DutyChip` / `DutyDialog` pré-cochent et l'expliquent (`duty-quinyx`). Widget « Fin de service » : prop `quinyx`
+  (`windowState` de `lib/shift.ts`), un choix manuel reste prioritaire.
+- Extension 1.8.0 : `src/quinyx.js` (onglet Quinyx, tri avant envoi), `src/quinyx-inject.js` (relève `x-app-version`),
+  service worker `syncQuinyx` (bouton du popup ou ouverture d'une page `/schedule/`, au plus toutes les 3 h).
+- E2E `e2e/quinyx.spec.ts` (groupes fictifs 990001 / 990002, agents « E2E Quinyx <format> », le compte E2E rattaché).

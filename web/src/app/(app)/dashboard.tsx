@@ -32,7 +32,7 @@ import {
   TrainsWidget,
   type LogDigest,
 } from "@/components/ops/dashboard-widgets";
-import { ShiftWidget } from "@/components/dashboard/shift-widget";
+import { ShiftWidget, type QuinyxShift } from "@/components/dashboard/shift-widget";
 import { KpiStrip, TodoQueue, todoItems } from "@/components/dashboard/todo";
 import { useShell } from "@/components/shell/shell-context";
 import { Button } from "@/components/ui/button";
@@ -83,6 +83,7 @@ export type OpsDigest = {
   today: TodayPmr | null;
   mentions: Notification[] | null;
   shift: ShiftChoice | null;
+  quinyx: QuinyxShift | null;
 };
 
 function WidgetBody({
@@ -98,7 +99,7 @@ function WidgetBody({
   const router = useRouter();
   switch (id) {
     case "service":
-      return <ShiftWidget initial={ops.shift} />;
+      return <ShiftWidget initial={ops.shift} quinyx={ops.quinyx} />;
     case "commandes":
       if (!stats)
         return (

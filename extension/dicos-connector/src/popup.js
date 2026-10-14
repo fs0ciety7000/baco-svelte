@@ -246,3 +246,39 @@ try {
     }
   });
 } catch (_) {}
+
+// --- 1.8.0 : horaires Quinyx (Équipe › Planning de CSM) ---
+function fmtQuinyx(r) {
+  if (!r) return "Aucune synchro Quinyx récente.";
+  const num = (v) => Number(v) || 0;
+  const when = r.at ? new Date(r.at).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
+  if (r.error) return `<span class="err">${escapeHtml(String(r.error))}</span>${when ? `<br><small>${escapeHtml(when)}</small>` : ""}`;
+  const lines = (Array.isArray(r.groups) ? r.groups : []).slice(0, 20).map((g) =>
+    g && g.error
+      ? `${escapeHtml(String(g.label || "Groupe"))} : <span class="err">${escapeHtml(String(g.error))}</span>`
+      : `${escapeHtml(String((g && g.label) || "Groupe"))} : <b>${num(g.kept)}</b> prestation(s) jusqu'au ${escapeHtml(String((g && g.to) || ""))} · ${num(g.created)} nouvelle(s), ${num(g.updated)} maj, ${num(g.removed)} retirée(s)${num(g.notTeam) ? ` · ${num(g.notTeam)} hors équipe CSM` : ""}${
+          num(g.failed) ? ` · <span class="err">${num(g.failed)} en échec, resynchronise</span>` : ""
+        }${g.removalSkipped ? ` · <span class="err">retraits suspendus (lot partiel)</span>` : ""}`,
+  );
+  return `<span class="ok">✓ ${escapeHtml(when)}</span><br>${lines.join("<br>") || "Aucun groupe lu."}`;
+}
+function setQuinyx(html) {
+  $("quinyxStatus").innerHTML = html;
+}
+chrome.storage.local.get(["quinyxLast"]).then((v) => setQuinyx(fmtQuinyx(v.quinyxLast)));
+$("quinyxSync").addEventListener("click", async () => {
+  $("quinyxSync").disabled = true;
+  setQuinyx("Lecture du planning Quinyx…");
+  try {
+    setQuinyx(fmtQuinyx(await chrome.runtime.sendMessage({ cmd: "quinyx" })));
+  } catch (_) {
+    setQuinyx('<span class="err">Extension indisponible : réessaie.</span>');
+  } finally {
+    $("quinyxSync").disabled = false;
+  }
+});
+try {
+  chrome.storage.onChanged.addListener((ch, area) => {
+    if (area === "local" && ch.quinyxLast && ch.quinyxLast.newValue) setQuinyx(fmtQuinyx(ch.quinyxLast.newValue));
+  });
+} catch (_) {}

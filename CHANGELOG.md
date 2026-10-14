@@ -7,6 +7,9 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 ### Nouveautés
 
+- **Équipe › Planning** : les horaires publiés dans Quinyx (PACO, RCCA, EXTRA) des agents qui ont un compte CSM, par jour (matin, après-midi, nuit, extra, qui est en service) ou par semaine, avec le district de chaque prestation. Ils arrivent par l'extension CSM (version 1.8.0) quand un agent ouvre son planning Quinyx ; ni repos, ni absences, ni coordonnées ne sont repris. Une synchro faite par un agent profite à toute l'équipe : pas besoin que chacun synchronise.
+- **Ton district du jour proposé d'après ton horaire Quinyx** (tu peux toujours en choisir un autre), et le widget « Fin de service » suit ton horaire réel.
+- **Administration › Quinyx** : groupes Quinyx à lire, table des lieux → districts (Mons et OCC SO → DSO, Namur et OCC SE → DSE) et rattachement des agents Quinyx aux comptes CSM (proposé d'après le nom, à valider).
 - **Ressources › Trains** : référentiel des relations de trains (IC, L, P…), avec leurs séries, leurs jours de circulation et la liste de leurs arrêts, mis à jour chaque jour. Par gare : les trains qui s'y arrêtent et ceux qui passent sans arrêt. Par ligne : les relations et les gares desservies.
 - **Ressources › Lignes** : toutes les lignes du réseau (plus seulement les 36 lignes du sud), gares dans l'ordre avec leurs points kilométriques, district déduit des gares, liens vers les trains de la ligne et de chaque gare.
 - **Bons bus et taxi : trajet tiré du référentiel des trains** : les gares se cherchent aussi par leur nom néerlandais ou un alias (Bergen → Mons) ; les lignes et les arrêts sont proposés d'après les trains qui relient les deux gares (omnibus ou direct), toujours modifiables ; nouveau champ « N° de train » qui remplit le trajet (et l'heure pour un taxi), annulable, repris sur le PDF et l'e-mail.

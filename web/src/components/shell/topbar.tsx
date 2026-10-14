@@ -48,7 +48,13 @@ export function Topbar() {
         <div className="hidden flex-1 md:block" />
       )}
       <div className="ml-auto flex shrink-0 items-center gap-1 md:ml-0 md:gap-2">
-        {user.duty ? <DutyChip districts={user.duty.districts} today={user.duty.today} /> : null}
+        {user.duty ? (
+          <DutyChip
+            districts={user.duty.districts}
+            today={user.duty.today}
+            suggested={user.duty.suggested ?? null}
+          />
+        ) : null}
         <Button
           variant="ghost"
           className="hidden justify-start border border-border text-fg-muted md:inline-flex md:w-11 md:px-0 xl:w-56 xl:px-3"

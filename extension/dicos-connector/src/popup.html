@@ -51,6 +51,7 @@
       .ok { color: var(--ok); }
       .notice { margin: 0 0 10px; padding: 8px; border: 1px solid var(--accent); border-radius: 7px; background: var(--surface); font-size: 12px; }
       .notice button { margin-top: 8px; }
+      h2.sub { font-size: 13px; margin: 16px 0 4px; padding-top: 10px; border-top: 1px solid var(--line); }
       [hidden] { display: none !important; }
     </style>
   </head>
@@ -104,6 +105,11 @@
 
     <div class="status" id="status">…</div>
     <div class="hint" id="hint"></div>
+
+    <h2 class="sub">Planning Quinyx</h2>
+    <div class="hint">Horaires publiés des PACO / RCCA, lus dans l'onglet Quinyx connecté (automatique à l'ouverture du planning, au plus toutes les 3 h).</div>
+    <button class="secondary" id="quinyxSync">Synchroniser le planning Quinyx</button>
+    <div class="status" id="quinyxStatus">Aucune synchro Quinyx récente.</div>
 
     <script src="popup.js"></script>
   </body>

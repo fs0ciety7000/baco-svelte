@@ -1278,6 +1278,94 @@ try {
 		check(`route interne ${route} fermée avec un mauvais secret`, w.status === 404, `HTTP ${w.status}`);
 	}
 
+	// Horaires Quinyx (1760004200, 14 oct. 2026) : écrits par le connecteur, configuration et rattachement par un admin,
+	// planning lu par tout agent sauf invité et Écran.
+	{
+		const mk = async (role, grants = [], key = role) => {
+			const pass = `Test-${suffix}-q${key}`;
+			const r = await api('POST', '/api/collections/users/records', {
+				token: root,
+				body: { email: `test-q${key}-${suffix}@csm.invalid`, password: pass, passwordConfirm: pass, name: `Test q${key}`, username: `tq${key}${suffix}`, role, grants, verified: true }
+			});
+			if (r.status !== 200) return null;
+			created.push(r.json.id);
+			const tok = (await api('POST', '/api/collections/users/auth-with-password', { body: { identity: r.json.email, password: pass } })).json?.token;
+			return { id: r.json.id, token: tok };
+		};
+		const qc = await mk('connector', ['dicos:write']);
+		const qs = await mk('screen');
+		const qn = await mk('connector', [], 'conn2');
+		check('Quinyx : comptes de test créés', !!qc?.token && !!qs?.token && !!qn?.token, `${!!qc?.token} ${!!qs?.token} ${!!qn?.token}`);
+		const gid = `9${Date.now().toString().slice(-8)}`;
+		const g = await api('POST', '/api/collections/quinyx_groups/records', { token: roles.admin.token, body: { group_id: gid, label: 'Groupe test', district: 'DSO', enabled: true } });
+		check('admin ajoute un groupe Quinyx', g.status === 200, `HTTP ${g.status}`);
+		const gU = await api('POST', '/api/collections/quinyx_groups/records', { token: roles.user.token, body: { group_id: `${gid}1`, label: 'x' } });
+		check('PACO/RCCA n ajoute pas de groupe Quinyx', gU.status >= 400, `HTTP ${gU.status}`);
+		const gR = await api('GET', `/api/collections/quinyx_groups/records/${g.json?.id}`, { token: roles.user.token });
+		check('PACO/RCCA lit l état de synchro des groupes Quinyx', gR.status === 200, `HTTP ${gR.status}`);
+		const gRu = await api('PATCH', `/api/collections/quinyx_groups/records/${g.json?.id}`, { token: roles.user.token, body: { last_count: 9 } });
+		check('PACO/RCCA ne modifie pas un groupe Quinyx', gRu.status >= 400, `HTTP ${gRu.status}`);
+		const gC = await api('GET', `/api/collections/quinyx_groups/records/${g.json?.id}`, { token: qc?.token });
+		check('connecteur lit les groupes Quinyx', gC.status === 200, `HTTP ${gC.status}`);
+		const gN = await api('GET', `/api/collections/quinyx_groups/records/${g.json?.id}`, { token: qn?.token });
+		const gNu = await api('PATCH', `/api/collections/quinyx_groups/records/${g.json?.id}`, { token: qn?.token, body: { last_count: 9 } });
+		check('compte connector sans dicos:write ne note pas de synchro', gN.status === 200 && gNu.status >= 400, `HTTP ${gNu.status}`);
+		const gCs = await api('PATCH', `/api/collections/quinyx_groups/records/${g.json?.id}`, { token: qc?.token, body: { last_count: 3, last_from: '2026-10-01' } });
+		check('connecteur note la synchro du groupe', gCs.status === 200, `HTTP ${gCs.status}`);
+		const gCx = await api('PATCH', `/api/collections/quinyx_groups/records/${g.json?.id}`, { token: qc?.token, body: { group_id: '1' } });
+		check('connecteur ne change pas l identifiant du groupe', gCx.status >= 400, `HTTP ${gCx.status}`);
+		const gCd = await api('PATCH', `/api/collections/quinyx_groups/records/${g.json?.id}`, { token: qc?.token, body: { district: 'DSE' } });
+		check('connecteur ne change pas le district du groupe', gCd.status >= 400, `HTTP ${gCd.status}`);
+		const pl = await api('GET', '/api/collections/quinyx_places/records?perPage=50', { token: roles.admin.token });
+		check('table lieux → districts amorcée', pl.status === 200 && pl.json.totalItems >= 4, `${pl.json?.totalItems}`);
+		const plU = await api('POST', '/api/collections/quinyx_places/records', { token: roles.user.token, body: { pattern: `X${suffix}`, district: 'DSO' } });
+		check('PACO/RCCA ne modifie pas la table des lieux', plU.status >= 400, `HTTP ${plU.status}`);
+		const plA = await api('POST', '/api/collections/quinyx_places/records', { token: roles.admin.token, body: { pattern: `X${suffix}`, district: 'DCE' } });
+		check('admin ajoute un lieu', plA.status === 200, `HTTP ${plA.status}`);
+		const qid = gid.slice(-6);
+		const ag = await api('POST', '/api/collections/quinyx_agents/records', { token: qc?.token, body: { quinyx_id: qid, first_name: 'Test', last_name: 'Fictif', user_suggested: roles.user.id } });
+		check('connecteur crée un agent Quinyx', ag.status === 200, `HTTP ${ag.status}`);
+		const agL = await api('POST', '/api/collections/quinyx_agents/records', { token: qc?.token, body: { quinyx_id: `${qid}1`, user: roles.user.id } });
+		check('connecteur ne rattache pas un compte', agL.status >= 400, `HTTP ${agL.status}`);
+		const agU = await api('PATCH', `/api/collections/quinyx_agents/records/${ag.json?.id}`, { token: qc?.token, body: { user: roles.user.id, confirmed: true } });
+		check('connecteur ne valide pas un rattachement', agU.status >= 400, `HTTP ${agU.status}`);
+		const agP = await api('PATCH', `/api/collections/quinyx_agents/records/${ag.json?.id}`, { token: roles.user.token, body: { user: roles.user.id } });
+		check('PACO/RCCA ne se rattache pas lui-même', agP.status >= 400, `HTTP ${agP.status}`);
+		const agA = await api('PATCH', `/api/collections/quinyx_agents/records/${ag.json?.id}`, { token: roles.admin.token, body: { user: roles.user.id, confirmed: true } });
+		check('admin rattache un agent Quinyx à un compte', agA.status === 200, `HTTP ${agA.status}`);
+		const agAq = await api('PATCH', `/api/collections/quinyx_agents/records/${ag.json?.id}`, { token: roles.admin.token, body: { quinyx_id: '1' } });
+		check('identifiant Quinyx figé, même admin', agAq.status >= 400, `HTTP ${agAq.status}`);
+		const sh = await api('POST', '/api/collections/quinyx_shifts/records', {
+			token: qc?.token,
+			body: { quinyx_id: `${gid}7`, group_id: gid, agent: ag.json?.id, day: '2026-10-05', start: '2026-10-05 04:00:00.000Z', end: '2026-10-05 12:00:00.000Z', code: 'PACO_AM', section: 'PACO Test', kind: 'am', district: 'DSO' }
+		});
+		check('connecteur écrit une prestation', sh.status === 200, `HTTP ${sh.status} ${JSON.stringify(sh.json).slice(0, 80)}`);
+		const shU = await api('POST', '/api/collections/quinyx_shifts/records', {
+			token: roles.admin.token,
+			body: { quinyx_id: `${gid}8`, group_id: gid, agent: ag.json?.id, day: '2026-10-05', start: '2026-10-05 04:00:00.000Z', end: '2026-10-05 12:00:00.000Z', code: 'PACO_AM', kind: 'am' }
+		});
+		check('admin n invente pas de prestation', shU.status >= 400, `HTTP ${shU.status}`);
+		const shE = await api('PATCH', `/api/collections/quinyx_shifts/records/${sh.json?.id}`, { token: roles.user.token, body: { code: 'PACO_PM' } });
+		check('PACO/RCCA ne modifie pas une prestation', shE.status >= 400, `HTTP ${shE.status}`);
+		const shR = await api('GET', `/api/collections/quinyx_shifts/records/${sh.json?.id}?expand=agent`, { token: roles.user.token });
+		check('PACO/RCCA lit le planning', shR.status === 200 && !!shR.json.expand?.agent, `HTTP ${shR.status}`);
+		const shM = await api('GET', `/api/collections/quinyx_shifts/records/${sh.json?.id}`, { token: roles.modo.token });
+		check('modérateur lit le planning', shM.status === 200, `HTTP ${shM.status}`);
+		for (const [who, tok] of [['invité', roles.reader.token], ['écran', qs?.token]]) {
+			for (const c of ['quinyx_shifts', 'quinyx_agents', 'quinyx_groups', 'quinyx_places']) {
+				const r = await api('GET', `/api/collections/${c}/records?perPage=1`, { token: tok });
+				check(`${who} ne lit pas ${c}`, r.status !== 200 || r.json.totalItems === 0, `HTTP ${r.status} ${r.json?.totalItems}`);
+			}
+		}
+		const shD = await api('DELETE', `/api/collections/quinyx_shifts/records/${sh.json?.id}`, { token: qc?.token });
+		check('connecteur retire une prestation disparue de Quinyx', shD.status === 204, `HTTP ${shD.status}`);
+		const agD = await api('DELETE', `/api/collections/quinyx_agents/records/${ag.json?.id}`, { token: roles.user.token });
+		check('PACO/RCCA ne supprime pas un agent Quinyx', agD.status >= 400, `HTTP ${agD.status}`);
+		for (const [c, id] of [['quinyx_agents', ag.json?.id], ['quinyx_places', plA.json?.id], ['quinyx_groups', g.json?.id]]) {
+			if (id) await api('DELETE', `/api/collections/${c}/records/${id}`, { token: roles.admin.token });
+		}
+	}
+
 	// Admin : supprime.
 	const adel =await api('DELETE', `/api/collections/bus_orders/records/${order.json.id}`, { token: roles.admin.token });
 	check('admin supprime', adel.status === 204, `HTTP ${adel.status}`);

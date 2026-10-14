@@ -187,10 +187,123 @@ async function syncAtms(trains) {
   return out;
 }
 
+
+// --- Horaires Quinyx (Équipe › Planning, 14 oct. 2026) ---
+// Groupes à lire demandés à CSM (Administration › Quinyx : aucun identifiant dans l'extension), planning lu dans
+// l'onglet Quinyx connecté (src/quinyx.js, même origine, session de l'agent), lot envoyé à CSM qui trie et convertit.
+async function quinyxTab() {
+  const tabs = await chrome.tabs.query({ url: "https://web.quinyx.com/*" });
+  return tabs.find((t) => !t.discarded) || tabs[0] || null;
+}
+
+async function reachQuinyx(tab) {
+  const ping = () => chrome.tabs.sendMessage(tab.id, { cmd: "quinyx-ping" });
+  try {
+    if (await ping()) return true;
+  } catch (_) {}
+  try {
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["src/quinyx.js"] });
+    return Boolean(await ping());
+  } catch (_) {
+    return false;
+  }
+}
+
+let quinyxRunning = null;
+async function syncQuinyx() {
+  const out = { at: Date.now(), groups: [] };
+  const { csmUrl, token } = await config();
+  if (!csmUrl || !token) return { ...out, error: "Configure l'URL CSM et le jeton de connecteur." };
+  if (!(await hasPermission(csmUrl))) return { ...out, error: NO_PERMISSION };
+  const tab = await quinyxTab();
+  if (!tab) return { ...out, error: "Ouvre Quinyx (web.quinyx.com) et connecte-toi, puis resynchronise." };
+  if (!(await reachQuinyx(tab))) return { ...out, error: "Onglet Quinyx injoignable : recharge-le (F5) puis resynchronise." };
+  let groups;
+  try {
+    const res = await fetch(`${csmUrl}/api/equipe/quinyx/config`, { headers: headers(token) });
+    if (res.status === 401) return { ...out, error: "Jeton de connecteur refusé par CSM." };
+    if (!res.ok) return { ...out, error: `CSM a répondu HTTP ${res.status} (groupes Quinyx).` };
+    groups = (await res.json()).groups;
+  } catch (_) {
+    return { ...out, error: "CSM injoignable (URL ou réseau)." };
+  }
+  if (!Array.isArray(groups) || !groups.length)
+    return { ...out, error: "Aucun groupe Quinyx configuré dans CSM (Administration › Quinyx)." };
+  for (const g of groups.slice(0, 20)) {
+    const label = String((g && g.label) || "").slice(0, 80);
+    const id = String((g && g.group) || "");
+    if (!/^\d{1,15}$/.test(id)) continue;
+    let r;
+    try {
+      r = await chrome.tabs.sendMessage(tab.id, { cmd: "quinyx-read", group: id });
+    } catch (_) {
+      r = { error: "Onglet Quinyx fermé ou rechargé pendant la synchro." };
+    }
+    if (!r || r.error || !r.batch) {
+      out.groups.push({ label, error: (r && r.error) || "Lecture impossible." });
+      continue;
+    }
+    try {
+      const res = await fetch(`${csmUrl}/api/equipe/quinyx/ingest`, {
+        method: "POST",
+        headers: headers(token),
+        body: JSON.stringify(r.batch),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        out.groups.push({ label, error: String(j.error || `CSM a répondu HTTP ${res.status}.`).slice(0, 200) });
+        continue;
+      }
+      const latest = j && j.extension && j.extension.latest;
+      if (typeof latest === "string" && /^\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(latest)) await chrome.storage.local.set({ latest });
+      out.groups.push({
+        label,
+        to: r.batch.to,
+        kept: Number(j.kept) || 0,
+        created: Number(j.created) || 0,
+        updated: Number(j.updated) || 0,
+        removed: Number(j.removed) || 0,
+        failed: Number(j.failed) || 0,
+        removalSkipped: j.removalSkipped === true,
+        notTeam: Number(j.notTeam) || 0,
+      });
+    } catch (_) {
+      out.groups.push({ label, error: "CSM injoignable pour le planning." });
+    }
+  }
+  return out;
+}
+
+async function runQuinyx() {
+  if (!quinyxRunning)
+    quinyxRunning = syncQuinyx()
+      .catch((e) => ({ at: Date.now(), groups: [], error: String((e && e.message) || e).slice(0, 160) }))
+      .then(async (r) => {
+        quinyxRunning = null;
+        try {
+          await chrome.storage.local.set({ quinyxLast: r });
+        } catch (_) {}
+        return r;
+      });
+  return quinyxRunning;
+}
+
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (msg && msg.cmd === "csm-permission") {
     hasPermission(String(msg.origin || "")).then(reply);
     return true;
+  }
+  if (msg && msg.cmd === "quinyx") {
+    runQuinyx().then(reply);
+    return true;
+  }
+  if (msg && msg.cmd === "quinyx-auto") {
+    // Ouverture d'une page de planning Quinyx : synchro si la dernière a plus de 3 h (et si l'extension est connectée).
+    chrome.storage.local.get(["quinyxLast", "token"]).then((v) => {
+      const last = v.quinyxLast && Number(v.quinyxLast.at);
+      if (v.token && (!last || Date.now() - last > 3 * 3600_000)) runQuinyx();
+    });
+    return false;
   }
   if (msg && msg.cmd === "atms") {
     syncAtms(msg.trains).then(reply, (e) => reply({ error: String((e && e.message) || e).slice(0, 160) }));

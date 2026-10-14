@@ -38,6 +38,7 @@ le 11 oct.** : il ne vit plus que sur `main` (BACO en production) et la branche 
 | 4 | Données : schéma PocketBase, règles d'accès, import | ✅ **bascule faite le 10 oct.** : sauvegarde Supabase fraîche (GET seuls) → base construite en local (`csm-import` + référentiels) → restaurée sur `pb-csm` ; comptages vérifiés (29 comptes + connecteur, 300 bons bus, 445 prestations, 1148 PtCar…) |
 | 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 **Commandes** livré en session 3 (schéma + 66 contrôles de règles, bus, taxi, envoi `.eml` + PDF, suivi, B201, E2E) : **validé le 8 oct.**, cycle v3 brouillon → terminé → envoyé le 14 oct. ; **PMR validé le 8 oct.** (schéma + 105 contrôles de règles, prestations, collage DICOS, clients, matériel, E2E) ; **Opérations validé le 8 oct.** (trains en direct iRail, Journal (ex-main courante), carte PN, statistiques, cloche ; 149 contrôles de règles, 46 E2E) ; **DICOS / Missions PMR validé** (extension + ingestion, lecture seule, trajet/IN-OUT/district/copier) ; **Annuaire et données (ex-Référentiels) livré** (annuaire, lignes, PtCar, EBP, procédures + documents ; 7 collections ; 173 contrôles de règles ; audit + revue passés ; données v1 importées sur l'instance de test) ; **Équipe et Admin validés le 10 oct.** (+ vue admin des appareils connectés) |
 | 5b | Référentiel des relations de trains (Ressources › Trains) | 🔄 préversion le 14 oct. — GTFS SNCB + Infrabel, import quotidien par Next, 3 collections, écran 3 vues ; Ressources › Lignes tirées du référentiel (`rail_lines`) |
+| 5c | Horaires Quinyx (Équipe › Planning) | 🔄 1er lot le 14 oct. (branche `claude/quinyx-horaires`, PR vers `csm-preview`) — extension 1.8.0, ingestion, 4 collections, planning, admin, districts du jour proposés, widget « Fin de service » réel ; cadrage `docs/design/CADRAGE-QUINYX.md` |
 | 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | ✅ 8 oct. — **PRODUCTION en ligne le 10 oct. : https://csm.fs0ciety.org** (`csm-web-prod` + `csm-pocketbase-prod`, environnement Coolify `prod`, branche **`csm-prod`**, données BACO importées le 10 oct., sauvegardes R2) ; **test-csm = preview** (branche de session) ; projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
 | — | Hotfix sécurité BACO (`supabase/migrations/20261008120000_security_hotfix.sql`) | ✅ appliqué par l'utilisateur (SQL Editor) le 8 oct., vérifié : 0 ERROR (36 avant). Suite **non appliquée** : `20261008130000_hotfix_followup.sql` (test NULL de `get_my_role()`) et `20261008140000_pn_data_update_fix.sql` (XSS stocké carte PN), accord requis ; protection des mots de passe compromis encore désactivée |
 
@@ -279,6 +280,11 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   `https://coolify.fs0ciety.org/webhooks/source/github/events` depuis le hub (GitHub › « Déploiements automatiques », qui montre
   aussi les livraisons). Les sites CARDOR (`mons-corp`) sont en source « Public GitHub » : sans webhook, sauf webhook manuel
   sur le dépôt. **Pare-feu netcup** : la politique se termine par un « Drop all » implicite → une règle ACCEPT tout en dernier.
+- (v2) **Un fichier HAR contient les cookies de session** (onglet Réseau « Enregistrer tout au format HAR ») : ne jamais
+  l'ouvrir en entier ni le copier dans le dépôt ; l'analyser par script qui n'affiche que chemins, clés et types
+  (fait pour Quinyx le 14 oct.), et demander à l'utilisateur de se déconnecter du service ensuite.
+- (v2) **Identifiants Quinyx (groupes, employés) jamais dans Git** : les groupes se saisissent dans Administration ›
+  Quinyx ; l'extension les demande à CSM (`/api/equipe/quinyx/config`). E2E et tests : identifiants fictifs.
 - (v2) Playwright : un libellé avec astérisque requis (`Arrivée *`) ne répond pas à `getByLabel(…, { exact: true })` ;
   passer par `getByRole(…, { name, exact: true })`.
 
@@ -1123,6 +1129,22 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   (vérifié en lecture : 148 gares DSE = référentiel par défaut, L.96 à 20 gares, `/admin/lignes` redirigé). Quinyx (horaires
   PACO / RCCA) confié à une session dédiée (`session_01BiKDcUpFvzU6ZbqdH1XD9n`, branche `claude/quinyx-horaires`, PR vers
   `csm-preview`) ; cookies de session Quinyx collés dans la conversation non utilisés (déconnexion conseillée).
+- 2026-10-14 — **Horaires Quinyx, 1er lot** (demande de l'utilisateur : capturer les prestations publiées des PACO / RCCA
+  sans accès API, les relier aux comptes CSM, en déduire le district). Deux captures HAR de l'utilisateur analysées par
+  script (chemins et formes seulement ; elles contenaient ses cookies → déconnexion demandée) : planning du mois par
+  `GET /extapi/v1/shifts/by-group/<g>`, types, sections, date de publication, agents. Réponses : **MONS / OCC SO → DSO,
+  NAMUR / OCC SE → DSE** ; groupes Mons et OCC SE à saisir dans l'admin (jamais dans Git). Livré : extension **1.8.0**
+  (module Quinyx, même jeton de connecteur, tri dans le navigateur : seulement PACO / RCCA / EXTRA affectées et publiées),
+  `POST /api/equipe/quinyx/ingest` + `GET …/config`, `lib/quinyx/model.ts` (source unique, testée), migration
+  `1760004200` (`quinyx_groups`, `quinyx_places`, `quinyx_agents`, `quinyx_shifts`), purge `quinyx-retention`
+  (90 j / 180 j, à valider DPO), **Équipe › Planning**, **Administration › Quinyx**, district du jour proposé d'après la
+  prestation, widget « Fin de service » sur l'horaire réel. Réponses de l'utilisateur : date de publication Quinyx **incluse**, EXTRA = en service, pas d'autre
+  groupe ni district pour l'instant.
+  Revues sécurité + adversariale : retrait des prestations disparues limité aux agents visibles du compte Quinyx
+  (`visible`), aux sections reçues et à 30 %, un lot à la fois par groupe, bornes de période et d'heures, création
+  concurrente relue, date de publication la plus prudente. **Horaires gardés seulement pour les comptes CSM de
+  l'équipe** (paco, moderator, admin, sysop ; précision de l'utilisateur) ; une synchro profite à tous.
+  Cadrage `docs/design/CADRAGE-QUINYX.md`, note DPO §2-3-5. PR vers `csm-preview` (demandée par l'utilisateur).
 
 ---
 

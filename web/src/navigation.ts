@@ -202,12 +202,18 @@ export const MODULES: NavModule[] = [
     label: "Équipe",
     icon: Users,
     tabs: [
-      // Planning et congés : pas pour l'instant (décision du 9 oct. 2026).
+      // Congés : pas pour l'instant (décision du 9 oct. 2026). Planning : horaires publiés dans Quinyx (14 oct. 2026).
       {
         href: "/equipe",
         label: "Annuaire de l'équipe",
         hideFor: ["guest", "screen"],
         keywords: ["collègues"],
+      },
+      {
+        href: "/equipe/planning",
+        label: "Planning",
+        hideFor: ["guest", "screen"],
+        keywords: ["Quinyx", "horaires", "service", "AM", "PM", "nuit", "qui travaille"],
       },
       {
         href: "/equipe/profil",
@@ -239,6 +245,7 @@ export const ADMIN: NavModule = {
     { href: "/admin/audit", label: "Journal d'audit" },
     { href: "/admin/journal", label: "Tri du Journal" },
     { href: "/admin/extension", label: "Appareils connectés" },
+    { href: "/admin/quinyx", label: "Quinyx" },
     { href: "/admin/campagnes", label: "Campagnes" },
     { href: "/admin/sante", label: "Santé" },
   ],

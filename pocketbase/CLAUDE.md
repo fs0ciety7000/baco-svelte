@@ -12,7 +12,7 @@ pocketbase migrate up $P                                   # appliquer les migra
 pocketbase superuser upsert <email> <mot de passe> $P      # compte superuser local
 pocketbase serve --http 127.0.0.1:8090 $P                  # serveur local
 CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P   # import de la sauvegarde Supabase (hors Git)
-PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (431 contrôles)
+PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (465 contrôles)
 CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # Commandes + PMR, comptes gardés
 CSM_IMPORT_SCOPE=pmr CSM_IMPORT_RESET=1 pocketbase csm-import … $P        # PMR seul (zones, matériel, prestations)
 CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # main courante + 211 PN de BACO
@@ -305,4 +305,13 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   `upsertLines` tient toujours la version `*_auto` et ne touche pas l'affichage d'une ligne manuelle ; `pruneLines` ne la
   supprime jamais. `line_stations` n'est plus lue (hors repli de l'index iRail si `stations` est vide). Attention : un
   superuser passe aussi par le hook de modification (`*_auto` refusés) → les poser à la création.
-
+- **Horaires Quinyx** (`1760004200_quinyx.js`, `quinyx.pb.js`, 14 oct. 2026) : `quinyx_groups` (n° de groupe Quinyx unique,
+  saisi par un admin — jamais dans Git —, nom, district par défaut, `enabled`, `last_*` écrits par le connecteur qui ne
+  peut changer ni le n°, ni le nom, ni le district, ni `enabled`), `quinyx_places` (motif unique → district, admin ;
+  amorcée MONS / OCC SO → DSO, NAMUR / OCC SE → DSE), `quinyx_agents` (n° Quinyx unique et figé, prénom, nom,
+  `user_suggested` posé par le connecteur, `user` + `confirmed` par un admin seulement), `quinyx_shifts` (n° de
+  prestation unique, groupe, agent en `cascadeDelete`, jour, début, fin, code, section, `kind` am / pm / nuit / extra /
+  autre, district ; écrites et supprimées par le connecteur, suppression aussi admin). Lecture : agents actifs **sauf
+  `guest` et `screen`** (le connecteur compris). Connecteur = rôle `connector` **et** `dicos:write`. Cron
+  `quinyx-retention` (3 h 25 UTC) : prestations > 90 j, agents sans prestation et non vus depuis 180 j. Audit :
+  `quinyx_places` (et création / suppression de `quinyx_groups`).
