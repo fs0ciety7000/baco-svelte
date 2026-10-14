@@ -5,7 +5,8 @@ import { z } from "zod";
 
 import { homeOf } from "@/lib/home";
 import { createPb as pbFor } from "@/server/pocketbase";
-import { clearSessionToken, readSessionToken, writeSessionToken } from "@/server/session";
+import { stopImpersonation } from "@/server/impersonation";
+import { clearSessionToken, readOwnSessionToken, writeSessionToken } from "@/server/session";
 import { endSession, startSession } from "@/server/sessions";
 
 const loginSchema = z.object({
@@ -49,7 +50,9 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
 }
 
 export async function logout(): Promise<void> {
-  await endSession(await readSessionToken());
+  // « Voir en tant que » en cours : fin tracée, puis la session de l'admin (jamais celle de la cible) est fermée.
+  await stopImpersonation();
+  await endSession(await readOwnSessionToken());
   await clearSessionToken();
   redirect("/connexion");
 }

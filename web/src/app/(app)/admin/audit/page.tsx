@@ -19,6 +19,9 @@ const ACTION = {
   create: { label: "Création", tone: "ok" },
   update: { label: "Modification", tone: "info" },
   delete: { label: "Suppression", tone: "danger" },
+  // « Voir en tant que » : fiche = compte consulté, auteur = administrateur.
+  impersonate_start: { label: "Début « en tant que »", tone: "warn" },
+  impersonate_stop: { label: "Fin « en tant que »", tone: "neutral" },
 } as const;
 
 const at = new Intl.DateTimeFormat("fr-BE", {

@@ -1,3 +1,4 @@
+import { assertNotActing } from "./session";
 import "server-only";
 
 import { busFilename, taxiFilename } from "@/lib/orders/mail";
@@ -30,6 +31,8 @@ export async function archiveOrder(
 ): Promise<Archived> {
   if (!archivesEnabled()) return { ok: false, error: "Archives non configurées (secret interne)." };
   try {
+    // « Voir en tant que » : aucune écriture (le bon ne peut d'ailleurs pas changer de statut en lecture seule).
+    await assertNotActing();
     let pdf: Uint8Array;
     let filename: string;
     let reference: string;

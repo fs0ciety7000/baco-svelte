@@ -8,7 +8,7 @@ import { can } from "@/lib/permissions";
 import { visibleModules } from "@/navigation";
 
 import { createPb } from "./pocketbase";
-import { readSessionToken } from "./session";
+import { readSessionToken, resolveActing } from "./session";
 import { sessionAlive } from "./sessions";
 import { isExpired, tokenPayload } from "./token";
 
@@ -48,23 +48,28 @@ const userSchema = z.object({
   preferences: z.unknown().optional(),
 });
 
-export type SessionUser = z.infer<typeof userSchema>;
+export type SessionUser = z.infer<typeof userSchema> & {
+  /** « Voir en tant que » : l'administrateur qui regarde CSM avec ce compte (lecture seule). */
+  impersonatedBy?: { id: string; name: string };
+};
 
 /**
  * Agent connecté, relu dans PocketBase une fois par requête (rôle toujours à jour, compte désactivé
  * ou supprimé = déconnecté). Le rafraîchissement du jeton est fait par le middleware.
  */
 export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
-  const token = await readSessionToken();
+  // Pendant « Voir en tant que », `token` est celui de la cible ; la session (csm_sid) reste celle de l'admin (`own`).
+  const { token, own, actor } = await resolveActing();
   const payload = token ? tokenPayload(token) : null;
-  if (!token || !payload || isExpired(token)) return null;
+  if (!token || !own || !payload || isExpired(token)) return null;
   const pb = createPb(token);
   try {
     const [record, alive] = await Promise.all([
       pb.collection("users").getOne(payload.id),
-      sessionAlive(token),
+      sessionAlive(own),
     ]);
-    const user = userSchema.parse(record);
+    const user: SessionUser = userSchema.parse(record);
+    if (actor) user.impersonatedBy = actor;
     return user.role === "disabled" || !alive ? null : user;
   } catch {
     return null;

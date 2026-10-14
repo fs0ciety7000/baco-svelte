@@ -13,7 +13,7 @@ import { NOTIFICATION_CATEGORIES, type NotificationCategory } from "@/lib/notifi
 import { brusselsDay } from "@/lib/orders/time";
 import { deviceLabel, maskIp } from "@/lib/sessions";
 import { env } from "@/server/env";
-import { writeSessionToken } from "@/server/session";
+import { assertNotActing, writeSessionToken } from "@/server/session";
 import { listOnline, type OnlineMember } from "@/server/data/team";
 import { onlineUsers } from "@/server/presence";
 import { currentSid } from "@/server/sessions";
@@ -337,6 +337,7 @@ async function dropOtherSessions(token: string, userId: string) {
 export async function logoutOtherDevices(): Promise<Result> {
   try {
     const user = await requireUser();
+    await assertNotActing();
     if (env.CSM_INTERNAL_SECRET.length < 32)
       throw new Error("DROIT:Fonction indisponible sur ce serveur (secret interne absent).");
     const res = await fetch(`${env.PB_URL.replace(/\/$/, "")}/api/csm/session/rotate`, {

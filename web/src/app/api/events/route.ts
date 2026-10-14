@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 import { env } from "@/server/env";
 import { getCurrentUser } from "@/server/auth";
 import { joinPresence, onPresenceChange } from "@/server/presence";
-import { readSessionToken } from "@/server/session";
+import { resolveActing } from "@/server/session";
 import { sessionAlive } from "@/server/sessions";
 import { formatSse, SseParser } from "@/server/sse";
 import { isExpired, tokenPayload } from "@/server/token";
@@ -37,10 +37,11 @@ const TOPICS = new Set([
 const HEARTBEAT_MS = 25_000;
 
 export async function GET(request: NextRequest) {
-  const token = await readSessionToken();
-  if (!token || isExpired(token)) return new Response("Non connecté", { status: 401 });
+  // « Voir en tant que » : abonnement avec le jeton de la cible (règles de la cible), session = celle de l'admin (own).
+  const { token, own, actor } = await resolveActing();
+  if (!token || !own || isExpired(token)) return new Response("Non connecté", { status: 401 });
   // Session révoquée (appareil déconnecté depuis le profil) : plus de flux (revue sécurité du 10 oct. 2026).
-  if (!(await sessionAlive(token))) return new Response("Session fermée", { status: 401 });
+  if (!(await sessionAlive(own))) return new Response("Session fermée", { status: 401 });
 
   const requested = (request.nextUrl.searchParams.get("topics") ?? "bus_orders").split(",");
   const topics = requested.filter((t) => TOPICS.has(t));
@@ -48,7 +49,8 @@ export async function GET(request: NextRequest) {
   const pbTopics = topics.filter((t) => t !== "presence");
   const userId = tokenPayload(token)?.id ?? "";
   // Compte « Écran » (poste partagé) : jamais compté « en ligne ».
-  const countsOnline = userId ? (await getCurrentUser())?.role !== "screen" : false;
+  // « Voir en tant que » : l'admin n'est jamais compté « en ligne » à la place de la cible.
+  const countsOnline = userId && !actor ? (await getCurrentUser())?.role !== "screen" : false;
 
   const upstreamAbort = new AbortController();
   request.signal.addEventListener("abort", () => upstreamAbort.abort());
@@ -96,8 +98,9 @@ export async function GET(request: NextRequest) {
         send(": ping\n\n");
         // Toutes les ~2 min : la session est-elle toujours ouverte ? Sinon, le flux est coupé.
         if (++beats % 5 === 0)
-          void sessionAlive(token).then((alive) => {
-            if (!alive) upstreamAbort.abort();
+          void sessionAlive(own).then((alive) => {
+            // Fin du jeton de la cible (30 min) : flux coupé aussi.
+            if (!alive || isExpired(token)) upstreamAbort.abort();
           });
       }, HEARTBEAT_MS);
 

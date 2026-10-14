@@ -37,7 +37,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     : null;
   // Fenêtre « CSM a été mis à jour » : dernière version du changelog pas encore vue par ce compte (jamais pour l'écran).
   const all = releases();
-  const pending = isScreen(user) ? null : pendingRelease(all, seenVersion(user.preferences));
+  // « Voir en tant que » : pas de fenêtre (sa fermeture écrirait dans les préférences de la cible).
+  const pending =
+    isScreen(user) || user.impersonatedBy
+      ? null
+      : pendingRelease(all, seenVersion(user.preferences));
   return (
     <AppShell
       ui={ui}

@@ -1427,6 +1427,100 @@ try {
 		check('compte de service : aucun droit de module', (await getPerms(conn?.id))?.length === 0);
 	}
 
+	// --- « Voir en tant que » (1760004470, impersonate.pb.js, 14 oct. 2026) : route interne, admin / sysop seulement ---
+	{
+		const IMP = '/api/csm/impersonate';
+		const SECRET = process.env.CSM_INTERNAL_SECRET ?? '';
+		const imp = async (path, { token, secret, body } = {}) => {
+			const res = await fetch(`${PB}${path}`, {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json',
+					...(secret ? { 'x-csm-internal': secret } : {}),
+					...(token ? { authorization: token } : {})
+				},
+				body: JSON.stringify(body ?? {})
+			});
+			let json = null;
+			try {
+				json = await res.json();
+			} catch {}
+			return { status: res.status, json };
+		};
+		for (const path of [IMP, `${IMP}/stop`]) {
+			const r = await imp(path, { token: roles.admin.token, body: { target: roles.user.id } });
+			check(`route interne ${path} fermée sans secret (même admin)`, r.status === 404, `HTTP ${r.status}`);
+			const w = await imp(path, { token: roles.admin.token, secret: 'mauvais-secret-mauvais-secret-mauvais', body: { target: roles.user.id } });
+			check(`route interne ${path} fermée avec un mauvais secret`, w.status === 404, `HTTP ${w.status}`);
+		}
+		if (SECRET.length < 32) {
+			results.push('-- « Voir en tant que » : CSM_INTERNAL_SECRET absent, contrôles avec secret sautés');
+		} else {
+			const anon = await imp(IMP, { secret: SECRET, body: { target: roles.user.id } });
+			check('en tant que : appelant non connecté refusé', anon.status === 401, `HTTP ${anon.status}`);
+			for (const k of ['user', 'modo', 'reader']) {
+				const r = await imp(IMP, { token: roles[k].token, secret: SECRET, body: { target: roles.reader.id } });
+				check(`en tant que : appelant ${ROLE_OF[k]} refusé`, r.status === 403 && !r.json?.token, `HTTP ${r.status}`);
+			}
+			const self = await imp(IMP, { token: roles.admin.token, secret: SECRET, body: { target: roles.admin.id } });
+			check('en tant que : soi-même refusé', self.status === 403 && !self.json?.token, `HTTP ${self.status}`);
+			const mk = async (role) => {
+				const pass = `Test-${suffix}-imp-${role}`;
+				const r = await api('POST', '/api/collections/users/records', {
+					token: root,
+					body: { email: `test-imp-${role}-${suffix}@csm.invalid`, password: pass, passwordConfirm: pass, name: `Imp ${role}`, username: `timp${role}${suffix}`, role, verified: true }
+				});
+				if (r.json?.id) created.push(r.json.id);
+				return r.json?.id;
+			};
+			for (const role of ['sysop', 'admin', 'connector', 'disabled']) {
+				const id = await mk(role);
+				const r = await imp(IMP, { token: roles.admin.token, secret: SECRET, body: { target: id } });
+				check(`en tant que : cible ${role} refusée`, r.status === 403 && !r.json?.token, `HTTP ${r.status}`);
+			}
+			const unknown = await imp(IMP, { token: roles.admin.token, secret: SECRET, body: { target: 'inconnu' + suffix } });
+			check('en tant que : cible inconnue', unknown.status === 404, `HTTP ${unknown.status}`);
+			const ok = await imp(IMP, { token: roles.admin.token, secret: SECRET, body: { target: roles.user.id } });
+			check('en tant que : admin → jeton de la cible PACO/RCCA', ok.status === 200 && typeof ok.json?.token === 'string' && ok.json?.id === roles.user.id, `HTTP ${ok.status}`);
+			const t = ok.json?.token ?? '';
+			const payload = (() => {
+				try {
+					return JSON.parse(Buffer.from(t.split('.')[1], 'base64url').toString());
+				} catch {
+					return {};
+				}
+			})();
+			const ttl = payload.exp - Math.floor(Date.now() / 1000);
+			check('en tant que : jeton de la cible, 30 min, non renouvelable', payload.id === roles.user.id && payload.refreshable === false && ttl > 1700 && ttl <= 1800, `ttl ${ttl}, refreshable ${payload.refreshable}`);
+			const asRead = await api('GET', `/api/collections/users/records/${roles.user.id}`, { token: t });
+			check('en tant que : le jeton lit la fiche de la cible', asRead.status === 200 && asRead.json?.id === roles.user.id, `HTTP ${asRead.status}`);
+			const asAudit = await api('GET', '/api/collections/audit_log/records?perPage=1', { token: t });
+			check("en tant que : le jeton n'a que les droits de la cible (pas l'audit)", asAudit.status !== 200 || asAudit.json.totalItems === 0, `HTTP ${asAudit.status}`);
+			const refresh = await api('POST', '/api/collections/users/auth-refresh', { token: t });
+			// PocketBase répond 200 mais rend le MÊME jeton (même échéance) : pas de prolongation possible.
+			check('en tant que : jeton non renouvelable (auth-refresh rend le même jeton)', refresh.status >= 400 || refresh.json?.token === t, `HTTP ${refresh.status}`);
+			const sysopId = created[created.length - 4];
+			const sysopPass = `Test-${suffix}-imp-sysop`;
+			const sysopTok = (await api('POST', '/api/collections/users/auth-with-password', { body: { identity: `test-imp-sysop-${suffix}@csm.invalid`, password: sysopPass } })).json?.token;
+			const bySysop = await imp(IMP, { token: sysopTok, secret: SECRET, body: { target: roles.reader.id } });
+			check('en tant que : sysop → jeton de la cible invité', bySysop.status === 200 && typeof bySysop.json?.token === 'string', `HTTP ${bySysop.status} ${sysopId ? '' : 'sysop absent'}`);
+			const stop = await imp(`${IMP}/stop`, { token: roles.admin.token, secret: SECRET, body: { target: roles.user.id } });
+			check('en tant que : fin tracée', stop.status === 200, `HTTP ${stop.status}`);
+			const stopPaco = await imp(`${IMP}/stop`, { token: roles.user.token, secret: SECRET, body: { target: roles.reader.id } });
+			check('en tant que : fin refusée à un non-admin', stopPaco.status === 403, `HTTP ${stopPaco.status}`);
+			const logs = await api('GET', `/api/collections/audit_log/records?perPage=20&sort=-at&filter=${encodeURIComponent(`record = "${roles.user.id}" && user = "${roles.admin.id}" && (action = "impersonate_start" || action = "impersonate_stop")`)}`, { token: root });
+			const acts = (logs.json?.items ?? []).map((i) => i.action);
+			check('en tant que : début et fin au journal d\'audit (admin, cible, sans différentiel)', acts.includes('impersonate_start') && acts.includes('impersonate_stop') && (logs.json?.items ?? []).every((i) => i.collection === 'users' && JSON.stringify(i.changes) === '{}'), acts.join(','));
+			// Compte désactivé ensuite : son jeton (clé régénérée) ne lit plus rien.
+			await api('PATCH', `/api/collections/users/records/${roles.reader.id}`, { token: root, body: { role: 'disabled' } });
+			const afterDisable = await api('GET', `/api/collections/users/records/${roles.reader.id}`, { token: bySysop.json?.token });
+			check('en tant que : cible désactivée → jeton inutilisable', afterDisable.status >= 400, `HTTP ${afterDisable.status}`);
+			await api('PATCH', `/api/collections/users/records/${roles.reader.id}`, { token: root, body: { role: 'guest' } });
+			const reauth = await api('POST', '/api/collections/users/auth-with-password', { body: { identity: `test-reader-${suffix}@csm.invalid`, password: `Test-${suffix}-reader` } });
+			if (reauth.json?.token) roles.reader.token = reauth.json.token;
+		}
+	}
+
 	// Admin : supprime.
 	const adel =await api('DELETE', `/api/collections/bus_orders/records/${order.json.id}`, { token: roles.admin.token });
 	check('admin supprime', adel.status === 204, `HTTP ${adel.status}`);

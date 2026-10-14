@@ -12,7 +12,7 @@ pocketbase migrate up $P                                   # appliquer les migra
 pocketbase superuser upsert <email> <mot de passe> $P      # compte superuser local
 pocketbase serve --http 127.0.0.1:8090 $P                  # serveur local
 CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P   # import de la sauvegarde Supabase (hors Git)
-PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (482 contrôles)
+PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (506 contrôles ; CSM_INTERNAL_SECRET pour « en tant que »)
 node scripts/perms-equivalence.mjs pb_data/data.db         # rôles v3 : ancien calcul ↔ users.perms (0 écart attendu)
 CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # Commandes + PMR, comptes gardés
 CSM_IMPORT_SCOPE=pmr CSM_IMPORT_RESET=1 pocketbase csm-import … $P        # PMR seul (zones, matériel, prestations)
@@ -326,3 +326,10 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   `guest` et `screen`** (le connecteur compris). Connecteur = rôle `connector` **et** `dicos:write`. Cron
   `quinyx-retention` (3 h 25 UTC) : prestations > 90 j, agents sans prestation et non vus depuis 180 j. Audit :
   `quinyx_places` (et création / suppression de `quinyx_groups`).
+- **« Voir en tant que »** (`1760004470_audit_impersonate.js`, `impersonate.pb.js`, `lib/impersonate.js`, 14 oct. 2026) : routes
+  internes `POST /api/csm/impersonate` (`{ target }` → `{ token, id, name, role }`) et `/api/csm/impersonate/stop`, secret
+  `CSM_INTERNAL_SECRET` (404 sinon) **et** jeton de l'appelant (`Authorization`), qui doit être admin / sysop (401 / 403) ;
+  cible refusée si admin / sysop, `connector`, désactivée ou l'appelant (403). Jeton = `newStaticAuthToken` de la cible,
+  **30 min, non renouvelable** (`auth-refresh` rend le même jeton), invalidé si la cible est désactivée (nouvelle `tokenKey`).
+  La lecture seule est imposée par Next (le jeton seul a tous les droits de la cible : ne jamais le donner au navigateur).
+  `audit_log.action` accepte `impersonate_start` / `impersonate_stop` (`user` = admin, `record` = cible, `changes` vide).

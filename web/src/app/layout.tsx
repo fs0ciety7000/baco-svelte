@@ -9,11 +9,14 @@ import {
 } from "next/font/google";
 import { cookies } from "next/headers";
 import { PwaRegister } from "@/components/pwa-register";
+import { ActingBanner } from "@/components/shell/acting-banner";
 import type { ReactNode } from "react";
 
 import { parseUiCookie, UI_COOKIE } from "@/design/preferences";
 import { themeById } from "@/design/tokens";
+import { ROLE_LABEL } from "@/lib/team";
 import { env } from "@/server/env";
+import { resolveActing } from "@/server/session";
 
 import { Providers } from "./providers";
 import "./globals.css";
@@ -84,17 +87,29 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   const ui = parseUiCookie((await cookies()).get(UI_COOKIE)?.value);
   const scheme = ui.theme === "auto" ? undefined : themeById(ui.theme).scheme;
+  // « Voir en tant que » : bandeau fixe sur toutes les pages (shell, /tv, maintenance…), y compris mode expiré.
+  const acting = await resolveActing();
+  const showActing = !!acting.actor || acting.stale;
   return (
     <html
       lang="fr"
       data-theme={ui.theme}
       data-scheme={scheme}
       data-density={ui.density}
+      data-acting={showActing ? "" : undefined}
       className={[geist, geistMono, saira, plex, plexCondensed, plexMono]
         .map((f) => f.variable)
         .join(" ")}
     >
       <body>
+        {showActing ? (
+          <ActingBanner
+            name={acting.target?.name ?? ""}
+            role={acting.target ? (ROLE_LABEL[acting.target.role] ?? acting.target.role) : ""}
+            stale={!acting.actor}
+            expiresAt={acting.exp ? acting.exp * 1000 : null}
+          />
+        ) : null}
         <Providers>{children}</Providers>
         <PwaRegister />
       </body>
