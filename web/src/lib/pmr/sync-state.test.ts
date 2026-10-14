@@ -48,6 +48,18 @@ describe("état de synchro DICOS", () => {
     expect(s.partialAt).toBe("2026-10-10 10:00:00Z");
   });
 
+  it("dernière synchro = la plus récente de tous les agents, heure et agent de la même fiche", () => {
+    const rows: SyncRow[] = [
+      { ...row("2026-10-11", "2026-10-11 15:00:00Z"), by: "Bob" },
+      { ...row("2026-10-10", "2026-10-11 14:00:00Z", false), by: "Carla" },
+      { ...row("2026-10-10", "2026-10-11 03:00:00Z"), by: "Alice" },
+    ];
+    const s = syncSummary(rows, "2026-10-10", "2026-10-11", "missions");
+    expect(s.latest).toEqual({ at: "2026-10-11 15:00:00Z", by: "Bob" });
+    expect(s.freshness).toBe("2026-10-11 03:00:00Z");
+    expect(s.oldestDay).toBe("2026-10-10");
+  });
+
   it("groupes : la synchro des missions vaut pour un jour sans groupe", () => {
     const s = syncSummary(
       [row("2026-10-10", "2026-10-10 08:00:00Z")],

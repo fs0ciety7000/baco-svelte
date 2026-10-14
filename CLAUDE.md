@@ -1146,6 +1146,12 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   l'équipe** (paco, moderator, admin, sysop ; précision de l'utilisateur) ; une synchro profite à tous.
   Cadrage `docs/design/CADRAGE-QUINYX.md`, note DPO §2-3-5. PR vers `csm-preview` (demandée par l'utilisateur).
 
+- 2026-10-14 — **Synchro DICOS : dernier agent et heure** (retour : « il y a 12 h » alors que d'autres ont pu synchroniser) :
+  `syncSummary` renvoie `latest` (synchro complète la plus récente de la période, tous agents, heure + nom de la même fiche)
+  et `oldestDay` ; `SyncStatus` affiche la dernière synchro et signale à part un jour resté ancien (> 1 h). Avant, l'heure
+  était celle du jour le moins récent et le nom celui du dernier envoi. Constat : la préversion n'avait reçu que la synchro
+  de 03:43 (utilisateur) et la **prod n'a jamais reçu de synchro** (extensions encore branchées sur test-csm).
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)

@@ -38,6 +38,7 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 ### Corrections
 
 - Bon taxi : une heure de retour laissée vide n'est plus enregistrée « 00:00 ».
+- **Missions PMR et Groupes** : « Synchronisé avec DICOS il y a… par… » montre la synchro la plus récente, quel que soit l'agent qui l'a faite, avec son heure et son nom (avant, l'heure et le nom pouvaient venir de deux synchros différentes). Un jour de la période resté ancien est signalé à côté. La mention se met à jour en direct pour tout le monde.
 - **Administration › Quinyx** : l'adresse du planning copiée telle quelle depuis Quinyx (avec les dates et la vue affichées) est acceptée ; CSM n'en garde que le numéro du groupe.
 - **Ressources › Trains** : un train dévié certains jours (travaux) n'affiche plus les gares de son trajet habituel au milieu du détour (IC 943 : Braine-le-Comte suivi des gares de la L.118).
 - **Ressources › Lignes** : le filtre par district ne montre plus des lignes de Flandre qui n'ont qu'une ou deux gares dans le district ; une ligne est rattachée aux districts qui portent au moins 30 % de ses gares (DNO et DNE compris), et peut en avoir plusieurs.

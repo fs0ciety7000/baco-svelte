@@ -559,8 +559,11 @@ export type DicosSync = {
   missing: string[];
   /** Dernier envoi de la période sans son dernier lot (synchro en cours ou interrompue), ISO, ou null. */
   partialAt: string | null;
-  /** Agent dont l'extension a fait le dernier envoi de la période (jeton personnel), ou null. */
+  /** Agent de la dernière synchro complète de la période (jeton personnel), ou null. */
   by: string | null;
+  /** Jour de la période resté synchronisé le plus anciennement, s'il diffère de la dernière synchro. */
+  oldestAt?: string | null;
+  oldestDay?: string | null;
 };
 
 /**
@@ -594,15 +597,23 @@ export async function dicosSyncState(
       }),
     ]);
     type Row = SyncRow & { expand?: { synced_by?: { name?: string } } };
-    const rows = inRange.items as unknown as Row[];
+    const rows = (inRange.items as unknown as Row[]).map((r) => ({
+      ...r,
+      by: r.expand?.synced_by?.name || undefined,
+    }));
     const sum = syncSummary(rows, from, to, kind);
     return {
-      // Fraîcheur de la période affichée (jour le moins récemment synchronisé) ; à défaut, la dernière synchro reçue.
-      lastAt: sum.freshness ?? (last.items[0]?.created as string | undefined) ?? null,
+      // Dernière synchro complète de la période, tous agents confondus (heure et agent de la même fiche) ; à défaut, la
+      // dernière synchro reçue. Le jour resté le plus ancien est signalé à part (`oldestAt`).
+      lastAt: sum.latest?.at ?? (last.items[0]?.created as string | undefined) ?? null,
       covered: sum.missing.length === 0,
       missing: sum.missing,
       partialAt: sum.partialAt,
-      by: rows[0]?.expand?.synced_by?.name || null,
+      by: sum.latest ? sum.latest.by : rows[0]?.by || null,
+      oldestAt:
+        sum.freshness && sum.latest && sum.freshness !== sum.latest.at ? sum.freshness : null,
+      oldestDay:
+        sum.freshness && sum.latest && sum.freshness !== sum.latest.at ? sum.oldestDay : null,
     };
   } catch {
     return null;

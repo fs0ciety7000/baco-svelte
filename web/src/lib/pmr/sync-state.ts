@@ -1,10 +1,19 @@
 // État de synchro DICOS d'une période (fiabilité, 10 oct. 2026). Pur : testé, utilisé par `dicosSyncState`.
 // - Un jour est couvert s'il a reçu un dernier lot (`complete`).
-// - Fraîcheur = celle du jour couvert le MOINS récemment synchronisé de la période : « synchronisé il y a 5 min » ne
-//   doit pas masquer un autre jour affiché synchronisé hier.
+// - Dernière synchro = la synchro complète la PLUS récente de la période, quel que soit l'agent (14 oct. 2026 : « il y
+//   a 12 h » s'affichait alors qu'un collègue venait de synchroniser) ; heure et agent viennent de la même fiche.
+// - Fraîcheur = celle du jour couvert le MOINS récemment synchronisé : signalée à part, elle ne doit pas être masquée
+//   par « synchronisé il y a 5 min » sur un autre jour.
 // - Synchro en cours / interrompue : dernier envoi d'un jour sans son dernier lot.
 
-export type SyncRow = { day: string; kind: string; created: string; complete: boolean };
+export type SyncRow = {
+  day: string;
+  kind: string;
+  created: string;
+  complete: boolean;
+  /** Agent dont l'extension a envoyé ce lot (nom), si connu. */
+  by?: string;
+};
 
 export type SyncSummary = {
   /** Jours de la période sans synchro complète (14 jours au plus examinés). */
@@ -12,6 +21,10 @@ export type SyncSummary = {
   /** Plus ancienne des dernières synchros complètes des jours couverts (ISO), ou null. */
   freshness: string | null;
   partialAt: string | null;
+  /** Synchro complète la plus récente de la période (tous agents) : heure ISO et agent, ou null. */
+  latest: { at: string; by: string | null } | null;
+  /** Jour couvert le moins récemment synchronisé (celui de `freshness`), ou null. */
+  oldestDay: string | null;
 };
 
 export function daysBetweenInclusive(from: string, to: string, max = 14): string[] {
@@ -36,6 +49,8 @@ export function syncSummary(
   const missing: string[] = [];
   let freshness: string | null = null;
   let partialAt: string | null = null;
+  let newest: SyncSummary["latest"] = null;
+  let oldestDay: string | null = null;
   for (const day of daysBetweenInclusive(from, to)) {
     const list = byDay.get(day) ?? [];
     const own =
@@ -44,12 +59,19 @@ export function syncSummary(
         : list.filter((r) => r.kind === "missions");
     const lastComplete = own.find((r) => r.complete);
     if (!lastComplete) missing.push(day);
-    else if (!freshness || lastComplete.created < freshness) freshness = lastComplete.created;
+    else {
+      if (!freshness || lastComplete.created < freshness) {
+        freshness = lastComplete.created;
+        oldestDay = day;
+      }
+      if (!newest || lastComplete.created > newest.at)
+        newest = { at: lastComplete.created, by: lastComplete.by || null };
+    }
     const latest = own[0];
     if (latest && !latest.complete && (!partialAt || latest.created > partialAt))
       partialAt = latest.created;
   }
-  return { missing, freshness, partialAt };
+  return { missing, freshness, partialAt, latest: newest, oldestDay };
 }
 
 // --- « Absente de DICOS » (11 oct. 2026) ---

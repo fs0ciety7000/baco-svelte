@@ -28,6 +28,8 @@ export function SyncStatus({
   partialAt = null,
   by = null,
   missing = [],
+  oldestAt = null,
+  oldestDay = null,
 }: {
   lastAt: string | null;
   covered: boolean;
@@ -36,6 +38,9 @@ export function SyncStatus({
   by?: string | null;
   /** Jours de la période sans synchro complète. */
   missing?: string[];
+  /** Jour de la période resté synchronisé le plus anciennement (s'il diffère de la dernière synchro). */
+  oldestAt?: string | null;
+  oldestDay?: string | null;
 }) {
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
@@ -54,7 +59,11 @@ export function SyncStatus({
   // Avant l'hydratation (heure inconnue), on ne crie pas à l'échec : « en cours » le temps du premier rendu.
   const running = partialAt !== null && (partialMin === null || partialMin < 3);
   const interrupted = partialAt !== null && !running;
-  const stale = interrupted || (!running && (!covered || !at || (min !== null && min > STALE_MIN)));
+  const oldestMin = minutesSince(oldestAt);
+  // Un autre jour de la période synchronisé il y a plus d'une heure : signalé à part, sans masquer la dernière synchro.
+  const oldStale = oldestDay !== null && oldestMin !== null && oldestMin > STALE_MIN;
+  const stale =
+    interrupted || (!running && (!covered || !at || oldStale || (min !== null && min > STALE_MIN)));
   const byText = by ? ` par ${by}` : "";
   return (
     <p
@@ -82,7 +91,11 @@ export function SyncStatus({
               ? missing.length && missing.length <= 3
                 ? `Pas encore synchronisé : ${missing.map((d) => formatShortDay(d)).join(", ")}`
                 : `Période pas encore entièrement synchronisée${missing.length ? ` (${missing.length} jours manquants)` : ""}`
-              : `Synchronisé avec DICOS ${min === null ? "" : ago(min)}${byText}`}
+              : `Synchronisé avec DICOS ${min === null ? "" : ago(min)}${byText}${
+                  oldStale && oldestDay
+                    ? ` · ${formatShortDay(oldestDay)} : ${ago(oldestMin ?? 0)}`
+                    : ""
+                }`}
       {stale ? (
         <Link href="/pmr/extension" className="link ml-1">
           Extension DICOS
