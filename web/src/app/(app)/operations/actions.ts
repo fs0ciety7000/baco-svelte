@@ -4,6 +4,7 @@ import { unstable_rethrow } from "next/navigation";
 import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 
+import { PN_NUMBER_RE, pnNumber } from "@/lib/network/pn";
 import { normalizeTrain, parseFavorites, stationId } from "@/lib/ops/irail";
 import { DUTY_DISTRICTS, entrySchema, RETIRE_WINDOW_MS } from "@/lib/ops/log";
 import { brusselsDay, brusselsTime, brusselsToUtc, pbDate } from "@/lib/orders/time";
@@ -373,9 +374,8 @@ const crossingSchema = z.object({
   number: z
     .string()
     .trim()
-    .toLowerCase()
-    .transform((s) => s.replace(/^pn\s*/, "").replace(/\s*(bis|ter)$/, " $1"))
-    .pipe(z.string().regex(/^[0-9]{1,4}( bis| ter)?$/, "N° au format 12, 12 bis")),
+    .transform(pnNumber)
+    .pipe(z.string().regex(PN_NUMBER_RE, "N° au format 12, 12 bis, 12A")),
   bk: z.coerce.number().min(0).max(1000).default(0),
   address: z.string().trim().max(500).default(""),
   lat: z.coerce.number().min(49).max(52).or(z.literal(0)).default(0),

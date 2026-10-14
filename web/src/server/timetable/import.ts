@@ -21,6 +21,7 @@ import {
 import { referenceWeek } from "@/lib/timetable/model";
 import { buildStations } from "@/lib/timetable/stations";
 import { env } from "@/server/env";
+import { runNetworkImport, type NetworkSummary } from "@/server/network/import";
 
 import { entryLines, zipEntries } from "./zip";
 
@@ -65,6 +66,8 @@ export type TimetableStatus = {
   /** Mois Infrabel (AAAAMM) déjà lu en rattrapage : une fois par mois, jamais bloquant. */
   backfill?: string;
   warning?: string;
+  /** Passages à niveau Infrabel et zones SPI (calculés à la fin de l'import, jamais bloquants). */
+  network?: NetworkSummary;
 };
 
 async function internal<T>(
@@ -365,6 +368,11 @@ async function doImport(trigger: string): Promise<TimetableStatus> {
         lines: lines.map((l) => l.line),
       },
     });
+    // Réseau : PN Infrabel et zones SPI des gares / PN (jamais bloquant ; résumé posé dans l'état par le calcul).
+    step = "reseau";
+    await setStatus({ step });
+    const network = await runNetworkImport();
+    if (network.error) warning ||= `Réseau (PN, zones SPI) : ${network.error}`.slice(0, 300);
     const finishedAt = new Date().toISOString();
     return await setStatus({
       state: "ok",

@@ -1294,6 +1294,61 @@ try {
 		check("admin ne supprime pas de gare par l'API", pd.status >= 400, `HTTP ${pd.status}`);
 		await api('DELETE', `/api/collections/stations/records/${sid}`, { token: root });
 	}
+	// Réseau (1760004800) : zones SPI (lecture des lecteurs de la carte PN / SPI / horaires, écriture referentiels:manage),
+	// zone SPI d'une gare (manuelle quand un admin la choisit), champs Infrabel des PN non forgeables.
+	{
+		const zl = await api('GET', '/api/collections/spi_zones/records?perPage=50', { token: roles.user.token });
+		check('PACO/RCCA lit les zones SPI (19 zones de la carte)', zl.status === 200 && zl.json.totalItems >= 19, `HTTP ${zl.status} ${zl.json?.totalItems}`);
+		const zr = await api('GET', '/api/collections/spi_zones/records?perPage=1', { token: roles.reader.token });
+		check('invité ne lit pas les zones SPI', zr.status === 200 && zr.json.totalItems === 0, `HTTP ${zr.status} ${zr.json?.totalItems}`);
+		const fms = zl.json?.items?.find((z) => z.code === 'FMS');
+		const zuP = await api('PATCH', `/api/collections/spi_zones/records/${fms?.id}`, { token: roles.user.token, body: { name: 'X', updated_by: roles.user.id } });
+		check('PACO/RCCA ne modifie pas une zone SPI', zuP.status >= 400, `HTTP ${zuP.status}`);
+		const zuM = await api('PATCH', `/api/collections/spi_zones/records/${fms?.id}`, { token: roles.modo.token, body: { name: 'X', updated_by: roles.modo.id } });
+		check('modérateur ne modifie pas une zone SPI', zuM.status >= 400, `HTTP ${zuM.status}`);
+		const zuA = await api('PATCH', `/api/collections/spi_zones/records/${fms?.id}`, { token: roles.admin.token, body: { notes: `test ${suffix}`, updated_by: roles.admin.id } });
+		check('admin modifie une zone SPI', zuA.status === 200, `HTTP ${zuA.status}`);
+		const zuC = await api('PATCH', `/api/collections/spi_zones/records/${fms?.id}`, { token: roles.admin.token, body: { code: 'FMX', updated_by: roles.admin.id } });
+		check('code d une zone SPI figé', zuC.status >= 400, `HTTP ${zuC.status}`);
+		const zuF = await api('PATCH', `/api/collections/spi_zones/records/${fms?.id}`, { token: roles.admin.token, body: { notes: '', updated_by: roles.user.id } });
+		check('auteur d une zone SPI non forgeable', zuF.status >= 400, `HTTP ${zuF.status}`);
+		await api('PATCH', `/api/collections/spi_zones/records/${fms?.id}`, { token: root, body: { notes: '' } });
+		const zc = await api('POST', '/api/collections/spi_zones/records', { token: roles.user.token, body: { code: 'ZZT', name: 'Test', updated_by: roles.user.id } });
+		check('PACO/RCCA ne crée pas de zone SPI', zc.status >= 400, `HTTP ${zc.status}`);
+
+		const st = await api('POST', '/api/collections/stations/records', { token: root, body: { key: `zone test ${suffix}`, name: `Zone test ${suffix}`, country: 'BE' } });
+		const sid = st.json?.id;
+		const sz = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.admin.token, body: { spi_zone: 'FMS', updated_by: roles.admin.id } });
+		check('admin choisit la zone SPI d une gare (manuelle)', sz.status === 200 && sz.json.spi_zone === 'FMS' && sz.json.spi_zone_source === 'manuel', `HTTP ${sz.status} ${sz.json?.spi_zone_source}`);
+		const szU = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.admin.token, body: { spi_zone: 'QQQ', updated_by: roles.admin.id } });
+		check('zone SPI inconnue refusée', szU.status >= 400, `HTTP ${szU.status}`);
+		const szS = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.admin.token, body: { spi_zone_source: 'carte', updated_by: roles.admin.id } });
+		check('source de la zone non forgeable (reste manuelle)', szS.status === 200 && szS.json.spi_zone_source === 'manuel', `HTTP ${szS.status} ${szS.json?.spi_zone_source}`);
+		const szA = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.admin.token, body: { spi_zone_auto: true, updated_by: roles.admin.id } });
+		check('retour au calcul de la zone', szA.status === 200 && szA.json.spi_zone_source === '', `HTTP ${szA.status} ${szA.json?.spi_zone_source}`);
+		const szP = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.user.token, body: { spi_zone: 'FCR', updated_by: roles.user.id } });
+		check('PACO/RCCA ne choisit pas la zone d une gare', szP.status >= 400, `HTTP ${szP.status}`);
+		await api('DELETE', `/api/collections/stations/records/${sid}`, { token: root });
+
+		const pnI = await api('POST', '/api/collections/level_crossings/records', { token: roles.moderator.token, body: { line: 'L.998', number: '5', infrabel_id: 'L-998-5', active: true, updated_by: roles.moderator.id } });
+		check('n° Infrabel d un PN non forgeable', pnI.status >= 400, `HTTP ${pnI.status}`);
+		const pnS = await api('POST', '/api/collections/level_crossings/records', { token: roles.moderator.token, body: { line: 'L.998', number: '5', source: 'infrabel', active: true, updated_by: roles.moderator.id } });
+		check('source « infrabel » non forgeable', pnS.status >= 400, `HTTP ${pnS.status}`);
+		const pnZ = await api('POST', '/api/collections/level_crossings/records', { token: roles.moderator.token, body: { line: 'L.998', number: '5A', zone: 'FMS', source: 'csm', active: true, updated_by: roles.moderator.id } });
+		check('PN « 5A » créé, zone saisie = manuelle', pnZ.status === 200 && pnZ.json.zone_source === 'manuel', `HTTP ${pnZ.status} ${pnZ.json?.zone_source}`);
+		if (pnZ.json?.id) {
+			await api('PATCH', `/api/collections/level_crossings/records/${pnZ.json.id}`, { token: root, body: { bk_estimated: true, bk: 3.2 } });
+			const pnB = await api('PATCH', `/api/collections/level_crossings/records/${pnZ.json.id}`, { token: roles.moderator.token, body: { bk: 3.25, updated_by: roles.moderator.id } });
+			check('BK saisie par l équipe : plus une estimation', pnB.status === 200 && pnB.json.bk_estimated === false, `HTTP ${pnB.status} ${pnB.json?.bk_estimated}`);
+			const pnE = await api('PATCH', `/api/collections/level_crossings/records/${pnZ.json.id}`, { token: roles.moderator.token, body: { bk_estimated: true, updated_by: roles.moderator.id } });
+			check('BK estimée non forgeable', pnE.status >= 400, `HTTP ${pnE.status}`);
+			await api('DELETE', `/api/collections/level_crossings/records/${pnZ.json.id}`, { token: root });
+		}
+	}
+	for (const [method, route] of [['GET', '/api/csm/network/state'], ['POST', '/api/csm/network/zones'], ['POST', '/api/csm/network/crossings'], ['POST', '/api/csm/network/crossing-zones'], ['POST', '/api/csm/network/crossings/finish']]) {
+		const r = await api(method, route, { token: roles.admin.token, body: method === 'POST' ? { items: [] } : undefined });
+		check(`route interne ${route} fermée sans secret (même admin)`, r.status === 404, `HTTP ${r.status}`);
+	}
 	for (const [method, route] of [['POST', '/api/csm/timetable/stations'], ['GET', '/api/csm/stations/districts'], ['POST', '/api/csm/stations/suggest']]) {
 		const r = await api(method, route, { token: roles.admin.token, body: method === 'POST' ? { items: [] } : undefined });
 		check(`route interne ${route} fermée sans secret (même admin)`, r.status === 404, `HTTP ${r.status}`);

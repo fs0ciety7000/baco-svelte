@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 
+import { PN_NUMBER_RE, pnNumber } from "@/lib/network/pn";
 import { can } from "@/lib/permissions";
 import { requireUser } from "@/server/auth";
 import { pbForRequest } from "@/server/data/orders";
@@ -64,7 +65,8 @@ const SCHEMAS = {
     number: z
       .string()
       .trim()
-      .regex(/^[0-9]{1,4}( bis| ter)?$/, "Numéro : 1 à 4 chiffres, « bis » ou « ter » permis."),
+      .transform(pnNumber)
+      .pipe(z.string().regex(PN_NUMBER_RE, "Numéro : 1 à 4 chiffres, « bis », « ter » ou lettres (12A).")),
     bk: z.coerce.number().min(0).max(1000).default(0),
     address: z.string().trim().max(500),
     lat: z.coerce.number().min(49).max(52).or(z.literal(0)).default(0),

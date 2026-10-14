@@ -528,6 +528,14 @@ export type LevelCrossing = {
   notes: string;
   source: string;
   updated: string;
+  /** Données ouvertes Infrabel (1760004800) : « L-36-14 », commune, signalisation. */
+  infrabelId: string;
+  commune: string;
+  signal: string;
+  /** BK calculée le long de la ligne (pas relevée sur le terrain). */
+  bkEstimated: boolean;
+  /** « baco » (reprise), « auto » (calculée), « manuel » (choisie par l'équipe), « » (aucune). */
+  zoneSource: string;
 };
 
 export type Depot = { code: string; label: string; lat: number; lon: number };
@@ -545,6 +553,11 @@ function crossing(r: RecordModel): LevelCrossing {
     notes: str(r.notes),
     source: str(r.source),
     updated: str(r.updated),
+    infrabelId: str(r.infrabel_id),
+    commune: str(r.commune),
+    signal: str(r.signal),
+    bkEstimated: r.bk_estimated === true,
+    zoneSource: str(r.zone_source),
   };
 }
 
@@ -561,7 +574,12 @@ export async function listCrossings(): Promise<LevelCrossing[]> {
   const pb = await pbForRequest();
   const items = await pb
     .collection("level_crossings")
-    .getFullList({ filter: "active = true", batch: 1000 });
+    .getFullList({
+      filter: "active = true",
+      batch: 1000,
+      fields:
+        "id,line,number,bk,address,lat,lon,zone,notes,source,updated,infrabel_id,commune,signal,bk_estimated,zone_source",
+    });
   return items.map(crossing).sort(compareCrossings);
 }
 
