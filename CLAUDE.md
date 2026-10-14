@@ -1117,6 +1117,13 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   réellement déviée par Braine-le-Comte (GTFS) ; l'insertion des passages Infrabel ne traverse plus un vrai arrêt absent du
   chemin (sinon les gares de la L.118 apparaissaient après Braine-le-Comte). ⌘K granulaire (agent) fusionné. 431 contrôles.
 
+- 2026-10-14 — **Lot du 14 oct. poussé en production** (accord de l'utilisateur : « Tu peux pousser en prod ») : `csm-prod` =
+  7681554 (22 commits depuis 7d6b436 : cycle des bons v3, référentiels trains / gares / lignes, ⌘K granulaire, notifications par
+  districts du jour, changelog). Déploiements Coolify terminés, santé 200 ; premier import du référentiel lancé au démarrage
+  (vérifié en lecture : 148 gares DSE = référentiel par défaut, L.96 à 20 gares, `/admin/lignes` redirigé). Quinyx (horaires
+  PACO / RCCA) confié à une session dédiée (`session_01BiKDcUpFvzU6ZbqdH1XD9n`, branche `claude/quinyx-horaires`, PR vers
+  `csm-preview`) ; cookies de session Quinyx collés dans la conversation non utilisés (déconnexion conseillée).
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)
