@@ -10,8 +10,7 @@
 
 routerAdd('POST', '/api/csm/impersonate', (e) => {
 	const lib = require(`${__hooks}/lib/impersonate.js`);
-	const denied = lib.guard(e);
-	if (denied) return denied;
+	lib.guard(e); // lève 404 / 401 / 403
 	const body = e.requestInfo().body || {};
 	let target;
 	try {
@@ -34,8 +33,7 @@ routerAdd('POST', '/api/csm/impersonate', (e) => {
 // Fin du mode (bouton « Revenir à mon compte », expiration constatée, déconnexion) : trace seulement.
 routerAdd('POST', '/api/csm/impersonate/stop', (e) => {
 	const lib = require(`${__hooks}/lib/impersonate.js`);
-	const denied = lib.guard(e);
-	if (denied) return denied;
+	lib.guard(e); // lève 404 / 401 / 403
 	const body = e.requestInfo().body || {};
 	const target = String(body.target || '');
 	if (!/^[a-z0-9-]{15,36}$/.test(target)) return e.json(400, { message: 'Cible invalide.' });

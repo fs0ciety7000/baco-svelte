@@ -95,13 +95,20 @@ export const ORDER_DELETE_WINDOW_MS = 8 * 3600 * 1000;
 export function canDeleteOrder(
   can: (permission: string) => boolean,
   userId: string,
-  order: { kind: OrderKind; created_by: string; created: string; status: string },
+  order: {
+    kind: OrderKind;
+    created_by: string;
+    created: string;
+    status: string;
+    wasSent?: boolean;
+  },
   now: number = Date.now(),
 ): boolean {
   const mod = order.kind === "taxi" ? "generate_taxi" : "otto";
   if (can(`${mod}:delete`)) return true;
   if (!can(`${mod}:write`) || !userId || order.created_by !== userId) return false;
-  if (order.status === "envoye") return false;
+  // Déjà envoyé une fois (même rouvert) : jamais par le créateur (le hook vérifie l'historique).
+  if (order.status === "envoye" || order.wasSent) return false;
   const created = Date.parse(order.created.replace(" ", "T"));
   return Number.isFinite(created) && now - created <= ORDER_DELETE_WINDOW_MS;
 }

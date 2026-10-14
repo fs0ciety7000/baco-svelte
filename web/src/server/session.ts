@@ -3,7 +3,14 @@ import "server-only";
 import { cookies } from "next/headers";
 import { cache } from "react";
 
-import { AS_COOKIE, parseActingCookie, readOnlyMessage } from "@/lib/impersonation";
+import {
+  actingAad,
+  actingExpired,
+  AS_COOKIE,
+  parseActingCookie,
+  readOnlyMessage,
+} from "@/lib/impersonation";
+import { openActingToken } from "@/server/acting-seal";
 
 import { env } from "./env";
 import { createPb, markReadOnlyToken } from "./pocketbase";
@@ -54,12 +61,16 @@ export const resolveActing = cache(async (): Promise<Acting> => {
   const raw = jar.get(AS_COOKIE)?.value;
   const none: Acting = { own, token: own, actor: null, target: null, exp: null, stale: false };
   if (!raw) return none;
-  const as = parseActingCookie(raw);
+  const cookie = parseActingCookie(raw);
   const ownId = own && !isExpired(own) ? tokenPayload(own)?.id : null;
-  const asPayload = as ? tokenPayload(as.token) : null;
   const stale = { ...none, stale: true };
-  if (!as || !ownId || ownId !== as.adminId || !asPayload || isExpired(as.token))
+  if (!cookie || !ownId || ownId !== cookie.adminId || actingExpired(cookie)) return drop(stale);
+  // Jeton de la cible scellé dans le cookie : ouvert ici seulement, lié à l'admin, la cible et l'expiration.
+  const opened = openActingToken(cookie.sealed, actingAad(cookie));
+  const asPayload = opened ? tokenPayload(opened) : null;
+  if (!opened || !asPayload || asPayload.id !== cookie.targetId || isExpired(opened))
     return drop(stale);
+  const as = { adminId: cookie.adminId, token: opened };
   // Marqué avant toute requête : même un appel qui échouerait plus loin ne peut pas écrire.
   markReadOnlyToken(as.token, asPayload.exp);
   try {

@@ -1446,15 +1446,19 @@ try {
 				},
 				body: JSON.stringify(body ?? {})
 			});
+			const text = await res.text();
 			let json = null;
 			try {
-				json = await res.json();
+				json = JSON.parse(text);
 			} catch {}
-			return { status: res.status, json };
+			return { status: res.status, json, text };
 		};
 		for (const path of [IMP, `${IMP}/stop`]) {
 			const r = await imp(path, { token: roles.admin.token, body: { target: roles.user.id } });
 			check(`route interne ${path} fermée sans secret (même admin)`, r.status === 404, `HTTP ${r.status}`);
+			// Faille du 14 oct. 2026 : le gestionnaire continuait après le refus et écrivait le jeton à la suite.
+			const p = await imp(path, { token: roles.user.token, body: { target: roles.modo.id } });
+			check(`route interne ${path} : aucun jeton renvoyé après un refus (PACO sans secret)`, p.status === 404 && !/token/.test(p.text), p.text.slice(0, 120));
 			const w = await imp(path, { token: roles.admin.token, secret: 'mauvais-secret-mauvais-secret-mauvais', body: { target: roles.user.id } });
 			check(`route interne ${path} fermée avec un mauvais secret`, w.status === 404, `HTTP ${w.status}`);
 		}
@@ -1872,6 +1876,43 @@ try {
 		} else {
 			check(`dernier administrateur : contrôlé par vitest (${others.json?.totalItems} autre(s) admin réel(s) ici)`, true);
 		}
+	}
+
+	// --- Audit sécurité du 14 oct. 2026 : sysop face à un compte admin, filtres sur les droits, rôles techniques ---
+	{
+		const pw = `Test-${suffix}-sec`;
+		const mk = async (key, role) => {
+			const r = await api('POST', '/api/collections/users/records', {
+				token: root,
+				body: { email: `test-sec-${key}-${suffix}@csm.invalid`, password: pw, passwordConfirm: pw, name: `Sec ${key}`, username: `tsec${key}${suffix}`, role, verified: true }
+			});
+			if (r.status !== 200) throw new Error(`Création sec ${key} : ${r.status}`);
+			created.push(r.json.id);
+			const a = await api('POST', '/api/collections/users/auth-with-password', { body: { identity: r.json.email, password: pw } });
+			return { id: r.json.id, token: a.json.token };
+		};
+		const sys = await mk('sys', 'sysop');
+		const adm = await mk('adm', 'admin');
+		const demote = await api('PATCH', `/api/collections/users/records/${adm.id}`, { token: sys.token, body: { role: 'paco' } });
+		check('sysop : ne rétrograde pas un administrateur', demote.status === 403, `HTTP ${demote.status}`);
+		const pwd = await api('PATCH', `/api/collections/users/records/${adm.id}`, { token: sys.token, body: { password: 'Autre-mot-de-passe-1', passwordConfirm: 'Autre-mot-de-passe-1' } });
+		check('sysop : ne change pas le mot de passe d un administrateur', pwd.status === 403, `HTTP ${pwd.status}`);
+		const mail = await api('PATCH', `/api/collections/users/records/${adm.id}`, { token: sys.token, body: { email: `x-${suffix}@csm.invalid` } });
+		check('sysop : ne change pas l e-mail d un administrateur', mail.status === 403, `HTTP ${mail.status}`);
+		const dr = await api('PATCH', `/api/collections/users/records/${roles.user.id}`, { token: sys.token, body: { disabled_role: 'admin' } });
+		check('sysop : ne prépare pas un rôle admin à la réactivation (disabled_role)', dr.status === 403, `HTTP ${dr.status}`);
+		const conn = await api('PATCH', `/api/collections/users/records/${roles.user.id}`, { token: sys.token, body: { role: 'connector' } });
+		check('sysop : n attribue pas le rôle technique connector', conn.status === 403, `HTTP ${conn.status}`);
+		const dw = await api('PATCH', `/api/collections/users/records/${roles.user.id}`, { token: roles.admin.token, body: { grants: ['dicos:write'] } });
+		check('admin : n accorde pas dicos:write (compte de service seul)', dw.status === 403, `HTTP ${dw.status}`);
+		const f1 = await api('GET', `/api/collections/users/records?filter=${encodeURIComponent('denies ~ "pmr:read"')}`, { token: roles.user.token });
+		check('agent : filtre sur denies refusé', f1.status === 400, `HTTP ${f1.status}`);
+		const f2 = await api('GET', `/api/collections/users/records?sort=grants`, { token: roles.user.token });
+		check('agent : tri sur grants refusé', f2.status === 400, `HTTP ${f2.status}`);
+		const f3 = await api('GET', `/api/collections/users/records?perPage=1&filter=${encodeURIComponent('perms ~ "team:read"')}`, { token: roles.user.token });
+		check('agent : filtre sur perms permis (mentions)', f3.status === 200, `HTTP ${f3.status}`);
+		const f4 = await api('GET', `/api/collections/users/records?perPage=1&filter=${encodeURIComponent('denies ~ "x"')}`, { token: roles.admin.token });
+		check('admin : filtre sur denies permis', f4.status === 200, `HTTP ${f4.status}`);
 	}
 
 	// Admin : supprime.

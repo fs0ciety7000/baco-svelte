@@ -170,7 +170,12 @@ function checkDelete(record, auth) {
 	const del = record.collection().name === 'taxi_orders' ? 'generate_taxi:delete' : 'otto:delete';
 	if (perms.has(auth, del)) return;
 	if (record.getString('created_by') !== auth.id) throw new ForbiddenError('Seul le créateur du bon peut le supprimer.');
-	if (record.getString('status') === 'envoye') throw new ForbiddenError('Bon envoyé / finalisé : suppression réservée aux administrateurs et modérateurs.');
+	// Bon envoyé (même rouvert ensuite : l'heure d'envoi est effacée à la réouverture, l'historique la garde) : jamais par
+	// son créateur (audit sécurité du 14 oct. 2026 : rouvrir puis supprimer contournait la règle).
+	const wasSent =
+		record.getString('status') === 'envoye' ||
+		$app.countRecords('order_events', $dbx.exp("[[order]] = {:o} AND [[to]] = 'envoye'", { o: record.id })) > 0;
+	if (wasSent) throw new ForbiddenError('Bon déjà envoyé : suppression réservée aux administrateurs et modérateurs.');
 	const created = new Date(record.getString('created').replace(' ', 'T')).getTime();
 	if (!(created > 0) || Date.now() - created > DELETE_WINDOW_MS) {
 		throw new ForbiddenError('Plus de 8 h après sa création : demande la suppression à un administrateur ou un modérateur.');

@@ -207,6 +207,16 @@
 
   /* Impression (demande du 10 oct. 2026) : listes, B201, Journal. Le shell, les filtres et les actions disparaissent,
      couleurs claires quel que soit le thème, tableaux sans coupure de ligne, fil du Journal imprimé en entier. */
+  /* Téléphonie (14 oct. 2026) : Etrali choisi dans « Affichage » → lien etrali: sur poste fixe, tel: sinon (PhoneLink). */
+  @media (min-width: 48rem) {
+    html[data-telephony="etrali"] .phone-tel {
+      display: none;
+    }
+    html[data-telephony="etrali"] .phone-etrali {
+      display: inline-flex;
+    }
+  }
+
   @media print {
     :root,
     :root[data-theme] {

@@ -115,6 +115,29 @@ function assertCanAssign(auth, nextRole, prevRole) {
 	throw new ForbiddenError('Seul un administrateur peut attribuer le rôle Administrateur ou Sysop.');
 }
 
+// Compte Administrateur / Sysop (ou désactivé avec ce rôle à rendre) : modifié ou supprimé par un administrateur seulement
+// (un sysop ne peut ni le rétrograder, ni changer son mot de passe ou son e-mail ; audit sécurité du 14 oct. 2026). Chacun
+// garde la main sur sa propre fiche (champs limités par la règle).
+function assertCanManage(auth, before) {
+	const high = (r) => r === 'admin' || r === 'sysop';
+	if (!high(before.getString('role')) && !high(before.getString('disabled_role'))) return;
+	if (!auth || auth.isSuperuser() || auth.getString('role') === 'admin' || auth.id === before.id) return;
+	throw new ForbiddenError('Seul un administrateur modifie un compte Administrateur ou Sysop.');
+}
+
+// Rôles techniques (compte de service, écran) et droit de l'ingestion DICOS : posés par un administrateur (rôles) ou par le
+// superuser seul (`dicos:write`), jamais par un sysop ni un gestionnaire.
+function assertSpecial(auth, record, before) {
+	if (!auth || auth.isSuperuser()) return;
+	const technical = (r) => r === 'connector' || r === 'screen';
+	const role = record.getString('role');
+	const prev = before ? before.getString('role') : '';
+	if (technical(role) && role !== prev && auth.getString('role') !== 'admin')
+		throw new ForbiddenError('Rôle technique attribué par un administrateur seulement.');
+	const has = (r) => r && r.getString('grants').indexOf('"dicos:write"') !== -1;
+	if (has(record) && !has(before)) throw new ForbiddenError('Droit réservé au compte de service.');
+}
+
 // Catalogue modifié par un déploiement : chaque clé nouvelle est ajoutée aux rôles système qui la portent par défaut
 // (rôles verrouillés « tout » re-normalisés), jamais retirée ; registre `app_settings.roles_catalog`. Appelé au démarrage
 // de `serve`. Renvoie le nombre de clés nouvelles.
@@ -149,6 +172,8 @@ function syncCatalog(app) {
 }
 
 module.exports = {
+	assertCanManage,
+	assertSpecial,
 	KEY_RE,
 	requireRoleManager,
 	unknownKeys,

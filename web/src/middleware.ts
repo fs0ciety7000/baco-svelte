@@ -4,6 +4,7 @@ import {
   AS_COOKIE,
   READ_ONLY_HEADER,
   actingBlock,
+  actingExpired,
   parseActingCookie,
   readOnlyMessage,
 } from "@/lib/impersonation";
@@ -71,9 +72,9 @@ export async function middleware(request: NextRequest) {
     const as = parseActingCookie(asRaw);
     const ownId = valid && token ? tokenPayload(token)?.id : null;
     if (!as || !token || !ownId || as.adminId !== ownId) clearAs = true;
-    else if (isExpired(as.token)) {
+    else if (actingExpired(as)) {
       clearAs = true;
-      await auditExpiredActing(token, as.token);
+      await auditExpiredActing(token, as.targetId);
     } else {
       const block = actingBlock(request.method, pathname, request.headers.has("next-action"));
       if (block) {
@@ -142,9 +143,8 @@ export async function middleware(request: NextRequest) {
 }
 
 /** Fin de « Voir en tant que » par expiration du jeton de la cible : tracée dans le journal d'audit (jamais bloquant). */
-async function auditExpiredActing(own: string, asToken: string): Promise<void> {
+async function auditExpiredActing(own: string, target: string): Promise<void> {
   const secret = process.env.CSM_INTERNAL_SECRET ?? "";
-  const target = tokenPayload(asToken)?.id;
   if (secret.length < 32 || !target) return;
   try {
     const pbUrl = (process.env.PB_URL ?? "http://127.0.0.1:8090").replace(/\/$/, "");

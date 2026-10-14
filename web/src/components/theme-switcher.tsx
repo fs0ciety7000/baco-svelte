@@ -11,8 +11,10 @@ import {
   setBrowserNotify,
 } from "@/lib/browser-notify";
 import { Switch } from "@/components/ui/checkbox";
+import { Segmented } from "@/components/ui/form-kit";
 import type { UiPreferences } from "@/design/preferences";
 import { AUTO_THEMES, type ThemeChoice, type ThemeId, THEMES, themeById } from "@/design/tokens";
+import { applyTelephony, readTelephony, TELEPHONY_KEY, type Telephony } from "@/lib/telephony";
 import { cn } from "@/lib/utils";
 
 /** Aperçu d'un thème : ses propres variables (data-theme sur l'élément), fond, accent et statuts. */
@@ -119,6 +121,7 @@ export function ThemeSwitcher({
         </div>
       </details>
       <ShortcutsToggle />
+      <TelephonyChoice />
       <BrowserNotifyToggle />
       <div role="radiogroup" aria-label="Densité" className="flex gap-2">
         {(["confortable", "compact"] as const).map((d) => (
@@ -139,6 +142,42 @@ export function ThemeSwitcher({
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Téléphonie : Genesys Cloud (liens tel:, extension de navigateur) ou Etrali (etrali:) ; mémorisé dans ce navigateur. */
+function TelephonyChoice() {
+  const [value, setValue] = useState<Telephony>("genesys");
+  useEffect(() => setValue(readTelephony()), []);
+  const pick = (t: Telephony) => {
+    setValue(t);
+    try {
+      window.localStorage.setItem(TELEPHONY_KEY, t);
+    } catch {}
+    applyTelephony(t);
+  };
+  return (
+    <div className="flex flex-col gap-1.5 text-body" data-testid="telephony-choice">
+      <span>
+        Téléphoner en un clic{" "}
+        <span className="text-small text-fg-muted">
+          (numéros de l&apos;annuaire, des missions…)
+        </span>
+      </span>
+      <Segmented
+        label="Téléphonie"
+        value={value}
+        onChange={pick}
+        options={[
+          { value: "genesys", label: "Genesys Cloud" },
+          { value: "etrali", label: "Etrali" },
+        ]}
+      />
+      <span className="text-small text-fg-muted">
+        Genesys Cloud : installe l&apos;extension Genesys Cloud du navigateur et active «
+        Click-to-Dial ». Sur mobile, le téléphone compose toujours le numéro.
+      </span>
     </div>
   );
 }

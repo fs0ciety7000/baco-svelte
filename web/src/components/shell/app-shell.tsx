@@ -10,6 +10,7 @@ import { CommandPalette } from "./command-palette";
 import { MobileTabBar } from "./mobile-tabbar";
 import { NavProgress } from "./nav-progress";
 import { PageShortcuts } from "./page-shortcuts";
+import { TelephonyInit } from "./telephony-init";
 import { PageTransition } from "./page-transition";
 import { RolesProvider } from "./roles-context";
 import { ShellProvider } from "./shell-context";
@@ -68,6 +69,7 @@ export function AppShell({
             <NavProgress />
           </Suspense>
           <PageShortcuts />
+          <TelephonyInit />
           <PageTransition />
           <MobileTabBar />
           <CommandPalette />

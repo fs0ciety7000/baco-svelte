@@ -11,7 +11,7 @@ import { ruleCategory, rulesSchema } from "@/lib/ops/journal-rules";
 import type { LogCategory } from "@/lib/ops/log";
 import { PERMISSION_CATALOG } from "@/lib/permissions";
 import { assignableRoles } from "@/lib/roles";
-import { requireAdmin, type SessionUser } from "@/server/auth";
+import { getCurrentUser, requireAdmin, type SessionUser } from "@/server/auth";
 import { pbForRequest } from "@/server/data/orders";
 import { listRoles } from "@/server/data/roles";
 
@@ -54,6 +54,11 @@ async function managed(pb: Awaited<ReturnType<typeof pbForRequest>>, uid: string
     .collection("users")
     .getOne(uid, { fields: "id,role,disabled_role,grants,denies" });
   if (cur.role === "connector") throw new Error("DROIT:Compte de service : non modifiable ici.");
+  // Compte Administrateur / Sysop : un administrateur seulement (le hook PocketBase le refuse aussi ; audit du 14 oct. 2026).
+  const high = (r: unknown) => r === "admin" || r === "sysop";
+  const me = await getCurrentUser();
+  if ((high(cur.role) || high(cur.disabled_role)) && me?.role !== "admin" && me?.id !== uid)
+    throw new Error("DROIT:Seul un administrateur modifie un compte Administrateur ou Sysop.");
   return cur;
 }
 
