@@ -57,13 +57,13 @@ export function Topbar() {
         ) : null}
         <Button
           variant="ghost"
-          className="hidden justify-start border border-border text-fg-muted md:inline-flex md:w-11 md:px-0 xl:w-56 xl:px-3"
+          className="hidden justify-start border border-border text-fg-muted md:inline-flex md:w-11 md:px-0 2xl:w-56 2xl:px-3"
           aria-label="Rechercher, aller à"
           onClick={() => setPaletteOpen(true)}
         >
-          <Search className="mx-auto xl:mx-0" />
-          <span className="hidden xl:inline">Rechercher…</span>
-          <span className="ml-auto hidden gap-1 xl:flex">
+          <Search className="mx-auto 2xl:mx-0" />
+          <span className="hidden 2xl:inline">Rechercher…</span>
+          <span className="ml-auto hidden gap-1 2xl:flex">
             <Kbd>Ctrl</Kbd>
             <Kbd>K</Kbd>
           </span>
@@ -81,7 +81,7 @@ export function Topbar() {
           <Menu.Root>
             <Menu.Trigger asChild>
               <Button variant="secondary" className="hidden md:inline-flex" aria-label="Nouveau">
-                <Plus /> <span className="hidden xl:inline">Nouveau</span>
+                <Plus /> <span className="hidden 2xl:inline">Nouveau</span>
               </Button>
             </Menu.Trigger>
             <Menu.Portal>

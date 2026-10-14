@@ -140,7 +140,11 @@ export function DutyChip({
             <span className="sm:hidden" aria-label="Mes districts du jour ?">
               ?
             </span>
-            <span className="max-sm:hidden">Mes districts du jour ?</span>
+            {/* Libellé long sur grand écran seulement : la barre du haut laisse la place aux onglets du module. */}
+            <span className="max-sm:hidden 2xl:hidden" aria-label="Mes districts du jour ?">
+              Districts ?
+            </span>
+            <span className="hidden 2xl:inline">Mes districts du jour ?</span>
           </>
         )}
       </button>

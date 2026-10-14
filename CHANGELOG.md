@@ -28,6 +28,8 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 - **Perturbations iRail** : les gares citées sont reconnues aussi par leur nom néerlandais et d'après les districts corrigés dans Ressources › Gares.
 - Ressources › Gares, Lignes et Trains : la recherche se lance pendant la frappe, sans Entrée.
 - Barre du bas mobile : « Ressources » s'appelle maintenant « Données ».
+- **Menu de ton profil** (ta photo en haut à droite) : accès direct à Mon profil, Mon planning et l'extension CSM.
+- **Barre du haut** : les onglets qui ne tiennent pas dans la largeur (Administration, par exemple) passent dans un menu « Plus » ; l'onglet ouvert reste toujours visible.
 - **Ressources › Lignes : gares modifiables** par les administrateurs, coordinateurs et modérateurs (« Modifier les gares » dans la fiche d'une ligne : ordre, ajout, retrait, embranchements). Une ligne corrigée garde tes corrections aux mises à jour du référentiel ; « Rétablir l'automatique » reprend les gares de l'horaire. Remplace Administration › Lignes et arrêts.
 - **Bons bus** : les lignes proposées et l'itinéraire entre deux gares viennent maintenant de Ressources › Lignes (toutes les lignes du réseau, embranchements compris), y compris tes corrections.
 - **Trains en direct** : les perturbations de ton district reposent sur les districts de Ressources › Gares.

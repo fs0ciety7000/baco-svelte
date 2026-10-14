@@ -1,7 +1,7 @@
 "use client";
 
 import * as Menu from "@radix-ui/react-dropdown-menu";
-import { LogOut, Palette, Shield, SwatchBook } from "lucide-react";
+import { CalendarDays, LogOut, Palette, Puzzle, Shield, SwatchBook, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -16,9 +16,19 @@ import { ROLE_LABEL } from "./types";
 const itemClass =
   "flex h-control cursor-pointer items-center gap-3 px-3 text-body text-fg outline-none select-none data-[highlighted]:bg-surface-2 [&_svg]:size-4 [&_svg]:text-fg-muted";
 
-/** Menu utilisateur : identité, préférences d'affichage, design system, administration (admin), déconnexion. */
+/**
+ * Menu utilisateur : identité, mon profil (avatar, mot de passe, passkeys, sessions…), mon planning, extension CSM,
+ * préférences d'affichage, design system, administration (admin), déconnexion. Les liens n'apparaissent que si l'onglet
+ * est visible pour l'agent (même règle que la navigation).
+ */
 export function UserMenu({ compact }: { compact?: boolean }) {
-  const { user, admin, ui, setUi } = useShell();
+  const { user, admin, modules, ui, setUi } = useShell();
+  const tabs = new Set(modules.flatMap((m) => m.tabs.map((t) => t.href)));
+  const personal = [
+    { href: "/equipe/profil", label: "Mon profil", icon: UserRound },
+    { href: "/equipe/planning", label: "Mon planning", icon: CalendarDays },
+    { href: "/pmr/extension", label: "Extension CSM", icon: Puzzle },
+  ].filter((l) => tabs.has(l.href));
   const [prefsOpen, setPrefsOpen] = useState(false);
 
   return (
@@ -55,6 +65,14 @@ export function UserMenu({ compact }: { compact?: boolean }) {
               <span className="truncate text-small text-fg-muted">{user.email}</span>
               <span className="label-mono mt-1 text-fg-muted">{ROLE_LABEL[user.role]}</span>
             </div>
+            {personal.map((l) => (
+              <Menu.Item key={l.href} asChild className={itemClass}>
+                <Link href={l.href} data-testid={`user-menu-${l.href.split("/").pop()}`}>
+                  <l.icon /> {l.label}
+                </Link>
+              </Menu.Item>
+            ))}
+            {personal.length ? <Menu.Separator className="my-1 h-px bg-border" /> : null}
             <Menu.Item className={itemClass} onSelect={() => setPrefsOpen(true)}>
               <Palette /> Affichage (thème, densité)
             </Menu.Item>
