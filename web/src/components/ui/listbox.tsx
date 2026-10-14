@@ -102,9 +102,10 @@ export function listboxNavigate(
 export const optionId = (listId: string, i: number) => `${listId}-opt-${i}`;
 
 /**
- * Liste d'options commune (Select, puis Combobox / MultiSelect) : `role="listbox"`, options `role="option"`, option
+ * Liste d'options commune (Select, Combobox, MultiSelect) : `role="listbox"`, options `role="option"`, option
  * active désignée par `aria-activedescendant` (posé par le contrôle qui garde le focus) et ramenée dans la vue.
- * `touch` : options de 48 px (feuille du bas).
+ * `touch` : options de 48 px (feuille du bas). `multiselectable` : `selected` est une liste, chaque option porte une
+ * case (`aria-multiselectable`). `emptyText` : phrase affichée sans option (« Aucune société »).
  */
 function Listbox<T extends string>({
   id,
@@ -119,10 +120,13 @@ function Listbox<T extends string>({
   focusable = false,
   onKeyDown,
   className,
+  multiselectable = false,
+  emptyText = "Aucune option",
+  busy = false,
 }: {
   id: string;
   options: ListOption<T>[];
-  selected: T | null | undefined;
+  selected: T | readonly T[] | null | undefined;
   active: number;
   onActiveChange: (i: number) => void;
   onSelect: (value: T) => void;
@@ -133,7 +137,13 @@ function Listbox<T extends string>({
   focusable?: boolean;
   onKeyDown?: React.KeyboardEventHandler<HTMLUListElement>;
   className?: string;
+  multiselectable?: boolean;
+  emptyText?: string;
+  /** Options en cours de chargement (Combobox asynchrone) : `aria-busy`. */
+  busy?: boolean;
 }) {
+  const isSelected = (v: T) =>
+    Array.isArray(selected) ? selected.includes(v) : v === (selected as T | null | undefined);
   React.useEffect(() => {
     if (active < 0) return;
     document.getElementById(optionId(id, active))?.scrollIntoView?.({ block: "nearest" });
@@ -144,6 +154,8 @@ function Listbox<T extends string>({
       role="listbox"
       aria-labelledby={labelledBy}
       aria-label={labelledBy ? undefined : label}
+      aria-multiselectable={multiselectable || undefined}
+      aria-busy={busy || undefined}
       tabIndex={focusable ? 0 : -1}
       aria-activedescendant={focusable && active >= 0 ? optionId(id, active) : undefined}
       onKeyDown={onKeyDown}
@@ -151,18 +163,18 @@ function Listbox<T extends string>({
     >
       {options.length === 0 ? (
         <li role="presentation" className="px-3 py-2 text-small text-fg-muted">
-          Aucune option
+          {busy ? "Recherche…" : emptyText}
         </li>
       ) : null}
       {options.map((o, i) => {
-        const isSelected = o.value === selected;
+        const on = isSelected(o.value);
         const Icon = o.icon;
         return (
           <li
             key={`${o.value}-${i}`}
             id={optionId(id, i)}
             role="option"
-            aria-selected={isSelected}
+            aria-selected={on}
             aria-disabled={o.disabled || undefined}
             data-active={i === active || undefined}
             // Le focus reste sur le déclencheur (desktop) : pas de vol de focus au clic.
@@ -173,19 +185,32 @@ function Listbox<T extends string>({
               "flex cursor-pointer items-start gap-2 rounded-control px-3 text-body text-fg select-none",
               touch ? "min-h-12 py-3" : "min-h-9 py-2",
               "data-[active]:bg-surface-2",
-              isSelected && "font-medium",
+              on && !multiselectable && "font-medium",
               o.disabled && "cursor-not-allowed opacity-50",
             )}
           >
+            {multiselectable ? (
+              <span
+                aria-hidden
+                className={cn(
+                  "mt-0.5 grid size-5 shrink-0 place-items-center rounded-[min(var(--r-control),5px)] border",
+                  on ? "border-accent bg-accent text-accent-fg" : "border-border-strong bg-surface",
+                )}
+              >
+                {on ? <Check className="size-3.5" strokeWidth={3} /> : null}
+              </span>
+            ) : null}
             {Icon ? <Icon className="mt-0.5 size-4 shrink-0 text-fg-muted" aria-hidden /> : null}
             <span className="flex min-w-0 flex-1 flex-col">
               <span className="break-words">{o.label}</span>
               {o.hint ? <span className="text-small text-fg-muted">{o.hint}</span> : null}
             </span>
-            <Check
-              aria-hidden
-              className={cn("mt-0.5 size-4 shrink-0 text-accent", !isSelected && "invisible")}
-            />
+            {multiselectable ? null : (
+              <Check
+                aria-hidden
+                className={cn("mt-0.5 size-4 shrink-0 text-accent", !on && "invisible")}
+              />
+            )}
           </li>
         );
       })}

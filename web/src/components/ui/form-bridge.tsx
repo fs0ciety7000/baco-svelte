@@ -56,3 +56,31 @@ export function useStopNativeChange(ref: React.RefObject<HTMLElement | null>) {
     return () => el.removeEventListener("change", stop);
   }, [ref]);
 }
+
+/**
+ * Pont formulaire des contrôles à plusieurs valeurs (MultiSelect, DistrictPicker, CheckboxGroup) : les valeurs partent
+ * dans des champs cachés répétés (`?district=DSO&district=DSE`) rendus par le contrôle, et un `change` natif part de la
+ * sentinelle `ref` (un élément dans le formulaire). `markUserChange()` : émis après le rendu des nouvelles valeurs (une
+ * puce basculée) ; `dispatch()` : émis tout de suite (fermeture d'une liste après plusieurs cases cochées).
+ */
+export function useMultiFormBridge(values: readonly string[]) {
+  const ref = React.useRef<HTMLSpanElement>(null);
+  const key = values.join("\u0000");
+  const pending = React.useRef(false);
+  const dispatch = React.useCallback(() => {
+    ref.current?.dispatchEvent(new Event("change", { bubbles: true }));
+  }, []);
+  React.useEffect(() => {
+    if (!pending.current) return;
+    pending.current = false;
+    dispatch();
+  }, [key, dispatch]);
+  return {
+    ref,
+    key,
+    markUserChange() {
+      pending.current = true;
+    },
+    dispatch,
+  };
+}

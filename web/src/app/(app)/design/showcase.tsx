@@ -53,6 +53,7 @@ import { useStaggerIn } from "@/lib/motion";
 import { lineLabel } from "@/lib/lines";
 
 import { PickersDemo } from "./pickers-demo";
+import { SearchDemo } from "./search-demo";
 
 // Données fictives uniquement (aucune donnée réelle sur cette page).
 const ORDERS: {
@@ -400,6 +401,10 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
 
       <Section id="listes-dates" title="Listes, dates et heures">
         <PickersDemo />
+      </Section>
+
+      <Section id="recherche-multi" title="Recherche et choix multiples">
+        <SearchDemo />
       </Section>
 
       <Section id="saisie" title="Saisie des commandes">
