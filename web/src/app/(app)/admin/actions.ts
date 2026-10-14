@@ -9,8 +9,8 @@ import { z } from "zod";
 
 import { ruleCategory, rulesSchema } from "@/lib/ops/journal-rules";
 import type { LogCategory } from "@/lib/ops/log";
-import { PERMISSION_CATALOG } from "@/lib/permissions";
 import { assignableRoles } from "@/lib/roles";
+import { VISIBLE_KEYS } from "@/lib/roles-editor";
 import { requireAdmin, type SessionUser } from "@/server/auth";
 import { pbForRequest } from "@/server/data/orders";
 import { listRoles } from "@/server/data/roles";
@@ -25,7 +25,9 @@ const pbId = z.string().regex(/^[a-z0-9]{15}$/);
 // Rôles (lot L3) : identifiants lus dans la collection `roles` (`assignableRoles`), revérifiés par le hook PocketBase.
 const roleKey = z.string().regex(/^[a-z][a-z0-9_-]{1,39}$/, "Rôle invalide");
 const DISTRICT_NAMES = ["Sud-Ouest", "Sud-Est", "Centre"] as const;
-const KNOWN = new Set(PERMISSION_CATALOG.flatMap((g) => g.items.map((i) => i.key)));
+// Ajustements éditables : clés visibles du catalogue v3 (lot L5) ; les autres (lectures BACO cachées, droits hors
+// catalogue) sont gardées telles quelles par `setPermissions`.
+const KNOWN = new Set(VISIBLE_KEYS);
 
 function fail(e: unknown): { ok: false; error: string } {
   // Session expirée : laisser passer redirect() / notFound() de requireAdmin.

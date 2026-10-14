@@ -1201,6 +1201,14 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   `ListToolbar`, `loading.tsx`, R7, L4-L6, **audit sécurité de L2 avant la prod**, `perms-check` sur préversion et prod.
   Test E2E instable sous charge : Journal « publier… » / « répondre en fil » (passe en série).
 
+- 2026-10-14 — **Rôles v3, lots L4-L5** (demande : « un admin moins à l'aise avec l'informatique doit pouvoir ajouter / retirer
+  des permissions facilement ») : **Administration › Rôles** (cartes, nouveau rôle à partir d'un modèle, éditeur par tâche
+  métier en phrases avec dépendances expliquées, aperçu « peut / ne peut pas », comparaison, récapitulatif et confirmation
+  des droits sensibles, toast « Annuler », historique avec « Annuler ce changement », suppression avec réaffectation) et
+  **fiche d'un agent** (ajustements en phrases, aperçu, suggestion « Créer un rôle à partir de ces ajustements », matrice en
+  vue experte). Logique pure `web/src/lib/roles-editor.ts`, E2E `roles.spec.ts`. Écart : pas de raison par ajustement
+  (champ à créer). Détails : CADRAGE-ROLES-V3 §G.
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)
