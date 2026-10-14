@@ -1219,8 +1219,8 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   Statistiques) · Opérations (Journal par défaut, Ma journée, Relève) · Commandes (Suivi « À envoyer » par défaut, Bus, Taxi,
   Archives, Fournisseurs) · PMR · **Réseau** (Trains en direct, Horaires, Lignes, Gares, PtCar, EBP, Carte PN) · Ressources
   (Contacts, Collègues, Planning, Procédures et documents, **B201**) · Administration (+ **Référentiels**). Gares et PtCar
-  **non fusionnés** ; PtCar / EBP / SPI **lecture seule pour les PACO/RCCA, modifiables par admin / sysop** (séparer
-  `ptcar:update` de la modification des gares / lignes, que les PACO/RCCA gardent) ; module Équipe supprimé (profil et extension dans
+  **non fusionnés** ; PtCar / EBP / SPI, **gares et lignes** : **lecture seule pour les PACO/RCCA, modifiables par admin /
+  sysop seulement** ; module Équipe supprimé (profil et extension dans
   le menu du compte) ; anciennes routes redirigées. Mise en œuvre après fusion des lots en cours.
 
 ---
