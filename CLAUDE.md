@@ -37,7 +37,7 @@ le 11 oct.** : il ne vit plus que sur `main` (BACO en production) et la branche 
 | 3 | Shell (6 entrées, onglets, ⌘K, mobile 4 + Plus) + tableau de bord | ✅ 8 oct. — 24 E2E, CSP, gardes par page, captures validées |
 | 4 | Données : schéma PocketBase, règles d'accès, import | ✅ **bascule faite le 10 oct.** : sauvegarde Supabase fraîche (GET seuls) → base construite en local (`csm-import` + référentiels) → restaurée sur `pb-csm` ; comptages vérifiés (29 comptes + connecteur, 300 bons bus, 445 prestations, 1148 PtCar…) |
 | 5 | Modules : Commandes → PMR → Opérations → Référentiels → Équipe → Admin | 🔄 **Commandes** livré en session 3 (schéma + 66 contrôles de règles, bus, taxi, envoi `.eml` + PDF, suivi, B201, E2E) : **validé le 8 oct.**, cycle v3 brouillon → terminé → envoyé le 14 oct. ; **PMR validé le 8 oct.** (schéma + 105 contrôles de règles, prestations, collage DICOS, clients, matériel, E2E) ; **Opérations validé le 8 oct.** (trains en direct iRail, Journal (ex-main courante), carte PN, statistiques, cloche ; 149 contrôles de règles, 46 E2E) ; **DICOS / Missions PMR validé** (extension + ingestion, lecture seule, trajet/IN-OUT/district/copier) ; **Annuaire et données (ex-Référentiels) livré** (annuaire, lignes, PtCar, EBP, procédures + documents ; 7 collections ; 173 contrôles de règles ; audit + revue passés ; données v1 importées sur l'instance de test) ; **Équipe et Admin validés le 10 oct.** (+ vue admin des appareils connectés) |
-| 5b | Référentiel des relations de trains (Ressources › Trains) | 🔄 préversion le 14 oct. — GTFS SNCB + Infrabel, import quotidien par Next, 3 collections, écran 3 vues |
+| 5b | Référentiel des relations de trains (Ressources › Trains) | 🔄 préversion le 14 oct. — GTFS SNCB + Infrabel, import quotidien par Next, 3 collections, écran 3 vues ; Ressources › Lignes tirées du référentiel (`rail_lines`) |
 | 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | ✅ 8 oct. — **PRODUCTION en ligne le 10 oct. : https://csm.fs0ciety.org** (`csm-web-prod` + `csm-pocketbase-prod`, environnement Coolify `prod`, branche **`csm-prod`**, données BACO importées le 10 oct., sauvegardes R2) ; **test-csm = preview** (branche de session) ; projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
 | — | Hotfix sécurité BACO (`supabase/migrations/20261008120000_security_hotfix.sql`) | ✅ appliqué par l'utilisateur (SQL Editor) le 8 oct., vérifié : 0 ERROR (36 avant). Suite **non appliquée** : `20261008130000_hotfix_followup.sql` (test NULL de `get_my_role()`) et `20261008140000_pn_data_update_fix.sql` (XSS stocké carte PN), accord requis ; protection des mots de passe compromis encore désactivée |
 
@@ -1039,6 +1039,22 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   tirée de la table BACO `districts.ts`). L'ingestion DICOS lit ces districts (route interne `/api/csm/stations/districts`,
   cache 10 min, table figée en repli) ; la recherche de gare tolérante y prend aussi noms NL et alias. Local : 685 gares,
   137 DSO, 170 DSE, **1 seule DCE** (table BACO) : à compléter par les coordinateurs. 406 contrôles de règles.
+
+- 2026-10-14 — **Ressources › Lignes tirées du référentiel des trains** (étape 12, demande de l'utilisateur ; Missions PMR et
+  Groupes gardent les données DICOS, rien de changé de ce côté). Collection `rail_lines` (`1760003850`, une fiche par ligne,
+  écrite par la route interne `/api/csm/timetable/lines` à la fin de l'import quotidien, lue comme `train_services`).
+  Ordre des gares (`lib/timetable/lines.ts`, testé) : paires de gares **consécutives** des chemins Infrabel (`train_paths`,
+  toutes les gares traversées, donc pas de raccourci par les trains rapides), arêtes rares écartées, raccourcis retirés
+  (le moins chargé d'abord s'il existe un détour ≤ 8 gares), tronc = chemin le plus chargé, embranchements listés ensuite ;
+  **sens et km** par les sections Infrabel « lijnsecties » (CC0, 2,5 Mo, facultatif) ; morceau qui prolonge le tronc sans
+  chevauchement kilométrique rattaché avec un trou signalé (L.161 : La Hulpe → Ottignies passe sous le n° 161A). Local :
+  86 lignes (68 orientées par les km). District d'une ligne = majorité des districts de ses gares, **calculé à la lecture**
+  depuis `stations` (une correction dans Ressources › Gares se voit aussitôt). Vue « par ligne » de Ressources › Trains
+  ordonnée par `rail_lines`. **Décision provisoire (à confirmer)** : `line_stations` (BACO) et **Admin › Lignes et arrêts**
+  restent tels quels (source des itinéraires des bons bus, de `resolveStationTerms` et des perturbations iRail par district
+  `districtStations`), avec une note dans l'admin ; aucune correction manuelle sur `rail_lines`. Schaerbeek n'apparaît plus
+  sur la L.161 du nouveau référentiel (les trains de la L.161 partent de Bruxelles-Nord dans les données Infrabel).
+  418 contrôles de règles.
 
 ---
 

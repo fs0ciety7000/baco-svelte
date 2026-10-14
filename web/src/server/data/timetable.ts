@@ -297,14 +297,9 @@ export async function lineBoard(
       batch: 1000,
     }),
     pb
-      .collection("line_stations")
-      .getFullList({
-        filter: pb.filter("line = {:a} || line = {:b}", { a: line, b: `L.${line}` }),
-        sort: "position",
-        fields: "station",
-        batch: 1000,
-      })
-      .catch(() => []),
+      .collection("rail_lines")
+      .getFirstListItem(pb.filter("line = {:l}", { l: line }), { fields: "stations" })
+      .catch(() => null),
   ]);
   const by = new Map<string, LineStation & { order: number }>();
   let longest: ServiceStop[] = [];
@@ -321,8 +316,11 @@ export async function lineBoard(
       by.set(st.n, cur);
     }
   }
-  // Ordre : référentiel des lignes (gares du sud), sinon le train qui parcourt le plus de gares de la ligne.
-  const refOrder = new Map(ref.map((r, i) => [foldStation(str(r.station)), i]));
+  // Ordre : gares de la ligne (Ressources › Lignes, construit avec ce référentiel), sinon le train qui parcourt le plus de
+  // gares de la ligne.
+  const refOrder = new Map(
+    arr<{ n?: unknown }>(ref?.stations).map((r, i) => [foldStation(str(r?.n)), i]),
+  );
   const longOrder = new Map(longest.map((st, i) => [foldStation(st.n), i]));
   for (const s of by.values()) {
     const k = foldStation(s.name);

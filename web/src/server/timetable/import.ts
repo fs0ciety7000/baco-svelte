@@ -12,6 +12,12 @@ import { addDays, brusselsDay } from "@/lib/orders/time";
 import { csvReader } from "@/lib/timetable/csv";
 import { timetableBuilder } from "@/lib/timetable/gtfs";
 import { opPointsFrom, pathCollector, type TrainPath } from "@/lib/timetable/infrabel";
+import {
+  buildRailLines,
+  sectionsFrom,
+  stationIndex,
+  type LineSection,
+} from "@/lib/timetable/lines";
 import { referenceWeek } from "@/lib/timetable/model";
 import { buildStations } from "@/lib/timetable/stations";
 import { env } from "@/server/env";
@@ -23,10 +29,13 @@ import { entryLines, zipEntries } from "./zip";
 //     PocketBase ; au premier passage (ou s'il en manque), fin du fichier mensuel précédent pour couvrir une semaine.
 //  2. GTFS SNCB : semaine de référence (aujourd'hui + 6 jours), arrêts et passages, jointure sur le n° de train.
 //  3. Écriture par lots dans PocketBase (routes internes), puis suppression de ce qui n'existe plus.
+//  4. Lignes (Ressources › Lignes) : gares de chaque ligne dans l'ordre, déduites des chemins Infrabel ; sens et points
+//     kilométriques par les sections de lignes Infrabel (« lijnsecties », CC0 ; facultatif : sans elles, ordre gardé).
 
 const INFRABEL = "https://opendata.infrabel.be/api/explore/v2.1/catalog/datasets";
 const OP_URL = `${INFRABEL}/operationele-punten-van-het-netwerk/exports/csv?delimiter=%3B&select=geo_point_2d,symbolicname,longnamedutch,commerciallongnamefrench,commerciallongnamedutch,classification`;
 const D1_URL = `${INFRABEL}/ruwe-gegevens-van-stiptheid-d-1/exports/csv?delimiter=%3B`;
+const SECTIONS_URL = `${INFRABEL}/lijnsecties/exports/csv?delimiter=%3B&select=label,symnamefrom,symnameto,mfrom,mto`;
 const MONTHLY_URL = (ym: string) =>
   `https://fr.ftp.opendatasoft.com/infrabel/PunctualityHistory/Data_raw_punctuality_${ym}.csv`;
 /** Fin du fichier mensuel lue au rattrapage : ~60 Mo ≈ les 5 à 6 derniers jours du mois. */
@@ -49,6 +58,7 @@ export type TimetableStatus = {
   services?: number;
   relations?: number;
   stations?: number;
+  lines?: number;
   lastOkAt?: string;
   /** Mois Infrabel (AAAAMM) déjà lu en rattrapage : une fois par mois, jamais bloquant. */
   backfill?: string;
@@ -172,6 +182,17 @@ async function readMonthlyTail(
     if (r) collector.add(r);
   }
   return true;
+}
+
+/** Sections de lignes Infrabel (sens et points kilométriques des lignes). */
+async function readSections(): Promise<LineSection[]> {
+  const rows: Record<string, string>[] = [];
+  const read = csvReader(";");
+  for await (const line of responseLines(await get(SECTIONS_URL))) {
+    const r = read(line);
+    if (r) rows.push(r);
+  }
+  return sectionsFrom(rows);
 }
 
 /** AAAAMM du mois qui précède `day` de `back` mois. */
@@ -318,10 +339,28 @@ async function doImport(trigger: string): Promise<TimetableStatus> {
     await inBatches(stations, 300, (batch) =>
       internal("stations", { body: { items: batch.map((st) => ({ ...st, sig: sig(st) })) } }),
     );
+    // Lignes : gares dans l'ordre, tirées de tous les chemins Infrabel accumulés (60 jours).
+    step = "lignes";
+    await setStatus({ step });
+    let sections: LineSection[] = [];
+    try {
+      sections = await readSections();
+    } catch (e) {
+      warning ||=
+        `Sections de lignes Infrabel : ${e instanceof Error ? e.message : String(e)}`.slice(0, 300);
+    }
+    const lines = buildRailLines(paths, { station: stationIndex(stations), sections });
+    await inBatches(lines, 50, (batch) =>
+      internal("lines", { body: { items: batch.map((l) => ({ ...l, sig: sig(l) })) } }),
+    );
     // Propositions de district pour les gares qui n'en ont pas (validées ensuite par un coordinateur).
     await internal("../stations/suggest", { body: {} });
     await internal("finish", {
-      body: { services: services.map((s) => s.key), relations: relations.map((r) => r.key) },
+      body: {
+        services: services.map((s) => s.key),
+        relations: relations.map((r) => r.key),
+        lines: lines.map((l) => l.line),
+      },
     });
     const finishedAt = new Date().toISOString();
     return await setStatus({
@@ -337,6 +376,7 @@ async function doImport(trigger: string): Promise<TimetableStatus> {
       services: services.length,
       relations: relations.length,
       stations: stations.length,
+      lines: lines.length,
       backfill,
       warning,
     });

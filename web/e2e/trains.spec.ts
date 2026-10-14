@@ -40,16 +40,20 @@ const stops = (pass = false) => [
 let REL = "IC98";
 let N1 = 99801;
 let N2 = 99802;
+/** Ligne fictive de Ressources › Lignes. */
+let LN = "998";
 
 test.beforeAll(async ({}, info) => {
   // Les deux formats tournent en parallèle : données distinctes par projet.
-  if (info.project.name !== "desktop") [REL, N1, N2] = ["IC97", 99811, 99812];
+  if (info.project.name !== "desktop") [REL, N1, N2, LN] = ["IC97", 99811, 99812, "997"];
   token = (await pb("POST", "/api/collections/_superusers/auth-with-password", SU)).token;
   // Restes d'un passage interrompu : supprimés d'abord (clés fixes).
   for (const [col, filter] of [
     ["train_services", `key="${N1}:e2e" || key="${N2}:e2e"`],
     ["train_relations", `key="${REL}"`],
     ["stations", `key~"gare e2e"`],
+    ["rail_lines", `line="${LN}"`],
+    ["stations", `key="lignes e2e ${info.project.name}"`],
   ]) {
     const old = await pb(
       "GET",
@@ -196,4 +200,77 @@ test("gares : recherche par alias, district modifiable", async ({ page }, info) 
   await expect(page.getByText(`${name} : district enregistré.`)).toBeVisible();
   const rec = await pb("GET", `/api/collections/stations/records/${st.id}`);
   expect(rec).toMatchObject({ district: "DSE", district_manual: true });
+});
+
+test("lignes : liste, filtres district et gare, gares dans l'ordre", async ({ page }, info) => {
+  const p = info.project.name;
+  const gare = `Lignes E2E ${p}`;
+  const abbr = `LE2E${p === "desktop" ? "D" : "M"}`;
+  const st = await pb("POST", "/api/collections/stations/records", {
+    key: `lignes e2e ${p}`,
+    name: gare,
+    abbr,
+    country: "BE",
+    district: "DSO",
+    search_key: `|lignes e2e ${p}|`,
+    lines: [LN],
+    served: true,
+  });
+  created.push({ col: "stations", id: st.id });
+  const line = await pb("POST", "/api/collections/rail_lines/records", {
+    line: LN,
+    name: `${gare} – Terminus E2E`,
+    stations: [
+      { n: gare, a: abbr, km: 0.4 },
+      { n: "Milieu E2E" },
+      { n: "Reprise E2E", g: 1, km: 12.5 },
+      { n: "Terminus E2E", km: 20 },
+      { n: "Antenne E2E", b: 1 },
+    ],
+    branches: [{ b: 1, from: "Milieu E2E", to: "Antenne E2E" }],
+    count: 5,
+    oriented: true,
+  });
+  created.push({ col: "rail_lines", id: line.id });
+
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page, "/referentiels/lignes");
+  // Recherche par gare (nom ou abréviation PtCar) : la ligne fictive seule.
+  await page.goto(`/referentiels/lignes?gare=${encodeURIComponent(gare)}`);
+  const grid = page.getByTestId("lines-grid");
+  await expect(grid.getByText(`L.${LN}`)).toBeVisible();
+  await expect(grid.getByRole("link")).toHaveCount(1);
+  await page.goto(`/referentiels/lignes?gare=${abbr}`);
+  await expect(grid.getByText(`L.${LN}`)).toBeVisible();
+  // District majoritaire tiré de Ressources › Gares (seule gare avec un district : DSO).
+  await page.goto("/referentiels/lignes?district=DSO");
+  await expect(grid.getByText(`L.${LN}`)).toBeVisible();
+  await noHorizontalScroll(page);
+  await page.screenshot({ path: `test-results/lignes-liste-${p}.png`, fullPage: true });
+  await page.goto("/referentiels/lignes?district=DCE");
+  await expect(page.getByTestId("lines-grid").getByText(`L.${LN}`)).toHaveCount(0);
+
+  // Fiche : « L.998 » accepté, tronc dans l'ordre avec la reprise signalée, embranchement, liens vers Trains.
+  await page.goto(`/referentiels/lignes?ligne=L.${LN}`);
+  const detail = page.getByTestId("line-detail");
+  await expect(detail.getByText(`${gare} – Terminus E2E`)).toBeVisible();
+  const trunk = detail.getByTestId("line-stations");
+  await expect(trunk.getByRole("listitem")).toHaveCount(4);
+  await expect(trunk.getByRole("listitem").nth(2)).toContainText("Reprise E2E");
+  await expect(trunk.getByText("Section parcourue sous un autre n° de ligne")).toBeVisible();
+  await expect(trunk.getByText("km 12,5")).toBeVisible();
+  await expect(detail.getByTestId("line-branch-1")).toContainText("Antenne E2E");
+  await expect(detail.getByText("Embranchement depuis Milieu E2E")).toBeVisible();
+  await expect(trunk.getByRole("link", { name: gare })).toHaveAttribute(
+    "href",
+    `/referentiels/trains?vue=gare&gare=${encodeURIComponent(gare).replace(/%20/g, "+")}`,
+  );
+  await expect(detail.getByRole("link", { name: /Relations sur la ligne/ })).toHaveAttribute(
+    "href",
+    `/referentiels/trains?vue=ligne&ligne=${LN}`,
+  );
+  await noHorizontalScroll(page);
+  await page.screenshot({ path: `test-results/lignes-fiche-${p}.png`, fullPage: true });
+  expect(errors).toEqual([]);
 });

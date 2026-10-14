@@ -455,3 +455,13 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `/changelog` appellent `acknowledgeChangelog` (`app/changelog-actions.ts` : `preferences.changelogSeen`, jamais en arrière ni
   au-delà de la version livrée). E2E : `e2e/global-setup.ts` met `changelogSeen = 9999.12.31` aux comptes E2E communs ;
   `e2e/changelog.spec.ts` crée ses comptes jetables. `E2E_BASE_URL` change le port de Playwright en local.
+- **Ressources › Lignes** (`/referentiels/lignes`, 14 oct. 2026) : lit `rail_lines` (plus `line_stations`). Ordre pur
+  `lib/timetable/lines.ts` (`buildRailLines`, `sectionsFrom`, `stationIndex`, `lineDistrict` ; testé : sens inverse,
+  raccourci, embranchement, bifurcation entre deux gares, trou kilométrique, point non voyageur) appelé par l'import après les
+  gares (`readSections` : « lijnsecties » Infrabel, échec = avertissement, ordre gardé sans sens). Données
+  `server/data/referentiels.ts` : `listLines(gare)` (district majoritaire calculé depuis `stations`, recherche
+  `resolveStationTerms` + abréviation exacte) et `getLineDetail(ligne)` (« L.96 » ou « 96 » via `normLine` ; PN et SPI
+  cherchés sous « 96 », « L.96 », « L96 », « L 96 »). `lineBoard` (Trains › par ligne) ordonne par `rail_lines`.
+  `line_stations` reste lue par les bons bus (`lib/orders/stops.ts`, `server/data/orders.ts`), `resolveStationTerms`,
+  `districtStations` (ops) et Admin › Lignes et arrêts (note : ne touche pas Ressources › Lignes). E2E : test « lignes » de
+  `e2e/trains.spec.ts` (ligne fictive 998 / 997) ; `E2E_BASE_URL` change le port de Playwright en local.
