@@ -11,7 +11,8 @@ import { LiveHighlight } from "@/components/ui/live-highlight";
 import { EmptyState, Skeleton } from "@/components/ui/misc";
 import { Sheet } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/status-badge";
-import { Table, Td, Th, THead, Tr } from "@/components/ui/table";
+import { ScrollTable } from "@/components/ui/scroll-table";
+import { Td, Th, THead, Tr } from "@/components/ui/table";
 import { toast } from "@/components/ui/toast";
 import { safeCall } from "@/lib/orders/safe-call";
 import { formatDay, pbDate } from "@/lib/orders/time";
@@ -279,17 +280,24 @@ export function AssistBoard({
               </h2>
             ) : null}
             <div className="hidden md:block">
-              <Table>
+              {/* Défilement horizontal propre (15 oct. 2026) : train collant, en-tête collé, District et Réf. DICOS
+                  masqués quand la place manque (panneau ancré ; ils restent dans le panneau de la mission). */}
+              <ScrollTable
+                label={d ? `Missions PMR du ${formatDay(d)}` : "Missions PMR"}
+                stickyFirst
+                stickyLast
+                data-testid="assists-scroll"
+              >
                 <THead>
                   <tr>
                     <Th>Train</Th>
                     {!groupByDay ? <Th>Date</Th> : null}
                     <Th>Heure</Th>
                     <Th>Trajet (départ → arrivée)</Th>
-                    <Th>District</Th>
+                    <Th className="hidden @5xl:table-cell">District</Th>
                     <Th>Sens</Th>
                     <Th>Voyageur</Th>
-                    <Th>Réf. DICOS</Th>
+                    <Th className="hidden @6xl:table-cell">Réf. DICOS</Th>
                     <Th>Statut</Th>
                     <Th>Copier</Th>
                   </tr>
@@ -326,22 +334,24 @@ export function AssistBoard({
                           {a.time || "--:--"}
                         </button>
                       </Td>
-                      <Td className="max-w-72">
+                      <Td className="min-w-52 max-w-80">
                         <RouteText a={a} district={district} barred={a.status === "annulee"} />
                       </Td>
-                      <Td className="font-mono whitespace-nowrap text-fg-muted">
+                      <Td className="hidden font-mono whitespace-nowrap text-fg-muted @5xl:table-cell">
                         {districtsOf(a) || "—"}
                       </Td>
                       <Td>
                         <IoBadges leg={legOf(a)} district={district} />
                       </Td>
-                      <Td className="max-w-56 truncate">
+                      <Td className="max-w-56 min-w-32 truncate">
                         {a.pax} × {a.pmrType || "type ?"}
                         {canPmr && a.clientName ? (
                           <span className="text-fg-muted"> · {a.clientName}</span>
                         ) : null}
                       </Td>
-                      <Td className="font-mono text-small text-fg-muted">{a.dicosRef || "—"}</Td>
+                      <Td className="hidden font-mono text-small whitespace-nowrap text-fg-muted @6xl:table-cell">
+                        {a.dicosRef || "—"}
+                      </Td>
                       <Td>
                         <span className="inline-flex flex-wrap items-center gap-1.5">
                           <AssistBadge status={a.status} />
@@ -354,7 +364,7 @@ export function AssistBoard({
                     </Tr>
                   ))}
                 </tbody>
-              </Table>
+              </ScrollTable>
             </div>
             <ul
               className="flex flex-col gap-2 md:hidden"

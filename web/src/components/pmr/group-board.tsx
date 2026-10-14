@@ -6,7 +6,8 @@ import { pl } from "@/lib/utils";
 import { LiveHighlight } from "@/components/ui/live-highlight";
 import { Sheet } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/status-badge";
-import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
+import { ScrollTable } from "@/components/ui/scroll-table";
+import { ListCard, Td, Th, THead, Tr } from "@/components/ui/table";
 import { formatDay } from "@/lib/orders/time";
 import { inDistricts, districtsLabel } from "@/lib/pmr/district-filter";
 import { DISTRICT_LABEL } from "@/lib/pmr/districts";
@@ -92,7 +93,12 @@ export function GroupBoard({
               {formatDay(d)} · {list.length} {pl(list.length, "trajet")}
             </h2>
             <div className="hidden md:block">
-              <Table>
+              {/* Défilement horizontal propre (15 oct. 2026) : train collant, en-tête collé. */}
+              <ScrollTable
+                label={`Groupes du ${formatDay(d)}`}
+                stickyFirst
+                data-testid="groups-scroll"
+              >
                 <THead>
                   <tr>
                     <Th>Train</Th>
@@ -100,9 +106,9 @@ export function GroupBoard({
                     <Th>Trajet (départ → arrivée)</Th>
                     <Th>Sens</Th>
                     <Th>Groupe</Th>
-                    <Th>Adultes</Th>
-                    <Th>Enfants</Th>
-                    <Th>Seniors</Th>
+                    <Th numeric>Adultes</Th>
+                    <Th numeric>Enfants</Th>
+                    <Th numeric>Seniors</Th>
                     <Th>Statut</Th>
                   </tr>
                 </THead>
@@ -122,7 +128,7 @@ export function GroupBoard({
                         </span>
                       </Td>
                       <Td className="font-mono tabular">{g.time || g.arrTime || "—"}</Td>
-                      <Td>
+                      <Td className="min-w-52 max-w-80">
                         <Route g={g} district={district} />
                       </Td>
                       <Td>
@@ -140,9 +146,9 @@ export function GroupBoard({
                           {g.groupName || "Groupe"}
                         </button>
                       </Td>
-                      <Td className="tabular">{g.adults}</Td>
-                      <Td className="tabular">{g.children}</Td>
-                      <Td className="tabular">{g.seniors}</Td>
+                      <Td numeric>{g.adults}</Td>
+                      <Td numeric>{g.children}</Td>
+                      <Td numeric>{g.seniors}</Td>
                       <Td>
                         <span className="inline-flex flex-wrap items-center gap-1.5">
                           <Badge tone={STATUS[g.status].tone}>{STATUS[g.status].label}</Badge>
@@ -152,7 +158,7 @@ export function GroupBoard({
                     </Tr>
                   ))}
                 </tbody>
-              </Table>
+              </ScrollTable>
             </div>
             <ul className="flex flex-col gap-2 md:hidden" data-hl-scope="groups">
               {list.map((g) => (

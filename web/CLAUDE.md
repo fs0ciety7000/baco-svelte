@@ -147,6 +147,12 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `aleaDwell` (`pmr/actions.ts`) : horaire **ATMS** (`train_schedules`, poussé par l'extension via
   `POST /api/pmr/schedules/ingest`, mapping `lib/pmr/atms.ts`) d'abord, **iRail** en repli (60 trains max, 3 en parallèle). `copy.tsx` (`copyLabel`,
   `CopyButton`), `train-chip.tsx` (train en première colonne).
+- **Tableaux larges** (15 oct. 2026, tableau coupé à droite) : `ScrollTable` (`components/ui/scroll-table.tsx`, client) =
+  défilement dans le cadre (hauteur bornée à l'écran : en-tête collé, barre horizontale fine visible), ombres de bord
+  (`scrollEdges`, `lib/scroll-edges.ts`, testé), `stickyFirst` (Train) et `stickyLast` (Copier) collants, zone
+  focalisable nommée, `@container` : colonnes secondaires masquées par `hidden @5xl:table-cell` (District) / `@6xl`
+  (Réf. DICOS), visibles dans le panneau. Une ligne pleine largeur porte `data-band` (exclue des colonnes collantes).
+  Utilisé par Missions PMR et Groupes (et `/design`).
 - E2E `e2e/pmr.spec.ts` (fixtures superuser, captures `test-results/pmr-*`).
 
 ## Module Opérations (étape 5, session 3)
