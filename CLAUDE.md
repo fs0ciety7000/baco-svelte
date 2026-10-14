@@ -1268,6 +1268,18 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   **archivage** : bon envoyé ou annulé depuis plus de 30 jours hors des listes courantes, visible dans Commandes › Archives
   (« Bons archivés »), fiche et ⌘K avec badge « Archivé », rien de supprimé ; la B201 garde tous les bons.
 
+- 2026-10-15 — **Lot B (Opérations, Commandes, PMR)**, branche `ops-b201-pmr` (non poussée) : **Relève → « B201 »**
+  (`/operations/b201`, onglet ouvert à `journal:read` OU `b201:read`) = synthèse de la relève (jour même) + **notes et
+  commentaires du jour en Markdown** (barre d'outils, aperçu sûr du Journal, enregistrement automatique, verrou optimiste,
+  auteur / heure, versions du jour tenues par un hook) + transports du jour ; Ressources › B201, `/operations/releve` et
+  `/commandes/b201` redirigent (308). Toujours **une fiche par jour** (le district ne filtre que l'affichage, comme
+  l'ancienne remise) ; migration `1760004830` (`content`, `versions` ; anciens commentaires par période convertis en
+  Markdown, `notes` gardé et relu si `content` est vide). PDF B201 : notes + synthèse + transports. **Fournisseurs** :
+  lignes desservies choisies en masse dans `rail_lines` (plus de saisie libre, anciennes valeurs « hors référentiel »).
+  **Missions PMR / Groupes** : `ScrollTable` (défilement dans le cadre, Train et Copier collants, colonnes secondaires
+  masquées par requête de conteneur) et **repère « maintenant »** (ligne, passées estompées, prochaine, mini-frise,
+  « Aller à maintenant »). 615 contrôles de règles.
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)
