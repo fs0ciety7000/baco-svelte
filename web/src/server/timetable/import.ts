@@ -13,6 +13,7 @@ import { csvReader } from "@/lib/timetable/csv";
 import { timetableBuilder } from "@/lib/timetable/gtfs";
 import { opPointsFrom, pathCollector, type TrainPath } from "@/lib/timetable/infrabel";
 import { referenceWeek } from "@/lib/timetable/model";
+import { buildStations } from "@/lib/timetable/stations";
 import { env } from "@/server/env";
 
 import { entryLines, zipEntries } from "./zip";
@@ -24,7 +25,7 @@ import { entryLines, zipEntries } from "./zip";
 //  3. Écriture par lots dans PocketBase (routes internes), puis suppression de ce qui n'existe plus.
 
 const INFRABEL = "https://opendata.infrabel.be/api/explore/v2.1/catalog/datasets";
-const OP_URL = `${INFRABEL}/operationele-punten-van-het-netwerk/exports/csv?delimiter=%3B&select=longnamedutch,commerciallongnamefrench,commerciallongnamedutch,classification`;
+const OP_URL = `${INFRABEL}/operationele-punten-van-het-netwerk/exports/csv?delimiter=%3B&select=symbolicname,longnamedutch,commerciallongnamefrench,commerciallongnamedutch,classification`;
 const D1_URL = `${INFRABEL}/ruwe-gegevens-van-stiptheid-d-1/exports/csv?delimiter=%3B`;
 const MONTHLY_URL = (ym: string) =>
   `https://fr.ftp.opendatasoft.com/infrabel/PunctualityHistory/Data_raw_punctuality_${ym}.csv`;
@@ -47,6 +48,7 @@ export type TimetableStatus = {
   paths?: number;
   services?: number;
   relations?: number;
+  stations?: number;
   lastOkAt?: string;
   /** Mois Infrabel (AAAAMM) déjà lu en rattrapage : une fois par mois, jamais bloquant. */
   backfill?: string;
@@ -311,6 +313,11 @@ async function doImport(trigger: string): Promise<TimetableStatus> {
     await inBatches(relations, 100, (batch) =>
       internal("relations", { body: { items: batch.map((r) => ({ ...r, sig: sig(r) })) } }),
     );
+    // Référentiel des gares (district gardé s'il a été modifié à la main).
+    const stations = buildStations(builder.stationSeeds(services), ops);
+    await inBatches(stations, 300, (batch) =>
+      internal("stations", { body: { items: batch.map((st) => ({ ...st, sig: sig(st) })) } }),
+    );
     await internal("finish", {
       body: { services: services.map((s) => s.key), relations: relations.map((r) => r.key) },
     });
@@ -327,6 +334,7 @@ async function doImport(trigger: string): Promise<TimetableStatus> {
       paths: paths.length,
       services: services.length,
       relations: relations.length,
+      stations: stations.length,
       backfill,
       warning,
     });

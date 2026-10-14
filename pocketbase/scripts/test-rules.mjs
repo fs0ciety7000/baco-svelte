@@ -993,7 +993,7 @@ try {
 		// Lectures nominatives ou hors /tv : refusées, même avec un droit accordé.
 		await api('PATCH', `/api/collections/users/records/${sc.json.id}`, { token: root, body: { grants: ['pmr:read', 'generate_taxi:read', 'repertoire:read', 'dicos:write'] } });
 		const stok2 = (await api('POST', '/api/collections/users/auth-with-password', { body: { identity: sc.json.email, password: spass } })).json?.token;
-		for (const c of ['train_services', 'train_relations', 'train_paths', 'taxi_orders', 'group_missions', 'pmr_mission', 'pmr_clients', 'pmr_assist_legacy', 'directory_contacts', 'audit_log', 'line_stations', 'changelog', 'order_events', 'pmr_events', 'connector_tokens', 'train_schedules', 'b201_reports', 'level_crossings']) {
+		for (const c of ['stations', 'train_services', 'train_relations', 'train_paths', 'taxi_orders', 'group_missions', 'pmr_mission', 'pmr_clients', 'pmr_assist_legacy', 'directory_contacts', 'audit_log', 'line_stations', 'changelog', 'order_events', 'pmr_events', 'connector_tokens', 'train_schedules', 'b201_reports', 'level_crossings']) {
 			const r = await api('GET', `/api/collections/${c}/records?perPage=1`, { token: stok2 });
 			check(`écran ne lit pas ${c} (même avec un droit accordé)`, r.status !== 200 || r.json.totalItems === 0, `HTTP ${r.status} ${r.json?.totalItems}`);
 		}
@@ -1192,6 +1192,31 @@ try {
 		check(`invité ne lit pas ${c}`, gr.status !== 200 || gr.json.totalItems === 0, `HTTP ${gr.status} ${gr.json?.totalItems}`);
 		const cw = await api('POST', `/api/collections/${c}/records`, { token: roles.admin.token, body: { key: `x-${suffix}`, number: 1 } });
 		check(`admin n'écrit pas ${c} par l'API`, cw.status >= 400, `HTTP ${cw.status}`);
+	}
+	// Référentiel des gares (1760003700) : lecture des agents, district seul modifiable (ptcar:update), import seul crée.
+	const stRec = await api('POST', '/api/collections/stations/records', { token: root, body: { key: `gare test ${suffix}`, name: `Gare test ${suffix}`, country: 'BE' } });
+	check('superuser crée une gare de test', stRec.status === 200, `HTTP ${stRec.status}`);
+	if (stRec.status === 200) {
+		const sid = stRec.json.id;
+		const rd = await api('GET', `/api/collections/stations/records/${sid}`, { token: roles.reader.token });
+		check('invité lit une gare', rd.status === 200, `HTTP ${rd.status}`);
+		const pc = await api('POST', '/api/collections/stations/records', { token: roles.admin.token, body: { key: `x-${suffix}`, name: 'X', updated_by: roles.admin.id } });
+		check("admin ne crée pas de gare par l'API", pc.status >= 400, `HTTP ${pc.status}`);
+		const pu = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.user.token, body: { district: 'DSO', updated_by: roles.user.id } });
+		check('PACO/RCCA modifie le district (marqué manuel)', pu.status === 200 && pu.json.district === 'DSO' && pu.json.district_manual === true, `HTTP ${pu.status} ${pu.json?.district} ${pu.json?.district_manual}`);
+		const pn = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.user.token, body: { name: 'Renommée', updated_by: roles.user.id } });
+		check('PACO/RCCA ne renomme pas une gare', pn.status >= 400, `HTTP ${pn.status}`);
+		const gu = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.reader.token, body: { district: 'DSE', updated_by: roles.reader.id } });
+		check("invité ne modifie pas le district", gu.status >= 400, `HTTP ${gu.status}`);
+		const fu = await api('PATCH', `/api/collections/stations/records/${sid}`, { token: roles.user.token, body: { district: 'DSE', updated_by: roles.admin.id } });
+		check('auteur de modification non forgeable', fu.status >= 400, `HTTP ${fu.status}`);
+		const pd = await api('DELETE', `/api/collections/stations/records/${sid}`, { token: roles.admin.token });
+		check("admin ne supprime pas de gare par l'API", pd.status >= 400, `HTTP ${pd.status}`);
+		await api('DELETE', `/api/collections/stations/records/${sid}`, { token: root });
+	}
+	for (const [method, route] of [['POST', '/api/csm/timetable/stations'], ['GET', '/api/csm/stations/districts']]) {
+		const r = await api(method, route, { token: roles.admin.token, body: method === 'POST' ? { items: [] } : undefined });
+		check(`route interne ${route} fermée sans secret (même admin)`, r.status === 404, `HTTP ${r.status}`);
 	}
 	const tpaths = await api('GET', '/api/collections/train_paths/records?perPage=1', { token: roles.admin.token });
 	check("train_paths fermé à l'API (même admin)", tpaths.status !== 200 || tpaths.json.totalItems === 0, `HTTP ${tpaths.status} ${tpaths.json?.totalItems}`);

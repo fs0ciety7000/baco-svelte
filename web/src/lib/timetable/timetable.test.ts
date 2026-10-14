@@ -318,3 +318,64 @@ describe("GTFS", () => {
     expect(services.every((s) => s.relationSource !== "infrabel")).toBe(true);
   });
 });
+
+describe("référentiel des gares", () => {
+  it("pays, alias des gares frontière, district proposé, abréviation Infrabel", async () => {
+    const { buildStations, countryOf, aliasesOf } = await import("./stations");
+    expect(countryOf("Maubeuge (FR)")).toBe("FR");
+    expect(countryOf("Mons")).toBe("BE");
+    expect(aliasesOf("Aachen Hbf (DE)", ["Aken (DE)"])).toEqual([
+      "Aachen Hbf",
+      "Aachen",
+      "Aken (DE)",
+    ]);
+    const ops = opPointsFrom([
+      {
+        symbolicname: "FMS",
+        longnamedutch: "BERGEN",
+        commerciallongnamefrench: "Mons",
+        commerciallongnamedutch: "Bergen",
+        classification: "Station",
+      },
+    ]);
+    const list = buildStations(
+      [
+        { name: "Mons", nl: "Bergen", uic: "8881000", lines: ["96", "97"], served: true },
+        { name: "Mons", lines: ["118"], served: true },
+        { name: "Maubeuge (FR)", lines: [], served: true },
+        { name: "Ghlin", lines: ["96"], served: false },
+      ],
+      ops,
+    );
+    const mons = list.find((s) => s.name === "Mons")!;
+    expect(mons).toMatchObject({
+      abbr: "FMS",
+      country: "BE",
+      district: "DSO",
+      uic: "8881000",
+      served: true,
+    });
+    expect(mons.lines).toEqual(["96", "97", "118"]);
+    expect(mons.searchKey).toContain("|bergen|");
+    const maubeuge = list.find((s) => s.name === "Maubeuge (FR)")!;
+    expect(maubeuge).toMatchObject({ country: "FR", district: "DSO", aliases: ["Maubeuge"] });
+    expect(list.find((s) => s.name === "Ghlin")!.served).toBe(false);
+  });
+});
+
+describe("districts du référentiel", () => {
+  it("le référentiel des gares prime sur la table figée", async () => {
+    const { districtForStation, setDistrictOverrides } = await import("@/lib/pmr/districts");
+    expect(districtForStation("Mons")).toBe("DSO");
+    setDistrictOverrides([
+      { names: ["Mons", "Bergen"], district: "DSE", manual: true },
+      { names: ["Bruxelles-Midi"], district: "", manual: true },
+      { names: ["Tournai"], district: "", manual: false },
+    ]);
+    expect(districtForStation("Bergen")).toBe("DSE");
+    expect(districtForStation("Bruxelles-Midi")).toBe("");
+    expect(districtForStation("Tournai")).toBe("DSO"); // sans district imposé : table figée
+    setDistrictOverrides(null);
+    expect(districtForStation("Mons")).toBe("DSO");
+  });
+});

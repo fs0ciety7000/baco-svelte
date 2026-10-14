@@ -16,29 +16,47 @@ import { readSessionToken } from "./session";
 
 const TTL = 10 * 60_000;
 type Entry = { at: number; refs: StationRef[] };
-const store = globalThis as unknown as { __csmStations?: { ptcar?: Entry; lines?: Entry } };
+const store = globalThis as unknown as {
+  __csmStations?: { ptcar?: Entry; lines?: Entry; stations?: Entry };
+};
 const mem = (store.__csmStations ??= {});
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 
-async function load(kind: "ptcar" | "lines", pb: PocketBase): Promise<StationRef[]> {
+async function load(kind: "ptcar" | "lines" | "stations", pb: PocketBase): Promise<StationRef[]> {
   const hit = mem[kind];
   if (hit && Date.now() - hit.at < TTL) return hit.refs;
   try {
     const refs: StationRef[] =
-      kind === "ptcar"
-        ? (
+      kind === "stations"
+        ? // Référentiel des gares (14 oct. 2026) : noms FR / NL et alias (gares frontière : « Maubeuge » → « Maubeuge (FR) »).
+          (
             await pb
-              .collection("ptcar")
-              .getFullList({ fields: "abbr,name_fr,name_nl", batch: 1000 })
-          ).map((r) => ({ abbr: str(r.abbr), names: [str(r.name_fr), str(r.name_nl)] }))
-        : [
-            ...new Set(
-              (
-                await pb.collection("line_stations").getFullList({ fields: "station", batch: 1000 })
-              ).map((r) => str(r.station)),
-            ),
-          ].map((s) => ({ names: [s] }));
+              .collection("stations")
+              .getFullList({ fields: "abbr,name,name_nl,aliases", batch: 1000 })
+          ).map((r) => ({
+            abbr: str(r.abbr),
+            names: [
+              str(r.name),
+              str(r.name_nl),
+              ...(Array.isArray(r.aliases) ? r.aliases.map(str) : []),
+            ],
+          }))
+        : kind === "ptcar"
+          ? (
+              await pb
+                .collection("ptcar")
+                .getFullList({ fields: "abbr,name_fr,name_nl", batch: 1000 })
+            ).map((r) => ({ abbr: str(r.abbr), names: [str(r.name_fr), str(r.name_nl)] }))
+          : [
+              ...new Set(
+                (
+                  await pb
+                    .collection("line_stations")
+                    .getFullList({ fields: "station", batch: 1000 })
+                ).map((r) => str(r.station)),
+              ),
+            ].map((s) => ({ names: [s] }));
     // Un référentiel vide (accès refusé, base neuve) n'est pas gardé : nouvel essai à la prochaine recherche.
     if (refs.length) mem[kind] = { at: Date.now(), refs };
     return refs;
@@ -54,11 +72,12 @@ export async function resolveStationTerms(query: string | undefined, max = 12): 
   const user = await getCurrentUser();
   if (!user) return [q];
   const pb = createPb(await readSessionToken());
-  const [ptcar, lines] = await Promise.all([
+  const [ptcar, lines, stations] = await Promise.all([
     can(user, "ptcar:read") ? load("ptcar", pb) : Promise.resolve([] as StationRef[]),
     load("lines", pb),
+    load("stations", pb),
   ]);
-  return stationTerms(q, stationCandidates(q, [...ptcar, ...lines], max), max);
+  return stationTerms(q, stationCandidates(q, [...stations, ...ptcar, ...lines], max), max);
 }
 
 /**

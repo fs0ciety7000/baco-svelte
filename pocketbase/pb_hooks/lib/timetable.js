@@ -203,3 +203,64 @@ function prune(app, name, keys) {
 }
 
 module.exports = { allowed, readStatus, writeStatus, upsertPaths, listPaths, upsert, prune };
+
+// --- Référentiel des gares --------------------------------------------------------------------------------------------
+
+const DISTRICTS = ['DSO', 'DSE', 'DCE'];
+
+function upsertStations(app, items) {
+	const col = app.findCollectionByNameOrId('stations');
+	let saved = 0;
+	let same = 0;
+	app.runInTransaction((tx) => {
+		for (const it of items) {
+			const key = str(it.key, 120);
+			if (!key || !it.name) continue;
+			let rec;
+			try {
+				rec = tx.findFirstRecordByData('stations', 'key', key);
+				if (it.sig && rec.getString('sig_import') === str(it.sig, 20)) {
+					same++;
+					continue;
+				}
+			} catch (_) {
+				rec = new Record(col);
+				rec.set('key', key);
+			}
+			rec.set('name', str(it.name, 120));
+			rec.set('name_nl', str(it.nameNl, 120));
+			rec.set('abbr', str(it.abbr, 12));
+			rec.set('uic', str(it.uic, 12));
+			rec.set('country', str(it.country, 2));
+			rec.set('aliases', Array.isArray(it.aliases) ? it.aliases.slice(0, 30).map((a) => str(a, 120)) : []);
+			rec.set('lines', Array.isArray(it.lines) ? it.lines.slice(0, 40).map((a) => str(a, 12)) : []);
+			rec.set('search_key', str(it.searchKey, 2000));
+			rec.set('served', !!it.served);
+			rec.set('sig_import', str(it.sig, 20));
+			if (!rec.getBool('district_manual')) rec.set('district', DISTRICTS.indexOf(it.district) >= 0 ? it.district : '');
+			tx.save(rec);
+			saved++;
+		}
+	});
+	return { saved, same, total: app.countRecords('stations') };
+}
+
+function stationDistricts(app) {
+	const out = [];
+	for (const r of app.findAllRecords('stations')) {
+		let aliases = [];
+		try {
+			aliases = JSON.parse(r.getString('aliases') || '[]');
+		} catch (_) {}
+		out.push({
+			names: [r.getString('name'), r.getString('name_nl')].concat(aliases).filter(Boolean),
+			abbr: r.getString('abbr'),
+			district: r.getString('district'),
+			manual: r.getBool('district_manual')
+		});
+	}
+	return out;
+}
+
+module.exports.upsertStations = upsertStations;
+module.exports.stationDistricts = stationDistricts;

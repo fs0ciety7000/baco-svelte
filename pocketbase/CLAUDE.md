@@ -12,7 +12,7 @@ pocketbase migrate up $P                                   # appliquer les migra
 pocketbase superuser upsert <email> <mot de passe> $P      # compte superuser local
 pocketbase serve --http 127.0.0.1:8090 $P                  # serveur local
 CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P   # import de la sauvegarde Supabase (hors Git)
-PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (396 contrôles)
+PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (406 contrôles)
 CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # Commandes + PMR, comptes gardés
 CSM_IMPORT_SCOPE=pmr CSM_IMPORT_RESET=1 pocketbase csm-import … $P        # PMR seul (zones, matériel, prestations)
 CSM_IMPORT_SCOPE=operations CSM_IMPORT_RESET=1 pocketbase csm-import … $P # main courante + 211 PN de BACO
@@ -272,3 +272,10 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   `timetable` ; `state: "running"` refusé si un import tourne depuis < 30 min = verrou), `POST/GET …/paths`, `POST …/services`,
   `…/relations` (upsert, rien n'est écrit si `sig` est inchangée), `…/finish` (supprime les clés absentes ; refusé sous 500
   trains / 20 relations).
+- **Référentiel des gares** (`1760003700_stations.js`, 14 oct. 2026) : `stations` (key = nom FR replié, unique ; name, name_nl,
+  abbr, uic, country, district DSO/DSE/DCE, `district_manual`, aliases, lines, search_key `|nom|`, served, sig_import).
+  Lecture : agents actifs sauf Écran (invité et compte de service compris). Modification : `ptcar:update`, `updated_by`
+  forcé ; le hook (`timetable.pb.js`) refuse tout champ sauf le district et pose `district_manual` (faux si le corps envoie
+  `district_manual: false` = retour à l'automatique). Création / suppression : import seulement (route interne
+  `POST /api/csm/timetable/stations`, district gardé si manuel) ; `GET /api/csm/stations/districts` pour l'ingestion DICOS.
+  Audit des modifications (`audit.pb.js`).

@@ -5,6 +5,7 @@
 import { foldStation } from "@/lib/stations/search";
 
 import type { TrainPath } from "./infrabel";
+import type { StationSeed } from "./stations";
 import {
   DAY_BITS,
   hhmm,
@@ -57,6 +58,7 @@ export function timetableBuilder(dates: string[]) {
   const services = new Map<string, number>(); // service_id → masque sur les jours de la fenêtre
   const trips = new Map<string, Trip>();
   const stopNames = new Map<string, string>();
+  const uicOf = new Map<string, string>(); // nom → code UIC (7 chiffres)
   const nl = new Map<string, string>(); // nom FR → nom NL
   const times = new Map<string, StopTime[]>();
 
@@ -90,7 +92,10 @@ export function timetableBuilder(dates: string[]) {
       trips.set(r.trip_id ?? "", { number, short, mask });
     },
     addStop(r: Record<string, string>) {
-      stopNames.set(r.stop_id ?? "", String(r.stop_name ?? "").trim());
+      const name = String(r.stop_name ?? "").trim();
+      stopNames.set(r.stop_id ?? "", name);
+      const uic = /^S?(\d{7})(?:_|$)/.exec(r.stop_id ?? "")?.[1];
+      if (uic && name && !uicOf.has(name)) uicOf.set(name, uic);
     },
     addTranslation(r: Record<string, string>) {
       if (
@@ -124,6 +129,24 @@ export function timetableBuilder(dates: string[]) {
     },
     build(paths: TrainPath[]) {
       return buildReferential({ trips, times, stopNames, nl, dayBit }, paths);
+    },
+    /** Gares vues dans les trains construits (arrêts et passages), avec leurs lignes. */
+    stationSeeds(services: TrainService[]): StationSeed[] {
+      const by = new Map<string, StationSeed>();
+      for (const svc of services)
+        for (const st of svc.stops) {
+          const cur = by.get(st.n) ?? {
+            name: st.n,
+            nl: st.t,
+            uic: uicOf.get(st.n),
+            lines: [],
+            served: false,
+          };
+          if (st.l && !cur.lines.includes(st.l)) cur.lines.push(st.l);
+          if (!st.p) cur.served = true;
+          by.set(st.n, cur);
+        }
+      return [...by.values()];
     },
   };
 }

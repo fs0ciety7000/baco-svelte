@@ -12,6 +12,8 @@ const SU = {
   password: process.env.PB_SUPERUSER_PASSWORD ?? "",
 };
 test.skip(!SU.identity || !process.env.E2E_IDENTITY, "superuser / agent E2E non définis");
+// Un seul worker par format : les données de test sont partagées par les tests du fichier.
+test.describe.configure({ mode: "serial" });
 
 let token = "";
 const created: { col: string; id: string }[] = [];
@@ -43,6 +45,18 @@ test.beforeAll(async ({}, info) => {
   // Les deux formats tournent en parallèle : données distinctes par projet.
   if (info.project.name !== "desktop") [REL, N1, N2] = ["IC97", 99811, 99812];
   token = (await pb("POST", "/api/collections/_superusers/auth-with-password", SU)).token;
+  // Restes d'un passage interrompu : supprimés d'abord (clés fixes).
+  for (const [col, filter] of [
+    ["train_services", `key="${N1}:e2e" || key="${N2}:e2e"`],
+    ["train_relations", `key="${REL}"`],
+    ["stations", `key~"gare e2e"`],
+  ]) {
+    const old = await pb(
+      "GET",
+      `/api/collections/${col}/records?perPage=50&filter=${encodeURIComponent(filter!)}`,
+    );
+    for (const r of old?.items ?? []) await pb("DELETE", `/api/collections/${col}/records/${r.id}`);
+  }
   const svc = (number: number, days: number) => ({
     key: `${number}:e2e`,
     number,
@@ -154,4 +168,32 @@ test("relations, fiche, train, gare, ligne", async ({ page }, info) => {
   await noHorizontalScroll(page);
   await page.screenshot({ path: `test-results/trains-ligne-${p}.png`, fullPage: true });
   expect(errors).toEqual([]);
+});
+
+test("gares : recherche par alias, district modifiable", async ({ page }, info) => {
+  const name = `Gare E2E ${info.project.name}`;
+  const st = await pb("POST", "/api/collections/stations/records", {
+    key: name.toLowerCase(),
+    name,
+    name_nl: `Station E2E ${info.project.name}`,
+    country: "FR",
+    aliases: [`Alias E2E ${info.project.name}`],
+    search_key: `|gare e2e ${info.project.name}|station e2e ${info.project.name}|alias e2e ${info.project.name}|`,
+    lines: ["96"],
+    served: true,
+  });
+  created.push({ col: "stations", id: st.id });
+  await login(page, "/referentiels/gares");
+  await page.goto(`/referentiels/gares?q=${encodeURIComponent(`Alias E2E ${info.project.name}`)}`);
+  await expect(page.getByText(name).filter({ visible: true }).first()).toBeVisible();
+  await noHorizontalScroll(page);
+  await page.screenshot({
+    path: `test-results/trains-gares-${info.project.name}.png`,
+    fullPage: true,
+  });
+  const select = page.getByTestId("station-district").filter({ visible: true }).first();
+  await select.selectOption("DSE");
+  await expect(page.getByText(`${name} : district enregistré.`)).toBeVisible();
+  const rec = await pb("GET", `/api/collections/stations/records/${st.id}`);
+  expect(rec).toMatchObject({ district: "DSE", district_manual: true });
 });

@@ -337,3 +337,63 @@ export async function lineBoard(
       .map((s) => ({ name: s.name, stops: s.stops, passes: s.passes, relations: s.relations })),
   };
 }
+
+// ---------------------------------------------------------------------------------------------------
+// Référentiel des gares (collection `stations`)
+
+export type StationRow = {
+  id: string;
+  name: string;
+  nameNl: string;
+  abbr: string;
+  uic: string;
+  country: string;
+  district: string;
+  manual: boolean;
+  aliases: string[];
+  lines: string[];
+  served: boolean;
+};
+
+function stationRow(r: RecordModel): StationRow {
+  return {
+    id: r.id,
+    name: str(r.name),
+    nameNl: str(r.name_nl),
+    abbr: str(r.abbr),
+    uic: str(r.uic),
+    country: str(r.country),
+    district: str(r.district),
+    manual: !!r.district_manual,
+    aliases: arr(r.aliases),
+    lines: arr(r.lines),
+    served: !!r.served,
+  };
+}
+
+export type StationFilters = { q?: string; district?: string; pays?: string; ligne?: string };
+
+/** Gares filtrées (district « aucun » = sans district ; pays « etranger » = hors Belgique). */
+export async function listStations(
+  f: StationFilters,
+): Promise<{ rows: StationRow[]; total: number }> {
+  const pb = await pbForRequest();
+  const parts: string[] = [];
+  const d = (f.district ?? "").toUpperCase();
+  if (["DSO", "DSE", "DCE"].includes(d)) parts.push(pb.filter("district = {:d}", { d }));
+  else if (d === "AUCUN") parts.push('district = ""');
+  if (f.pays === "be") parts.push('country = "BE"');
+  else if (f.pays === "etranger") parts.push('country != "BE"');
+  const line = normLine(f.ligne);
+  if (line) parts.push(pb.filter("lines ~ {:l}", { l: `"${line}"` }));
+  const q = (f.q ?? "").trim().slice(0, 60);
+  if (q) {
+    const k = keyFilter(pb, ["search_key"], await stationKeys(q));
+    parts.push(k ? `(${k} || ${pb.filter("abbr = {:a}", { a: q.toUpperCase() })})` : "");
+  }
+  const res = await pb.collection("stations").getList(1, 400, {
+    filter: parts.filter(Boolean).join(" && "),
+    sort: "name",
+  });
+  return { rows: res.items.map(stationRow), total: res.totalItems };
+}

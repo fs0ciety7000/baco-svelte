@@ -433,3 +433,8 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   échoue ; actif en production ou `CSM_TIMETABLE=on`, jamais sans `CSM_INTERNAL_SECRET`), données `server/data/timetable.ts`,
   page + `components/referentiels/trains.tsx`, bouton admin « Mettre à jour » (`after()`). Variables : `CSM_TIMETABLE`,
   `CSM_GTFS_URL`. E2E `e2e/trains.spec.ts` (données fictives IC98 / IC97). En local : `NODE_USE_ENV_PROXY=1` pour l'import.
+- **Référentiel des gares** (Ressources › Gares, `/referentiels/gares`, 14 oct. 2026) : `lib/timetable/stations.ts`
+  (`buildStations`, `countryOf`, `aliasesOf`, testés) construit à l'import ; district par `StationDistrict` (action
+  `referentiels/gares/actions.ts`, `ptcar:update`) ; `districtForStation` consulte d'abord `setDistrictOverrides` chargé par
+  `server/station-districts.ts` (`loadStationDistricts()` en tête de l'ingestion DICOS) ; `resolveStationTerms` lit aussi
+  `stations` (noms NL, alias des gares frontière). E2E dans `e2e/trains.spec.ts` (mode série : fixtures partagées).

@@ -345,8 +345,36 @@ const norm = (s: unknown): string =>
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "");
 
+// Référentiel des gares de CSM (14 oct. 2026, collection `stations`, district modifiable) : chargé par le serveur
+// (`server/station-districts.ts`) et prioritaire sur la table figée ci-dessus, qui reste le repli (et la source du
+// district proposé à l'import).
+let overrides: Map<string, District | ""> | null = null;
+
+/** Districts du référentiel (nom, nom NL, alias, abréviation → district ; « » = hors des trois districts). */
+export function setDistrictOverrides(
+  entries: { names: string[]; district: string; manual?: boolean }[] | null,
+) {
+  if (!entries) {
+    overrides = null;
+    return;
+  }
+  const m = new Map<string, District | "">();
+  for (const e of entries) {
+    const d = (DISTRICTS as readonly string[]).includes(e.district) ? (e.district as District) : "";
+    // Sans district et non modifiée à la main : rien n'est imposé (la table figée peut encore répondre).
+    if (!d && !e.manual) continue;
+    for (const n of e.names) {
+      const k = norm(n);
+      if (k && !m.has(k)) m.set(k, d);
+    }
+  }
+  overrides = m;
+}
+
 /** District (DCE/DSE/DSO) d'une gare, « » si inconnue. */
 export function districtForStation(station: unknown): District | "" {
   const k = norm(station);
-  return (k && STATION_DISTRICT[k]) || "";
+  if (!k) return "";
+  if (overrides?.has(k)) return overrides.get(k)!;
+  return STATION_DISTRICT[k] || "";
 }

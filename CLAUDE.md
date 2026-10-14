@@ -1019,6 +1019,14 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   Nouveau lot demandé (feuille de route CSM-V2 §7, étapes 11-13) : districts des gares en base, gares frontière, bons bus /
   taxi et Lignes branchés sur le référentiel, CHANGELOG.md + `/changelog` + modale de mise à jour.
 
+- 2026-10-14 — **Référentiel des gares et districts** (étapes 11 de la feuille de route) : collection `stations` (`1760003700`),
+  construite par l'import quotidien (gares de l'horaire SNCB + abréviation et noms Infrabel, UIC, pays, lignes, alias :
+  « Maubeuge (FR) » = « Maubeuge », « Aachen Hbf (DE) » = « Aachen ») ; **district modifiable** (Ressources › Gares, droit
+  `ptcar:update`, hook : district seul, marqué manuel et jamais écrasé par l'import ; « Automatique » rend la proposition,
+  tirée de la table BACO `districts.ts`). L'ingestion DICOS lit ces districts (route interne `/api/csm/stations/districts`,
+  cache 10 min, table figée en repli) ; la recherche de gare tolérante y prend aussi noms NL et alias. Local : 685 gares,
+  137 DSO, 170 DSE, **1 seule DCE** (table BACO) : à compléter par les coordinateurs. 406 contrôles de règles.
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)

@@ -18,6 +18,7 @@ import {
   nullOn404,
   serviceAuth,
 } from "@/server/dicos-service";
+import { loadStationDistricts } from "@/server/station-districts";
 import { readExtensionRelease } from "@/server/extension";
 import { createPb } from "@/server/pocketbase";
 import { allow } from "@/server/rate-limit";
@@ -127,6 +128,8 @@ async function upsert(
 }
 
 export async function POST(request: Request) {
+  // Districts du référentiel des gares (modifiables dans CSM) avant tout calcul de district.
+  await loadStationDistricts();
   if (!ingestConfigured())
     return Response.json({ error: "Ingestion DICOS non configurée." }, { status: 503 });
   const version = extensionVersion(request);

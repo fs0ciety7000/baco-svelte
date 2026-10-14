@@ -5,7 +5,7 @@
 import { lineNorm, relationName } from "./model";
 
 /** Point opérationnel Infrabel : nom long NL (clé des données de ponctualité) → noms commerciaux. */
-export type OpPoint = { fr: string; nl: string; station: boolean };
+export type OpPoint = { fr: string; nl: string; abbr: string; station: boolean };
 
 /** Chemin d'un train lu chez Infrabel. */
 export type TrainPath = {
@@ -35,6 +35,10 @@ export function opPointsFrom(rows: Iterable<Record<string, string>>): Map<string
     map.set(key, {
       fr: String(r.commerciallongnamefrench ?? "").trim(),
       nl: String(r.commerciallongnamedutch ?? "").trim(),
+      abbr: String(r.symbolicname ?? "")
+        .trim()
+        .toUpperCase()
+        .slice(0, 12),
       station: cls === "Station" || cls === "Stopplaats",
     });
   }

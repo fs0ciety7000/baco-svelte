@@ -57,3 +57,31 @@ routerAdd('POST', '/api/csm/timetable/finish', (e) => {
 		relations: t.prune($app, 'train_relations', relations)
 	});
 });
+
+// Référentiel des gares (1760003700) : upsert par l'import (le district d'une fiche modifiée à la main est gardé).
+routerAdd('POST', '/api/csm/timetable/stations', (e) => {
+	const t = require(`${__hooks}/lib/timetable.js`);
+	if (!t.allowed(e)) return e.json(404, { message: 'Not found.' });
+	const body = e.requestInfo().body || {};
+	return e.json(200, t.upsertStations($app, Array.isArray(body.items) ? body.items : []));
+});
+
+// Districts des gares (nom, nom NL, alias → district), pour l'ingestion DICOS côté Next.
+routerAdd('GET', '/api/csm/stations/districts', (e) => {
+	const t = require(`${__hooks}/lib/timetable.js`);
+	if (!t.allowed(e)) return e.json(404, { message: 'Not found.' });
+	return e.json(200, { items: t.stationDistricts($app) });
+});
+
+// Modification par un agent : le district seulement (et le retour au district automatique). Tout autre champ est
+// tenu par l'import. Un district choisi à la main n'est plus écrasé par l'import.
+onRecordUpdateRequest((e) => {
+	const before = e.record.original();
+	const fixed = ['key', 'name', 'name_nl', 'abbr', 'uic', 'country', 'aliases', 'lines', 'search_key', 'served', 'sig_import'];
+	for (const f of fixed) {
+		if (e.record.getString(f) !== before.getString(f)) throw new BadRequestError('Seul le district se modifie.');
+	}
+	const body = e.requestInfo().body || {};
+	e.record.set('district_manual', body.district_manual === false ? false : true);
+	e.next();
+}, 'stations');

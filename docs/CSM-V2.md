@@ -144,7 +144,7 @@ Dans Coolify, deux ressources :
 | 8 | Extension DICOS (Chrome / Edge / Firefox), jetons personnels | ✅ 9 oct. (v1.7.0, Firefox signé ; Chrome Web Store abandonné le 9 oct. : compte payant, Chrome / Edge restent en `.zip`) |
 | 9 | **Bascule** : gel de BACO, import différentiel, campagne « BACO devient CSM », fermeture de BACO | 🔄 production en ligne ; gel de BACO reporté (décision du 14 oct.) |
 | 10 | **Référentiel des relations de trains** (Ressources › Trains : relation IC14…, type, série, arrêts, lignes ; GTFS SNCB + Infrabel CC0, import quotidien) | 🔄 livré en préversion le 14 oct. |
-| 11 | **Gares et districts** : district de chaque gare / point d'arrêt en base, modifiable ; gares frontière (Maubeuge, Aachen, Luxembourg…) | ⏳ demandé le 14 oct. |
+| 11 | **Gares et districts** : district de chaque gare / point d'arrêt en base, modifiable ; gares frontière (Maubeuge, Aachen, Luxembourg…) | 🔄 préversion le 14 oct. (Ressources › Gares ; districts DCE à compléter) |
 | 12 | **Modules branchés sur le référentiel** : bons bus / taxi (gares, lignes traversées, arrêts proposés, n° de train qui remplit tout, modifiable) ; Ressources › Lignes. Missions PMR et Groupes gardent les données DICOS | ⏳ demandé le 14 oct. |
 | 13 | **Changelog** : `CHANGELOG.md` (Nouveautés / Corrections) tenu à chaque mise à jour, page `/changelog` (ex-`/equipe/nouveautes`), lien en pied de barre latérale, modale de mise à jour une fois par compte | ⏳ demandé le 14 oct. |
 

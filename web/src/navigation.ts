@@ -177,6 +177,12 @@ export const MODULES: NavModule[] = [
         keywords: ["relations", "IC", "séries", "horaires", "arrêts", "passages"],
       },
       {
+        href: "/referentiels/gares",
+        label: "Gares",
+        hideFor: ["guest", "screen"],
+        keywords: ["districts", "gares frontière", "UIC", "arrêts"],
+      },
+      {
         href: "/referentiels/ptcar",
         label: "PtCar",
         permission: "ptcar:read",
