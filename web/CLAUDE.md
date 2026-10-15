@@ -983,3 +983,33 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `planner_tasks` ajouté au relais `/api/events`.
 - E2E `e2e/planificateur.spec.ts` : desktop (district DSO, Mons, trains 991xx) et mobile (DSE, Namur, 992xx) en parallèle,
   groupes Quinyx fictifs 990101 / 990102 ; `E2E_SHOTS_DIR` pour les captures. Le compte E2E doit avoir `planner:write`.
+
+## Planificateur — audit sécurité + revue adversariale (15 oct. 2026)
+
+- **Saisie ALEA** (`parse-task.ts`) : avec `stations` (l'écran le fournit TOUJOURS : `plannerStationRefs()` de
+  `server/data/planner.ts` = référentiel `stations` + bases et gares de leurs matrices, prop `stations` de `PlannerScreen`),
+  gare assistée ET autre gare = plus longue suite de mots reconnue (`resolveStation`, nom FR retenu), reste écarté ;
+  aucune suite reconnue → erreur « gare inconnue : vérifie l'orthographe » (aucun repli). Sans référentiel : ancienne
+  découpe (repli des tests). « NUIT 00h00-05h59 » = train le lendemain, `day` = jour de la feuille. Ligne « TAXI » :
+  `parsedToInput` envoie `assignee_kind: "taxi"` (seule destination acceptée par `manualTaskSchema`, tâche créée
+  `attribuee`), `train` vide.
+- **Contrôles serveur** (`lib/planner/server-check.ts`, testé) : `assignTask` / `assignTasks` rejouent `checkAssign` sur
+  `plannerDay(jour)` (tous districts ; refus `block` avec la raison, `warn` accepté ; lot cumulé par jour) ; guichet B-CS
+  = celui de la gare de la tâche ; `createManualTasks` : jour J-2 → J+60 (`manualDayAllowed`), gares dans
+  `plannerStationNames()` (`manualStationIssue`, messages avec le n° de ligne, jamais son contenu) ; `unassignTask` refuse
+  une tâche « faite » (le toast « Annuler » ne la renvoie pas dans « À attribuer ») ; `resolveDuplicate(manualId, dicosId,
+  manualUpdated, dicosUpdated)` vérifie les deux verrous.
+- **Moteur** : `autoAssign` pose chaque tâche d'un groupe dans le plan avant de contrôler la suivante (tout retiré si
+  refus) ; groupe réuni par un même train mais intenable par un seul destinataire → chaque unité (même `linkKey`) retentée
+  à part. `dropVerdict` cumule les tâches déposées. `checkBcs` : `Ce guichet est à <gare>`. `trainNorm("TAXI") = ""`
+  (jamais un n° de train : ni `tr:`, ni `sameTrainStop`). `dayBounds` en heure de Bruxelles (`brusselsToUtc`, jour de 23 /
+  25 h). `boardCounters(ctx, conflicts, day)` : compte le seul jour de planification.
+- **Jours voisins** : `plannerDay(D)` charge aussi les tâches ATTRIBUÉES de D−1 à partir de 18 h et toutes celles de D+1
+  avant 8 h (nuit de D, visibles dans « À attribuer » mais comptées sur D+1).
+- **Synchro DICOS** (`server/planner-sync.ts`, testé avec un PocketBase simulé) : champs relus explicites (jamais `note` ni
+  `label`) ; tâche attribuée dont gare / heure / jour change → `dicos_changed` (« Modifiée par DICOS » : icône du bloc,
+  badge du panneau, `taskName`) ; lot de missions complet (`final`, sans erreur) : bout `in_assist` / `out_assist` faux →
+  tâche annulée (`unassistedKeys`) ; dossier en attente toujours présent dont un trajet a disparu → annulée ; jamais de
+  suppression ; `synced_by` = propriétaire du jeton personnel. Dossiers en attente : `countPendingTasks` +
+  `reservePendingQuota` (2 000 tâches par requête, 6 000 par jeton et par jour, mémoire `globalThis`, 429).
+  `tasksFromAssist` : type inconnu = light. `mapPendingDossier` : `disableds` OU `traveler.disableds` (le premier non vide).

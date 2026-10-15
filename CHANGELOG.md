@@ -15,10 +15,22 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
   - **Ajouter une tâche** : colle des lignes au format ALEA / classeurs (analyse en direct, nom et téléphone ignorés) ou crée une tâche libre ; une saisie qui double une prise en charge DICOS est signalée (« Garder DICOS, supprimer la saisie ») ;
   - **Attribuer automatiquement** : proposition à vérifier, à accepter une par une ou en bloc ; ce qui reste sans solution propose un taxi ou le chef de bord ;
   - mises à jour en direct ; sur téléphone : agenda d'un agent et liste « À attribuer » avec « Attribuer à… ». Semaine et Mois arrivent ensuite.
-- **Extension CSM 1.9.0** : à chaque synchro DICOS, les dossiers « à vérifier » (en attente d'acceptation) de tes gares partent aussi vers CSM, pour être planifiés avant même d'être acceptés. Seuls le numéro de dossier, les trains, gares, heures, le sens, le type et le nombre de voyageurs sont envoyés : jamais de nom ni de coordonnées. Le popup affiche les totaux « Dossiers en attente ».
+- **Extension CSM 1.9.1** : à chaque synchro DICOS, les dossiers « à vérifier » (en attente d'acceptation) de tes gares partent aussi vers CSM, pour être planifiés avant même d'être acceptés. Seuls le numéro de dossier, les trains, gares, heures, le sens, le type et le nombre de voyageurs sont envoyés : jamais de nom ni de coordonnées. Le popup affiche les totaux « Dossiers en attente ».
 - **Administration › Quinyx** : chaque groupe a un rôle, « Équipe » (PACO/RCCA, comme avant) ou « Gares » (agents de gare CPI, SPI, OPI, PA et EXTRA, avec leur gare de base, pour le planificateur). Les agents de gare n'apparaissent pas dans Ressources › Planning.
 
+### Corrections
+
+- **Planificateur — attribution automatique** : une proposition n'est plus refusée « Occupé » une fois appliquée (prises en charge d'un même train mais de dossiers différents, dont une correspondance) ; glisser plusieurs tâches d'un coup contrôle l'ensemble (dont la limite de 3 voyageurs par heure d'un guichet B-CS) ; une tâche ne va qu'au guichet B-CS de sa gare.
+- **Planificateur — attributions revérifiées par le serveur** : un refus (hors service, hors zone, occupé, trajet impossible, guichet complet) est expliqué même si l'écran n'était pas à jour ; une tâche « faite » ne retourne plus dans « À attribuer ».
+- **Planificateur — prise en charge modifiée dans DICOS** : une tâche déjà attribuée dont la gare, l'heure ou le jour change garde son agent et porte la mention « Modifiée par DICOS » (jusqu'à la prochaine attribution ou « faite ») ; un trajet retiré d'un dossier en attente, ou une assistance retirée d'une mission, passe la tâche en « annulée » (agent gardé).
+- **Planificateur — nuit** : la vue Jour montre aussi la nuit qui déborde sur le lendemain et les tâches de la veille au soir des agents présents, sans les compter deux fois ; l'axe suit l'heure de Bruxelles les jours de changement d'heure ; « NUIT 05h10 » dans une ligne collée vise bien la nuit qui suit le jour affiché.
+- **Planificateur — saisie** : une ligne « TAXI » crée une tâche attribuée au taxi (plus de n° de train « TAXI ») ; deux taxis qui se chevauchent sont signalés ; une mission de type inconnu est comptée en assistance légère.
+- **Extension CSM 1.9.1** : le nombre de voyageurs d'un dossier en attente n'est plus compté deux fois.
+
 ### Sécurité
+
+- **Planificateur — saisie au format ALEA** : chaque gare doit exister dans le référentiel des gares (sinon « gare inconnue : vérifie l'orthographe »), ce qui empêche un nom de voyageur collé en fin de ligne de rester dans la gare ; jour permis de J-2 à J+60 ; attribution possible seulement à un agent de gare.
+- **Planificateur — dossiers en attente** : envois plafonnés par jeton d'extension et l'agent qui a synchronisé est noté ; le compte de service de l'extension ne lit plus les tâches saisies à la main ni les notes des agents.
 
 - Nouveaux droits « Voir le planificateur » et « Planifier les tâches » (PACO/RCCA et au-dessus) ; « Gérer les référentiels du planificateur » (bases, guichets B-CS, modèles de tâches) réservé aux administrateurs. Une prise en charge venue de DICOS ne se modifie pas à la main (on l'attribue seulement) et ne se supprime pas sans ce dernier droit.
 

@@ -426,3 +426,11 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   « à attribuer » n'en a pas ; annulée garde la sienne). Cron `planner-retention` (3 h 35 UTC) : tâches > 90 j. Audit
   des trois référentiels (pas des tâches : volume). Clés `planner:*` ajoutées à `perms-check` / `perms-equivalence`.
   `down` testé sur une copie. 714 contrôles de règles (sans le secret interne).
+- **Planificateur, suites de l'audit** (`1760004910_planner_audit.js`, `lib/planner.js`, 15 oct. 2026) :
+  `planner_tasks.dicos_changed` (« Modifiée par DICOS », posé par le connecteur, effacé par le hook quand un agent envoie
+  une destination ou passe la tâche « faite ») et `synced_by` (relation `users`, propriétaire du jeton de l'envoi) :
+  refusés dans le corps d'une requête d'agent (ajoutés aux champs DICOS) ; le connecteur ne lit plus les tâches
+  `manuel` / `modele` (règles list / view) et `note` / `label` lui sont masqués (`onRecordEnrich`). Hook : agent
+  d'attribution = `quinyx_agents.purpose = gares` (contrôlé à la création et quand l'agent change), jour d'une tâche
+  manuelle / de modèle borné à J-2 → J+60 (Bruxelles, `ops.brusselsDay`). Refus par `throw new BadRequestError`.
+  `down` testé sur une copie. 746 contrôles de règles (avec le secret interne).
