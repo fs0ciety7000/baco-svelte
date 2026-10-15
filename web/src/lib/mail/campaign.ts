@@ -40,6 +40,7 @@ const JOUR_J: CampaignTemplate = {
     "::: encadre Ce qui ne change pas",
     "- **Ton identifiant et ton mot de passe** : ceux de BACO, repris tels quels.",
     "- **Tes données** : bons de bus et de taxi, missions PMR, Journal, annuaire et procédures t'attendent dans CSM.",
+    "- **Et BACO ?** Il est fermé à partir d'aujourd'hui : plus aucune saisie n'y est possible. Tout ce que tu y avais fait se trouve dans CSM, rien n'est perdu.",
     ":::",
     "",
     "::: bouton [Ouvrir CSM](https://csm.fs0ciety.org)",
@@ -84,7 +85,7 @@ const JOUR_J: CampaignTemplate = {
     ":::",
     "",
     "Bonne prise en main et bon service !",
-    "L'équipe CSM",
+    "Nicolas & Thomas",
   ].join("\n"),
 };
 

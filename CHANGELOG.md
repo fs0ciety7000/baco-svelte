@@ -61,6 +61,7 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 ### Corrections
 
+- Missions PMR et Groupes : « Masquer les annulées » est de nouveau visible directement dans la barre de filtres ; en mobile, les boutons ALEA ont un libellé court.
 - Les boutons ont la même hauteur que les champs voisins (plus de léger décalage sur une même ligne).
 - Missions PMR et Groupes : le tableau n'est plus coupé à droite ; il défile dans son cadre avec l'en-tête, la colonne Train et le bouton Copier toujours visibles.
 - Plus d'écran « CSM est momentanément indisponible » au hasard en changeant de module.

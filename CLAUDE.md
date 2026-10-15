@@ -1349,6 +1349,8 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   fantôme Outlook, mode sombre par `prefers-color-scheme`, couleurs Signal · Jour) ; anciennes campagnes rendues comme avant
   (couleurs pétrole au lieu d'ambre). Aucun e-mail envoyé. Date du jour J non citée (le texte dit « aujourd'hui »).
 
+- 2026-10-15 — **Retours lot 4 et campagne** : « Masquer les annulées » remis visible dans la barre d'outils PMR / Groupes (hors « Filtres ») ; boutons ALEA en libellé court en mobile (« ALEA », « ALEA + groupes », nom accessible complet) ; campagne du jour J **sans date**, signée **« Nicolas & Thomas »**, et annonçant que **BACO est fermé à partir du jour J** (plus de saisie, données dans CSM).
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)

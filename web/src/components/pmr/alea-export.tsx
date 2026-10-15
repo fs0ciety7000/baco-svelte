@@ -54,10 +54,13 @@ export function AleaButton({
   description,
   compute,
   label = "Export ALEA",
+  shortLabel = "ALEA",
 }: {
   /** Liste d'origine : sert de portée aux blocs « encodés » (PMR et groupes séparés) ; « commun » = blocs fusionnés. */
   kind: "pmr" | "groupe" | "commun";
   label?: string;
+  /** Libellé visible en mobile (< 768 px), le nom accessible reste `label` (décision du 15 oct. 2026). */
+  shortLabel?: string;
   /** L'agent peut cocher « encodé » (droit d'écrire les missions) ; sinon lecture seule. */
   canMark: boolean;
   disabled: boolean;
@@ -181,8 +184,10 @@ export function AleaButton({
         size="sm"
         onClick={() => setOpen(true)}
         disabled={disabled}
+        aria-label={label}
       >
-        <ClipboardList aria-hidden /> {label}
+        <ClipboardList aria-hidden /> <span className="md:hidden">{shortLabel}</span>
+        <span className="hidden md:inline">{label}</span>
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent

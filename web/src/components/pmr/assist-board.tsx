@@ -863,6 +863,7 @@ export function AssistAlea({
         <AleaButton
           kind="commun"
           label="ALEA PMR + groupes"
+          shortLabel="ALEA + groupes"
           canMark={canMark}
           disabled={!rows.length && !groups.length}
           eyebrow="Missions PMR et groupes"

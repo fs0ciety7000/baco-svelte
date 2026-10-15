@@ -44,7 +44,7 @@ export function foldedFilterCount(input: {
 /**
  * Barre d'outils des Missions PMR et des Groupes (v4 lot 4, 15 oct. 2026), filtres en GET (URL partageable, sans JS).
  * Desktop : une ligne — période en contrôle segmenté, districts en menu, recherche, « Filtres (n) » qui replie le reste
- * (statuts, plage de dates, « Masquer les annulées »), actions à droite (Export ALEA). Mobile : période, recherche, puis
+ * (statuts, plage de dates) ; « Masquer les annulées » reste visible dans la barre ; actions à droite (Export ALEA). Mobile : période, recherche, puis
  * districts et filtres ; le premier résultat arrive bien plus haut qu'avec les quatre rangées de filtres.
  */
 export function PmrFilterBar({
@@ -98,7 +98,7 @@ export function PmrFilterBar({
   }));
   const folded = foldedFilterCount({
     statuses: checked.length,
-    hideCancelled: hidden,
+    hideCancelled: false,
     customPeriod: !period.some((p) => p.current),
   });
   return (
@@ -136,7 +136,19 @@ export function PmrFilterBar({
           data-testid="district-picker"
         />
       </div>
-      <CollapsibleFilters always active={folded} toggleClassName="md:order-4">
+      {/* Toujours visible dans la barre (décision du 15 oct. 2026), choix mémorisé dans le profil. */}
+      <FilterChip asChild pressed={hidden} className="md:order-4">
+        <Link
+          href={`${action}?${toggle}`}
+          aria-pressed={hidden}
+          role="button"
+          data-testid="hide-cancelled"
+        >
+          <EyeOff aria-hidden className="size-4" />
+          Masquer les annulées
+        </Link>
+      </FilterChip>
+      <CollapsibleFilters always active={folded} toggleClassName="md:order-5">
         {/* Plusieurs statuts à la fois (12 oct. 2026) ; aucune case = tous. */}
         <CheckboxGroup
           legend="Statut"
@@ -155,21 +167,10 @@ export function PmrFilterBar({
           presets={["today", "tomorrow", "7d", "week"]}
           fieldClassName="md:w-40"
         />
-        <FilterChip asChild pressed={hidden}>
-          <Link
-            href={`${action}?${toggle}`}
-            aria-pressed={hidden}
-            role="button"
-            data-testid="hide-cancelled"
-          >
-            <EyeOff aria-hidden className="size-4" />
-            Masquer les annulées
-          </Link>
-        </FilterChip>
         <ClearFilters href={action} />
       </CollapsibleFilters>
       {actions ? (
-        <div className="ml-auto flex flex-wrap items-center gap-2 md:order-5">{actions}</div>
+        <div className="ml-auto flex flex-wrap items-center gap-2 md:order-6">{actions}</div>
       ) : null}
       <FilterSubmit />
     </FilterForm>
