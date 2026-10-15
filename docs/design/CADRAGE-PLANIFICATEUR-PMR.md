@@ -6,7 +6,7 @@
 > disponibilités, le district, la zone et les temps de trajet. Vue Gantt / calendrier jour, semaine, mois ; glisser-déposer ;
 > « si l'agent est occupé, en chercher un autre ». Les règles s'affineront au fil de l'eau.
 >
-> **Statut : ébauche soumise, rien n'est codé.** Règles détaillées : `REGLES-PLANIFICATEUR-PMR.md` (sans donnée
+> **Statut : ébauche soumise, réponses reçues le 15 oct. (§4), rien n'est codé.** Règles détaillées : `REGLES-PLANIFICATEUR-PMR.md` (sans donnée
 > personnelle). Les classeurs eux-mêmes (noms d'agents et de voyageurs, téléphones) restent hors dépôt. Les identifiants des
 > plannings Quinyx ne vont jamais dans Git : ils se saisissent dans Administration › Quinyx.
 
@@ -39,11 +39,11 @@ DSE (pointe 16-17 h), ~30 et ~47 services d'agents par jour.
 | Correspondance (même dossier, OUT puis IN même gare, < 30 min) | un seul agent : OUT jusqu'au départ, IN de T à T+5 (light) / T+10 (fauteuil) | déduite (100 %) |
 | Taxi | même fenêtre, heure du taxi ; liste à part, pas d'agent | observée |
 | Trajet | voiture, matrice base → gare (ex. Mons → La Louvière-Sud 40 min, Charleroi → Nivelles 40 min) ; « Départ » finit au début de la 1re tâche sur place, « Retour » commence à la fin de la dernière | écrite + déduite |
-| Couverture | une base n'atteint que les gares de sa matrice ; Mons couvre aussi Tournai et Braine-le-Comte ; Liège ↔ Verviers, Libramont ↔ Arlon ; **jamais Mons → Charleroi ni Charleroi → zone FMS** | matrice + demande de l'utilisateur (non écrite dans Excel) |
+| Couverture | une base n'atteint que les gares de sa matrice ; Mons ↔ Tournai, Liège ↔ Verviers, Libramont ↔ Arlon (deux sens) ; La Louvière-Sud = Mons ; Ath = Tournai ou Mons ; **jamais Mons → Charleroi ni Charleroi → zone FMS** | matrice + réponses de l'utilisateur (§4) |
 | Préférence de poste | gare de base : PA, sinon CPI ; gare secondaire : OPI, sinon CPI 2 / EXTRA / SPI | déduite |
-| Guichet B-CS | PMR light seulement, pendant l'ouverture du guichet, **3 PMR / heure au plus** ; sinon agent de la base | écrite |
+| Guichet B-CS | PMR light seulement, pendant l'ouverture du guichet, **3 PMR / heure au plus** (une correspondance OUT + IN compte pour 1) ; sinon agent de la base | écrite + réponse (§4) |
 | Tâches techniques | modèles par jour de semaine (train, heure, durée), reconduits ; EDF 10-15 min (50 à Charleroi), Ao/Bo 15-25, désaccouplement 10, immobilisation 10-20 | déduite |
-| Chevauchement | **avertissement** (pas un refus) : même train ou même gare admis, deux gares différentes signalées en conflit | observée (234 paires dans Excel) |
+| Chevauchement | plusieurs PMR du **même train** : permis ; deux trains différents en même temps : **refusé** | réponse de l'utilisateur (§4) |
 | Pause | aucune pour l'instant | observée |
 
 ## 3. Ce que je propose
@@ -94,13 +94,59 @@ règle le permet. Le résultat est une **proposition** : rien n'est enregistré 
 
 | Lot | Contenu |
 |---|---|
-| P0 | Quinyx gares : extension 1.9.0 (groupes `gares`), ingestion, agents, postes, bases. Référentiels pré-remplis depuis les classeurs. Note DPO. |
-| P1 | Moteur pur + tests ; `planner_tasks` alimentée par DICOS ; vue Jour en lecture ; attribution manuelle (glisser, « Attribuer à… », panneau) avec contrôles. |
+| P0 | Quinyx gares : extension 1.9.0 (groupes `gares`, codes CPI / SPI / OPI / PA / EXTRA), ingestion, agents, postes, bases ; dossiers DICOS en attente (si la capture le permet). Référentiels pré-remplis depuis les classeurs. Note DPO. |
+| P1 | Moteur pur + tests ; `planner_tasks` alimentée par DICOS (une tâche par bout assisté, dossiers à plusieurs missions) ; saisie manuelle au format ALEA ; vue Jour ; attribution manuelle (glisser, « Attribuer à… », panneau) avec contrôles. |
 | P2 | Attribution automatique (proposition, accepter tout / un par un), conflits, guichets B-CS, correspondances. |
 | P3 | Semaine, Mois, modèles de tâches techniques, tâches libres (affiches, missions bus), temps réel (SSE). |
 | P4 | Feuille de l'agent (PDF / mobile), case « fait », retards iRail sur les blocs, export, retrait des classeurs. |
 
-## 4. Questions ouvertes (les plus bloquantes d'abord ; liste complète en §9 des règles)
+## 4. Réponses de l'utilisateur (15 oct. 2026)
+
+| # | Question | Réponse |
+|---|---|---|
+| 2 | Horaires des agents de gare sans compte CSM | **Oui** : gardés (prénom, nom, poste, base, services) ; note DPO à compléter. |
+| 3 | Couvertures croisées | **Dans les deux sens** (Mons ↔ Tournai, Liège ↔ Verviers, Libramont ↔ Arlon). **La Louvière-Sud = Mons.** **Ath = Tournai ou Mons.** Jamais Mons → Charleroi ni Charleroi → zone FMS. |
+| 4 | Chevauchements | **Plusieurs PMR du même train** (même gare, même heure) pour un agent : permis. **Deux trains différents en même temps** : refusé. |
+| 5 | B-CS « 3 PMR / heure » | Un OUT puis IN du même voyageur (correspondance) **compte pour 1**. |
+| 6 | Tâches techniques récurrentes | **Modèles des classeurs** pour l'instant. |
+
+**Précisions apportées** :
+- **Source des tâches** : DICOS, y compris les **dossiers en attente d'acceptation** (avant qu'ils deviennent des missions).
+  L'extension lit aujourd'hui les missions acceptées ; une capture de la requête d'un dossier en attente est nécessaire
+  pour lire ce second flux (analysée par script : chemins et clés seulement, jamais de cookie ni de nom).
+- **Saisie manuelle** : le PACO / RCCA peut encoder une tâche lui-même au format de l'export ALEA / des classeurs :
+  `<n><TYPE> <HHhMM> <train> IN de <GARE> à <autre gare> n°<AAAA-MM-JJ-NNNN> [nom] [téléphone]`, ou
+  `… OUT à <GARE> venant de <autre gare> …`. Analyse pure et testée (`lib/planner/parse-task.ts`) ; plusieurs lignes
+  collées = plusieurs tâches ; nom et téléphone **jamais repris** dans la tâche (le dossier suffit, la fiche DICOS porte le
+  nominatif sous `pmr:read`).
+- **Une réservation = plusieurs missions** : ex. Bruxelles-Midi → Mons puis Mons → Tournai = 4 tâches (Bruxelles IN,
+  Mons OUT, Mons IN, Tournai OUT) ; à Mons, correspondance si moins de 30 min (un seul agent), sinon deux tâches.
+  Le panneau d'une tâche liste les autres tâches du dossier.
+- **Codes Quinyx des postes** (planning de Mons, « quasi pareil » ailleurs) : type de service + section.
+
+| Type de service | Section | Poste | Horaire |
+|---|---|---|---|
+| `CPI_AM`, `CPI_PM`, `CPI_N` | `CPI MONS` | CPI | 06-14, 14-22, 22-06 |
+| `SPI_AM`, `SPI_PM`, `SPI_N` | `SPI MONS` | SPI | 06-14, 14-22, 22-06 |
+| `OPI 6-14`, `OPI 14-22` | `OPI Mons` | OPI | 06-14, 14-22 ; heures réelles parfois décalées (05-13) |
+| `PA_AM`, `PA_PM` | `PA Mons` | PA | 06-14, 14-22 |
+| `EXTRA CPI` | `… Mons` | EXTRA (renfort CPI) | 06-14 ou 14-22 |
+
+  Règle de capture des groupes « gares » : type commençant par `CPI`, `SPI`, `OPI`, `PA`, `EXTRA` (ou `B-CS` à vérifier) ;
+  **les heures réelles de la prestation font foi** (pas celles du type). Tout le reste est ignoré dans le navigateur :
+  repos, congés, absences, formations, visites médicales (codes du type `RW`, `CW`, `CV`, `RR`, `ADA`, `IDEV`…),
+  commentaires et pointages. Gare de base = section (« CPI MONS » → Mons).
+
+## 5. Questions encore ouvertes
+
+1. Capture de la requête DICOS d'un **dossier en attente** (le fichier annoncé n'est pas arrivé dans la session).
+2. Les agents **B-CS** (guichets) sont-ils dans ces plannings Quinyx, ou les guichets restent-ils une simple capacité
+   (3 PMR light / h pendant l'ouverture) sans agent nommé ?
+3. Qui planifie (PACO / RCCA seulement ?) ; les agents de gare consultent-ils quelque chose (feuille PDF, écran) ?
+4. Nom et téléphone du voyageur sur la feuille de l'agent : oui (avec `pmr:read`) ou jamais ?
+5. Taxi et « chef de bord » : simples destinations d'attribution (comme un agent), d'accord ?
+
+## 6. Questions initiales (archive)
 
 1. **Codes Quinyx des postes de gare** (types de service et sections : « SPI_AM … », « CPI … ») : une capture du planning
    d'un des dix groupes suffit pour les relever (même méthode que pour PACO / RCCA, sans cookie).
