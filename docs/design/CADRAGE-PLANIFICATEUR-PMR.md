@@ -140,11 +140,13 @@ règle le permet. Le résultat est une **proposition** : rien n'est enregistré 
 ## 5. Questions encore ouvertes
 
 1. ~~Capture d'un dossier en attente~~ : reçue et analysée (§7).
-2. Les agents **B-CS** (guichets) sont-ils dans ces plannings Quinyx, ou les guichets restent-ils une simple capacité
-   (3 PMR light / h pendant l'ouverture) sans agent nommé ?
-3. Qui planifie (PACO / RCCA seulement ?) ; les agents de gare consultent-ils quelque chose (feuille PDF, écran) ?
-4. Nom et téléphone du voyageur sur la feuille de l'agent : oui (avec `pmr:read`) ou jamais ?
-5. Taxi et « chef de bord » : simples destinations d'attribution (comme un agent), d'accord ?
+2. ~~B-CS~~ : **simple capacité** (3 PMR light / h pendant l'ouverture), pas d'agent nommé.
+3. ~~Qui planifie~~ : **les PACO / RCCA seulement**. Les agents de gare auront **une vue de leur planning / tâches** par
+   lien public (jeton par agent, lecture seule) et / ou PDF — lot P4.
+4. Nom et téléphone du voyageur sur la feuille de l'agent : oui (avec `pmr:read`) ou jamais ? (à trancher en P4)
+5. ~~Taxi et chef de bord~~ : **destinations d'attribution**, comme un agent.
+
+**P0 + P1 validés le 15 oct. 2026.**
 
 ## 7. Dossiers DICOS en attente (capture du 15 oct. 2026)
 
