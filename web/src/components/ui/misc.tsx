@@ -14,6 +14,7 @@ function EmptyState({
   icon,
   action,
   variant = "compact",
+  framed = false,
   className,
 }: {
   title?: string;
@@ -21,6 +22,11 @@ function EmptyState({
   icon?: React.ReactNode;
   action?: React.ReactNode;
   variant?: "compact" | "first";
+  /**
+   * Compact dans le cadre d'une liste (v4 lot 4) : la ligne vide prend la place des lignes, dans le même cadre que le
+   * tableau (contour du thème, fond `surface`).
+   */
+  framed?: boolean;
   className?: string;
 }) {
   if (variant === "first")
@@ -47,7 +53,7 @@ function EmptyState({
         {action}
       </div>
     );
-  return (
+  const row = (
     <div
       data-slot="empty"
       data-variant="compact"
@@ -77,6 +83,15 @@ function EmptyState({
         ) : null}
       </p>
       {action ? <div className="flex shrink-0 items-center gap-2">{action}</div> : null}
+    </div>
+  );
+  if (!framed) return row;
+  return (
+    <div
+      data-slot="empty-frame"
+      className="rounded-box border border-(--card-frame) bg-surface p-1.5 shadow-rest"
+    >
+      {row}
     </div>
   );
 }

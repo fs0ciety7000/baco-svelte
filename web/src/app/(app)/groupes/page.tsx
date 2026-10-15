@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
 import { hideCancelled, PmrFilterBar, type PmrFilters } from "@/components/pmr/filter-bar";
-import { GroupBoard } from "@/components/pmr/group-board";
+import { GroupAlea, GroupBoard } from "@/components/pmr/group-board";
+import { ListStatus } from "@/components/pmr/list-status";
+import Link from "next/link";
 import { SyncStatus } from "@/components/pmr/sync-status";
 import { EmptyState } from "@/components/ui/misc";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
@@ -43,17 +45,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
     listTrainStates(du, au),
   ]);
   return (
-    <section className="flex flex-col gap-4" aria-label="Groupes">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-body text-fg-muted">
-          <span className="font-mono text-fg tabular">{total}</span> {pl(total, "trajet")} de groupe
-          {total > rows.length ? ` · ${rows.length} affichés : réduis la période` : ""}
-        </p>
-        <div className="flex flex-wrap items-center gap-3">
-          {sync ? <SyncStatus {...sync} /> : null}
-          <LiveRefresh topics={["group_missions", "dicos_syncs", "mission_trains"]} />
-        </div>
-      </div>
+    <section className="flex flex-col gap-3" aria-label="Groupes">
       <PmrFilterBar
         action="/groupes"
         filters={{ ...f, du, au, district: district || "tous" }}
@@ -62,17 +54,44 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
         shortcuts={[
           { label: "Aujourd'hui", du: today, au: today },
           { label: "Demain", du: addDays(today, 1), au: addDays(today, 1) },
-          { label: "7 prochains jours", du: today, au: addDays(today, 6) },
+          { label: "7 jours", du: today, au: addDays(today, 6) },
         ]}
+        actions={
+          <GroupAlea rows={rows} district={district} canMark={can(user, "deplacements:write")} />
+        }
+      />
+      <ListStatus
+        count={
+          <span>
+            <span className="font-medium text-fg tabular">{total}</span> {pl(total, "trajet")} de
+            groupe
+            {total > rows.length ? ` · ${rows.length} affichés : réduis la période` : ""}
+          </span>
+        }
+        sync={sync ? <SyncStatus {...sync} /> : null}
+        live={<LiveRefresh topics={["group_missions", "dicos_syncs", "mission_trains"]} />}
       />
       {rows.length === 0 ? (
-        sync && !sync.covered ? (
+        sync && !sync.lastAt ? (
           <EmptyState
+            variant="first"
+            title="Jamais synchronisé avec DICOS"
+            description="Installe l'extension CSM puis lance la synchro depuis l'onglet DICOS ouvert : les groupes arrivent ici."
+            action={
+              <Link href="/extension" className="link">
+                Extension CSM
+              </Link>
+            }
+          />
+        ) : sync && !sync.covered ? (
+          <EmptyState
+            framed
             title="Pas encore synchronisé"
             description="Aucune synchro DICOS pour cette période : lance la synchro depuis l'extension (onglet DICOS ouvert)."
           />
         ) : (
           <EmptyState
+            framed
             title="Aucun groupe"
             description="Aucune mission de groupe pour cette période."
           />
@@ -82,7 +101,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
           rows={rows}
           district={district}
           delays={delays}
-          canMark={can(user, "deplacements:write")}
           now={brusselsMinutes(new Date())}
           today={today}
         />

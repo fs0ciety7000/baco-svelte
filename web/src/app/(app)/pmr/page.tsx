@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
-import { AssistBoard } from "@/components/pmr/assist-board";
+import { AssistAlea, AssistBoard } from "@/components/pmr/assist-board";
+import { ListStatus } from "@/components/pmr/list-status";
 import { SyncStatus } from "@/components/pmr/sync-status";
 import { hideCancelled, PmrFilterBar, type PmrFilters } from "@/components/pmr/filter-bar";
 import { can } from "@/lib/permissions";
@@ -51,19 +52,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
           .catch(() => [])
       : Promise.resolve([]),
   ]);
+  const canMark = can(user, "deplacements:write");
   return (
-    <section className="flex flex-col gap-4" aria-label="Missions PMR">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-body text-fg-muted" data-testid="assists-count">
-          <span className="font-mono text-fg tabular">{total}</span> {pl(total, "mission")}
-          {total > rows.length ? ` · ${rows.length} affichées : réduis la période` : ""}
-        </p>
-        {/* Plus de création manuelle : les missions sont synchronisées depuis DICOS (décision du 8 octobre 2026). */}
-        <div className="flex flex-wrap items-center gap-3">
-          {sync ? <SyncStatus {...sync} /> : null}
-          <LiveRefresh topics={["pmr_assists", "dicos_syncs", "mission_trains"]} />
-        </div>
-      </div>
+    <section className="flex flex-col gap-3" aria-label="Missions PMR">
+      {/* Barre d'outils sur une ligne (v4 lot 4) ; plus de création manuelle : les missions viennent de DICOS. */}
       <PmrFilterBar
         action="/pmr"
         filters={{ ...f, du, au, district: district || "tous" }}
@@ -71,8 +63,19 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
         shortcuts={[
           { label: "Aujourd'hui", du: today, au: today },
           { label: "Demain", du: addDays(today, 1), au: addDays(today, 1) },
-          { label: "7 prochains jours", du: today, au: addDays(today, 6) },
+          { label: "7 jours", du: today, au: addDays(today, 6) },
         ]}
+        actions={<AssistAlea rows={rows} groups={groups} district={district} canMark={canMark} />}
+      />
+      <ListStatus
+        count={
+          <span data-testid="assists-count">
+            <span className="font-medium text-fg tabular">{total}</span> {pl(total, "mission")}
+            {total > rows.length ? ` · ${rows.length} affichées : réduis la période` : ""}
+          </span>
+        }
+        sync={sync ? <SyncStatus {...sync} /> : null}
+        live={<LiveRefresh topics={["pmr_assists", "dicos_syncs", "mission_trains"]} />}
       />
       <AssistBoard
         rows={rows}
@@ -80,9 +83,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
         groupByDay
         district={district}
         notSynced={sync ? !sync.covered : false}
+        neverSynced={sync ? !sync.lastAt : false}
         delays={delays}
-        canMark={can(user, "deplacements:write")}
-        groups={groups}
         now={brusselsMinutes(new Date())}
         today={today}
       />

@@ -34,6 +34,50 @@ export function FilterChip({
   );
 }
 
+/**
+ * Contrôle segmenté de navigation (v4 lot 4 : période « Aujourd'hui / Demain / 7 jours ») : même rendu que `Segmented`,
+ * mais des liens (filtres GET partageables, sans JS) ; `aria-current` sur le lien actif. Pleine largeur en mobile.
+ */
+export function SegmentedNav({
+  label,
+  items,
+  className,
+  ...props
+}: {
+  label: string;
+  items: { label: string; href: string; current: boolean; testId?: string }[];
+  className?: string;
+  "data-testid"?: string;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label={label}
+      data-print="hide"
+      data-slot="segmented-nav"
+      className={cn("flex w-full rounded-control bg-surface-2 p-0.5 md:w-auto", className)}
+      {...props}
+    >
+      {items.map((it) => (
+        <Link
+          key={it.href}
+          href={it.href}
+          aria-current={it.current ? "true" : undefined}
+          data-testid={it.testId}
+          className={cn(
+            "inline-flex h-control-sm min-w-0 flex-1 items-center justify-center truncate rounded-control px-3 text-small font-medium whitespace-nowrap transition-colors duration-150 md:flex-none",
+            it.current
+              ? "bg-(--control-on) font-semibold text-fg shadow-rest ring-1 ring-border-strong"
+              : "text-fg-muted hover:bg-surface-3 hover:text-fg",
+          )}
+        >
+          {it.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 /** Rangée de puces : défile horizontalement en mobile, passe à la ligne en desktop. */
 export function ChipRow({ className, ...props }: React.ComponentProps<"div">) {
   return (
@@ -59,11 +103,20 @@ export function CollapsibleFilters({
   active,
   children,
   className,
+  always = false,
+  toggleClassName,
 }: {
   /** Nombre de filtres actifs (affiché sur le bouton). */
   active: number;
   children: React.ReactNode;
   className?: string;
+  /**
+   * Repliés à toutes les largeurs (barre d'outils sur une ligne, v4 lot 4) : puce « Filtres (n) » dans la rangée et
+   * panneau sur sa propre ligne en fin de rangée (`basis-full order-last`) quand il est ouvert.
+   */
+  always?: boolean;
+  /** Classes de la puce « Filtres » (variante `always` : ordre dans la rangée). */
+  toggleClassName?: string;
 }) {
   const [open, setOpenState] = React.useState(false);
   const id = React.useId();
@@ -77,6 +130,46 @@ export function CollapsibleFilters({
       openByPage.set(window.location.pathname, next);
       return next;
     });
+  if (always)
+    return (
+      <>
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={id}
+          data-slot="filter-chip"
+          data-pressed={active || undefined}
+          data-testid="filters-toggle"
+          onClick={() => setOpen((o) => !o)}
+          className={cn(CHIP_BASE, "h-control-sm", active ? CHIP_ON : CHIP_OFF, toggleClassName)}
+        >
+          <SlidersHorizontal aria-hidden className="size-4" />
+          Filtres
+          {active ? (
+            <span className="inline-grid h-5 min-w-5 place-items-center rounded-pill bg-surface-2 px-1.5 text-label font-semibold text-fg-muted tabular">
+              {active}
+              <span className="sr-only"> {pl(active, "actif")}</span>
+            </span>
+          ) : null}
+          <ChevronDown
+            aria-hidden
+            className={cn("size-3.5 transition-transform", open && "rotate-180")}
+          />
+        </button>
+        <div
+          id={id}
+          data-testid="filters-panel"
+          className={cn(
+            open
+              ? "order-last flex basis-full flex-wrap items-end gap-x-4 gap-y-3 rounded-box bg-surface-2 p-3"
+              : "hidden",
+            className,
+          )}
+        >
+          {children}
+        </div>
+      </>
+    );
   return (
     <>
       <button

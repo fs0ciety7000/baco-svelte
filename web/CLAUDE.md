@@ -844,3 +844,12 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `EmptyState variant="compact" | "first"`, **`TrainChip`** dans `ui/train-chip.tsx` (`size` md / sm ; `DelayBadge` reste dans
   `components/pmr/train-chip.tsx`). Sélecteur de thème : `data-testid` `direction-<id>` et `theme-<choix>`.
 - E2E : les cookies `csm_ui` posés par les tests utilisent `E2E_BASE_URL` (port local).
+- **Lot 4 « Écrans clés »** : accueil `components/dashboard/todo.tsx` (`todoItems` → `group` / `kind` / `train` / `delay` /
+  `code`, `groupTodo`, `primaryTodo`, `ageLabel`, `NextPickups` ; `data-testid` `todo-item`, `todo-action`, `todo-group-<id>`,
+  `next-pickups`, `home-aside`), `serviceLabel` (`lib/shift.ts`). Listes PMR : `PmrFilterBar actions` (barre d'outils
+  `pmr-toolbar`, période `SegmentedNav` dans `ui/filters.tsx`, `DistrictMenu` dans `ui/district-picker.tsx` — `change` émis à
+  la fermeture —, `CollapsibleFilters always` = puce `filters-toggle` + panneau `filters-panel`, « Masquer les annulées »
+  dedans), `ListStatus` (`components/pmr/list-status.tsx`), ALEA rendu par la page (`AssistAlea`, `GroupAlea` ; bouton
+  `type="button"` car dans le formulaire), cellules `StationCell` / `CardStation` / `SensChip` (`assist-board.tsx`). Bons :
+  `OrderSteps` (`order-steps`), `OrderTicket` (`order-ticket`, `compact`), `lib/orders/steps.ts` (`stepStates`,
+  `sectionState`, `BUS_STEPS`, `TAXI_STEPS` ; sections `id="bon-…"`), barre d'actions flottante en desktop. `EmptyState framed`.

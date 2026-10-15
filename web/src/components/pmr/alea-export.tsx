@@ -174,7 +174,14 @@ export function AleaButton({
 
   return (
     <>
-      <Button variant="secondary" onClick={() => setOpen(true)} disabled={disabled}>
+      {/* type=button : le bouton vit dans la barre d'outils (formulaire des filtres, v4 lot 4). */}
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        onClick={() => setOpen(true)}
+        disabled={disabled}
+      >
         <ClipboardList aria-hidden /> {label}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>

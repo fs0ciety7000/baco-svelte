@@ -153,8 +153,8 @@ test("missions PMR : tableau sans coupure, panneau ancré compris (1280 px)", as
     overflow: el.scrollWidth > el.clientWidth,
     box: el.getBoundingClientRect().toJSON() as DOMRect,
   }));
-  // Le tableau défile dans son cadre (pas la page) ; « Copier » reste visible (colonne collante).
-  expect(m.overflow).toBe(true);
+  // Le tableau défile dans son cadre (pas la page) s'il le faut ; « Copier » reste visible (colonne collante). v4 lot 4 :
+  // moins de colonnes (sens dans la cellule de gare), le tableau peut tenir sans défiler.
   const copy = page
     .getByTestId("assists-table")
     .getByRole("button", { name: /Copier/ })
@@ -162,13 +162,15 @@ test("missions PMR : tableau sans coupure, panneau ancré compris (1280 px)", as
   const cb = await copy.boundingBox();
   expect(cb).not.toBeNull();
   expect(cb!.x + cb!.width).toBeLessThanOrEqual(m.box.right + 1);
-  // Défilement horizontal : le train reste collé à gauche.
-  const train = page.getByTestId("assists-table").locator("tr[data-hl] > td").first();
-  const before = (await train.boundingBox())!.x;
-  await region.evaluate((el) => (el.scrollLeft = 400));
-  await expect
-    .poll(async () => Math.round((await train.boundingBox())!.x))
-    .toBe(Math.round(before));
+  if (m.overflow) {
+    // Défilement horizontal : le train reste collé à gauche.
+    const train = page.getByTestId("assists-table").locator("tr[data-hl] > td").first();
+    const before = (await train.boundingBox())!.x;
+    await region.evaluate((el) => (el.scrollLeft = 400));
+    await expect
+      .poll(async () => Math.round((await train.boundingBox())!.x))
+      .toBe(Math.round(before));
+  }
   await page.screenshot({ path: "test-results/pmr-tableau-1280-panneau.png" });
 });
 

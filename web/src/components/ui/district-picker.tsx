@@ -9,6 +9,7 @@ import { DISTRICT_CODE_OPTIONS, type DistrictOption } from "@/lib/district-param
 
 import { CHIP_BASE, CHIP_OFF, CHIP_ON } from "./chip-styles";
 import { useControllableValue, useMultiFormBridge } from "./form-bridge";
+import { PickerSurface, usePickerSheet } from "./popover";
 
 const chip = cn(
   CHIP_BASE,
@@ -172,4 +173,95 @@ function DistrictPicker({
   );
 }
 
-export { DistrictPicker };
+/**
+ * Districts en menu (v4 lot 4, barre d'outils des Missions PMR et des Groupes) : une puce « Districts · DSO, DSE » qui
+ * ouvre le `DistrictPicker` (Popover en desktop, feuille du bas en mobile ou au doigt). Les champs cachés restent dans
+ * le formulaire (à côté de la puce) ; le `change` part à la fermeture si la sélection a changé (plusieurs puces
+ * basculées = une seule soumission des filtres).
+ */
+function DistrictMenu({
+  name,
+  defaultValues = [],
+  emptyValue,
+  mine,
+  label = "Districts",
+  options = DISTRICT_CODE_OPTIONS,
+  "data-testid": testId,
+}: {
+  name: string;
+  defaultValues?: string[];
+  emptyValue?: string;
+  mine?: string[];
+  label?: string;
+  options?: DistrictOption[];
+  "data-testid"?: string;
+}) {
+  const [values, setValues] = React.useState(defaultValues);
+  const [open, setOpen] = React.useState(false);
+  const sheet = usePickerSheet();
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const bridge = useMultiFormBridge(values);
+  const openedWith = React.useRef("");
+  const same = (a: string[], b: string[]) => a.length === b.length && a.every((v) => b.includes(v));
+  const summary = !values.length
+    ? "Tous les districts"
+    : mine?.length && same(values, mine)
+      ? `Mes districts · ${values.join(", ")}`
+      : values.join(", ");
+  const onOpenChange = (o: boolean) => {
+    if (o) openedWith.current = bridge.key;
+    setOpen(o);
+    // Fermeture : une seule soumission pour toutes les puces basculées.
+    if (!o && openedWith.current !== bridge.key) bridge.dispatch();
+  };
+  const trigger = (
+    <button
+      ref={triggerRef}
+      type="button"
+      aria-haspopup="dialog"
+      aria-expanded={open}
+      data-slot="filter-chip"
+      data-pressed={values.length ? true : undefined}
+      data-testid={testId}
+      onClick={() => onOpenChange(!open)}
+      className={cn(CHIP_BASE, "h-control-sm max-w-full", values.length ? CHIP_ON : CHIP_OFF)}
+    >
+      <MapPin aria-hidden className="size-4" />
+      <span className="sr-only">{label} : </span>
+      <span className="truncate">{summary}</span>
+    </button>
+  );
+  return (
+    <>
+      <PickerSurface
+        open={open}
+        onOpenChange={onOpenChange}
+        sheet={sheet}
+        title={label}
+        anchor={trigger}
+        triggerRef={triggerRef}
+        aria-label={label}
+        className={sheet ? undefined : "w-72 p-2"}
+      >
+        <DistrictPicker
+          values={values}
+          onValuesChange={setValues}
+          mine={mine}
+          layout="stack"
+          label={label}
+          options={options}
+          data-testid={testId ? `${testId}-list` : undefined}
+        />
+      </PickerSurface>
+      <span ref={bridge.ref} hidden />
+      {values.map((v) => (
+        <input key={v} type="hidden" name={name} value={v} />
+      ))}
+      {!values.length && emptyValue !== undefined ? (
+        <input type="hidden" name={name} value={emptyValue} />
+      ) : null}
+    </>
+  );
+}
+
+export { DistrictMenu, DistrictPicker };

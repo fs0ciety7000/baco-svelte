@@ -2,8 +2,9 @@ import { Download } from "lucide-react";
 import type { Metadata } from "next";
 
 import { pl } from "@/lib/utils";
-import { AssistBoard } from "@/components/pmr/assist-board";
+import { AssistAlea, AssistBoard } from "@/components/pmr/assist-board";
 import { hideCancelled, PmrFilterBar, type PmrFilters } from "@/components/pmr/filter-bar";
+import { ListStatus } from "@/components/pmr/list-status";
 import { ASSIST_STATUSES, parseStatuses } from "@/lib/pmr/model";
 import { Button } from "@/components/ui/button";
 import { can } from "@/lib/permissions";
@@ -53,18 +54,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
     ),
   );
   return (
-    <section className="flex flex-col gap-4" aria-label="Historique PMR">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-body text-fg-muted">
-          <span className="font-mono text-fg tabular">{total}</span> {pl(total, "mission")}
-          {total > rows.length ? ` · ${rows.length} affichées : affine les filtres` : ""}
-        </p>
-        <Button asChild variant="secondary">
-          <a href={`/api/pmr/export?${exportQuery}`} download>
-            <Download aria-hidden /> Export CSV (sans nom)
-          </a>
-        </Button>
-      </div>
+    <section className="flex flex-col gap-3" aria-label="Historique PMR">
       <PmrFilterBar
         action="/pmr/historique"
         filters={{ ...f, du, au }}
@@ -73,6 +63,24 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
           { label: "30 derniers jours", du: def.from, au: def.to },
           { label: "Depuis janvier", du: `${today.slice(0, 4)}-01-01`, au: today },
         ]}
+        actions={
+          <>
+            <AssistAlea rows={rows} district={district} canMark={false} />
+            <Button asChild variant="secondary" size="sm">
+              <a href={`/api/pmr/export?${exportQuery}`} download>
+                <Download aria-hidden /> Export CSV (sans nom)
+              </a>
+            </Button>
+          </>
+        }
+      />
+      <ListStatus
+        count={
+          <span>
+            <span className="font-medium text-fg tabular">{total}</span> {pl(total, "mission")}
+            {total > rows.length ? ` · ${rows.length} affichées : affine les filtres` : ""}
+          </span>
+        }
       />
       <AssistBoard rows={rows} canPmr={canPmr} groupByDay={false} district={district} />
     </section>

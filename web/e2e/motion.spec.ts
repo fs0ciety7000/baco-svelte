@@ -52,7 +52,10 @@ test("l'accueil ne clignote pas au premier affichage", async ({ page }) => {
     w.__minOpacity = 1;
     let seen = false;
     const tick = () => {
-      const el = document.querySelector<HTMLElement>("[data-widget]");
+      // Premier widget visible (« Fin de service » quitte la grille dès 1280 px : colonne droite, v4 lot 4).
+      const el = [...document.querySelectorAll<HTMLElement>("[data-widget]")].find(
+        (w) => w.offsetParent !== null,
+      );
       if (el) {
         const o = Number(getComputedStyle(el).opacity);
         if (o > 0.99) seen = true;
@@ -63,7 +66,7 @@ test("l'accueil ne clignote pas au premier affichage", async ({ page }) => {
     requestAnimationFrame(tick);
   });
   await page.reload();
-  await page.locator("[data-widget]").first().waitFor();
+  await page.locator("[data-widget]").filter({ visible: true }).first().waitFor();
   await page.waitForTimeout(1200);
   const min = await page.evaluate(
     () => (window as unknown as { __minOpacity: number }).__minOpacity,

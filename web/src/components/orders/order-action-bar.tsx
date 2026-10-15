@@ -68,6 +68,15 @@ export function OrderActionBar({
   const canDelete = !!orderId && !!deletion;
   const deleteHint = remaining ? `Supprimable encore ${remaining}` : "";
   const [sheetOpen, setSheetOpen] = React.useState(false);
+  // La barre collante ne recouvre jamais le champ qui reçoit le focus (WCAG 2.2, focus non masqué).
+  React.useEffect(() => {
+    const html = document.documentElement;
+    const before = html.style.scrollPaddingBottom;
+    html.style.scrollPaddingBottom = "7.5rem";
+    return () => {
+      html.style.scrollPaddingBottom = before;
+    };
+  }, []);
   const tr = useOrderTransitions({
     kind,
     id: orderId ?? "",
@@ -97,7 +106,12 @@ export function OrderActionBar({
   };
 
   return (
-    <ActionBar className="max-md:flex-nowrap" data-testid="order-action-bar">
+    // Desktop (v4 lot 4) : barre flottante (ombre de flottement, détachée du bord) ; elle garde sa place dans le flux et
+    // `scroll-padding-bottom` empêche qu'un champ focalisé passe dessous. Mobile : barre R6 inchangée.
+    <ActionBar
+      className="max-md:flex-nowrap md:bottom-3 md:rounded-box md:border-0 md:bg-surface md:px-3 md:py-2.5 md:shadow-float md:backdrop-blur-none"
+      data-testid="order-action-bar"
+    >
       {main?.type === "send" ? (
         <Button
           type="button"
@@ -145,7 +159,7 @@ export function OrderActionBar({
         {menuOpen ? (
           <div
             role="menu"
-            className="absolute right-0 bottom-full z-30 mb-2 flex w-60 flex-col border border-border-strong bg-surface py-1 shadow-lg"
+            className="absolute right-0 bottom-full z-30 mb-2 flex w-60 flex-col overflow-hidden rounded-box bg-surface py-1 shadow-float"
             onClick={() => setMenuOpen(false)}
           >
             {pdfHref ? (
