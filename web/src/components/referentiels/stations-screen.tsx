@@ -1,6 +1,10 @@
+import { Download } from "lucide-react";
+
 import { StationsBoard } from "@/components/referentiels/stations-board";
 import { Button } from "@/components/ui/button";
 import { FilterForm } from "@/components/ui/filter-form";
+import { ClearFilters, CollapsibleFilters } from "@/components/ui/filters";
+import { ListCount, ListStatus, TOOLBAR, ToolbarSearch } from "@/components/ui/list-toolbar";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Input } from "@/components/ui/input";
 import { Select as CustomSelect } from "@/components/ui/select";
@@ -53,86 +57,95 @@ export async function StationsScreen({
     type: first(raw, "type"),
   };
   const { rows, total } = await listStations(f);
+  const folded = [f.pays, f.type, f.proposition, f.ligne].filter(Boolean).length;
 
   return (
     <section className="flex flex-col gap-4" aria-label="Gares">
-      <FilterForm action={action} className="flex flex-wrap items-end gap-2">
+      {/* Barre d'outils sur une ligne (v4 lot 6) : recherche, districts, « Filtres (n) », export à droite. */}
+      <FilterForm action={action} role="search" className={TOOLBAR} data-testid="stations-toolbar">
         <FormAutoSubmit live />
-        <label className="flex min-w-0 flex-col gap-1 md:w-56">
-          <span className="text-small text-fg-muted">Gare</span>
-          <Input
-            name="q"
-            defaultValue={f.q}
-            placeholder="Nom FR / NL, abréviation (FMS)…"
-            maxLength={60}
-          />
-        </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-52">
-          <span className="text-small text-fg-muted">District</span>
+        <ToolbarSearch
+          label="Gare"
+          defaultValue={f.q}
+          placeholder="Nom FR / NL, abréviation (FMS)…"
+        />
+        <label className="min-w-0 flex-1 md:w-52 md:flex-none">
+          <span className="sr-only">District</span>
           <MultiSelect
             name="district"
+            label="District"
             options={DISTRICT_FILTER}
             defaultValues={f.district}
-            allLabel="Tous"
+            allLabel="Tous les districts"
             noun="district"
             data-testid="stations-district-filter"
           />
         </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-40">
-          <span className="text-small text-fg-muted">Pays</span>
-          <CustomSelect
-            name="pays"
-            defaultValue={f.pays}
-            options={[
-              { value: "", label: "Tous" },
-              { value: "be", label: "Belgique" },
-              { value: "etranger", label: "Gares étrangères" },
-            ]}
-          />
-        </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-36">
-          <span className="text-small text-fg-muted">Type</span>
-          <CustomSelect
-            name="type"
-            defaultValue={f.type}
-            options={[
-              { value: "", label: "Tous" },
-              { value: "gare", label: "Gares" },
-              { value: "pang", label: "PANG" },
-              { value: "etranger", label: "Étranger" },
-            ]}
-          />
-        </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-52">
-          <span className="text-small text-fg-muted">Proposition de district</span>
-          <CustomSelect
-            name="proposition"
-            defaultValue={f.proposition}
-            options={[
-              { value: "", label: "Toutes les gares" },
-              { value: "oui", label: "Sans district, avec proposition" },
-            ]}
-          />
-        </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-28">
-          <span className="text-small text-fg-muted">Ligne</span>
-          <Input name="ligne" defaultValue={f.ligne} placeholder="96" maxLength={12} />
-        </label>
-        <Button type="submit" variant="secondary">
-          Afficher
+        <CollapsibleFilters always active={folded}>
+          <label className="flex min-w-0 flex-col gap-1 md:w-40">
+            <span className="text-small text-fg-muted">Pays</span>
+            <CustomSelect
+              name="pays"
+              defaultValue={f.pays}
+              options={[
+                { value: "", label: "Tous" },
+                { value: "be", label: "Belgique" },
+                { value: "etranger", label: "Gares étrangères" },
+              ]}
+            />
+          </label>
+          <label className="flex min-w-0 flex-col gap-1 md:w-36">
+            <span className="text-small text-fg-muted">Type</span>
+            <CustomSelect
+              name="type"
+              defaultValue={f.type}
+              options={[
+                { value: "", label: "Tous" },
+                { value: "gare", label: "Gares" },
+                { value: "pang", label: "PANG" },
+                { value: "etranger", label: "Étranger" },
+              ]}
+            />
+          </label>
+          <label className="flex min-w-0 flex-col gap-1 md:w-52">
+            <span className="text-small text-fg-muted">Proposition de district</span>
+            <CustomSelect
+              name="proposition"
+              defaultValue={f.proposition}
+              options={[
+                { value: "", label: "Toutes les gares" },
+                { value: "oui", label: "Sans district, avec proposition" },
+              ]}
+            />
+          </label>
+          <label className="flex min-w-0 flex-col gap-1 md:w-28">
+            <span className="text-small text-fg-muted">Ligne</span>
+            <Input name="ligne" defaultValue={f.ligne} placeholder="96" maxLength={12} />
+          </label>
+          <ClearFilters href={action} />
+        </CollapsibleFilters>
+        <Button asChild variant="secondary" size="sm" className="ml-auto" data-print="hide">
+          <a href="/api/referentiels/gares/export">
+            <Download aria-hidden /> Exporter (CSV)
+          </a>
         </Button>
+        <button type="submit" tabIndex={-1} aria-hidden className="sr-only">
+          Afficher
+        </button>
       </FilterForm>
-      <p className="text-small text-fg-muted">
-        <span className="font-mono text-fg tabular">{total}</span> {pl(total, "gare")}
-        {total > rows.length ? ` · ${rows.length} affichées, affine la recherche` : ""}
-        {canEdit ? " · district modifiable (« Automatique » = proposé par l'import)" : ""}
-        {" · "}
-        <a href="/api/referentiels/gares/export" className="link" data-print="hide">
-          Exporter toutes les gares (CSV)
-        </a>
-      </p>
+      <ListStatus
+        count={
+          <ListCount
+            n={total}
+            label={pl(total, "gare")}
+            extra={total > rows.length ? ` · ${rows.length} affichées, affine la recherche` : ""}
+          />
+        }
+        sync={canEdit ? "district modifiable (« Automatique » = proposé par l'import)" : undefined}
+      />
       {rows.length === 0 ? (
         <EmptyState
+          framed
           title="Aucune gare"
           description="Aucune gare ne correspond (le référentiel est construit chaque matin avec celui des trains)."
         />

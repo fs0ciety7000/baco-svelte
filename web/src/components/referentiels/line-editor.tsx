@@ -133,7 +133,7 @@ export function LineEditor({
 
   return (
     <div
-      className="flex flex-col gap-4 rounded-box border border-border bg-surface p-3"
+      className="flex flex-col gap-4 rounded-box border border-(--card-frame) bg-surface p-3 shadow-rest"
       data-testid="line-editor"
     >
       <Field label="Nom de la ligne (extrémités)">
@@ -235,21 +235,11 @@ export function LineEditor({
         <Button variant="primary" onClick={save} loading={pending} data-testid="line-save">
           <Save aria-hidden /> Enregistrer
         </Button>
-        <Button
-          variant="ghost"
-          className="border border-border"
-          onClick={newBranch}
-          disabled={pending}
-        >
+        <Button variant="secondary" onClick={newBranch} disabled={pending}>
           <GitBranch aria-hidden /> Nouvel embranchement
         </Button>
         {manual ? (
-          <Button
-            variant="ghost"
-            className="border border-border"
-            onClick={reset}
-            disabled={pending}
-          >
+          <Button variant="secondary" onClick={reset} disabled={pending}>
             <RotateCcw aria-hidden /> Rétablir l&apos;automatique
           </Button>
         ) : null}
@@ -271,9 +261,9 @@ export function LineEditToggle({
   return (
     <div className="flex flex-col gap-3">
       <Button
-        variant="ghost"
+        variant="secondary"
         size="sm"
-        className="self-start border border-border"
+        className="self-start"
         onClick={() => setOpen(true)}
         data-testid="line-edit"
       >

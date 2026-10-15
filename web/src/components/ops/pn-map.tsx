@@ -327,7 +327,7 @@ export function PnMap({
   }, [showZones, shapesState, ready, zones, zoom >= 8]);
 
   return (
-    <div className="relative h-full min-h-80 w-full overflow-hidden rounded-box border border-border">
+    <div className="relative h-full min-h-80 w-full overflow-hidden rounded-box border border-(--card-frame) shadow-rest">
       <div
         ref={el}
         className="pn-map absolute inset-0"
@@ -338,7 +338,7 @@ export function PnMap({
       {tilesDown ? (
         <p
           role="status"
-          className="absolute top-2 left-1/2 z-[500] -translate-x-1/2 rounded-control border border-warn/50 bg-surface px-3 py-1 text-small"
+          className="absolute top-2 left-1/2 z-[500] -translate-x-1/2 rounded-pill border border-warn/50 bg-surface px-3 py-1 text-small shadow-float"
         >
           Fond de carte indisponible : la liste et les liens restent utilisables.
         </p>
@@ -346,7 +346,7 @@ export function PnMap({
       {showZones && shapesState === "loading" ? (
         <p
           role="status"
-          className="absolute top-2 left-1/2 z-[500] -translate-x-1/2 rounded-control border border-border bg-surface px-3 py-1 text-small text-fg-muted"
+          className="absolute top-2 left-1/2 z-[500] -translate-x-1/2 rounded-pill border border-border bg-surface px-3 py-1 text-small text-fg-muted shadow-float"
         >
           Chargement des zones SPI…
         </p>
@@ -354,7 +354,7 @@ export function PnMap({
       {showZones && shapesState === "error" ? (
         <p
           role="status"
-          className="absolute top-2 left-1/2 z-[500] -translate-x-1/2 rounded-control border border-warn/50 bg-surface px-3 py-1 text-small"
+          className="absolute top-2 left-1/2 z-[500] -translate-x-1/2 rounded-pill border border-warn/50 bg-surface px-3 py-1 text-small shadow-float"
         >
           Zones SPI indisponibles pour le moment.
         </p>

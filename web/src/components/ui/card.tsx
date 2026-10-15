@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react";
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
@@ -86,4 +87,41 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-export { Card, CardContent, CardFooter, CardHeader, Count };
+/**
+ * Carte repliable (v4 lot 6) : même cadre que `Card`, en-tête compact cliquable (titre 15 / 600, compteur neutre,
+ * chevron) ; remplace les `<details>` à sommaire en capitales (fiche d'une ligne, sections facultatives).
+ */
+function CardDisclosure({
+  title,
+  count,
+  defaultOpen,
+  className,
+  children,
+  ...props
+}: Omit<React.ComponentProps<"details">, "title" | "open"> & {
+  title: React.ReactNode;
+  count?: number;
+  defaultOpen?: boolean;
+}) {
+  return (
+    <details
+      open={defaultOpen}
+      className={cn("group chamfer shadow-rest [--frame:var(--card-frame)]", className)}
+      {...props}
+    >
+      <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 py-3 select-none [&::-webkit-details-marker]:hidden">
+        <span className="flex min-w-0 items-center gap-2 text-body font-semibold text-fg">
+          <span className="title-rule truncate">{title}</span>
+          {count !== undefined ? <Count>{count}</Count> : null}
+        </span>
+        <ChevronDown
+          aria-hidden
+          className="ml-auto size-4 shrink-0 text-fg-muted transition-transform duration-150 group-open:rotate-180"
+        />
+      </summary>
+      <div className="flex flex-col gap-2 px-4 pb-4">{children}</div>
+    </details>
+  );
+}
+
+export { Card, CardContent, CardDisclosure, CardFooter, CardHeader, Count };

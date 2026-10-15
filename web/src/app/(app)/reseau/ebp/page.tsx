@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AbbrBadge, OrDash, RefPager, RefSearchBar } from "@/components/referentiels/ref-ui";
-import { Button } from "@/components/ui/button";
+import { FilterChip } from "@/components/ui/filters";
 import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/misc";
 import { requirePermission } from "@/server/auth";
@@ -29,17 +29,15 @@ export default async function Page({
         placeholder="Ligne, PtCar, abréviation, vue EBP…"
         hidden={incomplete ? { incomplete: "1" } : undefined}
       >
-        <Button
-          asChild
-          variant={incomplete ? "primary" : "ghost"}
-          className={incomplete ? "" : "border border-border"}
-        >
+        <FilterChip asChild pressed={incomplete}>
           <Link
             href={`/reseau/ebp?${new URLSearchParams(incomplete ? { q } : { q, incomplete: "1" }).toString()}`}
+            aria-pressed={incomplete}
+            role="button"
           >
             Incomplètes
           </Link>
-        </Button>
+        </FilterChip>
       </RefSearchBar>
       <RefPager
         base="/reseau/ebp"
@@ -50,6 +48,7 @@ export default async function Page({
       />
       {rows.length === 0 ? (
         <EmptyState
+          framed
           title="Aucune correspondance"
           description="Aucune vue EBP pour cette recherche."
         />

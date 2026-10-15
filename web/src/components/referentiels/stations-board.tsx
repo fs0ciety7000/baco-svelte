@@ -60,7 +60,7 @@ export function StationsBoard({ rows, canEdit }: { rows: StationRow[]; canEdit: 
     <div className="flex flex-col gap-3">
       {canEdit ? (
         <div
-          className="flex flex-wrap items-center gap-2 rounded-box border border-border bg-surface px-3 py-2"
+          className="flex flex-wrap items-center gap-2 rounded-box border border-(--card-frame) bg-surface px-3 py-2 shadow-rest"
           data-testid="stations-bulk"
         >
           <span className="text-small text-fg-muted">
@@ -195,7 +195,7 @@ export function StationsBoard({ rows, canEdit }: { rows: StationRow[]; canEdit: 
         {rows.map((s) => (
           <li
             key={s.id}
-            className="flex min-w-0 flex-col gap-2 rounded-box border border-border bg-surface px-3 py-2"
+            className="flex min-w-0 flex-col gap-2 rounded-box border border-(--card-frame) bg-surface px-3 py-2 shadow-rest"
             data-selected={selected.has(s.id) || undefined}
           >
             <div className="flex min-w-0 items-start gap-2">
@@ -278,13 +278,7 @@ function SuggestionCell({
         {s.suggestion}
       </span>
       {canEdit ? (
-        <Button
-          size="sm"
-          variant="ghost"
-          className="border border-border"
-          disabled={pending}
-          onClick={onApply}
-        >
+        <Button size="sm" variant="secondary" disabled={pending} onClick={onApply}>
           <Check aria-hidden className="size-4" /> Appliquer
         </Button>
       ) : null}

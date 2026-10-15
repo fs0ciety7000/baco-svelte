@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { toggleFavoriteStation, unwatchTrain, watchTrain } from "@/app/(app)/operations/actions";
 import { Button } from "@/components/ui/button";
 import { DateField } from "@/components/ui/date-field";
+import { ChipRow, FilterChip } from "@/components/ui/filters";
 import { Segmented } from "@/components/ui/form-kit";
 import { Input } from "@/components/ui/input";
 import { EmptyState, Skeleton } from "@/components/ui/misc";
@@ -297,19 +298,21 @@ export function LiveBoard({
               maxLength={60}
             />
           </label>
-          <Button type="submit">Rechercher</Button>
+          <Button type="submit" variant="secondary">
+            Rechercher
+          </Button>
           {suggestOpen && suggestions.length ? (
             <ul
               role="listbox"
               aria-label="Gares"
-              className="absolute top-full right-0 left-0 z-20 mt-1 border border-border-strong bg-surface shadow-lg"
+              className="absolute top-full right-0 left-0 z-20 mt-1 overflow-hidden rounded-box border border-border bg-surface p-1 shadow-float"
               data-testid="live-suggestions"
             >
               {suggestions.map((s) => (
                 <li key={s.id} role="option" aria-selected={false}>
                   <button
                     type="button"
-                    className="flex min-h-11 w-full cursor-pointer items-center px-3 text-left text-body hover:bg-surface-2"
+                    className="flex min-h-11 w-full cursor-pointer items-center rounded-control px-3 text-left text-body hover:bg-surface-3"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => pick({ id: s.id, name: s.name })}
                   >
@@ -326,20 +329,13 @@ export function LiveBoard({
           ) : null}
         </form>
         {favorites.length ? (
-          <div className="flex gap-1.5 overflow-x-auto pb-1" aria-label="Gares favorites">
+          <ChipRow aria-label="Gares favorites">
             {favorites.map((f) => (
-              <Button
-                key={f.id}
-                size="sm"
-                variant={station?.id === f.id ? "primary" : "ghost"}
-                className={cn("shrink-0", station?.id !== f.id && "border border-border")}
-                onClick={() => pick(f)}
-                aria-pressed={station?.id === f.id}
-              >
+              <FilterChip key={f.id} pressed={station?.id === f.id} onClick={() => pick(f)}>
                 <Star aria-hidden className="size-3.5" /> {f.name}
-              </Button>
+              </FilterChip>
             ))}
-          </div>
+          </ChipRow>
         ) : null}
       </div>
 
@@ -352,6 +348,7 @@ export function LiveBoard({
         <TabsContent value="tableau" className="flex flex-col gap-3 pt-3">
           {!station ? (
             <EmptyState
+              framed
               title="Choisis une gare"
               description="Tape le nom d'une gare, ou un numéro de train pour ouvrir son parcours. Ajoute tes gares en favori (étoile)."
             />
@@ -389,8 +386,7 @@ export function LiveBoard({
                   />
                   <Button
                     size="sm"
-                    variant="ghost"
-                    className="border border-border"
+                    variant="secondary"
                     onClick={() => setNow(!now)}
                     aria-pressed={!now}
                   >
@@ -422,7 +418,7 @@ export function LiveBoard({
               {error ? (
                 <p
                   role="status"
-                  className="border border-warn/50 bg-[color-mix(in_oklab,var(--warn)_10%,var(--surface))] px-3 py-2 text-small"
+                  className="rounded-control bg-[color-mix(in_oklab,var(--warn)_var(--tint),var(--surface))] px-3 py-2 text-small"
                 >
                   {error}
                   {board ? ` Dernière donnée : ${hm(board.fetchedAt)}.` : ""}
@@ -442,6 +438,7 @@ export function LiveBoard({
                 )
               ) : board.rows.length === 0 ? (
                 <EmptyState
+                  framed
                   title="Aucun train"
                   description="Aucun train à cette heure pour cette gare."
                 />
@@ -553,6 +550,7 @@ export function LiveBoard({
         <TabsContent value="suivis" className="pt-3">
           {watches.length === 0 ? (
             <EmptyState
+              framed
               title="Aucun train suivi"
               description="Ouvre un train et choisis « Suivre » : une notification arrive dès 5 min de retard ou en cas de suppression (10 trains, pour la journée)."
             />
@@ -653,6 +651,7 @@ function DisturbanceList({ districtStations }: { districtStations: string[] }) {
       {!items && !error ? <Skeleton className="h-20 w-full" /> : null}
       {items && list.length === 0 ? (
         <EmptyState
+          framed
           title="Rien à signaler"
           description={
             all
@@ -663,7 +662,10 @@ function DisturbanceList({ districtStations }: { districtStations: string[] }) {
       ) : null}
       <ul className="flex flex-col gap-2" data-testid="live-disturbances">
         {list.map((d) => (
-          <li key={d.id} className="flex flex-col gap-1 border border-border bg-surface px-4 py-3">
+          <li
+            key={d.id}
+            className="flex flex-col gap-1 border border-(--card-frame) bg-surface px-4 py-3 rounded-box shadow-rest"
+          >
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={d.kind === "incident" ? "danger" : "warn"}>
                 {d.kind === "incident" ? "Incident" : "Travaux"}
@@ -778,7 +780,7 @@ function TrainPanel({
               </Button>
             ) : null}
             {canWriteLog ? (
-              <Button asChild size="sm" variant="ghost" className="border border-border">
+              <Button asChild size="sm" variant="secondary">
                 <Link href={`/operations/journal?train=${encodeURIComponent(trainId)}`}>
                   <NotebookPen aria-hidden /> Noter
                 </Link>
