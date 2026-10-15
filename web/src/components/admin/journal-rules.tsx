@@ -37,7 +37,7 @@ export function JournalRulesEditor({ initial }: { initial: JournalRule[] }) {
         {rules.map((r, i) => (
           <li
             key={i}
-            className="grid gap-2 rounded-box border border-border bg-surface p-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_minmax(0,10rem)_auto] sm:items-end"
+            className="grid gap-2 rounded-box border border-(--card-frame) bg-surface p-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_minmax(0,10rem)_auto] sm:items-end shadow-rest"
           >
             <label className="flex min-w-0 flex-col gap-1">
               <span className="text-small text-fg-muted">Source</span>
@@ -102,8 +102,7 @@ export function JournalRulesEditor({ initial }: { initial: JournalRule[] }) {
       </ol>
       <div className="flex flex-wrap items-center gap-2">
         <Button
-          variant="ghost"
-          className="border border-border"
+          variant="secondary"
           disabled={rules.length >= 40}
           onClick={() => update([...rules, { source: "baco", match: "", category: "service" }])}
         >

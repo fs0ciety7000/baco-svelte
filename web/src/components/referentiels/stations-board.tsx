@@ -64,7 +64,7 @@ export function StationsBoard({ rows, canEdit }: { rows: StationRow[]; canEdit: 
           data-testid="stations-bulk"
         >
           <span className="text-small text-fg-muted">
-            <span className="font-mono text-fg tabular">{chosen.length}</span>{" "}
+            <span className="font-medium text-fg tabular">{chosen.length}</span>{" "}
             {pl(chosen.length, "sélectionnée")}
           </span>
           <Select

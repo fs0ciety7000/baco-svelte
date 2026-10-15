@@ -218,8 +218,7 @@ export function CampaignEditor({
                 </Button>
               ) : null}
               <Button
-                variant="ghost"
-                className="border border-border"
+                variant="secondary"
                 disabled={pending}
                 onClick={() =>
                   start(async () => {

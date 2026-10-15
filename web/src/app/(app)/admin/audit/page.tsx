@@ -3,11 +3,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { pl } from "@/lib/utils";
-import { ClearFilters, FilterSubmit } from "@/components/ui/filters";
+import { ClearFilters, CollapsibleFilters, FilterSubmit } from "@/components/ui/filters";
 import { DateRangePicker } from "@/components/ui/date-field";
 import { FilterForm } from "@/components/ui/filter-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TOOLBAR, ToolbarSearch } from "@/components/ui/list-toolbar";
 import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
@@ -58,55 +59,52 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
     new URLSearchParams({ ...keep, ...extra }).toString();
   return (
     <section className="flex flex-col gap-4" aria-label="Journal d'audit">
-      <FilterForm
-        action="/admin/audit"
-        className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
-      >
-        <label className="flex min-w-0 flex-col gap-1 md:w-48">
-          <span className="text-small text-fg-muted">Collection</span>
-          <Input
-            name="collection"
-            defaultValue={p.collection}
-            placeholder="ex. bus_orders"
-            maxLength={100}
-          />
-        </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-40">
-          <span className="text-small text-fg-muted">Action</span>
+      {/* Barre d'outils sur une ligne (v4 lot 6) : collection, action, « Filtres (n) », export à droite. */}
+      <FilterForm action="/admin/audit" className={TOOLBAR} data-testid="audit-toolbar">
+        <ToolbarSearch
+          name="collection"
+          label="Collection"
+          defaultValue={p.collection}
+          placeholder="Collection (ex. bus_orders)"
+          maxLength={100}
+        />
+        <label className="min-w-0 flex-1 md:w-44 md:flex-none">
+          <span className="sr-only">Action</span>
           <Select
             name="action"
+            label="Action"
             defaultValue={p.action ?? ""}
             options={[
-              { value: "", label: "Toutes" },
+              { value: "", label: "Toutes les actions" },
               ...Object.entries(ACTION).map(([k, a]) => ({ value: k, label: a.label })),
             ]}
           />
         </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-48">
-          <span className="text-small text-fg-muted">Fiche (identifiant)</span>
-          <Input name="record" defaultValue={p.record} maxLength={100} />
-        </label>
-        <DateRangePicker
-          nameFrom="du"
-          nameTo="au"
-          defaultFrom={p.du ?? ""}
-          defaultTo={p.au ?? ""}
-          presets={["today", "last7", "week"]}
-          fieldClassName="md:w-40"
-        />
+        <CollapsibleFilters always active={[p.record, p.du, p.au].filter(Boolean).length}>
+          <label className="flex min-w-0 flex-col gap-1 max-md:basis-full md:w-56">
+            <span className="text-small text-fg-muted">Fiche (identifiant)</span>
+            <Input name="record" defaultValue={p.record} maxLength={100} />
+          </label>
+          <DateRangePicker
+            nameFrom="du"
+            nameTo="au"
+            defaultFrom={p.du ?? ""}
+            defaultTo={p.au ?? ""}
+            presets={["today", "last7", "week"]}
+            fieldClassName="md:w-40"
+          />
+        </CollapsibleFilters>
         {p.user ? <input type="hidden" name="user" value={p.user} /> : null}
-        <div className="col-span-2 flex flex-wrap gap-2">
-          <FilterSubmit />
-          <ClearFilters href="/admin/audit" />
-          <Button asChild variant="ghost">
-            <a href={`/api/admin/audit/export?${qs({})}`} download>
-              <Download aria-hidden /> Export CSV
-            </a>
-          </Button>
-        </div>
+        <FilterSubmit />
+        <ClearFilters href="/admin/audit" />
+        <Button asChild variant="secondary" size="sm" className="ml-auto">
+          <a href={`/api/admin/audit/export?${qs({})}`} download>
+            <Download aria-hidden /> Export CSV
+          </a>
+        </Button>
       </FilterForm>
-      <p className="text-body text-fg-muted">
-        <span className="font-mono text-fg tabular">{res.totalItems}</span>{" "}
+      <p className="text-small text-fg-muted">
+        <span className="font-medium text-fg tabular">{res.totalItems}</span>{" "}
         {pl(res.totalItems, "ligne")}
         {p.user ? (
           <>
@@ -123,6 +121,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
       </p>
       {res.items.length === 0 ? (
         <EmptyState
+          framed
           title="Aucune ligne"
           description="Aucune écriture ne correspond à ces filtres."
         />
@@ -135,7 +134,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
                 ? Object.entries(r.changes as Record<string, unknown>)
                 : [];
             return (
-              <li key={r.id} className="border border-border bg-surface">
+              <li
+                key={r.id}
+                className="border border-(--card-frame) bg-surface rounded-box shadow-rest"
+              >
                 <details>
                   <summary className="flex min-h-12 cursor-pointer flex-wrap items-center gap-2 px-3 py-2">
                     <Badge tone={a.tone}>{a.label}</Badge>

@@ -91,7 +91,7 @@ export default async function Page() {
               ) : (
                 <Badge tone="danger">Injoignable</Badge>
               )}
-              <span className="font-mono text-small text-fg-muted">{health.ms} ms</span>
+              <span className="text-small text-fg-muted tabular">{health.ms} ms</span>
             </dd>
             <dt className="text-fg-muted">Dernière sauvegarde</dt>
             <dd className="flex min-w-0 flex-col gap-1" data-testid="health-backup">
@@ -300,12 +300,9 @@ export default async function Page() {
         <CardContent>
           <ul className="grid gap-2 sm:grid-cols-3">
             {volumes.map((v) => (
-              <li
-                key={v.label}
-                className="flex flex-col border border-border bg-surface-2 px-3 py-2"
-              >
+              <li key={v.label} className="flex flex-col rounded-control bg-surface-2 px-3 py-2">
                 <span className="text-small text-fg-muted">{v.label}</span>
-                <span className="font-mono text-h3 tabular">{v.count ?? "—"}</span>
+                <span className="figures text-h3">{v.count ?? "—"}</span>
               </li>
             ))}
           </ul>

@@ -42,7 +42,7 @@ export default async function Page() {
   return (
     <section className="flex flex-col gap-4" aria-label="Qualité des référentiels">
       <p className="text-small text-fg-muted" data-testid="ref-quality-total">
-        <span className="font-mono text-fg tabular">{anomalies}</span> {pl(anomalies, "point")} à
+        <span className="font-medium text-fg tabular">{anomalies}</span> {pl(anomalies, "point")} à
         vérifier. Les écrans de Réseau restent en consultation pour tous ; les modifications se font
         ici (ou par « Modifier » sur une fiche de Réseau).
       </p>
@@ -78,8 +78,8 @@ export default async function Page() {
                           <span className="min-w-0 flex-1 text-fg-muted">{i.label}</span>
                           <span
                             className={cn(
-                              "font-mono tabular",
-                              warn ? "font-semibold text-fg" : "text-fg-subtle",
+                              "figures",
+                              warn ? "text-fg" : "font-medium text-fg-subtle",
                             )}
                           >
                             {i.count === null ? "?" : n}

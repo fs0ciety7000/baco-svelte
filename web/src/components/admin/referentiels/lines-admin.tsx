@@ -110,7 +110,11 @@ export function LinesAdmin({ rows }: { rows: LineRow[] }) {
         </Button>
       </div>
       {rows.length === 0 ? (
-        <EmptyState title="Aucune ligne" description="Rien ne correspond à cette recherche." />
+        <EmptyState
+          framed
+          title="Aucune ligne"
+          description="Rien ne correspond à cette recherche."
+        />
       ) : (
         <>
           <div className="hidden md:block">

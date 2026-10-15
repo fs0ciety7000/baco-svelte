@@ -405,12 +405,12 @@ export function DirectoryBoard({
             >
               {browsing && !filtered ? (
                 <>
-                  <span className="font-mono text-fg tabular">{entries.length}</span>{" "}
+                  <span className="font-medium text-fg tabular">{entries.length}</span>{" "}
                   {pl(entries.length, "contact")}
                 </>
               ) : (
                 <>
-                  <span className="font-mono text-fg tabular">{hits.length}</span>{" "}
+                  <span className="font-medium text-fg tabular">{hits.length}</span>{" "}
                   {pl(hits.length, "résultat")} sur{" "}
                   <span className="tabular">{entries.length}</span>
                 </>

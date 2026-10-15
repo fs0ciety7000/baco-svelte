@@ -1,16 +1,14 @@
-import { Search } from "lucide-react";
 import type { Metadata } from "next";
-
 import Link from "next/link";
 
-import { DistrictPicker } from "@/components/ui/district-picker";
+import { DistrictMenu } from "@/components/ui/district-picker";
 import { DISTRICT_NAME_OPTIONS, parseDistricts } from "@/lib/district-param";
 import { pl } from "@/lib/utils";
 import { ClearFilters, FilterSubmit } from "@/components/ui/filters";
 import { FilterForm } from "@/components/ui/filter-form";
 import { UserCreate } from "@/components/admin/user-create";
 import { Avatar } from "@/components/shell/avatar";
-import { Input } from "@/components/ui/input";
+import { ListCount, ListStatus, TOOLBAR, ToolbarSearch } from "@/components/ui/list-toolbar";
 import { Select as CustomSelect } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
@@ -40,61 +38,45 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
   const label = (k: string) => roleLabel(k, roles);
   return (
     <section className="flex flex-col gap-4" aria-label="Utilisateurs">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-body text-fg-muted">
-          <span className="font-mono text-fg tabular">{rows.length}</span>{" "}
-          {pl(rows.length, "compte")}
-        </p>
-        <UserCreate roles={choices} canAssignFull={me.role === "admin"} />
-      </div>
-      <FilterForm
-        action="/admin"
-        role="search"
-        className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
-      >
-        <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-64">
-          <span className="text-small text-fg-muted">Recherche</span>
-          <span className="relative">
-            <Search
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted"
+      {/* Barre d'outils sur une ligne (v4 lot 6) : recherche, rôle, districts en menu, « Nouveau compte » à droite. */}
+      <div className={TOOLBAR} data-testid="users-toolbar">
+        <FilterForm action="/admin" role="search" className="contents">
+          <ToolbarSearch defaultValue={f.q} placeholder="Nom, e-mail, identifiant…" />
+          <label className="min-w-0 flex-1 md:w-48 md:flex-none">
+            <span className="sr-only">Rôle</span>
+            <CustomSelect
+              name="role"
+              label="Rôle"
+              defaultValue={f.role ?? ""}
+              options={[
+                { value: "", label: "Tous les rôles" },
+                ...filterRoles.map((r) => ({ value: r, label: label(r) })),
+              ]}
             />
-            <Input
-              name="q"
-              defaultValue={f.q}
-              placeholder="Nom, e-mail, identifiant…"
-              className="pl-9"
-              maxLength={60}
+          </label>
+          <div className="min-w-0">
+            <DistrictMenu
+              name="district"
+              label="Districts"
+              options={DISTRICT_NAME_OPTIONS}
+              defaultValues={parseDistricts(f.district, DISTRICT_NAMES)}
             />
-          </span>
-        </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-44">
-          <span className="text-small text-fg-muted">Rôle</span>
-          <CustomSelect
-            name="role"
-            defaultValue={f.role ?? ""}
-            options={[
-              { value: "", label: "Tous" },
-              ...filterRoles.map((r) => ({ value: r, label: label(r) })),
-            ]}
-          />
-        </label>
-        <div className="col-span-2 flex min-w-0 flex-col gap-1 md:w-auto">
-          <span className="text-small text-fg-muted">District</span>
-          <DistrictPicker
-            name="district"
-            label="District"
-            options={DISTRICT_NAME_OPTIONS}
-            defaultValues={parseDistricts(f.district, DISTRICT_NAMES)}
-          />
-        </div>
-        <div className="col-span-2 flex gap-2">
+          </div>
           <FilterSubmit />
           <ClearFilters href="/admin" />
+        </FilterForm>
+        {/* Hors du formulaire de filtres : le bouton du dialogue ne doit pas le soumettre. */}
+        <div className="ml-auto">
+          <UserCreate roles={choices} canAssignFull={me.role === "admin"} />
         </div>
-      </FilterForm>
+      </div>
+      <ListStatus count={<ListCount n={rows.length} label={pl(rows.length, "compte")} />} />
       {rows.length === 0 ? (
-        <EmptyState title="Aucun compte" description="Aucun compte ne correspond à ces filtres." />
+        <EmptyState
+          framed
+          title="Aucun compte"
+          description="Aucun compte ne correspond à ces filtres."
+        />
       ) : (
         <>
           <div className="hidden md:block">
@@ -117,7 +99,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
                         href={`/admin/utilisateurs/${u.id}`}
                         className="flex items-center gap-2 font-medium link"
                       >
-                        <Avatar name={u.name} email={u.email} role={u.role} />
+                        <Avatar
+                          name={u.name}
+                          email={u.email}
+                          role={u.role}
+                          className="rounded-[min(var(--r-box),8px)]"
+                        />
                         {u.name || u.username || "—"}
                       </Link>
                     </Td>
@@ -150,9 +137,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
               <li key={u.id}>
                 <Link
                   href={`/admin/utilisateurs/${u.id}`}
-                  className="flex min-h-14 items-center gap-3 border border-border bg-surface px-3 py-2"
+                  className="flex min-h-14 items-center gap-3 border border-(--card-frame) bg-surface px-3 py-2 rounded-box shadow-rest"
                 >
-                  <Avatar name={u.name} email={u.email} role={u.role} />
+                  <Avatar
+                    name={u.name}
+                    email={u.email}
+                    role={u.role}
+                    className="rounded-[min(var(--r-box),8px)]"
+                  />
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="truncate font-medium">{u.name || u.username || "—"}</span>
                     <span className="truncate text-small text-fg-muted">

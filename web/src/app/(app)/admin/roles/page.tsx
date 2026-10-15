@@ -60,7 +60,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
               <Link
                 href={`/admin/roles/${r.key}`}
                 data-testid={`role-card-${r.key}`}
-                className="chamfer flex h-full min-h-11 flex-col gap-2 p-4 transition-colors hover:[--frame:var(--fg-muted)]"
+                className="chamfer flex h-full min-h-11 flex-col gap-2 p-4 shadow-rest transition-colors [--frame:var(--card-frame)] hover:[--fill:var(--surface-2)]"
               >
                 <span className="flex items-center gap-2">
                   <RoleDot color={r.color} />
@@ -73,16 +73,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
                   <span className="text-small text-fg-muted">{r.description}</span>
                 ) : null}
                 <span className="mt-auto flex flex-wrap gap-1.5 pt-1 text-hint text-fg-muted">
-                  <span className="rounded-control border border-border px-2 py-0.5">
-                    <span className="font-mono tabular text-fg">{n}</span> {pl(n, "agent")}
+                  <span className="rounded-pill bg-surface-2 px-2 py-0.5">
+                    <span className="font-medium text-fg tabular">{n}</span> {pl(n, "agent")}
                   </span>
-                  <span className="rounded-control border border-border px-2 py-0.5">
+                  <span className="rounded-pill bg-surface-2 px-2 py-0.5">
                     {r.system ? "Rôle CSM" : "Créé par l'équipe"}
                   </span>
                   {r.locked ? (
-                    <span className="rounded-control border border-border px-2 py-0.5">
-                      Non modifiable
-                    </span>
+                    <span className="rounded-pill bg-surface-2 px-2 py-0.5">Non modifiable</span>
                   ) : null}
                 </span>
               </Link>

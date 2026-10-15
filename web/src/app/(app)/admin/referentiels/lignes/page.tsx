@@ -45,8 +45,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
         ))}
       </ChipRow>
       <p className="text-small text-fg-muted">
-        <span className="font-mono text-fg tabular">{total}</span> {pl(total, "ligne")} · les gares
-        d&apos;une ligne se corrigent dans sa fiche (crayon), comme depuis Réseau › Lignes.
+        <span className="font-medium text-fg tabular">{total}</span> {pl(total, "ligne")} · les
+        gares d&apos;une ligne se corrigent dans sa fiche (crayon), comme depuis Réseau › Lignes.
       </p>
       <LinesAdmin rows={rows} />
     </section>

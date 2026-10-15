@@ -16,12 +16,12 @@ export default async function Page() {
     <section className="flex flex-col gap-4" aria-label="Appareils connectés">
       <p className="max-w-prose text-body text-fg-muted">
         Jetons de l&apos;extension DICOS de tous les agents :{" "}
-        <span className="font-mono text-fg tabular">{tokens.length}</span>{" "}
+        <span className="font-medium text-fg tabular">{tokens.length}</span>{" "}
         {pl(tokens.length, "appareil")} pour{" "}
-        <span className="font-mono text-fg tabular">{owners}</span> {pl(owners, "agent")}. Révoquer
-        un jeton (poste perdu, départ d&apos;un agent) bloque l&apos;extension de cet appareil
-        d&apos;ici une minute ; l&apos;agent peut en connecter une nouvelle depuis la page «
-        Extension CSM » (menu de son compte).
+        <span className="font-medium text-fg tabular">{owners}</span> {pl(owners, "agent")}.
+        Révoquer un jeton (poste perdu, départ d&apos;un agent) bloque l&apos;extension de cet
+        appareil d&apos;ici une minute ; l&apos;agent peut en connecter une nouvelle depuis la page
+        « Extension CSM » (menu de son compte).
       </p>
       <TokenList tokens={tokens} admin title="" empty="Aucun appareil connecté pour l'instant." />
     </section>

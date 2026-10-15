@@ -30,7 +30,7 @@ export function ImpersonateCard({ id, name }: { id: string; name: string }) {
     });
   return (
     <section
-      className="flex flex-col gap-3 rounded-box border border-border bg-surface p-4 sm:flex-row sm:items-center"
+      className="flex flex-col gap-3 rounded-box border border-(--card-frame) bg-surface p-4 sm:flex-row sm:items-center shadow-rest"
       aria-label="Voir en tant que"
     >
       <div className="flex min-w-0 flex-1 flex-col gap-1">
