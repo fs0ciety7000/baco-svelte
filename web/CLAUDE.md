@@ -908,3 +908,21 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   dans « Filtres ». `SupplierBoard` / `ClientBoard` : prop `status` (nombre à gauche du bouton de création). Un bouton qui
   ouvre un dialogue reste **hors** du formulaire de filtres (sinon `type=submit` par défaut : Admin › Utilisateurs). E2E :
   Collègues filtre par `DistrictMenu` (`district-picker` puis `district-picker-list`, le filtre part à la fermeture).
+
+## Planificateur — moteur (15 oct. 2026, `../docs/design/CADRAGE-PLANIFICATEUR-PMR.md`, `REGLES-PLANIFICATEUR-PMR.md`)
+
+- **`src/lib/planner/`** : logique pure (aucun réseau, aucune horloge cachée), importée par `@/lib/planner` (`index.ts`),
+  partagée par les actions et l'UI. Types `types.ts` (`PlannerTask`, `PlannerAgent`, `PlannerBase`, `BcsCounter`,
+  `PlannerContext`, `DEFAULT_PLANNER_SETTINGS`). Heures de Bruxelles par `time.ts` (un seul `Intl.DateTimeFormat`, cache par
+  minute : ne pas appeler `brusselsTime` de `lib/orders/time.ts` dans une boucle).
+- `window.ts` : `taskWindow` (light IN T−15/+5, OUT T−5/+15 ; fauteuil −20/+10, −10/+20 ; type inconnu = light sauf
+  `light: false`), `linkConnections` (correspondance OUT → IN même dossier + même gare `foldStation` < 30 min : `cx:<id OUT>` ;
+  même train + gare + heure : `tr:…` ; renvoie des copies). `travel.ts` : `travelMinutes` / `coverage` (matrice des bases
+  symétrique, `covers` = bases voisines atteintes par leur gare ; rien d'autre : « jamais Mons → Charleroi » découle des
+  données). `timeline.ts` : `agentTimeline` (trajets « Départ vers / Trajet vers / Retour à », libres, occupation).
+  `assign.ts` : `checkAssign` (ok / warn / block + phrases), `suggestAgents`, `autoAssign` (glouton par heure de train,
+  groupes liés ensemble, B-CS d'abord, ~60 ms pour 60 agents × 300 tâches), `bcsLoad`. `parse-task.ts` : `parseTaskLines`
+  (format ALEA / classeurs ; nom et téléphone **jamais renvoyés**, seulement `ignoredPersonal`).
+- **Tâches et contextes immuables** : `norm()` et l'état préparé de `checkAssign` / `suggestAgents` sont mis en cache par
+  objet (`WeakMap` sur la tâche et sur `ctx.tasks`). Toujours passer de nouveaux objets / tableaux après un changement.
+- Tests : `*.test.ts` du dossier, données fictives `test-fixtures.ts` (bases DSO de la matrice des classeurs, aucun nom réel).
