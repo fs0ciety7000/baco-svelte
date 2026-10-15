@@ -1348,6 +1348,15 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   étendu de blocs `::: bandeau / bouton / cartes / etapes / encadre` (tableaux, styles en ligne, colonnes hybrides + tableau
   fantôme Outlook, mode sombre par `prefers-color-scheme`, couleurs Signal · Jour) ; anciennes campagnes rendues comme avant
   (couleurs pétrole au lieu d'ambre). Aucun e-mail envoyé. Date du jour J non citée (le texte dit « aujourd'hui »).
+- 2026-10-15 — **Refonte v4, lot 6 « Reste des écrans »** (agent, en parallèle du lot 5 mouvement / perf) : Journal, Ma
+  journée, B201, Réseau (trains en direct, horaires, lignes avec PN, gares, PtCar, EBP, carte PN : panneaux et barre
+  seulement), Ressources, Commandes (Suivi, listes, Archives, Fournisseurs), PMR (Clients, Matériel), **Statistiques**
+  (barres info / progress, axes fg-subtle, ligne de base + repères, StatStrip, tableau gardé), Administration, profil,
+  extension, Nouveautés, /tv, erreurs. Barre d'outils de liste commune (`components/ui/list-toolbar.tsx` : `TOOLBAR`,
+  `ToolbarSearch`, `ListStatus`, `ListCount`), `CardDisclosure`, `SegmentedNav` `count` / `scroll`, `EmptyState framed`,
+  chiffres en `figures` / `tabular`, `shadow-float`, aucun rayon ni couleur en dur (erreur racine : jetons avec repli
+  Signal · Nuit). Vues en `SegmentedNav` (plus de bouton accent pour naviguer). Aucune logique métier changée ; E2E motion
+  adapté au menu des districts de Collègues. Captures hors dépôt (`design-v4/lot6/`).
 
 ---
 

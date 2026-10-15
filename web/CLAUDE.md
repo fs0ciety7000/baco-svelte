@@ -870,3 +870,14 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `type="button"` car dans le formulaire), cellules `StationCell` / `CardStation` / `SensChip` (`assist-board.tsx`). Bons :
   `OrderSteps` (`order-steps`), `OrderTicket` (`order-ticket`, `compact`), `lib/orders/steps.ts` (`stepStates`,
   `sectionState`, `BUS_STEPS`, `TAXI_STEPS` ; sections `id="bon-…"`), barre d'actions flottante en desktop. `EmptyState framed`.
+- **Lot 6 « Reste des écrans »** : barre d'outils des listes = `FilterForm className={TOOLBAR}` + `ToolbarSearch` (loupe,
+  `label` en sr-only, pleine largeur en mobile) + filtre principal + `CollapsibleFilters always` + action `ml-auto` ; ligne
+  d'état `ListStatus` / `ListCount` (`components/ui/list-toolbar.tsx` ; `components/pmr/list-status.tsx` ré-exporte).
+  Recherche pendant la frappe (`FormAutoSubmit live` ou `FilterSubmit`) + bouton de soumission `sr-only` pour Entrée, plus de
+  bouton « Afficher » visible. `SegmentedNav` : `count` par segment, `scroll` (mobile : défile au lieu de tronquer).
+  `RefSearchBar` (`referentiels/ref-ui.tsx`) : prop `lead` (vue en tête de barre). `CardDisclosure` (`ui/card.tsx`) : carte
+  repliable à en-tête compact (`data-testid` passe sur le `<details>`, E2E : `locator("summary").click()`). `FilterBar`
+  (bons) : `actions` (« Nouveau bon ») ; période « Aujourd'hui / Demain / Semaine / Toutes » (`all-dates`), Hier et 7 jours
+  dans « Filtres ». `SupplierBoard` / `ClientBoard` : prop `status` (nombre à gauche du bouton de création). Un bouton qui
+  ouvre un dialogue reste **hors** du formulaire de filtres (sinon `type=submit` par défaut : Admin › Utilisateurs). E2E :
+  Collègues filtre par `DistrictMenu` (`district-picker` puis `district-picker-list`, le filtre part à la fermeture).

@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardDisclosure, CardFooter, CardHeader } from "@/components/ui/card";
 import { Checkbox, SwitchField } from "@/components/ui/checkbox";
 import {
   Command,
@@ -50,6 +50,7 @@ import { toast } from "@/components/ui/toast";
 import { Tooltip } from "@/components/ui/tooltip";
 import { TrainChip } from "@/components/ui/train-chip";
 import { SegmentedNav } from "@/components/ui/filters";
+import { ListCount, ListStatus, TOOLBAR, ToolbarSearch } from "@/components/ui/list-toolbar";
 import { OrderTicket } from "@/components/orders/order-ticket";
 import { contrast } from "@/design/contrast";
 import type { UiPreferences } from "@/design/preferences";
@@ -518,6 +519,23 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
       </Section>
 
       <Section id="listes" title="Tableau dense et cartes mobiles">
+        {/* v4 lot 6 : barre d'outils de liste sur une ligne (vues avec compteurs, recherche) et ligne d'état. */}
+        <div className={TOOLBAR}>
+          <SegmentedNav
+            label="Vue"
+            scroll
+            items={[
+              { label: "À envoyer", href: "/design#listes", current: true, count: 2 },
+              { label: "Aujourd'hui", href: "/design?v=j#listes", current: false, count: 5 },
+              { label: "Toutes", href: "/design?v=t#listes", current: false },
+            ]}
+          />
+          <ToolbarSearch name="demo-q" placeholder="Gare, relation, n°…" />
+          <Button variant="primary" size="sm" className="ml-auto">
+            <Plus /> Nouveau bon
+          </Button>
+        </div>
+        <ListStatus count={<ListCount n={ORDERS.length} label="commandes" />} />
         <div className="hidden md:block">
           {/* ScrollTable (15 oct. 2026) : défilement horizontal dans le cadre, première colonne collante, ombres. */}
           <ScrollTable label="Bons de commande" stickyFirst tableClassName="min-w-[56rem]">
@@ -679,6 +697,11 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
             pdfHref=""
           />
         </div>
+        <CardDisclosure title="Passages à niveau" count={2} defaultOpen>
+          <p className="text-small text-fg-muted">
+            Carte repliable (fiche d&apos;une ligne) : en-tête compact, compteur neutre, chevron.
+          </p>
+        </CardDisclosure>
         <Card>
           <CardHeader title="Missions impactées" count={0} />
           <CardContent>
