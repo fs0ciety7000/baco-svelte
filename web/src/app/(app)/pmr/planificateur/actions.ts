@@ -6,11 +6,15 @@ import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 
 import { can } from "@/lib/permissions";
-import { addDays, brusselsToUtc, isValidDay, pbDate } from "@/lib/orders/time";
+import { addDays, brusselsDay, brusselsToUtc, isValidDay, pbDate } from "@/lib/orders/time";
+import type { PlannerContext } from "@/lib/planner";
+import { adaptDay } from "@/lib/planner/adapt";
+import { assignOnServer, manualDayAllowed, manualStationIssue } from "@/lib/planner/server-check";
 import { PMR_TASK_TYPES } from "@/lib/pmr/dicos-pending";
 import { stationKey } from "@/lib/pmr/model";
 import { requireUser } from "@/server/auth";
 import { pbForRequest } from "@/server/data/orders";
+import { plannerDay, plannerStationNames } from "@/server/data/planner";
 
 // Écritures du planificateur de tâches PMR (lot P0, 15 oct. 2026) : Server Actions validées par zod, jeton de l'agent.
 // Droits revérifiés ici (`planner:write`, suppression d'une tâche DICOS : `planner:manage`) ET par les règles
@@ -70,6 +74,28 @@ const assignSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("cdb"), label: z.string().trim().max(80).optional() }),
 ]);
 export type AssignTarget = z.input<typeof assignSchema>;
+type Target = z.output<typeof assignSchema>;
+
+/**
+ * Contrôle serveur d'une attribution (même moteur que l'écran, `checkAssign`) sur la journée relue (`plannerDay`, tous
+ * districts, jours voisins compris) : refus (`block`) avec sa raison ; un avertissement (`warn`) est accepté. Le guichet
+ * B-CS visé doit être celui de la gare de la tâche. Renvoie le contexte avec la tâche attribuée (contrôles cumulés).
+ */
+function checkOnServer(
+  ctx: PlannerContext,
+  id: string,
+  station: string,
+  t: Target,
+): PlannerContext {
+  const r = assignOnServer(ctx, id, station, t);
+  if (!r.ok) throw new Refused(r.error);
+  return r.ctx;
+}
+
+/** Contexte du moteur pour un jour (lu avec le jeton de l'agent, tous districts). */
+async function dayContext(day: string): Promise<PlannerContext> {
+  return adaptDay(await plannerDay(day)).ctx;
+}
 
 /**
  * Attribue une tâche : à un agent de gare (`agentId` = fiche `quinyx_agents`), au guichet B-CS (`label` = gare du
@@ -94,6 +120,7 @@ export async function assignTask(
         .getOne(t.agentId, { fields: "id,purpose" });
       if (agent.purpose !== "gares") throw new Refused("Choisis un agent de gare.");
     }
+    checkOnServer(await dayContext(String(cur.day)), cur.id, String(cur.station ?? ""), t);
     const r = await pb.collection("planner_tasks").update(cur.id, {
       assignee_kind: t.kind,
       assignee_agent: t.kind === "agent" ? t.agentId : "",
@@ -132,6 +159,8 @@ export async function assignTasks(
     const list = z.array(batchItem).min(1, "Aucune tâche.").max(300).parse(items);
     const pb = await pbForRequest();
     const agents = new Map<string, boolean>();
+    // Contexte par jour, cumulé : chaque tâche est contrôlée avec les précédentes déjà attribuées.
+    const days = new Map<string, PlannerContext>();
     const results: AssignItemResult[] = [];
     for (const it of list) {
       try {
@@ -151,6 +180,9 @@ export async function assignTasks(
           }
           if (!okAgent) throw new Refused("Choisis un agent de gare.");
         }
+        const day = String(cur.day);
+        const ctx = days.get(day) ?? (await dayContext(day));
+        days.set(day, checkOnServer(ctx, cur.id, String(cur.station ?? ""), t));
         const r = await pb.collection("planner_tasks").update(cur.id, {
           assignee_kind: t.kind,
           assignee_agent: t.kind === "agent" ? t.agentId : "",
@@ -176,13 +208,19 @@ export async function assignTasks(
  * garde la tâche DICOS et on supprime la saisie ; si seule la saisie était attribuée, son attribution passe à la tâche
  * DICOS. Correspondance revérifiée ici (jamais d'après le navigateur seul) ; droits : `planner:write`.
  */
-export async function resolveDuplicate(manualId: string, dicosId: string): Promise<PlannerResult> {
+export async function resolveDuplicate(
+  manualId: string,
+  dicosId: string,
+  manualUpdated: string,
+  dicosUpdated: string,
+): Promise<PlannerResult> {
   try {
     await need("planner:write");
     const pb = await pbForRequest();
+    // Verrou optimiste sur les deux tâches : une modification entre-temps (autre agent, synchro) est refusée.
     const [m, d] = await Promise.all([
-      pb.collection("planner_tasks").getOne(pbId.parse(manualId)),
-      pb.collection("planner_tasks").getOne(pbId.parse(dicosId)),
+      lockedTask(pb, manualId, stamp.parse(manualUpdated)),
+      lockedTask(pb, dicosId, stamp.parse(dicosUpdated)),
     ]);
     const same = (k: string) => String(m[k] ?? "") === String(d[k] ?? "");
     const trainOf = (r: typeof m) =>
@@ -216,7 +254,10 @@ export async function resolveDuplicate(manualId: string, dicosId: string): Promi
   }
 }
 
-/** Retire l'attribution d'une tâche (retour dans « À attribuer » ; une tâche annulée reste annulée). */
+/**
+ * Retire l'attribution d'une tâche (retour dans « À attribuer » ; une tâche annulée reste annulée). Une tâche « faite »
+ * garde sa destination (refus).
+ */
 export async function unassignTask(
   id: string,
   expectedUpdated: string,
@@ -225,6 +266,7 @@ export async function unassignTask(
     await need("planner:write");
     const pb = await pbForRequest();
     const cur = await lockedTask(pb, id, stamp.parse(expectedUpdated));
+    if (cur.status === "faite") throw new Refused("Tâche déjà faite : elle garde sa destination.");
     const r = await pb.collection("planner_tasks").update(cur.id, {
       assignee_kind: "",
       assignee_agent: "",
@@ -266,6 +308,9 @@ const manualTaskSchema = z.object({
     .regex(/^(\d{4}-\d{2}-\d{2}-\d{4})?$/, "N° de dossier AAAA-MM-JJ-NNNN.")
     .default(""),
   label: z.string().trim().max(300).default(""),
+  // Prise en charge par taxi (ligne « TAXI » du format ALEA) : seule destination posée à la saisie, tâche attribuée.
+  assignee_kind: z.enum(["taxi"]).or(z.literal("")).default(""),
+  assignee_label: z.string().trim().max(80).default(""),
 });
 export type ManualTaskInput = z.input<typeof manualTaskSchema>;
 
@@ -281,12 +326,18 @@ export async function createManualTasks(
   try {
     await need("planner:write");
     if (!isValidDay(day)) throw new Refused("Jour invalide.");
+    // Jours permis : J-2 → J+60 (Bruxelles), comme le hook `planner.pb.js`.
+    if (!manualDayAllowed(day, brusselsDay()))
+      throw new Refused("Jour hors de la période permise (J-2 à J+60).");
     const rows = z.array(manualTaskSchema).min(1, "Aucune tâche.").max(200).parse(lines);
+    // Gares : nom FR retenu d'une gare connue (référentiel `stations` + bases du planificateur), jamais un texte libre
+    // qui pourrait porter un nom de voyageur. Les erreurs citent le n° de ligne, jamais son contenu.
+    const issue = manualStationIssue(rows, await plannerStationNames());
+    if (issue) throw new Refused(issue);
     const pb = await pbForRequest();
     const ids: string[] = [];
     for (const l of rows) {
-      if ((l.kind === "pmr_in" || l.kind === "pmr_out") && !l.station)
-        throw new Refused("Gare manquante pour une prise en charge PMR.");
+      const taxi = l.assignee_kind === "taxi";
       const start = instant(day, l.start);
       // Fin avant le début en « HH:MM » = lendemain (tâche de nuit).
       let end = l.end ? instant(day, l.end) : start;
@@ -299,15 +350,17 @@ export async function createManualTasks(
         station: l.station,
         station_key: stationKey(l.station),
         other_station: l.other_station,
-        train: l.train,
+        // « TAXI » n'est jamais un n° de train.
+        train: taxi || l.train.toUpperCase() === "TAXI" ? "" : l.train,
         pmr_type: l.pmr_type,
         pax: l.pax,
         light: l.light,
         dossier: l.dossier,
         label: l.label,
         source: "manuel",
-        status: "a_attribuer",
+        status: taxi ? "attribuee" : "a_attribuer",
         origin: "manuel",
+        ...(taxi ? { assignee_kind: "taxi", assignee_label: l.assignee_label || "Taxi" } : {}),
       });
       ids.push(r.id);
     }

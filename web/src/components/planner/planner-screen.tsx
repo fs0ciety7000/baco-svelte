@@ -110,7 +110,10 @@ export function PlannerScreen({
   initialTask,
   canWrite,
   canManage,
+  stations = [],
 }: {
+  /** Référentiel des gares (`stations` : FR, NL, alias, abréviation) pour la saisie au format ALEA. */
+  stations?: StationRef[];
   data: ServerDay;
   today: string;
   serverNow: number;
@@ -132,7 +135,7 @@ export function PlannerScreen({
   const ctx = React.useMemo(() => ({ ...adapted.ctx, tasks }), [adapted, tasks]);
   const byId = React.useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
   const conflicts = React.useMemo(() => conflictsOf(ctx), [ctx]);
-  const counters = boardCounters(ctx, conflicts);
+  const counters = boardCounters(ctx, conflicts, day);
   const timelines = React.useMemo(
     () => new Map(ctx.agents.map((a) => [a.id, agentTimeline(a, ctx.tasks, ctx.bases)])),
     [ctx],
@@ -153,11 +156,20 @@ export function PlannerScreen({
     [dupPairs],
   );
   const stationRefs = React.useMemo<StationRef[]>(() => {
+    // Référentiel des gares d'abord (nom FR retenu, celui que le serveur accepte), puis bases et gares de leurs matrices.
     const out: StationRef[] = [];
     const seen = new Set<string>();
+    for (const r of stations) {
+      const k = stationKey(r.names[0]);
+      if (!r.names[0] || seen.has(k)) continue;
+      seen.add(k);
+      out.push(r);
+    }
     for (const b of ctx.bases) {
-      out.push({ abbr: b.code, names: [b.name] });
-      seen.add(stationKey(b.name));
+      if (!seen.has(stationKey(b.name))) {
+        out.push({ abbr: b.code, names: [b.name] });
+        seen.add(stationKey(b.name));
+      }
       for (const t of b.travel)
         if (!seen.has(stationKey(t.station))) {
           seen.add(stationKey(t.station));
@@ -165,7 +177,7 @@ export function PlannerScreen({
         }
     }
     return out;
-  }, [ctx.bases]);
+  }, [ctx.bases, stations]);
   const stationOptions = React.useMemo(
     () =>
       [...new Set(stationRefs.map((r) => r.names[0]!))].sort((a, b) => a.localeCompare(b, "fr")),
@@ -221,6 +233,12 @@ export function PlannerScreen({
         id: it.id,
         assignee: ctxRef.current.tasks.find((t) => t.id === it.id)?.assignee ?? null,
       }));
+      // Une tâche « faite » ne retourne jamais dans « À attribuer » (« Annuler » ne retire pas sa destination).
+      const done0 = new Set(
+        items
+          .filter((it) => ctxRef.current.tasks.find((t) => t.id === it.id)?.status === "faite")
+          .map((it) => it.id),
+      );
       const stamps = new Map(items.map((it) => [it.id, updatedOf(it.id)]));
       setOverrides((m) => {
         const n = new Map(m);
@@ -302,7 +320,9 @@ export function PlannerScreen({
                   label: "Annuler",
                   onClick: () =>
                     void commit(
-                      prev.filter((p) => okIds.has(p.id)),
+                      prev.filter(
+                        (p) => okIds.has(p.id) && !(p.assignee === null && done0.has(p.id)),
+                      ),
                       { message: "Modification annulée" },
                     ),
                 },
@@ -609,7 +629,12 @@ export function PlannerScreen({
   };
   const keepDicos = async (manualId: string, dicosId: string) => {
     setBusy(true);
-    const r = await resolveDuplicate(manualId, dicosId).catch(() => ({
+    const r = await resolveDuplicate(
+      manualId,
+      dicosId,
+      updatedOf(manualId),
+      updatedOf(dicosId),
+    ).catch(() => ({
       ok: false as const,
       error: "Serveur injoignable.",
     }));

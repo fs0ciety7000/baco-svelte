@@ -14,7 +14,7 @@ import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
 import { requireRoute } from "@/server/auth";
 import { handoverDistricts } from "@/server/data/handover";
-import { plannerDay } from "@/server/data/planner";
+import { plannerDay, plannerStationRefs } from "@/server/data/planner";
 
 export const metadata: Metadata = { title: "Planificateur · CSM" };
 
@@ -39,7 +39,7 @@ export default async function Page({
   const codes = handoverDistricts(user, sp.district);
   const mine = handoverDistricts(user, undefined);
   const q = (sp.q ?? "").trim().slice(0, 60);
-  const data = await plannerDay(day, codes);
+  const [data, stations] = await Promise.all([plannerDay(day, codes), plannerStationRefs()]);
   const link = (d: string) => {
     const p = new URLSearchParams({ jour: d });
     if (q) p.set("q", q);
@@ -133,6 +133,7 @@ export default async function Page({
     <section aria-label="Planificateur de tâches PMR">
       <PlannerScreen
         data={data}
+        stations={stations}
         today={today}
         serverNow={Date.now()}
         filters={filters}

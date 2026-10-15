@@ -5,6 +5,7 @@ import type { RecordModel } from "pocketbase";
 import { addDays, brusselsToUtc, pbDate } from "@/lib/orders/time";
 import { stationKey } from "@/lib/pmr/model";
 import { agentName, type QuinyxKind, type StationPost } from "@/lib/quinyx/model";
+import type { StationRef } from "@/lib/stations/search";
 
 import { pbForRequest } from "./orders";
 
@@ -90,6 +91,8 @@ export type PlannerTask = {
   origin: "manuel" | "auto" | "";
   label: string;
   note: string;
+  /** Gare, heure ou jour changé par une synchro DICOS alors que la tâche était déjà attribuée (à revoir). */
+  dicosChanged: boolean;
   /** District déduit de la gare (bases du planificateur : gare de base ou gare de sa matrice), "" si inconnu. */
   district: string;
   /** Verrou optimiste : à renvoyer aux actions. */
@@ -186,6 +189,7 @@ export function asPlannerTask(r: RecordModel, district = ""): PlannerTask {
     origin: str(r.origin) as PlannerTask["origin"],
     label: str(r.label),
     note: str(r.note),
+    dicosChanged: !!r.dicos_changed,
     district,
     updated: str(r.updated),
   };
@@ -236,8 +240,20 @@ export async function plannerDay(
         "id,day,start,end,code,section,kind,post,base,district,agent,expand.agent.id,expand.agent.first_name,expand.agent.last_name",
       batch: 500,
     }),
+    // Tâches du jour + jours voisins pour les contrôles et l'affichage de la nuit : tâches ATTRIBUÉES de la veille à
+    // partir de 18 h (agents dont la nuit déborde sur le jour) et toutes celles du lendemain avant 8 h (nuit de D, que
+    // l'axe affiche). Les compteurs « à attribuer » ne comptent que le jour de planification (`boardCounters(…, day)`).
     pb.collection("planner_tasks").getFullList({
-      filter: pb.filter("day = {:d}", { d: day }),
+      filter: pb.filter(
+        "day = {:d} || (day = {:y} && assignee_kind != '' && start >= {:eve}) || (day = {:n} && start < {:morn})",
+        {
+          d: day,
+          y: addDays(day, -1),
+          n: addDays(day, 1),
+          eve: brusselsToUtc(addDays(day, -1), "18:00").replace("T", " "),
+          morn: brusselsToUtc(addDays(day, 1), "08:00").replace("T", " "),
+        },
+      ),
       sort: "start,station",
       batch: 500,
     }),
@@ -317,4 +333,50 @@ export async function plannerDay(
       }))
       .filter((t) => !want.size || baseCodes.has(t.base)),
   };
+}
+
+/**
+ * Référentiel des gares de la saisie au format ALEA (`stations` : nom FR retenu, NL, alias, abréviation), complété des
+ * bases du planificateur et des gares de leurs matrices (base neuve sans import du référentiel). Lu avec le jeton de
+ * l'agent (`timetable:read`) ; aucune donnée personnelle.
+ */
+export async function plannerStationRefs(): Promise<StationRef[]> {
+  const pb = await pbForRequest();
+  const [rows, bases] = await Promise.all([
+    pb
+      .collection("stations")
+      .getFullList({ fields: "name,name_nl,abbr,aliases", sort: "name", batch: 1000 })
+      .catch(() => [] as RecordModel[]),
+    pb
+      .collection("planner_bases")
+      .getFullList({ fields: "code,name,travel" })
+      .catch(() => [] as RecordModel[]),
+  ]);
+  const out: StationRef[] = [];
+  const seen = new Set<string>();
+  const add = (r: StationRef) => {
+    const k = stationKey(r.names[0] ?? "");
+    if (!k || seen.has(k)) return;
+    seen.add(k);
+    out.push(r);
+  };
+  for (const r of rows)
+    add({
+      ...(str(r.abbr) ? { abbr: str(r.abbr) } : {}),
+      names: [
+        str(r.name),
+        str(r.name_nl),
+        ...(Array.isArray(r.aliases) ? r.aliases.map(str) : []),
+      ].filter(Boolean),
+    });
+  for (const b of bases) {
+    add({ ...(str(b.code) ? { abbr: str(b.code) } : {}), names: [str(b.name)] });
+    for (const t of list<{ station?: unknown }>(b.travel)) add({ names: [str(t?.station)] });
+  }
+  return out;
+}
+
+/** Noms acceptés pour une tâche encodée à la main : nom FR retenu de chaque gare connue (`plannerStationRefs`). */
+export async function plannerStationNames(): Promise<Set<string>> {
+  return new Set((await plannerStationRefs()).map((r) => r.names[0]!).filter(Boolean));
 }

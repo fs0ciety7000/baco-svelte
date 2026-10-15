@@ -9,6 +9,7 @@ import {
   type ServerTask,
 } from "./adapt";
 import { checkAssign } from "./assign";
+import { taskName } from "./board";
 import { at, DAY } from "./test-fixtures";
 
 // Données FICTIVES (aucun nom réel).
@@ -39,6 +40,7 @@ const serverTask = (o: Partial<ServerTask> & { id: string }): ServerTask => ({
   origin: "",
   label: "",
   note: "",
+  dicosChanged: false,
   district: "DSO",
   updated: "2026-10-15 07:00:00.000Z",
   ...o,
@@ -196,6 +198,14 @@ describe("toEngineTask", () => {
     });
     const taxi = toEngineTask(serverTask({ id: "y", assigneeKind: "taxi", assigneeLabel: "Taxi" }));
     expect(taxi.assignee).toEqual({ kind: "taxi", label: "Taxi" });
+  });
+
+  it("« Modifiée par DICOS » transmis au moteur (et au nom accessible)", () => {
+    expect(toEngineTask(serverTask({ id: "c", dicosChanged: true })).dicosChanged).toBe(true);
+    expect(toEngineTask(serverTask({ id: "d" })).dicosChanged).toBeUndefined();
+    expect(taskName(toEngineTask(serverTask({ id: "e", dicosChanged: true })))).toMatch(
+      /modifiée par DICOS/,
+    );
   });
 
   it("PMR saisie avec une vraie fenêtre : heures gardées, pas d'heure de train", () => {

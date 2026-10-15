@@ -5,7 +5,7 @@
 // Le nom et le téléphone éventuels en fin de ligne ne sont JAMAIS renvoyés (ni dans les tâches ni dans les erreurs) :
 // seul `ignoredPersonal: true` le signale. Le dossier suffit, la fiche DICOS porte le nominatif sous `pmr:read`.
 
-import { brusselsToUtc, isValidDay } from "@/lib/orders/time";
+import { addDays, brusselsToUtc, isValidDay } from "@/lib/orders/time";
 import { canonicalStation, foldStation, type StationRef } from "@/lib/stations/search";
 import { PMR_TYPES, WHEELCHAIR_TYPES, taskWindow } from "./window";
 import { DEFAULT_PLANNER_SETTINGS, type PlannerSettings, type PlannerTask } from "./types";
@@ -88,10 +88,11 @@ function parseLine(
       warn(`type « ${t.type} » inconnu, compté comme PMR light`);
 
   // Heure du train : « 07h16 », « 7H16 », « 10:16 », préfixe « NUIT » toléré.
-  m = /^\s*(?:nuit\s+)?(\d{1,2})\s*[hH:]\s*(\d{2})(?=\s|$)/iu.exec(rest);
+  m = /^\s*(nuit\s+)?(\d{1,2})\s*[hH:]\s*(\d{2})(?=\s|$)/iu.exec(rest);
   if (!m) return fail("il manque l'heure du train (ex. 07h16)");
-  const hour = Number(m[1]);
-  const minute = Number(m[2]);
+  const night = !!m[1];
+  const hour = Number(m[2]);
+  const minute = Number(m[3]);
   if (hour > 23 || minute > 59) return fail("heure du train illisible");
   rest = rest.slice(m[0].length);
 
@@ -136,27 +137,52 @@ function parseLine(
         ? "il manque la gare (IN de <gare> à <autre gare>)"
         : "il manque la gare (OUT à <gare> venant de <autre gare>)",
     );
+  const refs = o.stations?.length ? o.stations : undefined;
   let assisted = full ? full[1]! : (o.station ?? "");
   let otherStation = full ? full[2] : other![1];
   const lastIsOther = otherStation !== undefined;
   const unmarked = !Number.isFinite(cut);
-  if (unmarked) {
-    const split = splitTail(lastIsOther ? otherStation! : assisted, o.stations);
-    personal ||= split.personal;
-    if (split.uncertain) warn(lastIsOther ? "autre gare à vérifier" : "gare à vérifier");
-    if (lastIsOther) otherStation = split.station;
-    else assisted = split.station;
+  if (refs) {
+    // Référentiel fourni (l'écran le fournit toujours) : chaque gare = plus longue suite de mots reconnue, le reste (nom,
+    // téléphone) est écarté ; une gare inconnue bloque la ligne (aucun repli qui garderait des mots en trop).
+    const a = resolveStation(assisted, refs);
+    if (!a) return fail("gare inconnue : vérifie l'orthographe");
+    assisted = a.station;
+    personal ||= a.personal;
+    if (otherStation?.trim()) {
+      const b = resolveStation(otherStation, refs);
+      if (!b) return fail("autre gare inconnue : vérifie l'orthographe");
+      otherStation = b.station;
+      personal ||= b.personal;
+    }
+  } else if (unmarked) {
+    // Sans référentiel (repli) : découpe de fin sur la gare assistée ET sur la dernière gare.
+    if (full) {
+      const a = splitTail(assisted);
+      personal ||= a.personal;
+      if (a.uncertain) warn("gare à vérifier");
+      assisted = a.station;
+    }
+    if (lastIsOther) {
+      const split = splitTail(otherStation!);
+      personal ||= split.personal;
+      if (split.uncertain) warn("autre gare à vérifier");
+      otherStation = split.station;
+    }
   }
   assisted = assisted.trim();
   if (!assisted) return fail("il manque la gare assistée (IN de <gare> ou OUT à <gare>)");
-  const canon = (s: string) => (o.stations ? canonicalStation(s.trim(), o.stations) : s.trim());
+  const canon = (s: string) => s.trim();
 
   const counts = types.reduce((a, t) => a + t.count, 0);
   const chair = types.find((t) => (WHEELCHAIR_TYPES as readonly string[]).includes(t.type));
   const known = types.find((t) => (PMR_TYPES as readonly string[]).includes(t.type));
   const day = o.day;
+  // « NUIT 05h10 » (00h00-05h59) = nuit qui SUIT le jour de la feuille : train le lendemain, tâche gardée sur le jour de
+  // planification (l'écran du jour affiche la nuit jusqu'à 8 h le lendemain).
+  const trainDay = night && hour < 6 ? addDays(day, 1) : day;
   const trainAt = brusselsToUtc(
-    day,
+    trainDay,
     `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
   );
   const base: Omit<PlannerTask, "id"> = {
@@ -182,35 +208,51 @@ function parseLine(
 
 const isUpperWord = (w: string) => /\p{L}{2}/u.test(w) && w === w.toUpperCase();
 
-/**
- * Sépare la dernière gare d'une ligne sans « n° » du nominatif qui peut la suivre : téléphone retiré, puis plus longue
- * suite de mots reconnue par le référentiel ; sans référentiel, la gare en casse normale (DICOS) s'arrête au premier mot
- * en majuscules. Une gare en majuscules de plusieurs mots sans référentiel est incertaine : seul le premier mot est gardé.
- */
-function splitTail(
-  seg: string,
-  refs?: StationRef[],
-): { station: string; personal: boolean; uncertain: boolean } {
-  let s = seg.trim();
-  let personal = false;
+/** Téléphone en fin de segment retiré. */
+function dropPhone(seg: string): { s: string; personal: boolean } {
+  const s = seg.trim();
   const ph = PHONE.exec(s);
-  if (ph) {
-    s = s.slice(0, ph.index).trim();
-    personal = true;
+  return ph ? { s: s.slice(0, ph.index).trim(), personal: true } : { s, personal: false };
+}
+
+/**
+ * Gare d'un segment d'après le référentiel : téléphone retiré, puis plus longue suite de mots reconnue (abréviation,
+ * nom FR / NL, alias), ramenée au nom retenu (FR). Les mots qui suivent (nom du voyageur) sont écartés (`personal`).
+ * Null si aucune suite n'est reconnue : la ligne est alors refusée (« gare inconnue »), jamais gardée telle quelle.
+ */
+export function resolveStation(
+  seg: string,
+  refs: StationRef[],
+): { station: string; personal: boolean } | null {
+  const { s, personal } = dropPhone(seg);
+  const words = s.split(/\s+/).filter(Boolean);
+  for (let k = words.length; k >= 1; k--) {
+    const cand = words.slice(0, k).join(" ");
+    const f = foldStation(cand);
+    const up = cand.toUpperCase();
+    if (
+      refs.some(
+        (r) =>
+          r.names[0] && (r.abbr?.toUpperCase() === up || r.names.some((x) => foldStation(x) === f)),
+      )
+    )
+      return {
+        station: canonicalStation(cand, refs),
+        personal: personal || k < words.length,
+      };
   }
+  return null;
+}
+
+/**
+ * Sans référentiel : sépare une gare du nominatif qui peut la suivre (téléphone retiré ; la gare en casse normale
+ * (DICOS) s'arrête au premier mot en majuscules). Une gare en majuscules de plusieurs mots est incertaine : seul le
+ * premier mot est gardé.
+ */
+function splitTail(seg: string): { station: string; personal: boolean; uncertain: boolean } {
+  const { s, personal } = dropPhone(seg);
   const words = s.split(/\s+/).filter(Boolean);
   if (words.length <= 1) return { station: s, personal, uncertain: false };
-  if (refs?.length) {
-    for (let k = words.length; k >= 1; k--) {
-      const cand = words.slice(0, k).join(" ");
-      const f = foldStation(cand);
-      const up = cand.toUpperCase();
-      if (
-        refs.some((r) => r.abbr?.toUpperCase() === up || r.names.some((x) => foldStation(x) === f))
-      )
-        return { station: cand, personal: personal || k < words.length, uncertain: false };
-    }
-  }
   if (!isUpperWord(words[0]!)) {
     let k = 1;
     while (k < words.length && !isUpperWord(words[k]!)) k++;

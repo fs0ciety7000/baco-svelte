@@ -41,6 +41,10 @@ export function parsedToInput(t: ParsedTask): ManualTaskInput {
     light: t.light,
     dossier: t.dossier ?? "",
     label: "",
+    // Ligne « TAXI » : destination taxi transmise (tâche attribuée), jamais « TAXI » comme n° de train.
+    ...(t.assignee?.kind === "taxi"
+      ? { assignee_kind: "taxi" as const, assignee_label: t.assignee.label ?? "Taxi" }
+      : {}),
   };
 }
 

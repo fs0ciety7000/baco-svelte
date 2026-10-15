@@ -11,6 +11,8 @@ const REFS: StationRef[] = [
   { abbr: "FCR", names: ["Charleroi-Central"] },
   { abbr: "LL", names: ["Libramont"] },
   { abbr: "FLV", names: ["La Louvière-Sud"] },
+  { abbr: "FCRS", names: ["Charleroi-Sud"] },
+  { names: ["Lille-Flandres (FR)", "Lille-Flandres"] },
 ];
 // Nominatif FICTIF : ne doit jamais ressortir.
 const PERSONAL = /JEAN|TEST|0470000000|0470 00 00 00/;
@@ -197,9 +199,49 @@ describe("parseTaskLines", () => {
     expect(
       parseTaskLines("1NV 07h16 906 IN de MONS", { day: "2026-13-01" }).errors[0]!.message,
     ).toBe("jour de service invalide");
+    // « NUIT » = nuit qui suit le jour de la feuille : train le lendemain, tâche gardée sur le jour de planification.
     const night = parseTaskLines("1NV NUIT 05h10 906 IN de MONS", { day: DAY });
-    expect(night.tasks[0]!.trainAt).toBe(at("05:10"));
+    expect(night.tasks[0]!.trainAt).toBe(at("05:10", "2026-10-16"));
+    expect(night.tasks[0]!.day).toBe(DAY);
+    const late = parseTaskLines("1NV NUIT 23h10 906 IN de MONS", { day: DAY });
+    expect(late.tasks[0]!.trainAt).toBe(at("23:10"));
+    const plain = parseTaskLines("1NV 05h10 906 IN de MONS", { day: DAY });
+    expect(plain.tasks[0]!.trainAt).toBe(at("05:10"));
     const winter = parseTaskLines("1NV 07h16 906 IN de MONS", { day: "2026-12-01" });
     expect(winter.tasks[0]!.trainAt).toBe("2026-12-01T06:16:00.000Z");
+  });
+
+  it("référentiel fourni : nom du voyageur écarté de la gare assistée ET de l'autre gare", () => {
+    const r = parseTaskLines(
+      [
+        "1NV 08h00 906 IN de MONS à Lille-Flandres Jean Test",
+        "1NV 08h00 906 OUT à Charleroi-Sud Jean Test venant de Mons",
+        "1NV 08h00 906 OUT à Charleroi-Sud Jean Test venant de Mons n° 2026-10-15-0009",
+      ].join("\n"),
+      { day: DAY, stations: REFS },
+    );
+    expect(r.errors).toEqual([]);
+    expect(r.tasks.map((t) => [t.station, t.otherStation, t.ignoredPersonal])).toEqual([
+      ["Mons", "Lille-Flandres (FR)", true],
+      ["Charleroi-Sud", "Mons", true],
+      ["Charleroi-Sud", "Mons", true],
+    ]);
+    expect(JSON.stringify(r)).not.toMatch(/jean|test/i);
+  });
+
+  it("référentiel fourni : gare inconnue = erreur bloquante, sans recopier la ligne", () => {
+    const r = parseTaskLines(
+      [
+        "1NV 08h00 906 IN de Monss Jean Test à Mons",
+        "1NV 08h00 906 IN de Mons à Lile Jean Test",
+      ].join("\n"),
+      { day: DAY, stations: REFS },
+    );
+    expect(r.tasks).toEqual([]);
+    expect(r.errors).toEqual([
+      { line: 1, level: "error", message: "gare inconnue : vérifie l'orthographe" },
+      { line: 2, level: "error", message: "autre gare inconnue : vérifie l'orthographe" },
+    ]);
+    expect(JSON.stringify(r)).not.toMatch(/jean|test|monss|lile/i);
   });
 });

@@ -110,6 +110,7 @@ export function toEngineTask(t: ServerTask): PlannerTask {
     status: t.status,
     ...(t.linkKey ? { linkKey: t.linkKey } : {}),
     ...(t.label ? { label: t.label } : {}),
+    ...(t.dicosChanged ? { dicosChanged: true } : {}),
   };
   if (t.assigneeKind)
     out.assignee = {
