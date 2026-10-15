@@ -43,7 +43,14 @@ function fmtResult(r) {
   // r.days > 1 : synchro de plusieurs jours (totaux cumulés).
   return `<span class="ok">✓ ${escapeHtml(String(r.day || ""))}${escapeHtml(when)}</span><br>${found} mission(s) PMR → ${num(r.received)} trajet(s)${r.dossiers ? ` · ${num(r.dossiers)} dossier(s)` : ""} · <b>${num(r.created)}</b> créée(s), <b>${num(r.updated)}</b> maj, ${num(r.skipped)} ignorée(s)${
     r.groups ? `<br>Groupes : ${num(r.groups.received)} trajet(s) · <b>${num(r.groups.created)}</b> créé(s), <b>${num(r.groups.updated)}</b> maj` : ""
-  }${fmtAtms(r.atms)}${fmtMode(r)}`;
+  }${fmtPending(r.pending)}${fmtAtms(r.atms)}${fmtMode(r)}`;
+}
+// Dossiers « à vérifier » (planificateur PMR, 1.9.0) : dossiers en attente d'acceptation envoyés à CSM.
+function fmtPending(p) {
+  if (!p) return "";
+  const num = (v) => Number(v) || 0;
+  const line = `<br>Dossiers en attente : ${num(p.found)} dossier(s) → <b>${num(p.created)}</b> tâche(s) créée(s), <b>${num(p.updated)}</b> maj`;
+  return p.error ? `${line} · <span class="err">${escapeHtml(String(p.error))}</span>` : line;
 }
 // Temps d'arrêt ATMS (export ALEA) : trains lus dans l'onglet ATMS ; sans onglet, CSM utilise iRail.
 function fmtAtms(a) {
