@@ -58,7 +58,7 @@ export default async function Page({
         </nav>
         <input type="hidden" name="vue" value={list.view} />
         <ToolbarSearch defaultValue={sp.q} placeholder="Gare, quai, n° de rampe…" />
-        <label className="min-w-0 flex-1 md:w-40 md:flex-none">
+        <label className="min-w-0 flex-1 md:w-48 md:flex-none">
           <span className="sr-only">Zone</span>
           <Select
             name="zone"

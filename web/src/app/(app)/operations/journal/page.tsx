@@ -110,7 +110,7 @@ export default async function Page({
   );
   const active = [f.categorie, f.urgentes, f.retirees, f.agents].filter(Boolean).length;
   const filters = (
-    <ChipRow aria-label="Filtres" className="md:flex-nowrap md:overflow-x-auto">
+    <ChipRow aria-label="Filtres">
       <FilterChip asChild pressed={!f.categorie}>
         <Link
           href={keep({ categorie: undefined })}

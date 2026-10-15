@@ -291,7 +291,14 @@ function Desktop({
                           {item.io}
                         </span>
                       ) : null}
-                      <span className="shrink-0 font-mono font-semibold tabular">{item.train}</span>
+                      <span
+                        className={cn(
+                          "shrink-0 font-semibold tabular",
+                          item.kind !== "bus" && item.kind !== "taxi" && "font-mono",
+                        )}
+                      >
+                        {item.train}
+                      </span>
                       <span className="min-w-0 truncate text-fg-muted">{item.station}</span>
                     </span>
                     {delay ? (

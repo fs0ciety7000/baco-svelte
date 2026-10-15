@@ -14,7 +14,7 @@ import {
 } from "@/components/referentiels/trains";
 import { Button } from "@/components/ui/button";
 import { FilterForm } from "@/components/ui/filter-form";
-import { FilterChip, ChipRow } from "@/components/ui/filters";
+import { FilterChip, ChipRow, SegmentedNav } from "@/components/ui/filters";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { StationInput } from "@/components/orders/station-input";
 import { Combobox } from "@/components/ui/combobox";
@@ -115,19 +115,20 @@ export default async function Page({
   return (
     <section className="flex flex-col gap-4" aria-label="Trains">
       <div className="flex flex-wrap items-center gap-2">
-        <ChipRow className="flex-1">
-          {VIEWS.map((v) => (
-            <FilterChip key={v.id} asChild pressed={view === v.id}>
-              <Link
-                href={trainsHref({ vue: v.id === "relations" ? undefined : v.id })}
-                data-testid={`trains-view-${v.id}`}
-              >
-                {v.label}
-              </Link>
-            </FilterChip>
-          ))}
-        </ChipRow>
-        {admin ? <TimetableRefresh running={running} /> : null}
+        <SegmentedNav
+          label="Vue"
+          items={VIEWS.map((v) => ({
+            label: v.label,
+            href: trainsHref({ vue: v.id === "relations" ? undefined : v.id }),
+            current: view === v.id,
+            testId: `trains-view-${v.id}`,
+          }))}
+        />
+        {admin ? (
+          <span className="ml-auto">
+            <TimetableRefresh running={running} />
+          </span>
+        ) : null}
       </div>
       <StatusLine state={state} admin={admin} running={running} />
 
@@ -221,10 +222,10 @@ async function RelationsView({ sp, q }: { sp: Search; q: string }) {
         <ToolbarSearch
           label="Relation ou n° de train"
           defaultValue={q}
-          placeholder="Relation ou train : IC14, S1, 1706…"
+          placeholder="Relation ou train (IC14, 1706)…"
           maxLength={40}
         />
-        <label className="min-w-0 flex-1 md:w-36 md:flex-none">
+        <label className="min-w-0 flex-1 md:w-44 md:flex-none">
           <span className="sr-only">Type</span>
           <CustomSelect
             name="type"
@@ -240,7 +241,7 @@ async function RelationsView({ sp, q }: { sp: Search; q: string }) {
             ]}
           />
         </label>
-        <label className="min-w-0 flex-1 md:w-40 md:flex-none">
+        <label className="min-w-0 flex-1 md:w-48 md:flex-none">
           <span className="sr-only">Ligne</span>
           <Combobox
             name="ligne"
@@ -257,7 +258,7 @@ async function RelationsView({ sp, q }: { sp: Search; q: string }) {
             name="gare"
             defaultValue={sp.gare ?? ""}
             refs={refs}
-            placeholder="Dessert la gare : Mons, FMS…"
+            placeholder="Dessert la gare…"
             maxLength={60}
           />
         </label>
