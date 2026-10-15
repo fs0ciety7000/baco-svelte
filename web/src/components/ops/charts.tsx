@@ -2,6 +2,8 @@ import { cn, pl } from "@/lib/utils";
 
 // Graphiques des statistiques en HTML / CSS simple (pas de Chart.js, décision du 8 octobre 2026) : couleurs par jetons,
 // valeurs lisibles sans la couleur (titre au survol, tableau équivalent pour les lecteurs d'écran).
+// v4 lot 6 (15 oct. 2026) : barres en `info` / `progress`, axes en `fg-subtle`, valeurs en chiffres tabulaires, fond
+// `surface`, une ligne de base et des repères courts au lieu d'un quadrillage.
 
 const fmtBucket = (label: string) =>
   label.length === 7
@@ -21,49 +23,54 @@ export function StackedBars({
   const top = max <= 4 ? max : Math.ceil(max / 2) * 2;
   const every = Math.max(1, Math.ceil(series.length / 10));
   const gap = series.length > 40 ? "1px" : series.length > 20 ? "2px" : "4px";
+  const half = top / 2 === Math.round(top / 2) ? top / 2 : null;
   return (
-    <figure className="flex min-w-0 flex-col gap-2">
+    <figure className="flex min-w-0 flex-col gap-3">
       <div className="grid grid-cols-[2rem_minmax(0,1fr)] gap-x-2" role="img" aria-label={caption}>
-        <div
-          aria-hidden
-          className="flex h-44 flex-col justify-between text-right font-mono text-small text-fg-muted tabular"
-        >
-          <span className="-translate-y-1/2">{top}</span>
-          <span>{top / 2 === Math.round(top / 2) ? top / 2 : ""}</span>
-          <span className="translate-y-1/2">0</span>
+        {/* Axe : valeurs en `fg-subtle`, repère court de 6 px à chaque valeur (pas de ligne sur toute la largeur). */}
+        <div aria-hidden className="relative h-44 text-right text-label text-fg-subtle tabular">
+          <span className="absolute top-0 right-2 -translate-y-1/2">{top}</span>
+          {half !== null ? (
+            <span className="absolute top-1/2 right-2 -translate-y-1/2">{half}</span>
+          ) : null}
+          <span className="absolute right-2 bottom-0 translate-y-1/2">0</span>
+          <span className="absolute top-0 right-0 h-px w-1.5 bg-border-strong" />
+          <span className="absolute top-1/2 right-0 h-px w-1.5 bg-border-strong" />
         </div>
-        <div className="relative h-44 border-b border-border-strong">
-          <span
-            aria-hidden
-            className="absolute inset-x-0 top-0 border-t border-dashed border-border"
-          />
-          <span
-            aria-hidden
-            className="absolute inset-x-0 top-1/2 border-t border-dashed border-border"
-          />
-          <div className="absolute inset-0 flex items-end" style={{ gap }}>
+        <div className="relative h-44 border-b border-l border-border-strong">
+          <div className="absolute inset-0 flex items-end pl-px" style={{ gap }}>
             {series.map((s) => (
               <div
                 key={s.label}
                 title={`${fmtBucket(s.label)} : ${s.bus} bus, ${s.taxi} ${pl(s.taxi, "taxi")}`}
-                className="flex h-full min-w-0 flex-1 flex-col justify-end"
+                className="flex h-full min-w-0 flex-1 flex-col justify-end gap-px"
               >
-                <span
-                  className="block bg-[color-mix(in_oklab,var(--info)_45%,var(--surface))]"
-                  style={{ height: `${(s.taxi / top) * 100}%` }}
-                />
-                <span className="block bg-info" style={{ height: `${(s.bus / top) * 100}%` }} />
+                {s.taxi ? (
+                  <span
+                    className="block rounded-t-[min(var(--r-control),3px)] bg-progress"
+                    style={{ height: `${(s.taxi / top) * 100}%` }}
+                  />
+                ) : null}
+                {s.bus ? (
+                  <span
+                    className={cn(
+                      "block bg-info",
+                      !s.taxi && "rounded-t-[min(var(--r-control),3px)]",
+                    )}
+                    style={{ height: `${(s.bus / top) * 100}%` }}
+                  />
+                ) : null}
               </div>
             ))}
           </div>
         </div>
         <span />
-        <div aria-hidden className="mt-1 flex" style={{ gap }}>
+        <div aria-hidden className="mt-1.5 flex" style={{ gap }}>
           {series.map((s, i) => (
             <span
               key={s.label}
               className={cn(
-                "min-w-0 flex-1 overflow-visible text-center font-mono text-small whitespace-nowrap text-fg-muted tabular",
+                "min-w-0 flex-1 overflow-visible text-center text-label whitespace-nowrap text-fg-subtle tabular",
                 i % every !== 0 && "invisible",
                 i % (every * 2) !== 0 && "max-sm:invisible",
               )}
@@ -73,18 +80,18 @@ export function StackedBars({
           ))}
         </div>
       </div>
-      <figcaption className="flex flex-wrap gap-4 text-small text-fg-muted">
+      <figcaption className="flex flex-wrap items-center gap-x-4 gap-y-1 text-small text-fg-muted">
         <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden className="size-2.5 bg-info" /> Bus C3
+          <span aria-hidden className="size-2.5 rounded-[min(var(--r-control),2px)] bg-info" /> Bus
+          C3
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span
-            aria-hidden
-            className="size-2.5 bg-[color-mix(in_oklab,var(--info)_45%,var(--surface))]"
-          />{" "}
+          <span aria-hidden className="size-2.5 rounded-[min(var(--r-control),2px)] bg-progress" />{" "}
           Taxis
         </span>
-        <span>max {max} par période</span>
+        <span className="text-fg-subtle">
+          max <span className="tabular">{max}</span> par période
+        </span>
       </figcaption>
       <table className="sr-only">
         <caption>{caption}</caption>
@@ -102,6 +109,10 @@ export function StackedBars({
   );
 }
 
+/**
+ * Liste de barres horizontales : libellé et valeur sur une ligne, piste fine `surface-2` dessous avec la barre `info`
+ * (pas de cadre par ligne). La valeur est écrite : la couleur n'est jamais seule.
+ */
 export function BarList({
   items,
   empty = "Aucune donnée.",
@@ -114,21 +125,22 @@ export function BarList({
   if (!items.length) return <p className="text-small text-fg-muted">{empty}</p>;
   const max = Math.max(1, ...items.map((i) => i.value));
   return (
-    <ul className="flex flex-col gap-1.5">
+    <ul className="flex flex-col gap-2.5">
       {items.map((i) => (
-        <li key={i.label} className="grid grid-cols-[minmax(0,1fr)_3rem] items-center gap-2">
-          <div className="relative min-h-8 overflow-hidden border border-border">
+        <li key={i.label} className="flex min-w-0 flex-col gap-1">
+          <div className="flex min-w-0 items-baseline justify-between gap-3">
+            <span className="min-w-0 truncate text-small text-fg">{i.label}</span>
+            <span className="figures shrink-0 text-small text-fg">
+              {i.value}
+              {unit}
+            </span>
+          </div>
+          <div aria-hidden className="h-1.5 overflow-hidden rounded-pill bg-surface-2">
             <span
-              aria-hidden
-              className="absolute inset-y-0 left-0 bg-[color-mix(in_oklab,var(--info)_22%,var(--surface))]"
+              className="block h-full rounded-pill bg-info"
               style={{ width: `${(i.value / max) * 100}%` }}
             />
-            <span className="relative block truncate px-2 py-1 text-small">{i.label}</span>
           </div>
-          <span className="text-right font-mono text-small tabular">
-            {i.value}
-            {unit}
-          </span>
         </li>
       ))}
     </ul>

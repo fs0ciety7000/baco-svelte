@@ -1,21 +1,24 @@
 import { Download } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { pl } from "@/lib/utils";
 import { DateRangePicker } from "@/components/ui/date-field";
 import { FilterForm } from "@/components/ui/filter-form";
-import { ChipRow, CollapsibleFilters, FilterChip } from "@/components/ui/filters";
-import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
+import {
+  ClearFilters,
+  CollapsibleFilters,
+  FilterSubmit,
+  SegmentedNav,
+} from "@/components/ui/filters";
 import { BarList, StackedBars } from "@/components/ops/charts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Combobox } from "@/components/ui/combobox";
-import { DistrictPicker } from "@/components/ui/district-picker";
+import { DistrictMenu } from "@/components/ui/district-picker";
 import { Select as CustomSelect } from "@/components/ui/select";
 import { appendDistricts, DISTRICT_NAME_OPTIONS } from "@/lib/district-param";
-import { StatCard } from "@/components/ui/stat-card";
-import { Table, Td, Th, THead, Tr } from "@/components/ui/table";
+import { Stat, StatStrip } from "@/components/ui/stat-card";
+import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
 import { addDays, brusselsDay, formatDay } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
 import { requirePermission } from "@/server/auth";
@@ -55,35 +58,36 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
   ];
   const t = stats.totals;
   const csv = `/api/operations/statistiques/export?${withKeep({ du: from, au: to })}`;
+  // Filtres repliés actifs : type, société, période libre (hors raccourcis).
+  const customPeriod = !presets.some((p) => p.du === from && p.au === to);
+  const folded = [filters.type, filters.societe].filter(Boolean).length + Number(customPeriod);
   return (
-    <section className="flex flex-col gap-5" aria-label="Statistiques">
+    <section className="flex flex-col gap-4" aria-label="Statistiques">
+      {/* Barre d'outils sur une ligne en desktop (v4 lot 6) : période, districts, « Filtres (n) », export à droite. */}
       <div className="flex flex-col gap-2">
-        <ChipRow aria-label="Périodes">
-          {presets.map((p) => {
-            const active = p.du === from && p.au === to;
-            return (
-              <FilterChip key={p.label} asChild pressed={active}>
-                <Link
-                  href={`/statistiques?${withKeep({ du: p.du, au: p.au })}`}
-                  aria-current={active ? "true" : undefined}
-                >
-                  {p.label}
-                </Link>
-              </FilterChip>
-            );
-          })}
-        </ChipRow>
         <FilterForm
           action="/statistiques"
-          className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
+          role="search"
+          className="flex flex-wrap items-center gap-2"
+          data-testid="stats-toolbar"
         >
-          <FormAutoSubmit />
-          <CollapsibleFilters
-            active={
-              [filters.district.length ? "d" : "", filters.type, filters.societe].filter(Boolean)
-                .length
-            }
-          >
+          <SegmentedNav
+            label="Période"
+            items={presets.map((p) => ({
+              label: p.label,
+              href: `/statistiques?${withKeep({ du: p.du, au: p.au })}`,
+              current: p.du === from && p.au === to,
+            }))}
+          />
+          <div className="min-w-0">
+            <DistrictMenu
+              name="district"
+              label="Districts"
+              options={DISTRICT_NAME_OPTIONS}
+              defaultValues={filters.district}
+            />
+          </div>
+          <CollapsibleFilters always active={folded}>
             <DateRangePicker
               nameFrom="du"
               nameTo="au"
@@ -92,16 +96,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
               presets={["last7", "week"]}
               fieldClassName="md:w-40"
             />
-            <div className="col-span-2 flex min-w-0 flex-col gap-1 md:w-auto">
-              <span className="text-small text-fg-muted">District</span>
-              <DistrictPicker
-                name="district"
-                label="District"
-                options={DISTRICT_NAME_OPTIONS}
-                defaultValues={filters.district}
-              />
-            </div>
-            <label className="flex min-w-0 flex-col gap-1 md:w-32">
+            <label className="flex min-w-0 flex-col gap-1 max-md:basis-full md:w-32">
               <span className="text-small text-fg-muted">Type C3</span>
               <CustomSelect
                 name="type"
@@ -114,7 +109,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
                 ]}
               />
             </label>
-            <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-56">
+            <label className="flex min-w-0 flex-col gap-1 max-md:basis-full md:w-56">
               <span className="text-small text-fg-muted">Société de bus</span>
               {/* Liste longue : recherche (refonte R2) ; vide = toutes. */}
               <Combobox
@@ -125,44 +120,41 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
                 emptyText="Aucune société"
               />
             </label>
-            <Button type="submit">Appliquer</Button>
+            <ClearFilters href="/statistiques" />
           </CollapsibleFilters>
-          <Button asChild variant="ghost" className="border border-border md:ml-auto">
+          <Button asChild variant="secondary" size="sm" className="ml-auto">
             <a href={csv} download>
-              <Download aria-hidden /> CSV
+              <Download aria-hidden /> Export CSV
             </a>
           </Button>
+          <FilterSubmit />
         </FilterForm>
         <p className="text-small text-fg-muted">
-          Du {formatDay(from)} au {formatDay(to)} · district de la commande
+          Du <span className="tabular">{formatDay(from)}</span> au{" "}
+          <span className="tabular">{formatDay(to)}</span> · district de la commande
           {filters.type || filters.societe ? " · taxis exclus (filtre bus)" : ""}
         </p>
       </div>
 
-      <div
-        className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6"
-        data-testid="stats-cards"
-      >
-        <StatCard label="Commandes bus" value={t.bus} tone="accent" />
-        <StatCard label="Bus mobilisés" value={t.buses} />
-        <StatCard label="Taxis" value={t.taxi} tone="info" />
+      <StatStrip data-testid="stats-cards">
+        <Stat label="Commandes bus" value={t.bus} tone="info" />
+        <Stat label="Bus mobilisés" value={t.buses} />
+        <Stat label="Taxis" value={t.taxi} tone="info" />
         {t.medianConfirm !== null ? (
-          <StatCard
+          <Stat
             label="Confirmation (médiane, min)"
             value={Math.round(t.medianConfirm)}
             hint={fmtMin(t.medianConfirm)}
           />
         ) : null}
-        <StatCard
+        <Stat
           label="Annulations (%)"
           value={Math.round(t.cancelRate * 100)}
-          tone={t.cancelRate > 0.1 ? "warn" : "neutral"}
+          tone={t.cancelRate > 0.1 ? "warn" : undefined}
           hint={`${t.cancelled} ${pl(t.cancelled, "annulée")}`}
         />
-        {t.assists !== null ? (
-          <StatCard label="Prestations PMR" value={t.assists} tone="ok" />
-        ) : null}
-      </div>
+        {t.assists !== null ? <Stat label="Prestations PMR" value={t.assists} tone="ok" /> : null}
+      </StatStrip>
 
       <Card>
         <CardHeader title={`Volume par ${stats.granularity}`} />
@@ -173,25 +165,25 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader title={`Par type C3`} />
+          <CardHeader title="Par type C3" />
           <CardContent>
             <BarList items={stats.byType} />
           </CardContent>
         </Card>
         <Card>
-          <CardHeader title={`Par district`} />
+          <CardHeader title="Par district" />
           <CardContent>
             <BarList items={stats.byDistrict} />
           </CardContent>
         </Card>
         <Card>
-          <CardHeader title={`Motifs les plus fréquents`} />
+          <CardHeader title="Motifs les plus fréquents" />
           <CardContent>
             <BarList items={stats.byReason} />
           </CardContent>
         </Card>
         <Card>
-          <CardHeader title={`Lignes desservies`} />
+          <CardHeader title="Lignes desservies" />
           <CardContent>
             <BarList items={stats.byLine} />
           </CardContent>
@@ -199,7 +191,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
       </div>
 
       <Card>
-        <CardHeader title={`Fournisseurs`} />
+        <CardHeader title="Fournisseurs" count={stats.suppliers.length} />
         <CardContent className="flex flex-col gap-2">
           <div className="hidden md:block">
             <Table>
@@ -227,12 +219,16 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
           </div>
           <ul className="flex flex-col gap-2 md:hidden">
             {stats.suppliers.map((s) => (
-              <li key={s.name} className="flex flex-col border border-border px-3 py-2">
-                <span className="text-body font-medium">{s.name}</span>
-                <span className="text-small text-fg-muted">
-                  {s.orders} {pl(s.orders, "commande")} · {s.buses} bus · {s.cancelled}{" "}
-                  {pl(s.cancelled, "annulée")} · confirmation {fmtMin(s.medianConfirm)}
-                </span>
+              <li key={s.name}>
+                <ListCard
+                  title={s.name}
+                  meta={
+                    <span className="tabular">
+                      {s.orders} {pl(s.orders, "commande")} · {s.buses} bus · {s.cancelled}{" "}
+                      {pl(s.cancelled, "annulée")} · confirmation {fmtMin(s.medianConfirm)}
+                    </span>
+                  }
+                />
               </li>
             ))}
           </ul>
@@ -241,14 +237,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader title={`Trajets les plus commandés`} />
+          <CardHeader title="Trajets les plus commandés" />
           <CardContent>
             <BarList items={stats.routes} />
           </CardContent>
         </Card>
         {stats.pmr ? (
           <Card>
-            <CardHeader title={`Prestations PMR par gare`} />
+            <CardHeader title="Prestations PMR par gare" />
             <CardContent className="flex flex-col gap-4">
               <BarList items={stats.pmr.byStation} />
               <BarList
