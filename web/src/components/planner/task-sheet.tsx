@@ -248,6 +248,11 @@ export function TaskSheet(p: TaskSheetProps) {
                 <Badge tone="warn">En attente DICOS</Badge>
               ) : null}
               {isCancelled(shown) ? <Badge tone="danger">Annulée</Badge> : null}
+              {shown.dicosChanged && !isCancelled(shown) ? (
+                <Badge tone="warn" data-testid="sheet-dicos-changed">
+                  Modifiée par DICOS
+                </Badge>
+              ) : null}
             </dd>
             {shown.dossier ? (
               <>

@@ -291,10 +291,21 @@ export async function POST(request: Request) {
 
   // Planificateur de tâches PMR (15 oct. 2026) : tâches reliées ou créées pour les missions de ce lot. Jamais
   // bloquant : une erreur ici n'empêche ni l'ingestion ni la réponse (compteur `planner.failed`).
-  const planner = { received: 0, created: 0, updated: 0, unchanged: 0, skipped: 0, failed: 0 };
+  // Lot complet (dernier lot, sans erreur) : un bout dont l'assistance a disparu annule sa tâche (agent gardé).
+  const planner = {
+    received: 0,
+    created: 0,
+    updated: 0,
+    unchanged: 0,
+    skipped: 0,
+    failed: 0,
+    cancelled: 0,
+  };
+  const complete = body.final !== false && c.errors.length === 0;
+  const syncedBy = who.kind === "personal" ? who.userId : "";
   for (const [d, ids] of [...touched].slice(0, 10)) {
     try {
-      const p = await syncPlannerFromAssists(pb, d, ids);
+      const p = await syncPlannerFromAssists(pb, d, ids, { complete, syncedBy });
       for (const k of Object.keys(planner) as (keyof typeof planner)[]) planner[k] += p[k];
     } catch {
       planner.failed++;

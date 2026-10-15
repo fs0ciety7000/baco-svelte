@@ -154,7 +154,11 @@ export function mapPendingDossier(raw: unknown): DicosTask[] {
   const status = pendingStatus(d.status);
   const out: DicosTask[] = [];
   for (const t of d.travels ?? []) {
-    const who = travelers(t.disableds ?? t.traveler?.disableds ?? []);
+    // `disableds` (forme réduite) et `traveler.disableds` (forme brute) décrivent les MÊMES voyageurs : le premier non
+    // vide, jamais la somme des deux.
+    const who = travelers(
+      t.disableds?.length ? t.disableds : t.traveler?.disableds?.length ? t.traveler.disableds : [],
+    );
     for (const j of t.journeys ?? []) {
       if (!JOURNEY_ID.test(j.id)) continue;
       const train = /^\d{1,6}$/.test(j.trainNumber) ? j.trainNumber : "";
@@ -233,12 +237,8 @@ export function tasksFromAssist(a: AssistForPlanner): (DicosTask & { cancelled: 
   if (!/^j[A-Za-z0-9-]{1,36}$/.test(a.dicos_id) || !isValidDay(a.day)) return [];
   const journeyId = a.dicos_id.slice(1);
   const type = asType(a.pmr_type);
-  const light =
-    a.full_pax > 0
-      ? false
-      : a.light_pax > 0
-        ? true
-        : !(type && WHEELCHAIR.includes(type)) && type !== "";
+  // Type inconnu = light (comme les dossiers en attente) ; une assistance complète comptée l'emporte.
+  const light = a.full_pax > 0 ? false : !(type && WHEELCHAIR.includes(type));
   const train = a.transport === "taxi" ? "TAXI" : a.train.slice(0, 20);
   const dossier = DOSSIER.test(a.dicos_ref) ? a.dicos_ref : "";
   const out: (DicosTask & { cancelled: boolean })[] = [];
@@ -272,6 +272,24 @@ export function tasksFromAssist(a: AssistForPlanner): (DicosTask & { cancelled: 
     });
   }
   return out;
+}
+
+/**
+ * Clés des bouts d'une mission acceptée qui ne sont PAS (ou plus) assistés (`in_assist` / `out_assist` faux) : une tâche
+ * de même clé existante doit passer « annulée » (agent gardé) quand le lot de synchro est complet.
+ */
+export function unassistedKeys(
+  a: Pick<AssistForPlanner, "dicos_id" | "in_assist" | "out_assist">,
+): string[] {
+  if (!/^j[A-Za-z0-9-]{1,36}$/.test(a.dicos_id)) return [];
+  const id = a.dicos_id.slice(1);
+  return [...(a.in_assist ? [] : [`${id}:IN`]), ...(a.out_assist ? [] : [`${id}:OUT`])];
+}
+
+/** N° de dossier d'un dossier « à vérifier » brut ("" si absent ou invalide). */
+export function pendingDossierRef(raw: unknown): string {
+  const p = pendingDossierSchema.safeParse(raw);
+  return p.success ? dossierRef(p.data) : "";
 }
 
 function nextDay(day: string): string {

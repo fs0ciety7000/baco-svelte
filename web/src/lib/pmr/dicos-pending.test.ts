@@ -139,6 +139,11 @@ describe("dossiers DICOS en attente → tâches du planificateur", () => {
     };
     delete t0.disableds;
     expect(mapPendingDossier(d)[0]).toMatchObject({ pmr_type: "CRE", light: false });
+    // Les deux formes à la fois décrivent les mêmes voyageurs : la première non vide, jamais la somme.
+    t0.disableds = [{ symbol: "electric-wheelchair", assistanceType: "Full", quantity: 1 }];
+    expect(mapPendingDossier(d)[0]).toMatchObject({ pax: 1 });
+    t0.disableds = [];
+    expect(mapPendingDossier(d)[0]).toMatchObject({ pmr_type: "CRE", pax: 1 });
   });
 });
 
@@ -197,6 +202,13 @@ describe("missions acceptées → tâches (même clé que le dossier en attente)
     expect(tasksFromAssist(assist({ full_pax: 0, light_pax: 0, pmr_type: "MR" }))[0]!.light).toBe(
       true,
     );
+    // Type inconnu ou absent = light, comme les dossiers en attente.
+    expect(tasksFromAssist(assist({ full_pax: 0, light_pax: 0, pmr_type: "" }))[0]!.light).toBe(
+      true,
+    );
+    expect(
+      tasksFromAssist(assist({ full_pax: 0, light_pax: 0, pmr_type: "AUTRE" }))[0]!.light,
+    ).toBe(true);
     expect(tasksFromAssist(assist({ dicos_id: "12345" }))).toEqual([]);
     expect(tasksFromAssist(assist({ out_assist: false })).map((x) => x.kind)).toEqual(["pmr_in"]);
   });

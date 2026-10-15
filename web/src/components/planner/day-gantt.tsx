@@ -1,6 +1,6 @@
 "use client";
 
-import { Car, Store, TrainFront } from "lucide-react";
+import { Car, RefreshCw, Store, TrainFront } from "lucide-react";
 import * as React from "react";
 
 import {
@@ -563,6 +563,7 @@ function TaskBlock({
   const pending = block.tasks.some(isPending);
   const cancelled = block.tasks.every(isCancelled);
   const dup = block.tasks.some((t) => p.duplicates.has(t.id));
+  const changed = block.tasks.some((t) => t.dicosChanged && !isCancelled(t));
   const label = blockLabel(block.tasks);
   const name = `${block.tasks.length > 1 ? `${block.tasks.length} prises en charge : ` : ""}${block.tasks.map(taskName).join(" ; ")}${conflict ? `. Conflit : ${conflict.reasons.join(", ")}` : warn ? `. Attention : ${warn.reasons.join(", ")}` : ""}${dup ? ". Doublon probable" : ""}${proposedBlock ? ". Proposition" : ""}`;
   const style = {
@@ -578,6 +579,7 @@ function TaskBlock({
       data-hl={first.id}
       data-task-block={ids.join(",")}
       data-testid={proposedBlock ? "planner-proposed" : "planner-block"}
+      data-changed={changed ? "dicos" : undefined}
       aria-label={name}
       title={name}
       onClick={() => !proposedBlock && p.onOpen(first.id)}
@@ -606,6 +608,10 @@ function TaskBlock({
             conflict ? "bg-danger" : "bg-warn",
           )}
         />
+      ) : null}
+      {changed ? (
+        // « Modifiée par DICOS » : gare, heure ou jour changés après l'attribution (nom accessible : `taskName`).
+        <RefreshCw aria-hidden className="absolute right-0.5 bottom-0.5 size-3 text-warn" />
       ) : null}
     </button>
   );

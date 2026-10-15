@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { addDays, brusselsDay } from "@/lib/orders/time";
 import { readExtensionRelease } from "@/server/extension";
-import { ingestPending } from "@/server/planner-sync";
+import { countPendingTasks, ingestPending, reservePendingQuota } from "@/server/planner-sync";
 import { connectorRequest } from "@/server/quinyx-ingest";
 
 // Dossiers DICOS « à vérifier » (planificateur PMR, 15 oct. 2026, cadrage §7) : l'extension (≥ 1.9.0) lit
@@ -36,8 +36,20 @@ export async function POST(request: Request) {
   const today = brusselsDay();
   const from = addDays(today, -2);
   const to = addDays(today, 60);
+  // Plafonds : 2 000 tâches par requête, 6 000 par jeton et par jour (compteur en mémoire du serveur).
+  const tokenKey = r.who.kind === "personal" ? r.who.tokenId : "shared";
+  if (!reservePendingQuota(tokenKey, countPendingTasks(body.dossiers)))
+    return Response.json(
+      { error: "Trop de dossiers en attente pour ce jeton : réessaie plus tard." },
+      { status: 429 },
+    );
   try {
-    const out = await ingestPending(r.pb, body.dossiers, (d) => d >= from && d <= to);
+    const out = await ingestPending(
+      r.pb,
+      body.dossiers,
+      (d) => d >= from && d <= to,
+      r.who.kind === "personal" ? r.who.userId : "",
+    );
     const release = await readExtensionRelease().catch(() => null);
     return Response.json(
       { ...out, extension: { latest: release?.version ?? null } },
