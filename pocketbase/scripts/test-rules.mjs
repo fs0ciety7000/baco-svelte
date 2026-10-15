@@ -1587,6 +1587,12 @@ try {
 		// Tâche DICOS : compte de service seul.
 		const qa = await api('POST', '/api/collections/quinyx_agents/records', { token: pc?.token, body: { quinyx_id: `8${Date.now().toString().slice(-9)}`, first_name: 'Agent', last_name: 'Test A.', purpose: 'gares' } });
 		check('connecteur crée un agent de gare (purpose gares)', qa.status === 200 && qa.json?.purpose === 'gares', `HTTP ${qa.status}`);
+		const cBases = await api('GET', '/api/collections/planner_bases/records?perPage=50', { token: pc?.token });
+		check('connecteur lit les bases (gare de base des prestations Quinyx)', cBases.status === 200 && cBases.json.totalItems === 10, `HTTP ${cBases.status} ${cBases.json?.totalItems}`);
+		const cBcs = await api('GET', '/api/collections/bcs_counters/records?perPage=1', { token: pc?.token });
+		check('connecteur ne lit pas les guichets B-CS', cBcs.status !== 200 || cBcs.json.totalItems === 0, `HTTP ${cBcs.status} ${cBcs.json?.totalItems}`);
+		const cBaseW = await api('PATCH', `/api/collections/planner_bases/records/${mons?.id}`, { token: pc?.token, body: { active: false } });
+		check('connecteur ne modifie pas une base', cBaseW.status >= 400, `HTTP ${cBaseW.status}`);
 		const key = `9${suffix}:IN`;
 		const d1 = await api('POST', '/api/collections/planner_tasks/records', { token: pc?.token, body: T({ source: 'dicos_pending', source_key: key, dicos_status: 'proposal', station_ok: 'pending', dossier: '2099-02-01-0001' }) });
 		check('connecteur crée une tâche DICOS en attente', d1.status === 200, `HTTP ${d1.status} ${JSON.stringify(d1.json).slice(0, 100)}`);

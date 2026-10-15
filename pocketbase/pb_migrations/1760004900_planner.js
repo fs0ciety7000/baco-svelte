@@ -169,6 +169,9 @@ migrate(
 			type: 'base',
 			name: 'planner_bases',
 			...refRules,
+			// Lue aussi par le compte de service : gare de base des prestations Quinyx « gares » (ingestion).
+			listRule: `(${can('planner:read')} && ${NS}) || ${DICOS}`,
+			viewRule: `(${can('planner:read')} && ${NS}) || ${DICOS}`,
 			updateRule: `${can('planner:manage')} && ${NS} && @request.body.code:changed = false`,
 			fields: [
 				{ name: 'code', type: 'text', required: true, max: 6, pattern: '^[A-Z]{2,6}$' },

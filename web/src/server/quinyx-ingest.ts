@@ -9,8 +9,10 @@ import {
   mapQuinyxBatch,
   removalAllowed,
   suggestUser,
+  type GroupPurpose,
   type MappedShift,
   type Place,
+  type PlannerBaseRef,
   type QuinyxBatch,
 } from "@/lib/quinyx/model";
 import {
@@ -57,14 +59,20 @@ export async function connectorRequest(
   }
 }
 
-export type QuinyxGroupConfig = { group: string; label: string };
+export type QuinyxGroupConfig = { group: string; label: string; purpose: GroupPurpose };
 
-/** Groupes Quinyx à lire (activés par un admin). */
+const purposeOf = (v: unknown): GroupPurpose => (v === "gares" ? "gares" : "equipe");
+
+/** Groupes Quinyx à lire (activés par un admin), avec leur rôle (l'extension trie selon `purpose`). */
 export async function enabledGroups(pb: PocketBase): Promise<QuinyxGroupConfig[]> {
   const rows = await pb
     .collection("quinyx_groups")
-    .getFullList({ filter: "enabled = true", fields: "group_id,label", sort: "label" });
-  return rows.map((r) => ({ group: String(r.group_id), label: String(r.label) }));
+    .getFullList({ filter: "enabled = true", fields: "group_id,label,purpose", sort: "label" });
+  return rows.map((r) => ({
+    group: String(r.group_id),
+    label: String(r.label),
+    purpose: purposeOf(r.purpose),
+  }));
 }
 
 const chunks = <T>(list: T[], n: number) =>
@@ -132,7 +140,18 @@ async function ingestGroup(
   const places = (
     await pb.collection("quinyx_places").getFullList({ fields: "pattern,district" })
   ).map((p) => ({ pattern: String(p.pattern), district: String(p.district) })) as Place[];
-  const mapped = mapQuinyxBatch(batch, places, String(group.district ?? ""));
+  // Groupe « gares » (planificateur PMR, 15 oct. 2026) : postes de gare, base déduite des bases du planificateur, et
+  // prestations de TOUS les agents (ils n'ont pas de compte CSM ; décision de l'utilisateur, note DPO §2).
+  const purpose = purposeOf(group.purpose);
+  const gares = purpose === "gares";
+  const bases: PlannerBaseRef[] = gares
+    ? (
+        await pb
+          .collection("planner_bases")
+          .getFullList({ fields: "code,name,district", filter: "active = true" })
+      ).map((b) => ({ code: String(b.code), name: String(b.name), district: String(b.district) }))
+    : [];
+  const mapped = mapQuinyxBatch(batch, places, String(group.district ?? ""), { purpose, bases });
   const c: IngestCounts = {
     received: batch.shifts.length,
     kept: mapped.shifts.length,
@@ -179,16 +198,18 @@ async function ingestGroup(
     const groups = [...new Set([...((r?.groups as string[] | null) ?? []), batch.group])].slice(
       -20,
     );
-    const suggestion = !r || (!r.user && !r.confirmed) ? suggestUser(a, users) : undefined;
+    // Agent de gare : aucun compte CSM proposé (ils n'en ont pas) ; ses horaires sont toujours gardés.
+    const suggestion =
+      !gares && (!r || (!r.user && !r.confirmed)) ? suggestUser(a, users) : undefined;
     const account = r?.confirmed
       ? String(r.user ?? "")
       : (suggestion ?? String(r?.user_suggested ?? ""));
-    if (account && teamIds.has(account)) teamAgents.add(a.quinyx_id);
+    if (gares || (account && teamIds.has(account))) teamAgents.add(a.quinyx_id);
     try {
       if (!r) {
         const n = await pb
           .collection("quinyx_agents")
-          .create({ ...a, groups, last_seen: now, user_suggested: suggestion || "" })
+          .create({ ...a, groups, last_seen: now, user_suggested: suggestion || "", purpose })
           .catch(async (e) => {
             // Créé entre-temps par une autre synchro : on reprend la fiche existante.
             const again = await pb
@@ -204,6 +225,10 @@ async function ingestGroup(
         // Noms vides (agent absent de la liste du groupe) : on garde ceux déjà connus. Agent rattaché : nom figé (un
         // lot forgé ne peut pas le renommer pour détourner la proposition de compte).
         const patch: Record<string, unknown> = { last_seen: now, groups };
+        // Rôle de l'agent : celui du groupe qui le voit (un agent de l'équipe vu dans un groupe « gares » reste
+        // « équipe » s'il est rattaché à un compte CSM).
+        if (gares && !r.user && r.purpose !== "gares") patch.purpose = "gares";
+        if (!gares && r.purpose !== "equipe" && (r.user || suggestion)) patch.purpose = "equipe";
         if ((a.first_name || a.last_name) && !r.confirmed) {
           patch.first_name = a.first_name;
           patch.last_name = a.last_name;
@@ -337,6 +362,8 @@ function shiftRecord(s: MappedShift, agent: string) {
     section: s.section,
     kind: s.kind,
     district: s.district,
+    post: s.post,
+    base: s.base,
   };
 }
 
@@ -350,6 +377,8 @@ function changed(cur: RecordModel, rec: ReturnType<typeof shiftRecord>): boolean
     cur.code !== rec.code ||
     (cur.section ?? "") !== rec.section ||
     cur.kind !== rec.kind ||
-    (cur.district ?? "") !== rec.district
+    (cur.district ?? "") !== rec.district ||
+    (cur.post ?? "") !== rec.post ||
+    (cur.base ?? "") !== rec.base
   );
 }

@@ -13,13 +13,14 @@ export default async function Page() {
   return (
     <div className="flex max-w-5xl flex-col gap-4">
       <p className="text-body text-fg-muted">
-        Horaires publiés dans Quinyx (prestations PACO, RCCA et EXTRA), lus par l&apos;extension CSM
-        dans un onglet Quinyx connecté. Rien n&apos;est lu sans un agent connecté à Quinyx ; aucun
-        mot de passe ni cookie n&apos;est conservé.
+        Horaires publiés dans Quinyx, lus par l&apos;extension CSM dans un onglet Quinyx connecté :
+        prestations PACO, RCCA et EXTRA pour les groupes « Équipe », prestations CPI, SPI, OPI, PA
+        et EXTRA des agents de gare pour les groupes « Gares » (planificateur PMR). Rien n&apos;est
+        lu sans un agent connecté à Quinyx ; aucun mot de passe ni cookie n&apos;est conservé.
       </p>
       <QuinyxGroups groups={data.groups} />
       <QuinyxPlaces places={data.places} />
-      <QuinyxAgents agents={data.agents} users={data.users} />
+      <QuinyxAgents agents={data.agents} users={data.users} stationAgents={data.stationAgents} />
     </div>
   );
 }

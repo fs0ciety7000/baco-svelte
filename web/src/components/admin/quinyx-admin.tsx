@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";
 import { sinceLabel } from "@/lib/orders/time";
 import { safeCall } from "@/lib/orders/safe-call";
-import { QUINYX_DISTRICTS } from "@/lib/quinyx/model";
+import { GROUP_PURPOSES, PURPOSE_LABEL, QUINYX_DISTRICTS } from "@/lib/quinyx/model";
 import type { QuinyxAgentRow, QuinyxGroupRow, QuinyxPlaceRow } from "@/server/data/quinyx";
 
 type Res = { ok: true } | { ok: false; error: string };
@@ -75,21 +75,23 @@ function DistrictSelect(props: React.ComponentProps<typeof Select> & { allowEmpt
 
 export function QuinyxGroups({ groups }: { groups: QuinyxGroupRow[] }) {
   const { pending, act } = useAct();
-  const [form, setForm] = useState({ groupId: "", label: "", district: "" });
+  const [form, setForm] = useState({ groupId: "", label: "", district: "", purpose: "equipe" });
+  const purposes = GROUP_PURPOSES.map((p) => ({ value: p, label: PURPOSE_LABEL[p] }));
   return (
     <Section
       title="Groupes Quinyx"
-      hint="Plannings lus par l'extension (un groupe = une page « schedule » de Quinyx). Colle l'adresse de la page ou son numéro. Le district sert quand aucun lieu de la table ne correspond."
+      hint="Plannings lus par l'extension (un groupe = une page « schedule » de Quinyx). Colle l'adresse de la page ou son numéro. Rôle « Équipe » : prestations PACO / RCCA (Ressources › Planning) ; « Gares » : prestations CPI, SPI, OPI, PA et EXTRA de tous les agents de gare (PMR › Planificateur). Le district sert quand aucun lieu de la table ne correspond."
     >
       <ul className="flex flex-col gap-2" data-testid="quinyx-groups">
         {groups.map((g) => (
           <li
             key={g.id}
-            className="grid gap-2 rounded-control bg-surface-2 p-3 md:grid-cols-[minmax(0,1fr)_8rem_auto] md:items-center"
+            className="grid gap-2 rounded-control bg-surface-2 p-3 md:grid-cols-[minmax(0,1fr)_8rem_8rem_auto] md:items-center"
           >
             <div className="flex min-w-0 flex-col">
               <span className="font-medium">
-                {g.label} <span className="tabular text-small text-fg-muted">n° {g.groupId}</span>
+                {g.label} <span className="tabular text-small text-fg-muted">n° {g.groupId}</span>{" "}
+                {g.purpose === "gares" ? <Badge tone="info">Gares</Badge> : null}
               </span>
               <span className="text-small text-fg-muted">
                 {g.lastSync
@@ -97,6 +99,18 @@ export function QuinyxGroups({ groups }: { groups: QuinyxGroupRow[] }) {
                   : "Jamais synchronisé"}
               </span>
             </div>
+            <CustomSelect
+              aria-label={`Rôle du groupe ${g.label}`}
+              label={`Rôle du groupe ${g.label}`}
+              defaultValue={g.purpose}
+              key={`${g.id}-${g.purpose}`}
+              disabled={pending}
+              options={purposes}
+              onValueChange={(v) => {
+                if (v && v !== g.purpose)
+                  act(() => updateQuinyxGroup(g.id, { purpose: v }), "Rôle du groupe enregistré.");
+              }}
+            />
             <DistrictSelect
               aria-label={`District par défaut de ${g.label}`}
               allowEmpty
@@ -143,13 +157,13 @@ export function QuinyxGroups({ groups }: { groups: QuinyxGroupRow[] }) {
         ) : null}
       </ul>
       <form
-        className="grid gap-2 md:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_8rem_auto] md:items-end"
+        className="grid gap-2 md:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_8rem_8rem_auto] md:items-end"
         onSubmit={(e) => {
           e.preventDefault();
           act(
             () => addQuinyxGroup(form),
             "Groupe ajouté.",
-            () => setForm({ groupId: "", label: "", district: "" }),
+            () => setForm({ groupId: "", label: "", district: "", purpose: "equipe" }),
           );
         }}
       >
@@ -174,6 +188,14 @@ export function QuinyxGroups({ groups }: { groups: QuinyxGroupRow[] }) {
             placeholder="PACO/RCCA Mons"
             onChange={(e) => setForm({ ...form, label: e.target.value })}
             data-testid="quinyx-group-label"
+          />
+        </label>
+        <label className="flex min-w-0 flex-col gap-1">
+          <span className="text-small text-fg-muted">Rôle</span>
+          <CustomSelect
+            value={form.purpose}
+            options={purposes}
+            onValueChange={(v) => v && setForm({ ...form, purpose: v })}
           />
         </label>
         <label className="flex min-w-0 flex-col gap-1">
@@ -265,9 +287,12 @@ export function QuinyxPlaces({ places }: { places: QuinyxPlaceRow[] }) {
 export function QuinyxAgents({
   agents,
   users,
+  stationAgents = 0,
 }: {
   agents: QuinyxAgentRow[];
   users: { id: string; name: string }[];
+  /** Agents de gare (groupes « Gares ») : pas de compte CSM, seulement comptés. */
+  stationAgents?: number;
 }) {
   const { pending, act } = useAct();
   const [filter, setFilter] = useState<"todo" | "all">("todo");
@@ -283,6 +308,12 @@ export function QuinyxAgents({
       title="Agents Quinyx ↔ comptes CSM"
       hint="CSM propose le compte dont le nom complet est identique. Un agent n'apparaît dans « Mon planning », le widget et les districts du jour qu'une fois rattaché."
     >
+      {stationAgents ? (
+        <p className="text-small text-fg-muted" data-testid="quinyx-station-agents">
+          {stationAgents} agent{stationAgents > 1 ? "s" : ""} de gare (groupes « Gares ») : sans
+          compte CSM, utilisé{stationAgents > 1 ? "s" : ""} par le planificateur PMR seulement.
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <FilterChip pressed={filter === "todo"} onClick={() => setFilter("todo")}>
           À rattacher <Count>{todo.length}</Count>

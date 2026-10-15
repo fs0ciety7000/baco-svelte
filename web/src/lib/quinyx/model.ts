@@ -53,6 +53,60 @@ export function shiftKind(code: string, start = ""): QuinyxKind {
 
 export type Place = { pattern: string; district: string };
 
+// --- Groupes « gares » (planificateur de tâches PMR, 15 oct. 2026) ---
+
+/** Rôle d'un groupe Quinyx : `equipe` (PACO / RCCA, Ressources › Planning) ou `gares` (agents de gare, planificateur). */
+export const GROUP_PURPOSES = ["equipe", "gares"] as const;
+export type GroupPurpose = (typeof GROUP_PURPOSES)[number];
+export const PURPOSE_LABEL: Record<GroupPurpose, string> = { equipe: "Équipe", gares: "Gares" };
+
+export const STATION_POSTS = ["CPI", "SPI", "OPI", "PA", "EXTRA"] as const;
+export type StationPost = (typeof STATION_POSTS)[number];
+
+/**
+ * Prestation d'un agent de gare captée (groupe `gares`) : type qui commence par CPI, SPI, OPI, PA ou EXTRA (« CPI_AM »,
+ * « OPI 6-14 », « PA_PM », « EXTRA CPI »). Tout le reste (repos, congés, absences, formations, visites médicales : RW,
+ * CW, CV, RR, ADA, IDEV…) est ignoré. « PACO… » ne commence pas par « PA » en mot entier.
+ */
+export function isStationCode(code: string): boolean {
+  return /^(CPI|SPI|OPI|PA|EXTRA)( |$)/.test(fold(code));
+}
+
+/** Poste d'une prestation de gare d'après son type (« EXTRA CPI » → EXTRA, « OPI 6-14 » → OPI) ; "" si non captée. */
+export function stationPost(code: string): StationPost | "" {
+  const m = fold(code).match(/^(CPI|SPI|OPI|PA|EXTRA)( |$)/);
+  return (m?.[1] as StationPost | undefined) ?? "";
+}
+
+export type PlannerBaseRef = { code: string; name: string; district?: string };
+
+/**
+ * Gare de base d'une prestation de gare d'après sa section (« CPI MONS », « OPI Mons », « SPI Liège »…) : mots de poste
+ * et nombres retirés, puis comparaison tolérante (accents, casse, tirets) avec le nom ou le code des bases du
+ * planificateur — nom identique, nom qui commence par la saisie (« LIEGE GUILLEMINS » ↔ « Liège-Guillemins »), ou premier
+ * mot identique (« VERVIERS » → Verviers-Central). Plusieurs bases possibles = aucune (pas de devinette).
+ */
+export function stationBase<T extends PlannerBaseRef>(text: string, bases: readonly T[]): T | null {
+  const words = fold(text)
+    .split(" ")
+    .filter((w) => w && !(STATION_POSTS as readonly string[]).includes(w) && !/^\d+$/.test(w));
+  if (!words.length) return null;
+  const rest = words.join(" ");
+  const tiers: ((b: T) => boolean)[] = [
+    (b) => fold(b.name) === rest || fold(b.code) === rest,
+    (b) => fold(b.name).startsWith(`${rest} `) || rest.startsWith(`${fold(b.name)} `),
+    (b) => fold(b.name).split(" ")[0] === words[0] || words.includes(fold(b.code)),
+    // Nom (ou son premier mot) cité n'importe où : « Gare de Mons », « PACO Namur ».
+    (b) => ` ${rest} `.includes(` ${fold(b.name).split(" ")[0]} `),
+  ];
+  for (const test of tiers) {
+    const hits = bases.filter(test);
+    if (hits.length === 1) return hits[0]!;
+    if (hits.length > 1) return null;
+  }
+  return null;
+}
+
 /**
  * District d'une prestation d'après la table « lieu → district » (Admin › Quinyx) : le motif le plus long trouvé en
  * mots entiers dans le texte (« PACO_AM PACO Mons » contient « MONS » ; « EXTRA - OCC SO » contient « OCC SO »).
@@ -123,6 +177,10 @@ export type MappedShift = {
   section: string;
   kind: QuinyxKind;
   district: string;
+  /** Poste de gare (groupe `gares`) ; "" pour l'équipe. */
+  post: StationPost | "";
+  /** Nom FR de la gare de base (groupe `gares`, d'après la section) ; "" sinon. */
+  base: string;
 };
 export type MappedAgent = { quinyx_id: string; first_name: string; last_name: string };
 
@@ -134,7 +192,10 @@ export function mapQuinyxBatch(
   batch: QuinyxBatch,
   places: Place[],
   groupDistrict = "",
+  /** Groupe `gares` : prestations CPI / SPI / OPI / PA / EXTRA, poste et base déduits (bases du planificateur). */
+  station?: { purpose: GroupPurpose; bases: readonly PlannerBaseRef[] },
 ): { shifts: MappedShift[]; agents: MappedAgent[]; ignored: number } {
+  const gares = station?.purpose === "gares";
   const types = new Map(batch.types.map((t) => [t.id, t.name.trim()]));
   const sections = new Map(batch.sections.map((s) => [s.id, s.name.trim()]));
   const people = new Map(batch.employees.map((e) => [e.id, e]));
@@ -147,7 +208,7 @@ export function mapQuinyxBatch(
     const assigned = (s.status ?? "ASSIGNED").toUpperCase() === "ASSIGNED" && s.employeeId !== "0";
     if (
       !assigned ||
-      !isCapturedCode(code) ||
+      !(gares ? isStationCode(code) : isCapturedCode(code)) ||
       d < batch.from ||
       d > batch.to ||
       d > batch.publishedUntil
@@ -166,7 +227,19 @@ export function mapQuinyxBatch(
       ignored++;
       continue;
     }
+    // Gare de base : section (« CPI MONS »), sinon le type (« EXTRA CPI Mons »), sinon l'unité du groupe.
+    const base =
+      gares && station
+        ? (stationBase(section, station.bases) ??
+          stationBase(code, station.bases) ??
+          stationBase(batch.unit, station.bases))
+        : null;
+    const baseDistrict =
+      base && (QUINYX_DISTRICTS as readonly string[]).includes(base.district ?? "")
+        ? String(base.district)
+        : "";
     const district =
+      baseDistrict ||
       placeDistrict(`${code} ${section}`, places) ||
       placeDistrict(batch.unit, places) ||
       ((QUINYX_DISTRICTS as readonly string[]).includes(groupDistrict) ? groupDistrict : "");
@@ -181,6 +254,8 @@ export function mapQuinyxBatch(
       section: section.slice(0, 80),
       kind: shiftKind(code, startTime),
       district,
+      post: gares ? stationPost(code) : "",
+      base: base ? base.name.slice(0, 80) : "",
     });
     if (!agents.has(s.employeeId)) {
       const p = people.get(s.employeeId);

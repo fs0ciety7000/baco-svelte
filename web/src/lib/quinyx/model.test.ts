@@ -4,6 +4,9 @@ import {
   pickDutyShift,
   currentShift,
   isCapturedCode,
+  isStationCode,
+  stationBase,
+  stationPost,
   mapQuinyxBatch,
   placeDistrict,
   quinyxBatchSchema,
@@ -345,5 +348,124 @@ describe("districts du jour d'après Quinyx", () => {
   it("après la dernière prestation du jour, la garde ; aucune = rien", () => {
     expect(pickDutyShift([am], Date.parse("2026-10-15T15:00:00Z"), "2026-10-15")?.d).toBe("DSE");
     expect(pickDutyShift([], Date.now(), "2026-10-15")).toBeNull();
+  });
+});
+
+describe("groupes « gares » (planificateur PMR)", () => {
+  // Bases et groupe FICTIFS (identifiants 990xxx, agents « Agent Test »).
+  const BASES = [
+    { code: "FMS", name: "Mons", district: "DSO" },
+    { code: "FTY", name: "Tournai", district: "DSO" },
+    { code: "FBC", name: "Braine-le-Comte", district: "DSO" },
+    { code: "FL", name: "Liège-Guillemins", district: "DSE" },
+    { code: "GV", name: "Verviers-Central", district: "DSE" },
+    { code: "LT", name: "Ottignies", district: "DSE" },
+  ];
+  const shift = (id: number, type: number, section: number, begin: string, end: string) => ({
+    id,
+    groupId: section,
+    begin,
+    end,
+    shiftTypeId: type,
+    employeeId: 990101 + (id % 3),
+    status: "ASSIGNED",
+  });
+  const gares = () =>
+    quinyxBatchSchema.parse({
+      group: "990100",
+      from: "2026-10-01",
+      to: "2026-10-31",
+      publishedUntil: "2026-10-31",
+      unit: "Gare test",
+      sections: [
+        { id: 990100, name: "Gare test" },
+        { id: 990111, name: "CPI MONS" },
+        { id: 990112, name: "OPI Mons" },
+        { id: 990113, name: "PA Mons" },
+        { id: 990114, name: "SPI Liège" },
+        { id: 990115, name: "CPI VERVIERS" },
+      ],
+      types: [
+        { id: 1, name: "CPI_AM" },
+        { id: 2, name: "CPI_N" },
+        { id: 3, name: "OPI 6-14" },
+        { id: 4, name: "PA_PM" },
+        { id: 5, name: "EXTRA CPI" },
+        { id: 6, name: "SPI_PM" },
+        { id: 7, name: "RW/RH - Repos" },
+        { id: 8, name: "ADA" },
+        { id: 9, name: "PACO_AM" },
+      ],
+      employees: [
+        { id: 990101, firstname: "Agent", lastname: "Test A." },
+        { id: 990102, firstname: "Agent", lastname: "Test B." },
+        { id: 990103, firstname: "Agent", lastname: "Test C." },
+      ],
+      shifts: [
+        shift(1, 1, 990111, "2026-10-05T06:00:00", "2026-10-05T14:00:00"),
+        shift(2, 2, 990111, "2026-10-05T22:00:00", "2026-10-06T06:00:00"),
+        // OPI décalé : les heures réelles font foi (05-13), pas celles du type (6-14).
+        shift(3, 3, 990112, "2026-10-05T05:00:00", "2026-10-05T13:00:00"),
+        shift(4, 4, 990113, "2026-10-05T14:00:00", "2026-10-05T22:00:00"),
+        shift(5, 5, 990112, "2026-10-06T06:00:00", "2026-10-06T14:00:00"),
+        shift(6, 6, 990114, "2026-10-06T14:00:00", "2026-10-06T22:00:00"),
+        shift(7, 1, 990115, "2026-10-06T06:00:00", "2026-10-06T14:00:00"),
+        shift(8, 7, 990111, "2026-10-07T00:00:00", "2026-10-07T23:59:00"),
+        shift(9, 8, 990111, "2026-10-07T06:00:00", "2026-10-07T14:00:00"),
+        shift(10, 9, 990111, "2026-10-07T06:00:00", "2026-10-07T14:00:00"),
+      ],
+    });
+
+  it("capte CPI / SPI / OPI / PA / EXTRA, ignore repos, absences et PACO", () => {
+    for (const c of ["CPI_AM", "CPI_N", "SPI_PM", "OPI 6-14", "OPI 14-22", "PA_AM", "EXTRA CPI"])
+      expect(isStationCode(c), c).toBe(true);
+    for (const c of ["RW", "CW", "CV", "RR", "ADA", "IDEV", "PACO_AM", "RCCA_PM", "PAUSE", ""])
+      expect(isStationCode(c), c).toBe(false);
+    expect(stationPost("EXTRA CPI")).toBe("EXTRA");
+    expect(stationPost("OPI 14-22")).toBe("OPI");
+    expect(stationPost("PA_AM")).toBe("PA");
+    expect(stationPost("RW")).toBe("");
+  });
+
+  it("gare de base d'après la section, tolérante", () => {
+    expect(stationBase("CPI MONS", BASES)?.code).toBe("FMS");
+    expect(stationBase("OPI Mons", BASES)?.code).toBe("FMS");
+    expect(stationBase("SPI Liège", BASES)?.code).toBe("FL");
+    expect(stationBase("SPI LIEGE-GUILLEMINS", BASES)?.code).toBe("FL");
+    expect(stationBase("CPI VERVIERS", BASES)?.code).toBe("GV");
+    expect(stationBase("PA Braine", BASES)?.code).toBe("FBC");
+    expect(stationBase("CPI LT", BASES)?.code).toBe("LT");
+    expect(stationBase("Gare de Tournai", BASES)?.code).toBe("FTY");
+    expect(stationBase("CPI", BASES)).toBeNull();
+    expect(stationBase("OCC SO", BASES)).toBeNull();
+  });
+
+  it("garde poste, base, district de la base et heures réelles", () => {
+    const r = mapQuinyxBatch(gares(), PLACES, "", { purpose: "gares", bases: BASES });
+    expect(r.shifts.map((s) => s.quinyx_id)).toEqual(["1", "2", "3", "4", "5", "6", "7"]);
+    expect(r.ignored).toBe(3);
+    const by = Object.fromEntries(r.shifts.map((s) => [s.quinyx_id, s]));
+    expect(by["1"]).toMatchObject({ post: "CPI", base: "Mons", district: "DSO", kind: "am" });
+    expect(by["2"]).toMatchObject({ post: "CPI", base: "Mons", kind: "nuit" });
+    expect(by["3"]).toMatchObject({
+      post: "OPI",
+      base: "Mons",
+      start: "2026-10-05T03:00:00.000Z",
+      end: "2026-10-05T11:00:00.000Z",
+    });
+    expect(by["4"]).toMatchObject({ post: "PA", kind: "pm" });
+    expect(by["5"]).toMatchObject({ post: "EXTRA", base: "Mons", kind: "extra" });
+    expect(by["6"]).toMatchObject({ post: "SPI", base: "Liège-Guillemins", district: "DSE" });
+    expect(by["7"]).toMatchObject({ post: "CPI", base: "Verviers-Central", district: "DSE" });
+  });
+
+  it("un groupe « équipe » ignore les postes de gare (comportement inchangé)", () => {
+    const r = mapQuinyxBatch(gares(), PLACES, "", { purpose: "equipe", bases: BASES });
+    // « EXTRA… » reste capté pour l'équipe (règle du 14 oct.) ; PACO_AM aussi ; aucun poste ni base.
+    expect(r.shifts.map((s) => s.quinyx_id)).toEqual(["5", "10"]);
+    expect(r.shifts.every((s) => s.post === "" && s.base === "")).toBe(true);
+    expect(
+      mapQuinyxBatch(batch(), PLACES).shifts.every((s) => s.post === "" && s.base === ""),
+    ).toBe(true);
   });
 });

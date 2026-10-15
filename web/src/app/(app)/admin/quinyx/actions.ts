@@ -5,7 +5,7 @@ import { unstable_rethrow } from "next/navigation";
 import { ClientResponseError } from "pocketbase";
 import { z } from "zod";
 
-import { QUINYX_DISTRICTS, quinyxGroupId } from "@/lib/quinyx/model";
+import { GROUP_PURPOSES, QUINYX_DISTRICTS, quinyxGroupId } from "@/lib/quinyx/model";
 import { requireAdmin } from "@/server/auth";
 import { pbForRequest } from "@/server/data/orders";
 
@@ -56,24 +56,30 @@ const groupSchema = z.object({
     .pipe(z.string().regex(/^\d{1,15}$/, "Numéro de groupe Quinyx (chiffres) attendu.")),
   label: z.string().trim().min(2, "Nom du groupe trop court.").max(80),
   district: district.or(z.literal("")),
+  purpose: z.enum(GROUP_PURPOSES).default("equipe"),
 });
 
 export async function addQuinyxGroup(input: {
   groupId: string;
   label: string;
   district: string;
+  purpose?: string;
 }): Promise<Result> {
   return run(async (pb) => {
     const g = groupSchema.parse(input);
-    await pb
-      .collection("quinyx_groups")
-      .create({ group_id: g.groupId, label: g.label, district: g.district, enabled: true });
+    await pb.collection("quinyx_groups").create({
+      group_id: g.groupId,
+      label: g.label,
+      district: g.district,
+      purpose: g.purpose,
+      enabled: true,
+    });
   });
 }
 
 export async function updateQuinyxGroup(
   id: string,
-  input: { label?: string; district?: string; enabled?: boolean },
+  input: { label?: string; district?: string; enabled?: boolean; purpose?: string },
 ): Promise<Result> {
   return run(async (pb) => {
     const patch = z
@@ -81,6 +87,9 @@ export async function updateQuinyxGroup(
         label: z.string().trim().min(2).max(80).optional(),
         district: district.or(z.literal("")).optional(),
         enabled: z.boolean().optional(),
+        // Équipe (PACO / RCCA, Ressources › Planning) ou Gares (agents de gare, planificateur PMR) : vaut pour la
+        // synchro suivante.
+        purpose: z.enum(GROUP_PURPOSES).optional(),
       })
       .parse(input);
     await pb.collection("quinyx_groups").update(pbId.parse(id), patch);
