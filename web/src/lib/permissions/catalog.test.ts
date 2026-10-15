@@ -81,6 +81,10 @@ describe("catalogue v3 (L0)", () => {
       expect(has("bus:reopen"), role).toBe(active && isCoordinator(role));
       expect(has("taxi:reopen"), role).toBe(active && isCoordinator(role));
       expect(has("pmr_equipment:manage"), role).toBe(active && isCoordinator(role));
+      // Planificateur PMR (15 oct. 2026) : PACO/RCCA et au-dessus ; référentiels : admin / sysop.
+      expect(has("planner:read"), role).toBe(active && isCoordinator(role));
+      expect(has("planner:write"), role).toBe(active && isCoordinator(role));
+      expect(has("planner:manage"), role).toBe(active && ADMIN(role));
       // Exclusions `role != "guest"` (règles, navigation `hideFor`, écrans).
       for (const k of [
         "suppliers:read",

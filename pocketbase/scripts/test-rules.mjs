@@ -1503,6 +1503,162 @@ try {
 		}
 	}
 
+	// Planificateur de tâches PMR (1760004900, 15 oct. 2026) : lecture planner:read, écriture planner:write (PACO/RCCA et
+	// au-dessus), suppression d'une tâche DICOS et référentiels : planner:manage (admin / sysop). Champs DICOS écrits par
+	// le compte de service seul ; auteurs posés par le hook.
+	{
+		const mk = async (role, grants = [], key = role) => {
+			const pass = `Test-${suffix}-pl${key}`;
+			const r = await api('POST', '/api/collections/users/records', {
+				token: root,
+				body: { email: `test-pl${key}-${suffix}@csm.invalid`, password: pass, passwordConfirm: pass, name: `Test pl${key}`, username: `tpl${key}${suffix}`, role, grants, verified: true }
+			});
+			if (r.status !== 200) return null;
+			created.push(r.json.id);
+			const tok = (await api('POST', '/api/collections/users/auth-with-password', { body: { identity: r.json.email, password: pass } })).json?.token;
+			return { id: r.json.id, token: tok };
+		};
+		const pc = await mk('connector', ['dicos:write']);
+		const ps = await mk('screen');
+		check('Planificateur : comptes de test créés', !!pc?.token && !!ps?.token);
+		const u = roles.user;
+		const T = (o = {}) => ({ day: '2099-02-01', kind: 'pmr_in', start: '2099-02-01 07:00:00.000Z', end: '2099-02-01 07:20:00.000Z', station: 'Mons', train: '1234', pmr_type: 'NV', pax: 1, light: true, source: 'manuel', status: 'a_attribuer', ...o });
+		const tasks = [];
+
+		const pb = await api('GET', '/api/collections/planner_bases/records?perPage=50', { token: u.token });
+		check('PACO/RCCA lit les 10 bases du planificateur', pb.status === 200 && pb.json.totalItems === 10, `HTTP ${pb.status} ${pb.json?.totalItems}`);
+		const mons = pb.json?.items?.find((b) => b.code === 'FMS');
+		check('base de Mons : couvre Tournai et Braine-le-Comte, jamais Charleroi', JSON.stringify(mons?.covers) === '["FTY","FBC"]' && !mons?.travel?.some((t) => /Charleroi/.test(t.station)), JSON.stringify(mons?.covers));
+		const bc = await api('GET', '/api/collections/bcs_counters/records?perPage=50', { token: roles.modo.token });
+		check('modérateur lit les guichets B-CS (30, 3 PMR light / h)', bc.status === 200 && bc.json.totalItems === 30 && bc.json.items.every((x) => x.per_hour === 3 && x.light_only), `HTTP ${bc.status} ${bc.json?.totalItems}`);
+		check('guichets B-CS : fins d horaire corrigées (aucune 14:36…14:46)', !bc.json?.items?.some((x) => /14:(3[6-9]|4\d)|15:(3[6-9]|4\d)/.test(`${x.weekday_hours} ${x.weekend_hours}`)));
+		const tpl = await api('GET', '/api/collections/planner_templates/records?perPage=1', { token: u.token });
+		check('modèles de tâches : collection vide au départ', tpl.status === 200 && tpl.json.totalItems === 0, `HTTP ${tpl.status} ${tpl.json?.totalItems}`);
+		for (const [who, tok] of [['invité', roles.reader.token], ['écran', ps?.token], ['anonyme', undefined]]) {
+			for (const c of ['planner_tasks', 'planner_bases', 'bcs_counters', 'planner_templates']) {
+				const r = await api('GET', `/api/collections/${c}/records?perPage=1`, { token: tok });
+				check(`${who} ne lit pas ${c}`, r.status !== 200 || r.json.totalItems === 0, `HTTP ${r.status} ${r.json?.totalItems}`);
+			}
+		}
+		// Référentiels : planner:manage (admin / sysop).
+		const bU = await api('PATCH', `/api/collections/planner_bases/records/${mons?.id}`, { token: u.token, body: { active: false } });
+		check('PACO/RCCA ne modifie pas une base', bU.status >= 400, `HTTP ${bU.status}`);
+		const bM = await api('PATCH', `/api/collections/planner_bases/records/${mons?.id}`, { token: roles.modo.token, body: { active: false } });
+		check('modérateur ne modifie pas une base', bM.status >= 400, `HTTP ${bM.status}`);
+		const bA = await api('PATCH', `/api/collections/planner_bases/records/${mons?.id}`, { token: roles.admin.token, body: { active: true } });
+		check('admin modifie une base', bA.status === 200, `HTTP ${bA.status}`);
+		const bCode = await api('PATCH', `/api/collections/planner_bases/records/${mons?.id}`, { token: roles.admin.token, body: { code: 'XX' } });
+		check('code d une base figé', bCode.status >= 400, `HTTP ${bCode.status}`);
+		const tU = await api('POST', '/api/collections/planner_templates/records', { token: u.token, body: { weekday: 1, base: 'FMS', label: 'EDF test', kind: 'technique', start: '06:00', end: '06:15' } });
+		check('PACO/RCCA ne crée pas de modèle de tâche', tU.status >= 400, `HTTP ${tU.status}`);
+		const tA = await api('POST', '/api/collections/planner_templates/records', { token: roles.admin.token, body: { weekday: 1, base: 'FMS', label: 'EDF test', kind: 'technique', start: '06:00', end: '06:15', active: true } });
+		check('admin crée un modèle de tâche', tA.status === 200, `HTTP ${tA.status}`);
+		if (tA.json?.id) await api('DELETE', `/api/collections/planner_templates/records/${tA.json.id}`, { token: roles.admin.token });
+
+		// Tâche manuelle : PACO/RCCA, auteur forcé.
+		const m1 = await api('POST', '/api/collections/planner_tasks/records', { token: u.token, body: T({ created_by: roles.admin.id, updated_by: roles.admin.id }) });
+		check('PACO/RCCA encode une tâche manuelle', m1.status === 200, `HTTP ${m1.status} ${JSON.stringify(m1.json).slice(0, 100)}`);
+		if (m1.json?.id) tasks.push(m1.json.id);
+		check('auteur d une tâche non forgeable', m1.json?.created_by === u.id && m1.json?.updated_by === u.id, `${m1.json?.created_by}`);
+		const mG = await api('POST', '/api/collections/planner_tasks/records', { token: roles.reader.token, body: T() });
+		check('invité ne crée pas de tâche', mG.status >= 400, `HTTP ${mG.status}`);
+		const mD = await api('POST', '/api/collections/planner_tasks/records', { token: u.token, body: T({ source: 'dicos_pending', source_key: `x${suffix}:IN` }) });
+		check('PACO/RCCA ne crée pas de tâche « DICOS »', mD.status >= 400, `HTTP ${mD.status}`);
+		const mK = await api('POST', '/api/collections/planner_tasks/records', { token: u.token, body: T({ source_key: `y${suffix}:IN` }) });
+		check('clé DICOS refusée sur une tâche manuelle', mK.status >= 400, `HTTP ${mK.status}`);
+		const mS = await api('POST', '/api/collections/planner_tasks/records', { token: u.token, body: T({ dicos_status: 'accepted' }) });
+		check('statut DICOS refusé sur une tâche manuelle', mS.status >= 400, `HTTP ${mS.status}`);
+		const mE = await api('POST', '/api/collections/planner_tasks/records', { token: u.token, body: T({ end: '2099-02-01 06:00:00.000Z' }) });
+		check('fin avant le début refusée', mE.status === 400, `HTTP ${mE.status}`);
+		const mNoEnd = await api('POST', '/api/collections/planner_tasks/records', { token: u.token, body: T({ end: '' }) });
+		check('fin absente = début', mNoEnd.status === 200 && mNoEnd.json?.end === mNoEnd.json?.start, `HTTP ${mNoEnd.status}`);
+		if (mNoEnd.json?.id) tasks.push(mNoEnd.json.id);
+		const aBad = await api('PATCH', `/api/collections/planner_tasks/records/${m1.json?.id}`, { token: u.token, body: { status: 'attribuee' } });
+		check('tâche attribuée sans destination refusée', aBad.status === 400, `HTTP ${aBad.status}`);
+		const aBcs = await api('PATCH', `/api/collections/planner_tasks/records/${m1.json?.id}`, { token: roles.modo.token, body: { assignee_kind: 'bcs', assignee_label: 'Soignies', status: 'attribuee', updated_by: u.id } });
+		check('modérateur attribue au guichet B-CS ; auteur de la modification posé', aBcs.status === 200 && aBcs.json?.updated_by === roles.modo.id && aBcs.json?.created_by === u.id, `HTTP ${aBcs.status}`);
+		const aLeft = await api('PATCH', `/api/collections/planner_tasks/records/${m1.json?.id}`, { token: u.token, body: { status: 'a_attribuer' } });
+		check('« à attribuer » refusé tant qu une destination est posée', aLeft.status === 400, `HTTP ${aLeft.status}`);
+		const mEdit = await api('PATCH', `/api/collections/planner_tasks/records/${m1.json?.id}`, { token: u.token, body: { train: '4321', start: '2099-02-01 07:05:00.000Z' } });
+		check('tâche manuelle : train et heure modifiables', mEdit.status === 200, `HTTP ${mEdit.status}`);
+		const mSrc = await api('PATCH', `/api/collections/planner_tasks/records/${m1.json?.id}`, { token: u.token, body: { source: 'dicos_mission' } });
+		check('source d une tâche non modifiable par un agent', mSrc.status >= 400, `HTTP ${mSrc.status}`);
+
+		// Tâche DICOS : compte de service seul.
+		const qa = await api('POST', '/api/collections/quinyx_agents/records', { token: pc?.token, body: { quinyx_id: `8${Date.now().toString().slice(-9)}`, first_name: 'Agent', last_name: 'Test A.', purpose: 'gares' } });
+		check('connecteur crée un agent de gare (purpose gares)', qa.status === 200 && qa.json?.purpose === 'gares', `HTTP ${qa.status}`);
+		const key = `9${suffix}:IN`;
+		const d1 = await api('POST', '/api/collections/planner_tasks/records', { token: pc?.token, body: T({ source: 'dicos_pending', source_key: key, dicos_status: 'proposal', station_ok: 'pending', dossier: '2099-02-01-0001' }) });
+		check('connecteur crée une tâche DICOS en attente', d1.status === 200, `HTTP ${d1.status} ${JSON.stringify(d1.json).slice(0, 100)}`);
+		if (d1.json?.id) tasks.push(d1.json.id);
+		const dDup = await api('POST', '/api/collections/planner_tasks/records', { token: pc?.token, body: T({ source: 'dicos_pending', source_key: key }) });
+		check('clé DICOS unique', dDup.status >= 400, `HTTP ${dDup.status}`);
+		const dAs = await api('POST', '/api/collections/planner_tasks/records', { token: pc?.token, body: T({ source: 'dicos_pending', source_key: `9${suffix}:OUT`, assignee_kind: 'taxi', status: 'attribuee' }) });
+		check('connecteur n attribue pas une tâche', dAs.status >= 400, `HTTP ${dAs.status}`);
+		const dMan = await api('POST', '/api/collections/planner_tasks/records', { token: pc?.token, body: T() });
+		check('connecteur ne crée pas de tâche manuelle', dMan.status >= 400, `HTTP ${dMan.status}`);
+		const dRead = await api('GET', `/api/collections/planner_tasks/records/${d1.json?.id}`, { token: roles.denied.token });
+		check('PACO/RCCA lit une tâche DICOS', dRead.status === 200, `HTTP ${dRead.status}`);
+		for (const [f, v] of [['train', '9999'], ['start', '2099-02-01 08:00:00.000Z'], ['dossier', '2099-02-01-0002'], ['pmr_type', 'CRF'], ['station', 'Tournai'], ['dicos_status', 'accepted'], ['station_ok', 'ok'], ['source_key', 'z:IN']]) {
+			const r = await api('PATCH', `/api/collections/planner_tasks/records/${d1.json?.id}`, { token: u.token, body: { [f]: v } });
+			check(`agent ne réécrit pas ${f} d une tâche DICOS`, r.status >= 400, `HTTP ${r.status}`);
+		}
+		const dAgent = await api('PATCH', `/api/collections/planner_tasks/records/${d1.json?.id}`, { token: u.token, body: { assignee_kind: 'agent', assignee_agent: qa.json?.id, status: 'attribuee', origin: 'manuel', note: 'Quai 3' } });
+		check('PACO/RCCA attribue une tâche DICOS à un agent de gare', dAgent.status === 200 && dAgent.json?.assignee_agent === qa.json?.id, `HTTP ${dAgent.status} ${JSON.stringify(dAgent.json).slice(0, 100)}`);
+		const dNoAgent = await api('PATCH', `/api/collections/planner_tasks/records/${d1.json?.id}`, { token: u.token, body: { assignee_agent: '' } });
+		check('« agent » sans agent de gare refusé', dNoAgent.status === 400, `HTTP ${dNoAgent.status}`);
+		const cUnassign = await api('PATCH', `/api/collections/planner_tasks/records/${d1.json?.id}`, { token: pc?.token, body: { assignee_kind: '', status: 'a_attribuer' } });
+		check('connecteur ne retire pas une attribution', cUnassign.status >= 400, `HTTP ${cUnassign.status}`);
+		const cCancel = await api('PATCH', `/api/collections/planner_tasks/records/${d1.json?.id}`, { token: pc?.token, body: { dicos_status: 'cancelled', status: 'annulee' } });
+		check('connecteur annule une tâche DICOS (agent gardé)', cCancel.status === 200 && cCancel.json?.assignee_agent === qa.json?.id, `HTTP ${cCancel.status}`);
+		const cMission = await api('PATCH', `/api/collections/planner_tasks/records/${d1.json?.id}`, { token: pc?.token, body: { source: 'dicos_mission', dicos_status: 'accepted', status: 'attribuee' } });
+		check('connecteur rattache la tâche à la mission acceptée', cMission.status === 200 && cMission.json?.source === 'dicos_mission', `HTTP ${cMission.status}`);
+		const cManual = await api('PATCH', `/api/collections/planner_tasks/records/${m1.json?.id}`, { token: pc?.token, body: { train: '1' } });
+		check('connecteur ne modifie pas une tâche manuelle', cManual.status >= 400, `HTTP ${cManual.status}`);
+		const cBack = await api('PATCH', `/api/collections/planner_tasks/records/${d1.json?.id}`, { token: pc?.token, body: { source: 'manuel' } });
+		check('connecteur ne change pas une tâche DICOS en tâche manuelle', cBack.status >= 400, `HTTP ${cBack.status}`);
+		const cDel = await api('DELETE', `/api/collections/planner_tasks/records/${d1.json?.id}`, { token: pc?.token });
+		check('connecteur ne supprime pas de tâche', cDel.status >= 400, `HTTP ${cDel.status}`);
+
+		// Suppression : manuelle avec planner:write, DICOS avec planner:manage.
+		const delD = await api('DELETE', `/api/collections/planner_tasks/records/${d1.json?.id}`, { token: roles.modo.token });
+		check('modérateur ne supprime pas une tâche DICOS', delD.status >= 400, `HTTP ${delD.status}`);
+		const delG = await api('DELETE', `/api/collections/planner_tasks/records/${m1.json?.id}`, { token: roles.reader.token });
+		check('invité ne supprime pas une tâche', delG.status >= 400, `HTTP ${delG.status}`);
+		const delM = await api('DELETE', `/api/collections/planner_tasks/records/${m1.json?.id}`, { token: u.token });
+		check('PACO/RCCA supprime une tâche manuelle', delM.status === 204, `HTTP ${delM.status}`);
+		const delA = await api('DELETE', `/api/collections/planner_tasks/records/${d1.json?.id}`, { token: roles.admin.token });
+		check('admin supprime une tâche DICOS (planner:manage)', delA.status === 204, `HTTP ${delA.status}`);
+		const deniedW = await api('PATCH', `/api/collections/users/records/${roles.denied.id}`, { token: root, body: { denies: ['otto:write', 'planner:write'] } });
+		const deniedTok = (await api('POST', '/api/collections/users/auth-refresh', { token: roles.denied.token })).json?.token ?? roles.denied.token;
+		const dW = await api('POST', '/api/collections/planner_tasks/records', { token: deniedTok, body: T() });
+		check('planner:write retiré → pas de tâche', deniedW.status === 200 && dW.status >= 400, `HTTP ${deniedW.status}/${dW.status}`);
+		await api('PATCH', `/api/collections/users/records/${roles.denied.id}`, { token: root, body: { denies: ['otto:write'] } });
+
+		// Quinyx : rôle d'un groupe (équipe / gares) réglé par un admin seulement.
+		const gid = `7${Date.now().toString().slice(-8)}`;
+		const qg = await api('POST', '/api/collections/quinyx_groups/records', { token: roles.admin.token, body: { group_id: gid, label: 'Gare test', enabled: true } });
+		check('groupe Quinyx : rôle « équipe » par défaut', qg.status === 200 && qg.json?.purpose === 'equipe', `HTTP ${qg.status} ${qg.json?.purpose}`);
+		const qgC = await api('PATCH', `/api/collections/quinyx_groups/records/${qg.json?.id}`, { token: pc?.token, body: { purpose: 'gares' } });
+		check('connecteur ne change pas le rôle d un groupe Quinyx', qgC.status >= 400, `HTTP ${qgC.status}`);
+		const qgA = await api('PATCH', `/api/collections/quinyx_groups/records/${qg.json?.id}`, { token: roles.admin.token, body: { purpose: 'gares' } });
+		check('admin passe un groupe Quinyx en « gares »', qgA.status === 200 && qgA.json?.purpose === 'gares', `HTTP ${qgA.status}`);
+		const qsh = await api('POST', '/api/collections/quinyx_shifts/records', {
+			token: pc?.token,
+			body: { quinyx_id: `${gid}1`, group_id: gid, agent: qa.json?.id, day: '2099-02-01', start: '2099-02-01 05:00:00.000Z', end: '2099-02-01 13:00:00.000Z', code: 'CPI_AM', section: 'CPI MONS', kind: 'am', post: 'CPI', base: 'Mons' }
+		});
+		check('connecteur écrit une prestation de gare (poste, base)', qsh.status === 200 && qsh.json?.post === 'CPI' && qsh.json?.base === 'Mons', `HTTP ${qsh.status}`);
+		const qshBad = await api('POST', '/api/collections/quinyx_shifts/records', {
+			token: pc?.token,
+			body: { quinyx_id: `${gid}2`, group_id: gid, agent: qa.json?.id, day: '2099-02-01', start: '2099-02-01 05:00:00.000Z', end: '2099-02-01 13:00:00.000Z', code: 'RW', kind: 'autre', post: 'RW' }
+		});
+		check('poste inconnu refusé', qshBad.status >= 400, `HTTP ${qshBad.status}`);
+		for (const id of tasks) await api('DELETE', `/api/collections/planner_tasks/records/${id}`, { token: root });
+		if (qsh.json?.id) await api('DELETE', `/api/collections/quinyx_shifts/records/${qsh.json.id}`, { token: root });
+		if (qa.json?.id) await api('DELETE', `/api/collections/quinyx_agents/records/${qa.json.id}`, { token: root });
+		if (qg.json?.id) await api('DELETE', `/api/collections/quinyx_groups/records/${qg.json.id}`, { token: root });
+	}
+
 	// Rôles v3, lot L1 : `users.perms` calculé par le hook seul (lib/perms.js), jamais null, masqué aux non-admins.
 	{
 		const getPerms = async (id) => (await api('GET', `/api/collections/users/records/${id}`, { token: root })).json?.perms;

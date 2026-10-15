@@ -15,7 +15,8 @@ const EXPECTED = {
 	'user-sessions-purge': 1440,
 	'order-pdf-backup': 1440,
 	'journal-retention': 1440,
-	'quinyx-retention': 1440
+	'quinyx-retention': 1440,
+	'planner-retention': 1440
 };
 
 function stamp(ms) {
