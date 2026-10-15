@@ -5,6 +5,7 @@ import { can } from "@/lib/permissions";
 import { requireUser } from "@/server/auth";
 import { impactedMissions } from "@/server/data/impacts";
 import { pbForRequest, toPbInstant } from "@/server/data/orders";
+import { irailHealth, type IrailHealth } from "@/server/irail";
 import { dicosSyncState } from "@/server/data/pmr";
 import { allow } from "@/server/rate-limit";
 
@@ -16,12 +17,14 @@ export type ShellStatus = {
   counts: { commandes?: number; pmr?: number; operations?: number };
   /** Dernière synchro DICOS (missions) reçue ; null = jamais ou sans droit. */
   dicosAt: string | null;
+  /** État d'iRail vu par le serveur (dernier appel réel) ; null = aucun appel depuis 30 min. */
+  irail: IrailHealth | null;
 };
 
 /** null = débit dépassé (le client garde les valeurs précédentes). */
 export async function shellStatus(): Promise<ShellStatus | null> {
   const user = await requireUser();
-  const out: ShellStatus = { counts: {}, dicosAt: null };
+  const out: ShellStatus = { counts: {}, dicosAt: null, irail: irailHealth() };
   // Relu à chaque changement en direct et toutes les 60 s : borne par agent (plusieurs onglets).
   if (!allow(`shell:${user.id}`, 40, 60_000)) return null;
   const pb = await pbForRequest();

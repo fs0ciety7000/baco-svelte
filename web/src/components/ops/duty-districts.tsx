@@ -119,10 +119,11 @@ export function DutyChip({
         onClick={() => setOpen(true)}
         data-testid="duty-chip"
         className={cn(
-          "inline-flex h-11 min-w-11 md:h-control-sm shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-control border px-2.5 text-small transition-colors",
+          // Puce des districts (lot 3 du design v4) : pilule sur `surface-2` ; à choisir = teinte d'avertissement.
+          "inline-flex h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-pill border px-3 text-small font-medium transition-colors md:pointer-fine:h-[1.875rem]",
           set
-            ? "border-border-strong text-fg hover:border-fg-muted"
-            : "border-warn bg-[color-mix(in_oklab,var(--warn)_12%,var(--surface))] text-fg",
+            ? "border-transparent bg-surface-2 text-fg hover:bg-surface-3"
+            : "border-[color-mix(in_oklab,var(--warn)_45%,transparent)] bg-[color-mix(in_oklab,var(--warn)_var(--tint),var(--surface))] text-fg hover:border-warn",
         )}
         title="Districts où je travaille aujourd'hui"
       >

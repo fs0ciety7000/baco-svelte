@@ -62,6 +62,15 @@ export type ThemeStyle = {
   rowH?: string;
   controlH?: string;
   fieldH?: string;
+  /**
+   * Shell (lot 3) : fond de la barre latérale, entrée active (carte), carte « État des flux », filet de séparation.
+   * Défauts : directions Jour = surface-2 / surface / surface / aucun ; directions Nuit = entre bg et surface /
+   * surface-3 / surface-2 / border ; « Autres thèmes » = surface / surface-2 / transparent / border (comme avant).
+   */
+  navBg?: string;
+  navOn?: string;
+  navCard?: string;
+  navRule?: string;
 };
 
 type BaseColors = Record<Exclude<ColorToken, "surface-3">, string> & { "surface-3"?: string };
@@ -408,6 +417,9 @@ const SOURCES: ThemeSource[] = [
       rowH: "2rem",
       controlH: "2.125rem",
       fieldH: "2.125rem",
+      // Barre latérale au noir du fond, séparée par un trait ; entrée active sur surface-2 (maquette Cabine).
+      navBg: "var(--bg)",
+      navOn: "var(--surface-2)",
     },
   },
   // --- Contraste élevé (11 oct. 2026) : seul `surface-3` ajouté.
@@ -902,6 +914,42 @@ export function themeById(id: ThemeId): Theme {
   return theme;
 }
 
+/** Variables du shell (barre latérale) : voir `ThemeStyle.nav*`. */
+function navLines(theme: Theme): string[] {
+  const style = theme.style ?? {};
+  const dark = theme.scheme === "dark";
+  const def = !theme.direction
+    ? {
+        bg: "var(--surface)",
+        on: "var(--surface-2)",
+        card: "transparent",
+        rule: "var(--border)",
+        cardShadow: "none",
+      }
+    : dark
+      ? {
+          bg: "color-mix(in oklab, var(--bg) 55%, var(--surface))",
+          on: "var(--surface-3)",
+          card: "var(--surface-2)",
+          rule: "var(--border)",
+          cardShadow: "var(--shadow-1)",
+        }
+      : {
+          bg: "var(--surface-2)",
+          on: "var(--surface)",
+          card: "var(--surface)",
+          rule: "transparent",
+          cardShadow: "var(--shadow-1)",
+        };
+  return [
+    `--nav-bg: ${style.navBg ?? def.bg};`,
+    `--nav-on: ${style.navOn ?? def.on};`,
+    `--nav-card: ${style.navCard ?? def.card};`,
+    `--nav-rule: ${style.navRule ?? def.rule};`,
+    `--nav-card-shadow: ${def.cardShadow};`,
+  ];
+}
+
 function block(selector: string, theme: Theme, indent = ""): string {
   const shape = SHAPES[theme.shape];
   const type = TYPESETS[theme.type];
@@ -951,6 +999,7 @@ function block(selector: string, theme: Theme, indent = ""): string {
     `--control-bg: ${theme.direction && theme.scheme === "dark" ? "var(--surface-2)" : "var(--surface)"};`,
     `--control-on: ${theme.scheme === "dark" ? "var(--surface-3)" : "var(--surface)"};`,
     `--badge-ring: ${theme.direction ? "0%" : "40%"};`,
+    ...navLines(theme),
     ...(style.rowH ? [`--theme-row-h: ${style.rowH};`] : []),
     ...(style.controlH ? [`--theme-control-h: ${style.controlH};`] : []),
     ...(style.fieldH ? [`--theme-field-h: ${style.fieldH};`] : []),

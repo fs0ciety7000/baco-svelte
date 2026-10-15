@@ -9,7 +9,11 @@ const twMerge = extendTailwindMerge({
       rounded: [{ rounded: ["box", "control", "pill"] }],
       // v4 (15 oct. 2026) : ombres du thème, hauteurs de contrôle / ligne / champ.
       shadow: [{ shadow: ["rest", "float"] }],
+      // Lot 3 (shell) : fonds de la barre latérale (`--nav-*`, par thème).
+      "bg-color": [{ bg: ["nav", "nav-on", "nav-card"] }],
+      "border-color": [{ border: ["nav-rule"] }],
       h: [{ h: ["control", "control-sm", "row", "field"] }],
+      size: [{ size: ["control", "control-sm"] }],
       "min-h": [{ "min-h": ["control", "control-sm", "row", "field"] }],
       "font-size": [
         {

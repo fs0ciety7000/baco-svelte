@@ -79,6 +79,14 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 
 ## Shell (étape 3)
 
+- **Shell v4 (lot 3, 15 oct. 2026)** : sections de la barre latérale par `NavModule.section` (`travail` / `reference`),
+  compteurs par `NavTab.count` (clé de `ShellStatus.counts`) ; pastilles `CountPill` + `CountNote` (`shell/counts.tsx` : chiffre en
+  CSS `content: attr(data-count)`, phrase reliée par `aria-describedby`, **jamais dans le texte du lien** : les E2E comparent les
+  libellés exacts) ; couleurs de la barre latérale par jetons `--nav-*` (`bg-nav`, `bg-nav-on`, `bg-nav-card`, `border-nav-rule`,
+  `shadow-[var(--nav-card-shadow)]`) ; boutons-icônes et menus du shell : `SHELL_ICON` / `SHELL_MENU` (`shell/shell-ui.ts`) ;
+  état d'iRail : `irailHealth()` (`server/irail.ts`) dans `ShellStatus.irail`. `useSlideIndicator(…, { inset, rounded })` : trait
+  arrondi (largeur réelle au lieu d'un `scaleX`). Un composant client qui lit `useShellStatus` importe une Server Action
+  « server-only » : garder la logique pure testée dans un fichier à part (`module-tabs-fit.ts`).
 - Navigation : **source unique** `src/navigation.ts` (6 modules, onglets en routes, `hideFor`, actions rapides,
   administration : `ADMIN.tabs` portent `group` + `icon`, `tabGroups()` ; section `AdminSection` de la barre latérale
   (groupes titrés repliables ≥ 1280 px, menu latéral sur le rail, `data-testid` `sidebar-admin`, `sidebar-admin-<page>`),

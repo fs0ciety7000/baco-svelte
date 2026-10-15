@@ -46,7 +46,11 @@ export type NavTab = {
   /** Groupe d'affichage (Administration : Comptes, Référentiels, Supervision, Réglages). */
   group?: string;
   icon?: LucideIcon;
+  /** Compteur du shell porté par l'onglet (barre du haut, onglets mobiles) : clé de `ShellStatus.counts`. */
+  count?: ShellCountKey;
 };
+/** Compteurs du shell (`app/shell-actions.ts`) : bons à envoyer, missions impactées, non lus du Journal. */
+export type ShellCountKey = "commandes" | "pmr" | "operations";
 export type NavModule = {
   id: string;
   href: string;
@@ -56,12 +60,15 @@ export type NavModule = {
   icon: LucideIcon;
   /** Présent dans la barre d'onglets mobile (4 au maximum + « Plus », le reste va dans « Plus »). */
   mobile?: boolean;
+  /** Section de la barre latérale (lot 3, v4) : « Travail » (temps réel, à traiter) ou « Référence » (consultation). */
+  section?: "travail" | "reference";
   tabs: NavTab[];
 };
 
 export const MODULES: NavModule[] = [
   {
     id: "accueil",
+    section: "travail",
     href: "/",
     label: "Accueil",
     icon: Home,
@@ -79,6 +86,7 @@ export const MODULES: NavModule[] = [
   },
   {
     id: "operations",
+    section: "travail",
     href: "/operations/journal",
     label: "Opérations",
     icon: Radio,
@@ -88,6 +96,7 @@ export const MODULES: NavModule[] = [
       {
         href: "/operations/journal",
         label: "Journal",
+        count: "operations",
         permission: "journal:read",
         keywords: ["main courante", "messages", "consignes"],
       },
@@ -103,12 +112,21 @@ export const MODULES: NavModule[] = [
         href: "/operations/b201",
         label: "B201",
         anyOf: ["journal:read", "b201:read"],
-        keywords: ["relève", "remise", "remise B201", "passation", "fin de service", "synthèse", "notes"],
+        keywords: [
+          "relève",
+          "remise",
+          "remise B201",
+          "passation",
+          "fin de service",
+          "synthèse",
+          "notes",
+        ],
       },
     ],
   },
   {
     id: "commandes",
+    section: "travail",
     shortLabel: "Bons",
     href: "/commandes/suivi",
     label: "Commandes",
@@ -120,6 +138,7 @@ export const MODULES: NavModule[] = [
       {
         href: "/commandes/suivi",
         label: "Suivi",
+        count: "commandes",
         anyOf: ["otto:read", "generate_taxi:read"],
         keywords: ["kanban", "statut", "à envoyer"],
       },
@@ -148,6 +167,7 @@ export const MODULES: NavModule[] = [
   },
   {
     id: "pmr",
+    section: "travail",
     href: "/pmr",
     // « PMR & Groupes » (15 oct. 2026) ; libellé court « PMR » dans la barre du bas mobile.
     label: "PMR & Groupes",
@@ -158,6 +178,7 @@ export const MODULES: NavModule[] = [
       {
         href: "/pmr",
         label: "Missions",
+        count: "pmr",
         permission: "deplacements:read",
         keywords: ["missions PMR", "déplacements", "DICOS", "assistance"],
       },
@@ -187,6 +208,7 @@ export const MODULES: NavModule[] = [
     // Réseau (navigation v3) : le temps réel et les référentiels du réseau, en consultation ; la gestion est dans
     // Administration › Référentiels (`referentiels:manage`).
     id: "reseau",
+    section: "reference",
     href: "/reseau",
     label: "Réseau",
     icon: Train,
@@ -228,6 +250,7 @@ export const MODULES: NavModule[] = [
   {
     // Ressources (navigation v3) : les gens et les documents ; le module Équipe a disparu (14 oct. 2026).
     id: "ressources",
+    section: "reference",
     href: "/ressources",
     label: "Ressources",
     icon: Library,

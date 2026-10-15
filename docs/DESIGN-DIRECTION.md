@@ -354,3 +354,12 @@ disponibles**. Écarts validés, appliqués aux jetons et aux composants de base
   **38 px** (`h-field`) avec **halo de focus** (`focus-halo`), fond `--control-bg` (surface-2 la nuit) ; **`EmptyState`
   compact** (une ligne sur `surface-2`) par défaut, `variant="first"` pour une première utilisation ; **`TrainChip`** dans
   `components/ui` (encre inversée, `size` md / sm).
+- **Shell (lot 3, 15 oct. 2026)** : barre latérale sur `--nav-bg` (Jour : surface-2 ; Nuit : entre bg et surface ; Cabine Nuit :
+  noir du fond avec un filet), sections titrées *Travail* / *Référence*, entrée active en carte (`--nav-on`, ombre de repos) avec
+  un trait de 3 px collé au bord, compteurs en pastilles teintées (warn = bons à envoyer, danger = missions impactées, info = non
+  lus), carte « État des flux » collante en pied. Barre du haut 48 px : module en gras + onglets à trait accent arrondi (inset
+  10 px) et compteurs neutres, puce des districts en pilule `surface-2`, recherche d'apparence champ (≥ 1280 px) avec `Kbd`
+  « Ctrl K », icônes nues 34 px (44 au tactile), avatar carré arrondi **sans nom ni rôle** (décision de l'utilisateur). Barre du
+  bas mobile : fond `surface`, trait arrondi en haut de l'actif, badges ronds teintés. Palette ⌘K : 672 px, `shadow-float`, champ
+  56 px, groupes séparés par un filet, résultat actif `surface-3` + trait accent. Les « Autres thèmes » gardent barre `surface`,
+  titres de section en capitales mono et coins droits (aucune carte ni ombre pour la forme « angle »).

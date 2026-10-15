@@ -64,6 +64,11 @@ export function useSlideIndicator(
   bar: RefObject<HTMLElement | null>,
   selector: string,
   deps: unknown[] = [],
+  /**
+   * `inset` : retrait du trait de chaque côté de l'onglet (px). `rounded` : largeur réelle au lieu d'un `scaleX`
+   * (un trait étiré par `scaleX` perd ses bouts arrondis) ; élément absolu de 2 px, sans effet sur la mise en page.
+   */
+  { inset = 0, rounded = false }: { inset?: number; rounded?: boolean } = {},
 ) {
   const placed = useRef(false);
   useGSAP(
@@ -75,7 +80,10 @@ export function useSlideIndicator(
       const place = (animate: boolean) => {
         const active = root.querySelector<HTMLElement>(selector);
         if (!active) return void gsap.set(line, { autoAlpha: 0 });
-        const to = { x: active.offsetLeft, scaleX: active.offsetWidth, autoAlpha: 1 };
+        const w = Math.max(0, active.offsetWidth - 2 * inset);
+        const to = rounded
+          ? { x: active.offsetLeft + inset, width: w, autoAlpha: 1 }
+          : { x: active.offsetLeft + inset, scaleX: w, autoAlpha: 1 };
         if (animate && placed.current && !reduce.matches)
           gsap.to(line, { ...to, duration: MOTION.panel, ease: "hud", overwrite: true });
         else gsap.set(line, to);

@@ -9,10 +9,11 @@ import { onlineAgents } from "@/app/team-actions";
 import { Button } from "@/components/ui/button";
 import { subscribeLive } from "@/lib/live";
 import { safeCall } from "@/lib/orders/safe-call";
-import { pl } from "@/lib/utils";
+import { cn, pl } from "@/lib/utils";
 import type { OnlineMember } from "@/server/data/team";
 
 import { Avatar } from "./avatar";
+import { SHELL_ICON, SHELL_MENU } from "./shell-ui";
 
 // « En ligne maintenant » (demande du 11 oct. 2026) : agents qui ont un onglet CSM ouvert, en direct (sujet SSE
 // « presence » produit par le serveur Next, server/presence.ts). Pastille verte qui pulse ; liste au clic.
@@ -68,10 +69,13 @@ export function OnlinePresence() {
           aria-label={label}
           title={label}
           data-testid="online-presence"
-          className="relative gap-2 px-2.5"
+          className={cn(
+            SHELL_ICON,
+            "relative w-auto min-w-11 gap-1.5 px-2 md:pointer-fine:min-w-[2.125rem] md:pointer-fine:px-2",
+          )}
         >
           <Users className="size-5" aria-hidden />
-          <Pulse className="absolute top-2 right-2 2xl:static" />
+          <Pulse className="absolute top-1.5 right-1.5 2xl:static" />
           <span className="hidden tabular text-small 2xl:inline">{agents ? count : "…"}</span>
         </Button>
       </Menu.Trigger>
@@ -79,7 +83,7 @@ export function OnlinePresence() {
         <Menu.Content
           align="end"
           sideOffset={6}
-          className="z-50 w-[min(20rem,calc(100vw-1rem))] border border-border-strong bg-surface data-[state=open]:animate-fade-in"
+          className={cn(SHELL_MENU, "w-[min(20rem,calc(100vw-1rem))] overflow-hidden")}
         >
           <div className="flex items-center gap-2 border-b border-border px-3 py-2">
             <Pulse />

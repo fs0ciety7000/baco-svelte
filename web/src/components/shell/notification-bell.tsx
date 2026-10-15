@@ -21,6 +21,8 @@ import { subscribeLive } from "@/lib/live";
 import { safeCall } from "@/lib/orders/safe-call";
 import { pbDate, sinceLabel } from "@/lib/orders/time";
 import { cn } from "@/lib/utils";
+
+import { SHELL_ICON, SHELL_MENU } from "./shell-ui";
 import type { Notification } from "@/server/data/ops";
 
 const ICON = {
@@ -99,14 +101,15 @@ export function NotificationBell() {
           size="icon"
           variant="ghost"
           aria-label={unread ? `Notifications : ${unread} non lue(s)` : "Notifications"}
-          className="relative"
+          className={cn(SHELL_ICON, "relative")}
           data-testid="bell"
         >
-          <Bell className="size-5" />
+          <Bell className="size-5" aria-hidden />
           {unread ? (
+            // Pastille ronde, détachée du fond par un anneau (le nombre exact est dans le nom du bouton).
             <span
               aria-hidden
-              className="absolute top-1 right-1 grid h-4 min-w-4 place-items-center bg-danger px-1 font-mono text-[11px] leading-none text-bg"
+              className="absolute top-1 right-1 grid h-4 min-w-4 place-items-center rounded-pill bg-danger px-1 text-[0.6875rem] leading-none font-semibold text-bg tabular ring-2 ring-bg md:pointer-fine:top-0.5 md:pointer-fine:right-0.5"
             >
               {unread > 9 ? "9+" : unread}
             </span>
@@ -117,7 +120,10 @@ export function NotificationBell() {
         <Menu.Content
           align="end"
           sideOffset={6}
-          className="z-50 flex max-h-[min(70dvh,32rem)] w-[min(24rem,calc(100vw-1rem))] flex-col border border-border-strong bg-surface data-[state=open]:animate-fade-in"
+          className={cn(
+            SHELL_MENU,
+            "flex max-h-[min(70dvh,32rem)] w-[min(24rem,calc(100vw-1rem))] flex-col overflow-hidden",
+          )}
           data-testid="bell-menu"
         >
           <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">

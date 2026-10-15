@@ -1322,6 +1322,15 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   Nuit `border-strong`). Restent : shell (lot 3), écrans (4 à 6).
 
 - 2026-10-15 — **Retours sur les lots 0-2 de la refonte** : sélecteur à boutons en relief neutre gardé ; **boutons alignés sur les champs (38 px**, Cabine 34 px) ; pas de bouton « Reprendre dans <district> » sur les notes communes de la B201.
+- 2026-10-15 — **Refonte v4, lot 3 « Shell »** (trois directions ; « Autres thèmes » inchangés : surface, capitales mono, chanfreins).
+  Barre latérale : sections *Travail* / *Référence* (`NavModule.section`), actif = carte `--nav-on` + trait de 3 px, compteurs
+  teintés (warn / danger / info), carte « État des flux » collante en pied (temps réel, DICOS, **iRail** : état mesuré sur les
+  appels réels du serveur, `irailHealth()`, aucune requête de plus). Jetons de thème `--nav-bg|on|card|rule|card-shadow`
+  (`ThemeStyle.nav*`, utilitaires `bg-nav`, `bg-nav-on`, `bg-nav-card`, `border-nav-rule`). Barre du haut : recherche élargie
+  (≥ 1280 px) qui ouvre ⌘K, icônes nues 34 px (44 au tactile), avatar seul (**nom et rôle retirés**, décision de l'utilisateur),
+  compteur par onglet (`NavTab.count`). Compteurs dessinés en CSS (`content: attr(data-count)`) et annoncés par
+  `aria-describedby` : le texte et le nom des liens ne changent pas (E2E intacts). `fitTabs` déplacé dans `module-tabs-fit.ts`
+  (le test importait sinon une Server Action « server-only »). Restent : écrans (lot 4, en parallèle), mouvement (5), reste (6).
 
 ---
 

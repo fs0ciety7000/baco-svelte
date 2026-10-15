@@ -4,7 +4,7 @@ import * as Menu from "@radix-ui/react-dropdown-menu";
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 import { modColor } from "@/design/module-color";
 
@@ -12,43 +12,18 @@ import { useSlideIndicator } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { activeTab, type NavTab } from "@/navigation";
 
+import { CountNote, CountPill } from "./counts";
 import { useShell } from "./shell-context";
+import { fitTabs } from "./module-tabs-fit";
+import { useShellStatus } from "./shell-status";
 
 const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
-/** Largeur réservée au bouton « Plus » (libellé + chevron + marges). */
-const MORE_WIDTH = 84;
-
 /**
- * Tabs that fit in `width`: the active one is always kept; the rest go into « Plus » (14 Oct. 2026: the Administration
- * tabs were cut off in the top bar with no visible way to reach them).
- */
-export function fitTabs(
-  widths: number[],
-  width: number,
-  active: number,
-): { shown: number[]; more: number[] } {
-  const all = widths.map((_, i) => i);
-  const total = widths.reduce((a, b) => a + b, 0);
-  if (!widths.length || total <= width) return { shown: all, more: [] };
-  const budget = width - MORE_WIDTH;
-  const shown: number[] = [];
-  let used = active >= 0 ? (widths[active] ?? 0) : 0;
-  for (const i of all) {
-    if (i === active) continue;
-    const w = widths[i] ?? 0;
-    if (used + w > budget) break;
-    shown.push(i);
-    used += w;
-  }
-  if (active >= 0) shown.push(active);
-  shown.sort((a, b) => a - b);
-  return { shown, more: all.filter((i) => !shown.includes(i)) };
-}
-
-/**
- * Onglets d'un module, sous forme de liens (chaque onglet est une route). Trait accent glissant (GSAP).
+ * Onglets d'un module, sous forme de liens (chaque onglet est une route). Trait accent arrondi qui glisse (GSAP), compteur
+ * neutre par onglet quand le shell en porte un (`NavTab.count` : Suivi, Journal, Missions), annoncé par une description.
  * `bar` : dans la barre du haut (desktop, hauteur pleine, sans bordure) ; les onglets qui ne tiennent pas passent dans
- * un menu « Plus » (l'onglet ouvert reste visible). `page` : sous la barre (mobile), défilement horizontal.
+ * un menu « Plus » (l'onglet ouvert reste visible). `page` : sous la barre (mobile), défilement horizontal, onglet
+ * ouvert sur fond `surface` (lot 3 du design v4).
  */
 export function ModuleTabs({
   moduleId,
@@ -58,7 +33,9 @@ export function ModuleTabs({
   variant?: "page" | "bar";
 }) {
   const { modules, admin } = useShell();
+  const { status } = useShellStatus();
   const pathname = usePathname();
+  const noteId = useId();
   const mod = [...modules, ...(admin ? [admin] : [])].find((m) => m.id === moduleId);
   const ref = useRef<HTMLDivElement>(null);
   const measure = useRef<HTMLDivElement>(null);
@@ -74,9 +51,14 @@ export function ModuleTabs({
     null,
   );
   const fit = measured && measured.sig === sig ? measured : null;
+  // Les compteurs changent la largeur des onglets : nouvelle mesure quand ils changent.
+  const countSig = tabs.map((t) => (t.count ? (status?.counts?.[t.count] ?? 0) : 0)).join(",");
 
   // Recalcul du trait quand les onglets visibles changent (répartition « Plus » selon la largeur).
-  useSlideIndicator(ref, bar, '[aria-current="page"]', [fit?.shown.join(",")]);
+  useSlideIndicator(ref, bar, '[aria-current="page"]', [fit?.shown.join(",")], {
+    inset: variant === "bar" ? 10 : 0,
+    rounded: true,
+  });
   useEffect(() => {
     // Barre du haut : pas de défilement (overflow caché, le reste est dans « Plus ») ; le faire décalait l'onglet ouvert
     // hors de vue. Sous la barre (mobile) : l'onglet ouvert est ramené à l'écran.
@@ -103,14 +85,16 @@ export function ModuleTabs({
     const ro = new ResizeObserver(compute);
     ro.observe(box);
     return () => ro.disconnect();
-  }, [variant, activeIndex, sig]);
+  }, [variant, activeIndex, sig, countSig]);
 
   if (!mod || tabs.length < 2) return null;
+  const counts = (status?.counts ?? {}) as Record<string, number | undefined>;
+  const countOf = (t: NavTab) => (t.count ? (counts[t.count] ?? 0) : 0);
   const tabClass = (isActive: boolean) =>
     cn(
-      "inline-flex shrink-0 items-center text-body font-medium whitespace-nowrap text-fg-muted transition-colors hover:text-fg",
-      variant === "bar" ? "h-full px-3" : "h-control px-4",
-      isActive && (variant === "bar" ? "text-fg" : "bg-surface-2 text-fg"),
+      "inline-flex shrink-0 items-center gap-1.5 text-body font-medium whitespace-nowrap text-fg-muted transition-colors outline-none hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset",
+      variant === "bar" ? "h-full px-2.5" : "h-control rounded-t-control px-4",
+      isActive && (variant === "bar" ? "text-fg" : "bg-surface text-fg"),
     );
   const pick = (list: number[]) => list.map((i) => tabs[i]).filter((t): t is NavTab => !!t);
   const shown = variant === "bar" && fit ? pick(fit.shown) : tabs;
@@ -130,18 +114,27 @@ export function ModuleTabs({
           : "-mx-4 overflow-x-auto border-b border-border px-4 [scrollbar-width:none] md:mx-0 md:px-0",
       )}
     >
-      {shown.map((t) => {
+      {shown.map((t, i) => {
         const isActive = current?.href === t.href;
+        const n = countOf(t);
         return (
           <Link
             key={t.href}
             href={t.href}
             aria-current={isActive ? "page" : undefined}
+            aria-describedby={n && t.count ? `${noteId}-${i}` : undefined}
             className={tabClass(isActive)}
           >
             {t.label}
+            {n && t.count ? <CountPill countKey={t.count} value={n} tinted={false} /> : null}
           </Link>
         );
+      })}
+      {shown.map((t, i) => {
+        const n = countOf(t);
+        return n && t.count ? (
+          <CountNote key={t.href} id={`${noteId}-${i}`} countKey={t.count} value={n} />
+        ) : null;
       })}
       {more.length ? (
         <Menu.Root>
@@ -155,15 +148,20 @@ export function ModuleTabs({
             <Menu.Content
               align="start"
               sideOffset={4}
-              className="z-50 min-w-48 border border-border-strong bg-surface py-1 data-[state=open]:animate-fade-in"
+              className="z-50 min-w-48 rounded-box border border-border bg-surface py-1 shadow-float data-[state=open]:animate-fade-in"
             >
               {more.map((t) => (
                 <Menu.Item
                   key={t.href}
                   asChild
-                  className="flex h-control cursor-pointer items-center px-3 text-body text-fg outline-none data-[highlighted]:bg-surface-2"
+                  className="flex h-control cursor-pointer items-center gap-2 px-3 text-body text-fg outline-none data-[highlighted]:bg-surface-3"
                 >
-                  <Link href={t.href}>{t.label}</Link>
+                  <Link href={t.href}>
+                    {t.label}
+                    {countOf(t) && t.count ? (
+                      <CountPill countKey={t.count} value={countOf(t)} tinted={false} />
+                    ) : null}
+                  </Link>
                 </Menu.Item>
               ))}
             </Menu.Content>
@@ -177,17 +175,21 @@ export function ModuleTabs({
           aria-hidden
           className="pointer-events-none invisible absolute top-0 left-0 flex h-full"
         >
-          {tabs.map((t) => (
-            <span key={t.href} className={tabClass(false)}>
-              {t.label}
-            </span>
-          ))}
+          {tabs.map((t) => {
+            const n = countOf(t);
+            return (
+              <span key={t.href} className={tabClass(false)}>
+                {t.label}
+                {n && t.count ? <CountPill countKey={t.count} value={n} tinted={false} /> : null}
+              </span>
+            );
+          })}
         </div>
       ) : null}
       <span
         aria-hidden
         ref={bar}
-        className="pointer-events-none invisible absolute bottom-0 left-0 h-0.5 w-px origin-left bg-(--mod)"
+        className="pointer-events-none invisible absolute bottom-0 left-0 h-0.5 w-px origin-left rounded-pill bg-(--mod)"
       />
     </div>
   );

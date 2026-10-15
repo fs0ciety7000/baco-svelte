@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { fitTabs } from "./module-tabs";
+import { fitTabs } from "./module-tabs-fit";
 
 describe("fitTabs", () => {
   it("tout tient : pas de « Plus »", () => {

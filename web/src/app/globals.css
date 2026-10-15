@@ -35,6 +35,11 @@
   /* Teintes de sélection (puces, vues, éléments cochés) : remplacent les color-mix ad hoc de 6 à 22 %. */
   --color-accent-soft: color-mix(in oklab, var(--accent) 14%, var(--surface));
   --color-accent-faint: color-mix(in oklab, var(--accent) 6%, var(--surface));
+  /* Shell (lot 3, v4) : barre latérale, entrée active, carte « État des flux », filet (`--nav-*` par thème). */
+  --color-nav: var(--nav-bg);
+  --color-nav-on: var(--nav-on);
+  --color-nav-card: var(--nav-card);
+  --color-nav-rule: var(--nav-rule);
 
   --font-sans: var(--font-ui);
   --font-mono: var(--font-code);

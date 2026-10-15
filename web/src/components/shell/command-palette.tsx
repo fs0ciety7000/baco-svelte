@@ -152,7 +152,7 @@ export function CommandPalette() {
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-[color-mix(in_oklab,var(--bg)_70%,transparent)] data-[state=open]:animate-fade-in" />
         <DialogPrimitive.Content
           aria-describedby={undefined}
-          className="fixed top-0 left-1/2 z-50 w-full max-w-xl -translate-x-1/2 overflow-hidden border border-border-strong bg-surface md:rounded-box data-[state=open]:animate-pop-in md:top-[12vh]"
+          className="fixed top-0 left-1/2 z-50 w-full max-w-2xl -translate-x-1/2 overflow-hidden border-b border-border bg-surface shadow-float md:top-[12vh] md:rounded-box md:border data-[state=open]:animate-pop-in"
         >
           <DialogPrimitive.Title className="sr-only">Palette de commandes</DialogPrimitive.Title>
           <Command label="Palette de commandes" loop value={selected} onValueChange={setSelected}>
@@ -162,7 +162,7 @@ export function CommandPalette() {
               value={query}
               onValueChange={setQuery}
             />
-            <CommandList className="max-h-[min(60dvh,26rem)]">
+            <CommandList className="max-h-[min(60dvh,28rem)]">
               <CommandEmpty>Aucun résultat</CommandEmpty>
               {hits.map((g) => {
                 const Icon = HIT_ICON[g.id];

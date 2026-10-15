@@ -6,17 +6,75 @@ import { modColor } from "@/design/module-color";
 import { LayoutGrid, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { activeModule, CHANGELOG_LINK, tabGroups } from "@/navigation";
+import {
+  activeModule,
+  CHANGELOG_LINK,
+  tabGroups,
+  type NavModule,
+  type ShellCountKey,
+} from "@/navigation";
 
+import { CountNote, CountPill, useShellCount } from "./counts";
 import { useShell } from "./shell-context";
 
+const ITEM =
+  "relative flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 text-fg-muted transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset";
+
+/** Onglet d'un module : trait accent en haut de l'actif, badge rond teinté (annoncé par une description). */
+function TabLink({ module: m, active }: { module: NavModule; active: boolean }) {
+  const countKey = m.id as ShellCountKey;
+  const value = useShellCount(m.id);
+  const noteId = useId();
+  const Icon = m.icon;
+  return (
+    <li className="flex min-w-0 flex-1">
+      <Link
+        href={m.href}
+        aria-current={active ? "page" : undefined}
+        // Libellé court affiché (« Bons »), nom complet annoncé (« Commandes »).
+        aria-label={m.shortLabel ? m.label : undefined}
+        aria-describedby={value ? noteId : undefined}
+        style={{ "--mod": modColor(m.id) } as React.CSSProperties}
+        className={cn(ITEM, active && "text-fg")}
+      >
+        <span
+          aria-hidden
+          className={cn(
+            "absolute inset-x-[28%] top-0 h-0.5 rounded-b-pill",
+            active && "bg-(--mod)",
+          )}
+        />
+        <span className="relative">
+          <Icon
+            className={cn("size-[1.375rem]", active && "text-(--mod)")}
+            strokeWidth={1.75}
+            aria-hidden
+          />
+          {value ? (
+            <CountPill
+              countKey={countKey}
+              value={value}
+              className="absolute -top-1.5 left-3.5 h-[1.125rem] min-w-[1.125rem] px-1 ring-2 ring-surface"
+            />
+          ) : null}
+        </span>
+        <span className="max-w-full truncate px-0.5 text-[0.75rem] leading-4 font-medium">
+          {m.shortLabel ?? m.label}
+        </span>
+      </Link>
+      {value ? <CountNote id={noteId} countKey={countKey} value={value} /> : null}
+    </li>
+  );
+}
+
 /**
- * Barre d'onglets mobile (< 768 px) : 4 modules (Accueil, Bons, PMR, Opérations ; 14 oct. 2026) + « Plus ». Libellé mono, trait accent en haut de l'actif,
- * respect de safe-area-inset-bottom. « Plus » ouvre les autres modules, l'administration et les actions.
+ * Barre d'onglets mobile (< 768 px) : 4 modules (Accueil, Opérations, Bons, PMR ; 14 oct. 2026) + « Plus ». Fond
+ * `surface`, trait accent arrondi en haut de l'onglet actif, badges ronds teintés (lot 3 du design v4),
+ * safe-area-inset-bottom respectée. « Plus » ouvre les autres modules, l'administration et les Nouveautés.
  */
 export function MobileTabBar() {
   const { modules, admin, version } = useShell();
@@ -27,9 +85,6 @@ export function MobileTabBar() {
   const others = [...modules.filter((m) => !primary.includes(m)), ...(admin ? [admin] : [])];
   const moreActive = !!active && !primary.some((m) => m.id === active.id);
 
-  const item =
-    "relative flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 text-fg-muted";
-
   return (
     <>
       <nav
@@ -38,43 +93,28 @@ export function MobileTabBar() {
         className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface md:hidden"
       >
         <ul className="flex">
-          {primary.map((m) => {
-            const isActive = active?.id === m.id;
-            const Icon = m.icon;
-            return (
-              <li key={m.id} className="flex min-w-0 flex-1">
-                <Link
-                  href={m.href}
-                  aria-current={isActive ? "page" : undefined}
-                  // Libellé court affiché (« Bons »), nom complet annoncé (« Commandes »).
-                  aria-label={m.shortLabel ? m.label : undefined}
-                  style={{ "--mod": modColor(m.id) } as React.CSSProperties}
-                  className={cn(item, isActive && "text-(--mod)")}
-                >
-                  <span
-                    aria-hidden
-                    className={cn("absolute inset-x-3 top-0 h-0.5", isActive && "bg-(--mod)")}
-                  />
-                  <Icon className="size-5" aria-hidden />
-                  <span className="max-w-full truncate px-0.5 text-[0.75rem] leading-4 font-medium">
-                    {m.shortLabel ?? m.label}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
+          {primary.map((m) => (
+            <TabLink key={m.id} module={m} active={active?.id === m.id} />
+          ))}
           <li className="flex min-w-0 flex-1">
             <button
               type="button"
               onClick={() => setMore(true)}
               aria-haspopup="dialog"
-              className={cn(item, "cursor-pointer", moreActive && "text-accent")}
+              className={cn(ITEM, "cursor-pointer", moreActive && "text-fg")}
             >
               <span
                 aria-hidden
-                className={cn("absolute inset-x-3 top-0 h-0.5", moreActive && "bg-accent")}
+                className={cn(
+                  "absolute inset-x-[28%] top-0 h-0.5 rounded-b-pill",
+                  moreActive && "bg-accent",
+                )}
               />
-              <LayoutGrid className="size-5" aria-hidden />
+              <LayoutGrid
+                className={cn("size-[1.375rem]", moreActive && "text-accent")}
+                strokeWidth={1.75}
+                aria-hidden
+              />
               <span className="text-[0.75rem] leading-4 font-medium">Plus</span>
             </button>
           </li>

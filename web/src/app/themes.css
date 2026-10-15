@@ -62,6 +62,11 @@
   --control-bg: var(--surface-2);
   --control-on: var(--surface-3);
   --badge-ring: 0%;
+  --nav-bg: color-mix(in oklab, var(--bg) 55%, var(--surface));
+  --nav-on: var(--surface-3);
+  --nav-card: var(--surface-2);
+  --nav-rule: var(--border);
+  --nav-card-shadow: var(--shadow-1);
 }
 
 [data-theme="jour"] {
@@ -125,6 +130,11 @@
   --control-bg: var(--surface);
   --control-on: var(--surface);
   --badge-ring: 0%;
+  --nav-bg: var(--surface-2);
+  --nav-on: var(--surface);
+  --nav-card: var(--surface);
+  --nav-rule: transparent;
+  --nav-card-shadow: var(--shadow-1);
 }
 
 [data-theme="quai-jour"] {
@@ -188,6 +198,11 @@
   --control-bg: var(--surface);
   --control-on: var(--surface);
   --badge-ring: 0%;
+  --nav-bg: var(--surface-2);
+  --nav-on: var(--surface);
+  --nav-card: var(--surface);
+  --nav-rule: transparent;
+  --nav-card-shadow: var(--shadow-1);
 }
 
 [data-theme="quai-nuit"] {
@@ -251,6 +266,11 @@
   --control-bg: var(--surface-2);
   --control-on: var(--surface-3);
   --badge-ring: 0%;
+  --nav-bg: color-mix(in oklab, var(--bg) 55%, var(--surface));
+  --nav-on: var(--surface-3);
+  --nav-card: var(--surface-2);
+  --nav-rule: var(--border);
+  --nav-card-shadow: var(--shadow-1);
 }
 
 [data-theme="cabine-jour"] {
@@ -314,6 +334,11 @@
   --control-bg: var(--surface);
   --control-on: var(--surface);
   --badge-ring: 0%;
+  --nav-bg: var(--surface-2);
+  --nav-on: var(--surface);
+  --nav-card: var(--surface);
+  --nav-rule: transparent;
+  --nav-card-shadow: var(--shadow-1);
   --theme-row-h: 2rem;
   --theme-control-h: 2.125rem;
   --theme-field-h: 2.125rem;
@@ -380,6 +405,11 @@
   --control-bg: var(--surface-2);
   --control-on: var(--surface-3);
   --badge-ring: 0%;
+  --nav-bg: var(--bg);
+  --nav-on: var(--surface-2);
+  --nav-card: var(--surface-2);
+  --nav-rule: var(--border);
+  --nav-card-shadow: var(--shadow-1);
   --theme-row-h: 2rem;
   --theme-control-h: 2.125rem;
   --theme-field-h: 2.125rem;
@@ -446,6 +476,11 @@
   --control-bg: var(--surface);
   --control-on: var(--surface-3);
   --badge-ring: 40%;
+  --nav-bg: var(--surface);
+  --nav-on: var(--surface-2);
+  --nav-card: transparent;
+  --nav-rule: var(--border);
+  --nav-card-shadow: none;
 }
 
 [data-theme="commandement"] {
@@ -509,6 +544,11 @@
   --control-bg: var(--surface);
   --control-on: var(--surface-3);
   --badge-ring: 40%;
+  --nav-bg: var(--surface);
+  --nav-on: var(--surface-2);
+  --nav-card: transparent;
+  --nav-rule: var(--border);
+  --nav-card-shadow: none;
 }
 
 [data-theme="craie"] {
@@ -572,6 +612,11 @@
   --control-bg: var(--surface);
   --control-on: var(--surface-3);
   --badge-ring: 40%;
+  --nav-bg: var(--surface);
+  --nav-on: var(--surface-2);
+  --nav-card: transparent;
+  --nav-rule: var(--border);
+  --nav-card-shadow: none;
 }
 
 [data-theme="craie-jour"] {
@@ -635,6 +680,11 @@
   --control-bg: var(--surface);
   --control-on: var(--surface);
   --badge-ring: 40%;
+  --nav-bg: var(--surface);
+  --nav-on: var(--surface-2);
+  --nav-card: transparent;
+  --nav-rule: var(--border);
+  --nav-card-shadow: none;
 }
 
 [data-theme="ivoire"] {
@@ -698,6 +748,11 @@
   --control-bg: var(--surface);
   --control-on: var(--surface);
   --badge-ring: 40%;
+  --nav-bg: var(--surface);
+  --nav-on: var(--surface-2);
+  --nav-card: transparent;
+  --nav-rule: var(--border);
+  --nav-card-shadow: none;
 }
 
 [data-theme="porcelaine"] {
@@ -761,6 +816,11 @@
   --control-bg: var(--surface);
   --control-on: var(--surface);
   --badge-ring: 40%;
+  --nav-bg: var(--surface);
+  --nav-on: var(--surface-2);
+  --nav-card: transparent;
+  --nav-rule: var(--border);
+  --nav-card-shadow: none;
 }
 
 [data-theme="rail"] {
@@ -824,6 +884,11 @@
   --control-bg: var(--surface);
   --control-on: var(--surface-3);
   --badge-ring: 40%;
+  --nav-bg: var(--surface);
+  --nav-on: var(--surface-2);
+  --nav-card: transparent;
+  --nav-rule: var(--border);
+  --nav-card-shadow: none;
 }
 
 [data-theme="nocturne"] {
@@ -887,6 +952,11 @@
   --control-bg: var(--surface);
   --control-on: var(--surface-3);
   --badge-ring: 40%;
+  --nav-bg: var(--surface);
+  --nav-on: var(--surface-2);
+  --nav-card: transparent;
+  --nav-rule: var(--border);
+  --nav-card-shadow: none;
 }
 
 [data-theme="graphite"] {
@@ -950,6 +1020,11 @@
   --control-bg: var(--surface);
   --control-on: var(--surface-3);
   --badge-ring: 40%;
+  --nav-bg: var(--surface);
+  --nav-on: var(--surface-2);
+  --nav-card: transparent;
+  --nav-rule: var(--border);
+  --nav-card-shadow: none;
 }
 
 [data-theme="prune"] {
@@ -1013,6 +1088,11 @@
   --control-bg: var(--surface);
   --control-on: var(--surface-3);
   --badge-ring: 40%;
+  --nav-bg: var(--surface);
+  --nav-on: var(--surface-2);
+  --nav-card: transparent;
+  --nav-rule: var(--border);
+  --nav-card-shadow: none;
 }
 
 [data-theme="foret"] {
@@ -1076,6 +1156,11 @@
   --control-bg: var(--surface);
   --control-on: var(--surface-3);
   --badge-ring: 40%;
+  --nav-bg: var(--surface);
+  --nav-on: var(--surface-2);
+  --nav-card: transparent;
+  --nav-rule: var(--border);
+  --nav-card-shadow: none;
 }
 
 [data-theme="contraste"] {
@@ -1139,6 +1224,11 @@
   --control-bg: var(--surface);
   --control-on: var(--surface-3);
   --badge-ring: 40%;
+  --nav-bg: var(--surface);
+  --nav-on: var(--surface-2);
+  --nav-card: transparent;
+  --nav-rule: var(--border);
+  --nav-card-shadow: none;
 }
 
 [data-theme="auto"] {
@@ -1202,6 +1292,11 @@
   --control-bg: var(--surface-2);
   --control-on: var(--surface-3);
   --badge-ring: 0%;
+  --nav-bg: color-mix(in oklab, var(--bg) 55%, var(--surface));
+  --nav-on: var(--surface-3);
+  --nav-card: var(--surface-2);
+  --nav-rule: var(--border);
+  --nav-card-shadow: var(--shadow-1);
 }
 
 @media (prefers-color-scheme: light) {
@@ -1266,6 +1361,11 @@
     --control-bg: var(--surface);
     --control-on: var(--surface);
     --badge-ring: 0%;
+    --nav-bg: var(--surface-2);
+    --nav-on: var(--surface);
+    --nav-card: var(--surface);
+    --nav-rule: transparent;
+    --nav-card-shadow: var(--shadow-1);
   }
 }
 
@@ -1330,6 +1430,11 @@
   --control-bg: var(--surface-2);
   --control-on: var(--surface-3);
   --badge-ring: 0%;
+  --nav-bg: color-mix(in oklab, var(--bg) 55%, var(--surface));
+  --nav-on: var(--surface-3);
+  --nav-card: var(--surface-2);
+  --nav-rule: var(--border);
+  --nav-card-shadow: var(--shadow-1);
 }
 
 @media (prefers-color-scheme: light) {
@@ -1394,6 +1499,11 @@
     --control-bg: var(--surface);
     --control-on: var(--surface);
     --badge-ring: 0%;
+    --nav-bg: var(--surface-2);
+    --nav-on: var(--surface);
+    --nav-card: var(--surface);
+    --nav-rule: transparent;
+    --nav-card-shadow: var(--shadow-1);
   }
 }
 
@@ -1458,6 +1568,11 @@
   --control-bg: var(--surface-2);
   --control-on: var(--surface-3);
   --badge-ring: 0%;
+  --nav-bg: var(--bg);
+  --nav-on: var(--surface-2);
+  --nav-card: var(--surface-2);
+  --nav-rule: var(--border);
+  --nav-card-shadow: var(--shadow-1);
   --theme-row-h: 2rem;
   --theme-control-h: 2.125rem;
   --theme-field-h: 2.125rem;
@@ -1525,6 +1640,11 @@
     --control-bg: var(--surface);
     --control-on: var(--surface);
     --badge-ring: 0%;
+    --nav-bg: var(--surface-2);
+    --nav-on: var(--surface);
+    --nav-card: var(--surface);
+    --nav-rule: transparent;
+    --nav-card-shadow: var(--shadow-1);
     --theme-row-h: 2rem;
     --theme-control-h: 2.125rem;
     --theme-field-h: 2.125rem;

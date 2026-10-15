@@ -59,13 +59,42 @@ async function take() {
   }
 }
 
+// État d'iRail vu par ce serveur (carte « État des flux » de la barre latérale, lot 3 du 15 oct. 2026) : dernière
+// réponse, dernier échec, durée de la dernière réponse. Aucune requête de plus : seuls les appels réels sont mesurés.
+const health = { okAt: 0, failAt: 0, ms: 0 };
+const HEALTH_WINDOW = 30 * 60_000;
+const SLOW_MS = 2500;
+
+export type IrailHealth = { state: "ok" | "lent" | "coupé"; at: string };
+
+/** null = aucun appel à iRail depuis 30 min (rien à dire). */
+export function irailHealth(now = Date.now()): IrailHealth | null {
+  const last = Math.max(health.okAt, health.failAt);
+  if (!last || now - last > HEALTH_WINDOW) return null;
+  const at = new Date(last).toISOString();
+  if (health.failAt > health.okAt) return { state: "coupé", at };
+  return { state: health.ms > SLOW_MS ? "lent" : "ok", at };
+}
+
 async function fetchJson(path: string): Promise<unknown> {
   await throttle();
-  const res = await fetch(`${env.IRAIL_URL}${path}`, {
-    headers: { "user-agent": env.CSM_USER_AGENT, accept: "application/json" },
-    signal: AbortSignal.timeout(5000),
-    cache: "no-store",
-  });
+  const started = Date.now();
+  let res: Response;
+  try {
+    res = await fetch(`${env.IRAIL_URL}${path}`, {
+      headers: { "user-agent": env.CSM_USER_AGENT, accept: "application/json" },
+      signal: AbortSignal.timeout(5000),
+      cache: "no-store",
+    });
+  } catch (e) {
+    health.failAt = Date.now();
+    throw e;
+  }
+  // 404 = gare ou train introuvable : iRail a répondu, il est joignable.
+  if (res.status === 404 || res.ok) {
+    health.okAt = Date.now();
+    health.ms = health.okAt - started;
+  } else health.failAt = Date.now();
   if (res.status === 404) throw new IrailError("introuvable");
   if (!res.ok) throw new IrailError(`iRail ${res.status}`);
   return res.json();
