@@ -139,12 +139,40 @@ règle le permet. Le résultat est une **proposition** : rien n'est enregistré 
 
 ## 5. Questions encore ouvertes
 
-1. Capture de la requête DICOS d'un **dossier en attente** (le fichier annoncé n'est pas arrivé dans la session).
+1. ~~Capture d'un dossier en attente~~ : reçue et analysée (§7).
 2. Les agents **B-CS** (guichets) sont-ils dans ces plannings Quinyx, ou les guichets restent-ils une simple capacité
    (3 PMR light / h pendant l'ouverture) sans agent nommé ?
 3. Qui planifie (PACO / RCCA seulement ?) ; les agents de gare consultent-ils quelque chose (feuille PDF, écran) ?
 4. Nom et téléphone du voyageur sur la feuille de l'agent : oui (avec `pmr:read`) ou jamais ?
 5. Taxi et « chef de bord » : simples destinations d'attribution (comme un agent), d'accord ?
+
+## 7. Dossiers DICOS en attente (capture du 15 oct. 2026)
+
+Capture réseau de DICOS analysée **par script** (chemins, paramètres et forme du JSON seulement ; aucun nom, cookie ni
+en-tête lu ; copie supprimée ensuite). Appels de la page « à vérifier » :
+
+| Appel | Rôle |
+|---|---|
+| `GET /api/reservations/disableds/to-check?DepartureStations=…&ArrivalStations=…` | **Dossiers à vérifier** des gares de l'agent (identifiants de gare DICOS, les mêmes que `stationIds` des missions, déjà relevés par l'extension) |
+| `GET /api/reservations/disableds?Statuses=Pending&IncludeChecks=true&…` | Dossiers « Pending » (vide dans la capture) |
+| `GET /api/reservations/<n° de dossier>?reservationType=Disabled` | Détail d'un dossier (même forme + point de rencontre, voie) |
+
+Forme d'un dossier (`to-check`) : `id` / `displayId` (AAAA-MM-JJ-NNNN), `type: Disabled`, `status` (`Proposal` = en
+attente, `Cancelled`), `client` (nominatif : jamais lu par l'extension pour le planificateur), et `travels[]` (un par jour
+de voyage, `travelDate`) → `traveler.disableds[]` (`symbol` : `blind-person`, `fixed-wheelchair`… = même table que les
+missions ; `assistanceType` `Light` / `Full` ; `quantity`) → `journeys[]` = **un train par élément** : `trainNumber`,
+`departureName` / `arrivalName` + codes UIC, `departureTime` / `arrivalTime` (ISO avec décalage), `withDepartureAssistance`
+(IN) / `withArrivalAssistance` (OUT), `isDepartureOk` / `isArrivalOk` (null = pas encore vérifié par la gare, true =
+accepté), `isTrainCancelled`, `proposalChecks[]` (`CancelReservation`…, `districtId`, acquitté par / quand).
+
+Conséquences pour le planificateur :
+- **Aucun appel de détail nécessaire** : la liste donne tout ce qu'il faut pour créer les tâches (une par bout assisté :
+  IN à la gare de départ du train, OUT à son arrivée), y compris les dossiers à plusieurs trains et plusieurs jours.
+- Clé de tâche : `id du journey + IN|OUT` ; quand le dossier est accepté et devient une mission, la tâche est reliée à la
+  mission (même `journey.id`, déjà utilisé comme clé `j<id>` des missions) au lieu d'être recréée.
+- Statut « en attente » = `Proposal` ; « annulé » = `Cancelled` (tâche signalée, jamais supprimée en silence).
+- L'extension n'enverra que les champs utiles (dossier, statut, trains, gares, heures, sens, type et nombre, vérifications
+  par gare) : **ni client, ni remarques, ni point de rencontre**.
 
 ## 6. Questions initiales (archive)
 
