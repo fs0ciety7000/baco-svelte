@@ -1341,6 +1341,13 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   `StationCell` : sens dans la cellule de gare) ; **bons bus / taxi** (rail d'étapes `OrderSteps` ≥ 1280 px,
   `lib/orders/steps.ts` testé, aperçu en billet `OrderTicket`, compact en tête en mobile, barre d'actions flottante +
   `scroll-padding-bottom`) ; `EmptyState framed`. Aucune logique métier changée. Captures hors dépôt (`design-v4/lot4/`).
+- 2026-10-15 — **Campagne du jour J** (demande : « campagne mail pour le basculement de BACO vers CSM, à envoyer le jour J, jolie,
+  principales nouveautés ») : modèle « Basculement BACO → CSM (jour J) » par défaut dans Administration › Campagnes (accroche,
+  ce qui ne change pas, bouton, 6 cartes de nouveautés tirées du CHANGELOG, 3 étapes de première connexion, aide /changelog,
+  contact « un administrateur CSM », signé « L'équipe CSM »), ancienne annonce gardée au choix. Rendu `lib/mail/campaign.ts`
+  étendu de blocs `::: bandeau / bouton / cartes / etapes / encadre` (tableaux, styles en ligne, colonnes hybrides + tableau
+  fantôme Outlook, mode sombre par `prefers-color-scheme`, couleurs Signal · Jour) ; anciennes campagnes rendues comme avant
+  (couleurs pétrole au lieu d'ambre). Aucun e-mail envoyé. Date du jour J non citée (le texte dit « aujourd'hui »).
 
 ---
 

@@ -16,10 +16,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
+import { Segmented } from "@/components/ui/form-kit";
 import { Input, Textarea } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";
-import { DEFAULT_CAMPAIGN } from "@/lib/mail/campaign";
+import { CAMPAIGN_TEMPLATES, DEFAULT_CAMPAIGN } from "@/lib/mail/campaign";
 import { formatShortDay, pbDate, brusselsTime, brusselsDay } from "@/lib/orders/time";
 import { cn, pl } from "@/lib/utils";
 
@@ -58,6 +60,8 @@ export function CampaignEditor({
   const [subject, setSubject] = useState(current?.subject ?? DEFAULT_CAMPAIGN.subject);
   const [body, setBody] = useState(current?.body ?? DEFAULT_CAMPAIGN.body);
   const [preview, setPreview] = useState("");
+  const [template, setTemplate] = useState(DEFAULT_CAMPAIGN.id);
+  const [frame, setFrame] = useState<"bureau" | "telephone">("bureau");
   const [confirm, setConfirm] = useState(false);
   const [pending, start] = useTransition();
   const sent = current?.status === "envoyee" || current?.status === "envoi";
@@ -67,6 +71,7 @@ export function CampaignEditor({
     setSubject(current?.subject ?? DEFAULT_CAMPAIGN.subject);
     setBody(current?.body ?? DEFAULT_CAMPAIGN.body);
     setPreview("");
+    setTemplate(DEFAULT_CAMPAIGN.id);
   }, [selected]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const save = async (): Promise<string | null> => {
@@ -99,7 +104,7 @@ export function CampaignEditor({
         <CardContent>
           {campaigns.length === 0 ? (
             <p className="text-small text-fg-muted">
-              Aucune campagne. Le modèle « BACO devient CSM » est prêt à droite.
+              Aucune campagne. Le modèle « {DEFAULT_CAMPAIGN.label} » est prêt à droite.
             </p>
           ) : (
             <ul className="flex flex-col gap-1" data-testid="campaign-list">
@@ -162,6 +167,23 @@ export function CampaignEditor({
             }
           />
           <CardContent className="flex flex-col gap-3">
+            {!current ? (
+              <Field label="Modèle" hint="Remplace l'objet et le texte par ceux du modèle choisi.">
+                <Select
+                  options={CAMPAIGN_TEMPLATES.map((t) => ({ value: t.id, label: t.label }))}
+                  value={template}
+                  onValueChange={(v) => {
+                    const t = CAMPAIGN_TEMPLATES.find((x) => x.id === v);
+                    if (!t) return;
+                    setTemplate(t.id);
+                    setSubject(t.subject);
+                    setBody(t.body);
+                    setPreview("");
+                  }}
+                  data-testid="campaign-template"
+                />
+              </Field>
+            ) : null}
             <Field label="Objet" required>
               <Input
                 value={subject}
@@ -173,7 +195,7 @@ export function CampaignEditor({
             <Field
               label="Texte"
               required
-              hint="Markdown du Journal : **gras**, listes « - », liens. {prenom} = prénom de l'agent. Le bouton « Ouvrir CSM » est ajouté."
+              hint="Markdown du Journal : **gras**, listes « - », titres « ## », liens. {prenom} = prénom de l'agent. Blocs : « ::: bandeau » (titre « # » puis accroche), « ::: bouton [Ouvrir CSM](https://…) », « ::: cartes » (une carte par « ### 🧭 Titre »), « ::: etapes » (« 1. … »), « ::: encadre Titre », chacun fermé par « ::: » (sauf le bouton). Sans bouton, « Ouvrir CSM » est ajouté en fin d'e-mail."
             >
               <Textarea
                 value={body}
@@ -282,13 +304,28 @@ export function CampaignEditor({
         </Card>
         {preview ? (
           <Card className="min-w-0">
-            <CardHeader title="Aperçu" eyebrow="Tel que reçu (avec ton prénom)" />
-            <CardContent>
+            <CardHeader
+              title="Aperçu"
+              eyebrow="Tel que reçu (avec ton prénom) ; suit le mode clair ou sombre de ton poste"
+            />
+            <CardContent className="flex flex-col gap-3">
+              <Segmented
+                label="Largeur de l'aperçu"
+                value={frame}
+                onChange={setFrame}
+                options={[
+                  { value: "bureau", label: "Messagerie (640 px)" },
+                  { value: "telephone", label: "Téléphone (375 px)" },
+                ]}
+              />
               <iframe
                 title="Aperçu de l'e-mail"
                 srcDoc={preview}
                 sandbox=""
-                className="h-[640px] w-full rounded-box border border-border bg-white"
+                className={cn(
+                  "mx-auto h-[820px] w-full max-w-full rounded-box border border-border bg-white",
+                  frame === "bureau" ? "md:w-[640px]" : "w-[375px]",
+                )}
                 data-testid="campaign-preview"
               />
             </CardContent>

@@ -472,9 +472,18 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   (`equipe/actions.ts`). **Statut** : `setMyStatus`, `statusOf` (`lib/team.ts`), `LogEntry.authorStatus`,
   `TeamMember.status`. **Accueil** : `lib/home.ts` (`HOME_CHOICES`, `homeOf`), `setMyHome`, redirection dans `login` et
   `passkeyLogin` (le paramètre `suite` reste prioritaire). Cartes `components/team/profile-extras.tsx`.
-- **Campagnes** : `lib/mail/campaign.ts` (`renderCampaign`, `DEFAULT_CAMPAIGN`, testé), `app/(app)/admin/campaign-actions.ts`,
-  `components/admin/campaigns.tsx`, page `/admin/campagnes`. Destinataires filtrés en JS (PocketBase refuse le filtre sur
-  `email`).
+- **Campagnes** : `lib/mail/campaign.ts` (`renderCampaign`, `parseCampaign`, `CAMPAIGN_TEMPLATES`, `DEFAULT_CAMPAIGN`, testé),
+  `app/(app)/admin/campaign-actions.ts`, `components/admin/campaigns.tsx`, page `/admin/campagnes`. Destinataires filtrés en JS
+  (PocketBase refuse le filtre sur `email`). **Modèles** (15 oct. 2026) : « Basculement BACO → CSM (jour J) » (défaut, `jour-j`)
+  et l'annonce du 10 oct. (`annonce`), choisis par la liste « Modèle » d'une nouvelle campagne. **Blocs de mise en page** en plus
+  du Markdown du Journal (ligne `::: nom` … ligne `:::`, fin du texte sinon ; nom inconnu = texte) : `bandeau` (`# Titre` puis
+  accroche ; en tête, remplace le titre = objet et sert de texte d'aperçu caché), `bouton [Libellé](https://…)` (une ligne ; sans
+  bouton, « Ouvrir CSM » est ajouté en fin d'e-mail comme avant), `cartes` (`### 🧭 Titre` par carte, emoji de tête = icône
+  `aria-hidden`, colonnes « hybrides » de 270 px : 2 en bureau, 1 sur téléphone, tableau fantôme `<!--[if mso]>` pour Outlook),
+  `etapes` (« 1. … » ou « - … »), `encadre Titre`. Couleurs du thème Signal · Jour (pétrole), `@media (prefers-color-scheme:
+  dark)` par classes `csm-*` (`csm-text` sur toute cellule de texte hors `<p>` / `<li>`, sinon invisible en sombre),
+  `@media (max-width:520px)`. Aucune image, aucun script, aucune police web ; tout est échappé (`esc`, `safeHref`), un prénom
+  perd `: #` (ne peut ouvrir ni bloc ni titre). Aperçu : iframe `sandbox` en 640 ou 375 px.
 - **Prod** : `middleware.ts` pose `Cache-Control: … no-transform` sur les pages (Cloudflare réécrivait les e-mails du HTML).
 - **Indexation / partage** : outil interne jamais indexé : `X-Robots-Tag: noindex, nofollow` (middleware + `next.config.ts`),
   `robots: { index: false }` dans le layout racine, `app/robots.ts` (`Disallow: /`, public dans `PUBLIC` ; robots d'aperçu
