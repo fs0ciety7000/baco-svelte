@@ -43,7 +43,7 @@ export async function BusOrderView({
       />
       <section
         aria-labelledby="historique"
-        className="flex max-w-[45rem] flex-col gap-3 border border-border bg-surface p-4"
+        className="flex max-w-[45rem] flex-col gap-3 border border-(--card-frame) bg-surface p-4 rounded-box shadow-rest"
       >
         <h2 id="historique" className="label-mono text-fg-muted">
           Historique

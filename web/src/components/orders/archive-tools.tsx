@@ -21,7 +21,7 @@ export function ArchiveAdminBar({ pending, enabled }: { pending: number; enabled
       </p>
     );
   return (
-    <div className="flex flex-wrap items-center gap-2 border border-border bg-surface-2 px-3 py-2">
+    <div className="flex flex-wrap items-center gap-2 border border-border bg-surface-2 px-3 py-2 rounded-control">
       <span className="min-w-0 flex-1 text-small text-fg-muted">
         {pending
           ? `${pending} ${pl(pending, "bon finalisé", "bons finalisés")} sans PDF archivé.`
@@ -50,8 +50,7 @@ export function ArchiveAdminBar({ pending, enabled }: { pending: number; enabled
       ) : null}
       <Button
         size="sm"
-        variant="ghost"
-        className="border border-border"
+        variant="secondary"
         loading={busy}
         onClick={() =>
           start(async () => {
@@ -78,8 +77,8 @@ export function ArchiveDelete({ id, label }: { id: string; label: string }) {
   return (
     <Button
       size="sm"
-      variant="ghost"
-      className="border border-border text-danger"
+      variant="secondary"
+      className="text-danger"
       loading={busy}
       aria-label={`Supprimer l'archive ${label}`}
       onClick={() =>

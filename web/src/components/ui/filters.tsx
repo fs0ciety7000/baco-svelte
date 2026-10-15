@@ -45,7 +45,13 @@ export function SegmentedNav({
   ...props
 }: {
   label: string;
-  items: { label: string; href: string; current: boolean; testId?: string }[];
+  items: {
+    label: React.ReactNode;
+    href: string;
+    current: boolean;
+    testId?: string;
+    count?: number;
+  }[];
   className?: string;
   "data-testid"?: string;
 }) {
@@ -72,6 +78,11 @@ export function SegmentedNav({
           )}
         >
           {it.label}
+          {it.count !== undefined ? (
+            <span className="ml-1.5 inline-grid h-5 min-w-5 place-items-center rounded-pill bg-surface-2 px-1.5 text-label font-semibold text-fg-muted tabular">
+              {it.count}
+            </span>
+          ) : null}
         </Link>
       ))}
     </div>

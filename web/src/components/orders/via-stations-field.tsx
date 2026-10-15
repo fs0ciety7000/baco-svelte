@@ -96,8 +96,8 @@ export function ViaStationsField({
       {!disabled && value.length < VIA_MAX ? (
         <Button
           type="button"
-          variant="ghost"
-          className="self-start border border-border"
+          variant="secondary"
+          className="self-start"
           onClick={() => onChange([...value, ""])}
           data-testid="via-add"
         >

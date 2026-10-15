@@ -219,7 +219,10 @@ function TransitionDialog({
             </Field>
           ) : (
             active.map((r) => (
-              <fieldset key={r.index} className="flex flex-col gap-3 border border-border p-3">
+              <fieldset
+                key={r.index}
+                className="flex flex-col gap-3 border border-border p-3 rounded-control"
+              >
                 <legend className="label-mono px-1 text-fg-muted">Bus {r.index + 1}</legend>
                 <Field label="Démobilisation">
                   <TimeField value={r.demob} onValueChange={(v) => set(r.index, { demob: v })} />

@@ -16,15 +16,19 @@ export function RefSearchBar({
   placeholder,
   hidden,
   children,
+  lead,
 }: {
   action: string;
   q: string;
   placeholder: string;
   hidden?: Record<string, string>;
   children?: React.ReactNode;
+  /** Élément en tête de la barre (vue en contrôle segmenté). */
+  lead?: React.ReactNode;
 }) {
   return (
     <FilterForm action={action} role="search" className={TOOLBAR}>
+      {lead}
       {Object.entries(hidden ?? {}).map(([k, v]) =>
         v ? <input key={k} type="hidden" name={k} value={v} /> : null,
       )}

@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { SupplierBoard } from "@/components/orders/supplier-board";
 import { RefSearchBar } from "@/components/referentiels/ref-ui";
-import { ChipRow, FilterChip } from "@/components/ui/filters";
+import { SegmentedNav } from "@/components/ui/filters";
 import { can } from "@/lib/permissions";
 import { pl } from "@/lib/utils";
 import { requireRoute } from "@/server/auth";
@@ -33,35 +32,36 @@ export default async function Page({
   const perm = kind === "bus" ? "otto" : "generate_taxi";
   return (
     <section className="flex flex-col gap-4" aria-label="Fournisseurs">
-      {canBus && canTaxi ? (
-        <ChipRow aria-label="Type de fournisseur">
-          {(["bus", "taxi"] as const).map((k) => (
-            <FilterChip key={k} asChild pressed={k === kind}>
-              <Link
-                href={`/commandes/fournisseurs?type=${k}`}
-                aria-current={k === kind ? "true" : undefined}
-              >
-                {k === "bus" ? "Sociétés de bus" : "Sociétés de taxi"}
-              </Link>
-            </FilterChip>
-          ))}
-        </ChipRow>
-      ) : null}
+      {/* Barre d'outils sur une ligne (v4 lot 6) : type de fournisseur en contrôle segmenté, recherche. */}
       <RefSearchBar
         action="/commandes/fournisseurs"
         q={q}
         hidden={{ type: kind }}
         placeholder="Nom, e-mail, téléphone, lieu…"
+        lead={
+          canBus && canTaxi ? (
+            <SegmentedNav
+              label="Type de fournisseur"
+              items={(["bus", "taxi"] as const).map((k) => ({
+                label: k === "bus" ? "Sociétés de bus" : "Sociétés de taxi",
+                href: `/commandes/fournisseurs?type=${k}`,
+                current: k === kind,
+              }))}
+            />
+          ) : null
+        }
       />
-      <p className="text-body text-fg-muted" data-testid="suppliers-count">
-        <span className="font-mono text-fg tabular">{rows.length}</span>{" "}
-        {pl(
-          rows.length,
-          kind === "bus" ? "société de bus" : "société de taxi",
-          kind === "bus" ? "sociétés de bus" : "sociétés de taxi",
-        )}
-      </p>
       <SupplierBoard
+        status={
+          <p className="text-small text-fg-muted" data-testid="suppliers-count">
+            <span className="font-medium text-fg tabular">{rows.length}</span>{" "}
+            {pl(
+              rows.length,
+              kind === "bus" ? "société de bus" : "société de taxi",
+              kind === "bus" ? "sociétés de bus" : "sociétés de taxi",
+            )}
+          </p>
+        }
         kind={kind}
         rows={rows}
         canWrite={can(user, `${perm}:write`)}

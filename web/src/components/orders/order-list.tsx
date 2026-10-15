@@ -1,5 +1,6 @@
-import { FileText, Search } from "lucide-react";
+import { FileText } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { DateRangePicker } from "@/components/ui/date-field";
 import { FilterForm } from "@/components/ui/filter-form";
@@ -9,14 +10,15 @@ import {
   CollapsibleFilters,
   FilterChip,
   FilterSubmit,
+  SegmentedNav,
 } from "@/components/ui/filters";
-import { Input } from "@/components/ui/input";
+import { TOOLBAR, ToolbarSearch } from "@/components/ui/list-toolbar";
 import { Select as CustomSelect } from "@/components/ui/select";
 import { LiveHighlight } from "@/components/ui/live-highlight";
 import { EmptyState } from "@/components/ui/misc";
 import { StatusBadge, statusColor } from "@/components/ui/status-badge";
 import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
-import { DistrictPicker } from "@/components/ui/district-picker";
+import { DistrictMenu } from "@/components/ui/district-picker";
 import { appendDistricts, DISTRICT_NAME_OPTIONS, parseDistricts } from "@/lib/district-param";
 import { DISTRICTS } from "@/lib/orders/schemas";
 import { ORDER_STATUSES, STATUS_LABEL, type OrderKind } from "@/lib/orders/status";
@@ -44,115 +46,102 @@ export type ListFilters = {
   district?: string | string[];
 };
 
-/** Barre de filtres en GET (fonctionne sans JS, URL partageable) + raccourcis de dates. */
+/**
+ * Barre d'outils des listes de bons (v4 lot 6), filtres en GET (fonctionne sans JS, URL partageable). Desktop : une
+ * ligne — période en contrôle segmenté, recherche, districts en menu, « Filtres (n) » (statut, autres raccourcis, plage de
+ * dates), action à droite. Mobile : période, recherche, puis districts / filtres / action.
+ */
 export function FilterBar({
   action,
   filters,
   defaultPeriod,
+  actions,
 }: {
   action: string;
   filters: ListFilters;
-  /** Période par défaut de la liste (bons bus : J-1 → J+6) : ajoute les puces « 7 jours » et « Toutes les dates ». */
+  /** Période par défaut de la liste (bons bus : J-1 → J+6) : ajoute « Semaine » et « Toutes ». */
   defaultPeriod?: { du: string; au: string };
+  /** Action à droite de la barre (« Nouveau bon »). */
+  actions?: ReactNode;
 }) {
   const today = brusselsDay();
   const districts = parseDistricts(filters.district, DISTRICTS);
-  const allDates = new URLSearchParams({ ...clean(filters), du: "", au: "" });
-  appendDistricts(allDates, districts);
   const noDates = !filters.du && !filters.au;
-  const shortcut = (label: string, du: string, au: string) => {
-    const params = appendDistricts(new URLSearchParams({ ...clean(filters), du, au }), districts);
-    const active = filters.du === du && filters.au === au;
-    return (
-      <FilterChip key={label} asChild pressed={active}>
-        <Link href={`${action}?${params}`} aria-current={active ? "true" : undefined}>
-          {label}
-        </Link>
-      </FilterChip>
-    );
-  };
+  const link = (du: string, au: string) =>
+    `${action}?${appendDistricts(new URLSearchParams({ ...clean(filters), du, au }), districts)}`;
+  const item = (label: string, du: string, au: string, testId?: string) => ({
+    label,
+    href: link(du, au),
+    current: du || au ? filters.du === du && filters.au === au : noDates,
+    testId,
+  });
+  const yesterday = addDays(today, -1);
+  const last7 = item("7 derniers jours", addDays(today, -6), today);
+  const hier = item("Hier", yesterday, yesterday);
+  // Raccourcis principaux en contrôle segmenté ; les autres dans « Filtres (n) » avec la plage libre.
+  const main = defaultPeriod
+    ? [
+        item("Aujourd'hui", today, today),
+        item("Demain", addDays(today, 1), addDays(today, 1)),
+        item("Semaine", defaultPeriod.du, defaultPeriod.au),
+        item("Toutes", "", "", "all-dates"),
+      ]
+    : [
+        item("Aujourd'hui", today, today),
+        hier,
+        item("Demain", addDays(today, 1), addDays(today, 1)),
+        last7,
+      ];
+  const folded = defaultPeriod ? [hier, last7] : [];
+  const customPeriod = !main.some((p) => p.current);
   return (
-    <div className="flex flex-col gap-2">
-      <ChipRow aria-label="Raccourcis de dates">
-        {shortcut("Aujourd'hui", today, today)}
-        {shortcut("Hier", addDays(today, -1), addDays(today, -1))}
-        {shortcut("Demain", addDays(today, 1), addDays(today, 1))}
-        {shortcut("7 derniers jours", addDays(today, -6), today)}
-        {defaultPeriod ? shortcut("Semaine (J-1 → J+6)", defaultPeriod.du, defaultPeriod.au) : null}
-        {defaultPeriod ? (
-          <FilterChip asChild pressed={noDates}>
-            <Link
-              href={`${action}?${allDates}`}
-              aria-current={noDates ? "true" : undefined}
-              data-testid="all-dates"
-            >
-              Toutes les dates
-            </Link>
-          </FilterChip>
-        ) : null}
-      </ChipRow>
-      <FilterForm
-        action={action}
-        className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
-        role="search"
-      >
-        <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-64">
-          <span className="text-small text-fg-muted">Recherche</span>
-          <span className="relative">
-            <Search
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted"
-            />
-            <Input
-              name="q"
-              defaultValue={filters.q}
-              placeholder="Gare, relation, n°…"
-              className="pl-9"
-              maxLength={100}
-            />
-          </span>
-        </label>
-        <CollapsibleFilters
-          active={
-            [filters.statut, districts.length ? "d" : "", filters.du, filters.au].filter(Boolean)
-              .length
-          }
-        >
-          <label className="flex min-w-0 flex-col gap-1 md:w-40">
-            <span className="text-small text-fg-muted">Statut</span>
-            <CustomSelect
-              name="statut"
-              defaultValue={filters.statut ?? ""}
-              options={[
-                { value: "", label: "Tous" },
-                ...ORDER_STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] })),
-              ]}
-            />
-          </label>
-          <div className="col-span-2 flex min-w-0 flex-col gap-1 md:w-auto">
-            <span className="text-small text-fg-muted">District</span>
-            <DistrictPicker
-              name="district"
-              label="District"
-              options={DISTRICT_NAME_OPTIONS}
-              defaultValues={districts}
-            />
-          </div>
-          <DateRangePicker
-            nameFrom="du"
-            nameTo="au"
-            defaultFrom={filters.du ?? ""}
-            defaultTo={filters.au ?? ""}
-            presets={["today", "tomorrow", "7d", "week"]}
-            fieldClassName="md:w-40"
+    <FilterForm action={action} className={TOOLBAR} role="search" data-testid="orders-toolbar">
+      <SegmentedNav label="Période" items={main} />
+      <ToolbarSearch defaultValue={filters.q} placeholder="Gare, relation, n°…" maxLength={100} />
+      <div className="min-w-0">
+        <DistrictMenu
+          name="district"
+          label="Districts"
+          options={DISTRICT_NAME_OPTIONS}
+          defaultValues={districts}
+        />
+      </div>
+      <CollapsibleFilters always active={Number(!!filters.statut) + Number(customPeriod)}>
+        <label className="flex min-w-0 flex-col gap-1 max-md:basis-full md:w-48">
+          <span className="text-small text-fg-muted">Statut</span>
+          <CustomSelect
+            name="statut"
+            defaultValue={filters.statut ?? ""}
+            options={[
+              { value: "", label: "Tous" },
+              ...ORDER_STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] })),
+            ]}
           />
-          <div className="col-span-2 flex gap-2">
-            <FilterSubmit />
-            <ClearFilters href={action} />
-          </div>
-        </CollapsibleFilters>
-      </FilterForm>
-    </div>
+        </label>
+        {folded.length ? (
+          <ChipRow aria-label="Autres périodes" className="self-end">
+            {folded.map((p) => (
+              <FilterChip key={p.label} asChild pressed={p.current}>
+                <Link href={p.href} aria-current={p.current ? "true" : undefined}>
+                  {p.label}
+                </Link>
+              </FilterChip>
+            ))}
+          </ChipRow>
+        ) : null}
+        <DateRangePicker
+          nameFrom="du"
+          nameTo="au"
+          defaultFrom={filters.du ?? ""}
+          defaultTo={filters.au ?? ""}
+          presets={["today", "tomorrow", "7d", "week"]}
+          fieldClassName="md:w-40"
+        />
+      </CollapsibleFilters>
+      <ClearFilters href={action} />
+      {actions ? <div className="ml-auto flex items-center gap-2">{actions}</div> : null}
+      <FilterSubmit />
+    </FilterForm>
   );
 }
 
@@ -179,7 +168,8 @@ export function OrderList({
   /** Page Archives : PDF archivé de chaque bon (`kind-id` → id de l'archive) ; ajoute la colonne PDF. */
   pdfFor?: Record<string, string>;
 }) {
-  if (rows.length === 0) return <EmptyState title="Aucune commande" description={emptyText} />;
+  if (rows.length === 0)
+    return <EmptyState framed title="Aucune commande" description={emptyText} />;
   return (
     <>
       <LiveHighlight
@@ -212,7 +202,7 @@ export function OrderList({
                 statusColor={statusColor(r.status)}
                 className="relative"
               >
-                <Td className="font-mono text-fg-muted">
+                <Td className="text-fg-muted tabular">
                   <span className="inline-flex items-center gap-2">
                     <KindIconClient kind={r.kind} pmr={r.isPmr} />
                     {/* Lien étiré : toute la ligne est cliquable, le lien reste le seul élément focalisable. */}
@@ -224,7 +214,7 @@ export function OrderList({
                     </Link>
                   </span>
                 </Td>
-                <Td className="font-mono tabular">{formatDay(r.day)}</Td>
+                <Td className="whitespace-nowrap tabular">{formatDay(r.day)}</Td>
                 <Td className="font-mono tabular">{r.time || "—"}</Td>
                 <Td className={`max-w-72 truncate ${r.status === "annule" ? "line-through" : ""}`}>
                   {routeLabel(r)}

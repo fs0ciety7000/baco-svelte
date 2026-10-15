@@ -70,7 +70,7 @@ export function StartPanel({ kind, recent, templates }: StartPanelProps) {
           </p>
           <div className="flex flex-wrap gap-2">
             {templates.map((t) => (
-              <Button key={t.id} asChild variant="ghost" size="sm" className="border border-border">
+              <Button key={t.id} asChild variant="secondary" size="sm">
                 <Link
                   href={`${base}?modele=${t.id}`}
                   title={t.author ? `Créé par ${t.author}` : undefined}

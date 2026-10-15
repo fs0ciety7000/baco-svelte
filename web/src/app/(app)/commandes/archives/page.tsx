@@ -1,18 +1,23 @@
-import { Download, ExternalLink, Search } from "lucide-react";
+import { Download, ExternalLink } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ArchiveAdminBar, ArchiveDelete } from "@/components/orders/archive-tools";
 import { OrderList } from "@/components/orders/order-list";
 import { DateRangePicker } from "@/components/ui/date-field";
-import { ChipRow, ClearFilters, FilterChip, FilterSubmit } from "@/components/ui/filters";
+import {
+  ClearFilters,
+  CollapsibleFilters,
+  FilterSubmit,
+  SegmentedNav,
+} from "@/components/ui/filters";
 import { ORDER_ARCHIVE_DAYS } from "@/lib/orders/archive";
 import { isValidDay } from "@/lib/orders/time";
 import type { SessionUser } from "@/server/auth";
 import { listOrders } from "@/server/data/orders";
 import { Button } from "@/components/ui/button";
 import { FilterForm } from "@/components/ui/filter-form";
-import { Input } from "@/components/ui/input";
+import { TOOLBAR, ToolbarSearch } from "@/components/ui/list-toolbar";
 import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
@@ -49,28 +54,26 @@ type SP = {
   au?: string;
 };
 
+/** Vue des archives en contrôle segmenté, en tête de la barre d'outils (v4 lot 6). */
 function ArchiveTabs({ vue }: { vue: "bons" | "pdf" }) {
   return (
-    <ChipRow aria-label="Vue des archives">
-      <FilterChip asChild pressed={vue === "bons"}>
-        <Link
-          href="/commandes/archives"
-          aria-current={vue === "bons" ? "page" : undefined}
-          data-testid="archives-tab-bons"
-        >
-          Bons archivés
-        </Link>
-      </FilterChip>
-      <FilterChip asChild pressed={vue === "pdf"}>
-        <Link
-          href="/commandes/archives?vue=pdf"
-          aria-current={vue === "pdf" ? "page" : undefined}
-          data-testid="archives-tab-pdf"
-        >
-          PDF des bons
-        </Link>
-      </FilterChip>
-    </ChipRow>
+    <SegmentedNav
+      label="Vue des archives"
+      items={[
+        {
+          label: "Bons archivés",
+          href: "/commandes/archives",
+          current: vue === "bons",
+          testId: "archives-tab-bons",
+        },
+        {
+          label: "PDF des bons",
+          href: "/commandes/archives?vue=pdf",
+          current: vue === "pdf",
+          testId: "archives-tab-pdf",
+        },
+      ]}
+    />
   );
 }
 
@@ -92,28 +95,20 @@ async function ArchivedOrders({ sp, user }: { sp: SP; user: SessionUser }) {
       <FilterForm
         action="/commandes/archives"
         role="search"
-        className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
+        className={TOOLBAR}
+        data-testid="archives-toolbar"
       >
-        <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-72">
-          <span className="text-small text-fg-muted">Recherche</span>
-          <span className="relative">
-            <Search
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted"
-            />
-            <Input
-              name="q"
-              defaultValue={sp.q ?? ""}
-              placeholder="Gare, relation, n°…"
-              className="pl-9"
-              maxLength={100}
-            />
-          </span>
-        </label>
-        <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-36">
-          <span className="text-small text-fg-muted">Type</span>
+        <ArchiveTabs vue="bons" />
+        <ToolbarSearch
+          defaultValue={sp.q ?? ""}
+          placeholder="Gare, relation, n°…"
+          maxLength={100}
+        />
+        <label className="min-w-0 flex-1 md:w-40 md:flex-none">
+          <span className="sr-only">Type</span>
           <Select
             name="type"
+            label="Type"
             defaultValue={type === "all" ? "" : type}
             options={[
               { value: "", label: "Bus et taxis" },
@@ -122,21 +117,22 @@ async function ArchivedOrders({ sp, user }: { sp: SP; user: SessionUser }) {
             ]}
           />
         </label>
-        <DateRangePicker
-          nameFrom="du"
-          nameTo="au"
-          defaultFrom={from ?? ""}
-          defaultTo={to ?? ""}
-          presets={["7d", "week"]}
-          fieldClassName="md:w-40"
-        />
-        <div className="col-span-2 flex gap-2">
-          <FilterSubmit />
-          {sp.q || sp.type || sp.du || sp.au ? <ClearFilters href="/commandes/archives" /> : null}
-        </div>
+        <CollapsibleFilters always active={Number(!!from) + Number(!!to)}>
+          <DateRangePicker
+            nameFrom="du"
+            nameTo="au"
+            defaultFrom={from ?? ""}
+            defaultTo={to ?? ""}
+            presets={["7d", "week"]}
+            fieldClassName="md:w-40"
+          />
+        </CollapsibleFilters>
+        <ClearFilters href="/commandes/archives" />
+        <FilterSubmit />
       </FilterForm>
       <p className="text-small text-fg-muted" aria-live="polite" data-testid="archived-count">
-        {total} {pl(total, "bon archivé", "bons archivés")} · envoyés ou annulés depuis plus de{" "}
+        <span className="font-medium text-fg tabular">{total}</span>{" "}
+        {pl(total, "bon archivé", "bons archivés")} · envoyés ou annulés depuis plus de{" "}
         {ORDER_ARCHIVE_DAYS} jours (date de service ci-dessous).
       </p>
       <div data-testid="archived-orders">
@@ -164,7 +160,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
   if (sp.vue !== "pdf") {
     return (
       <section className="flex min-w-0 flex-col gap-4" aria-label="Bons archivés">
-        <ArchiveTabs vue="bons" />
         <ArchivedOrders sp={sp} user={user} />
       </section>
     );
@@ -187,35 +182,20 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
 
   return (
     <section className="flex min-w-0 flex-col gap-5" aria-label="Archives des bons">
-      <ArchiveTabs vue="pdf" />
-      {admin ? <ArchiveAdminBar pending={pendingCount} enabled={archivesEnabled()} /> : null}
-
       <FilterForm
         action="/commandes/archives"
         role="search"
-        className="flex flex-wrap items-end gap-2"
+        className={TOOLBAR}
+        data-testid="archives-toolbar"
       >
+        <ArchiveTabs vue="pdf" />
         <input type="hidden" name="vue" value="pdf" />
-        <label className="flex min-w-0 flex-1 flex-col gap-1 md:max-w-80">
-          <span className="text-small text-fg-muted">Recherche</span>
-          <span className="relative">
-            <Search
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted"
-            />
-            <Input
-              name="q"
-              defaultValue={sp.q ?? ""}
-              placeholder="TC_…, n° de taxi, gare…"
-              className="pl-9"
-              maxLength={60}
-            />
-          </span>
-        </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-36">
-          <span className="text-small text-fg-muted">Type</span>
+        <ToolbarSearch defaultValue={sp.q ?? ""} placeholder="TC_…, n° de taxi, gare…" />
+        <label className="min-w-0 flex-1 md:w-40 md:flex-none">
+          <span className="sr-only">Type</span>
           <Select
             name="type"
+            label="Type"
             defaultValue={sp.type ?? ""}
             options={[
               { value: "", label: "Bus et taxis" },
@@ -224,20 +204,23 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             ]}
           />
         </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-44">
-          <span className="text-small text-fg-muted">Mois</span>
+        <label className="min-w-0 flex-1 md:w-44 md:flex-none">
+          <span className="sr-only">Mois</span>
           <MonthField name="mois" defaultValue={sp.mois ?? ""} />
         </label>
         <FilterSubmit />
         {sp.q || sp.type || sp.mois ? <ClearFilters href="/commandes/archives?vue=pdf" /> : null}
       </FilterForm>
+      {admin ? <ArchiveAdminBar pending={pendingCount} enabled={archivesEnabled()} /> : null}
 
       <p className="text-small text-fg-muted" aria-live="polite">
-        {list.total} {pl(list.total, "bon archivé", "bons archivés")}
+        <span className="font-medium text-fg tabular">{list.total}</span>{" "}
+        {pl(list.total, "bon archivé", "bons archivés")}
       </p>
 
       {list.rows.length === 0 ? (
         <EmptyState
+          framed
           title="Aucun bon archivé"
           description="Les bons finalisés (envoyés) apparaissent ici avec leur PDF."
         />
@@ -281,7 +264,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
                     </Td>
                     <Td>
                       <div className="flex gap-1">
-                        <Button asChild size="sm" variant="ghost" className="border border-border">
+                        <Button asChild size="sm" variant="secondary">
                           <a
                             href={`/api/commandes/archives/${r.id}`}
                             target="_blank"
@@ -291,7 +274,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
                             <ExternalLink aria-hidden className="size-4" />
                           </a>
                         </Button>
-                        <Button asChild size="sm" variant="ghost" className="border border-border">
+                        <Button asChild size="sm" variant="secondary">
                           <a
                             href={`/api/commandes/archives/${r.id}?dl=1`}
                             download
@@ -331,12 +314,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
           </span>
           <span className="flex gap-2">
             {list.page > 1 ? (
-              <Button asChild variant="ghost" className="border border-border">
+              <Button asChild variant="secondary">
                 <Link href={keep({ page: String(list.page - 1) })}>Précédente</Link>
               </Button>
             ) : null}
             {list.page < list.totalPages ? (
-              <Button asChild variant="ghost" className="border border-border">
+              <Button asChild variant="secondary">
                 <Link href={keep({ page: String(list.page + 1) })}>Suivante</Link>
               </Button>
             ) : null}
@@ -359,7 +342,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             {backups.map((b) => (
               <li
                 key={b.id}
-                className="flex min-h-11 items-center gap-3 border border-border bg-surface px-3 py-2"
+                className="flex min-h-11 items-center gap-3 border border-(--card-frame) bg-surface px-3 py-2 rounded-box shadow-rest"
               >
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="font-medium capitalize">
@@ -370,7 +353,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
                     {b.r2 ? " · copie R2" : admin && b.r2Error ? " · R2 en attente" : ""}
                   </span>
                 </span>
-                <Button asChild size="sm" variant="ghost" className="border border-border">
+                <Button asChild size="sm" variant="secondary">
                   <a
                     href={`/api/commandes/archives/sauvegardes/${b.id}`}
                     download
