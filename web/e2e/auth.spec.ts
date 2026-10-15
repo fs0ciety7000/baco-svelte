@@ -44,7 +44,8 @@ test("connexion par cookie httpOnly, données et temps réel via le seul domaine
   const foreign: string[] = [];
   page.on("request", (req) => {
     const url = new URL(req.url());
-    if (url.host !== "localhost:3000") foreign.push(req.url());
+    if (url.host !== new URL(process.env.E2E_BASE_URL ?? "http://localhost:3000").host)
+      foreign.push(req.url());
   });
   page.on("websocket", (ws) => foreign.push(`websocket ${ws.url()}`));
 

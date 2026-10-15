@@ -124,7 +124,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sta
           </CollapsibleFilters>
           <Button asChild variant="secondary" size="sm" className="ml-auto">
             <a href={csv} download>
-              <Download aria-hidden /> Export CSV
+              <Download aria-hidden /> <span className="max-md:sr-only">Export CSV</span>
             </a>
           </Button>
           <FilterSubmit />

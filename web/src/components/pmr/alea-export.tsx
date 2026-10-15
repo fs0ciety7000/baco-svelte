@@ -1,5 +1,6 @@
 "use client";
 
+import { TrainChip } from "@/components/ui/train-chip";
 import { CheckSquare2, ClipboardList, Loader2, Square } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -254,11 +255,8 @@ export function AleaButton({
                       data-encoded={mark ? "1" : undefined}
                     >
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-surface-2 px-3 py-2">
-                        <span
-                          className="bg-accent px-2 py-0.5 font-mono text-body-lg font-bold text-accent-fg tabular"
-                          title="Train"
-                        >
-                          {g.train}
+                        <span title="Train">
+                          <TrainChip train={g.train} />
                         </span>
                         <span className="text-body-lg font-bold text-fg">{g.station}</span>
                         <Badge tone={g.io === "IN" ? "info" : "ok"}>

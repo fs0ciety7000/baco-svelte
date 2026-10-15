@@ -4,12 +4,22 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { subscribeLive } from "@/lib/live";
+import { cn } from "@/lib/utils";
 
 // Abonnement au relais SSE du serveur CSM (/api/events). À chaque changement, la page serveur est
 // relue (router.refresh), regroupé sur 300 ms pour absorber les rafales.
 // `quiet` (accueil, 11 oct. 2026) : rien de visible tant que le flux est en direct (l'état est dans la barre latérale),
 // seulement « Connexion… » / « Hors ligne ».
-export function LiveRefresh({ topics, quiet }: { topics: string[]; quiet?: boolean }) {
+export function LiveRefresh({
+  topics,
+  quiet,
+  compact,
+}: {
+  topics: string[];
+  quiet?: boolean;
+  /** Mobile : pastille seule, libellé pour les lecteurs d'écran (décision du 15 oct. 2026). */
+  compact?: boolean;
+}) {
   const router = useRouter();
   const [state, setState] = useState<"connexion" | "direct" | "coupé">("connexion");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -47,7 +57,12 @@ export function LiveRefresh({ topics, quiet }: { topics: string[]; quiet?: boole
       />
       {/* Largeur du libellé le plus long réservée (lot 5) : « Connexion… » au rendu serveur puis « En direct » ne fait
           plus changer la rangée de place (CLS de Ma journée en 390 px). */}
-      <span className="inline-grid before:invisible before:content-['Connexion…'] before:[grid-area:1/1] after:invisible after:content-['Hors_ligne'] after:[grid-area:1/1]">
+      <span
+        className={cn(
+          compact && "max-md:sr-only",
+          "inline-grid before:invisible before:content-['Connexion…'] before:[grid-area:1/1] after:invisible after:content-['Hors_ligne'] after:[grid-area:1/1]",
+        )}
+      >
         <span className="[grid-area:1/1]">
           {state === "direct" ? "En direct" : state === "connexion" ? "Connexion…" : "Hors ligne"}
         </span>

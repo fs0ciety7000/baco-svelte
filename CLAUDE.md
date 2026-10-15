@@ -1375,6 +1375,8 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
 
 - 2026-10-15 — **Retours lot 4 et campagne** : « Masquer les annulées » remis visible dans la barre d'outils PMR / Groupes (hors « Filtres ») ; boutons ALEA en libellé court en mobile (« ALEA », « ALEA + groupes », nom accessible complet) ; campagne du jour J **sans date**, signée **« Nicolas & Thomas »**, et annonçant que **BACO est fermé à partir du jour J** (plus de saisie, données dans CSM).
 
+- 2026-10-15 — **Refonte v4 terminée (lots 0 à 6)** ; retours sur le lot 6 : en mobile, « En direct » du Suivi (`LiveRefresh compact`) et « Export CSV » des Statistiques en icône seule (libellé pour les lecteurs d'écran) ; n° de train de l'export ALEA en `TrainChip` ; `e2e/auth.spec.ts` suit `E2E_BASE_URL`.
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)

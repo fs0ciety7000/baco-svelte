@@ -75,7 +75,7 @@ export default async function Page({
           />
         ) : null}
         <span className="ml-auto">
-          <LiveRefresh topics={topics} />
+          <LiveRefresh topics={topics} compact />
         </span>
       </div>
       <TrackingBoard
