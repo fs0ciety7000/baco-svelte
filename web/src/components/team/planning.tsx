@@ -65,12 +65,19 @@ function ShiftCard({ s, now, meId }: { s: PlanningShift; now: number; meId: stri
   return (
     <li
       className={cn(
-        "flex min-h-[3.25rem] items-center gap-3 rounded-control border border-border bg-surface px-3 py-2",
-        me && "border-accent bg-accent-soft",
+        "flex min-h-[3.25rem] items-center gap-3 rounded-control border border-(--card-frame) bg-surface px-3 py-2 shadow-rest",
+        me && "bg-accent-soft",
       )}
       data-testid="planning-shift"
     >
-      <Avatar name={s.name} email="" id={s.userId || undefined} avatar={s.avatar} role={s.role} />
+      <Avatar
+        name={s.name}
+        email=""
+        id={s.userId || undefined}
+        avatar={s.avatar}
+        role={s.role}
+        className="rounded-[min(var(--r-box),8px)]"
+      />
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="truncate font-medium">
           {s.name}
@@ -117,6 +124,7 @@ export function PlanningDay({
   if (!blocks.length)
     return (
       <EmptyState
+        framed
         title="Aucune prestation publiée"
         description="Rien dans Quinyx pour ce jour (ou pas encore synchronisé, ou pas encore publié)."
       />
@@ -171,6 +179,7 @@ export function PlanningWeek({
   if (!shifts.length)
     return (
       <EmptyState
+        framed
         title="Aucune prestation publiée cette semaine"
         description="Rien dans Quinyx pour cette semaine (ou pas encore synchronisé, ou pas encore publié)."
       />
@@ -180,15 +189,15 @@ export function PlanningWeek({
     <>
       {/* Desktop : grille agents × jours */}
       <div
-        className="hidden overflow-x-auto rounded-box border border-border md:block"
+        className="hidden overflow-x-auto rounded-box border border-(--card-frame) bg-surface shadow-rest md:block"
         data-testid="planning-grid"
       >
         <table className="w-full border-collapse text-body">
-          <thead className="bg-surface-2">
+          <thead className="bg-(--th-bg)">
             <tr>
               <th
                 scope="col"
-                className="h-9 border-b border-border px-3 text-left text-small font-medium text-fg-muted"
+                className="h-9 border-b border-(--th-rule) px-3 text-left text-label font-(weight:--th-weight) text-(--th-fg)"
               >
                 Agent
               </th>
@@ -197,8 +206,8 @@ export function PlanningWeek({
                   key={d}
                   scope="col"
                   className={cn(
-                    "h-9 border-b border-border px-2 text-left text-small font-medium whitespace-nowrap text-fg-muted",
-                    d === today && "text-fg",
+                    "h-9 border-b border-(--th-rule) px-2 text-left text-label font-(weight:--th-weight) whitespace-nowrap text-(--th-fg) tabular",
+                    d === today && "font-semibold text-fg",
                   )}
                 >
                   {formatDay(d)}
@@ -212,7 +221,10 @@ export function PlanningWeek({
               return (
                 <tr
                   key={r.agentId}
-                  className={cn("border-b border-border last:border-b-0", me && "bg-accent-soft")}
+                  className={cn(
+                    "border-b border-[color-mix(in_oklab,var(--border)_70%,transparent)] last:border-b-0",
+                    me && "bg-accent-soft",
+                  )}
                 >
                   <th scope="row" className="px-3 py-2 text-left font-medium whitespace-nowrap">
                     {r.name}
@@ -220,7 +232,7 @@ export function PlanningWeek({
                   {days.map((d) => (
                     <td
                       key={d}
-                      className={cn("px-2 py-1.5 align-top", d === today && "bg-accent-faint")}
+                      className={cn("px-2 py-1.5 align-top", d === today && "bg-surface-2")}
                     >
                       <span className="flex flex-col gap-1">
                         {(r.byDay.get(d) ?? []).map((s) => (
@@ -253,7 +265,7 @@ export function PlanningWeek({
                     <li
                       key={s.id}
                       className={cn(
-                        "flex min-h-11 items-center justify-between gap-2 rounded-control border border-border bg-surface px-3 py-1.5",
+                        "flex min-h-11 items-center justify-between gap-2 rounded-control border border-(--card-frame) bg-surface px-3 py-1.5 shadow-rest",
                         s.userId && s.userId === meId && "border-accent bg-accent-soft",
                       )}
                     >

@@ -38,7 +38,7 @@ export default async function Page({
   return (
     <section className="flex min-w-0 flex-col gap-4" aria-label="Visionneuse">
       <div className="flex flex-wrap items-center gap-2">
-        <Button asChild variant="ghost" size="sm" className="border border-border">
+        <Button asChild variant="secondary" size="sm">
           <Link href={back}>
             <ArrowLeft aria-hidden /> Retour
           </Link>
@@ -48,7 +48,7 @@ export default async function Page({
         </h2>
         <div className="flex flex-wrap gap-2">
           {kind ? (
-            <Button asChild variant="ghost" size="sm" className="border border-border">
+            <Button asChild variant="secondary" size="sm">
               <a href={`${src}?vue=1`} target="_blank" rel="noopener noreferrer">
                 <ExternalLink aria-hidden /> Nouvel onglet
               </a>

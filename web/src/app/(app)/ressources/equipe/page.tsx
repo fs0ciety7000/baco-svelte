@@ -1,14 +1,13 @@
-import { Search } from "lucide-react";
 import type { Metadata } from "next";
 
-import { DistrictPicker } from "@/components/ui/district-picker";
+import { DistrictMenu } from "@/components/ui/district-picker";
 import { DISTRICT_NAME_OPTIONS, parseDistricts } from "@/lib/district-param";
 import { pl } from "@/lib/utils";
 import { ClearFilters, FilterSubmit } from "@/components/ui/filters";
 import { FilterForm } from "@/components/ui/filter-form";
 import { PhoneLink } from "@/components/pmr/phone-link";
 import { Avatar } from "@/components/shell/avatar";
-import { Input } from "@/components/ui/input";
+import { ListCount, ListStatus, TOOLBAR, ToolbarSearch } from "@/components/ui/list-toolbar";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
 import { FULL_ROLE_KEYS, roleLabel } from "@/lib/roles";
@@ -32,52 +31,38 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
   ]);
   return (
     <section className="flex flex-col gap-4" aria-label="Annuaire de l'équipe">
+      {/* Barre d'outils sur une ligne (v4 lot 6) : recherche, districts en menu. */}
       <FilterForm
         action="/ressources/equipe"
         role="search"
-        className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
+        className={TOOLBAR}
+        data-testid="team-toolbar"
       >
-        <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-64">
-          <span className="text-small text-fg-muted">Recherche</span>
-          <span className="relative">
-            <Search
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted"
-            />
-            <Input
-              name="q"
-              defaultValue={f.q}
-              placeholder="Nom, identifiant, fonction…"
-              className="pl-9"
-              maxLength={60}
-            />
-          </span>
-        </label>
-        <div className="col-span-2 flex min-w-0 flex-col gap-1 md:w-auto">
-          <span className="text-small text-fg-muted">District</span>
-          <DistrictPicker
+        <ToolbarSearch defaultValue={f.q} placeholder="Nom, identifiant, fonction…" />
+        <div className="min-w-0">
+          <DistrictMenu
             name="district"
-            label="District"
+            label="Districts"
             options={DISTRICT_NAME_OPTIONS}
             defaultValues={parseDistricts(f.district, DISTRICT_NAMES)}
           />
         </div>
-        <div className="col-span-2 flex gap-2">
-          <FilterSubmit />
-          <ClearFilters href="/ressources/equipe" />
-        </div>
+        <FilterSubmit />
+        <ClearFilters href="/ressources/equipe" />
       </FilterForm>
-      <p className="text-body text-fg-muted">
-        <span className="font-mono text-fg tabular">{rows.length}</span> {pl(rows.length, "agent")}
-      </p>
+      <ListStatus count={<ListCount n={rows.length} label={pl(rows.length, "agent")} />} />
       {rows.length === 0 ? (
-        <EmptyState title="Aucun agent" description="Aucun agent ne correspond à ces filtres." />
+        <EmptyState
+          framed
+          title="Aucun agent"
+          description="Aucun agent ne correspond à ces filtres."
+        />
       ) : (
         <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3" data-testid="team-list">
           {rows.map((m) => (
             <li
               key={m.id}
-              className="flex min-w-0 items-center gap-3 border border-border bg-surface px-3 py-3"
+              className="flex min-w-0 items-center gap-3 border border-(--card-frame) bg-surface px-3 py-3 rounded-box shadow-rest"
             >
               <Avatar
                 name={m.name}
@@ -85,7 +70,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
                 id={m.id}
                 avatar={m.avatar}
                 role={m.role}
-                className="size-10"
+                className="size-10 rounded-[min(var(--r-box),8px)]"
               />
               <div className="flex min-w-0 flex-1 flex-col">
                 <span className="flex min-w-0 items-center gap-1.5">
@@ -108,7 +93,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
                   </Badge>
                 ) : null}
                 {FULL_ROLE_KEYS.includes(m.role) ? (
-                  <span className="label-mono text-fg-muted">{roleLabel(m.role, roles)}</span>
+                  <span className="text-label text-fg-subtle">{roleLabel(m.role, roles)}</span>
                 ) : null}
               </div>
             </li>

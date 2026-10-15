@@ -1,12 +1,14 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Metadata } from "next";
 
-import { DistrictPicker } from "@/components/ui/district-picker";
+import { Button } from "@/components/ui/button";
+import { DistrictMenu } from "@/components/ui/district-picker";
+import { TOOLBAR } from "@/components/ui/list-toolbar";
 import { appendDistricts, DISTRICT_CODE_OPTIONS, parseDistricts } from "@/lib/district-param";
 import Link from "next/link";
 
 import { PlanningDay, PlanningWeek, QuinyxFreshness } from "@/components/team/planning";
-import { ChipRow, FilterChip } from "@/components/ui/filters";
+import { FilterChip, SegmentedNav } from "@/components/ui/filters";
 import { FilterForm } from "@/components/ui/filter-form";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { DateField } from "@/components/ui/date-field";
@@ -54,67 +56,65 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
   return (
     <section className="flex flex-col gap-4" aria-label="Planning de l'équipe">
       <QuinyxFreshness syncs={syncs} />
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <ChipRow aria-label="Vue">
-          <FilterChip asChild pressed={!week}>
-            <Link href={href({ vue: "" })}>Jour</Link>
+      {/* Barre d'outils sur une ligne (v4 lot 6) : vue, jour, districts en menu. */}
+      <FilterForm action="/ressources/planning" className={TOOLBAR} data-testid="planning-toolbar">
+        <SegmentedNav
+          label="Vue"
+          items={[
+            { label: "Jour", href: href({ vue: "" }), current: !week },
+            {
+              label: "Semaine",
+              href: href({ vue: "semaine" }),
+              current: week,
+              testId: "planning-week",
+            },
+          ]}
+        />
+        {week ? <input type="hidden" name="vue" value="semaine" /> : null}
+        <label className="min-w-0 flex-1 md:w-44 md:flex-none">
+          <span className="sr-only">Jour</span>
+          <DateField name="jour" defaultValue={day} />
+        </label>
+        {day !== today ? (
+          <FilterChip asChild>
+            <Link href={href({ jour: "" })}>Aujourd&apos;hui</Link>
           </FilterChip>
-          <FilterChip asChild pressed={week}>
-            <Link href={href({ vue: "semaine" })} data-testid="planning-week">
-              Semaine
-            </Link>
-          </FilterChip>
-          {day !== today ? (
-            <FilterChip asChild>
-              <Link href={href({ jour: "" })}>Aujourd&apos;hui</Link>
-            </FilterChip>
-          ) : null}
-        </ChipRow>
-        <FilterForm
-          action="/ressources/planning"
-          className="grid grid-cols-2 gap-2 md:flex md:items-end"
-        >
-          {week ? <input type="hidden" name="vue" value="semaine" /> : null}
-          <label className="flex min-w-0 flex-col gap-1">
-            <span className="text-small text-fg-muted">Jour</span>
-            <DateField name="jour" defaultValue={day} />
-          </label>
-          <div className="col-span-2 flex min-w-0 flex-col gap-1 md:col-span-1">
-            <span className="text-small text-fg-muted">District</span>
-            <DistrictPicker
-              name="district"
-              label="District"
-              options={PLANNING_DISTRICTS}
-              defaultValues={districts}
-              showHint="never"
-            />
-          </div>
-          <FormAutoSubmit />
-        </FilterForm>
-      </div>
+        ) : null}
+        <div className="min-w-0">
+          <DistrictMenu
+            name="district"
+            label="Districts"
+            options={PLANNING_DISTRICTS}
+            defaultValues={districts}
+          />
+        </div>
+        <FormAutoSubmit />
+      </FilterForm>
       <nav className="flex items-center justify-between gap-2" aria-label="Période">
-        <Link
-          href={href({ jour: addDays(day, -step) })}
-          className="inline-flex h-control items-center gap-1 rounded-control border border-border px-3 text-small hover:border-border-strong"
-          aria-label={week ? "Semaine précédente" : "Jour précédent"}
-        >
-          <ChevronLeft aria-hidden className="size-4" />
-          <span className="hidden sm:inline">{week ? "Semaine précédente" : "Veille"}</span>
-        </Link>
+        <Button asChild variant="secondary" size="sm">
+          <Link
+            href={href({ jour: addDays(day, -step) })}
+            aria-label={week ? "Semaine précédente" : "Jour précédent"}
+          >
+            <ChevronLeft aria-hidden />
+            <span className="hidden sm:inline">{week ? "Semaine précédente" : "Veille"}</span>
+          </Link>
+        </Button>
         <h2
           className="text-center text-h3 font-semibold first-letter:uppercase"
           data-testid="planning-title"
         >
           {week ? `Semaine du ${formatLongDay(days[0]!)}` : formatLongDay(day)}
         </h2>
-        <Link
-          href={href({ jour: addDays(day, step) })}
-          className="inline-flex h-control items-center gap-1 rounded-control border border-border px-3 text-small hover:border-border-strong"
-          aria-label={week ? "Semaine suivante" : "Lendemain"}
-        >
-          <span className="hidden sm:inline">{week ? "Semaine suivante" : "Lendemain"}</span>
-          <ChevronRight aria-hidden className="size-4" />
-        </Link>
+        <Button asChild variant="secondary" size="sm">
+          <Link
+            href={href({ jour: addDays(day, step) })}
+            aria-label={week ? "Semaine suivante" : "Lendemain"}
+          >
+            <span className="hidden sm:inline">{week ? "Semaine suivante" : "Lendemain"}</span>
+            <ChevronRight aria-hidden />
+          </Link>
+        </Button>
       </nav>
       {week ? (
         <PlanningWeek shifts={shifts} days={days} today={today} meId={user.id} />
