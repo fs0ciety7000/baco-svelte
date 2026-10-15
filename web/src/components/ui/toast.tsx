@@ -18,7 +18,7 @@ function Toaster() {
           title: "text-body font-semibold text-fg",
           description: "mt-1 text-hint text-fg-muted",
           actionButton:
-            "ml-auto h-8 cursor-pointer border border-border-strong px-3 text-small text-fg hover:bg-surface",
+            "ml-auto h-8 shrink-0 cursor-pointer whitespace-nowrap border border-border-strong px-3 text-small text-fg hover:bg-surface",
           success: "border-l-ok",
           error: "border-l-danger",
           warning: "border-l-warn",
