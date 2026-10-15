@@ -151,6 +151,16 @@ describe("checkAssign — guichet B-CS", () => {
     );
   });
 
+  it("guichet d'une autre gare refusé (libellé ou clé de gare)", () => {
+    const t = niv("a", "08:00");
+    expect(checkAssign(t, { kind: "bcs", label: "Tamines" }, ctx()).reasons).toEqual([
+      "Ce guichet est à Tamines",
+    ]);
+    expect(checkAssign(t, { kind: "bcs", label: "tamines" }, ctx()).level).toBe("block");
+    expect(checkAssign(t, { kind: "bcs", label: "Nivelles" }, ctx()).level).toBe("ok");
+    expect(checkAssign(t, { kind: "bcs", label: "nivelles" }, ctx()).level).toBe("ok");
+  });
+
   it("PMR light seulement, PMR seulement, gare sans guichet", () => {
     expect(checkAssign(niv("a", "08:00", { type: "CRF" }), BCS_TARGET, ctx()).reasons).toEqual([
       "Le guichet B-CS de Nivelles ne prend que des PMR light",
@@ -323,6 +333,44 @@ describe("autoAssign", () => {
     const { proposals, unassigned } = autoAssign(tasks, ctx(tasks, solo));
     expect(proposals.map((p) => p.taskId)).toEqual(["ath"]);
     expect(unassigned[0]!.reasons[0]).toMatch(/^Trajet de 50 min depuis Ath/);
+  });
+
+  it("groupe réuni par un même train : aucune proposition refusée une fois toutes appliquées", () => {
+    // Dossier A : OUT train E1 09h00 puis IN train E2 09h20 (correspondance) ; dossier B : IN train E2 09h20.
+    const tasks = linkConnections([
+      pmr("aOut", { time: "09:00", dir: "OUT", dossier: "2026-10-15-0011", train: "E1" }),
+      pmr("aIn", { time: "09:20", dir: "IN", dossier: "2026-10-15-0011", train: "E2" }),
+      pmr("bIn", { time: "09:20", dir: "IN", dossier: "2026-10-15-0012", train: "E2" }),
+    ]);
+    const res = autoAssign(tasks, ctx(tasks));
+    const who = Object.fromEntries(res.proposals.map((p) => [p.taskId, p.target.agentId]));
+    expect(Object.keys(who).sort()).toEqual(["aIn", "aOut", "bIn"]);
+    expect(who.aIn).toBe(who.aOut);
+    expect(who.bIn).not.toBe(who.aOut);
+    const applied = tasks.map((t) => {
+      const p = res.proposals.find((x) => x.taskId === t.id);
+      return p ? { ...t, assignee: p.target } : t;
+    });
+    const after = ctx(applied);
+    const refused = applied.filter(
+      (t) => t.assignee && checkAssign(t, t.assignee, after).level === "block",
+    );
+    expect(refused.map((t) => t.id)).toEqual([]);
+    // Un seul agent : la correspondance lui revient, l'autre dossier reste à attribuer (jamais « Occupé » après coup).
+    const solo = autoAssign(tasks, ctx(tasks, [agent("o", "OPI", "FMS")]));
+    expect(solo.proposals.map((p) => p.taskId).sort()).toEqual(["aIn", "aOut"]);
+    expect(solo.unassigned.map((u) => u.taskId)).toEqual(["bIn"]);
+    expect(solo.unassigned[0]!.reasons[0]).toMatch(/^Occupé/);
+  });
+
+  it("taxi : « TAXI » n'est pas un n° de train, deux taxis qui se chevauchent sont en conflit", () => {
+    const t1 = pmr("x1", { time: "09:00", train: "TAXI", assignee: toAgent("pa1") });
+    const t2 = pmr("x2", { time: "09:05", train: "TAXI" });
+    const linked = linkConnections([t1, t2]);
+    expect(linked.every((t) => !t.linkKey)).toBe(true);
+    const r = checkAssign(linked[1]!, toAgent("pa1"), ctx(linked));
+    expect(r.level).toBe("block");
+    expect(r.reasons[0]).toMatch(/^Occupé/);
   });
 
   it("performance : 60 agents × 300 tâches en moins de 200 ms", () => {

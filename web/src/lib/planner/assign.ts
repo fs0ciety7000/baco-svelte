@@ -184,8 +184,13 @@ function groupHour(n: Norm, list: Norm[]): number {
   return hourStart(t);
 }
 
-function checkBcs(plan: Plan, n: Norm, v: Verdict) {
+function checkBcs(plan: Plan, n: Norm, v: Verdict, target?: PlannerAssignee) {
   const name = n.task.station;
+  // Guichet visé (libellé = gare du guichet ou sa clé) : celui de la gare de la tâche, jamais celui d'une autre gare.
+  if (target?.label && stationKey(target.label) !== n.st) {
+    const at = plan.bcs.get(stationKey(target.label))?.station ?? target.label;
+    return v.add("block", `Ce guichet est à ${at}`);
+  }
   if (!n.pmr) return v.add("block", "Le guichet B-CS ne prend que des prises en charge PMR");
   const c = plan.bcs.get(n.st);
   if (!c) return v.add("block", `Pas de guichet B-CS à ${name}`);
@@ -323,7 +328,7 @@ function checkIn(plan: Plan, n: Norm, target: PlannerAssignee): CheckResult {
     return v.result;
   }
   if (target.kind === "taxi" || target.kind === "cdb") return v.result;
-  if (target.kind === "bcs") checkBcs(plan, n, v);
+  if (target.kind === "bcs") checkBcs(plan, n, v, target);
   else checkAgent(plan, n, target.agentId, v);
   return v.result;
 }
@@ -529,12 +534,14 @@ export function autoAssign(tasks: PlannerTask[], ctx: PlannerContext): AutoResul
   const proposals: AutoProposal[] = [];
   const unassigned: AutoResult["unassigned"] = [];
 
-  for (const g of ordered) {
+  // Un groupe est proposé à UN destinataire ; chaque tâche est contrôlée après la pose des précédentes du groupe dans le
+  // plan (aucun chevauchement entre tâches du même groupe une fois toutes appliquées). Renvoie les raisons d'un refus.
+  const attempt = (g: Norm[]): string[] | null => {
     const extra =
       g.length > 1
         ? ` · avec ${g.length - 1} tâche${g.length > 2 ? "s" : ""} liée${g.length > 2 ? "s" : ""}`
         : "";
-    // 1. Guichet B-CS : chaque tâche contrôlée après le placement des précédentes du groupe.
+    // 1. Guichet B-CS.
     if (g.every((n) => n.pmr && n.st === g[0]!.st) && plan.bcs.has(g[0]!.st)) {
       const target: PlannerAssignee = { kind: "bcs", label: g[0]!.task.station };
       const placed: Norm[] = [];
@@ -554,7 +561,7 @@ export function autoAssign(tasks: PlannerTask[], ctx: PlannerContext): AutoResul
             target,
             reason: `Guichet B-CS de ${n.task.station}${extra}`,
           });
-        continue;
+        return null;
       }
       for (const n of placed) plan.unplace(n.task.id);
     }
@@ -567,20 +574,28 @@ export function autoAssign(tasks: PlannerTask[], ctx: PlannerContext): AutoResul
     const gs = Math.min(...g.map((n) => n.s));
     const ge = Math.max(...g.map((n) => n.e));
     const tryAgent = (st: AgentState, collect: boolean) => {
+      const target: PlannerAssignee = { kind: "agent", agentId: st.agent.id };
       let cost = preferred.has(st.agent.id) ? -100 : 0;
       let reason = "";
+      let refused = false;
+      const placed: string[] = [];
       for (const n of g) {
         const v = new Verdict();
         const p = checkAgent(plan, n, st.agent.id, v);
         if (v.level === "block") {
           if (collect) for (const r of v.reasons) why.set(r, (why.get(r) ?? 0) + 1);
-          return null;
+          refused = true;
+          break;
         }
         const c = costFor(plan, n, st, p, v.level);
         cost += c.cost;
         reason ||= c.reason;
+        // Plan temporaire : la tâche suivante du groupe est contrôlée avec celle-ci déjà posée.
+        plan.place(n, target);
+        placed.push(n.task.id);
       }
-      return { st, cost, reason };
+      for (const id of placed) plan.unplace(id);
+      return refused ? null : { st, cost, reason };
     };
     const covering = [...plan.agents.values()].filter((st) =>
       g.every((n) => plan.coverage(st.agent, n.task.station).ok),
@@ -608,7 +623,7 @@ export function autoAssign(tasks: PlannerTask[], ctx: PlannerContext): AutoResul
         plan.place(n, target);
         proposals.push({ taskId: n.task.id, target, reason: `${best.reason}${extra}` });
       }
-      continue;
+      return null;
     }
     const reasons = [...why.entries()]
       .sort((a, b) => b[1] - a[1])
@@ -617,6 +632,28 @@ export function autoAssign(tasks: PlannerTask[], ctx: PlannerContext): AutoResul
     if (reasons.length === 0)
       reasons.push(`Aucun agent en service ne couvre ${g[0]!.task.station}`);
     reasons.push("Prévoir un taxi ou le chef de bord");
+    return reasons;
+  };
+
+  for (const g of ordered) {
+    const reasons = attempt(g);
+    if (!reasons) continue;
+    // Groupe réuni par un même train (PMR de dossiers différents) mais intenable par un seul destinataire : chaque
+    // unité (correspondance, même lien, tâche seule) est retentée à part.
+    const units = new Map<string, Norm[]>();
+    for (const n of g) {
+      const k = n.link || `id:${n.task.id}`;
+      const u = units.get(k);
+      if (u) u.push(n);
+      else units.set(k, [n]);
+    }
+    if (units.size > 1) {
+      for (const u of units.values()) {
+        const r = attempt(u);
+        if (r) for (const n of u) unassigned.push({ taskId: n.task.id, reasons: r });
+      }
+      continue;
+    }
     for (const n of g) unassigned.push({ taskId: n.task.id, reasons });
   }
   return { proposals, unassigned };

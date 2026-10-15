@@ -1,10 +1,10 @@
 // Logique pure de l'écran du planificateur (vue Jour) : rangées, échelle de temps, blocs, compteurs, filtres de « À
 // attribuer », dépôt d'un glisser-déposer, attributions optimistes. Testée (`board.test.ts`) ; aucun DOM ici.
 
-import { brusselsToUtc } from "@/lib/orders/time";
+import { addDays, brusselsToUtc } from "@/lib/orders/time";
 
 import { checkAssign } from "./assign";
-import { isCancelled, isPmr, stationKey } from "./window";
+import { isCancelled, isPmr, stationKey, trainNorm } from "./window";
 import { MINUTE, hhmm, isWeekendOrHoliday, toMs } from "./time";
 import type {
   BcsCounter,
@@ -77,9 +77,12 @@ export function dayBounds(
   agents: readonly PlannerAgent[],
   tasks: readonly PlannerTask[] = [],
 ): DayBounds {
+  // Bornes en heure de Bruxelles (jour de 23 ou 25 h au changement d'heure : jamais minuit + N × 1 h).
   const midnight = toMs(brusselsToUtc(day, "00:00"));
-  let start = midnight + 4 * HOUR;
-  let end = midnight + 24 * HOUR;
+  const nextMidnight = toMs(brusselsToUtc(addDays(day, 1), "00:00"));
+  const nightLimit = toMs(brusselsToUtc(addDays(day, 1), "08:00"));
+  let start = toMs(brusselsToUtc(day, "04:00"));
+  let end = nextMidnight;
   const times: number[] = [];
   for (const a of agents) for (const s of a.shifts) times.push(toMs(s.start), toMs(s.end));
   for (const t of tasks) times.push(toMs(t.start), toMs(t.end));
@@ -88,7 +91,7 @@ export function dayBounds(
     // Nuit de la veille qui déborde sur le jour : l'axe commence au plus tôt à minuit.
     if (x < start) start = Math.max(midnight, midnight + Math.floor((x - midnight) / HOUR) * HOUR);
     if (x > end)
-      end = Math.min(midnight + 32 * HOUR, midnight + Math.ceil((x - midnight) / HOUR) * HOUR);
+      end = Math.min(nightLimit, nextMidnight + Math.ceil((x - nextMidnight) / HOUR) * HOUR);
   }
   return { midnight, start, end };
 }
@@ -122,8 +125,8 @@ export type Block = {
 /** Clé de regroupement : plusieurs PMR d'un même train, même gare, même heure = un seul bloc (« 2 PMR · 1925 »). */
 function blockKey(t: PlannerTask): string {
   if (t.linkKey?.startsWith("tr:")) return t.linkKey;
-  if (isPmr(t) && t.train && t.trainAt)
-    return `tr:${t.train.replace(/\s+/g, "").toUpperCase()}:${stationKey(t.station)}:${toMs(t.trainAt)}`;
+  if (isPmr(t) && trainNorm(t.train) && t.trainAt)
+    return `tr:${trainNorm(t.train)}:${stationKey(t.station)}:${toMs(t.trainAt)}`;
   return `id:${t.id}`;
 }
 
@@ -184,16 +187,23 @@ export function conflictsOf(ctx: PlannerContext): Map<string, CheckResult> {
 
 export type BoardCounters = { toAssign: number; conflicts: number; coverage: number; pmr: number };
 
+/**
+ * Compteurs du jour. `day` donné : seules les tâches de ce jour de planification comptent (celles de la veille au soir
+ * et de la nuit suivante, chargées pour les contrôles et l'affichage, sont comptées sur leur propre jour).
+ */
 export function boardCounters(
   ctx: PlannerContext,
   conflicts: Map<string, CheckResult>,
+  day?: string,
 ): BoardCounters {
-  const pmr = ctx.tasks.filter((t) => isPmr(t) && !isCancelled(t));
+  const own = day ? ctx.tasks.filter((t) => t.day === day) : ctx.tasks;
+  const ids = new Set(own.map((t) => t.id));
+  const pmr = own.filter((t) => isPmr(t) && !isCancelled(t));
   const covered = pmr.filter(isAssigned).length;
   let n = 0;
-  for (const r of conflicts.values()) if (r.level === "block") n++;
+  for (const [id, r] of conflicts) if (r.level === "block" && ids.has(id)) n++;
   return {
-    toAssign: ctx.tasks.filter(isTodo).length,
+    toAssign: own.filter(isTodo).length,
     conflicts: n,
     coverage: pmr.length ? Math.round((covered / pmr.length) * 100) : 100,
     pmr: pmr.length,
@@ -234,14 +244,19 @@ export function dropVerdict(
   let level: CheckResult["level"] = "ok";
   const reasons: string[] = [];
   const who = assigneeOf(target);
+  // Plan temporaire : chaque tâche déposée est contrôlée APRÈS la pose des précédentes (chevauchements entre elles,
+  // limite de voyageurs par heure d'un guichet B-CS).
+  let cur = ctx;
   for (const id of ids) {
-    const t = ctx.tasks.find((x) => x.id === id);
+    const t = cur.tasks.find((x) => x.id === id);
     if (!t) continue;
     // Déposer une tâche sur sa propre destination : rien à faire.
     if (sameAssignee(t.assignee, who)) continue;
-    const r = checkAssign(t, who, ctx);
+    const r = checkAssign(t, who, cur);
     if (rank[r.level] > rank[level]) level = r.level;
     for (const x of r.reasons) if (!reasons.includes(x)) reasons.push(x);
+    const placed: PlannerTask = { ...t, assignee: who };
+    cur = { ...cur, tasks: cur.tasks.map((x) => (x.id === id ? placed : x)) };
   }
   return { level, reasons };
 }
@@ -441,6 +456,7 @@ export function taskName(t: PlannerTask): string {
     t.station ? `à ${t.station}` : "",
     `${hhmm(toMs(t.start))}-${hhmm(toMs(t.end))}`,
     isPending(t) ? "en attente DICOS" : "",
+    t.dicosChanged && !isCancelled(t) ? "modifiée par DICOS" : "",
     isCancelled(t) ? "annulée" : "",
   ];
   return parts.filter(Boolean).join(", ");

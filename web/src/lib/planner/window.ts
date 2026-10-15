@@ -58,7 +58,11 @@ export function taskWindow(
 }
 
 const ownKey = (k: string | undefined) => !!k && (k.startsWith("cx:") || k.startsWith("tr:"));
-const trainNorm = (t: string | undefined) => (t ?? "").replace(/\s+/g, "").toUpperCase();
+/** N° de train normalisé ; « TAXI » (prise en charge par taxi venue de DICOS) n'est jamais un n° de train. */
+const trainNorm = (t: string | undefined) => {
+  const n = (t ?? "").replace(/\s+/g, "").toUpperCase();
+  return n === "TAXI" ? "" : n;
+};
 
 /**
  * Recalcule les fenêtres et les liens :

@@ -52,6 +52,8 @@ export type PlannerTask = {
   status: PlannerTaskStatus;
   /** Lien entre tâches à traiter ensemble : `cx:…` correspondance OUT → IN, `tr:…` plusieurs PMR d'un même train. */
   linkKey?: string;
+  /** Gare, heure ou jour changé par DICOS après l'attribution : à revoir (effacé à la réattribution ou à « faite »). */
+  dicosChanged?: boolean;
   /** Libellé d'une tâche technique ou libre (« EDF RE1707 M7 »). */
   label?: string;
 };

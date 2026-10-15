@@ -55,6 +55,16 @@ describe("rangées et axe", () => {
     const day = dayBounds(DAY, [AGENTS[0]!]);
     expect(day.end - day.midnight).toBe(24 * 3600_000);
   });
+
+  it("changement d'heure (25 oct. 2026, jour de 25 h) : bornes en heure de Bruxelles", () => {
+    const D = "2026-10-25";
+    const b = dayBounds(D, [agent("x", "CPI", "FMS", [["06:00", "14:00"]], D)]);
+    expect(b.start).toBe(Date.parse(at("04:00", D)));
+    expect(b.end).toBe(Date.parse(at("00:00", "2026-10-26")));
+    expect(b.end - b.midnight).toBe(25 * 3600_000);
+    const night = dayBounds(D, [agent("n", "SPI", "FMS", [["22:00", "09:00"]], D)]);
+    expect(night.end).toBe(Date.parse(at("08:00", "2026-10-26")));
+  });
 });
 
 describe("blocs", () => {
@@ -127,6 +137,48 @@ describe("glisser-déposer", () => {
     expect(occ.level).toBe("block");
     expect(isBusyRefusal(occ)).toBe(true);
     expect(dropVerdict(["t"], { kind: "taxi" }, c).level).toBe("ok");
+  });
+
+  it("plusieurs tâches déposées : contrôle cumulé (B-CS 3 voyageurs par heure, chevauchements)", () => {
+    const n = (id: string, time: string) => pmr(id, { time, station: "Nivelles", train: `N${id}` });
+    const tasks = [n("a", "08:00"), n("b", "08:10"), n("c", "08:20"), n("d", "08:30")];
+    const c = ctx(tasks);
+    // Chacune seule passe ; ensemble, la quatrième dépasse la limite.
+    for (const t of tasks)
+      expect(dropVerdict([t.id], { kind: "bcs", station: "Nivelles" }, c).level).toBe("ok");
+    const all = dropVerdict(["a", "b", "c", "d"], { kind: "bcs", station: "nivelles" }, c);
+    expect(all.level).toBe("block");
+    expect(all.reasons[0]).toMatch(/^Guichet B-CS de Nivelles complet : 3\/3/);
+    // Deux trains différents qui se chevauchent sur le même agent.
+    const two = [pmr("x", { time: "09:00", train: "1" }), pmr("y", { time: "09:05", train: "2" })];
+    expect(dropVerdict(["x", "y"], { kind: "agent", agentId: "ms-opi" }, ctx(two)).level).toBe(
+      "block",
+    );
+    // Guichet d'une autre gare.
+    expect(dropVerdict(["a"], { kind: "bcs", station: "Tamines" }, c).reasons).toEqual([
+      "Ce guichet est à Tamines",
+    ]);
+  });
+});
+
+describe("tâches des jours voisins", () => {
+  it("compteurs par jour de planification (veille au soir et nuit suivante non comptées)", () => {
+    const todo = pmr("todo", { time: "11:00" });
+    const nextNight = pmr("nn", { time: "03:00", day: "2026-10-16" });
+    const prevEve = pmr("pe", {
+      time: "21:00",
+      day: "2026-10-14",
+      assignee: toAgent("ms-pa"),
+      status: "attribuee",
+    });
+    const c = ctx([todo, nextNight, prevEve]);
+    expect(boardCounters(c, conflictsOf(c), DAY)).toEqual({
+      toAssign: 1,
+      conflicts: 0,
+      coverage: 0,
+      pmr: 1,
+    });
+    expect(boardCounters(c, conflictsOf(c)).toAssign).toBe(2);
   });
 });
 
