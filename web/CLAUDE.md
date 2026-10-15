@@ -690,7 +690,8 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - **Widget « Fin de service »** (`service`, 11 oct. 2026) : `lib/shift.ts` (AM 06–14, PM 14–22, Nuit 22–06, Extra 08–16,
   heures de Bruxelles ; `shiftDayFor` : nuit choisie après minuit = nuit de la veille ; `shiftState`, `isStale` après 6 h ;
   testés), choix dans `users.preferences.shift` (`saveShift`, `dashboard-actions.ts`), `components/dashboard/shift-widget.tsx`
-  (décompte rendu après montage, chaque seconde, arrêté onglet caché). `normalizeLayout` le place en tête des dispositions
+  (premier rendu à l'heure du serveur `renderedAt`, identique serveur / hydratation, puis chaque seconde, arrêté onglet
+  caché ; l'ancien espace réservé de 72 px faisait sauter l'accueil mobile de 54 px, 15 oct. 2026). `normalizeLayout` le place en tête des dispositions
   existantes ; les autres nouveaux widgets vont à la fin.
 - **Statut par bout (IN / OUT)** (12 oct. 2026) : `pmr_assists` / `group_missions` ont `in_status` et `out_status`
   (`1760003300`). `endStatus`, `combineStatus`, `mergeEnds` (`lib/pmr/dicos-mission.ts`, testés) : un trajet n'est
@@ -767,6 +768,12 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   (HEAD) dans `scheduler.ts` toutes les 3 h, comparé à `gtfsModified` de l'état.
 - **Recherche pendant la frappe** : `<FormAutoSubmit live />` (debounce 450 ms sur les champs texte, focus et curseur rendus
   après la navigation via `globalThis.__csmLiveFocus`) dans Ressources › Gares, Lignes et Trains.
+  **Piège (15 oct. 2026)** : au remontage de `FilterForm`, React retire l'ancien formulaire avec le champ encore focalisé ;
+  Chrome émet `blur` puis `change` pendant le commit, et un `requestSubmit()` lancé à ce moment n'est pas intercepté par
+  `next/form` → soumission native, navigation document complète. `FormAutoSubmit` pose donc ses écouteurs en
+  **`useLayoutEffect`** (nettoyés avant le retrait du DOM), ignore `change` des champs texte en mode `live` et vérifie
+  `form.isConnected`. Un nouvel écouteur qui soumet un `FilterForm` doit suivre la même règle. E2E « recherche pendant la
+  frappe » de `e2e/motion.spec.ts` (marque sur `window` + aucune requête de navigation).
 - **Cloche par districts du jour** : `notificationScope()` (`server/data/ops.ts`) filtre `listNotifications` et « Tout marquer
   lu » ; `DUTY_CHANGED` (`lib/team.ts`) émis par `DutyDialog` et le profil après `setDutyDistricts`, la cloche recharge et
   ré-amorce (pas de notification du navigateur pour celles qui réapparaissent).

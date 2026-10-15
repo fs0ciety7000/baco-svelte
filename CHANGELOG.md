@@ -72,6 +72,7 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 - Les districts du jour changés dans un onglet se mettent à jour dans les autres onglets CSM ouverts.
 - Bon taxi : l'action principale s'appelle « Terminer » (et non « Terminer (bus démobilisés) »).
 - Pendant une mise à jour de CSM (une trentaine de secondes), la page d'erreur réessaie toute seule dès que le serveur répond, au lieu de rester sur « momentanément indisponible ».
+- Réseau › Gares, Horaires et Lignes : la recherche pendant la frappe ne recharge plus toute la page ; le curseur reste dans le champ. Sur l'accueil mobile, le widget « Fin de service » ne fait plus sauter les cartes en dessous à l'ouverture.
 
 ### Sécurité
 
