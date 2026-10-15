@@ -20,8 +20,9 @@ import { cn } from "@/lib/utils";
 import { saveShift } from "@/app/dashboard-actions";
 
 // Widget « Fin de service » (11 oct. 2026) : l'agent choisit son service, l'accueil décompte le temps restant.
-// Rendu du décompte après le montage seulement (l'heure du serveur et du navigateur diffèrent : pas d'erreur
-// d'hydratation) ; une mise à jour par seconde, arrêtée onglet caché.
+// Premier rendu (serveur ET hydratation) à l'heure du rendu serveur (`renderedAt`) : même contenu des deux côtés, donc
+// ni erreur d'hydratation ni saut de mise en page (CLS de 54 px en mobile avec l'ancien espace réservé, 15 oct.) ;
+// l'heure du navigateur prend le relais au montage, une mise à jour par seconde, arrêtée onglet caché.
 
 /** Prestation Quinyx du jour (rattachement validé par un admin) : prend le pas sur les horaires supposés. */
 export type QuinyxShift = { start: string; end: string; label: string; kind: ShiftKind | "autre" };
@@ -29,12 +30,15 @@ export type QuinyxShift = { start: string; end: string; label: string; kind: Shi
 export function ShiftWidget({
   initial,
   quinyx = null,
+  renderedAt,
 }: {
   initial: ShiftChoice | null;
   quinyx?: QuinyxShift | null;
+  /** Heure du rendu serveur (ms) : sans elle, le décompte n'apparaît qu'après le montage. */
+  renderedAt?: number;
 }) {
   const [choice, setChoice] = useState(initial);
-  const [now, setNow] = useState<Date | null>(null);
+  const [now, setNow] = useState<Date | null>(() => (renderedAt ? new Date(renderedAt) : null));
   const [pending, start] = useTransition();
 
   useEffect(() => {
