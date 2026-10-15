@@ -42,7 +42,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
       <div className={TOOLBAR} data-testid="users-toolbar">
         <FilterForm action="/admin" role="search" className="contents">
           <ToolbarSearch defaultValue={f.q} placeholder="Nom, e-mail, identifiant…" />
-          <label className="min-w-0 flex-1 md:w-48 md:flex-none">
+          <label className="min-w-44 flex-1 md:min-w-0 md:w-48 md:flex-none">
             <span className="sr-only">Rôle</span>
             <CustomSelect
               name="role"

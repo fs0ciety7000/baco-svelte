@@ -225,7 +225,7 @@ async function RelationsView({ sp, q }: { sp: Search; q: string }) {
           placeholder="Relation ou train (IC14, 1706)…"
           maxLength={40}
         />
-        <label className="min-w-0 flex-1 md:w-44 md:flex-none">
+        <label className="min-w-44 flex-1 md:min-w-0 md:w-44 md:flex-none">
           <span className="sr-only">Type</span>
           <CustomSelect
             name="type"
@@ -241,7 +241,7 @@ async function RelationsView({ sp, q }: { sp: Search; q: string }) {
             ]}
           />
         </label>
-        <label className="min-w-0 flex-1 md:w-48 md:flex-none">
+        <label className="min-w-44 flex-1 md:min-w-0 md:w-48 md:flex-none">
           <span className="sr-only">Ligne</span>
           <Combobox
             name="ligne"

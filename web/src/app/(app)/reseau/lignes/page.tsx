@@ -87,7 +87,7 @@ export default async function Page({
           defaultValue={gare}
           placeholder="Gare : nom FR / NL ou abréviation (FMS)…"
         />
-        <label className="min-w-0 flex-1 md:w-52 md:flex-none">
+        <label className="min-w-44 flex-1 md:min-w-0 md:w-52 md:flex-none">
           <span className="sr-only">District</span>
           <MultiSelect
             name="district"

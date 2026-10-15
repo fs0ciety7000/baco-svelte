@@ -29,7 +29,7 @@ export default async function Page({
     `/pmr/clients?${new URLSearchParams({ ...(sp.q ? { q: sp.q } : {}), ...(archived ? { archives: "1" } : {}), page: String(page) })}`;
   return (
     <section className="flex flex-col gap-4" aria-label="Clients PMR">
-      {/* Barre d'outils sur une ligne (v4 lot 6) : fiches actives / archivées, recherche, direct à droite. */}
+      {/* Barre d'outils sur une ligne (v4 lot 6) : fiches actives / archivées, recherche. */}
       <FilterForm
         action="/pmr/clients"
         role="search"
@@ -49,20 +49,20 @@ export default async function Page({
         <button type="submit" tabIndex={-1} aria-hidden className="sr-only">
           Rechercher
         </button>
-        <span className="ml-auto">
-          <LiveRefresh topics={["pmr_clients"]} />
-        </span>
       </FilterForm>
       <ClientBoard
         status={
-          <ListCount
-            n={list.total}
-            label={
-              archived
-                ? pl(list.total, "fiche archivée", "fiches archivées")
-                : pl(list.total, "fiche")
-            }
-          />
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <ListCount
+              n={list.total}
+              label={
+                archived
+                  ? pl(list.total, "fiche archivée", "fiches archivées")
+                  : pl(list.total, "fiche")
+              }
+            />
+            <LiveRefresh topics={["pmr_clients"]} />
+          </span>
         }
         rows={list.rows}
         canWrite={can(user, "pmr:write")}

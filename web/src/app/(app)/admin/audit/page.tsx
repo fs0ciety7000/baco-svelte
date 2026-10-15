@@ -68,7 +68,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
           placeholder="Collection (ex. bus_orders)"
           maxLength={100}
         />
-        <label className="min-w-0 flex-1 md:w-44 md:flex-none">
+        <label className="min-w-44 flex-1 md:min-w-0 md:w-44 md:flex-none">
           <span className="sr-only">Action</span>
           <Select
             name="action"

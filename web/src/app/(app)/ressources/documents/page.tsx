@@ -61,7 +61,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
           defaultValue={q}
           placeholder={vue === "documents" ? "Nom du fichier…" : "Titre ou contenu…"}
         />
-        <label className="min-w-0 flex-1 md:w-48 md:flex-none">
+        <label className="min-w-44 flex-1 md:min-w-0 md:w-48 md:flex-none">
           <span className="sr-only">Catégorie</span>
           <Select
             name="categorie"

@@ -104,7 +104,7 @@ async function ArchivedOrders({ sp, user }: { sp: SP; user: SessionUser }) {
           placeholder="Gare, relation, n°…"
           maxLength={100}
         />
-        <label className="min-w-0 flex-1 md:w-40 md:flex-none">
+        <label className="min-w-44 flex-1 md:min-w-0 md:w-40 md:flex-none">
           <span className="sr-only">Type</span>
           <Select
             name="type"
@@ -191,7 +191,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         <ArchiveTabs vue="pdf" />
         <input type="hidden" name="vue" value="pdf" />
         <ToolbarSearch defaultValue={sp.q ?? ""} placeholder="TC_…, n° de taxi, gare…" />
-        <label className="min-w-0 flex-1 md:w-40 md:flex-none">
+        <label className="min-w-44 flex-1 md:min-w-0 md:w-40 md:flex-none">
           <span className="sr-only">Type</span>
           <Select
             name="type"
@@ -204,7 +204,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             ]}
           />
         </label>
-        <label className="min-w-0 flex-1 md:w-44 md:flex-none">
+        <label className="min-w-44 flex-1 md:min-w-0 md:w-44 md:flex-none">
           <span className="sr-only">Mois</span>
           <MonthField name="mois" defaultValue={sp.mois ?? ""} />
         </label>

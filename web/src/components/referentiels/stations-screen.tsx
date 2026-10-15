@@ -65,7 +65,7 @@ export async function StationsScreen({
       <FilterForm action={action} role="search" className={TOOLBAR} data-testid="stations-toolbar">
         <FormAutoSubmit live />
         <ToolbarSearch label="Gare" defaultValue={f.q} placeholder="Gare ou abréviation (FMS)…" />
-        <label className="min-w-0 flex-1 md:w-52 md:flex-none">
+        <label className="min-w-44 flex-1 md:min-w-0 md:w-52 md:flex-none">
           <span className="sr-only">District</span>
           <MultiSelect
             name="district"

@@ -71,7 +71,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
           ]}
         />
         {week ? <input type="hidden" name="vue" value="semaine" /> : null}
-        <label className="min-w-0 flex-1 md:w-44 md:flex-none">
+        <label className="min-w-44 flex-1 md:min-w-0 md:w-44 md:flex-none">
           <span className="sr-only">Jour</span>
           <DateField name="jour" defaultValue={day} />
         </label>
