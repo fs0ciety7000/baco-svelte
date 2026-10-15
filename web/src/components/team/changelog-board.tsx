@@ -76,9 +76,9 @@ export function ChangelogBoard({ items, canEdit }: { items: ChangelogEntry[]; ca
             <li key={c.id} className="relative">
               <span
                 aria-hidden
-                className="absolute top-2 -left-[25px] size-2.5 border border-border-strong bg-accent"
+                className="absolute top-2 -left-[25px] size-2.5 rounded-full border-2 border-bg bg-fg-subtle"
               />
-              <article className="flex flex-col gap-2 border border-border bg-surface p-4">
+              <article className="flex flex-col gap-2 border border-(--card-frame) bg-surface p-4 rounded-box shadow-rest">
                 <header className="flex flex-wrap items-center gap-2">
                   <Badge tone={TYPES[c.type].tone}>{TYPES[c.type].label}</Badge>
                   <h3 className="text-body-lg font-semibold">{c.title}</h3>

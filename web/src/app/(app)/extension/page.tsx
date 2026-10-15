@@ -72,7 +72,7 @@ export default async function Page() {
                 {release.files.map((f) => (
                   <li
                     key={f.name}
-                    className="flex min-w-0 flex-col gap-2 rounded-box border border-border p-3"
+                    className="flex min-w-0 flex-col gap-2 rounded-box bg-surface-2 p-3"
                   >
                     <p className="text-body font-semibold">{BROWSER[f.browser]}</p>
                     <Button asChild variant={f.browser === "firefox" ? "secondary" : "primary"}>

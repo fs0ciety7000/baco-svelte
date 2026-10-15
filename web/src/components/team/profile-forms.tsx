@@ -105,7 +105,7 @@ function PhotoCard({ profile }: { profile: MyProfile }) {
           avatar={profile.avatar}
           role={profile.role}
           large
-          className="size-20 text-h3"
+          className="size-20 rounded-[min(var(--r-box),12px)] text-h3"
         />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="truncate text-h3 font-semibold text-fg">{profile.name}</span>

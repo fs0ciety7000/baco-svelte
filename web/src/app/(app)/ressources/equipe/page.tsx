@@ -45,6 +45,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             label="Districts"
             options={DISTRICT_NAME_OPTIONS}
             defaultValues={parseDistricts(f.district, DISTRICT_NAMES)}
+            data-testid="district-picker"
           />
         </div>
         <FilterSubmit />

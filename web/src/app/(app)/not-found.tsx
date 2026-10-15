@@ -13,6 +13,8 @@ export default function AppNotFound() {
     <div className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-10 md:px-6">
       <h1 className="sr-only">Page introuvable</h1>
       <EmptyState
+        variant="first"
+        className="border-solid border-(--card-frame) bg-surface shadow-rest"
         icon={<SearchX className="size-6" />}
         title="Page introuvable"
         description="Cette page n'existe pas, a été supprimée ou n'est pas accessible avec ton compte. Si tu suivais un lien, il est peut-être périmé."

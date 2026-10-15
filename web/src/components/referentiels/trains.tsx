@@ -105,7 +105,7 @@ export function StopList({
             key={`s${i}`}
             className={cn(
               "grid grid-cols-[3.25rem_minmax(0,1fr)_auto] items-baseline gap-2 border-l-2 py-1 pl-3",
-              r.s.p ? "border-dashed border-border text-fg-muted" : "border-accent",
+              r.s.p ? "border-dashed border-border text-fg-muted" : "border-fg",
             )}
           >
             <span className="font-mono text-small tabular">{r.s.d || r.s.a || ""}</span>

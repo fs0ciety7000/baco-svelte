@@ -137,7 +137,7 @@ function Panel({
     <section
       data-tv-panel
       className={cn(
-        "flex min-h-0 min-w-0 flex-col gap-3 border border-border bg-surface p-4",
+        "flex min-h-0 min-w-0 flex-col gap-3 border border-(--card-frame) bg-surface p-4 rounded-box shadow-rest",
         className,
       )}
       aria-label={title}

@@ -14,9 +14,9 @@ export const metadata: Metadata = { title: "Page introuvable · CSM" };
 export default function NotFound() {
   return (
     <main className="grid min-h-dvh place-items-center bg-bg px-4 py-10">
-      <div className="chamfer flex w-full max-w-md flex-col gap-3 p-6 md:p-8">
+      <div className="chamfer flex w-full max-w-md flex-col gap-3 p-6 shadow-rest [--frame:var(--card-frame)] md:p-8">
         <p className="flex items-center gap-2.5">
-          <span aria-hidden className="size-2.5 bg-accent" />
+          <span aria-hidden className="size-2.5 rounded-[min(var(--r-control),3px)] bg-fg" />
           <span className="display text-h3 tracking-wider">CSM</span>
         </p>
         <p className="label-mono mt-3 text-fg-muted">Erreur 404</p>

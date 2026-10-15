@@ -633,7 +633,7 @@ export function JournalChat({
         {pinned.length ? (
           <section
             aria-label="Consignes épinglées"
-            className="border-b border-border bg-accent-faint"
+            className="border-b border-border bg-surface-2"
             data-testid="log-pinned"
           >
             <button
@@ -642,7 +642,7 @@ export function JournalChat({
               aria-expanded={pinsOpen}
               onClick={() => setPinsOpen((o) => !o)}
             >
-              <Pin aria-hidden className="size-4 shrink-0 text-accent" />
+              <Pin aria-hidden className="size-4 shrink-0 text-info" />
               <span className="label-mono shrink-0 text-fg-muted tabular">
                 {pinned.length} consigne{pinned.length > 1 ? "s" : ""}
               </span>
