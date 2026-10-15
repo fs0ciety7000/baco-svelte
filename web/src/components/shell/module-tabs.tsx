@@ -8,7 +8,7 @@ import { type CSSProperties, useEffect, useId, useLayoutEffect, useRef, useState
 
 import { modColor } from "@/design/module-color";
 
-import { useSlideIndicator } from "@/lib/motion";
+import { useSlideIndicator } from "@/lib/motion-core";
 import { cn } from "@/lib/utils";
 import { activeTab, type NavTab } from "@/navigation";
 

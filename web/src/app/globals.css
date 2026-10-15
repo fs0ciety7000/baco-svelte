@@ -159,9 +159,9 @@
   --control-h-sm: 2rem;
   --row-h: var(--theme-row-h, 2.5rem);
   --field-h: var(--theme-field-h, 2.375rem);
-  /* Durées du mouvement (miroir de MOTION dans src/lib/motion.ts). */
+  /* Durées du mouvement (miroir de MOTION dans src/lib/motion-core.ts). */
   --d-micro: 150ms;
-  --d-enter: 240ms;
+  --d-enter: 320ms;
   --d-panel: 260ms;
   --d-exit: 160ms;
   --d-highlight: 1200ms;
@@ -448,16 +448,44 @@
   }
 }
 
-/* Intro de la page de connexion (GSAP) : masquée dès le premier rendu, repli visible après 1,2 s sans JS. */
+/* Intro de la page de connexion (CSS depuis le lot 5, minutage de l'ancienne frise GSAP) : lettres de « CSM » une à une
+   (500 ms, 70 ms d'écart), filet tracé à 390 ms, sourcil et sous-titre en fondu à 540 / 600 ms. `--i` = rang. */
 @media (prefers-reduced-motion: no-preference) {
-  .intro-hide {
-    opacity: 0;
-    animation: intro-fallback 0s 1.2s forwards;
+  .intro-char {
+    animation: intro-char 500ms var(--ease-hud) calc(var(--i, 0) * 70ms) both;
+  }
+  .intro-rule {
+    animation: intro-rule 450ms var(--ease-hud) 390ms both;
+  }
+  .intro-fade {
+    animation: enter-in 350ms var(--ease-hud) calc(540ms + var(--i, 0) * 60ms) both;
   }
 }
-@keyframes intro-fallback {
-  to {
-    opacity: 1;
+@keyframes intro-char {
+  from {
+    opacity: 0;
+    transform: translateY(110%);
+  }
+}
+@keyframes intro-rule {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* Arrivée de page et cascades (refonte v4, lot 5) : fondu + 6 px, 320 ms, longue traîne ; `playEnter()`
+   (src/lib/motion-core.ts) pose la classe et `--enter-delay` (40 ms par bloc, 4 au plus) puis la retire à la fin.
+   `transform` + `opacity` seulement ; `will-change` seulement pendant l'animation. Rien en mouvement réduit. */
+@keyframes enter-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .motion-enter {
+    animation: enter-in var(--d-enter) var(--ease-out) var(--enter-delay, 0ms) both;
+    will-change: transform, opacity;
   }
 }
 

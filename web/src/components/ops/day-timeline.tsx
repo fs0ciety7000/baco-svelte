@@ -2,11 +2,19 @@
 
 import { Bus, CarTaxiFront, TrainFront, Users } from "lucide-react";
 import Link from "next/link";
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  Fragment,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { DelayBadge } from "@/components/pmr/train-chip";
 import { EmptyState } from "@/components/ui/misc";
-import { gsap, MOTION, MOTION_OK, useGSAP } from "@/lib/motion";
+import { animateFrom, EASE, MOTION, reducedMotion } from "@/lib/motion-core";
 import {
   fromMinutes,
   hourRange,
@@ -139,57 +147,52 @@ function Desktop({
   }, [context]);
 
   // Entrée : le trait « maintenant » descend, les queues de retard s'étirent ; au changement de filtre, les éléments
-  // apparaissent de gauche à droite. Jamais au premier rendu pour le contenu (déjà peint par le serveur).
-  useGSAP(
-    () => {
-      const mm = gsap.matchMedia();
-      mm.add(MOTION_OK, () => {
-        if (nowLine.current)
-          gsap.from(nowLine.current, {
-            scaleY: 0,
-            transformOrigin: "top",
-            duration: 0.5,
-            ease: "hud",
-          });
-        gsap.from("[data-delay-tail]", {
-          scaleX: 0,
-          transformOrigin: "left",
-          duration: 0.6,
-          delay: 0.15,
-          ease: "hud",
-          stagger: 0.02,
-        });
-        if (!firstRun.current)
-          gsap.from("[data-timeline-item]", {
-            autoAlpha: 0,
-            x: -8,
-            duration: MOTION.enter,
-            ease: "hud",
-            stagger: { each: 0.012, from: "start" },
-            clearProps: "opacity,visibility,transform",
-          });
-      });
-      firstRun.current = false;
-      return () => mm.revert();
-    },
-    { scope, dependencies: [context] },
-  );
+  // apparaissent de gauche à droite. Jamais au premier rendu pour le contenu (déjà peint par le serveur). Web Animations
+  // sans GSAP (lot 5) : `scale` (propriété à part, le trait est placé par `left` et glisse par `transform`) et `opacity`.
+  useLayoutEffect(() => {
+    const root = scope.current;
+    const stops: (() => void)[] = [];
+    if (nowLine.current)
+      stops.push(
+        animateFrom([nowLine.current], { scale: "1 0", transformOrigin: "top" }, { duration: 500 }),
+      );
+    if (root) {
+      stops.push(
+        animateFrom(
+          root.querySelectorAll("[data-delay-tail]"),
+          { scale: "0 1", transformOrigin: "left" },
+          { duration: 600, delay: 150, stagger: 20, maxDelay: 450 },
+        ),
+      );
+      if (!firstRun.current)
+        stops.push(
+          animateFrom(
+            root.querySelectorAll("[data-timeline-item]"),
+            { opacity: 0, transform: "translateX(-8px)" },
+            { duration: MOTION.enter * 1000, stagger: 12, maxDelay: 300 },
+          ),
+        );
+    }
+    firstRun.current = false;
+    return () => stops.forEach((stop) => stop());
+  }, [context]);
 
-  // Le trait avance en douceur (pas de saut à chaque rafraîchissement de 30 s).
-  useGSAP(
-    () => {
-      if (!nowLine.current) return;
-      const mm = gsap.matchMedia();
-      mm.add(MOTION_OK, () => {
-        gsap.to(nowLine.current, { left: x(now) + LABEL_W, duration: 1, ease: "hud" });
-      });
-      mm.add("(prefers-reduced-motion: reduce)", () => {
-        gsap.set(nowLine.current, { left: x(now) + LABEL_W });
-      });
-      return () => mm.revert();
-    },
-    { dependencies: [now, from] },
-  );
+  // Le trait avance en douceur (pas de saut à chaque rafraîchissement de 30 s) : `left` posé par le rendu, glissement
+  // rejoué en `transform` depuis l'ancienne place (FLIP), jamais d'animation de `left`.
+  const lastLeft = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const el = nowLine.current;
+    const left = x(now) + LABEL_W;
+    const was = lastLeft.current;
+    lastLeft.current = left;
+    if (!el || was === null || was === left || reducedMotion()) return;
+    const anim = el.animate(
+      [{ transform: `translateX(${was - left}px)` }, { transform: "translateX(0)" }],
+      { duration: 1000, easing: EASE.hud },
+    );
+    return () => anim.cancel();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [now, from]);
 
   const hours: number[] = [];
   for (let h = from; h <= to; h += 60) hours.push(h);
@@ -351,22 +354,11 @@ function Mobile({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [context]);
 
-  useGSAP(
-    () => {
-      const mm = gsap.matchMedia();
-      mm.add(MOTION_OK, () => {
-        if (marker.current)
-          gsap.from(marker.current.querySelector("[data-now-bar]"), {
-            scaleX: 0,
-            transformOrigin: "left",
-            duration: 0.5,
-            ease: "hud",
-          });
-      });
-      return () => mm.revert();
-    },
-    { scope, dependencies: [context] },
-  );
+  useLayoutEffect(() => {
+    const bar = marker.current?.querySelector("[data-now-bar]");
+    if (!bar) return;
+    return animateFrom([bar], { scale: "0 1", transformOrigin: "left" }, { duration: 500 });
+  }, [context]);
 
   const nowRow = (
     <li ref={marker} className="flex items-center gap-2 py-1" data-testid="timeline-now-mobile">

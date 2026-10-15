@@ -10,9 +10,9 @@ import {
   Users,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
-import { gsap, MOTION_OK, useGSAP } from "@/lib/motion";
+import { animateFrom } from "@/lib/motion-core";
 import type { Handover, HandoverLeg } from "@/lib/ops/handover";
 import type { BoardRow } from "@/lib/ops/irail";
 import { cn, pl } from "@/lib/utils";
@@ -214,23 +214,16 @@ export function TvBoard({
     const t = window.setInterval(() => router.refresh(), 60_000);
     return () => window.clearInterval(t);
   }, [router]);
-  // Entrée douce des panneaux (une fois) ; rien qui boucle à l'écran.
-  useGSAP(
-    () => {
-      const mm = gsap.matchMedia();
-      mm.add(MOTION_OK, () => {
-        gsap.from("[data-tv-panel]", {
-          autoAlpha: 0,
-          y: 10,
-          duration: 0.4,
-          stagger: 0.06,
-          ease: "hud",
-        });
-      });
-      return () => mm.revert();
-    },
-    { scope: scopeRef },
-  );
+  // Entrée douce des panneaux (une fois) ; rien qui boucle à l'écran. Web Animations, sans GSAP (lot 5).
+  useLayoutEffect(() => {
+    const root = scopeRef.current;
+    if (!root) return;
+    return animateFrom(
+      root.querySelectorAll("[data-tv-panel]"),
+      { opacity: 0, transform: "translateY(10px)" },
+      { duration: 400, stagger: 60, maxDelay: 360 },
+    );
+  }, []);
 
   const nowMin = clock ? minutes(clock.time) : null;
   const next = data.upcoming.filter((l) => {

@@ -71,6 +71,61 @@ test("l'accueil ne clignote pas au premier affichage", async ({ page }) => {
   expect(min, "un widget visible a été masqué puis réaffiché").toBeGreaterThan(0.99);
 });
 
+// Lot 5 (15 oct. 2026) : arrivée de page en CSS (`.motion-enter`, retirée à la fin), rien en mouvement réduit, et GSAP
+// hors du bundle des pages qui ne l'utilisent pas.
+async function watchEnter(page: import("@playwright/test").Page) {
+  await page.evaluate(() => {
+    const w = window as unknown as { __enter: string[] };
+    w.__enter = [];
+    new MutationObserver(() => {
+      for (const el of document.querySelectorAll(".motion-enter"))
+        w.__enter.push(el.hasAttribute("data-page-body") ? "page-body" : el.tagName);
+    }).observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+  });
+}
+
+test("l'arrivée de page est jouée en CSS puis retirée", async ({ page }) => {
+  await login(page);
+  await page.goto("/reseau");
+  await watchEnter(page);
+  await page.locator('a[href="/reseau/ptcar"]').filter({ visible: true }).first().click();
+  await expect(page).toHaveURL(/\/reseau\/ptcar/);
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { __enter: string[] }).__enter))
+    .toContain("page-body");
+  // 320 ms + marge : plus aucune classe ni animation d'entrée en cours.
+  await page.waitForTimeout(700);
+  expect(await page.locator(".motion-enter").count()).toBe(0);
+});
+
+test("aucune arrivée animée en mouvement réduit", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await login(page);
+  await page.goto("/reseau");
+  await watchEnter(page);
+  await page.locator('a[href="/reseau/ptcar"]').filter({ visible: true }).first().click();
+  await expect(page).toHaveURL(/\/reseau\/ptcar/);
+  await page.waitForTimeout(500);
+  const seen = await page.evaluate(() => (window as unknown as { __enter: string[] }).__enter);
+  expect(seen).toEqual([]);
+});
+
+test("GSAP n'est pas chargé par le shell (bon bus)", async ({ page }) => {
+  await login(page);
+  await page.goto("/commandes/nouveau");
+  await page.getByTestId("bus-company").waitFor();
+  // GSAP déclare `window.gsapVersions` à son chargement ; le shell (barre, onglets, transitions) n'en dépend plus.
+  const loaded = await page.evaluate(
+    () => !!(window as unknown as { gsapVersions?: string[] }).gsapVersions,
+  );
+  expect(loaded, "GSAP chargé sur une page qui ne l'utilise pas").toBe(false);
+});
+
 test("changer un filtre ne recharge pas la page", async ({ page }) => {
   await login(page);
   await page.goto("/ressources/equipe");

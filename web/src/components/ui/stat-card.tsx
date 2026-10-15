@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
-import { gsap, MOTION, MOTION_OK, useGSAP } from "@/lib/motion";
+import { MOTION, reducedMotion } from "@/lib/motion-core";
 import { cn } from "@/lib/utils";
 
 import type { Tone } from "./status-badge";
@@ -21,37 +21,37 @@ const toneVar: Record<Tone, string> = {
 const formatter = new Intl.NumberFormat("fr-BE");
 
 /**
- * Compteur animé (GSAP) : aucun tween au montage ni en mouvement réduit, seulement quand la valeur change vraiment.
- * Le nœud texte est géré par React : on modifie sa valeur, on ne le remplace pas.
+ * Compteur animé (requestAnimationFrame, sans GSAP depuis le lot 5) : aucun défilement au montage ni en mouvement
+ * réduit, seulement quand la valeur change vraiment (600 ms, power3.out, valeurs entières). Le nœud texte est géré par
+ * React : on modifie sa valeur, on ne le remplace pas.
  */
 function useCounter(value: number) {
   const scope = useRef<HTMLElement>(null);
   const valueRef = useRef<HTMLSpanElement>(null);
   const previous = useRef(value);
-  useGSAP(
-    () => {
-      const el = valueRef.current;
-      if (!el) return;
-      const from = previous.current;
-      previous.current = value;
-      const mm = gsap.matchMedia();
-      mm.add(MOTION_OK, () => {
-        if (from === value) return;
-        const state = { v: from };
-        gsap.to(state, {
-          v: value,
-          duration: MOTION.counter,
-          ease: "power3.out",
-          snap: { v: 1 },
-          onUpdate: () => {
-            if (el.firstChild) el.firstChild.nodeValue = formatter.format(state.v);
-          },
-        });
-      });
-      return () => mm.revert();
-    },
-    { scope, dependencies: [value] },
-  );
+  useEffect(() => {
+    const el = valueRef.current;
+    const from = previous.current;
+    previous.current = value;
+    if (!el || from === value || reducedMotion()) return;
+    const start = performance.now();
+    const ms = MOTION.counter * 1000;
+    let frame = 0;
+    const write = (v: number) => {
+      if (el.firstChild) el.firstChild.nodeValue = formatter.format(v);
+    };
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / ms);
+      const eased = 1 - (1 - t) ** 3;
+      write(Math.round(from + (value - from) * eased));
+      if (t < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(frame);
+      write(value);
+    };
+  }, [value]);
   return { scope, valueRef };
 }
 

@@ -6,11 +6,11 @@ import { cn } from "@/lib/utils";
 // (`--control-bg` : surface le jour, surface-2 la nuit), bordure border-strong (≥ 3:1), halo de focus accent de 3 px,
 // erreur via aria-invalid.
 export const fieldBase =
-  "focus-halo rounded-control w-full min-w-0 border border-border-strong bg-(--control-bg) px-3 text-body text-fg placeholder:text-fg-subtle transition-[border-color,box-shadow] duration-150 outline-none hover:border-fg-muted disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger";
+  "focus-halo rounded-control w-full min-w-0 border border-border-strong bg-(--control-bg) px-3 text-body text-fg placeholder:text-fg-subtle transition-[border-color] duration-150 outline-none hover:border-fg-muted disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger";
 
 /** Déclencheur de liste (Select, MultiSelect, Combobox en liste fermée) : même allure qu'un champ. */
 export const triggerBase =
-  "focus-halo flex min-h-field w-full min-w-0 cursor-pointer items-center gap-2 rounded-control border border-border-strong bg-(--control-bg) px-3 py-1.5 text-left text-body text-fg transition-[border-color,box-shadow] duration-150 outline-none hover:border-fg-muted disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger";
+  "focus-halo flex min-h-field w-full min-w-0 cursor-pointer items-center gap-2 rounded-control border border-border-strong bg-(--control-bg) px-3 py-1.5 text-left text-body text-fg transition-[border-color] duration-150 outline-none hover:border-fg-muted disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger";
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
