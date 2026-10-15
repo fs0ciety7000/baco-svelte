@@ -405,17 +405,25 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `/ressources/b201`, `/commandes/b201` redirigent en 308) : la Relève renommée, qui remplace l'ancienne remise B201 de
   Ressources. Un jour (`?jour=`, ← / → / T par `B201Keys`) et des districts (codes ou noms, ceux du jour par défaut,
   `tous`) ; sommaire en puces ; **Synthèse de la relève** (`HandoverView`, aujourd'hui seulement : c'est un instantané ;
-  la copie / l'épinglage ajoutent les notes, `handoverText(…, { notes })`) ; **Notes et commentaires du jour**
-  (`components/ops/b201-board.tsx` → `MarkdownEditor`, `components/ops/markdown-editor.tsx` : barre d'outils gras /
-  italique / titre / listes / lien, Ctrl+B / I, aperçu `ChatMarkdown`, côte à côte dès 1024 px, onglets Écrire / Aperçu
-  plus étroit ; enregistrement automatique `useAutosave` + verrou optimiste, conflit = message avec l'auteur ; « Modifié à …
-  par … » ; **versions du jour** restaurables, tenues par le hook PocketBase) ; **Transports du jour** (commandes + saisies
-  hors outil, comme l'ancienne remise ; les commentaires par période ont disparu, repris en Markdown). Logique pure
-  `lib/ops/b201.ts` (`legacyNotesToMarkdown`, `b201NotesOf` : relit `notes` si `content` est vide, `applyFormat`,
-  `markdownToPdfLines`, `parseVersions` ; testée, avec le hook `pocketbase/pb_hooks/lib/b201.js`). Action `saveB201`
-  (`commandes/actions.ts`) : `{ day, content, manual, expectedUpdated }`. PDF `/api/commandes/b201/{jour}/pdf` : notes
-  (Markdown aplati, `Layout.paragraph`), synthèse de la relève (jour même, `journal:read`), transports par période.
-  Toujours **une fiche par jour** (le district ne filtre que l'affichage). E2E `e2e/b201.spec.ts`.
+  « Copier » / « Épingler » = la synthèse SEULE, sans les notes : `handoverText` n'a plus d'option `notes`, décision du
+  15 oct.) ; **Notes et commentaires du jour PAR DISTRICT** (`b201_notes`, une fiche par jour + district DSO / DSE / DCE ;
+  districts montrés = `notesDistricts(codes)` des districts de la page, « tous » = les trois) : `components/ops/b201-board.tsx`
+  → `DistrictNotesEditor` par district (`data-testid` `b201-notes-<D>`, son `useAutosave`, son verrou optimiste, « Modifié à …
+  par … », ses versions, dialogue « Versions du jour · <D> ») → `MarkdownEditor` (`components/ops/markdown-editor.tsx` : barre
+  d'outils gras / italique / titre / listes / lien, Ctrl+B / I, aperçu `ChatMarkdown`, côte à côte dès 1024 px, onglets Écrire /
+  Aperçu plus étroit). Plusieurs districts : éditeurs l'un sous l'autre dès 768 px, **onglets** en dessous (`b201-notes-tab-<D>`,
+  panneaux masqués mais montés : saisie et enregistrement gardés). Notes d'avant le 15 oct. (fiche du jour `b201_reports`, sans
+  district) : bloc `CommonNotes` (`b201-common`, « Notes communes (avant le 15 oct.) », lecture seule, Copier), une fois
+  au-dessus des districts. **Transports du jour** (commandes + saisies hors outil, fiche du jour, autosave à part). Logique pure
+  `lib/ops/b201.ts` (`B201_DISTRICTS`, `B201_DISTRICT_LABEL`, `COMMON_NOTES_TITLE`, `notesDistricts`, `noteSections`,
+  `legacyNotesToMarkdown`, `b201NotesOf` : relit `notes` si `content` est vide, `applyFormat`, `markdownToPdfLines`,
+  `parseVersions` ; testée, avec le hook `pocketbase/pb_hooks/lib/b201.js`). `b201Data(day, noms, user, codes)` → `notes`
+  (`DistrictNotes[]`), `common`, `manual`, `updated` (fiche du jour). Actions (`commandes/actions.ts`) : `saveB201`
+  `{ day, manual, expectedUpdated }` (fiche du jour, plus jamais `content`) et `saveB201Notes` `{ day, district, content,
+  expectedUpdated }` (création concurrente = conflit, jamais d'écrasement). PDF `/api/commandes/b201/{jour}/pdf` : notes
+  communes puis une section « Notes DSO · Sud-Ouest » par district demandé (même vide), synthèse de la relève (jour même,
+  `journal:read`), transports par période. Sujet SSE `b201_notes`. E2E `e2e/b201.spec.ts` (deux districts, notes séparées,
+  Copier sans notes, notes communes ; `E2E_SHOTS_DIR`).
 - **Synthèse de la relève** (ex-« Relève de service », dans la B201, `journal:read`) : `server/data/handover.ts` (`buildHandover`, districts du jour
   ou `?district=DSO|DSE|DCE|tous`) → bons bus / taxi terminés à envoyer, en cours ; missions et groupes
   à venir (jusqu'à demain 10 h) ; trains en retard ; ALEA du jour non encodés ; urgences 12 h + consignes ; perturbations

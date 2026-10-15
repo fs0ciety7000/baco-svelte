@@ -329,12 +329,53 @@ try {
 	check('PACO/RCCA lit la B201', b2p.status === 200, `HTTP ${b2p.status}`);
 	const b2m = await api('PATCH', `/api/collections/b201_reports/records/${b2.json.id}`, { token: roles.admin.token, body: { day: '2099-01-02', updated_by: roles.admin.id } });
 	check('jour de la B201 non modifiable (bug B1 de BACO)', b2m.status >= 400, `HTTP ${b2m.status}`);
-	// Notes Markdown (15 oct. 2026) : versions du jour tenues par le hook, jamais celles envoyées par un client.
+	// Notes communes (avant le 15 oct. 2026) : figées, les notes vont dans b201_notes (une fiche par jour et par district).
+	const b2c = await api('PATCH', `/api/collections/b201_reports/records/${b2.json.id}`, { token: roles.admin.token, body: { content: 'v1', updated_by: roles.admin.id } });
+	check('B201 : notes communes du jour non modifiables (b201_notes)', b2c.status >= 400, `HTTP ${b2c.status}`);
+	const b2man = await api('PATCH', `/api/collections/b201_reports/records/${b2.json.id}`, { token: roles.moderator.token, body: { manual: [], updated_by: roles.moderator.id } });
+	check('B201 : transports hors outil toujours modifiables', b2man.status === 200, `HTTP ${b2man.status}`);
+	const b2cc = await api('POST', '/api/collections/b201_reports/records', { token: roles.admin.token, body: { day: '2099-01-03', content: 'x', updated_by: roles.admin.id } });
+	check('B201 : fiche du jour créée sans notes communes', b2cc.status >= 400, `HTTP ${b2cc.status}`);
+
+	// Notes par district (15 oct. 2026) : unicité jour + district, droits b201:*, versions tenues par le hook.
 	const b201Forged = [{ at: '2099-01-01 00:00:00.000Z', by: 'forge', content: 'faux' }];
-	const b2c = await api('PATCH', `/api/collections/b201_reports/records/${b2.json.id}`, { token: roles.admin.token, body: { content: 'v1', versions: b201Forged, updated_by: roles.admin.id } });
-	check('B201 : notes Markdown enregistrées, versions forgées ignorées', b2c.status === 200 && b2c.json.content === 'v1' && !JSON.stringify(b2c.json.versions || []).includes('forge'), `HTTP ${b2c.status}`);
-	const b2v = await api('PATCH', `/api/collections/b201_reports/records/${b2.json.id}`, { token: roles.moderator.token, body: { content: 'v2', updated_by: roles.moderator.id } });
-	check("B201 : la version précédente est gardée au changement d'auteur", b2v.status === 200 && Array.isArray(b2v.json.versions) && b2v.json.versions[0]?.content === 'v1', `HTTP ${b2v.status}`);
+	const nDso = await api('POST', '/api/collections/b201_notes/records', { token: u.token, body: { day: '2099-01-01', district: 'DSO', content: 'v1', versions: b201Forged, updated_by: u.id } });
+	check('B201 : PACO/RCCA écrit les notes DSO, versions forgées ignorées', nDso.status === 200 && nDso.json.content === 'v1' && JSON.stringify(nDso.json.versions || []) === '[]', `HTTP ${nDso.status}`);
+	const nDse = await api('POST', '/api/collections/b201_notes/records', { token: u.token, body: { day: '2099-01-01', district: 'DSE', content: 'autre', updated_by: u.id } });
+	check('B201 : notes DSE séparées du même jour', nDse.status === 200, `HTTP ${nDse.status}`);
+	const nDup = await api('POST', '/api/collections/b201_notes/records', { token: roles.admin.token, body: { day: '2099-01-01', district: 'DSO', content: 'double', updated_by: roles.admin.id } });
+	check('B201 : une seule fiche de notes par jour et par district', nDup.status >= 400, `HTTP ${nDup.status}`);
+	const nBad = await api('POST', '/api/collections/b201_notes/records', { token: roles.admin.token, body: { day: '2099-01-01', district: 'DNO', content: 'x', updated_by: roles.admin.id } });
+	check('B201 : district hors équipe refusé', nBad.status >= 400, `HTTP ${nBad.status}`);
+	const nOther = await api('POST', '/api/collections/b201_notes/records', { token: u.token, body: { day: '2099-01-02', district: 'DCE', content: 'x', updated_by: roles.admin.id } });
+	check('B201 : auteur des notes non forgeable', nOther.status >= 400, `HTTP ${nOther.status}`);
+	const nGuest = await api('POST', '/api/collections/b201_notes/records', { token: roles.otto_agent.token, body: { day: '2099-01-02', district: 'DCE', content: 'x', updated_by: roles.otto_agent.id } });
+	check("l'invité n'écrit pas les notes B201", nGuest.status >= 400, `HTTP ${nGuest.status}`);
+	if (nDso.json?.id) {
+		const nGr = await api('GET', `/api/collections/b201_notes/records/${nDso.json.id}`, { token: roles.reader.token });
+		check("l'invité ne lit pas les notes B201", nGr.status >= 400, `HTTP ${nGr.status}`);
+		const nAnon = await api('GET', '/api/collections/b201_notes/records?perPage=1');
+		check('anonyme ne lit pas b201_notes', nAnon.status !== 200 || nAnon.json.totalItems === 0, `HTTP ${nAnon.status}`);
+		const nMove = await api('PATCH', `/api/collections/b201_notes/records/${nDso.json.id}`, { token: roles.admin.token, body: { district: 'DCE', updated_by: roles.admin.id } });
+		check('B201 : district des notes non modifiable', nMove.status >= 400, `HTTP ${nMove.status}`);
+		const nDay = await api('PATCH', `/api/collections/b201_notes/records/${nDso.json.id}`, { token: roles.admin.token, body: { day: '2099-01-05', updated_by: roles.admin.id } });
+		check('B201 : jour des notes non modifiable', nDay.status >= 400, `HTTP ${nDay.status}`);
+		const nV = await api('PATCH', `/api/collections/b201_notes/records/${nDso.json.id}`, { token: roles.moderator.token, body: { content: 'v2', versions: b201Forged, updated_by: roles.moderator.id } });
+		check("B201 : la version précédente est gardée au changement d'auteur (versions forgées ignorées)", nV.status === 200 && Array.isArray(nV.json.versions) && nV.json.versions[0]?.content === 'v1' && !JSON.stringify(nV.json.versions).includes('forge'), `HTTP ${nV.status}`);
+		const nDseRead = await api('GET', `/api/collections/b201_notes/records/${nDse.json?.id}`, { token: u.token });
+		check('B201 : les notes DSE ne bougent pas', nDseRead.status === 200 && nDseRead.json.content === 'autre', `HTTP ${nDseRead.status}`);
+		const nDenyU = await api('PATCH', `/api/collections/b201_notes/records/${nDso.json.id}`, { token: roles.denied.token, body: { content: 'v3', updated_by: roles.denied.id } });
+		check('B201 : b201:write retiré, la modification des notes (b201:update) reste permise', nDenyU.status === 200, `HTTP ${nDenyU.status}`);
+		const nDenyC = await api('POST', '/api/collections/b201_notes/records', { token: roles.denied.token, body: { day: '2099-01-02', district: 'DCE', content: 'x', updated_by: roles.denied.id } });
+		check("B201 : b201:write retiré, pas de nouvelles notes", nDenyC.status >= 400, `HTTP ${nDenyC.status}`);
+		const nDel = await api('DELETE', `/api/collections/b201_notes/records/${nDso.json.id}`, { token: u.token });
+		check('PACO/RCCA ne supprime pas les notes B201', nDel.status >= 400, `HTTP ${nDel.status}`);
+	}
+	for (const r of [nDso, nDse]) {
+		if (!r.json?.id) continue;
+		await api('DELETE', `/api/collections/b201_notes/records/${r.json.id}`, { token: root });
+		auditIds.push(r.json.id);
+	}
 
 	for (const [c, id] of [
 		['bus_orders', bid],
@@ -1017,7 +1058,7 @@ try {
 		// Lectures nominatives ou hors /tv : refusées, même avec un droit accordé.
 		await api('PATCH', `/api/collections/users/records/${sc.json.id}`, { token: root, body: { grants: ['pmr:read', 'generate_taxi:read', 'repertoire:read', 'dicos:write'] } });
 		const stok2 = (await api('POST', '/api/collections/users/auth-with-password', { body: { identity: sc.json.email, password: spass } })).json?.token;
-		for (const c of ['stations', 'train_services', 'train_relations', 'train_paths', 'rail_lines', 'taxi_orders', 'group_missions', 'pmr_mission', 'pmr_clients', 'pmr_assist_legacy', 'directory_contacts', 'audit_log', 'line_stations', 'changelog', 'order_events', 'pmr_events', 'connector_tokens', 'train_schedules', 'b201_reports', 'level_crossings']) {
+		for (const c of ['stations', 'train_services', 'train_relations', 'train_paths', 'rail_lines', 'taxi_orders', 'group_missions', 'pmr_mission', 'pmr_clients', 'pmr_assist_legacy', 'directory_contacts', 'audit_log', 'line_stations', 'changelog', 'order_events', 'pmr_events', 'connector_tokens', 'train_schedules', 'b201_reports', 'b201_notes', 'level_crossings']) {
 			const r = await api('GET', `/api/collections/${c}/records?perPage=1`, { token: stok2 });
 			check(`écran ne lit pas ${c} (même avec un droit accordé)`, r.status !== 200 || r.json.totalItems === 0, `HTTP ${r.status} ${r.json?.totalItems}`);
 		}

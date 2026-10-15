@@ -45,7 +45,7 @@ export default async function Page({
   const canHandover = can(user, "journal:read") && day === today;
 
   const [data, handover] = await Promise.all([
-    canNotes ? b201Data(day, names, user) : Promise.resolve(null),
+    canNotes ? b201Data(day, names, user, codes) : Promise.resolve(null),
     canHandover ? buildHandover(user, codes) : Promise.resolve(null),
   ]);
 
@@ -112,6 +112,7 @@ export default async function Page({
               "bus_orders",
               "taxi_orders",
               "b201_reports",
+              "b201_notes",
               "pmr_assists",
               "group_missions",
               "ops_log",
@@ -193,7 +194,6 @@ export default async function Page({
             author={user.name || user.username || user.email}
             at={brusselsTime(new Date(handover.generatedAt))}
             canPin={can(user, "journal:write")}
-            notes={data?.content ?? ""}
           />
         </section>
       ) : can(user, "journal:read") ? (
@@ -216,11 +216,11 @@ export default async function Page({
             day={day}
             entries={data.entries}
             initialManual={data.manual}
-            initialContent={data.content}
             updated={data.updated}
-            updatedByName={data.updatedByName}
-            versions={data.versions}
             reportId={data.reportId}
+            notes={data.notes}
+            common={data.common}
+            commonByName={data.commonByName}
             canWrite={canWriteB201(user)}
             me={user.name || user.username || "toi"}
           />

@@ -593,10 +593,15 @@ export async function taxiOrderPdf(detail: TaxiPdfDetail, ctx: PdfContext): Prom
 export type B201PdfInput = {
   day: string;
   district: string;
-  /** Notes du jour (Markdown aplati par `markdownToPdfLines`). */
-  notes: { text: string; bold?: boolean; indent?: number; gap?: boolean }[];
-  /** Note sous les notes (auteur et heure de la dernière modification). */
-  notesMeta?: string;
+  /**
+   * Notes du jour par district (et notes communes d'avant le 15 oct.) : un titre par section, Markdown aplati par
+   * `markdownToPdfLines`, note sous les notes (auteur et heure de la dernière modification).
+   */
+  notes: {
+    title: string;
+    lines: { text: string; bold?: boolean; indent?: number; gap?: boolean }[];
+    meta?: string;
+  }[];
   /** Synthèse de la relève (jour même seulement), même format. */
   handover?: { text: string; bold?: boolean; indent?: number; gap?: boolean }[];
   periods: {
@@ -633,10 +638,16 @@ export async function b201Pdf(input: B201PdfInput, ctx: PdfContext): Promise<Uin
     "Notes du jour, relève et transports de remplacement (bus, taxis, taxis PMR)",
     formatShortDay(input.day),
   );
-  l.section("Notes et commentaires");
-  if (input.notes.some((n) => n.text.trim())) l.paragraph(input.notes);
-  else l.field("Notes", "—");
-  if (input.notesMeta) l.paragraph([{ text: input.notesMeta, gap: true }]);
+  if (!input.notes.length) {
+    l.section("Notes et commentaires");
+    l.field("Notes", "—");
+  }
+  for (const n of input.notes) {
+    l.section(n.title);
+    if (n.lines.some((x) => x.text.trim())) l.paragraph(n.lines);
+    else l.field("Notes", "—");
+    if (n.meta) l.paragraph([{ text: n.meta, gap: true }]);
+  }
   if (input.handover?.length) {
     l.section("Synthèse de la relève");
     l.paragraph(input.handover);

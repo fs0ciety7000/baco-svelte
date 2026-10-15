@@ -4,8 +4,36 @@ import { parseChatMarkdown, type Inline } from "./chat-markdown";
 // l'ancienne remise). Logique PURE partagée client / serveur : reprise des anciens commentaires en Markdown, barre
 // d'outils de l'éditeur, texte du PDF, versions du jour. Le Markdown est celui du Journal (`chat-markdown.ts`).
 
-/** Longueur maximale des notes d'un jour (miroir du champ `b201_reports.content`). */
+/** Longueur maximale des notes d'un jour et d'un district (miroir du champ `b201_notes.content`). */
 export const B201_NOTES_MAX = 20000;
+
+// ---------------------------------------------------------------------------------------------------
+// Notes par district (décision du 15 oct. 2026) : une fiche `b201_notes` par jour ET par district de l'équipe. Les notes
+// écrites avant (une fiche par jour, sans district) restent dans `b201_reports` et s'affichent en lecture seule sous
+// « Notes communes (avant le 15 oct.) », une seule fois au-dessus des districts.
+
+/** Districts qui ont leurs propres notes (les trois de l'équipe, ordre d'affichage). */
+export const B201_DISTRICTS = ["DSO", "DSE", "DCE"] as const;
+export type B201District = (typeof B201_DISTRICTS)[number];
+
+export const B201_DISTRICT_LABEL: Record<B201District, string> = {
+  DSO: "Sud-Ouest",
+  DSE: "Sud-Est",
+  DCE: "Centre",
+};
+
+/** Titre du bloc des notes du jour écrites avant les notes par district (lecture seule). */
+export const COMMON_NOTES_TITLE = "Notes communes (avant le 15 oct.)";
+
+/**
+ * Districts dont les notes sont montrées : ceux demandés (codes), dans l'ordre DSO, DSE, DCE, sans doublon ni district
+ * hors équipe (DNO / DNE) ; aucun district de l'équipe demandé (« tous ») = les trois.
+ */
+export function notesDistricts(codes: readonly string[]): B201District[] {
+  const wanted = new Set(codes.map((c) => c.trim().toUpperCase()));
+  const picked = B201_DISTRICTS.filter((d) => wanted.has(d));
+  return picked.length ? picked : [...B201_DISTRICTS];
+}
 
 /** Anciens commentaires de la remise B201 (une zone par période + « pour le service suivant »). */
 export type LegacyB201Notes = {
@@ -188,4 +216,28 @@ export function parseVersions(raw: unknown): B201Version[] {
 export function notesStats(src: string): { chars: number; words: number } {
   const t = src.trim();
   return { chars: src.length, words: t ? t.split(/\s+/).length : 0 };
+}
+
+// ---------------------------------------------------------------------------------------------------
+// PDF : une section par district demandé (titre « Notes DSO · Sud-Ouest »), précédée des notes communes s'il y en a.
+
+export type NoteSection = { title: string; markdown: string; meta?: string };
+
+/**
+ * Sections de notes du PDF B201 : notes communes (avant le 15 oct.) d'abord si elles existent, puis chaque district
+ * demandé dans l'ordre reçu, même vide (« — » dans le PDF : on voit qu'il n'y a rien).
+ */
+export function noteSections(
+  common: string,
+  notes: { district: B201District; content: string; meta?: string }[],
+): NoteSection[] {
+  const out: NoteSection[] = [];
+  if (common.trim()) out.push({ title: COMMON_NOTES_TITLE, markdown: common });
+  for (const n of notes)
+    out.push({
+      title: `Notes ${n.district} · ${B201_DISTRICT_LABEL[n.district]}`,
+      markdown: n.content,
+      ...(n.meta ? { meta: n.meta } : {}),
+    });
+  return out;
 }

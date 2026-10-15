@@ -67,7 +67,7 @@ const delayText = (i: Impact) => (i.cancelled ? "supprimé" : `+${i.delay} min`)
 /** Texte brut de la relève (copie, consigne du Journal) : sections non vides seulement, listes bornées. */
 export function handoverText(
   h: Handover,
-  meta: { author: string; at: string; scope: string; notes?: string },
+  meta: { author: string; at: string; scope: string },
 ): string {
   const out: string[] = [`**Relève ${meta.scope}** — ${meta.at}, par ${meta.author}`];
   const section = (title: string, lines: string[], more = 0) => {
@@ -125,13 +125,7 @@ export function handoverText(
     h.disturbances.length - 8,
   );
   if (out.length === 1) out.push("", "Rien d'ouvert : tout est à jour.");
-  let text = out.join("\n");
-  // Notes de la B201 du jour (15 oct. 2026) : à la suite, tronquées pour tenir dans un message du Journal.
-  const notes = meta.notes?.trim();
-  if (notes) {
-    const head = "\n\n**Notes B201**\n";
-    const room = 3900 - text.length - head.length;
-    if (room > 40) text += head + (notes.length > room ? `${notes.slice(0, room - 1)}…` : notes);
-  }
+  // Les notes de la B201 n'y figurent pas (décision du 15 oct. 2026) : elles vivent par district dans la B201.
+  const text = out.join("\n");
   return text.slice(0, 3900);
 }

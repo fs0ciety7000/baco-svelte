@@ -12,7 +12,7 @@ pocketbase migrate up $P                                   # appliquer les migra
 pocketbase superuser upsert <email> <mot de passe> $P      # compte superuser local
 pocketbase serve --http 127.0.0.1:8090 $P                  # serveur local
 CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P   # import de la sauvegarde Supabase (hors Git)
-PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (≈ 617 contrôles ; CSM_INTERNAL_SECRET pour « en tant que »)
+PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (≈ 661 contrôles ; CSM_INTERNAL_SECRET pour « en tant que »)
 node scripts/perms-equivalence.mjs pb_data/data.db         # rôles v3 : ancien calcul ↔ users.perms (0 écart attendu)
 pocketbase perms-check $P                                  # même contrôle en JSVM, LECTURE SEULE, code 1 si écart (prod : tâche Coolify)
 CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # Commandes + PMR, comptes gardés
@@ -370,12 +370,21 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   `quinyx_places` (et création / suppression de `quinyx_groups`).
 - **B201, notes Markdown** (`1760004830_b201_notes.js`, `b201.pb.js`, `lib/b201.js`, 15 oct. 2026) : `b201_reports.content`
   (texte 20 000, Markdown du Journal) et `versions` (JSON `{ at, by, content }`, 30 au plus, plus récente d'abord) ; toujours
-  une fiche par `day`, règles `b201:*` inchangées. `versions` est **écrit par le hook seul** (valeur du corps ignorée, `[]` à
+  une fiche par `day`, règles `b201:*` inchangées (notes par district depuis `1760004840`, ci-dessous). `versions` est **écrit par le hook seul** (valeur du corps ignorée, `[]` à
   la création) : l'état précédent est gardé quand le texte change et que l'auteur change, ou 10 min après la dernière version
   du même auteur (l'enregistrement automatique écrit souvent). Migration : anciens `notes` (matin, après-midi, nuit, service
   suivant) convertis en Markdown dans `content` par SQL (un titre `###` par période non vide ; `updated` et audit intacts) ;
   `notes` gardé (archive, import et import différentiel, qui ne remplissent pas `content` : le web relit `notes` si
   `content` est vide). Contrôles test-rules : versions forgées ignorées, version gardée au changement d'auteur.
+- **B201 par district** (`1760004840_b201_district_notes.js`, 15 oct. 2026) : **`b201_notes`** = notes du jour d'UN district
+  (day, district DSO / DSE / DCE, content 20 000, versions, updated_by ; **index unique (day, district)**) ; règles `b201:*` en
+  `perms` (création `b201:write`, modification `b201:update`, suppression `b201:delete`, `updated_by` = l'appelant, jour et
+  district figés, ni Écran ni invité) ; `versions` tenues par `b201.pb.js` (même logique que `b201_reports`), audit. La fiche du
+  jour `b201_reports` garde transports hors outil, archive BACO et notes d'avant (sans district) : son corps ne peut plus
+  contenir `content` (suffixe `&& @request.body.content:isset = false` ajouté à create / update). Rien n'est recopié à la
+  montée (les notes communes restent lisibles telles quelles). `down` : notes des districts ajoutées par SQL à
+  `b201_reports.content` sous « ### Notes DSO »… (fiche créée si absente, `updated` des fiches existantes et audit intacts),
+  collection supprimée, suffixe retiré (testé sur une copie). 661 contrôles de règles.
 - **« Voir en tant que »** (`1760004470_audit_impersonate.js`, `impersonate.pb.js`, `lib/impersonate.js`, 14 oct. 2026) : routes
   internes `POST /api/csm/impersonate` (`{ target }` → `{ token, id, name, role }`) et `/api/csm/impersonate/stop`, secret
   `CSM_INTERNAL_SECRET` (404 sinon) **et** jeton de l'appelant (`Authorization`), qui doit être admin / sysop (401 / 403) ;

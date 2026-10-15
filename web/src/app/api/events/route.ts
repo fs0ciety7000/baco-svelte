@@ -20,6 +20,7 @@ const TOPICS = new Set([
   "taxi_orders",
   "bus_companies",
   "b201_reports",
+  "b201_notes",
   "pmr_assists",
   "group_missions",
   "dicos_syncs",

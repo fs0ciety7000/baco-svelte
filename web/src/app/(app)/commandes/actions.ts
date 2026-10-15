@@ -30,7 +30,7 @@ import {
 import { primaryDistrict } from "@/lib/team";
 import { archiveOrder } from "@/server/archives";
 import { requireUser, type SessionUser } from "@/server/auth";
-import { B201_NOTES_MAX } from "@/lib/ops/b201";
+import { B201_DISTRICTS, B201_NOTES_MAX } from "@/lib/ops/b201";
 import { manualEntrySchema } from "@/server/data/b201";
 import {
   busDraftFromRecord,
@@ -780,15 +780,81 @@ export async function loadOrderPanel(input: {
 }
 
 // ---------------------------------------------------------------------------------------------------
-// B201 (une par jour, Opérations › B201 depuis le 15 oct. 2026) : notes du jour en Markdown et transports hors outil.
-// Les anciens commentaires par période (`notes`) ne sont plus écrits : ils sont repris en Markdown (migration 1760004830).
+// B201 (Opérations › B201 depuis le 15 oct. 2026) : la fiche du jour (`b201_reports`) porte les transports hors outil ;
+// les notes du jour s'écrivent par district (`b201_notes`, une fiche par jour ET par district, `saveB201Notes`). Les
+// notes écrites avant (fiche du jour, sans district) sont figées : affichées en lecture seule, plus jamais écrites.
 
 const b201Schema = z.object({
   day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  content: z.string().max(B201_NOTES_MAX, "Notes trop longues (20 000 caractères au plus)."),
   manual: z.array(manualEntrySchema).max(200),
   expectedUpdated: z.string().nullable(),
 });
+
+const b201NotesSchema = z.object({
+  day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  district: z.enum(B201_DISTRICTS),
+  content: z.string().max(B201_NOTES_MAX, "Notes trop longues (20 000 caractères au plus)."),
+  expectedUpdated: z.string().nullable(),
+});
+
+/** Notes du jour d'UN district (verrou optimiste propre à la fiche jour + district). */
+export async function saveB201Notes(
+  input: z.input<typeof b201NotesSchema>,
+): Promise<ActionResult<{ id: string; updated: string }>> {
+  try {
+    const p = b201NotesSchema.parse(input);
+    const user = await requireUser();
+    if (!canWriteB201(user)) return { ok: false, error: "B201 : droit d'écriture manquant." };
+    const pb = await pbForRequest();
+    const current = await pb
+      .collection("b201_notes")
+      .getFirstListItem(
+        pb.filter("day = {:day} && district = {:district}", { day: p.day, district: p.district }),
+        {
+          expand: "updated_by",
+          fields: "id,updated,expand.updated_by.name,expand.updated_by.username",
+        },
+      )
+      .catch(() => null);
+    if (current && current.updated !== p.expectedUpdated) {
+      const by = current.expand?.updated_by as { name?: string; username?: string } | undefined;
+      const who = by?.name || by?.username;
+      return {
+        ok: false,
+        error: `CONFLIT : les notes ${p.district} ont été modifiées${who ? ` par ${who}` : ""} entre-temps. Recharge la page (ta saisie reste affichée : copie-la avant).`,
+      };
+    }
+    if (!can(user, current ? "b201:update" : "b201:write"))
+      return { ok: false, error: "B201 : droit manquant pour cette action." };
+    const body = { content: p.content, updated_by: user.id };
+    if (current) {
+      const r = await pb.collection("b201_notes").update(current.id, body);
+      return { ok: true, data: { id: r.id, updated: r.updated as string } };
+    }
+    try {
+      const r = await pb
+        .collection("b201_notes")
+        .create({ ...body, day: p.day, district: p.district });
+      return { ok: true, data: { id: r.id, updated: r.updated as string } };
+    } catch (e) {
+      // Créée entre-temps par un collègue (index unique jour + district) : conflit, jamais d'écrasement.
+      const again = await pb
+        .collection("b201_notes")
+        .getFirstListItem(
+          pb.filter("day = {:day} && district = {:district}", { day: p.day, district: p.district }),
+        )
+        .catch(() => null);
+      if (again)
+        return {
+          ok: false,
+          error: `CONFLIT : les notes ${p.district} viennent d'être créées par un collègue. Recharge la page (ta saisie reste affichée : copie-la avant).`,
+        };
+      throw e;
+    }
+  } catch (e) {
+    return fail(e);
+  }
+}
 
 export async function saveB201(
   input: z.input<typeof b201Schema>,
@@ -816,7 +882,7 @@ export async function saveB201(
     }
     if (!can(user, current ? "b201:update" : "b201:write"))
       return { ok: false, error: "B201 : droit manquant pour cette action." };
-    const body = { content: p.content, manual: p.manual, updated_by: user.id };
+    const body = { manual: p.manual, updated_by: user.id };
     const r = current
       ? await pb.collection("b201_reports").update(current.id, body)
       : await pb.collection("b201_reports").create({ ...body, day: p.day });

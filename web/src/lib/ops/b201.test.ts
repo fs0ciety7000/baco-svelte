@@ -5,9 +5,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   applyFormat,
+  B201_DISTRICTS,
   b201NotesOf,
+  COMMON_NOTES_TITLE,
   legacyNotesToMarkdown,
   markdownToPdfLines,
+  notesDistricts,
+  noteSections,
   notesStats,
   parseVersions,
 } from "./b201";
@@ -165,7 +169,7 @@ describe("PDF et versions", () => {
   });
 });
 
-describe("relève copiée avec les notes", () => {
+describe("relève copiée sans les notes (15 oct. 2026)", () => {
   const h: Handover = {
     generatedAt: "2026-10-15T18:00:00Z",
     today: "2026-10-15",
@@ -180,17 +184,43 @@ describe("relève copiée avec les notes", () => {
     log: [],
     disturbances: [],
   };
-  it("ajoute les notes de la B201 à la suite, sans dépasser un message du Journal", () => {
-    const t = handoverText(h, { author: "A", at: "20:00", scope: "DSO", notes: "### Matin\nok" });
-    expect(t).toContain("**Notes B201**\n### Matin\nok");
-    const long = handoverText(h, {
+  it("seulement la synthèse : aucune section de notes", () => {
+    const t = handoverText(h, { author: "A", at: "20:00", scope: "DSO" });
+    expect(t).toContain("**Relève DSO**");
+    expect(t).not.toContain("Notes");
+    // Un appel d'avant (notes passées en trop) ne les ajoute pas non plus.
+    const legacy = handoverText(h, {
       author: "A",
       at: "20:00",
       scope: "DSO",
-      notes: "x".repeat(9000),
+      ...({ notes: "### Matin\nsecret" } as object),
     });
-    expect(long.length).toBeLessThanOrEqual(3900);
-    expect(long.endsWith("…")).toBe(true);
-    expect(handoverText(h, { author: "A", at: "20:00", scope: "DSO" })).not.toContain("Notes B201");
+    expect(legacy).not.toContain("secret");
+  });
+});
+
+describe("notes par district", () => {
+  it("districts montrés : ceux demandés, ordre DSO, DSE, DCE ; tous si aucun", () => {
+    expect(notesDistricts(["DCE", "DSO"])).toEqual(["DSO", "DCE"]);
+    expect(notesDistricts(["dse", "DSE"])).toEqual(["DSE"]);
+    expect(notesDistricts([])).toEqual([...B201_DISTRICTS]);
+    expect(notesDistricts(["DNO"])).toEqual([...B201_DISTRICTS]);
+  });
+
+  it("sections du PDF : notes communes d'abord, puis un titre par district (même vide)", () => {
+    const s = noteSections("### Matin\nancien", [
+      { district: "DSO", content: "a", meta: "Dernière modification à 10:00." },
+      { district: "DSE", content: "" },
+    ]);
+    expect(s.map((x) => x.title)).toEqual([
+      COMMON_NOTES_TITLE,
+      "Notes DSO · Sud-Ouest",
+      "Notes DSE · Sud-Est",
+    ]);
+    expect(s[1]?.meta).toBe("Dernière modification à 10:00.");
+    expect(s[2]).not.toHaveProperty("meta");
+    expect(noteSections("  ", [{ district: "DCE", content: "x" }]).map((x) => x.title)).toEqual([
+      "Notes DCE · Centre",
+    ]);
   });
 });

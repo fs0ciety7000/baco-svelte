@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { parseDistricts } from "@/lib/district-param";
 import { handoverText } from "@/lib/ops/handover";
-import { markdownToPdfLines } from "@/lib/ops/b201";
+import { markdownToPdfLines, noteSections } from "@/lib/ops/b201";
 import { contentDisposition } from "@/lib/orders/eml";
 import { brusselsDay, brusselsTime, isValidDay, PERIODS } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
@@ -12,7 +12,8 @@ import { b201Data, entriesByPeriod, SERVICE_LABEL } from "@/server/data/b201";
 import { buildHandover, handoverDistricts } from "@/server/data/handover";
 import { b201Pdf } from "@/server/pdf/order-pdf";
 
-// PDF de la B201 d'un jour (lecture seule, données lues avec le jeton de l'agent) : notes du jour (Markdown aplati),
+// PDF de la B201 d'un jour (lecture seule, données lues avec le jeton de l'agent) : notes de chaque district demandé
+// (Markdown aplati, un titre par district, notes communes d'avant le 15 oct. en tête),
 // synthèse de la relève (jour même, avec `journal:read`) et transports par période. Districts : codes ou noms, répétés ;
 // aucun = tous (lien de la page : districts affichés).
 
@@ -40,12 +41,27 @@ export async function GET(request: Request, { params }: { params: Promise<{ day:
   const raw = new URL(request.url).searchParams.getAll("district");
   const districts = parseDistricts(raw, DISTRICTS);
   const district = districts.join(" + ");
-  const data = await b201Data(day.data, districts, user);
+  // Codes des districts demandés (notes par district) ; aucun = les trois de l'équipe.
+  const codes = handoverDistricts(user, raw.length ? raw : "tous");
+  const data = await b201Data(day.data, districts, user, codes);
   const groups = entriesByPeriod(data);
+  const meta = (updated: string | null, by: string) => {
+    const d = updated ? new Date(updated.replace(" ", "T")) : null;
+    return d && !Number.isNaN(d.getTime())
+      ? `Dernière modification à ${fmt.format(d)}${by ? ` par ${by}` : ""}.`
+      : undefined;
+  };
+  const sections = noteSections(
+    data.common,
+    data.notes.map((n) => ({
+      district: n.district,
+      content: n.content,
+      meta: meta(n.updated, n.updatedByName),
+    })),
+  );
   // Synthèse de la relève : instantané « maintenant », donc seulement pour la B201 du jour.
   let handover: ReturnType<typeof markdownToPdfLines> | undefined;
   if (day.data === brusselsDay() && can(user, "journal:read")) {
-    const codes = handoverDistricts(user, raw.length ? raw : "tous");
     const h = await buildHandover(user, codes).catch(() => null);
     if (h)
       handover = markdownToPdfLines(
@@ -56,16 +72,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ day:
         }),
       );
   }
-  const updated = data.updated ? new Date(data.updated.replace(" ", "T")) : null;
   const pdf = await b201Pdf(
     {
       day: day.data,
       district,
-      notes: markdownToPdfLines(data.content),
-      notesMeta:
-        updated && !Number.isNaN(updated.getTime())
-          ? `Dernière modification à ${fmt.format(updated)}${data.updatedByName ? ` par ${data.updatedByName}` : ""}.`
-          : undefined,
+      notes: sections.map((s) => ({
+        title: s.title,
+        lines: markdownToPdfLines(s.markdown),
+        meta: s.meta,
+      })),
       handover,
       periods: PERIODS.map((p) => ({
         label: p.label,

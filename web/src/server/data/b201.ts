@@ -2,7 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 
-import { b201NotesOf, parseVersions } from "@/lib/ops/b201";
+import { b201NotesOf, notesDistricts, parseVersions, type B201District } from "@/lib/ops/b201";
 import { can } from "@/lib/permissions";
 import { addDays, periodOf, type Period } from "@/lib/orders/time";
 
@@ -47,7 +47,6 @@ export const manualEntrySchema = z.object({
   ref: z.string().trim().max(200),
 });
 export type ManualEntry = z.infer<typeof manualEntrySchema>;
-
 
 type BusLine = { planned?: string; confirmed?: string; cancelled?: boolean };
 
@@ -98,8 +97,29 @@ function entriesFromRows(rows: OrderRow[], buses: Map<string, BusLine[]>): B201E
   return out.sort((a, b) => a.time.localeCompare(b.time));
 }
 
-/** `districts` : un ou plusieurs (noms) ; vide = tous. */
-export async function b201Data(day: string, districts: string[], user: SessionUser) {
+export type B201NoteVersion = { at: string; by: string; byName: string; content: string };
+
+/** Notes d'un district pour un jour (fiche `b201_notes`, absente tant que personne n'y a écrit). */
+export type DistrictNotes = {
+  district: B201District;
+  id: string | null;
+  content: string;
+  updated: string | null;
+  updatedByName: string;
+  versions: B201NoteVersion[];
+};
+
+/**
+ * `districts` : un ou plusieurs (noms) pour les transports, vide = tous ; `noteCodes` : codes des districts dont les
+ * notes sont lues (DSO, DSE, DCE ; vide = les trois).
+ */
+export async function b201Data(
+  day: string,
+  districts: string[],
+  user: SessionUser,
+  noteCodes: readonly string[] = [],
+) {
+  const wanted = notesDistricts(noteCodes);
   const ctx = {
     userId: user.id,
     canBus: can(user, "otto:read"),
@@ -108,7 +128,7 @@ export async function b201Data(day: string, districts: string[], user: SessionUs
   };
   const pb = await pbForRequest();
   // La nuit (21 h – 6 h) déborde sur le lendemain matin : on lit aussi le lendemain avant 6 h.
-  const [{ rows }, report] = await Promise.all([
+  const [{ rows }, report, noteRows] = await Promise.all([
     listOrders(
       // Remise d'un jour passé : bons archivés compris.
       {
@@ -125,11 +145,21 @@ export async function b201Data(day: string, districts: string[], user: SessionUs
       .collection("b201_reports")
       .getFirstListItem(pb.filter("day = {:day}", { day }))
       .catch(() => null),
+    pb
+      .collection("b201_notes")
+      .getFullList({ filter: pb.filter("day = {:day}", { day }) })
+      .catch(() => []),
   ]);
-  const versions = parseVersions(report?.versions);
+  const parsed = wanted.map((district) => {
+    const r = noteRows.find((n) => n.district === district);
+    return { district, r, versions: parseVersions(r?.versions) };
+  });
   const names = await authorNames(pb, [
     ...(report?.updated_by ? [String(report.updated_by)] : []),
-    ...versions.map((v) => v.by),
+    ...parsed.flatMap((p) => [
+      ...(p.r?.updated_by ? [String(p.r.updated_by)] : []),
+      ...p.versions.map((v) => v.by),
+    ]),
   ]);
   // Les bus viennent de la liste (pas de 2e requête : un filtre « id = … || … » casse au-delà de ~130 ids).
   const buses = new Map<string, BusLine[]>(
@@ -146,14 +176,27 @@ export async function b201Data(day: string, districts: string[], user: SessionUs
     .array(manualEntrySchema)
     .catch([])
     .parse(report?.manual ?? []);
+  const notes: DistrictNotes[] = parsed.map(({ district, r, versions }) => ({
+    district,
+    id: r?.id ?? null,
+    content: typeof r?.content === "string" ? r.content : "",
+    updated: (r?.updated as string | undefined) ?? null,
+    updatedByName: r?.updated_by ? (names.get(String(r.updated_by)) ?? "") : "",
+    versions: versions.map((v) => ({ ...v, byName: names.get(v.by) ?? "" })),
+  }));
   return {
     entries: all,
     manual,
-    /** Notes du jour en Markdown (anciens commentaires par période convertis si la fiche n'a pas encore de Markdown). */
-    content: b201NotesOf(report?.content, report?.notes),
-    versions: versions.map((v) => ({ ...v, byName: names.get(v.by) ?? "" })),
-    updatedByName: report?.updated_by ? (names.get(String(report.updated_by)) ?? "") : "",
+    /** Notes de chaque district demandé, dans l'ordre DSO, DSE, DCE. */
+    notes,
+    /**
+     * Notes du jour écrites avant les notes par district (fiche du jour, sans district ; anciens commentaires BACO par
+     * période convertis) : lecture seule, affichées une fois sous `COMMON_NOTES_TITLE`.
+     */
+    common: b201NotesOf(report?.content, report?.notes),
+    commonByName: report?.updated_by ? (names.get(String(report.updated_by)) ?? "") : "",
     reportId: report?.id ?? null,
+    /** Version de la fiche du jour (transports hors outil : verrou optimiste). */
     updated: (report?.updated as string | undefined) ?? null,
     hasLegacy: !!report && report.legacy && Object.keys(report.legacy as object).length > 0,
   };

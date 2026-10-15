@@ -1,13 +1,14 @@
 "use client";
 
-import { ArrowUpRight, History, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowUpRight, History, Lock, Plus, RotateCcw, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { saveB201 } from "@/app/(app)/commandes/actions";
+import { saveB201, saveB201Notes } from "@/app/(app)/commandes/actions";
 import { KindIconClient } from "@/components/orders/kind-icon";
 import { ChatMarkdown } from "@/components/ops/chat-markdown";
 import { MarkdownEditor } from "@/components/ops/markdown-editor";
+import { CopyIcon, useCopy } from "@/components/pmr/copy";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { AutosaveIndicator } from "@/components/ui/form-kit";
@@ -15,11 +16,16 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TimeField } from "@/components/ui/time-field";
-import { B201_NOTES_MAX } from "@/lib/ops/b201";
+import {
+  B201_DISTRICT_LABEL,
+  B201_NOTES_MAX,
+  COMMON_NOTES_TITLE,
+  type B201District,
+} from "@/lib/ops/b201";
 import { PERIODS, type Period } from "@/lib/orders/time";
 import { useAutosave } from "@/lib/orders/use-autosave";
 import { cn, pl } from "@/lib/utils";
-import type { B201Entry, ManualEntry, Service } from "@/server/data/b201";
+import type { B201Entry, DistrictNotes, ManualEntry, Service } from "@/server/data/b201";
 
 const SERVICES: { id: Service; label: string }[] = [
   { id: "bus", label: "Bus" },
@@ -43,50 +49,48 @@ const pbTime = (v: string | null) => {
 export type B201Version = { at: string; by: string; byName: string; content: string };
 
 /**
- * B201 du jour (Opérations › B201, 15 oct. 2026) : notes et commentaires en Markdown (remplacent les commentaires par
- * période de l'ancienne remise) et transports du jour (commandes en lecture + saisies hors outil). Une seule fiche par
- * jour : notes et saisies manuelles partent ensemble, enregistrées automatiquement (verrou optimiste `updated`).
+ * B201 du jour (Opérations › B201, 15 oct. 2026) : notes et commentaires en Markdown **par district** (une fiche par jour
+ * et par district, chacune avec son enregistrement automatique, son verrou optimiste, son auteur et ses versions) et
+ * transports du jour (commandes en lecture + saisies hors outil, fiche du jour). Plusieurs districts : éditeurs l'un sous
+ * l'autre en desktop (vue d'ensemble), en onglets sous 768 px. Les notes écrites avant le 15 oct. (sans district) restent
+ * affichées en lecture seule, une fois, au-dessus.
  */
 export function B201Board({
   day,
   entries,
   initialManual,
-  initialContent,
   updated,
-  updatedByName,
-  versions,
   reportId,
+  notes,
+  common,
+  commonByName,
   canWrite,
   me,
 }: {
   day: string;
   entries: B201Entry[];
   initialManual: ManualEntry[];
-  initialContent: string;
   updated: string | null;
-  updatedByName: string;
-  versions: B201Version[];
   reportId: string | null;
+  notes: DistrictNotes[];
+  common: string;
+  commonByName: string;
   canWrite: boolean;
   me: string;
 }) {
-  const [content, setContent] = useState(initialContent);
   const [manual, setManual] = useState(initialManual);
   const [tab, setTab] = useState<Period>("matin");
-  const value = useMemo(() => ({ content, manual }), [content, manual]);
+  const [noteTab, setNoteTab] = useState<B201District | undefined>(notes[0]?.district);
+  const activeNote = notes.some((n) => n.district === noteTab) ? noteTab : notes[0]?.district;
   const save = useCallback(
-    async (
-      _id: string | null,
-      v: { content: string; manual: ManualEntry[] },
-      expected?: string,
-    ) => {
-      const res = await saveB201({ day, ...v, expectedUpdated: expected ?? null });
+    async (_id: string | null, v: ManualEntry[], expected?: string) => {
+      const res = await saveB201({ day, manual: v, expectedUpdated: expected ?? null });
       return res.ok ? { ok: true as const, data: { ...res.data, number: 0 } } : res;
     },
     [day],
   );
   const autosave = useAutosave({
-    value,
+    value: manual,
     enabled: canWrite,
     initialId: reportId,
     initialUpdated: updated,
@@ -94,18 +98,13 @@ export function B201Board({
   });
   const { state, savedAt, error, rebase, isDirty, version } = autosave;
 
-  // B201 enregistrée ailleurs (temps réel) : reprise de la version distante seulement si rien n'est en cours ici.
+  // Fiche du jour enregistrée ailleurs (temps réel) : reprise de la version distante si rien n'est en cours ici.
   useEffect(() => {
     if (!updated || updated === version() || isDirty()) return;
-    rebase(updated, { content: initialContent, manual: initialManual });
-    setContent(initialContent);
+    rebase(updated, initialManual);
     setManual(initialManual);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [updated]);
-
-  // Auteur de la dernière modification : moi après mon propre enregistrement, sinon celui de la fiche.
-  const lastBy = savedAt ? me : updatedByName;
-  const lastAt = savedAt ? hm.format(savedAt) : pbTime(updated);
 
   const groups = useMemo(() => {
     const all = [
@@ -141,50 +140,65 @@ export function B201Board({
     <div className="flex flex-col gap-6">
       <section
         aria-labelledby="b201-notes-title"
-        className="flex min-w-0 flex-col gap-3 rounded-box border border-border bg-surface p-4"
+        className="flex min-w-0 flex-col gap-4"
         data-testid="b201-notes"
       >
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 id="b201-notes-title" className="scroll-mt-20 text-h3 font-semibold text-fg">
             Notes et commentaires du jour
           </h2>
-          <div className="flex flex-wrap items-center gap-3">
-            {lastAt ? (
-              <span className="text-small text-fg-muted" data-testid="b201-last-edit">
-                Modifié à <span className="font-mono tabular">{lastAt}</span>
-                {lastBy ? ` par ${lastBy}` : ""}
-              </span>
-            ) : null}
-            {canWrite ? (
-              <AutosaveIndicator state={state} savedAt={savedAt} />
-            ) : (
-              <span className="label-mono text-fg-muted">Lecture seule</span>
-            )}
-            <Versions
-              versions={versions}
-              canRestore={canWrite}
-              onRestore={(c) => setContent(c.slice(0, B201_NOTES_MAX))}
-            />
-          </div>
-        </div>
-        {error ? (
-          <p
-            role="alert"
-            className="rounded-control border border-danger/60 px-3 py-2 text-body text-danger"
-          >
-            {error}
+          <p className="text-small text-fg-muted">
+            {notes.length > 1
+              ? `Une page de notes par district (${notes.map((n) => n.district).join(", ")}).`
+              : notes[0]
+                ? `District ${B201_DISTRICT_LABEL[notes[0].district]} (${notes[0].district}).`
+                : null}
           </p>
+        </div>
+        {common.trim() ? <CommonNotes content={common} byName={commonByName} /> : null}
+        {notes.length > 1 ? (
+          <div
+            role="tablist"
+            aria-label="Notes par district"
+            className="flex gap-1.5 overflow-x-auto md:hidden"
+          >
+            {notes.map((n) => (
+              <button
+                key={n.district}
+                type="button"
+                role="tab"
+                id={`b201-notes-tab-${n.district}`}
+                aria-controls={`b201-notes-panel-${n.district}`}
+                aria-selected={activeNote === n.district}
+                data-testid={`b201-notes-tab-${n.district}`}
+                onClick={() => setNoteTab(n.district)}
+                className={cn(
+                  "h-11 shrink-0 cursor-pointer rounded-control border px-3 text-body",
+                  activeNote === n.district
+                    ? "border-accent text-fg"
+                    : "border-border text-fg-muted",
+                )}
+              >
+                {n.district}
+                {n.content.trim() ? (
+                  <span aria-hidden className="ml-1.5 inline-block size-1.5 rounded-full bg-info" />
+                ) : null}
+              </button>
+            ))}
+          </div>
         ) : null}
-        <MarkdownEditor
-          value={content}
-          onChange={setContent}
-          maxLength={B201_NOTES_MAX}
-          label="Notes et commentaires du jour"
-          placeholder={
-            "### Matin\n- Bus Mons → Quévy : chauffeur prévenu\n\n### Pour le service suivant\n- **Rappeler** le dépôt avant 14 h"
-          }
-          readOnly={!canWrite}
-        />
+        {notes.map((n) => (
+          <DistrictNotesEditor
+            // Changer de district ne remonte que l'éditeur concerné ; jamais de clé sur `updated`.
+            key={`${day}-${n.district}`}
+            day={day}
+            notes={n}
+            canWrite={canWrite}
+            me={me}
+            tabbed={notes.length > 1}
+            active={activeNote === n.district}
+          />
+        ))}
       </section>
 
       <section aria-labelledby="b201-transports-title" className="flex min-w-0 flex-col gap-3">
@@ -192,6 +206,12 @@ export function B201Board({
           <h2 id="b201-transports-title" className="scroll-mt-20 text-h3 font-semibold text-fg">
             Transports du jour
           </h2>
+          {/* Rien de saisi hors outil ce jour : pas d'indicateur (« Brouillon non enregistré » inquiétait). */}
+          {canWrite && state !== "idle" ? (
+            <span data-testid="b201-transports-autosave">
+              <AutosaveIndicator state={state} savedAt={savedAt} />
+            </span>
+          ) : null}
           <div
             role="tablist"
             aria-label="Périodes"
@@ -215,6 +235,14 @@ export function B201Board({
             ))}
           </div>
         </div>
+        {error ? (
+          <p
+            role="alert"
+            className="rounded-control border border-danger/60 px-3 py-2 text-body text-danger"
+          >
+            {error}
+          </p>
+        ) : null}
         <div className="grid gap-4 xl:grid-cols-3">
           {PERIODS.map((p) => (
             <section
@@ -306,14 +334,166 @@ export function B201Board({
   );
 }
 
+/**
+ * Notes d'un district pour le jour : enregistrement automatique propre (fiche jour + district), verrou optimiste,
+ * auteur et versions. En onglets (mobile, plusieurs districts) : seul l'onglet actif est visible, les autres restent
+ * montés (saisie et enregistrement gardés).
+ */
+function DistrictNotesEditor({
+  day,
+  notes,
+  canWrite,
+  me,
+  tabbed,
+  active,
+}: {
+  day: string;
+  notes: DistrictNotes;
+  canWrite: boolean;
+  me: string;
+  tabbed: boolean;
+  active: boolean;
+}) {
+  const { district } = notes;
+  const [content, setContent] = useState(notes.content);
+  const save = useCallback(
+    async (_id: string | null, v: string, expected?: string) => {
+      const res = await saveB201Notes({
+        day,
+        district,
+        content: v,
+        expectedUpdated: expected ?? null,
+      });
+      return res.ok ? { ok: true as const, data: { ...res.data, number: 0 } } : res;
+    },
+    [day, district],
+  );
+  const { state, savedAt, error, rebase, isDirty, version } = useAutosave({
+    value: content,
+    enabled: canWrite,
+    initialId: notes.id,
+    initialUpdated: notes.updated,
+    save,
+  });
+
+  // Notes du district enregistrées ailleurs (temps réel) : reprises seulement si rien n'est en cours ici.
+  useEffect(() => {
+    if (!notes.updated || notes.updated === version() || isDirty()) return;
+    rebase(notes.updated, notes.content);
+    setContent(notes.content);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notes.updated]);
+
+  const lastBy = savedAt ? me : notes.updatedByName;
+  const lastAt = savedAt ? hm.format(savedAt) : pbTime(notes.updated);
+  const label = `Notes ${district} (${B201_DISTRICT_LABEL[district]})`;
+
+  return (
+    <section
+      id={`b201-notes-panel-${district}`}
+      role={tabbed ? "tabpanel" : undefined}
+      aria-labelledby={tabbed ? `b201-notes-tab-${district}` : undefined}
+      aria-label={tabbed ? undefined : label}
+      data-testid={`b201-notes-${district}`}
+      className={cn(
+        "min-w-0 flex-col gap-3 rounded-box border border-border bg-surface p-4",
+        tabbed && !active ? "hidden md:flex" : "flex",
+      )}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="flex items-baseline gap-2">
+          <span className="text-body-lg font-semibold text-fg">{district}</span>
+          <span className="text-small text-fg-muted">{B201_DISTRICT_LABEL[district]}</span>
+        </h3>
+        <div className="flex flex-wrap items-center gap-3">
+          {lastAt ? (
+            <span className="text-small text-fg-muted" data-testid="b201-last-edit">
+              Modifié à <span className="font-mono tabular">{lastAt}</span>
+              {lastBy ? ` par ${lastBy}` : ""}
+            </span>
+          ) : null}
+          {canWrite ? (
+            <AutosaveIndicator state={state} savedAt={savedAt} />
+          ) : (
+            <span className="label-mono text-fg-muted">Lecture seule</span>
+          )}
+          <Versions
+            versions={notes.versions}
+            canRestore={canWrite}
+            title={`Versions du jour · ${district}`}
+            onRestore={(c) => setContent(c.slice(0, B201_NOTES_MAX))}
+          />
+        </div>
+      </div>
+      {error ? (
+        <p
+          role="alert"
+          className="rounded-control border border-danger/60 px-3 py-2 text-body text-danger"
+        >
+          {error}
+        </p>
+      ) : null}
+      <MarkdownEditor
+        value={content}
+        onChange={setContent}
+        maxLength={B201_NOTES_MAX}
+        label={label}
+        placeholder={
+          "### Matin\n- Bus Mons → Quévy : chauffeur prévenu\n\n### Pour le service suivant\n- **Rappeler** le dépôt avant 14 h"
+        }
+        readOnly={!canWrite}
+      />
+    </section>
+  );
+}
+
+/**
+ * Notes du jour écrites avant les notes par district (15 oct. 2026) : une fiche par jour, sans district évident. Lecture
+ * seule, une fois au-dessus des districts ; « Copier » pour en reprendre un passage dans les notes d'un district.
+ */
+function CommonNotes({ content, byName }: { content: string; byName: string }) {
+  const copy = useCopy();
+  return (
+    <section
+      aria-label={COMMON_NOTES_TITLE}
+      data-testid="b201-common"
+      className="flex min-w-0 flex-col gap-2 rounded-box border border-dashed border-border-strong bg-surface-2 p-4"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="flex items-center gap-2 text-body-lg font-semibold text-fg">
+          <Lock aria-hidden className="size-4 text-fg-muted" />
+          {COMMON_NOTES_TITLE}
+        </h3>
+        <div className="flex items-center gap-2">
+          <span className="label-mono text-fg-muted">
+            Lecture seule{byName ? ` · ${byName}` : ""}
+          </span>
+          <Button variant="ghost" size="sm" onClick={() => void copy.copy(content)}>
+            <CopyIcon copied={copy.copied} /> {copy.copied ? "Copié" : "Copier"}
+          </Button>
+        </div>
+      </div>
+      <p className="text-small text-fg-muted">
+        Écrites avant les notes par district, pour tous les districts. Les nouvelles notes vont dans
+        le district concerné.
+      </p>
+      <div className="max-h-72 overflow-auto">
+        <ChatMarkdown body={content} className="min-w-0" />
+      </div>
+    </section>
+  );
+}
+
 /** Versions du jour (gardées par le serveur : auteur différent, ou toutes les 10 min), restaurables. */
 function Versions({
   versions,
   canRestore,
+  title,
   onRestore,
 }: {
   versions: B201Version[];
   canRestore: boolean;
+  title: string;
   onRestore: (content: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -326,7 +506,7 @@ function Versions({
         </Button>
       </DialogTrigger>
       <DialogContent
-        title="Versions du jour"
+        title={title}
         description="État des notes avant chaque changement d'auteur (et toutes les 10 minutes au plus)."
         className="max-w-2xl"
       >

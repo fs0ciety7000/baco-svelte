@@ -1,4 +1,4 @@
-// B201 (15 oct. 2026) : notes du jour en Markdown (`b201_reports.content`) et versions du jour (`versions`), écrites
+// B201 (15 oct. 2026) : notes du jour en Markdown (`b201_notes.content`, une fiche par jour et par district ; avant : `b201_reports.content`) et versions du jour (`versions`), écrites
 // par le hook `b201.pb.js` seulement (la valeur envoyée par un client est ignorée). Miroir de `web/src/lib/ops/b201.ts`.
 
 const MAX_VERSIONS = 30;

@@ -1304,6 +1304,14 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   masquées par requête de conteneur) et **repère « maintenant »** (ligne, passées estompées, prochaine, mini-frise,
   « Aller à maintenant »). 615 contrôles de règles.
 
+- 2026-10-15 — **B201 : notes par district** (décisions de l'utilisateur) : une fiche de notes par jour ET par district
+  (`b201_notes`, DSO / DSE / DCE, `1760004840`), chacune avec ses versions, son auteur et son verrou optimiste ; à
+  l'ouverture, les districts du jour ; plusieurs districts = éditeurs l'un sous l'autre en desktop, onglets en mobile.
+  Notes d'avant (une fiche par jour, sans district) : **non recopiées**, affichées une fois en lecture seule sous « Notes
+  communes (avant le 15 oct.) » (aussi en tête du PDF) ; `b201_reports.content` figé par les règles. « Copier » et
+  « Épingler au Journal » : la synthèse de la relève seule, sans les notes. PDF : une section par district demandé.
+  Retour arrière testé (notes reversées dans `b201_reports.content` sous « ### Notes DSO »…). 661 contrôles de règles.
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)
