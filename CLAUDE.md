@@ -1332,6 +1332,14 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   `aria-describedby` : le texte et le nom des liens ne changent pas (E2E intacts). `fitTabs` déplacé dans `module-tabs-fit.ts`
   (le test importait sinon une Server Action « server-only »). Restent : écrans (lot 4, en parallèle), mouvement (5), reste (6).
 
+- 2026-10-15 — **Campagne du jour J** (demande : « campagne mail pour le basculement de BACO vers CSM, à envoyer le jour J, jolie,
+  principales nouveautés ») : modèle « Basculement BACO → CSM (jour J) » par défaut dans Administration › Campagnes (accroche,
+  ce qui ne change pas, bouton, 6 cartes de nouveautés tirées du CHANGELOG, 3 étapes de première connexion, aide /changelog,
+  contact « un administrateur CSM », signé « L'équipe CSM »), ancienne annonce gardée au choix. Rendu `lib/mail/campaign.ts`
+  étendu de blocs `::: bandeau / bouton / cartes / etapes / encadre` (tableaux, styles en ligne, colonnes hybrides + tableau
+  fantôme Outlook, mode sombre par `prefers-color-scheme`, couleurs Signal · Jour) ; anciennes campagnes rendues comme avant
+  (couleurs pétrole au lieu d'ambre). Aucun e-mail envoyé. Date du jour J non citée (le texte dit « aujourd'hui »).
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)
