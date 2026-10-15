@@ -21,6 +21,9 @@ import type { StationRow } from "@/server/data/timetable";
 
 const KIND_LABEL: Record<string, string> = { gare: "Gare", pang: "PANG", etranger: "Étranger" };
 
+/** Rendu progressif (refonte v4, lot 5) : 150 gares, puis « Afficher 150 de plus » (jusqu'à 400 chargées × 2 vues). */
+const STEP = 150;
+
 const trainsHref = (gare: string) => `/reseau/horaires?vue=gare&gare=${encodeURIComponent(gare)}`;
 
 /**
@@ -34,6 +37,9 @@ export function StationsBoard({ rows, canEdit }: { rows: StationRow[]; canEdit: 
   const [bulk, setBulk] = useState("DSO");
   const withSuggestion = useMemo(() => rows.filter((r) => !r.district && r.suggested), [rows]);
   const chosen = rows.filter((r) => selected.has(r.id));
+  const [limit, setLimit] = useState(STEP);
+  const visible = rows.length > limit ? rows.slice(0, limit) : rows;
+  const allVisibleChosen = visible.length > 0 && visible.every((r) => selected.has(r.id));
 
   const toggle = (id: string) =>
     setSelected((s) => {
@@ -137,9 +143,9 @@ export function StationsBoard({ rows, canEdit }: { rows: StationRow[]; canEdit: 
                 <Th className="w-10">
                   <Checkbox
                     aria-label="Tout sélectionner"
-                    checked={rows.length > 0 && chosen.length === rows.length}
+                    checked={allVisibleChosen}
                     onCheckedChange={(v) =>
-                      setSelected(v ? new Set(rows.map((r) => r.id)) : new Set())
+                      setSelected(v ? new Set(visible.map((r) => r.id)) : new Set())
                     }
                   />
                 </Th>
@@ -153,7 +159,7 @@ export function StationsBoard({ rows, canEdit }: { rows: StationRow[]; canEdit: 
             </tr>
           </THead>
           <tbody>
-            {rows.map((s) => (
+            {visible.map((s) => (
               <Tr key={s.id} selected={selected.has(s.id)}>
                 {canEdit ? (
                   <Td>
@@ -192,7 +198,7 @@ export function StationsBoard({ rows, canEdit }: { rows: StationRow[]; canEdit: 
       </div>
 
       <ul className="flex flex-col gap-2 md:hidden">
-        {rows.map((s) => (
+        {visible.map((s) => (
           <li
             key={s.id}
             className="flex min-w-0 flex-col gap-2 rounded-box border border-border bg-surface px-3 py-2"
@@ -226,6 +232,18 @@ export function StationsBoard({ rows, canEdit }: { rows: StationRow[]; canEdit: 
           </li>
         ))}
       </ul>
+      {rows.length > limit ? (
+        <Button
+          type="button"
+          variant="ghost"
+          className="w-full border border-border"
+          data-testid="stations-more"
+          onClick={() => setLimit((l) => l + STEP)}
+        >
+          Afficher {Math.min(STEP, rows.length - limit)} de plus ({rows.length - limit}{" "}
+          {pl(rows.length - limit, "restante")})
+        </Button>
+      ) : null}
     </div>
   );
 }

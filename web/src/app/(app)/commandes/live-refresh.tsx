@@ -45,7 +45,13 @@ export function LiveRefresh({ topics, quiet }: { topics: string[]; quiet?: boole
         aria-hidden
         className={state === "direct" ? "size-1.5 animate-pulse-dot bg-ok" : "size-1.5 bg-fg-muted"}
       />
-      {state === "direct" ? "En direct" : state === "connexion" ? "Connexion…" : "Hors ligne"}
+      {/* Largeur du libellé le plus long réservée (lot 5) : « Connexion… » au rendu serveur puis « En direct » ne fait
+          plus changer la rangée de place (CLS de Ma journée en 390 px). */}
+      <span className="inline-grid before:invisible before:content-['Connexion…'] before:[grid-area:1/1] after:invisible after:content-['Hors_ligne'] after:[grid-area:1/1]">
+        <span className="[grid-area:1/1]">
+          {state === "direct" ? "En direct" : state === "connexion" ? "Connexion…" : "Hors ligne"}
+        </span>
+      </span>
     </span>
   );
 }

@@ -9,6 +9,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 
+import { can } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import {
   activeModule,
@@ -283,7 +284,7 @@ const IRAIL_STATE = {
 } as const;
 
 export function Sidebar() {
-  const { modules, admin, version } = useShell();
+  const { modules, admin, version, user } = useShell();
   const { status, live } = useShellStatus();
   const pathname = usePathname();
   const active = activeModule(pathname, modules);
@@ -363,12 +364,14 @@ export function Sidebar() {
             tone={live === "direct" ? "ok" : live === "coupé" ? "danger" : "warn"}
             pulse={live === "direct"}
           />
-          {status?.counts.pmr !== undefined ? (
+          {/* Ligne posée dès le rendu serveur d'après le droit (et non à l'arrivée des compteurs) : elle décalait le pied
+              de la barre latérale (CLS, lot 5). */}
+          {status?.counts.pmr !== undefined || (!status && can(user, "deplacements:read")) ? (
             <Feed
               testId="feed-dicos"
               label="DICOS"
-              state={dicos ? dicos.text : "pas aujourd'hui"}
-              tone={!dicos || dicos.stale ? "warn" : "ok"}
+              state={!status ? "…" : dicos ? dicos.text : "pas aujourd'hui"}
+              tone={!status ? "idle" : !dicos || dicos.stale ? "warn" : "ok"}
             />
           ) : null}
           <Feed

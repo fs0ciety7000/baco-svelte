@@ -240,6 +240,8 @@ export const assistListSchema = z.object({
     .optional()
     .transform((v) => parseStatuses(v, ASSIST_STATUSES)),
   limit: z.coerce.number().int().min(1).max(5000).default(300),
+  /** Page (1 = première), pour les listes paginées (Historique). */
+  page: z.coerce.number().int().min(1).max(10000).catch(1).default(1),
 });
 
 /** Filtre PocketBase lié « statut parmi la liste cochée ». */
@@ -285,12 +287,14 @@ export async function listAssists(
     return {
       rows: await withAbsence(items.map((r) => assist(r, ctx.canPmr))),
       total: items.length,
+      totalPages: 1,
     };
   }
-  const res = await pb.collection("pmr_assists").getList(1, p.limit, options);
+  const res = await pb.collection("pmr_assists").getList(p.page, p.limit, options);
   return {
     rows: await withAbsence(res.items.map((r) => assist(r, ctx.canPmr))),
     total: res.totalItems,
+    totalPages: res.totalPages,
   };
 }
 

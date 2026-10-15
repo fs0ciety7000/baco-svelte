@@ -137,7 +137,8 @@ export async function StationsScreen({
           description="Aucune gare ne correspond (le référentiel est construit chaque matin avec celui des trains)."
         />
       ) : (
-        <StationsBoard rows={rows} canEdit={canEdit} />
+        // Clé = filtres : nouvelle recherche, rendu progressif et sélection repartent de zéro.
+        <StationsBoard key={JSON.stringify(f)} rows={rows} canEdit={canEdit} />
       )}
     </section>
   );

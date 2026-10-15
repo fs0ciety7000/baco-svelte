@@ -79,6 +79,17 @@ Contraste vérifié (WCAG AA ≥ 4,5:1) pour `fg-muted`, `accent` et les 4 coule
 
 ## Motion (GSAP)
 
+> **Écart validé (refonte v4, lot 5, 15 oct. 2026) — mouvement en CSS d'abord, GSAP à la demande.** L'arrivée de page,
+> les cascades simples, le trait d'onglet, `highlight`, la continuité ligne → panneau, les compteurs, la frise « Ma
+> journée », l'écran commun et l'intro de connexion sont en `@keyframes` CSS ou en Web Animations
+> (`src/lib/motion-core.ts`, **aucun import de GSAP**). Arrivée de page : fondu + 6 px, **320 ms**,
+> `cubic-bezier(.16,1,.3,1)` (`--ease-out`), cascade ≤ **4 blocs × 40 ms**, jamais au premier affichage ni sur un changement
+> de filtre ; sorties 160 ms `ease-in` ; rien en mouvement réduit. `transform` et `opacity` seulement (jamais `width`,
+> `height`, `top`, `left`, `box-shadow`) ; `will-change` posé pendant l'animation et retiré ensuite ; barres de progression en
+> `scaleX`. GSAP (`src/lib/motion.ts`) ne sert plus qu'aux mises en scène propres à une page et n'est **jamais importé par le
+> shell ni par `components/ui`** ; les emblèmes du pied de page le chargent par `import()` quand ils deviennent visibles.
+> Les recettes ci-dessous restent la référence d'intention (durées, courbes) ; leur mise en œuvre suit cette règle.
+
 GSAP est **100 % gratuit depuis 2025**, plugins compris (SplitText, Flip, CustomEase, ScrollTrigger), et la licence standard couvre l'usage commercial. Tout passe par le paquet npm `gsap`.
 
 - **Setup** : `useGSAP()` de `@gsap/react` avec `{ scope: ref }` pour un nettoyage automatique. Chaque animation est enveloppée dans `gsap.matchMedia()` avec la condition `(prefers-reduced-motion: no-preference)`. En mouvement réduit, on n'applique que les changements d'opacité, ou rien.

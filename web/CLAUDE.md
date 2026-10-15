@@ -85,7 +85,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   libellés exacts) ; couleurs de la barre latérale par jetons `--nav-*` (`bg-nav`, `bg-nav-on`, `bg-nav-card`, `border-nav-rule`,
   `shadow-[var(--nav-card-shadow)]`) ; boutons-icônes et menus du shell : `SHELL_ICON` / `SHELL_MENU` (`shell/shell-ui.ts`) ;
   état d'iRail : `irailHealth()` (`server/irail.ts`) dans `ShellStatus.irail`. `useSlideIndicator(…, { inset, rounded })` : trait
-  arrondi (largeur réelle au lieu d'un `scaleX`). Un composant client qui lit `useShellStatus` importe une Server Action
+  arrondi (option gardée pour compatibilité : depuis le lot 5, tous les traits ont leur largeur réelle et glissent en `transform`). Un composant client qui lit `useShellStatus` importe une Server Action
   « server-only » : garder la logique pure testée dans un fichier à part (`module-tabs-fit.ts`).
 - Navigation : **source unique** `src/navigation.ts` (6 modules, onglets en routes, `hideFor`, actions rapides,
   administration : `ADMIN.tabs` portent `group` + `icon`, `tabGroups()` ; section `AdminSection` de la barre latérale
@@ -246,7 +246,8 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   - composants dans `src/components/ui` (Button, Input/Select/Textarea, Field, Checkbox/Switch, Card, StatCard,
     Badge/StatusBadge, Tabs, Dialog, Sheet, Toast, EmptyState, PageHeader, Kbd, Skeleton, Tooltip, Table/ListCard,
     Command) : **aucun style ad hoc dans les pages** ; tout nouveau composant est ajouté à `/design` ;
-  - motion : `src/lib/motion.ts` (GSAP + `gsap.matchMedia()`, ease `hud`, `useStaggerIn`) ; budgets de DESIGN-DIRECTION.
+  - motion : `src/lib/motion-core.ts` (CSS / Web Animations, sans GSAP : à utiliser partout) et `src/lib/motion.ts` (GSAP +
+    `gsap.matchMedia()`, ease `hud`, pour une mise en scène propre à une page) ; budgets de DESIGN-DIRECTION.
 - **Contrôles personnalisés (refonte R1 + R3, 14 oct. 2026, `../docs/design/REFONTE-UI-2026-10.md` §3.5)** : **plus
   aucun `<select>` ni champ `type="date|time|month|datetime-local"` natif dans un nouvel écran** (liste aux couleurs du
   système, format américain sur un poste en anglais, libellés coupés). Utiliser :
@@ -331,7 +332,24 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   côté client, pas de rechargement. `FormAutoSubmit` reste valable.
 - Keyframes : animer `transform`, `opacity` ; jamais la propriété `translate` (elle porte le centrage Tailwind
   `-translate-x-1/2`).
-- Trait d'onglet : `useSlideIndicator(listRef, barRef, sélecteur)` (`lib/motion.ts`), trait `w-px origin-left`.
+- Trait d'onglet : `useSlideIndicator(listRef, barRef, sélecteur)` (`lib/motion-core.ts`), trait `w-px origin-left` : largeur
+  finale posée d'un coup, glissement en `transform` seulement (FLIP `translateX` + `scaleX`, Web Animations).
+- **Lot 5 (refonte v4, 15 oct. 2026) — mouvement sans GSAP** : `lib/motion-core.ts` (aucun import de `gsap`) = `MOTION`,
+  `EASE`, `CASCADE`, `reducedMotion()`, `playEnter(els, { cascade })` (classe `.motion-enter` de `globals.css` : fondu + 6 px,
+  320 ms, `--ease-out`, `--enter-delay` 40 ms × 4 blocs au plus, classe retirée à la fin), `useStaggerIn`, `useSlideIndicator`,
+  `highlightElements` et `ghostFlip` (Web Animations ; le fantôme est posé à sa place finale et animé en `transform`),
+  `animateFrom(els, from, { duration, delay, stagger, maxDelay })` (équivalent de `gsap.from`). **Shell, `components/ui` et
+  tout composant monté sur de nombreuses pages importent `@/lib/motion-core`, jamais `@/lib/motion`** (qui ajoute GSAP,
+  ≈ 40 Ko compressés, au bundle de la page ; il réexporte les primitives pour les anciens imports). `PageTransition` et
+  l'intro de connexion sont en CSS ; `BrandMark` charge GSAP par `import()` à l'apparition. E2E `motion.spec.ts` : arrivée
+  CSS jouée puis retirée, rien en mouvement réduit, `window.gsapVersions` absent sur un bon bus.
+- **CLS** : une liste personnalisée (`Combobox`, `Select`, `MultiSelect`) est un champ au rendu serveur et devient un bouton
+  (feuille du bas) une fois hydratée en mobile : dans une barre de filtres, **fixer la largeur de son `<label>`** (`w-36`,
+  `w-full sm:w-72`), sinon les filtres suivants changent de rangée. Un texte qui change après l'hydratation (« Connexion… » →
+  « En direct ») réserve la largeur du plus long (`LiveRefresh`). Ne pas ajouter de `loading.tsx` sans mesure : essayé au
+  lot 5, il dégradait le LCP au chargement complet (Lignes 340 → 504 ms, Suivi 420 → 516 ms), ajoutait du CLS, rendait
+  200 au lieu de 404 pour une page gardée et laissait un instant le contenu en double (`div[hidden]` du streaming : les
+  E2E en mode strict échouaient).
 - Pas d'animation d'entrée sur un contenu rendu par le serveur au premier affichage (`useStaggerIn` l'ignore).
 - `NavProgress` (shell) : barre de chargement entre pages ; `(app)/error.tsx` : erreur en français dans le shell.
 - Thèmes (lot 1) : 11 thèmes dans `src/design/tokens.ts` (couleurs, `shape`, `type`, `modules`) → `npm run tokens`.

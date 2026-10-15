@@ -285,7 +285,9 @@ export function JournalChat({
   const [pinsOpen, setPinsOpen] = useState(false);
   const [atBottom, setAtBottom] = useState(true);
   const [fresh, setFresh] = useState(0);
-  const [top, setTop] = useState(0);
+  // `null` avant la première mesure : hauteur CSS par défaut (`--journal-top`, position du fil sous la barre du haut),
+  // proche de la mesure réelle, pour que le rendu serveur ne place pas la barre d'écriture plus bas (décalage, CLS).
+  const [top, setTop] = useState<number | null>(null);
   const lastId = useRef<string | null>(null);
   const lastCount = useRef(0);
   const lastHeight = useRef(0);
@@ -577,9 +579,15 @@ export function JournalChat({
     <>
       <div
         ref={frame}
-        style={full ? undefined : { height: `calc(100dvh - ${top}px - var(--journal-gap))` }}
+        style={
+          full
+            ? undefined
+            : {
+                height: `calc(100dvh - ${top === null ? "var(--journal-top)" : `${top}px`} - var(--journal-gap))`,
+              }
+        }
         className={cn(
-          "flex min-h-[26rem] flex-col overflow-hidden border border-border bg-bg max-sm:-mx-4 max-sm:border-x-0 [--journal-gap:calc(env(safe-area-inset-bottom)+5.25rem)] md:[--journal-gap:1.5rem]",
+          "flex min-h-[26rem] flex-col overflow-hidden border border-border bg-bg max-sm:-mx-4 max-sm:border-x-0 [--journal-gap:calc(env(safe-area-inset-bottom)+5.25rem)] [--journal-top:7.3rem] md:[--journal-gap:1.5rem] md:[--journal-top:5rem]",
           full &&
             "fixed inset-0 z-[45] min-h-0 border-0 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
         )}

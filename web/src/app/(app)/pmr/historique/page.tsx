@@ -5,6 +5,7 @@ import { pl } from "@/lib/utils";
 import { AssistBoard } from "@/components/pmr/assist-board";
 import { hideCancelled, PmrFilterBar, type PmrFilters } from "@/components/pmr/filter-bar";
 import { ASSIST_STATUSES, parseStatuses } from "@/lib/pmr/model";
+import { RefPager } from "@/components/referentiels/ref-ui";
 import { Button } from "@/components/ui/button";
 import { can } from "@/lib/permissions";
 import { normalizeDistricts } from "@/lib/pmr/district-filter";
@@ -15,7 +16,14 @@ import { historyRange, listAssists } from "@/server/data/pmr";
 
 export const metadata: Metadata = { title: "Historique PMR · CSM" };
 
-export default async function Page({ searchParams }: { searchParams: Promise<PmrFilters> }) {
+/** Lignes par page (refonte v4, lot 5 : au-delà de ~200 lignes, pagination plutôt qu'un tableau de 500 lignes × 2 vues). */
+const PAGE_SIZE = 200;
+
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<PmrFilters & { page?: string }>;
+}) {
   const user = await requirePermission("deplacements:read");
   const sp = await searchParams;
   // Choix « masquer les annulées » : paramètre d'URL (mémorisé), sinon préférence de l'agent.
@@ -28,7 +36,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
   const canPmr = can(user, "pmr:read");
   // Un ou plusieurs districts (paramètre répété ou « DSO,DSE ») ; « tous » ou rien = tous.
   const district = normalizeDistricts(f.district);
-  const { rows, total } = await listAssists(
+  const page = Math.max(1, Math.min(10_000, Number.parseInt(sp.page ?? "1", 10) || 1));
+  const { rows, total, totalPages } = await listAssists(
     {
       from: du,
       to: au,
@@ -36,7 +45,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
       q: f.q,
       status: f.statut,
       hideCancelled: hideCancelled(f),
-      limit: 500,
+      limit: PAGE_SIZE,
+      page,
     },
     { canPmr, order: "desc" },
   );
@@ -57,7 +67,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-body text-fg-muted">
           <span className="font-mono text-fg tabular">{total}</span> {pl(total, "mission")}
-          {total > rows.length ? ` · ${rows.length} affichées : affine les filtres` : ""}
+          {totalPages > 1 ? ` · page ${Math.min(page, totalPages)} sur ${totalPages}` : ""}
         </p>
         <Button asChild variant="secondary">
           <a href={`/api/pmr/export?${exportQuery}`} download>
@@ -75,6 +85,15 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
         ]}
       />
       <AssistBoard rows={rows} canPmr={canPmr} groupByDay={false} district={district} />
+      {totalPages > 1 ? (
+        <RefPager
+          base="/pmr/historique"
+          params={Object.fromEntries(exportQuery)}
+          page={Math.min(page, totalPages)}
+          totalPages={totalPages}
+          total={total}
+        />
+      ) : null}
     </section>
   );
 }
