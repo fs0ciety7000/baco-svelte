@@ -5,6 +5,8 @@ import {
   IBM_Plex_Mono,
   IBM_Plex_Sans,
   IBM_Plex_Sans_Condensed,
+  Inter_Tight,
+  JetBrains_Mono,
   Saira_Condensed,
 } from "next/font/google";
 import { cookies } from "next/headers";
@@ -13,7 +15,7 @@ import { ActingBanner } from "@/components/shell/acting-banner";
 import type { ReactNode } from "react";
 
 import { parseUiCookie, UI_COOKIE } from "@/design/preferences";
-import { themeById } from "@/design/tokens";
+import { choiceScheme } from "@/design/tokens";
 import { roleLabel } from "@/lib/roles";
 import { env } from "@/server/env";
 import { resolveActing } from "@/server/session";
@@ -58,6 +60,22 @@ const plexMono = IBM_Plex_Mono({
   preload: false,
 });
 
+// Inter Tight + JetBrains Mono : direction « Cabine » seulement (v4, 15 oct. 2026) → pas de préchargement non plus.
+const interTight = Inter_Tight({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-inter-tight",
+  display: "swap",
+  preload: false,
+});
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["500"],
+  variable: "--font-jetbrains-mono",
+  display: "swap",
+  preload: false,
+});
+
 // Base des URL absolues (image de partage) : l'URL publique de l'instance, jamais déduite des en-têtes.
 function siteUrl(): URL {
   try {
@@ -86,7 +104,7 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   const ui = parseUiCookie((await cookies()).get(UI_COOKIE)?.value);
-  const scheme = ui.theme === "auto" ? undefined : themeById(ui.theme).scheme;
+  const scheme = choiceScheme(ui.theme);
   // « Voir en tant que » : bandeau fixe sur toutes les pages (shell, /tv, maintenance…), y compris mode expiré.
   const acting = await resolveActing();
   const showActing = !!acting.actor || acting.stale;
@@ -97,7 +115,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       data-scheme={scheme}
       data-density={ui.density}
       data-acting={showActing ? "" : undefined}
-      className={[geist, geistMono, saira, plex, plexCondensed, plexMono]
+      className={[geist, geistMono, saira, plex, plexCondensed, plexMono, interTight, jetbrainsMono]
         .map((f) => f.variable)
         .join(" ")}
     >

@@ -50,7 +50,14 @@ import { toast } from "@/components/ui/toast";
 import { Tooltip } from "@/components/ui/tooltip";
 import { contrast } from "@/design/contrast";
 import type { UiPreferences } from "@/design/preferences";
-import { AUTO_THEMES, COLOR_TOKENS, THEMES, themeById } from "@/design/tokens";
+import {
+  AUTO_THEMES,
+  autoThemes,
+  COLOR_TOKENS,
+  isAutoChoice,
+  THEMES,
+  themeById,
+} from "@/design/tokens";
 import { useStaggerIn } from "@/lib/motion";
 import { lineLabel } from "@/lib/lines";
 
@@ -218,7 +225,7 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   useStaggerIn(ref);
 
-  const current = ui.theme === "auto" ? AUTO_THEMES.dark : ui.theme;
+  const current = isAutoChoice(ui.theme) ? autoThemes(ui.theme).dark : ui.theme;
 
   return (
     <div
@@ -248,9 +255,10 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
       <Section id="themes" title="Thème et densité">
         <ThemeSwitcher value={ui} onChange={setUi} />
         <p className="text-body text-fg-muted">
-          « Automatique » suit le système : {themeById(AUTO_THEMES.dark).label} en sombre,{" "}
-          {themeById(AUTO_THEMES.light).label} en clair. La densité compacte réduit contrôles et
-          lignes à 32 px (44 px restent garantis sur écran tactile).
+          « Automatique » suit le système : le thème Nuit de la direction en sombre, son thème Jour
+          en clair (défaut : {themeById(AUTO_THEMES.dark).label} /{" "}
+          {themeById(AUTO_THEMES.light).label}). La densité compacte réduit contrôles et lignes à 32
+          px (44 px restent garantis sur écran tactile).
         </p>
         <Swatches themeId={current} />
       </Section>

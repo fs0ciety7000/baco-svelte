@@ -1,12 +1,12 @@
 import { z } from "zod";
 
-import { DENSITIES, THEME_IDS } from "./tokens";
+import { DENSITIES, THEME_CHOICES } from "./tokens";
 
 // Préférences d'affichage de l'agent (cookie `csm_ui`, lu par le serveur pour poser data-theme sans flash).
 export const UI_COOKIE = "csm_ui";
 
 export const uiPreferencesSchema = z.object({
-  theme: z.enum([...THEME_IDS, "auto"]).catch("auto"),
+  theme: z.enum(THEME_CHOICES).catch("auto"),
   density: z.enum(DENSITIES).catch("confortable"),
 });
 

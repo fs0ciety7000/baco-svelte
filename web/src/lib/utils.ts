@@ -7,8 +7,25 @@ const twMerge = extendTailwindMerge({
   extend: {
     classGroups: {
       rounded: [{ rounded: ["box", "control"] }],
+      // v4 (15 oct. 2026) : ombres du thème, hauteurs de contrôle / ligne / champ.
+      shadow: [{ shadow: ["rest", "float"] }],
+      h: [{ h: ["control", "control-sm", "row", "field"] }],
       "font-size": [
-        { text: ["label", "small", "hint", "body", "body-lg", "h3", "h2", "h1", "stat"] },
+        {
+          text: [
+            "label",
+            "small",
+            "hint",
+            "body",
+            "body-lg",
+            "h3",
+            "h2",
+            "h1",
+            "stat",
+            "kpi",
+            "panel",
+          ],
+        },
       ],
       "text-color": [
         {
@@ -16,6 +33,7 @@ const twMerge = extendTailwindMerge({
             "bg",
             "surface",
             "surface-2",
+            "surface-3",
             "border",
             "border-strong",
             "fg",

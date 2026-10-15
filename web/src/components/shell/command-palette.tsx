@@ -42,7 +42,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Kbd } from "@/components/ui/misc";
-import { THEMES, themeById, type ThemeChoice } from "@/design/tokens";
+import { choiceScheme, THEMES, type ThemeChoice } from "@/design/tokens";
 import type { PaletteGroupId } from "@/lib/search/palette";
 
 import { CHANGELOG_LINK } from "@/navigation";
@@ -138,8 +138,9 @@ export function CommandPalette() {
     const next = { ...ui, theme };
     const root = document.documentElement;
     root.dataset.theme = theme;
-    if (theme === "auto") delete root.dataset.scheme;
-    else root.dataset.scheme = themeById(theme).scheme;
+    const scheme = choiceScheme(theme);
+    if (!scheme) delete root.dataset.scheme;
+    else root.dataset.scheme = scheme;
     setUi(next);
     setPaletteOpen(false);
     void saveUiPreferences(next);

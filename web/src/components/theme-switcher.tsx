@@ -13,11 +13,19 @@ import {
 import { Switch } from "@/components/ui/checkbox";
 import { Segmented } from "@/components/ui/form-kit";
 import type { UiPreferences } from "@/design/preferences";
-import { AUTO_THEMES, type ThemeChoice, type ThemeId, THEMES, themeById } from "@/design/tokens";
+import {
+  autoThemes,
+  choiceScheme,
+  DIRECTIONS,
+  isAutoChoice,
+  type ThemeChoice,
+  type ThemeId,
+  THEMES,
+} from "@/design/tokens";
 import { applyTelephony, readTelephony, TELEPHONY_KEY, type Telephony } from "@/lib/telephony";
 import { cn } from "@/lib/utils";
 
-/** Aperçu d'un thème : ses propres variables (data-theme sur l'élément), fond, accent et statuts. */
+/** Aperçu d'un thème : ses propres variables (data-theme sur l'élément), fond, carte, accent et statuts. */
 function ThemePreview({ id, className }: { id: ThemeId; className?: string }) {
   return (
     <span
@@ -32,7 +40,7 @@ function ThemePreview({ id, className }: { id: ThemeId; className?: string }) {
         <span className="h-2 w-6 rounded-control bg-accent" />
         <span className="h-1.5 w-8 rounded-control bg-fg-muted opacity-60" />
       </span>
-      <span className="flex gap-1">
+      <span className="flex items-center gap-1 rounded-control bg-surface px-1 py-0.5 shadow-rest">
         {(["ok", "warn", "danger", "info", "progress"] as const).map((s) => (
           <span key={s} className="size-2 rounded-full" style={{ background: `var(--${s})` }} />
         ))}
@@ -41,7 +49,23 @@ function ThemePreview({ id, className }: { id: ThemeId; className?: string }) {
   );
 }
 
-/** Choix du thème (11 + automatique) et de la densité : appliqué tout de suite, mémorisé côté serveur. */
+/** Aperçu d'un choix : thème fixe, ou moitié Nuit / moitié Jour pour un « automatique ». */
+function ChoicePreview({ id, className }: { id: ThemeChoice; className?: string }) {
+  if (!isAutoChoice(id)) return <ThemePreview id={id} className={className} />;
+  const { dark, light } = autoThemes(id);
+  return (
+    <span aria-hidden className={cn("grid grid-cols-2 overflow-hidden rounded-box", className)}>
+      <ThemePreview id={dark} className="rounded-r-none border-r-0" />
+      <ThemePreview id={light} className="rounded-l-none" />
+    </span>
+  );
+}
+
+/**
+ * Choix du thème et de la densité : appliqué tout de suite, mémorisé côté serveur. En tête, les trois directions de la
+ * refonte v4 (Signal par défaut, Quai, Cabine), chacune en Jour / Nuit / Automatique ; puis Contraste élevé ; les 11
+ * thèmes du 9 oct. 2026 restent sous « Autres thèmes ».
+ */
 export function ThemeSwitcher({
   value,
   onChange,
@@ -55,21 +79,19 @@ export function ThemeSwitcher({
     const root = document.documentElement;
     root.dataset.theme = next.theme;
     root.dataset.density = next.density;
-    if (next.theme === "auto") delete root.dataset.scheme;
-    else root.dataset.scheme = themeById(next.theme).scheme;
+    const scheme = choiceScheme(next.theme);
+    if (!scheme) delete root.dataset.scheme;
+    else root.dataset.scheme = scheme;
     onChange(next);
     startTransition(() => saveUiPreferences(next));
   };
 
-  type Choice = { id: ThemeChoice; label: string; description: string };
-  const reference: Choice[] = [
-    { id: "auto", label: "Automatique", description: "Jour ou Nuit selon le système" },
-    ...THEMES.filter((t) => t.group === "reference"),
-  ];
+  type Choice = { id: ThemeChoice; label: string; description: string; aria?: string };
+  const accessibility = THEMES.filter((t) => t.group === "reference" && !t.direction);
   const others: Choice[] = THEMES.filter((t) => t.group !== "reference");
   const otherActive = others.some((t) => t.id === value.theme);
 
-  const card = (t: Choice) => {
+  const card = (t: Choice, compact = false) => {
     const checked = value.theme === t.id;
     return (
       <button
@@ -77,35 +99,66 @@ export function ThemeSwitcher({
         type="button"
         role="radio"
         aria-checked={checked}
+        aria-label={t.aria}
+        data-testid={`theme-${t.id}`}
         onClick={() => apply({ ...value, theme: t.id })}
         className={cn(
-          "flex min-w-0 cursor-pointer flex-col gap-1.5 rounded-box border p-2 text-left transition-colors",
+          "flex min-h-11 min-w-0 cursor-pointer flex-col gap-1.5 rounded-box border p-2 text-left transition-colors",
           checked
             ? "border-accent bg-surface-2"
             : "border-border-strong bg-surface hover:border-fg-muted",
         )}
       >
-        {t.id === "auto" ? (
-          <span aria-hidden className="grid h-12 grid-cols-2 overflow-hidden rounded-box">
-            <ThemePreview id={AUTO_THEMES.dark} />
-            <ThemePreview id={AUTO_THEMES.light} />
-          </span>
-        ) : (
-          <ThemePreview id={t.id} className="h-12" />
-        )}
+        <ChoicePreview id={t.id} className={compact ? "h-10" : "h-12"} />
         <span className="flex items-center gap-1.5 text-body font-medium text-fg">
-          {t.id === "auto" ? <Monitor className="size-4" aria-hidden /> : null}
-          {t.label}
+          {isAutoChoice(t.id) ? <Monitor className="size-4 shrink-0" aria-hidden /> : null}
+          <span className="truncate">{t.label}</span>
         </span>
-        <span className="line-clamp-2 text-small text-fg-muted">{t.description}</span>
+        {t.description ? (
+          <span className="line-clamp-2 text-small text-fg-muted">{t.description}</span>
+        ) : null}
       </button>
     );
   };
 
   return (
     <div className="flex flex-col gap-4">
-      <div role="radiogroup" aria-label="Thème" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {reference.map(card)}
+      <div role="radiogroup" aria-label="Thème" className="flex flex-col gap-4">
+        {DIRECTIONS.map((d) => (
+          <section
+            key={d.id}
+            aria-labelledby={`direction-${d.id}`}
+            data-testid={`direction-${d.id}`}
+            className="flex flex-col gap-2"
+          >
+            <p id={`direction-${d.id}`} className="flex flex-wrap items-baseline gap-x-2">
+              <span className="text-body font-semibold text-fg">{d.label}</span>
+              <span className="text-small text-fg-muted">{d.description}</span>
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {(
+                [
+                  { id: d.day, label: "Jour" },
+                  { id: d.night, label: "Nuit" },
+                  { id: d.auto, label: "Auto" },
+                ] as const
+              ).map((c) =>
+                card(
+                  {
+                    id: c.id,
+                    label: c.label,
+                    description: "",
+                    aria: `${d.label} · ${c.label === "Auto" ? "Automatique" : c.label}`,
+                  },
+                  true,
+                ),
+              )}
+            </div>
+          </section>
+        ))}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {accessibility.map((t) => card(t))}
+        </div>
       </div>
       {/* Catalogue du 9 oct. 2026, inchangé (formes, typographies) : replié sauf si l'un d'eux est choisi. */}
       <details open={otherActive} className="group">
@@ -117,7 +170,7 @@ export function ThemeSwitcher({
           aria-label="Autres thèmes"
           className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3"
         >
-          {others.map(card)}
+          {others.map((t) => card(t))}
         </div>
       </details>
       <ShortcutsToggle />
