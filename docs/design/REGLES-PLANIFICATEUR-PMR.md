@@ -278,6 +278,9 @@ PMR light** » (phrase complète). `B-CS!B2` : « Autre information de fermeture
 | DSE | Libramont | 07:15-14:35 | Fermé | FAG | B-CS + B-PT |
 | DSE | Marloie | 07:15-10:35 | Fermé | FAG | B-CS ONLY |
 
+**N67 / R67** (réponse de l'utilisateur, 15 oct.) : R6 = samedi, R7 = dimanche et jours fériés ; la colonne R67 vaut donc
+pour le samedi, le dimanche et les jours fériés, N67 pour les autres jours.
+
 \* Fins d'horaire qui augmentent d'une minute par ligne (14:35, 14:36… 14:46) : **artefact de recopie Excel** très probable
 (valeur réelle sans doute 14:35 / 15:35).
 
@@ -412,7 +415,7 @@ uniquement dans les onglets 01 à 31 » (`FMS!A2:Z1000`).
 2. Un **EXTRA** est-il un poste prévu au tableau de service (Quinyx) ou un renfort décidé au jour le jour ? Qui l'« aligne » ?
 3. Signification des couleurs **sans légende** (gris-bleu, bleu) sur 95 créneaux.
 4. **B-TO**, **B-PT**, **B-CS** : définitions ; que change « B-CS + B-PT » par rapport à « B-CS ONLY » ?
-5. **N67 / R67** : semaine / week-end ? période (horaire 2026-2027) ? Les fins 14:36… 14:46 sont-elles une erreur de recopie ?
+5. ~~**N67 / R67**~~ : réponse — R6 = samedi, R7 = dimanche et jours fériés. Ancienne question : semaine / week-end ? période (horaire 2026-2027) ? Les fins 14:36… 14:46 sont-elles une erreur de recopie ?
 6. Limite B-CS « **3 PMR/heure** » : par heure de train, par heure civile, par fenêtre glissante ? Un OUT + IN du même voyageur compte-t-il pour 1 ou 2 ?
 7. B-CS : faut-il aussi respecter une marge avant la fermeture du guichet ? Les PMR de 07h04 (avant 07:15) y sont acceptées.
 8. **Correspondance** : la règle « < 30 min = l'agent reste » vaut-elle aussi pour les fauteuils (fenêtres qui se chevauchent de 30 à 40 min) ?
