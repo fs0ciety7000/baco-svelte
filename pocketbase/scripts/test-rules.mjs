@@ -1522,7 +1522,9 @@ try {
 		const ps = await mk('screen');
 		check('Planificateur : comptes de test créés', !!pc?.token && !!ps?.token);
 		const u = roles.user;
-		const T = (o = {}) => ({ day: '2099-02-01', kind: 'pmr_in', start: '2099-02-01 07:00:00.000Z', end: '2099-02-01 07:20:00.000Z', station: 'Mons', train: '1234', pmr_type: 'NV', pax: 1, light: true, source: 'manuel', status: 'a_attribuer', ...o });
+		// Jour des tâches de test : demain (une tâche manuelle est bornée à J-2 → J+60).
+		const PD = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+		const T = (o = {}) => ({ day: PD, kind: 'pmr_in', start: `${PD} 07:00:00.000Z`, end: `${PD} 07:20:00.000Z`, station: 'Mons', train: '1234', pmr_type: 'NV', pax: 1, light: true, source: 'manuel', status: 'a_attribuer', ...o });
 		const tasks = [];
 
 		const pb = await api('GET', '/api/collections/planner_bases/records?perPage=50', { token: u.token });
@@ -1568,7 +1570,7 @@ try {
 		check('clé DICOS refusée sur une tâche manuelle', mK.status >= 400, `HTTP ${mK.status}`);
 		const mS = await api('POST', '/api/collections/planner_tasks/records', { token: u.token, body: T({ dicos_status: 'accepted' }) });
 		check('statut DICOS refusé sur une tâche manuelle', mS.status >= 400, `HTTP ${mS.status}`);
-		const mE = await api('POST', '/api/collections/planner_tasks/records', { token: u.token, body: T({ end: '2099-02-01 06:00:00.000Z' }) });
+		const mE = await api('POST', '/api/collections/planner_tasks/records', { token: u.token, body: T({ end: `${PD} 06:00:00.000Z` }) });
 		check('fin avant le début refusée', mE.status === 400, `HTTP ${mE.status}`);
 		const mNoEnd = await api('POST', '/api/collections/planner_tasks/records', { token: u.token, body: T({ end: '' }) });
 		check('fin absente = début', mNoEnd.status === 200 && mNoEnd.json?.end === mNoEnd.json?.start, `HTTP ${mNoEnd.status}`);
@@ -1579,10 +1581,22 @@ try {
 		check('modérateur attribue au guichet B-CS ; auteur de la modification posé', aBcs.status === 200 && aBcs.json?.updated_by === roles.modo.id && aBcs.json?.created_by === u.id, `HTTP ${aBcs.status}`);
 		const aLeft = await api('PATCH', `/api/collections/planner_tasks/records/${m1.json?.id}`, { token: u.token, body: { status: 'a_attribuer' } });
 		check('« à attribuer » refusé tant qu une destination est posée', aLeft.status === 400, `HTTP ${aLeft.status}`);
-		const mEdit = await api('PATCH', `/api/collections/planner_tasks/records/${m1.json?.id}`, { token: u.token, body: { train: '4321', start: '2099-02-01 07:05:00.000Z' } });
+		const mEdit = await api('PATCH', `/api/collections/planner_tasks/records/${m1.json?.id}`, { token: u.token, body: { train: '4321', start: `${PD} 07:05:00.000Z` } });
 		check('tâche manuelle : train et heure modifiables', mEdit.status === 200, `HTTP ${mEdit.status}`);
 		const mSrc = await api('PATCH', `/api/collections/planner_tasks/records/${m1.json?.id}`, { token: u.token, body: { source: 'dicos_mission' } });
 		check('source d une tâche non modifiable par un agent', mSrc.status >= 400, `HTTP ${mSrc.status}`);
+		// Audit du 15 oct. 2026 (1760004910) : jour d'une tâche manuelle borné à J-2 → J+60.
+		const far = await api('POST', '/api/collections/planner_tasks/records', { token: u.token, body: T({ day: '2099-02-01', start: '2099-02-01 07:00:00.000Z', end: '2099-02-01 07:20:00.000Z' }) });
+		check('tâche manuelle : jour au-delà de J+60 refusé', far.status === 400, `HTTP ${far.status}`);
+		const old = new Date(Date.now() - 5 * 86400000).toISOString().slice(0, 10);
+		const past = await api('POST', '/api/collections/planner_tasks/records', { token: u.token, body: T({ day: old, start: `${old} 07:00:00.000Z`, end: `${old} 07:20:00.000Z` }) });
+		check('tâche manuelle : jour avant J-2 refusé', past.status === 400, `HTTP ${past.status}`);
+		const moveFar = await api('PATCH', `/api/collections/planner_tasks/records/${m1.json?.id}`, { token: u.token, body: { day: '2099-02-01' } });
+		check('tâche manuelle : déplacement hors J-2 → J+60 refusé', moveFar.status === 400, `HTTP ${moveFar.status}`);
+		const mFlag = await api('PATCH', `/api/collections/planner_tasks/records/${m1.json?.id}`, { token: u.token, body: { dicos_changed: true } });
+		check('agent ne pose pas « Modifiée par DICOS »', mFlag.status >= 400, `HTTP ${mFlag.status}`);
+		const mBy = await api('PATCH', `/api/collections/planner_tasks/records/${m1.json?.id}`, { token: u.token, body: { synced_by: u.id } });
+		check('agent ne pose pas l auteur de la synchro', mBy.status >= 400, `HTTP ${mBy.status}`);
 
 		// Tâche DICOS : compte de service seul.
 		const qa = await api('POST', '/api/collections/quinyx_agents/records', { token: pc?.token, body: { quinyx_id: `8${Date.now().toString().slice(-9)}`, first_name: 'Agent', last_name: 'Test A.', purpose: 'gares' } });
@@ -1611,6 +1625,26 @@ try {
 		}
 		const dAgent = await api('PATCH', `/api/collections/planner_tasks/records/${d1.json?.id}`, { token: u.token, body: { assignee_kind: 'agent', assignee_agent: qa.json?.id, status: 'attribuee', origin: 'manuel', note: 'Quai 3' } });
 		check('PACO/RCCA attribue une tâche DICOS à un agent de gare', dAgent.status === 200 && dAgent.json?.assignee_agent === qa.json?.id, `HTTP ${dAgent.status} ${JSON.stringify(dAgent.json).slice(0, 100)}`);
+		// Audit du 15 oct. 2026 (1760004910) : agent de gare seulement, note / label et tâches manuelles cachés au connecteur,
+		// « Modifiée par DICOS » posé par le connecteur et effacé à la réattribution.
+		const qe = await api('POST', '/api/collections/quinyx_agents/records', { token: pc?.token, body: { quinyx_id: `6${Date.now().toString().slice(-9)}`, first_name: 'Agent', last_name: 'Test E.', purpose: 'equipe' } });
+		const dTeam = await api('PATCH', `/api/collections/planner_tasks/records/${d1.json?.id}`, { token: u.token, body: { assignee_kind: 'agent', assignee_agent: qe.json?.id, status: 'attribuee' } });
+		check('attribution à un agent « équipe » (pas de gare) refusée', qe.status === 200 && dTeam.status === 400, `HTTP ${qe.status}/${dTeam.status}`);
+		const dNote = await api('PATCH', `/api/collections/planner_tasks/records/${d1.json?.id}`, { token: u.token, body: { note: 'Quai 3 bis' } });
+		check('note modifiable malgré un agent de gare déjà posé', dNote.status === 200, `HTTP ${dNote.status}`);
+		const cRead = await api('GET', `/api/collections/planner_tasks/records/${d1.json?.id}`, { token: pc?.token });
+		check('connecteur : note et libellé masqués', cRead.status === 200 && !('note' in (cRead.json ?? {})) && !('label' in (cRead.json ?? {})), `HTTP ${cRead.status} ${Object.keys(cRead.json ?? {}).join(',')}`);
+		const cManRead = await api('GET', `/api/collections/planner_tasks/records/${m1.json?.id}`, { token: pc?.token });
+		check('connecteur ne lit pas une tâche manuelle', cManRead.status === 404, `HTTP ${cManRead.status}`);
+		const cManList = await api('GET', `/api/collections/planner_tasks/records?perPage=200&filter=${encodeURIComponent('source = "manuel"')}`, { token: pc?.token });
+		check('connecteur ne liste pas les tâches manuelles', cManList.status === 200 && cManList.json.totalItems === 0, `HTTP ${cManList.status} ${cManList.json?.totalItems}`);
+		const cFlag = await api('PATCH', `/api/collections/planner_tasks/records/${d1.json?.id}`, { token: pc?.token, body: { start: `${PD} 07:30:00.000Z`, end: `${PD} 07:30:00.000Z`, dicos_changed: true, synced_by: u.id } });
+		check('connecteur pose « Modifiée par DICOS » et l auteur de la synchro (agent gardé)', cFlag.status === 200 && cFlag.json?.dicos_changed === true && cFlag.json?.synced_by === u.id && cFlag.json?.assignee_agent === qa.json?.id, `HTTP ${cFlag.status}`);
+		const uNote = await api('PATCH', `/api/collections/planner_tasks/records/${d1.json?.id}`, { token: u.token, body: { note: 'Quai 4' } });
+		check('une note ne retire pas « Modifiée par DICOS »', uNote.status === 200 && uNote.json?.dicos_changed === true, `HTTP ${uNote.status}`);
+		const uRe = await api('PATCH', `/api/collections/planner_tasks/records/${d1.json?.id}`, { token: u.token, body: { assignee_kind: 'agent', assignee_agent: qa.json?.id, status: 'attribuee', origin: 'manuel' } });
+		check('réattribution : « Modifiée par DICOS » effacé', uRe.status === 200 && uRe.json?.dicos_changed === false, `HTTP ${uRe.status}`);
+		if (qe.json?.id) await api('DELETE', `/api/collections/quinyx_agents/records/${qe.json.id}`, { token: root });
 		const dNoAgent = await api('PATCH', `/api/collections/planner_tasks/records/${d1.json?.id}`, { token: u.token, body: { assignee_agent: '' } });
 		check('« agent » sans agent de gare refusé', dNoAgent.status === 400, `HTTP ${dNoAgent.status}`);
 		const cUnassign = await api('PATCH', `/api/collections/planner_tasks/records/${d1.json?.id}`, { token: pc?.token, body: { assignee_kind: '', status: 'a_attribuer' } });
