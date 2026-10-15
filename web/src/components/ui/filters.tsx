@@ -42,9 +42,15 @@ export function SegmentedNav({
   label,
   items,
   className,
+  scroll = false,
   ...props
 }: {
   label: string;
+  /**
+   * Libellés longs (vues avec compteurs) : en mobile, les segments gardent leur largeur et la rangée défile au lieu de
+   * tronquer les libellés.
+   */
+  scroll?: boolean;
   items: {
     label: React.ReactNode;
     href: string;
@@ -61,7 +67,11 @@ export function SegmentedNav({
       aria-label={label}
       data-print="hide"
       data-slot="segmented-nav"
-      className={cn("flex w-full rounded-control bg-surface-2 p-0.5 md:w-auto", className)}
+      className={cn(
+        "flex w-full rounded-control bg-surface-2 p-0.5 md:w-auto",
+        scroll && "max-md:overflow-x-auto max-md:[scrollbar-width:none]",
+        className,
+      )}
       {...props}
     >
       {items.map((it) => (
@@ -72,6 +82,7 @@ export function SegmentedNav({
           data-testid={it.testId}
           className={cn(
             "inline-flex h-control-sm min-w-0 flex-1 items-center justify-center truncate rounded-control px-3 text-small font-medium whitespace-nowrap transition-colors duration-150 md:flex-none",
+            scroll && "max-md:min-w-max max-md:flex-none",
             it.current
               ? "bg-(--control-on) font-semibold text-fg shadow-rest ring-1 ring-border-strong"
               : "text-fg-muted hover:bg-surface-3 hover:text-fg",

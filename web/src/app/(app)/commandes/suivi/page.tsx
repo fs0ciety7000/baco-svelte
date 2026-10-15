@@ -54,7 +54,7 @@ export default async function Page({
         <nav aria-label="Vues enregistrées" className="min-w-0 max-md:w-full">
           <SegmentedNav
             label="Vue"
-            className="max-md:overflow-x-auto"
+            scroll
             items={VIEWS.map((v) => ({
               label: VIEW_LABEL[v],
               href: link(v, kind),

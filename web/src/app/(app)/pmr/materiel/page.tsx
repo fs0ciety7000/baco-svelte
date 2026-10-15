@@ -1,15 +1,13 @@
-import { Search } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 
-import { FilterSubmit } from "@/components/ui/filters";
+import { FilterSubmit, SegmentedNav } from "@/components/ui/filters";
 import { FilterForm } from "@/components/ui/filter-form";
 import { EquipmentBoard } from "@/components/pmr/equipment-board";
-import { Input } from "@/components/ui/input";
+import { TOOLBAR, ToolbarSearch } from "@/components/ui/list-toolbar";
 import { Select } from "@/components/ui/select";
 import { can } from "@/lib/permissions";
 import { brusselsDay } from "@/lib/orders/time";
-import { cn } from "@/lib/utils";
+
 import { requirePermission } from "@/server/auth";
 import { EQUIPMENT_VIEWS, listEquipment, listZones, type EquipmentView } from "@/server/data/pmr";
 
@@ -39,66 +37,43 @@ export default async function Page({
     `/pmr/materiel?${new URLSearchParams({ vue: v, ...(sp.q ? { q: sp.q } : {}), ...(sp.zone ? { zone: sp.zone } : {}) })}`;
   return (
     <section className="flex flex-col gap-4" aria-label="Rampes et matériel">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <nav aria-label="Vues" className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
-          <ul className="flex gap-1.5">
-            {EQUIPMENT_VIEWS.map((v) => (
-              <li key={v}>
-                <Link
-                  href={link(v)}
-                  aria-current={v === list.view ? "page" : undefined}
-                  className={cn(
-                    "inline-flex h-11 items-center gap-2 border px-3 text-body whitespace-nowrap md:h-control",
-                    v === list.view
-                      ? "border-accent bg-accent-soft text-fg"
-                      : "border-border text-fg-muted hover:text-fg",
-                  )}
-                >
-                  {VIEW_LABEL[v]}{" "}
-                  <span className="font-mono text-small tabular text-fg-muted">
-                    {list.counts[v]}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <LiveRefresh topics={["pmr_equipment"]} />
-      </div>
+      {/* Barre d'outils sur une ligne (v4 lot 6) : vues avec compteurs, recherche, zone, direct à droite. */}
       <FilterForm
         action="/pmr/materiel"
         role="search"
-        className="grid grid-cols-2 gap-2 md:flex md:items-end"
+        className={TOOLBAR}
+        data-testid="equipment-toolbar"
       >
+        <nav aria-label="Vues" className="min-w-0 max-md:w-full">
+          <SegmentedNav
+            label="Vue"
+            scroll
+            items={EQUIPMENT_VIEWS.map((v) => ({
+              label: VIEW_LABEL[v],
+              href: link(v),
+              current: v === list.view,
+              count: list.counts[v],
+            }))}
+          />
+        </nav>
         <input type="hidden" name="vue" value={list.view} />
-        <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-64">
-          <span className="text-small text-fg-muted">Recherche</span>
-          <span className="relative">
-            <Search
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted"
-            />
-            <Input
-              name="q"
-              defaultValue={sp.q}
-              placeholder="Gare, quai, n° de rampe…"
-              className="pl-9"
-              maxLength={60}
-            />
-          </span>
-        </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-32">
-          <span className="text-small text-fg-muted">Zone</span>
+        <ToolbarSearch defaultValue={sp.q} placeholder="Gare, quai, n° de rampe…" />
+        <label className="min-w-0 flex-1 md:w-40 md:flex-none">
+          <span className="sr-only">Zone</span>
           <Select
             name="zone"
+            label="Zone"
             defaultValue={sp.zone ?? ""}
             options={[
-              { value: "", label: "Toutes" },
+              { value: "", label: "Toutes les zones" },
               ...zones.map((z) => ({ value: z.id, label: z.code })),
             ]}
           />
         </label>
         <FilterSubmit />
+        <span className="ml-auto">
+          <LiveRefresh topics={["pmr_equipment"]} />
+        </span>
       </FilterForm>
       <EquipmentBoard
         rows={list.rows}

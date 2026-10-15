@@ -80,8 +80,10 @@ test("changer un filtre ne recharge pas la page", async ({ page }) => {
   await page.evaluate(() => {
     (window as unknown as { __sameDocument: boolean }).__sameDocument = true;
   });
-  // Districts en puces (DistrictPicker, refonte R4) : une bascule soumet le filtre.
-  await page.getByRole("group", { name: "District" }).getByRole("button", { name: /DSO/ }).click();
+  // Districts en menu (v4 lot 6, DistrictMenu) : le filtre part à la fermeture du menu.
+  await page.getByTestId("district-picker").click();
+  await page.getByTestId("district-picker-list").getByRole("button", { name: /DSO/ }).click();
+  await page.keyboard.press("Escape");
   await expect(page).toHaveURL(/district=/);
   const same = await page.evaluate(
     () => (window as unknown as { __sameDocument?: boolean }).__sameDocument === true,

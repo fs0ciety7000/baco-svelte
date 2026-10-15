@@ -3,7 +3,7 @@
 import { Archive, ArchiveRestore, Plus, Save } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 
 import {
   findDuplicates,
@@ -53,10 +53,13 @@ export function ClientBoard({
   rows,
   canWrite,
   openId,
+  status,
 }: {
   rows: ClientRow[];
   canWrite: boolean;
   openId?: string;
+  /** Nombre de fiches, à gauche du bouton « Nouveau client ». */
+  status?: ReactNode;
 }) {
   const router = useRouter();
   const [openRow, setOpenRow] = useState<string | null>(openId ?? null);
@@ -81,15 +84,16 @@ export function ClientBoard({
 
   return (
     <>
-      {canWrite ? (
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-small text-fg-muted">
+        {status}
+        {canWrite ? (
           <Button variant="primary" onClick={() => setCreateOpen(true)} data-testid="client-new">
             <Plus aria-hidden /> Nouveau client
           </Button>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
       {rows.length === 0 ? (
-        <EmptyState title="Aucun client" description="Aucune fiche pour cette recherche." />
+        <EmptyState framed title="Aucun client" description="Aucune fiche pour cette recherche." />
       ) : (
         <>
           <div className="hidden md:block">
@@ -193,7 +197,7 @@ export function ClientBoard({
                   <li key={a.id}>
                     <Link
                       href={`/pmr/historique?du=${a.day}&au=${a.day}`}
-                      className="flex min-h-11 items-center gap-2 border border-border px-2 py-1 hover:bg-surface-2"
+                      className="flex min-h-11 items-center gap-2 border border-border px-2 py-1 hover:bg-surface-2 rounded-control"
                     >
                       <span className="font-mono text-small tabular">
                         {formatDay(a.day)} {a.time}
@@ -216,7 +220,7 @@ export function ClientBoard({
                     <li key={t.id}>
                       <Link
                         href={`/commandes/taxi/${t.id}`}
-                        className="flex min-h-11 items-center gap-2 border border-border px-2 py-1 hover:bg-surface-2"
+                        className="flex min-h-11 items-center gap-2 border border-border px-2 py-1 hover:bg-surface-2 rounded-control"
                       >
                         <span className="font-mono text-small tabular">
                           {formatShortDay(dayOf(t.tripAt))}
