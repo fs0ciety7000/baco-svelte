@@ -4,6 +4,7 @@ import {
   ArrowDown,
   Check,
   CheckCheck,
+  MessageSquare,
   ChevronDown,
   ChevronUp,
   History,
@@ -45,7 +46,7 @@ import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { Timeline } from "@/components/ui/form-kit";
 import { Textarea } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/misc";
+import { EmptyState, Skeleton } from "@/components/ui/misc";
 import { Sheet } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";
@@ -377,7 +378,7 @@ export function JournalChat({
         {newDay ? (
           <li className="flex items-center gap-3 pt-4 pb-1 first:pt-0">
             <span aria-hidden className="h-px flex-1 bg-border" />
-            <span className="label-mono border border-border bg-surface px-2 py-1 text-fg-muted first-letter:uppercase">
+            <span className="label-mono rounded-pill bg-surface-2 px-2.5 py-1 text-fg-muted first-letter:uppercase">
               {formatLongDay(dayOf(r.created))}
             </span>
             <span aria-hidden className="h-px flex-1 bg-border" />
@@ -390,7 +391,7 @@ export function JournalChat({
           <span
             aria-hidden
             className={cn(
-              "grid size-7 shrink-0 place-items-center overflow-hidden font-mono text-hint font-semibold sm:size-9 sm:text-small",
+              "grid size-7 shrink-0 place-items-center overflow-hidden rounded-control font-mono text-hint font-semibold sm:size-9 sm:text-small",
               irail
                 ? "border border-info bg-[color-mix(in_oklab,var(--info)_14%,var(--surface))] text-fg"
                 : cn(
@@ -430,19 +431,19 @@ export function JournalChat({
                 {mine ? `Toi (${r.authorName})` : r.authorName}
                 {r.authorStatus ? (
                   <span
-                    className="ml-1.5 rounded-control border border-border-strong px-1 text-label font-medium text-fg-muted"
+                    className="ml-1.5 rounded-pill bg-surface-2 px-1.5 py-px text-label font-medium text-fg-muted"
                     data-testid="author-status"
                   >
                     {r.authorStatus}
                   </span>
                 ) : null}
               </span>
-              <span className="font-mono text-hint text-fg-muted tabular" title="Envoyé le">
+              <span className="text-hint text-fg-subtle tabular" title="Envoyé le">
                 <span className="max-sm:hidden">{stampOf(r.created || r.occurredAt)}</span>
                 <span className="sm:hidden">{hhmm(r.created || r.occurredAt)}</span>
               </span>
               {gap > 5 * 60_000 ? (
-                <span className="text-hint text-fg-muted">
+                <span className="text-hint text-fg-subtle tabular">
                   · événement{" "}
                   {dayOf(r.occurredAt) !== dayOf(r.created)
                     ? stampOf(r.occurredAt)
@@ -457,7 +458,9 @@ export function JournalChat({
               className={cn(
                 "group relative flex min-w-0 flex-col gap-2 rounded-box border border-l-[3px] border-l-(--status) px-3 py-2 animate-fade-in",
                 // Mes messages : fond surface-2 ; non lu : pastille info (l'accent est réservé à l'action).
-                mine ? "border-border bg-surface-2" : "border-border bg-surface",
+                mine
+                  ? "border-(--card-frame) bg-surface-2"
+                  : "border-(--card-frame) bg-surface shadow-rest",
                 r.urgent &&
                   r.status === "active" &&
                   "border-danger bg-[color-mix(in_oklab,var(--danger)_8%,var(--surface))]",
@@ -477,7 +480,7 @@ export function JournalChat({
                   </Badge>
                 ) : null}
                 {r.pinnedUntil && (pbDate(r.pinnedUntil)?.getTime() ?? 0) > Date.now() ? (
-                  <Badge tone="accent">
+                  <Badge tone="info">
                     <Pin aria-hidden className="size-3" /> Épinglé
                   </Badge>
                 ) : null}
@@ -488,7 +491,7 @@ export function JournalChat({
                 <button
                   type="button"
                   onClick={() => jumpTo(r.replyTo!.id)}
-                  className="flex min-w-0 cursor-pointer flex-col items-start border-l-2 border-border-strong bg-surface-2 px-2 py-1 text-left hover:border-accent"
+                  className="flex min-w-0 cursor-pointer flex-col items-start rounded-control border-l-2 border-border-strong bg-surface-2 px-2 py-1 text-left hover:border-accent"
                   aria-label={`Réponse à ${r.replyTo.author || "un message"} : aller au message d'origine`}
                   data-testid="log-quote"
                 >
@@ -524,7 +527,7 @@ export function JournalChat({
                       aria-label={`${r.replyCount} réponse${r.replyCount > 1 ? "s" : ""} : ouvrir le fil`}
                     >
                       <MessageSquareReply aria-hidden />
-                      <span className="font-mono tabular">{r.replyCount}</span>
+                      <span className="tabular">{r.replyCount}</span>
                       <span className="max-sm:sr-only">réponse{r.replyCount > 1 ? "s" : ""}</span>
                     </Button>
                   ) : null}
@@ -579,20 +582,19 @@ export function JournalChat({
         ref={frame}
         style={full ? undefined : { height: `calc(100dvh - ${top}px - var(--journal-gap))` }}
         className={cn(
-          "flex min-h-[26rem] flex-col overflow-hidden border border-border bg-bg max-sm:-mx-4 max-sm:border-x-0 [--journal-gap:calc(env(safe-area-inset-bottom)+5.25rem)] md:[--journal-gap:1.5rem]",
+          "flex min-h-[26rem] flex-col overflow-hidden rounded-box border border-(--card-frame) bg-bg shadow-rest max-sm:-mx-4 max-sm:rounded-none max-sm:border-x-0 [--journal-gap:calc(env(safe-area-inset-bottom)+5.25rem)] md:[--journal-gap:1.5rem]",
           full &&
-            "fixed inset-0 z-[45] min-h-0 border-0 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
+            "fixed inset-0 z-[45] min-h-0 rounded-none border-0 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
         )}
         data-testid="journal"
       >
-        <div className="flex items-start gap-2 border-b border-border bg-surface px-3 py-2">
+        <div className="flex items-start gap-2 border-b border-border bg-surface px-3 py-2.5 md:px-4">
           <div className="min-w-0 flex-1">{header}</div>
           <div className="flex shrink-0 items-center gap-1">
             {unread ? (
               <Button
                 size="sm"
-                variant="ghost"
-                className="border border-border"
+                variant="secondary"
                 disabled={pending}
                 onClick={markAll}
                 data-testid="log-read-all"
@@ -600,7 +602,7 @@ export function JournalChat({
               >
                 <CheckCheck aria-hidden />
                 <span className="max-sm:sr-only">Tout marquer lu</span>
-                <span className="font-mono tabular">({unread})</span>
+                <span className="tabular">({unread})</span>
               </Button>
             ) : null}
             <Button
@@ -641,7 +643,7 @@ export function JournalChat({
               onClick={() => setPinsOpen((o) => !o)}
             >
               <Pin aria-hidden className="size-4 shrink-0 text-accent" />
-              <span className="label-mono shrink-0 text-fg-muted">
+              <span className="label-mono shrink-0 text-fg-muted tabular">
                 {pinned.length} consigne{pinned.length > 1 ? "s" : ""}
               </span>
               <span className="min-w-0 flex-1 truncate text-small text-fg">
@@ -660,7 +662,7 @@ export function JournalChat({
                     <button
                       type="button"
                       onClick={() => open(p.id)}
-                      className="flex w-full cursor-pointer flex-col gap-1 border border-border bg-surface px-3 py-2 text-left hover:border-fg-muted"
+                      className="flex w-full cursor-pointer flex-col gap-1 rounded-box border border-(--card-frame) bg-surface px-3 py-2 text-left shadow-rest hover:bg-surface-2"
                     >
                       <LogMeta entry={p} showDay />
                       <ChatMarkdown body={p.body} />
@@ -695,18 +697,17 @@ export function JournalChat({
             }}
           >
             {list.length === 0 ? (
-              <div className="grid h-full place-items-center text-center">
-                <div className="flex max-w-xs flex-col items-center gap-2">
-                  <span aria-hidden className="text-[2rem] leading-none">
-                    💬
-                  </span>
-                  <p className="label-mono text-fg">Aucun message</p>
-                  <p className="text-small text-fg-muted">
-                    {showDay
+              <div className="grid h-full place-items-center">
+                <EmptyState
+                  className="max-w-md"
+                  icon={<MessageSquare />}
+                  title="Aucun message"
+                  description={
+                    showDay
                       ? "Aucun résultat pour cette recherche."
-                      : "Rien n'a été écrit pour ce jour ou ces filtres."}
-                  </p>
-                </div>
+                      : "Rien n'a été écrit pour ce jour ou ces filtres."
+                  }
+                />
               </div>
             ) : (
               <ol
@@ -718,7 +719,7 @@ export function JournalChat({
               >
                 {olderHref ? (
                   <li className="flex justify-center pb-2">
-                    <Button asChild size="sm" variant="ghost" className="border border-border">
+                    <Button asChild size="sm" variant="secondary">
                       <Link href={olderHref} scroll={false} data-testid="log-older">
                         <ChevronUp aria-hidden /> Messages plus anciens
                       </Link>
@@ -733,7 +734,7 @@ export function JournalChat({
             <button
               type="button"
               onClick={() => toBottom(true)}
-              className="absolute bottom-3 left-1/2 z-10 inline-flex min-h-10 -translate-x-1/2 cursor-pointer items-center gap-1.5 border border-accent bg-surface px-3 text-small font-medium text-fg shadow-lg animate-pop-in"
+              className="absolute bottom-3 left-1/2 z-10 inline-flex min-h-10 -translate-x-1/2 cursor-pointer items-center gap-1.5 rounded-pill border border-border-strong bg-surface px-3.5 text-small font-medium text-fg shadow-float animate-pop-in"
             >
               <ArrowDown aria-hidden className="size-4" /> {fresh} nouveau{fresh > 1 ? "x" : ""}{" "}
               message{fresh > 1 ? "s" : ""}
@@ -743,7 +744,7 @@ export function JournalChat({
               type="button"
               onClick={() => toBottom(true)}
               aria-label="Aller au dernier message"
-              className="absolute right-3 bottom-3 z-10 grid size-10 cursor-pointer place-items-center border border-border-strong bg-surface text-fg-muted shadow-lg hover:text-fg"
+              className="absolute right-3 bottom-3 z-10 grid size-10 cursor-pointer place-items-center rounded-pill border border-border-strong bg-surface text-fg-muted shadow-float hover:text-fg"
             >
               <ArrowDown aria-hidden className="size-4" />
             </button>
@@ -852,7 +853,7 @@ export function JournalChat({
             {e.replyTo ? (
               <button
                 type="button"
-                className="flex cursor-pointer flex-col items-start border-l-2 border-border-strong bg-surface-2 px-2 py-1 text-left hover:border-accent"
+                className="flex cursor-pointer flex-col items-start rounded-control border-l-2 border-border-strong bg-surface-2 px-2 py-1 text-left hover:border-accent"
                 onClick={() => open(e.replyTo!.id)}
               >
                 <span className="text-hint font-semibold text-fg-muted">
@@ -869,8 +870,7 @@ export function JournalChat({
                 {canWrite && e.status === "active" ? (
                   <Button
                     size="sm"
-                    variant="ghost"
-                    className="border border-border"
+                    variant="secondary"
                     onClick={() => {
                       close();
                       reply(e);
@@ -883,10 +883,10 @@ export function JournalChat({
               {panel?.replies.length ? (
                 <ul className="flex flex-col gap-2">
                   {panel.replies.map((x) => (
-                    <li key={x.id} className="border border-border bg-surface px-3 py-2">
+                    <li key={x.id} className="rounded-box bg-surface-2 px-3 py-2">
                       <p className="text-hint text-fg-muted">
                         <span className="font-semibold text-fg">{x.authorName}</span> ·{" "}
-                        {stampOf(x.created)}
+                        <span className="tabular">{stampOf(x.created)}</span>
                       </p>
                       <ChatMarkdown body={x.body} />
                       <LogLinks entry={x} />

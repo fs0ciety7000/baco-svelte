@@ -51,7 +51,7 @@ export function EmojiPicker({
           align="start"
           sideOffset={6}
           collisionPadding={12}
-          className="z-50 max-h-[min(22rem,60dvh)] w-[min(20rem,calc(100vw-1.5rem))] overflow-y-auto border border-border-strong bg-surface p-2 shadow-lg data-[state=open]:animate-fade-in"
+          className="z-50 max-h-[min(22rem,60dvh)] w-[min(20rem,calc(100vw-1.5rem))] overflow-y-auto rounded-box border border-border bg-surface p-2 shadow-float data-[state=open]:animate-fade-in"
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
           {EMOJI_GROUPS.map((g) => (

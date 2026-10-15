@@ -2,6 +2,7 @@ import { FileText, Link2, Pin, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/status-badge";
+import { TrainChip } from "@/components/ui/train-chip";
 import { CATEGORY } from "@/lib/ops/log";
 import { brusselsTime, formatDay, dayOf, pbDate } from "@/lib/orders/time";
 import type { LogEntry } from "@/server/data/ops";
@@ -26,7 +27,7 @@ export function LogMeta({ entry, showDay }: { entry: LogEntry; showDay?: boolean
         </Badge>
       ) : null}
       {entry.pinnedUntil && (pbDate(entry.pinnedUntil)?.getTime() ?? 0) > Date.now() ? (
-        <Badge tone="accent">
+        <Badge tone="info">
           <Pin aria-hidden className="size-3" /> Épinglée
         </Badge>
       ) : null}
@@ -47,9 +48,10 @@ export function LogLinks({ entry }: { entry: LogEntry }) {
       {entry.train ? (
         <Link
           href={`/reseau?train=${encodeURIComponent(entry.train)}`}
-          className="inline-flex min-h-8 items-center gap-1 border border-border bg-surface-2 px-2 font-mono text-small hover:border-fg-muted"
+          className="inline-flex min-h-8 items-center rounded-control hover:opacity-85"
+          aria-label={`Train ${entry.train} : trains en direct`}
         >
-          {entry.train}
+          <TrainChip train={entry.train} size="sm" />
         </Link>
       ) : null}
       {entry.links.map((l) =>
@@ -57,7 +59,7 @@ export function LogLinks({ entry }: { entry: LogEntry }) {
           <Link
             key={`${l.kind}-${l.id}`}
             href={l.href}
-            className="inline-flex min-h-8 max-w-full items-center gap-1 border border-border bg-surface-2 px-2 text-small hover:border-fg-muted"
+            className="inline-flex min-h-8 max-w-full items-center gap-1 rounded-pill bg-surface-2 px-2.5 text-small hover:bg-surface-3"
           >
             <Link2 aria-hidden className="size-3.5 shrink-0 text-fg-muted" />
             <span className="truncate">{l.label}</span>
@@ -65,7 +67,7 @@ export function LogLinks({ entry }: { entry: LogEntry }) {
         ) : (
           <span
             key={`${l.kind}-${l.id}`}
-            className="inline-flex min-h-8 items-center gap-1 border border-dashed border-border px-2 text-small text-fg-muted"
+            className="inline-flex min-h-8 items-center gap-1 rounded-pill border border-dashed border-border-strong px-2.5 text-small text-fg-muted"
           >
             {l.label}
           </span>
@@ -79,7 +81,7 @@ export function LogLinks({ entry }: { entry: LogEntry }) {
             href={href}
             target="_blank"
             rel="noopener"
-            className="block border border-border hover:border-fg-muted"
+            className="block overflow-hidden rounded-control border border-border hover:border-border-strong"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -95,7 +97,7 @@ export function LogLinks({ entry }: { entry: LogEntry }) {
             href={href}
             target="_blank"
             rel="noopener"
-            className="inline-flex min-h-8 items-center gap-1 border border-border bg-surface-2 px-2 text-small hover:border-fg-muted"
+            className="inline-flex min-h-8 items-center gap-1 rounded-pill bg-surface-2 px-2.5 text-small hover:bg-surface-3"
           >
             <FileText aria-hidden className="size-3.5" /> PDF
           </a>

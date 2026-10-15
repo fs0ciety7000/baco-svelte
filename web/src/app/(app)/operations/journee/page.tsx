@@ -5,7 +5,8 @@ import { DayTimeline } from "@/components/ops/day-timeline";
 import { FilterForm } from "@/components/ui/filter-form";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Combobox } from "@/components/ui/combobox";
-import { DistrictPicker } from "@/components/ui/district-picker";
+import { Button } from "@/components/ui/button";
+import { DistrictMenu } from "@/components/ui/district-picker";
 import { appendDistricts } from "@/lib/district-param";
 import { DateField } from "@/components/ui/date-field";
 import { addDays, brusselsDay, isValidDay } from "@/lib/orders/time";
@@ -35,15 +36,17 @@ export default async function Page({
   const data = await buildTimeline(user, day, codes, gare);
   return (
     <section className="flex flex-col gap-4" aria-label="Ma journée">
-      <div className="flex flex-wrap items-end justify-between gap-2">
+      {/* Barre d'outils sur une ligne en desktop (v4 lot 6) : jour, districts en menu, gare ; PDF et direct à droite. */}
+      <div className="flex flex-wrap items-center gap-2">
         <FilterForm
           action="/operations/journee"
           role="search"
-          className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto md:flex-wrap md:items-end"
+          className="flex min-w-0 flex-wrap items-center gap-2 max-md:w-full"
+          data-testid="journee-toolbar"
         >
           <FormAutoSubmit />
-          <label className="flex min-w-0 flex-col gap-1 md:w-44">
-            <span className="text-small text-fg-muted">Jour</span>
+          <label className="min-w-0 max-md:flex-1 md:w-44">
+            <span className="sr-only">Jour</span>
             <DateField
               name="jour"
               defaultValue={day}
@@ -51,18 +54,18 @@ export default async function Page({
               max={addDays(today, 30)}
             />
           </label>
-          <div className="col-span-2 flex min-w-0 flex-col gap-1 md:w-auto">
-            <span className="text-small text-fg-muted">District</span>
-            <DistrictPicker
+          <div className="min-w-0">
+            <DistrictMenu
               name="district"
-              label="District"
+              label="Districts"
               defaultValues={codes}
               emptyValue="tous"
               mine={mine}
+              data-testid="district-picker"
             />
           </div>
-          <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-56">
-            <span className="text-small text-fg-muted">Gare</span>
+          <label className="min-w-0 max-md:basis-full md:w-56">
+            <span className="sr-only">Gare</span>
             {/* Gares du jour (refonte R2 : plus de datalist) ; saisie libre permise. */}
             <Combobox
               name="gare"
@@ -77,17 +80,18 @@ export default async function Page({
             />
           </label>
         </FilterForm>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 md:ml-auto">
           {gare && can(user, "deplacements:read") ? (
-            <a
-              href={`/api/pmr/feuille-de-route?${appendDistricts(new URLSearchParams({ gare, jour: day }), codes)}`}
-              target="_blank"
-              rel="noopener"
-              className="inline-flex min-h-11 items-center gap-2 rounded-control border border-border-strong px-3 text-body hover:bg-surface-2"
-              data-testid="roadmap-pdf"
-            >
-              <FileText aria-hidden className="size-4" /> Feuille de route PDF
-            </a>
+            <Button asChild variant="secondary" size="sm">
+              <a
+                href={`/api/pmr/feuille-de-route?${appendDistricts(new URLSearchParams({ gare, jour: day }), codes)}`}
+                target="_blank"
+                rel="noopener"
+                data-testid="roadmap-pdf"
+              >
+                <FileText aria-hidden /> Feuille de route PDF
+              </a>
+            </Button>
           ) : can(user, "deplacements:read") ? (
             <span className="text-small text-fg-muted">
               Choisis une gare pour sa feuille de route PDF.

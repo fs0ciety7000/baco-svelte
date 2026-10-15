@@ -99,7 +99,7 @@ export default async function Page({
     </FilterForm>
   );
   const csvLink = search ? null : (
-    <Button asChild size="sm" variant="ghost" className="border border-border max-sm:hidden">
+    <Button asChild size="sm" variant="secondary" className="max-sm:hidden">
       <a
         href={`/api/operations/main-courante/export?du=${addDays(today, -6)}&au=${today}`}
         download
@@ -110,7 +110,7 @@ export default async function Page({
   );
   const active = [f.categorie, f.urgentes, f.retirees, f.agents].filter(Boolean).length;
   const filters = (
-    <ChipRow aria-label="Filtres">
+    <ChipRow aria-label="Filtres" className="md:flex-nowrap md:overflow-x-auto">
       <FilterChip asChild pressed={!f.categorie}>
         <Link
           href={keep({ categorie: undefined })}
@@ -160,7 +160,7 @@ export default async function Page({
       <div className="flex items-center gap-x-3 gap-y-2 md:flex-wrap">
         {search ? (
           <p className="min-w-0 flex-1 text-body text-fg-muted md:flex-none">
-            <span className="font-mono text-fg tabular">{total}</span> {pl(total, "résultat")}{" "}
+            <span className="figures text-fg">{total}</span> {pl(total, "résultat")}{" "}
             {f.q ? `pour « ${f.q} »` : "liés au passage à niveau"} (180 jours) ·{" "}
             <Link href={keep({})} className="link">
               revenir au fil
@@ -171,7 +171,7 @@ export default async function Page({
             <h2 className="text-body-lg font-semibold whitespace-nowrap" data-testid="log-day">
               Fil du journal
             </h2>
-            <span className="font-mono text-small text-fg-muted tabular max-sm:hidden">
+            <span className="text-small text-fg-muted tabular max-sm:hidden">
               {total} {pl(total, "message")}
             </span>
           </div>
@@ -188,8 +188,9 @@ export default async function Page({
         <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-small text-fg-muted [&::-webkit-details-marker]:hidden">
           <SlidersHorizontal aria-hidden className="size-4" /> Rechercher et filtrer
           {active ? (
-            <span className="label-mono text-accent">
-              · {active} {pl(active, "actif")}
+            <span className="inline-grid h-5 min-w-5 place-items-center rounded-pill bg-surface-2 px-1.5 text-label font-semibold text-fg-muted tabular">
+              {active}
+              <span className="sr-only"> {pl(active, "actif")}</span>
             </span>
           ) : null}
           <ChevronDown
