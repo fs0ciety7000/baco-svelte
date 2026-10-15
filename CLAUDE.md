@@ -1332,6 +1332,8 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   `aria-describedby` : le texte et le nom des liens ne changent pas (E2E intacts). `fitTabs` déplacé dans `module-tabs-fit.ts`
   (le test importait sinon une Server Action « server-only »). Restent : écrans (lot 4, en parallèle), mouvement (5), reste (6).
 
+- 2026-10-15 — **Retours sur le lot 3** : pas de compteur sur l'Accueil dans la barre latérale ; **pastille « Flux » sur le rail** (768-1279 px : une pastille par source, détail en infobulle et pour les lecteurs d'écran, `feed-rail`).
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)

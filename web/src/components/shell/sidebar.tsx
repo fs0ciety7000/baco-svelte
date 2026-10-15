@@ -276,6 +276,34 @@ function Feed({
   );
 }
 
+type FeedTone = "ok" | "warn" | "danger" | "idle";
+const TONE_BG: Record<FeedTone, string> = {
+  ok: "bg-ok",
+  warn: "bg-warn",
+  danger: "bg-danger",
+  idle: "bg-fg-subtle",
+};
+
+/** État des flux en version rail : trois pastilles et « Flux », détail en infobulle et en texte masqué. */
+function RailFeeds({ feeds }: { feeds: { label: string; state: string; tone: FeedTone }[] }) {
+  const summary = feeds.map((f) => `${f.label} : ${f.state}`).join(" · ");
+  return (
+    <div
+      data-testid="feed-rail"
+      title={summary}
+      className="flex min-h-11 flex-col items-center justify-center gap-1 rounded-box bg-nav-card px-1 py-2 text-label text-fg-muted shadow-[var(--nav-card-shadow)] xl:hidden"
+    >
+      <span aria-hidden className="flex gap-1">
+        {feeds.map((f) => (
+          <span key={f.label} className={cn("size-[7px] rounded-full", TONE_BG[f.tone])} />
+        ))}
+      </span>
+      <span aria-hidden>Flux</span>
+      <span className="sr-only">État des flux : {summary}</span>
+    </div>
+  );
+}
+
 const IRAIL_STATE = {
   ok: { text: "répond", tone: "ok" },
   lent: { text: "lent", tone: "warn" },
@@ -378,6 +406,31 @@ export function Sidebar() {
             tone={irail ? irail.tone : "idle"}
           />
         </ul>
+        {/* Sur le rail (768-1279 px) : pastille compacte, une pastille par source, détail au survol et pour les lecteurs
+            d'écran (décision du 15 oct. 2026). */}
+        <RailFeeds
+          feeds={[
+            {
+              label: "Temps réel",
+              state: live === "direct" ? "connecté" : live === "coupé" ? "coupé" : "connexion…",
+              tone: live === "direct" ? "ok" : live === "coupé" ? "danger" : "warn",
+            },
+            ...(status?.counts.pmr !== undefined
+              ? [
+                  {
+                    label: "DICOS",
+                    state: dicos ? dicos.text : "pas aujourd'hui",
+                    tone: (!dicos || dicos.stale ? "warn" : "ok") as FeedTone,
+                  },
+                ]
+              : []),
+            {
+              label: "iRail",
+              state: irail ? irail.text : "au repos",
+              tone: irail ? irail.tone : "idle",
+            },
+          ]}
+        />
         {/* Nouveautés et version livrée : discret, sous l'état des flux (icône seule sur le rail). */}
         <Link
           href={CHANGELOG_LINK.href}
