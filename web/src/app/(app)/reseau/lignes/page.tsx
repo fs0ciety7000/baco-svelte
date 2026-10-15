@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { FilterForm } from "@/components/ui/filter-form";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { Combobox } from "@/components/ui/combobox";
-import { Input } from "@/components/ui/input";
+import { ListCount, ListStatus, TOOLBAR, ToolbarSearch } from "@/components/ui/list-toolbar";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { CardDisclosure } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
 import { ListCard } from "@/components/ui/table";
@@ -72,32 +73,34 @@ export default async function Page({
 
   return (
     <section className="flex flex-col gap-4" aria-label="Lignes">
-      <FilterForm action="/reseau/lignes" className="flex flex-wrap items-end gap-2">
+      {/* Barre d'outils sur une ligne (v4 lot 6) : gare, districts, ligne. */}
+      <FilterForm
+        action="/reseau/lignes"
+        role="search"
+        className={TOOLBAR}
+        data-testid="lines-toolbar"
+      >
         <FormAutoSubmit live />
-        <label className="flex min-w-0 flex-col gap-1 md:w-52">
-          <span className="text-small text-fg-muted">District</span>
+        <ToolbarSearch
+          name="gare"
+          label="Gare"
+          defaultValue={gare}
+          placeholder="Gare : nom FR / NL ou abréviation (FMS)…"
+        />
+        <label className="min-w-44 flex-1 md:min-w-0 md:w-52 md:flex-none">
+          <span className="sr-only">District</span>
           <MultiSelect
             name="district"
+            label="District"
             options={DISTRICT_FILTER}
             defaultValues={districts}
-            allLabel="Tous"
+            allLabel="Tous les districts"
             noun="district"
             data-testid="lines-district"
           />
         </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-56">
-          <span className="text-small text-fg-muted">Gare</span>
-          <Input
-            name="gare"
-            defaultValue={gare}
-            placeholder="Nom FR / NL ou abréviation (FMS)…"
-            maxLength={60}
-          />
-        </label>
-        {/* Largeur fixée : sans elle, la liste (champ au rendu serveur, bouton une fois hydratée en mobile) changeait de
-            largeur et « Afficher » remontait d'une rangée (CLS 0,14 en 390 px, lot 5). */}
-        <label className="flex w-full min-w-0 flex-col gap-1 sm:w-72">
-          <span className="text-small text-fg-muted">Ligne</span>
+        <label className="min-w-0 basis-full md:w-72 md:basis-auto">
+          <span className="sr-only">Ligne</span>
           <Combobox
             name="ligne"
             defaultValue={detail ? detail.line : ""}
@@ -110,19 +113,23 @@ export default async function Page({
             data-testid="lines-line"
           />
         </label>
-        <Button type="submit" variant="secondary">
+        <button type="submit" tabIndex={-1} aria-hidden className="sr-only">
           Afficher
-        </Button>
+        </button>
       </FilterForm>
 
       {!detail ? (
         <>
-          <p className="text-small text-fg-muted">
-            <span className="font-mono text-fg tabular">{shown.length}</span>{" "}
-            {pl(shown.length, "ligne")}
-            {gare ? ` desservant « ${gare} »` : ""} · gares dans l&apos;ordre d&apos;après les
-            trajets Infrabel, mises à jour chaque matin avec le référentiel des trains.
-          </p>
+          <ListStatus
+            count={
+              <ListCount
+                n={shown.length}
+                label={pl(shown.length, "ligne")}
+                extra={gare ? ` desservant « ${gare} »` : ""}
+              />
+            }
+            sync="gares dans l'ordre d'après les trajets Infrabel, mises à jour chaque matin avec le référentiel des trains"
+          />
           {ligne ? (
             <p className="text-small text-warn" role="status">
               Ligne {lineLabel(ligne)} inconnue du référentiel.
@@ -131,8 +138,12 @@ export default async function Page({
           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="lines-grid">
             {shown.map((l) => (
               <li key={l.line} className="min-w-0">
-                <Link href={`/reseau/lignes?ligne=${encodeURIComponent(l.line)}`} className="block">
+                <Link
+                  href={`/reseau/lignes?ligne=${encodeURIComponent(l.line)}`}
+                  className="group block rounded-box"
+                >
                   <ListCard
+                    className="transition-colors group-hover:bg-surface-2"
                     title={
                       <span className="flex min-w-0 items-baseline gap-2">
                         <span className="font-mono">{lineLabel(l.line)}</span>
@@ -166,6 +177,7 @@ export default async function Page({
           </ul>
           {shown.length === 0 ? (
             <EmptyState
+              framed
               title="Aucune ligne"
               description={
                 gare
@@ -211,27 +223,24 @@ function LineView({
           </Badge>
         ) : null}
         <div className="flex flex-wrap gap-2 md:ml-auto">
-          <Button asChild variant="ghost" size="sm" className="border border-border">
+          <Button asChild variant="secondary" size="sm">
             <Link href={trainsHref({ vue: "ligne", ligne: detail.line })}>
               <TrainFront aria-hidden className="size-4" /> Relations sur la ligne
             </Link>
           </Button>
-          <Button asChild variant="ghost" size="sm" className="border border-border">
+          <Button asChild variant="secondary" size="sm">
             <Link href="/reseau/lignes">Changer de ligne</Link>
           </Button>
         </div>
       </div>
 
-      <details open className="flex flex-col gap-2">
-        <summary className="label-mono cursor-pointer text-fg-muted">
-          Gares · {detail.stations.length}
-        </summary>
+      <CardDisclosure defaultOpen title="Gares" count={detail.stations.length}>
         {detail.stations.length === 0 ? (
-          <p className="mt-2 text-small text-fg-muted">
+          <p className="text-small text-fg-muted">
             Ligne absente du référentiel des trains (aucun train voyageurs observé).
           </p>
         ) : canEdit ? (
-          <div className="mt-2">
+          <div>
             <LineEditToggle
               id={detail.id}
               name={detail.name}
@@ -244,17 +253,18 @@ function LineView({
             </LineEditToggle>
           </div>
         ) : (
-          <div className="mt-2">
+          <div>
             <LineStations detail={detail} trunk={trunk} />
           </div>
         )}
-      </details>
+      </CardDisclosure>
 
-      <details className="flex flex-col gap-2" data-testid="line-crossings">
-        <summary className="label-mono cursor-pointer text-fg-muted">
-          Passages à niveau · {detail.crossings.length}
-        </summary>
-        <div className="mt-2 flex flex-col gap-2">
+      <CardDisclosure
+        title="Passages à niveau"
+        count={detail.crossings.length}
+        data-testid="line-crossings"
+      >
+        <div className="flex flex-col gap-2">
           {detail.crossings.length === 0 ? (
             <p className="text-small text-fg-muted">Aucun PN au référentiel pour cette ligne.</p>
           ) : (
@@ -264,12 +274,12 @@ function LineView({
             </p>
           )}
           {detail.crossings.length ? (
-            <ol className="flex flex-col divide-y divide-border rounded-box border border-border">
+            <ol className="flex flex-col divide-y divide-border overflow-hidden rounded-box bg-surface-2">
               {detail.crossings.map((c) => (
                 <li key={c.id}>
                   <Link
                     href={`/reseau/pn?pn=${c.id}`}
-                    className="flex min-h-11 items-center gap-3 px-3 py-1.5 transition-colors hover:bg-surface-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                    className="flex min-h-11 items-center gap-3 px-3 py-1.5 transition-colors hover:bg-surface-3 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
                     aria-label={`PN ${c.number} sur la carte`}
                   >
                     <span
@@ -291,25 +301,25 @@ function LineView({
             </ol>
           ) : null}
           {detail.crossings.length ? (
-            <Button asChild variant="ghost" size="sm" className="self-start border border-border">
+            <Button asChild variant="secondary" size="sm" className="self-start">
               <Link href={`/reseau/pn?ligne=${encodeURIComponent(label)}`}>
                 <MapPin aria-hidden className="size-4" /> Tous les PN de la {label} sur la carte
               </Link>
             </Button>
           ) : null}
         </div>
-      </details>
+      </CardDisclosure>
 
-      <details className="flex flex-col gap-2">
-        <summary className="label-mono cursor-pointer text-fg-muted">
-          Zones SPI · {detail.spi.length}
-        </summary>
-        <div className="mt-2 flex flex-col gap-2">
+      <CardDisclosure title="Zones SPI" count={detail.spi.length}>
+        <div className="flex flex-col gap-2">
           {detail.spi.length === 0 ? (
             <p className="text-small text-fg-muted">Aucune zone SPI pour cette ligne.</p>
           ) : null}
           {detail.spi.map((s) => (
-            <div key={s.id} className="flex items-start gap-2 border border-border px-2 py-1.5">
+            <div
+              key={s.id}
+              className="flex items-start gap-2 rounded-control bg-surface-2 px-2 py-1.5"
+            >
               {s.zone ? <Badge tone="info">{s.zone}</Badge> : null}
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{s.place || "—"}</p>
@@ -319,7 +329,7 @@ function LineView({
             </div>
           ))}
         </div>
-      </details>
+      </CardDisclosure>
     </div>
   );
 }
@@ -354,7 +364,7 @@ function LineStations({ detail, trunk }: { detail: LineDetail; trunk: LineDetail
 function StationList({ stations, testId }: { stations: LineDetail["stations"]; testId: string }) {
   return (
     <ol
-      className="flex flex-col divide-y divide-border rounded-box border border-border bg-surface"
+      className="flex flex-col divide-y divide-border overflow-hidden rounded-box border border-border"
       data-testid={testId}
     >
       {stations.map((s, i) => (

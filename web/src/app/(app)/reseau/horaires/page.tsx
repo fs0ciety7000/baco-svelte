@@ -14,11 +14,11 @@ import {
 } from "@/components/referentiels/trains";
 import { Button } from "@/components/ui/button";
 import { FilterForm } from "@/components/ui/filter-form";
-import { FilterChip, ChipRow } from "@/components/ui/filters";
+import { FilterChip, ChipRow, SegmentedNav } from "@/components/ui/filters";
 import { FormAutoSubmit } from "@/components/ui/form-auto-submit";
 import { StationInput } from "@/components/orders/station-input";
 import { Combobox } from "@/components/ui/combobox";
-import { Input } from "@/components/ui/input";
+import { ListCount, ListStatus, TOOLBAR, ToolbarSearch } from "@/components/ui/list-toolbar";
 import { Select as CustomSelect } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/status-badge";
@@ -115,24 +115,26 @@ export default async function Page({
   return (
     <section className="flex flex-col gap-4" aria-label="Trains">
       <div className="flex flex-wrap items-center gap-2">
-        <ChipRow className="flex-1">
-          {VIEWS.map((v) => (
-            <FilterChip key={v.id} asChild pressed={view === v.id}>
-              <Link
-                href={trainsHref({ vue: v.id === "relations" ? undefined : v.id })}
-                data-testid={`trains-view-${v.id}`}
-              >
-                {v.label}
-              </Link>
-            </FilterChip>
-          ))}
-        </ChipRow>
-        {admin ? <TimetableRefresh running={running} /> : null}
+        <SegmentedNav
+          label="Vue"
+          items={VIEWS.map((v) => ({
+            label: v.label,
+            href: trainsHref({ vue: v.id === "relations" ? undefined : v.id }),
+            current: view === v.id,
+            testId: `trains-view-${v.id}`,
+          }))}
+        />
+        {admin ? (
+          <span className="ml-auto">
+            <TimetableRefresh running={running} />
+          </span>
+        ) : null}
       </div>
       <StatusLine state={state} admin={admin} running={running} />
 
       {!state?.lastOkAt ? (
         <EmptyState
+          variant="first"
           title="Référentiel pas encore construit"
           description={
             running
@@ -209,15 +211,28 @@ async function RelationsView({ sp, q }: { sp: Search; q: string }) {
   ]);
   return (
     <>
-      <FilterForm action="/reseau/horaires" className="flex flex-wrap items-end gap-2">
+      {/* Barre d'outils sur une ligne (v4 lot 6) : relation ou train, type, ligne, gare desservie. */}
+      <FilterForm
+        action="/reseau/horaires"
+        role="search"
+        className={TOOLBAR}
+        data-testid="relations-toolbar"
+      >
         <FormAutoSubmit live />
-        <label className="flex min-w-0 flex-col gap-1 md:w-36">
-          <span className="text-small text-fg-muted">Type</span>
+        <ToolbarSearch
+          label="Relation ou n° de train"
+          defaultValue={q}
+          placeholder="Relation ou train (IC14, 1706)…"
+          maxLength={40}
+        />
+        <label className="min-w-44 flex-1 md:min-w-0 md:w-44 md:flex-none">
+          <span className="sr-only">Type</span>
           <CustomSelect
             name="type"
+            label="Type"
             defaultValue={type}
             options={[
-              { value: "", label: "Tous" },
+              { value: "", label: "Tous les types" },
               { value: "IC", label: "IC" },
               { value: "L", label: "L" },
               { value: "S", label: "S" },
@@ -226,43 +241,35 @@ async function RelationsView({ sp, q }: { sp: Search; q: string }) {
             ]}
           />
         </label>
-        {/* Largeur fixée (lot 5) : la liste est un champ au rendu serveur et un bouton une fois hydratée en mobile ; sans
-            largeur, les filtres suivants changeaient de rangée (CLS). */}
-        <label className="flex w-36 min-w-0 flex-col gap-1">
-          <span className="text-small text-fg-muted">Ligne</span>
+        <label className="min-w-44 flex-1 md:min-w-0 md:w-48 md:flex-none">
+          <span className="sr-only">Ligne</span>
           <Combobox
             name="ligne"
             defaultValue={normLine(sp.ligne)}
             options={lineOptions(lines)}
-            placeholder="Toutes"
+            placeholder="Toutes les lignes"
             emptyText="Aucune ligne"
             data-testid="trains-line"
           />
         </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-52">
-          <span className="text-small text-fg-muted">Dessert la gare</span>
+        <label className="min-w-0 basis-full md:w-52 md:basis-auto">
+          <span className="sr-only">Dessert la gare</span>
           <StationInput
             name="gare"
             defaultValue={sp.gare ?? ""}
             refs={refs}
-            placeholder="Mons, FMS…"
+            placeholder="Dessert la gare…"
             maxLength={60}
           />
         </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-52">
-          <span className="text-small text-fg-muted">Relation ou n° de train</span>
-          <Input name="q" defaultValue={q} placeholder="IC14, S1, 1706…" maxLength={40} />
-        </label>
-        <Button type="submit" variant="secondary">
+        <button type="submit" tabIndex={-1} aria-hidden className="sr-only">
           Afficher
-        </Button>
+        </button>
       </FilterForm>
-      <p className="text-small text-fg-muted">
-        <span className="font-mono text-fg tabular">{rows.length}</span>{" "}
-        {pl(rows.length, "relation")}
-      </p>
+      <ListStatus count={<ListCount n={rows.length} label={pl(rows.length, "relation")} />} />
       {rows.length === 0 ? (
         <EmptyState
+          framed
           title="Aucune relation"
           description="Aucune relation ne correspond à ces filtres."
         />
@@ -351,7 +358,11 @@ async function RelationView({ rkey }: { rkey: string }) {
   const data = await getTrainRelation(rkey);
   if (!data)
     return (
-      <EmptyState title="Relation introuvable" description="Elle n'existe plus dans l'horaire." />
+      <EmptyState
+        framed
+        title="Relation introuvable"
+        description="Elle n'existe plus dans l'horaire."
+      />
     );
   const { relation: r, services } = data;
   return (
@@ -360,7 +371,7 @@ async function RelationView({ rkey }: { rkey: string }) {
         <TypeBadge type={r.type} />
         <h2 className="font-mono text-h3">{r.relation}</h2>
         <span className="text-body-lg">{r.label}</span>
-        <Button asChild variant="ghost" size="sm" className="ml-auto border border-border">
+        <Button asChild variant="secondary" size="sm" className="ml-auto">
           <Link href={trainsHref({})}>Toutes les relations</Link>
         </Button>
       </div>
@@ -407,7 +418,7 @@ async function RelationView({ rkey }: { rkey: string }) {
             Trains <span className="text-small font-normal text-fg-muted">({services.length})</span>
           </h3>
           <ul
-            className="flex flex-col divide-y divide-border rounded-box border border-border bg-surface"
+            className="flex flex-col divide-y divide-border rounded-box border border-(--card-frame) bg-surface shadow-rest"
             data-testid="relation-trains"
           >
             {services.map((s) => (
@@ -442,6 +453,7 @@ async function TrainView({ number }: { number: number }) {
   if (!services.length)
     return (
       <EmptyState
+        framed
         title={`Train ${number} introuvable`}
         description="Il ne circule pas dans la semaine de référence (ou ce numéro n'existe pas)."
       />
@@ -460,7 +472,7 @@ async function TrainView({ number }: { number: number }) {
               {s.origin} → {s.terminus}
             </span>
             <DaysText days={s.days} />
-            <Button asChild variant="ghost" size="sm" className="ml-auto border border-border">
+            <Button asChild variant="secondary" size="sm" className="ml-auto">
               <Link href={trainsHref({ rel: relationKey(s) })}>Voir la relation</Link>
             </Button>
           </div>
@@ -505,32 +517,34 @@ async function StationView({ gare, day }: { gare: string; day: DayFilter }) {
   ]);
   return (
     <>
-      <FilterForm action="/reseau/horaires" className="flex flex-wrap items-end gap-2">
+      <FilterForm action="/reseau/horaires" role="search" className={TOOLBAR}>
         <FormAutoSubmit live />
         <input type="hidden" name="vue" value="gare" />
         <input type="hidden" name="jours" value={day} />
-        <label className="flex min-w-0 flex-col gap-1 md:w-64">
-          <span className="text-small text-fg-muted">Gare</span>
+        <label className="min-w-0 basis-full md:w-72 md:basis-auto">
+          <span className="sr-only">Gare</span>
           <StationInput
             name="gare"
             defaultValue={gare}
             refs={refs}
-            placeholder="Nom ou abréviation (FMS)…"
+            placeholder="Gare : nom ou abréviation (FMS)…"
             maxLength={60}
           />
         </label>
-        <Button type="submit" variant="secondary">
+        <button type="submit" tabIndex={-1} aria-hidden className="sr-only">
           Afficher
-        </Button>
+        </button>
       </FilterForm>
       <DayChips base={{ vue: "gare", gare }} day={day} />
       {!board ? (
         <EmptyState
+          framed
           title="Choisis une gare"
           description="Trains qui s'y arrêtent et trains qui y passent sans arrêt."
         />
       ) : !board.station ? (
         <EmptyState
+          framed
           title="Aucun train"
           description="Aucun train ne dessert ni ne traverse cette gare ce jour-là."
         />
@@ -658,12 +672,12 @@ async function LineView({ line, day }: { line: string; day: DayFilter }) {
   ]);
   return (
     <>
-      <FilterForm action="/reseau/horaires" className="flex flex-wrap items-end gap-2">
+      <FilterForm action="/reseau/horaires" role="search" className={TOOLBAR}>
         <FormAutoSubmit live />
         <input type="hidden" name="vue" value="ligne" />
         <input type="hidden" name="jours" value={day} />
-        <label className="flex w-full min-w-0 flex-col gap-1 sm:w-48">
-          <span className="text-small text-fg-muted">Ligne</span>
+        <label className="min-w-0 basis-full md:w-64 md:basis-auto">
+          <span className="sr-only">Ligne</span>
           <Combobox
             name="ligne"
             defaultValue={line}
@@ -672,13 +686,14 @@ async function LineView({ line, day }: { line: string; day: DayFilter }) {
             emptyText="Aucune ligne"
           />
         </label>
-        <Button type="submit" variant="secondary">
+        <button type="submit" tabIndex={-1} aria-hidden className="sr-only">
           Afficher
-        </Button>
+        </button>
       </FilterForm>
       <DayChips base={{ vue: "ligne", ligne: line }} day={day} />
       {!board ? (
         <EmptyState
+          framed
           title="Choisis une ligne"
           description="Relations qui l'empruntent et trains à chaque gare."
         />
@@ -702,7 +717,7 @@ async function LineView({ line, day }: { line: string; day: DayFilter }) {
             {board.stations.length === 0 ? (
               <p className="text-small text-fg-muted">Aucune gare desservie ce jour-là.</p>
             ) : (
-              <ul className="flex flex-col divide-y divide-border rounded-box border border-border bg-surface">
+              <ul className="flex flex-col divide-y divide-border rounded-box border border-(--card-frame) bg-surface shadow-rest">
                 {board.stations.map((s) => (
                   <li
                     key={s.name}

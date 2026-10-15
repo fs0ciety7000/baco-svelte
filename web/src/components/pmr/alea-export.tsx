@@ -245,7 +245,7 @@ export function AleaButton({
                     <li
                       key={g.key}
                       className={cn(
-                        "flex flex-col border border-border bg-surface transition-opacity duration-(--d-base)",
+                        "flex flex-col border border-(--card-frame) bg-surface transition-opacity duration-(--d-base) rounded-box shadow-rest",
                         d.status === "obligatoire" && "border-l-[3px] border-l-danger",
                         d.status === "verifier" && "border-l-[3px] border-l-warn",
                         mark && "border-l-[3px] border-l-ok opacity-70",
@@ -320,7 +320,7 @@ export function AleaButton({
                           {g.dossiers.map((x) => (
                             <span
                               key={x.ref}
-                              className="border border-border bg-surface-2 px-1.5 py-0.5 font-mono tabular"
+                              className="border border-border bg-surface-2 px-1.5 py-0.5 font-mono tabular rounded-control"
                             >
                               {x.ref} · {x.count} {(x.unit ?? g.unit) === "PMR" ? "PMR" : "pers."}
                             </span>

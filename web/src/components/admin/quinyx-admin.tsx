@@ -14,6 +14,8 @@ import {
   updateQuinyxPlace,
 } from "@/app/(app)/admin/quinyx/actions";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, Count } from "@/components/ui/card";
+import { FilterChip } from "@/components/ui/filters";
 import { Input, Select } from "@/components/ui/input";
 import { Select as CustomSelect } from "@/components/ui/select";
 import { Badge } from "@/components/ui/status-badge";
@@ -47,13 +49,13 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-3 rounded-box border border-border bg-surface p-4">
-      <header className="flex flex-col gap-1">
-        <h2 className="text-h3 font-semibold">{title}</h2>
+    <Card>
+      <CardHeader title={title} />
+      <CardContent className="flex flex-col gap-3 pt-2">
         <p className="text-small text-fg-muted">{hint}</p>
-      </header>
-      {children}
-    </section>
+        {children}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -83,7 +85,7 @@ export function QuinyxGroups({ groups }: { groups: QuinyxGroupRow[] }) {
         {groups.map((g) => (
           <li
             key={g.id}
-            className="grid gap-2 rounded-control border border-border p-3 md:grid-cols-[minmax(0,1fr)_8rem_auto] md:items-center"
+            className="grid gap-2 rounded-control bg-surface-2 p-3 md:grid-cols-[minmax(0,1fr)_8rem_auto] md:items-center"
           >
             <div className="flex min-w-0 flex-col">
               <span className="font-medium">
@@ -200,10 +202,7 @@ export function QuinyxPlaces({ places }: { places: QuinyxPlaceRow[] }) {
     >
       <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="quinyx-places">
         {places.map((p) => (
-          <li
-            key={p.id}
-            className="flex items-center gap-2 rounded-control border border-border p-2"
-          >
+          <li key={p.id} className="flex items-center gap-2 rounded-control bg-surface-2 p-2">
             <span className="min-w-0 flex-1 truncate font-medium">{p.pattern}</span>
             <DistrictSelect
               aria-label={`District de ${p.pattern}`}
@@ -285,20 +284,12 @@ export function QuinyxAgents({
       hint="CSM propose le compte dont le nom complet est identique. Un agent n'apparaît dans « Mon planning », le widget et les districts du jour qu'une fois rattaché."
     >
       <div className="flex flex-wrap items-center gap-2">
-        <Button
-          variant={filter === "todo" ? "primary" : "secondary"}
-          aria-pressed={filter === "todo"}
-          onClick={() => setFilter("todo")}
-        >
-          À rattacher ({todo.length})
-        </Button>
-        <Button
-          variant={filter === "all" ? "primary" : "secondary"}
-          aria-pressed={filter === "all"}
-          onClick={() => setFilter("all")}
-        >
-          Tous ({agents.length})
-        </Button>
+        <FilterChip pressed={filter === "todo"} onClick={() => setFilter("todo")}>
+          À rattacher <Count>{todo.length}</Count>
+        </FilterChip>
+        <FilterChip pressed={filter === "all"} onClick={() => setFilter("all")}>
+          Tous <Count>{agents.length}</Count>
+        </FilterChip>
         {pendingSuggestions ? (
           <Button
             variant="secondary"
@@ -316,7 +307,7 @@ export function QuinyxAgents({
         {shown.map((a) => (
           <li
             key={a.id}
-            className="grid gap-2 rounded-control border border-border p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,16rem)_auto] md:items-center"
+            className="grid gap-2 rounded-control bg-surface-2 p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,16rem)_auto] md:items-center"
           >
             <div className="flex min-w-0 flex-col">
               <span className="font-medium">{a.name}</span>

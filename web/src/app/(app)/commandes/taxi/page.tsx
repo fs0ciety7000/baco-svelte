@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { FilterBar, OrderList, type ListFilters } from "@/components/orders/order-list";
 import { Button } from "@/components/ui/button";
+import { ListStatus } from "@/components/ui/list-toolbar";
 import { can } from "@/lib/permissions";
 import { requirePermission } from "@/server/auth";
 import { listOrders } from "@/server/data/orders";
@@ -28,22 +29,27 @@ export default async function Page({ searchParams }: { searchParams: Promise<Lis
   );
   return (
     <section className="flex flex-col gap-4" aria-label="Commandes taxi">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-body text-fg-muted" data-testid="orders-count">
-          <span className="font-mono text-fg tabular">{total}</span> commandes taxi
-        </p>
-        <div className="flex items-center gap-3">
-          <LiveRefresh topics={["taxi_orders"]} />
-          {can(user, "generate_taxi:write") ? (
+      <FilterBar
+        action="/commandes/taxi"
+        filters={filters}
+        actions={
+          can(user, "generate_taxi:write") ? (
             <Button asChild variant="primary">
               <Link href="/commandes/taxi/nouveau" data-shortcut="new" aria-keyshortcuts="n">
                 <Plus aria-hidden /> Nouveau taxi
               </Link>
             </Button>
-          ) : null}
-        </div>
-      </div>
-      <FilterBar action="/commandes/taxi" filters={filters} />
+          ) : null
+        }
+      />
+      <ListStatus
+        count={
+          <span data-testid="orders-count">
+            <span className="font-medium text-fg tabular">{total}</span> commandes taxi
+          </span>
+        }
+        live={<LiveRefresh topics={["taxi_orders"]} />}
+      />
       <OrderList
         rows={rows}
         total={total}

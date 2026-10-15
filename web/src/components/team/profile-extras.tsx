@@ -13,6 +13,7 @@ import {
   type MySession,
 } from "@/app/team-actions";
 import { Button } from "@/components/ui/button";
+import { CHIP_BASE, CHIP_OFF, CHIP_ON } from "@/components/ui/chip-styles";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -54,12 +55,7 @@ export function StatusCard({ initial }: { initial: string }) {
               aria-pressed={value === s}
               disabled={pending}
               onClick={() => save(value === s ? "" : s)}
-              className={cn(
-                "inline-flex min-h-11 cursor-pointer items-center rounded-control border px-3 text-body transition-colors",
-                value === s
-                  ? "border-accent bg-accent-soft text-fg"
-                  : "border-border-strong bg-surface text-fg-muted hover:text-fg",
-              )}
+              className={cn(CHIP_BASE, "min-h-11 px-4 text-body", value === s ? CHIP_ON : CHIP_OFF)}
             >
               {s}
             </button>
@@ -153,7 +149,10 @@ export function SessionsCard() {
             {items.map((s) => {
               const seen = pbDate(s.lastSeen);
               return (
-                <li key={s.id} className="flex items-center gap-3 border border-border px-3 py-2">
+                <li
+                  key={s.id}
+                  className="flex items-center gap-3 border border-border px-3 py-2 rounded-control"
+                >
                   <MonitorSmartphone aria-hidden className="size-4 shrink-0 text-fg-muted" />
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="flex flex-wrap items-center gap-2 text-body text-fg">

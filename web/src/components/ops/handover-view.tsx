@@ -47,7 +47,7 @@ function Section({
         title={
           <span className="inline-flex items-center gap-2">
             {icon} {title}
-            <Badge tone={count ? tone : "neutral"} className="font-mono tabular">
+            <Badge tone={count ? tone : "neutral"} className="tabular">
               {count}
             </Badge>
           </span>
@@ -70,7 +70,7 @@ function Orders({ items }: { items: HandoverOrder[] }) {
             className="flex min-w-0 items-baseline gap-2 rounded-box px-1 py-1 hover:bg-surface-2"
           >
             <span className="min-w-0 flex-1 truncate text-body">{o.label}</span>
-            <span className="shrink-0 font-mono text-small text-fg-muted tabular">
+            <span className="shrink-0 text-small text-fg-subtle tabular">
               {o.day}
               {o.time ? ` ${o.time}` : ""}
             </span>
@@ -110,7 +110,7 @@ export function HandoverView({
       <div className="flex flex-wrap items-center gap-2" data-print="hide">
         <p className="mr-auto text-body text-fg-muted">
           Relève <span className="text-fg">{scope}</span> · mise à jour à{" "}
-          <span className="font-mono tabular">{at}</span>
+          <span className="tabular">{at}</span>
         </p>
         <Button
           variant="secondary"
@@ -256,7 +256,7 @@ export function HandoverView({
                 >
                   <span className="shrink-0 font-mono text-small tabular">{l.time}</span>
                   {l.urgent ? <Badge tone="danger">Urgent</Badge> : null}
-                  {l.pinned ? <Badge tone="accent">Consigne</Badge> : null}
+                  {l.pinned ? <Badge tone="info">Consigne</Badge> : null}
                   <span className="min-w-0 flex-1 truncate text-body">{l.label}</span>
                 </Link>
               </li>

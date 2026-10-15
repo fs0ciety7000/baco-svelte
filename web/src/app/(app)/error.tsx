@@ -36,6 +36,8 @@ export default function AppError({
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-10 md:px-6" role="alert">
       <EmptyState
+        variant="first"
+        className="border-solid border-(--card-frame) bg-surface shadow-rest"
         icon={<AlertTriangle className="size-6 text-warn" />}
         title="La page n'a pas pu s'afficher"
         description={
@@ -48,14 +50,16 @@ export default function AppError({
             <Button variant="primary" onClick={retry}>
               <RotateCcw aria-hidden /> Réessayer
             </Button>
-            <Button asChild variant="ghost" className="border border-border">
+            <Button asChild variant="secondary">
               <Link href="/">Retour à l&apos;accueil</Link>
             </Button>
           </div>
         }
       />
       {error.digest ? (
-        <p className="text-center font-mono text-small text-fg-muted">Référence : {error.digest}</p>
+        <p className="text-center text-small text-fg-muted">
+          Référence : <span className="font-mono">{error.digest}</span>
+        </p>
       ) : null}
     </div>
   );

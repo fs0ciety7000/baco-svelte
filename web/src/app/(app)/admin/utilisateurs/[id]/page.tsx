@@ -69,7 +69,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         peers={peers}
       />
       <section
-        className="flex flex-col gap-2 rounded-box border border-border bg-surface p-4"
+        className="flex flex-col gap-2 rounded-box border border-(--card-frame) bg-surface p-4 shadow-rest"
         aria-label="Appareils connectés"
       >
         <TokenList
@@ -80,7 +80,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         />
       </section>
       <section
-        className="flex flex-col gap-2 rounded-box border border-border bg-surface p-4"
+        className="flex flex-col gap-2 rounded-box border border-(--card-frame) bg-surface p-4 shadow-rest"
         aria-label="Passkeys"
       >
         <UserPasskeys items={passkeys} />

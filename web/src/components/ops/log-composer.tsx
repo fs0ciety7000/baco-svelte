@@ -44,6 +44,7 @@ import { CATEGORY, LOG_CATEGORIES, ATTACHMENT_MAX, type LogCategory } from "@/li
 import { safeCall } from "@/lib/orders/safe-call";
 import { brusselsDay, brusselsTime, dayOf, pbDate } from "@/lib/orders/time";
 import { cn } from "@/lib/utils";
+import { CHIP_BASE, CHIP_OFF, CHIP_ON } from "@/components/ui/chip-styles";
 import type { Agent, Linkable, LinkedObject, LogEntry } from "@/server/data/ops";
 
 import { EmojiPicker } from "./emoji-picker";
@@ -366,10 +367,9 @@ export function LogComposer({
           aria-checked={category === c}
           onClick={() => setCategory(c)}
           className={cn(
-            "h-control-sm min-w-11 shrink-0 cursor-pointer border px-3 text-small transition-colors",
-            category === c
-              ? "border-accent bg-accent-soft text-fg"
-              : "border-border-strong bg-surface text-fg-muted hover:text-fg",
+            CHIP_BASE,
+            "h-control-sm min-w-11 justify-center",
+            category === c ? CHIP_ON : CHIP_OFF,
           )}
         >
           {CATEGORY[c].label}
@@ -383,7 +383,7 @@ export function LogComposer({
       role="listbox"
       aria-label="Agents à mentionner"
       className={cn(
-        "absolute right-0 left-0 z-20 border border-border-strong bg-surface shadow-lg",
+        "absolute right-0 left-0 z-20 overflow-hidden rounded-box border border-border bg-surface shadow-float",
         chat ? "bottom-full mb-1" : "mt-1",
       )}
     >
@@ -411,7 +411,7 @@ export function LogComposer({
             {links.map((l) => (
               <span
                 key={`${l.kind}-${l.id}`}
-                className="inline-flex min-h-8 items-center gap-1 border border-border-strong bg-surface-2 pl-2 text-small"
+                className="inline-flex min-h-8 items-center gap-1 rounded-pill bg-surface-2 pl-2.5 text-small"
               >
                 <Link2 aria-hidden className="size-3.5 text-fg-muted" /> {l.label}
                 <button
@@ -427,8 +427,7 @@ export function LogComposer({
             <Button
               type="button"
               size="sm"
-              variant="ghost"
-              className="border border-border"
+              variant="secondary"
               onClick={() => setLinkOpen((o) => !o)}
               aria-expanded={linkOpen}
             >
@@ -436,7 +435,7 @@ export function LogComposer({
             </Button>
           </div>
           {linkOpen ? (
-            <div className="flex flex-col gap-2 border border-border p-3">
+            <div className="flex flex-col gap-2 rounded-box bg-surface-2 p-3">
               <div className="grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)] gap-2">
                 <Select
                   aria-label="Type d'objet"
@@ -473,7 +472,7 @@ export function LogComposer({
                   <li key={r.id}>
                     <button
                       type="button"
-                      className="flex min-h-11 w-full cursor-pointer items-center px-2 text-left text-body hover:bg-surface-2"
+                      className="flex min-h-11 w-full cursor-pointer items-center rounded-control px-2 text-left text-body hover:bg-surface-3"
                       onClick={() => {
                         setLinks([...links.filter((l) => l.kind !== r.kind), r]);
                         setLinkOpen(false);
@@ -498,7 +497,7 @@ export function LogComposer({
         {existing.map((name) => (
           <span
             key={name}
-            className="inline-flex min-h-8 items-center gap-1 border border-border bg-surface-2 pl-2 text-small"
+            className="inline-flex min-h-8 items-center gap-1 rounded-pill bg-surface-2 pl-2.5 text-small"
           >
             <Paperclip aria-hidden className="size-3.5" /> {name}
             <button
@@ -522,7 +521,7 @@ export function LogComposer({
         {files.map((f, i) => (
           <span
             key={`${f.name}-${i}`}
-            className="inline-flex min-h-8 items-center gap-1 border border-dashed border-border-strong pl-2 text-small"
+            className="inline-flex min-h-8 items-center gap-1 rounded-pill border border-dashed border-border-strong pl-2.5 text-small"
           >
             <Paperclip aria-hidden className="size-3.5" /> {f.name}
             <button
@@ -539,8 +538,7 @@ export function LogComposer({
           <Button
             type="button"
             size="sm"
-            variant="ghost"
-            className="border border-border"
+            variant="secondary"
             onClick={() => fileRef.current?.click()}
           >
             <Paperclip aria-hidden /> Joindre (image, PDF)
@@ -581,7 +579,7 @@ export function LogComposer({
 
   if (chat) {
     const tool =
-      "grid size-10 shrink-0 cursor-pointer place-items-center text-fg-muted hover:bg-surface-2 hover:text-fg aria-pressed:bg-surface-2 aria-pressed:text-fg";
+      "grid size-10 shrink-0 cursor-pointer place-items-center rounded-control text-fg-muted hover:bg-surface-3 hover:text-fg aria-pressed:bg-surface-3 aria-pressed:text-fg";
     return (
       <form
         className="relative flex flex-col gap-2 border-t border-border bg-surface px-3 pt-2 pb-2"
@@ -595,7 +593,7 @@ export function LogComposer({
       >
         {options ? (
           <div
-            className="flex max-h-[45dvh] flex-col gap-3 overflow-y-auto border border-border bg-bg p-3"
+            className="flex max-h-[45dvh] flex-col gap-3 overflow-y-auto rounded-box bg-surface-2 p-3"
             data-testid="log-options"
           >
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -665,7 +663,7 @@ export function LogComposer({
             {links.map((l) => (
               <span
                 key={`${l.kind}-${l.id}`}
-                className="inline-flex min-h-8 items-center gap-1 border border-border-strong bg-surface-2 px-2 text-small"
+                className="inline-flex min-h-8 items-center gap-1 rounded-pill bg-surface-2 px-2.5 text-small"
               >
                 <Link2 aria-hidden className="size-3.5 text-fg-muted" /> {l.label}
               </span>
@@ -674,10 +672,10 @@ export function LogComposer({
         ) : null}
         {replyTo ? (
           <div
-            className="flex min-w-0 items-center gap-2 border-l-2 border-accent bg-accent-faint py-1 pr-1 pl-2"
+            className="flex min-w-0 items-center gap-2 rounded-control border-l-2 border-border-strong bg-surface-2 py-1 pr-1 pl-2"
             data-testid="log-replying"
           >
-            <Reply aria-hidden className="size-4 shrink-0 text-accent" />
+            <Reply aria-hidden className="size-4 shrink-0 text-fg-muted" />
             <span className="min-w-0 flex-1 truncate text-small">
               <span className="font-semibold text-fg">
                 Réponse à {replyTo.author || "un message"}
@@ -711,10 +709,11 @@ export function LogComposer({
             onClick={() => setUrgent((u) => !u)}
             title="Urgent : notifie le district"
             className={cn(
-              "inline-flex h-control-sm shrink-0 cursor-pointer items-center gap-1 border px-2.5 text-small transition-colors",
+              CHIP_BASE,
+              "h-control-sm",
               urgent
-                ? "border-danger bg-[color-mix(in_oklab,var(--danger)_14%,var(--surface))] text-danger"
-                : "border-border-strong text-fg-muted hover:text-fg",
+                ? "border-danger bg-[color-mix(in_oklab,var(--danger)_var(--tint),var(--surface))] text-danger"
+                : CHIP_OFF,
             )}
           >
             <TriangleAlert aria-hidden className="size-3.5" /> Urgent
@@ -722,7 +721,7 @@ export function LogComposer({
         </div>
         <div
           className={cn(
-            "relative border bg-bg transition-colors focus-within:border-accent",
+            "focus-halo relative overflow-hidden rounded-control border bg-(--control-bg) transition-colors",
             urgent ? "border-danger" : "border-border-strong",
           )}
         >
@@ -898,7 +897,7 @@ export function LogComposer({
           <EmojiPicker side="bottom" onPick={(emoji) => edit(() => ({ text: emoji }))} />
           <button
             type="button"
-            className="grid size-10 cursor-pointer place-items-center text-fg-muted hover:bg-surface-2 hover:text-fg"
+            className="grid size-10 cursor-pointer place-items-center rounded-control text-fg-muted hover:bg-surface-3 hover:text-fg"
             aria-label="Gras"
             onClick={() => wrap("**", "texte")}
           >
@@ -906,7 +905,7 @@ export function LogComposer({
           </button>
           <button
             type="button"
-            className="grid size-10 cursor-pointer place-items-center text-fg-muted hover:bg-surface-2 hover:text-fg"
+            className="grid size-10 cursor-pointer place-items-center rounded-control text-fg-muted hover:bg-surface-3 hover:text-fg"
             aria-label="Italique"
             onClick={() => wrap("_", "texte")}
           >
@@ -914,7 +913,7 @@ export function LogComposer({
           </button>
           <button
             type="button"
-            className="grid size-10 cursor-pointer place-items-center text-fg-muted hover:bg-surface-2 hover:text-fg"
+            className="grid size-10 cursor-pointer place-items-center rounded-control text-fg-muted hover:bg-surface-3 hover:text-fg"
             aria-label="Liste"
             onClick={bullets}
           >

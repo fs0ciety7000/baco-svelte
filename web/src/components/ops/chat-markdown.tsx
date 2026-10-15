@@ -68,7 +68,10 @@ function inline(nodes: Inline[], key: string, HL: string[] = []): ReactNode[] {
         );
       case "code":
         return (
-          <code key={k} className="border border-border bg-surface-2 px-1 font-mono text-[0.92em]">
+          <code
+            key={k}
+            className="rounded-[min(var(--r-control),4px)] bg-surface-2 px-1 font-mono text-[0.92em]"
+          >
             {n.v}
           </code>
         );
@@ -150,7 +153,7 @@ export function ChatMarkdown({
           return (
             <pre
               key={k}
-              className="overflow-x-auto border border-border bg-surface-2 p-2 font-mono text-small whitespace-pre"
+              className="overflow-x-auto rounded-control bg-surface-2 p-2 font-mono text-small whitespace-pre"
             >
               {b.v}
             </pre>

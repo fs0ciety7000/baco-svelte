@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { FilterBar, OrderList, type ListFilters } from "@/components/orders/order-list";
 import { Button } from "@/components/ui/button";
+import { ListStatus } from "@/components/ui/list-toolbar";
 import { can } from "@/lib/permissions";
 import { requirePermission } from "@/server/auth";
 import { resolveBusPeriod, defaultBusPeriod } from "@/lib/orders/period";
@@ -48,25 +49,27 @@ export default async function CommandesBusPage({
   );
   return (
     <section className="flex flex-col gap-4" aria-label="Commandes bus">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-body text-fg-muted" data-testid="orders-count">
-          <span className="font-mono text-fg tabular">{total}</span> commandes bus
-        </p>
-        <div className="flex items-center gap-3">
-          <LiveRefresh topics={["bus_orders"]} />
-          {can(user, "otto:write") ? (
+      <FilterBar
+        action="/commandes"
+        filters={filters}
+        defaultPeriod={defaultBusPeriod(brusselsDay())}
+        actions={
+          can(user, "otto:write") ? (
             <Button asChild variant="primary">
               <Link href="/commandes/nouveau" data-shortcut="new" aria-keyshortcuts="n">
                 <Plus aria-hidden /> Nouveau bon
               </Link>
             </Button>
-          ) : null}
-        </div>
-      </div>
-      <FilterBar
-        action="/commandes"
-        filters={filters}
-        defaultPeriod={defaultBusPeriod(brusselsDay())}
+          ) : null
+        }
+      />
+      <ListStatus
+        count={
+          <span data-testid="orders-count">
+            <span className="font-medium text-fg tabular">{total}</span> commandes bus
+          </span>
+        }
+        live={<LiveRefresh topics={["bus_orders"]} />}
       />
       <OrderList
         rows={rows}

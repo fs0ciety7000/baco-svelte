@@ -28,7 +28,11 @@ export default async function Page({
         total={total}
       />
       {rows.length === 0 ? (
-        <EmptyState title="Aucune gare" description="Aucun code PtCar pour cette recherche." />
+        <EmptyState
+          framed
+          title="Aucune gare"
+          description="Aucun code PtCar pour cette recherche."
+        />
       ) : (
         <>
           <div className="hidden md:block">

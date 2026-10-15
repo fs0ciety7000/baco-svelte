@@ -1,11 +1,10 @@
-import { Search } from "lucide-react";
 import Link from "next/link";
 
 import { pl } from "@/lib/utils";
 import { ClearFilters, FilterSubmit } from "@/components/ui/filters";
 import { FilterForm } from "@/components/ui/filter-form";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { ListCount, TOOLBAR, ToolbarSearch } from "@/components/ui/list-toolbar";
 
 // Éléments communs des référentiels en lecture (PtCar, EBP) : recherche en GET (URL partageable, sans JS) et
 // pagination serveur. Tout est rendu côté serveur ; aucune donnée ne quitte le domaine CSM.
@@ -17,34 +16,23 @@ export function RefSearchBar({
   placeholder,
   hidden,
   children,
+  lead,
 }: {
   action: string;
   q: string;
   placeholder: string;
   hidden?: Record<string, string>;
   children?: React.ReactNode;
+  /** Élément en tête de la barre (vue en contrôle segmenté). */
+  lead?: React.ReactNode;
 }) {
   return (
-    <FilterForm action={action} role="search" className="flex flex-wrap items-end gap-2">
+    <FilterForm action={action} role="search" className={TOOLBAR}>
+      {lead}
       {Object.entries(hidden ?? {}).map(([k, v]) =>
         v ? <input key={k} type="hidden" name={k} value={v} /> : null,
       )}
-      <label className="flex min-w-0 flex-1 flex-col gap-1 md:max-w-80">
-        <span className="text-small text-fg-muted">Recherche</span>
-        <span className="relative">
-          <Search
-            aria-hidden
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted"
-          />
-          <Input
-            name="q"
-            defaultValue={q}
-            placeholder={placeholder}
-            className="pl-9"
-            maxLength={60}
-          />
-        </span>
-      </label>
+      <ToolbarSearch defaultValue={q} placeholder={placeholder} className="md:w-80" />
       {children}
       <FilterSubmit />
       <ClearFilters href={action} />
@@ -71,29 +59,20 @@ export function RefPager({
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <p className="text-small text-fg-muted">
-        <span className="font-mono text-fg tabular">{total}</span> {pl(total, "résultat")}
-        {totalPages > 1 ? ` · page ${page}/${totalPages}` : ""}
+        <ListCount
+          n={total}
+          label={pl(total, "résultat")}
+          extra={totalPages > 1 ? ` · page ${page}/${totalPages}` : ""}
+        />
       </p>
       {totalPages > 1 ? (
         <div className="flex gap-2">
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="border border-border"
-            disabled={page <= 1}
-          >
+          <Button asChild variant="secondary" size="sm" disabled={page <= 1}>
             <Link href={href(Math.max(1, page - 1))} aria-disabled={page <= 1}>
               Précédent
             </Link>
           </Button>
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="border border-border"
-            disabled={page >= totalPages}
-          >
+          <Button asChild variant="secondary" size="sm" disabled={page >= totalPages}>
             <Link href={href(Math.min(totalPages, page + 1))} aria-disabled={page >= totalPages}>
               Suivant
             </Link>
@@ -107,7 +86,7 @@ export function RefPager({
 /** Code gare en mono (badge). */
 export function AbbrBadge({ abbr }: { abbr: string }) {
   return (
-    <span className="inline-flex items-center rounded border border-border bg-surface-2 px-1.5 py-0.5 font-mono text-small text-fg">
+    <span className="inline-flex items-center rounded-[min(var(--r-control),5px)] bg-surface-2 px-1.5 py-0.5 font-mono text-small font-medium text-fg">
       {abbr || "—"}
     </span>
   );

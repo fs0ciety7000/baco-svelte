@@ -2,7 +2,15 @@
 
 import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 
 import {
   deleteBusChild,
@@ -48,9 +56,12 @@ export function SupplierBoard({
   canUpdate,
   canDelete,
   lineOptions = [],
+  status,
 }: {
   kind: SupplierKind;
   rows: SupplierRow[];
+  /** Ligne d'état (nombre de sociétés) à gauche du bouton « Nouvelle société ». */
+  status?: ReactNode;
   /** Lignes du référentiel (`rail_lines`) pour les lignes desservies d'une société de bus. */
   lineOptions?: LineOption[];
 } & Rights) {
@@ -93,15 +104,20 @@ export function SupplierBoard({
 
   return (
     <>
-      {canWrite ? (
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {status}
+        {canWrite ? (
           <Button variant="primary" onClick={() => setCreateOpen(true)} data-testid="supplier-new">
             <Plus aria-hidden /> Nouvelle société
           </Button>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
       {rows.length === 0 ? (
-        <EmptyState title="Aucune société" description="Aucun fournisseur pour cette recherche." />
+        <EmptyState
+          framed
+          title="Aucune société"
+          description="Aucun fournisseur pour cette recherche."
+        />
       ) : (
         <>
           <div className="hidden md:block">
@@ -700,7 +716,7 @@ function CompanyLines({
           return (
             <li
               key={v}
-              className="inline-flex max-w-full items-center gap-1 rounded-control border border-border px-2 py-1 text-small"
+              className="inline-flex max-w-full items-center gap-1 rounded-pill bg-surface-2 px-2.5 py-1 text-small"
               title={o?.hint ? `${o.label} (${o.hint})` : o?.label}
             >
               <span className="font-mono">{v}</span>

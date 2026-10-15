@@ -405,12 +405,12 @@ export function DirectoryBoard({
             >
               {browsing && !filtered ? (
                 <>
-                  <span className="font-mono text-fg tabular">{entries.length}</span>{" "}
+                  <span className="font-medium text-fg tabular">{entries.length}</span>{" "}
                   {pl(entries.length, "contact")}
                 </>
               ) : (
                 <>
-                  <span className="font-mono text-fg tabular">{hits.length}</span>{" "}
+                  <span className="font-medium text-fg tabular">{hits.length}</span>{" "}
                   {pl(hits.length, "résultat")} sur{" "}
                   <span className="tabular">{entries.length}</span>
                 </>
@@ -434,9 +434,14 @@ export function DirectoryBoard({
       >
         <LiveHighlight scope="annuaire" sigs={updated} swap={false} />
         {entries.length === 0 ? (
-          <EmptyState title="Annuaire vide" description="Aucun contact n'a encore été ajouté." />
+          <EmptyState
+            framed
+            title="Annuaire vide"
+            description="Aucun contact n'a encore été ajouté."
+          />
         ) : hits.length === 0 ? (
           <EmptyState
+            framed
             icon={<Search className="size-6" />}
             title={
               browsing
@@ -649,7 +654,7 @@ function Hl({ segs }: { segs: Segment[] }) {
         s.hit ? (
           <mark
             key={i}
-            className="rounded-[2px] bg-[color-mix(in_oklab,var(--warn)_30%,transparent)] text-fg"
+            className="rounded-[min(var(--r-control),2px)] bg-[color-mix(in_oklab,var(--warn)_30%,transparent)] text-fg"
           >
             {s.text}
           </mark>
@@ -692,7 +697,9 @@ function RowSection({
           {count != null ? <span className="tabular text-fg-subtle">{count}</span> : null}
         </h2>
       )}
-      <ul className="overflow-hidden rounded-box border border-border bg-surface">{children}</ul>
+      <ul className="overflow-hidden rounded-box border border-(--card-frame) bg-surface shadow-rest">
+        {children}
+      </ul>
     </section>
   );
 }
@@ -979,8 +986,7 @@ function ContactPanel({
       <div>
         <Button
           size="sm"
-          variant="ghost"
-          className="border border-border"
+          variant="secondary"
           aria-pressed={favorite}
           onClick={onToggleFav}
           data-testid="contact-panel-fav"

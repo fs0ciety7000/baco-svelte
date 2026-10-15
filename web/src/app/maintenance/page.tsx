@@ -16,7 +16,7 @@ export default async function Page() {
   if (!m.on) redirect("/");
   return (
     <main className="grid min-h-dvh place-items-center bg-bg px-4">
-      <div className="flex max-w-md flex-col items-center gap-3 border border-border bg-surface p-6 text-center">
+      <div className="flex max-w-md flex-col items-center gap-3 border border-(--card-frame) bg-surface p-6 text-center rounded-box shadow-rest">
         <Wrench aria-hidden className="size-8 text-warn" />
         <h1 className="display text-h2">Maintenance en cours</h1>
         <p className="text-body whitespace-pre-line text-fg-muted">

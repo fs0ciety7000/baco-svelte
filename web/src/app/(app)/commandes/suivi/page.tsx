@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { TrackingBoard } from "@/components/orders/tracking-board";
+import { SegmentedNav } from "@/components/ui/filters";
+import { TOOLBAR } from "@/components/ui/list-toolbar";
 import { can } from "@/lib/permissions";
-import { cn } from "@/lib/utils";
 import { requireRoute } from "@/server/auth";
 import { listOrders, VIEWS, viewCounts, type View } from "@/server/data/orders";
 
@@ -49,50 +49,35 @@ export default async function Page({
 
   return (
     <section className="flex flex-col gap-4" aria-label="Suivi des commandes">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <nav aria-label="Vues enregistrées" className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
-          <ul className="flex gap-1.5">
-            {VIEWS.map((v) => (
-              <li key={v}>
-                <Link
-                  href={link(v, kind)}
-                  aria-current={v === view ? "page" : undefined}
-                  className={cn(
-                    "inline-flex h-11 items-center gap-2 border px-3 text-body whitespace-nowrap md:h-control",
-                    v === view
-                      ? "border-accent bg-accent-soft text-fg"
-                      : "border-border text-fg-muted hover:text-fg",
-                  )}
-                  data-testid={`view-${v}`}
-                >
-                  {VIEW_LABEL[v]}
-                  {v !== "toutes" ? (
-                    <span className="font-mono text-small tabular text-fg-muted">{counts[v]}</span>
-                  ) : null}
-                </Link>
-              </li>
-            ))}
-          </ul>
+      {/* Barre d'outils sur une ligne (v4 lot 6) : vues enregistrées avec compteurs, type de bon, direct à droite. */}
+      <div className={TOOLBAR} data-testid="tracking-toolbar">
+        <nav aria-label="Vues enregistrées" className="min-w-0 max-md:w-full">
+          <SegmentedNav
+            label="Vue"
+            scroll
+            items={VIEWS.map((v) => ({
+              label: VIEW_LABEL[v],
+              href: link(v, kind),
+              current: v === view,
+              testId: `view-${v}`,
+              count: v !== "toutes" ? counts[v] : undefined,
+            }))}
+          />
         </nav>
-        <LiveRefresh topics={topics} />
+        {ctx.canBus && ctx.canTaxi ? (
+          <SegmentedNav
+            label="Type de commande"
+            items={KINDS.map((k) => ({
+              label: k.label,
+              href: link(view, k.id),
+              current: k.id === kind,
+            }))}
+          />
+        ) : null}
+        <span className="ml-auto">
+          <LiveRefresh topics={topics} />
+        </span>
       </div>
-      {ctx.canBus && ctx.canTaxi ? (
-        <div className="flex gap-1.5" role="group" aria-label="Type de commande">
-          {KINDS.map((k) => (
-            <Link
-              key={k.id}
-              href={link(view, k.id)}
-              aria-current={k.id === kind ? "true" : undefined}
-              className={cn(
-                "inline-flex h-11 items-center px-3 text-small md:h-control-sm",
-                k.id === kind ? "bg-surface-2 text-fg" : "text-fg-muted hover:text-fg",
-              )}
-            >
-              {k.label}
-            </Link>
-          ))}
-        </div>
-      ) : null}
       <TrackingBoard
         rows={rows}
         coordinator={{ bus: can(user, "bus:reopen"), taxi: can(user, "taxi:reopen") }}

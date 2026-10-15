@@ -149,8 +149,7 @@ export function SpiZonesAdmin({
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
-              variant="ghost"
-              className="border border-border"
+              variant="secondary"
               disabled={pending}
               onClick={() => recompute(false)}
               data-testid="zones-recompute"
@@ -159,8 +158,7 @@ export function SpiZonesAdmin({
             </Button>
             <Button
               size="sm"
-              variant="ghost"
-              className="border border-border"
+              variant="secondary"
               disabled={pending}
               onClick={() => recompute(true)}
             >
@@ -228,7 +226,7 @@ export function SpiZonesAdmin({
 
         <section aria-label="Zones" className="flex min-w-0 flex-col gap-2">
           <h2 className="label-mono text-fg-muted">Zones · {zones.length}</h2>
-          <ul className="flex flex-col divide-y divide-border overflow-y-auto rounded-box border border-border bg-surface xl:max-h-[30rem]">
+          <ul className="flex flex-col divide-y divide-border overflow-y-auto rounded-box border border-(--card-frame) bg-surface xl:max-h-[30rem] shadow-rest">
             {zones.map((z) => (
               <li key={z.id} className="flex min-h-12 items-center gap-3 px-3 py-1.5">
                 <span aria-hidden className="size-3 rounded-sm" style={{ background: z.color }} />
@@ -310,7 +308,7 @@ export function SpiZonesAdmin({
             </div>
           </div>
           <p className="text-small text-fg-muted md:ml-auto" data-testid="zones-count">
-            <span className="font-mono text-fg tabular">{shown.length}</span>{" "}
+            <span className="font-medium text-fg tabular">{shown.length}</span>{" "}
             {pl(shown.length, "point")}
           </p>
         </div>
@@ -321,7 +319,7 @@ export function SpiZonesAdmin({
             data-testid="zones-bulk"
           >
             <p className="mr-auto self-center">
-              <span className="font-mono tabular">{picked.size}</span>{" "}
+              <span className="font-medium tabular">{picked.size}</span>{" "}
               {pl(picked.size, "point sélectionné", "points sélectionnés")}
             </p>
             <div className="w-56">
@@ -349,7 +347,7 @@ export function SpiZonesAdmin({
         ) : null}
 
         {shown.length === 0 ? (
-          <EmptyState title="Aucun point" description="Aucune gare pour ces filtres." />
+          <EmptyState framed title="Aucun point" description="Aucune gare pour ces filtres." />
         ) : (
           <div className="overflow-x-auto rounded-box border border-border">
             <table className="w-full min-w-[40rem] text-body">
@@ -436,8 +434,8 @@ export function SpiZonesAdmin({
             {shown.length > limit ? (
               <div className="border-t border-border p-3">
                 <Button
-                  variant="ghost"
-                  className="w-full border border-border"
+                  variant="secondary"
+                  className="w-full"
                   onClick={() => setLimit((l) => l + PAGE)}
                 >
                   Afficher {Math.min(PAGE, shown.length - limit)} de plus

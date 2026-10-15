@@ -4,6 +4,7 @@ import { ReleaseSections, releaseDate } from "@/components/changelog/release-not
 import { ChangelogBoard } from "@/components/team/changelog-board";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/misc";
+import { Badge } from "@/components/ui/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { can } from "@/lib/permissions";
 import { requireUser } from "@/server/auth";
@@ -43,14 +44,10 @@ export default async function ChangelogPage() {
             <Card className="gap-4 p-4 md:p-5" data-testid={`release-${r.version}`}>
               <header className="flex flex-col gap-1">
                 <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-small text-fg-muted">
-                  <span className="font-mono font-semibold text-fg tabular">
-                    Version {r.version}
-                  </span>
+                  <span className="font-semibold text-fg tabular">Version {r.version}</span>
                   <span aria-hidden>·</span>
                   <time dateTime={r.date}>{releaseDate(r.date)}</time>
-                  {i === 0 ? (
-                    <span className="rounded-control bg-accent-soft px-1.5 text-fg">Actuelle</span>
-                  ) : null}
+                  {i === 0 ? <Badge tone="ok">Actuelle</Badge> : null}
                 </p>
                 {r.title ? <h2 className="text-h3 font-semibold text-fg">{r.title}</h2> : null}
               </header>

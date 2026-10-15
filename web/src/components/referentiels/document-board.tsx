@@ -46,7 +46,7 @@ export function DocumentBoard({
         </div>
       ) : null}
       {documents.length === 0 ? (
-        <EmptyState title="Aucun document" description="Aucun fichier pour ces filtres." />
+        <EmptyState framed title="Aucun document" description="Aucun fichier pour ces filtres." />
       ) : (
         <>
           <div className="hidden md:block">
@@ -71,12 +71,12 @@ export function DocumentBoard({
                     <Td className="text-fg-muted">{d.author || "—"}</Td>
                     <Td>
                       <div className="flex gap-1">
-                        <Button asChild size="sm" variant="ghost" className="border border-border">
+                        <Button asChild size="sm" variant="secondary">
                           <Link href={`/ressources/documents/voir/${d.id}?retour=documents`}>
                             <Eye aria-hidden className="size-4" /> Voir
                           </Link>
                         </Button>
-                        <Button asChild size="sm" variant="ghost" className="border border-border">
+                        <Button asChild size="sm" variant="secondary">
                           <a
                             href={`/api/referentiels/documents/${d.id}?dl=1`}
                             download
@@ -88,8 +88,8 @@ export function DocumentBoard({
                         {canDelete ? (
                           <Button
                             size="sm"
-                            variant="ghost"
-                            className="border border-border text-danger"
+                            variant="secondary"
+                            className="text-danger"
                             onClick={() => setConfirmDel(d)}
                             aria-label={`Supprimer ${d.name}`}
                           >
@@ -205,7 +205,7 @@ function UploadForm({ categories, onDone }: { categories: string[]; onDone: () =
           type="file"
           required
           accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
-          className="block w-full text-small file:mr-3 file:min-h-11 file:rounded file:border file:border-border file:bg-surface-2 file:px-3 file:text-fg"
+          className="block w-full text-small file:mr-3 file:min-h-11 file:rounded-control file:border file:border-border file:bg-surface-2 file:px-3 file:text-fg"
           onChange={(e) => {
             if (!name && e.target.files?.[0])
               setName(e.target.files[0].name.replace(/\.[^.]+$/, ""));

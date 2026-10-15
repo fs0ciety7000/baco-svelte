@@ -1,6 +1,6 @@
 # Refonte du design CSM v4 : plan et ébauche (15 oct. 2026)
 
-> Statut : **validé le 15 oct. 2026** (« Signal, défauts » + les trois directions Signal, Quai, Cabine) ; lots 0, 1 et 2 faits le 15 oct. (voir `docs/DESIGN-DIRECTION.md`).
+> Statut : **validé le 15 oct. 2026** (« Signal, défauts » + les trois directions Signal, Quai, Cabine) ; lots 0 à 4 et 6 faits le 15 oct. (voir `docs/DESIGN-DIRECTION.md`), lot 5 (mouvement et performance) en parallèle.
 > Demande : « Refonte du design en utilisant agents et skills (ui-ux-pro-max ; leonxlnx/taste-skill ;
 > heygen-com/hyperframes ; anthropics/skills). Plateforme moderne, premium, performante, intuitive. »
 > Ce qui est livré : ce document, `ebauche.html` (autonome, données fictives) et 12 rendus

@@ -1,13 +1,10 @@
-import { Search } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 
-import { FilterSubmit } from "@/components/ui/filters";
+import { ClearFilters, FilterSubmit, SegmentedNav } from "@/components/ui/filters";
 import { FilterForm } from "@/components/ui/filter-form";
 import { DocumentBoard } from "@/components/referentiels/document-board";
 import { ProcedureBoard } from "@/components/referentiels/procedure-board";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { TOOLBAR, ToolbarSearch } from "@/components/ui/list-toolbar";
 import { Select } from "@/components/ui/select";
 import { can } from "@/lib/permissions";
 import { requirePermission } from "@/server/auth";
@@ -37,70 +34,51 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
 
   return (
     <section className="flex flex-col gap-4" aria-label="Procédures et documents">
-      <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Vue">
-        <Button
-          asChild
-          variant={vue === "procedures" ? "primary" : "ghost"}
-          className={vue === "procedures" ? "" : "border border-border"}
-        >
-          <Link href="/ressources/documents">Procédures</Link>
-        </Button>
-        <Button
-          asChild
-          variant={vue === "documents" ? "primary" : "ghost"}
-          className={vue === "documents" ? "" : "border border-border"}
-        >
-          <Link href="/ressources/documents?vue=documents">Documents</Link>
-        </Button>
-      </div>
-
+      {/* Barre d'outils sur une ligne (v4 lot 6) : vue en contrôle segmenté, recherche, catégorie. */}
       <FilterForm
         action="/ressources/documents"
         role="search"
-        className="flex flex-wrap items-end gap-2"
+        className={TOOLBAR}
+        data-testid="documents-toolbar"
       >
+        <SegmentedNav
+          label="Vue"
+          items={[
+            {
+              label: "Procédures",
+              href: "/ressources/documents",
+              current: vue === "procedures",
+            },
+            {
+              label: "Documents",
+              href: "/ressources/documents?vue=documents",
+              current: vue === "documents",
+            },
+          ]}
+        />
         {vue === "documents" ? <input type="hidden" name="vue" value="documents" /> : null}
-        <label className="flex min-w-0 flex-1 flex-col gap-1 md:max-w-80">
-          <span className="text-small text-fg-muted">Recherche</span>
-          <span className="relative">
-            <Search
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted"
-            />
-            <Input
-              name="q"
-              defaultValue={q}
-              placeholder={vue === "documents" ? "Nom du fichier…" : "Titre ou contenu…"}
-              className="pl-9"
-              maxLength={60}
-            />
-          </span>
-        </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-44">
-          <span className="text-small text-fg-muted">Catégorie</span>
+        <ToolbarSearch
+          defaultValue={q}
+          placeholder={vue === "documents" ? "Nom du fichier…" : "Titre ou contenu…"}
+        />
+        <label className="min-w-44 flex-1 md:min-w-0 md:w-48 md:flex-none">
+          <span className="sr-only">Catégorie</span>
           <Select
             name="categorie"
+            label="Catégorie"
             defaultValue={categorie}
             options={[
-              { value: "", label: "Toutes" },
+              { value: "", label: "Toutes les catégories" },
               ...categories.map((c) => ({ value: c, label: c })),
             ]}
           />
         </label>
         <FilterSubmit />
-        {q || categorie ? (
-          <Button asChild variant="ghost">
-            <Link
-              href={
-                vue === "documents"
-                  ? "/ressources/documents?vue=documents"
-                  : "/ressources/documents"
-              }
-            >
-              Effacer
-            </Link>
-          </Button>
-        ) : null}
+        <ClearFilters
+          href={
+            vue === "documents" ? "/ressources/documents?vue=documents" : "/ressources/documents"
+          }
+        />
       </FilterForm>
 
       {vue === "procedures" ? (

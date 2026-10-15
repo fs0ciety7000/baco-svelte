@@ -101,6 +101,7 @@ export function TrackingBoard({
   if (rows.length === 0)
     return (
       <EmptyState
+        framed
         title="Rien à traiter"
         description="Aucune commande dans cette vue pour le moment."
       />
@@ -137,7 +138,7 @@ export function TrackingBoard({
                   show(r);
                 }}
               >
-                <Td className="font-mono text-fg-muted">
+                <Td className="text-fg-muted tabular">
                   <span className="inline-flex items-center gap-2">
                     <KindIconClient kind={r.kind} pmr={r.isPmr} />
                     <button
@@ -154,7 +155,7 @@ export function TrackingBoard({
                     </button>
                   </span>
                 </Td>
-                <Td className="font-mono tabular">{formatDay(r.day)}</Td>
+                <Td className="whitespace-nowrap tabular">{formatDay(r.day)}</Td>
                 <Td className="font-mono tabular">{r.time || "—"}</Td>
                 <Td className={`max-w-72 truncate ${r.status === "annule" ? "line-through" : ""}`}>
                   {r.origin || "?"} → {r.destination || "?"}

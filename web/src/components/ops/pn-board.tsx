@@ -22,7 +22,8 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState, useTransition }
 import { saveCrossing } from "@/app/(app)/operations/actions";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
-import { DistrictPicker } from "@/components/ui/district-picker";
+import { Count } from "@/components/ui/card";
+import { CHIP_BASE, CHIP_OFF, CHIP_ON } from "@/components/ui/chip-styles";
 import { Field } from "@/components/ui/field";
 import { Segmented, ToggleChip } from "@/components/ui/form-kit";
 import { Input, Textarea } from "@/components/ui/input";
@@ -190,7 +191,7 @@ export function PnBoard({
   }, [hovered]);
 
   const filters = (
-    <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-end">
+    <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center">
       <label className="relative min-w-0 lg:w-80">
         <span className="sr-only">Rechercher un PN</span>
         <Search
@@ -215,12 +216,12 @@ export function PnBoard({
           aria-expanded={moreOpen}
           aria-controls="pn-filtres"
           onClick={() => setMoreOpen((o) => !o)}
-          className="inline-flex h-control items-center gap-2 rounded-control border border-border-strong px-3 text-body text-fg"
+          className={cn(CHIP_BASE, "h-11 self-start", active ? CHIP_ON : CHIP_OFF)}
           data-testid="pn-filters-toggle"
         >
           <SlidersHorizontal aria-hidden className="size-4" />
           Filtres et couches
-          {active ? <span className="text-small text-fg-muted">({active})</span> : null}
+          {active ? <Count>{active}</Count> : null}
           <ChevronDown
             aria-hidden
             className={cn("ml-auto size-4 transition-transform", moreOpen && "rotate-180")}
@@ -231,17 +232,22 @@ export function PnBoard({
         id="pn-filtres"
         className={cn("flex min-w-0 flex-col gap-2 lg:contents", !desktop && !moreOpen && "hidden")}
       >
-        <DistrictPicker
-          options={NETWORK_DISTRICTS}
-          values={districts}
-          onValuesChange={(v) => {
-            setDistricts(v);
-            syncUrl({ district: v.join(",") || null });
-          }}
-          showHint="never"
-          data-testid="pn-district"
-        />
         <div className="grid min-w-0 grid-cols-2 gap-2 lg:flex">
+          <div className="col-span-2 min-w-0 lg:w-44">
+            <MultiSelect
+              label="District"
+              aria-label="District"
+              options={NETWORK_DISTRICTS}
+              values={districts}
+              onValuesChange={(v) => {
+                setDistricts(v);
+                syncUrl({ district: v.join(",") || null });
+              }}
+              allLabel="Tous les districts"
+              noun="district"
+              data-testid="pn-district"
+            />
+          </div>
           <div className="min-w-0 lg:w-44">
             <MultiSelect
               label="Zone SPI"
@@ -361,8 +367,8 @@ export function PnBoard({
         <li className="p-3">
           <Button
             type="button"
-            variant="ghost"
-            className="w-full border border-border"
+            variant="secondary"
+            className="w-full"
             onClick={() => setLimit((l) => l + PAGE)}
           >
             Afficher {Math.min(PAGE, shown.length - limit)} de plus ({shown.length - limit}{" "}
@@ -382,7 +388,11 @@ export function PnBoard({
       >
         {(zoneFilter ? zones.filter((z) => zoneFilter.has(z.code)) : zones).map((z) => (
           <li key={z.code} className="inline-flex items-center gap-1.5">
-            <span aria-hidden className="size-2.5 rounded-sm" style={{ background: z.color }} />
+            <span
+              aria-hidden
+              className="size-2.5 rounded-[min(var(--r-control),2px)]"
+              style={{ background: z.color }}
+            />
             <span className="font-mono text-fg">{z.code}</span> {z.name}
           </li>
         ))}
@@ -407,7 +417,7 @@ export function PnBoard({
       {filters}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <p className="text-small text-fg-muted" data-testid="pn-count" aria-live="polite">
-          <span className="font-mono text-fg tabular">{shown.length}</span>{" "}
+          <span className="font-medium text-fg tabular">{shown.length}</span>{" "}
           {pl(shown.length, "passage à niveau", "passages à niveau")}
           {crossings.length !== shown.length ? ` sur ${crossings.length}` : ""}
         </p>
@@ -441,12 +451,13 @@ export function PnBoard({
 
       {crossings.length === 0 ? (
         <EmptyState
+          framed
           title="Aucun passage à niveau"
           description="Les PN Infrabel sont importés chaque matin avec le référentiel des trains."
         />
       ) : desktop ? (
         <div className="grid h-[calc(100dvh-16rem)] min-h-[32rem] grid-cols-[minmax(20rem,26rem)_minmax(0,1fr)] gap-3">
-          <div className="min-h-0 overflow-y-auto rounded-box border border-border bg-surface">
+          <div className="min-h-0 overflow-y-auto rounded-box border border-(--card-frame) bg-surface shadow-rest">
             {shown.length ? (
               rows
             ) : (
@@ -462,9 +473,15 @@ export function PnBoard({
       ) : view === "carte" ? (
         <div className="h-[calc(100dvh-17rem)] min-h-80">{map}</div>
       ) : shown.length ? (
-        <div className="rounded-box border border-border bg-surface">{rows}</div>
+        <div className="rounded-box border border-(--card-frame) bg-surface shadow-rest">
+          {rows}
+        </div>
       ) : (
-        <EmptyState title="Aucun PN" description="Aucun passage à niveau pour ces filtres." />
+        <EmptyState
+          framed
+          title="Aucun PN"
+          description="Aucun passage à niveau pour ces filtres."
+        />
       )}
 
       <Sheet
@@ -502,8 +519,7 @@ export function PnBoard({
               {!desktop && view !== "carte" && sel.lat ? (
                 <Button
                   size="sm"
-                  variant="ghost"
-                  className="border border-border"
+                  variant="secondary"
                   onClick={() => {
                     setView("carte");
                     syncUrl({ vue: "carte" });
@@ -513,7 +529,7 @@ export function PnBoard({
                 </Button>
               ) : null}
               {canReadLog ? (
-                <Button asChild size="sm" variant="ghost" className="border border-border">
+                <Button asChild size="sm" variant="secondary">
                   <Link href={`/operations/journal?pn=${sel.id}`}>
                     <NotebookPen aria-hidden /> Entrées du Journal
                   </Link>
@@ -522,8 +538,7 @@ export function PnBoard({
               {canEdit ? (
                 <Button
                   size="sm"
-                  variant="ghost"
-                  className="border border-border"
+                  variant="secondary"
                   onClick={() => setEditing(true)}
                   data-testid="pn-edit"
                 >
@@ -541,10 +556,10 @@ export function PnBoard({
             <div className="flex flex-col gap-4" data-testid="pn-panel">
               <div className="flex flex-wrap gap-2">
                 {selZone ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-control border border-border px-2 py-0.5 text-small">
+                  <span className="inline-flex items-center gap-1.5 rounded-pill bg-surface-2 px-2.5 py-0.5 text-small">
                     <span
                       aria-hidden
-                      className="size-2.5 rounded-sm"
+                      className="size-2.5 rounded-[min(var(--r-control),2px)]"
                       style={{ background: selZone.color }}
                     />
                     <span className="font-mono">{selZone.code}</span> {selZone.name}

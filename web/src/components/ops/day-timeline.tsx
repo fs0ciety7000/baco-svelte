@@ -14,6 +14,7 @@ import {
 
 import { DelayBadge } from "@/components/pmr/train-chip";
 import { EmptyState } from "@/components/ui/misc";
+import { TrainChip } from "@/components/ui/train-chip";
 import { animateFrom, EASE, MOTION, reducedMotion } from "@/lib/motion-core";
 import {
   fromMinutes,
@@ -96,13 +97,12 @@ function Summary({ items }: { items: TimelineItem[] }) {
     >
       {parts.map(([n, label]) => (
         <span key={label}>
-          <span className="font-mono text-fg tabular">{n}</span> {label}
+          <span className="figures text-fg">{n}</span> {label}
         </span>
       ))}
       {late ? (
         <span className="text-warn">
-          <span className="font-mono tabular">{late}</span>{" "}
-          {pl(late, "train en retard", "trains en retard")}
+          <span className="figures">{late}</span> {pl(late, "train en retard", "trains en retard")}
         </span>
       ) : null}
     </p>
@@ -200,21 +200,24 @@ function Desktop({
   return (
     <div
       ref={scroller}
-      className="relative overflow-x-auto rounded-box border border-border bg-surface"
+      className="relative overflow-x-auto rounded-box border border-(--card-frame) bg-surface shadow-rest"
       data-testid="timeline-desktop"
     >
       <div ref={scope} className="relative" style={{ width: width + LABEL_W + 24 }}>
         {/* Graduation des heures */}
-        <div className="sticky top-0 z-20 flex h-8 border-b border-border bg-surface" aria-hidden>
+        <div
+          className="sticky top-0 z-20 flex h-8 border-b border-(--th-rule) bg-(--th-bg)"
+          aria-hidden
+        >
           <div
-            className="sticky left-0 z-20 shrink-0 border-r border-border bg-surface"
+            className="sticky left-0 z-20 shrink-0 border-r border-border bg-(--th-bg)"
             style={{ width: LABEL_W }}
           />
           <div className="relative flex-1">
             {hours.map((h) => (
               <span
                 key={h}
-                className="absolute top-1.5 -translate-x-1/2 text-small whitespace-nowrap text-fg-muted tabular"
+                className="absolute top-1.5 -translate-x-1/2 text-label whitespace-nowrap text-(--th-fg) tabular"
                 style={{ left: x(h) }}
               >
                 {h / 60} h
@@ -231,7 +234,7 @@ function Desktop({
           {hours.map((h) => (
             <span
               key={h}
-              className="absolute inset-y-0 border-l border-border/60"
+              className="absolute inset-y-0 border-l border-[color-mix(in_oklab,var(--border)_70%,transparent)]"
               style={{ left: x(h) }}
             />
           ))}
@@ -250,7 +253,7 @@ function Desktop({
               {ICONS[r.kind]}
               <span>
                 {r.label}
-                <span className="block font-mono text-fg-muted tabular">{r.placed.length}</span>
+                <span className="figures block text-fg-muted">{r.placed.length}</span>
               </span>
             </div>
             <div className="relative flex-1" style={{ height: r.lanes * LANE_H + 8 }}>
@@ -279,7 +282,7 @@ function Desktop({
                   >
                     <span
                       className={cn(
-                        "flex h-full min-w-0 items-center gap-1.5 overflow-hidden rounded-control border bg-surface-2 px-1.5 text-small text-fg group-hover:border-border-strong",
+                        "flex h-full min-w-0 items-center gap-1.5 overflow-hidden rounded-control border bg-surface-2 px-1.5 text-small text-fg group-hover:border-border-strong group-hover:bg-surface-3",
                         item.impact?.cancelled
                           ? "border-danger line-through decoration-danger"
                           : "border-border",
@@ -287,11 +290,18 @@ function Desktop({
                       style={{ width: base * PX_PER_MIN }}
                     >
                       {item.io ? (
-                        <span className="shrink-0 font-mono text-label text-fg-muted">
+                        <span className="shrink-0 text-label font-semibold text-fg-muted">
                           {item.io}
                         </span>
                       ) : null}
-                      <span className="shrink-0 font-mono font-bold tabular">{item.train}</span>
+                      <span
+                        className={cn(
+                          "shrink-0 font-semibold tabular",
+                          item.kind !== "bus" && item.kind !== "taxi" && "font-mono",
+                        )}
+                      >
+                        {item.train}
+                      </span>
                       <span className="min-w-0 truncate text-fg-muted">{item.station}</span>
                     </span>
                     {delay ? (
@@ -299,7 +309,7 @@ function Desktop({
                         data-delay-tail
                         aria-hidden
                         className={cn(
-                          "h-2 rounded-r-full",
+                          "h-2 rounded-r-[min(var(--r-control),999px)]",
                           delay >= 15 ? "bg-danger/70" : "bg-warn/70",
                         )}
                         style={{ width: delay * PX_PER_MIN }}
@@ -318,7 +328,7 @@ function Desktop({
             style={{ left: x(now) + LABEL_W }}
             data-testid="timeline-now"
           >
-            <span className="absolute top-1 left-1 rounded-control bg-info px-1 font-mono text-label font-bold text-bg tabular">
+            <span className="absolute top-1 left-1 rounded-pill bg-info px-1.5 text-label font-semibold text-bg tabular">
               {fromMinutes(now)}
             </span>
           </div>
@@ -362,7 +372,7 @@ function Mobile({
 
   const nowRow = (
     <li ref={marker} className="flex items-center gap-2 py-1" data-testid="timeline-now-mobile">
-      <span className="rounded-control bg-info px-1.5 font-mono text-small font-bold text-bg tabular">
+      <span className="rounded-pill bg-info px-2 text-small font-semibold text-bg tabular">
         {fromMinutes(now)}
       </span>
       <span data-now-bar className="h-0.5 flex-1 bg-info" aria-hidden />
@@ -383,7 +393,7 @@ function Mobile({
           <Fragment key={it.id}>
             {i === nowAt ? nowRow : null}
             {head ? (
-              <li className="pt-2 font-mono text-small text-fg-muted tabular" aria-hidden>
+              <li className="label-mono pt-2 text-fg-subtle tabular" aria-hidden>
                 {Number(hour)} h
               </li>
             ) : null}
@@ -392,7 +402,7 @@ function Mobile({
                 href={it.href}
                 aria-label={itemLabel(it)}
                 className={cn(
-                  "flex min-h-11 items-center gap-3 rounded-box border border-border bg-surface px-3 py-2",
+                  "flex min-h-11 items-center gap-3 rounded-box border border-(--card-frame) bg-surface px-3 py-2 shadow-rest",
                   past && "opacity-55",
                   it.impact?.cancelled && "border-danger",
                 )}
@@ -406,9 +416,13 @@ function Mobile({
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="flex items-center gap-1.5 text-body font-medium">
                     <span className="text-fg-muted">{ICONS[it.kind]}</span>
-                    <span className="font-mono font-bold tabular">{it.train}</span>
+                    {it.kind === "bus" || it.kind === "taxi" ? (
+                      <span className="font-semibold">{it.train}</span>
+                    ) : (
+                      <TrainChip train={it.train} size="sm" />
+                    )}
                     {it.io ? (
-                      <span className="font-mono text-small text-fg-muted">{it.io}</span>
+                      <span className="text-small font-semibold text-fg-muted">{it.io}</span>
                     ) : null}
                     <DelayBadge impact={it.impact} className="ml-auto" />
                   </span>
@@ -439,6 +453,7 @@ export function DayTimeline({
   if (!data.items.length)
     return (
       <EmptyState
+        framed
         title="Rien de prévu"
         description="Aucune mission, aucun groupe ni bon de commande pour ce jour et ces filtres."
       />

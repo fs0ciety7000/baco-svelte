@@ -396,3 +396,38 @@ Composants signature 3, 4, 6, 8 et 9 du plan (`docs/design/REFONTE-DESIGN-V4.md`
   dans le flux.
 - **États vides** : `EmptyState framed` (ligne vide dans le cadre de la liste) ; `variant="first"` seulement quand DICOS n'a
   jamais été synchronisé.
+
+## Refonte v4 — lot 6 « Reste des écrans » (15 oct. 2026)
+
+Les règles des lots 1 à 4 s'appliquent maintenant à tous les écrans (Opérations, Réseau, Ressources, Commandes, PMR,
+Statistiques, Administration, pages simples), sans changement de logique métier :
+
+- **Barre d'outils de liste sur une ligne en desktop** (`components/ui/list-toolbar.tsx` : `TOOLBAR`, `ToolbarSearch`,
+  `ListStatus`, `ListCount`) : vue ou période en `SegmentedNav` (compteurs par segment, `scroll` pour les libellés longs en
+  mobile), recherche à loupe **sans libellé visible** (libellé lu par les lecteurs d'écran), filtre principal (districts en
+  `DistrictMenu`, type ou catégorie en `Select`), « Filtres (n) » (`CollapsibleFilters always`) pour le reste, action à
+  droite ; plus de bouton « Afficher » / « Rechercher » visible (recherche pendant la frappe, bouton de soumission
+  invisible pour la touche Entrée). Ligne d'état 13 px dessous (nombre en chiffres tabulaires, précisions, direct à droite).
+- **Navigation entre vues** (Procédures / Documents, Archives, Clients actifs / archivés, Fournisseurs bus / taxi, Suivi,
+  Matériel, Planning) : `SegmentedNav`, jamais un bouton primaire ni une puce accent.
+- **Cartes** : sections en `Card` + `CardHeader` compact ; sections repliables en **`CardDisclosure`** (fiche d'une ligne :
+  gares, PN, zones SPI). Blocs internes sur `surface-2` sans trait ; listes à l'intérieur d'une carte avec un simple trait.
+- **États vides** : `EmptyState framed` dans les listes ; `variant="first"` pour une page d'erreur ou introuvable du shell
+  et pour un référentiel jamais construit.
+- **Chiffres** : compteurs en `.figures` (KPI, volumes, compteurs d'anomalies, zéro estompé), nombres dans une phrase en
+  `font-medium tabular` ; la mono reste aux n° de train, codes de ligne, abréviations PtCar, références et heures d'horaire.
+  Dates de liste (« jeu. 15/10 ») et horodatages du Journal en chiffres tabulaires de la police du texte.
+- **Accent réservé à l'action** : épingles, consignes, « Actuelle », arrêts d'un horaire, puces de frise passent en `info`,
+  `ok` ou encre ; les boutons « ghost » à contour ad hoc deviennent `secondary`.
+- **Ombres et rayons** : `shadow-float` pour tout ce qui flotte (suggestions, menus d'emoji, mentions, boutons « nouveaux
+  messages »), `shadow-rest` + `--card-frame` pour les blocs posés ; aucun rayon en dur (`rounded-[min(var(--r-control),Npx)]`
+  quand une valeur plafond est utile, `rounded-pill` pour les pastilles) ; avatars hors du shell au rayon
+  `min(var(--r-box), 8px)` comme dans la barre du haut.
+- **Statistiques** : barres `info` (bus) et `progress` (taxis), axes en `fg-subtle`, valeurs en chiffres tabulaires, fond
+  `surface`, **une ligne de base et des repères courts** (plus de quadrillage pointillé) ; listes de barres en piste fine
+  `surface-2` (plus de cadre par ligne) ; totaux en `StatStrip` ; tableau équivalent gardé (lecteurs d'écran).
+- **Journal** : fil dans une carte, avatars carrés arrondis, séparateur de jour en pilule, bulles au contour du thème,
+  catégories du rédacteur et « Urgent » en puces, champ d'écriture à halo de focus, liens et pièces jointes en pilules, n°
+  de train en `TrainChip`.
+- **Carte PN** : la carte Leaflet ne change pas ; districts en `MultiSelect` pour que la barre tienne sur une ligne.
+- Les thèmes « angle » gardent chanfreins et capitales mono (`label-mono`, `chamfer`, rayons à 0).

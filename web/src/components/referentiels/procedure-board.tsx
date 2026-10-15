@@ -111,7 +111,11 @@ export function ProcedureBoard({
         </div>
       ) : null}
       {procedures.length === 0 ? (
-        <EmptyState title="Aucune procédure" description="Aucune procédure pour ces filtres." />
+        <EmptyState
+          framed
+          title="Aucune procédure"
+          description="Aucune procédure pour ces filtres."
+        />
       ) : (
         <ul className="grid gap-2 md:grid-cols-2" data-testid="procedures-grid">
           {procedures.map((p) => (
@@ -207,7 +211,7 @@ export function ProcedureBoard({
                   return (
                     <li
                       key={v.id}
-                      className="flex items-center gap-2 border border-border px-2 py-1 text-small"
+                      className="flex items-center gap-2 border border-border px-2 py-1 text-small rounded-control"
                     >
                       <span className="font-mono text-fg-muted tabular">
                         {d ? at.format(d) : ""}
@@ -216,8 +220,7 @@ export function ProcedureBoard({
                       {canUpdate ? (
                         <Button
                           size="sm"
-                          variant="ghost"
-                          className="border border-border"
+                          variant="secondary"
                           disabled={pending}
                           onClick={() =>
                             start(async () => {
@@ -432,7 +435,7 @@ function AttachmentRow({ doc }: { doc: Procedure["attachments"][number] }) {
   const kind = previewKind(doc.fileName);
   const Icon = kind === "image" ? ImageIcon : FileText;
   return (
-    <li className="flex min-w-0 flex-wrap items-center gap-2 border border-border px-2 py-1.5">
+    <li className="flex min-w-0 flex-wrap items-center gap-2 border border-border px-2 py-1.5 rounded-control">
       <Icon aria-hidden className="size-4 shrink-0 text-fg-muted" />
       <Link
         href={`/ressources/documents/voir/${doc.id}`}
@@ -443,12 +446,12 @@ function AttachmentRow({ doc }: { doc: Procedure["attachments"][number] }) {
       </Link>
       {doc.category ? <span className="text-small text-fg-muted">{doc.category}</span> : null}
       <span className="flex gap-1">
-        <Button asChild size="sm" variant="ghost" className="border border-border">
+        <Button asChild size="sm" variant="secondary">
           <Link href={`/ressources/documents/voir/${doc.id}`} aria-label={`Voir ${doc.name}`}>
             <Eye aria-hidden className="size-4" /> Voir
           </Link>
         </Button>
-        <Button asChild size="sm" variant="ghost" className="border border-border">
+        <Button asChild size="sm" variant="secondary">
           <a
             href={`/api/referentiels/documents/${doc.id}?dl=1`}
             download

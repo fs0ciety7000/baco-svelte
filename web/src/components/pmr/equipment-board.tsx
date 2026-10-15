@@ -125,7 +125,7 @@ export function EquipmentBoard({
         </div>
       ) : null}
       {rows.length === 0 ? (
-        <EmptyState title="Aucun matériel" description="Rien dans cette vue." />
+        <EmptyState framed title="Aucun matériel" description="Rien dans cette vue." />
       ) : (
         <>
           <div className="hidden md:block">
@@ -150,7 +150,7 @@ export function EquipmentBoard({
                     className="cursor-pointer"
                     onClick={() => show(e)}
                   >
-                    <Td className="font-mono font-medium">
+                    <Td className="font-medium">
                       <button
                         type="button"
                         className="cursor-pointer focus-visible:outline-1 focus-visible:outline-accent"
@@ -182,12 +182,7 @@ export function EquipmentBoard({
                     </Td>
                     <Td onClick={(ev) => ev.stopPropagation()}>
                       {canWrite ? (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="border border-border"
-                          onClick={() => setStateFor(e)}
-                        >
+                        <Button size="sm" variant="secondary" onClick={() => setStateFor(e)}>
                           Changer l&apos;état
                         </Button>
                       ) : null}
@@ -592,7 +587,7 @@ function ZonesDialog({
                 key={z.id}
                 type="button"
                 onClick={() => pick(z)}
-                className="flex min-h-11 cursor-pointer flex-col items-start border border-border px-3 py-2 text-left hover:bg-surface-2"
+                className="flex min-h-11 cursor-pointer flex-col items-start border border-border px-3 py-2 text-left hover:bg-surface-2 rounded-control"
               >
                 <span className="font-mono text-body text-fg">
                   {z.code} {z.label ? `· ${z.label}` : ""} {z.district ? `· ${z.district}` : ""}

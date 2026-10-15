@@ -181,7 +181,11 @@ export function ReferenceAdmin({
         </div>
       ) : null}
       {rows.length === 0 ? (
-        <EmptyState title="Aucune fiche" description="Rien ne correspond à cette recherche." />
+        <EmptyState
+          framed
+          title="Aucune fiche"
+          description="Rien ne correspond à cette recherche."
+        />
       ) : (
         <>
           <div className="hidden md:block">

@@ -10,6 +10,8 @@ import { ChatMarkdown } from "@/components/ops/chat-markdown";
 import { MarkdownEditor } from "@/components/ops/markdown-editor";
 import { CopyIcon, useCopy } from "@/components/pmr/copy";
 import { Button } from "@/components/ui/button";
+import { Count } from "@/components/ui/card";
+import { CHIP_BASE, CHIP_OFF, CHIP_ON } from "@/components/ui/chip-styles";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { AutosaveIndicator } from "@/components/ui/form-kit";
 import { Input } from "@/components/ui/input";
@@ -173,10 +175,9 @@ export function B201Board({
                 data-testid={`b201-notes-tab-${n.district}`}
                 onClick={() => setNoteTab(n.district)}
                 className={cn(
-                  "h-11 shrink-0 cursor-pointer rounded-control border px-3 text-body",
-                  activeNote === n.district
-                    ? "border-accent text-fg"
-                    : "border-border text-fg-muted",
+                  CHIP_BASE,
+                  "h-11 px-4 text-body",
+                  activeNote === n.district ? CHIP_ON : CHIP_OFF,
                 )}
               >
                 {n.district}
@@ -224,13 +225,10 @@ export function B201Board({
                 role="tab"
                 aria-selected={tab === p.id}
                 onClick={() => setTab(p.id)}
-                className={cn(
-                  "h-11 shrink-0 cursor-pointer rounded-control border px-3 text-body",
-                  tab === p.id ? "border-accent text-fg" : "border-border text-fg-muted",
-                )}
+                className={cn(CHIP_BASE, "h-11 px-4 text-body", tab === p.id ? CHIP_ON : CHIP_OFF)}
               >
                 {p.label}
-                <span className="ml-1.5 font-mono text-small tabular">{groups[p.id].length}</span>
+                <Count>{groups[p.id].length}</Count>
               </button>
             ))}
           </div>
@@ -238,7 +236,7 @@ export function B201Board({
         {error ? (
           <p
             role="alert"
-            className="rounded-control border border-danger/60 px-3 py-2 text-body text-danger"
+            className="rounded-control bg-[color-mix(in_oklab,var(--danger)_var(--tint),var(--surface))] px-3 py-2 text-body text-danger"
           >
             {error}
           </p>
@@ -249,7 +247,7 @@ export function B201Board({
               key={p.id}
               aria-labelledby={`b201-${p.id}`}
               className={cn(
-                "min-w-0 flex-col gap-3 rounded-box border border-border bg-surface p-4 md:flex",
+                "min-w-0 flex-col gap-3 rounded-box border border-(--card-frame) bg-surface p-4 shadow-rest md:flex",
                 tab === p.id ? "flex" : "hidden",
               )}
               data-testid={`b201-${p.id}`}
@@ -276,7 +274,7 @@ export function B201Board({
                                   ? `/commandes/bus/${e.orderId}`
                                   : `/commandes/taxi/${e.orderId}`
                               }
-                              className="flex min-h-11 items-center gap-2 rounded-control border border-border px-2 py-1.5 hover:bg-surface-2"
+                              className="flex min-h-11 items-center gap-2 rounded-control bg-surface-2 px-2 py-1.5 hover:bg-surface-3"
                             >
                               <KindIconClient
                                 kind={e.kind ?? "bus"}
@@ -396,7 +394,7 @@ function DistrictNotesEditor({
       aria-label={tabbed ? undefined : label}
       data-testid={`b201-notes-${district}`}
       className={cn(
-        "min-w-0 flex-col gap-3 rounded-box border border-border bg-surface p-4",
+        "min-w-0 flex-col gap-3 rounded-box border border-(--card-frame) bg-surface p-4 shadow-rest",
         tabbed && !active ? "hidden md:flex" : "flex",
       )}
     >
@@ -408,7 +406,7 @@ function DistrictNotesEditor({
         <div className="flex flex-wrap items-center gap-3">
           {lastAt ? (
             <span className="text-small text-fg-muted" data-testid="b201-last-edit">
-              Modifié à <span className="font-mono tabular">{lastAt}</span>
+              Modifié à <span className="tabular">{lastAt}</span>
               {lastBy ? ` par ${lastBy}` : ""}
             </span>
           ) : null}
@@ -428,7 +426,7 @@ function DistrictNotesEditor({
       {error ? (
         <p
           role="alert"
-          className="rounded-control border border-danger/60 px-3 py-2 text-body text-danger"
+          className="rounded-control bg-[color-mix(in_oklab,var(--danger)_var(--tint),var(--surface))] px-3 py-2 text-body text-danger"
         >
           {error}
         </p>
@@ -512,10 +510,7 @@ function Versions({
       >
         <ol className="flex flex-col gap-3">
           {versions.map((v, i) => (
-            <li
-              key={`${v.at}-${i}`}
-              className="flex flex-col gap-2 rounded-control border border-border p-3"
-            >
+            <li key={`${v.at}-${i}`} className="flex flex-col gap-2 rounded-box bg-surface-2 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-small text-fg-muted">
                   <span className="font-mono tabular text-fg">{pbTime(v.at) || "—"}</span>
