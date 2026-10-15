@@ -957,3 +957,29 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - **Tâches et contextes immuables** : `norm()` et l'état préparé de `checkAssign` / `suggestAgents` sont mis en cache par
   objet (`WeakMap` sur la tâche et sur `ctx.tasks`). Toujours passer de nouveaux objets / tableaux après un changement.
 - Tests : `*.test.ts` du dossier, données fictives `test-fixtures.ts` (bases DSO de la matrice des classeurs, aucun nom réel).
+
+## Planificateur — écran, vue Jour (lot P1, 15 oct. 2026)
+
+- **Adaptateur unique** `lib/planner/adapt.ts` (testé) : `adaptDay(plannerDay)` → `{ ctx, byId, server }` (nouveaux objets à
+  chaque appel) ; PMR dont la fin ne suit pas le début (DICOS, saisie de l'écran) → `trainAt = start`, fenêtre par
+  `linkConnections` ; base de l'agent = nom Quinyx → code (`baseCodeOf`) ; sources `dicos_mission` / `dicos_pending` →
+  `dicos` / `dicos_attente` ; `findDuplicates` (saisie manuelle = même dossier + train + sens + gare qu'une tâche DICOS).
+- **Logique d'écran** `lib/planner/board.ts` (testée) : `groupAgents`, `dayBounds` (4 h → 24 h, nuit jusqu'à 8 h le
+  lendemain), `SCALES` (72 / 150 / 280 px par heure), `rowBlocks` (même train + gare + heure = un bloc, pistes),
+  `conflictsOf` / `boardCounters`, `linkedIds`, `dropVerdict` / `isBusyRefusal` / `assigneeOf`, `applyOverrides` /
+  `settledOverrides` (attributions optimistes oubliées quand le serveur renvoie le `updated` attendu), `filterTodo`,
+  `stationZones`, `bcsOpen` (semaine / week-end-férié), `taskName` (nom accessible complet).
+- **Composants** `components/planner/` : `planner-screen.tsx` (état, glisser-déposer en pointer events — souris sur la carte
+  ou le bloc, doigt sur la poignée `data-drag-handle` seulement —, `commit()` optimiste + toast « Annuler », SSE
+  `planner_tasks` par `subscribeLive` sans rafraîchir pendant un glisser, auto, `?tache=` par `history.replaceState`),
+  `day-gantt.tsx` (rangées `data-drop-key` = `agent:<id>` | `bcs:<clé de gare>` | `taxi` | `cdb`, `data-drop` ok/warn/block
+  pendant un glisser, blocs `data-task-block` = ids, `planner-proposed` pour l'aperçu auto), `todo-panel.tsx` (liste
+  `data-drop-key="todo"` = retirer l'agent ; `AutoPreview`), `task-sheet.tsx`, `assign-picker.tsx` (Dialog desktop / Sheet
+  mobile), `add-task-dialog.tsx` (seuls les champs analysés partent : `parsedToInput`), `mobile-agenda.tsx`.
+  Disposition par requête de conteneur (`@container/planner`, colonne « À attribuer » à droite dès 60 rem de contenu :
+  le panneau ancré resserre la page). Gantt et mobile sont tous deux dans le DOM (viser `planner-aside` / `planner-mobile`).
+- Actions ajoutées : `assignTasks(items, auto)` (300 au plus, verrou par tâche, résultat par tâche, `origin = auto`) et
+  `resolveDuplicate(manualId, dicosId)` (correspondance revérifiée, attribution reportée sur la tâche DICOS). Sujet SSE
+  `planner_tasks` ajouté au relais `/api/events`.
+- E2E `e2e/planificateur.spec.ts` : desktop (district DSO, Mons, trains 991xx) et mobile (DSE, Namur, 992xx) en parallèle,
+  groupes Quinyx fictifs 990101 / 990102 ; `E2E_SHOTS_DIR` pour les captures. Le compte E2E doit avoir `planner:write`.

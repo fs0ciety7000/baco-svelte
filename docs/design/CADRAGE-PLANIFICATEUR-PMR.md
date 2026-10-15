@@ -6,7 +6,7 @@
 > disponibilités, le district, la zone et les temps de trajet. Vue Gantt / calendrier jour, semaine, mois ; glisser-déposer ;
 > « si l'agent est occupé, en chercher un autre ». Les règles s'affineront au fil de l'eau.
 >
-> **Statut : P0 + P1 validés le 15 oct. ; lot P0 (socle de données) fait (§8), écran et moteur au lot P1.** Règles détaillées : `REGLES-PLANIFICATEUR-PMR.md` (sans donnée
+> **Statut : P0 + P1 validés le 15 oct. ; lot P0 (socle de données) fait (§8) ; lot P1 (moteur + écran vue Jour) fait (§9).** Règles détaillées : `REGLES-PLANIFICATEUR-PMR.md` (sans donnée
 > personnelle). Les classeurs eux-mêmes (noms d'agents et de voyageurs, téléphones) restent hors dépôt. Les identifiants des
 > plannings Quinyx ne vont jamais dans Git : ils se saisissent dans Administration › Quinyx.
 
@@ -215,3 +215,17 @@ Conséquences pour le planificateur :
 - **Limites connues** : une tâche encodée à la main pour un dossier qui arrive ensuite de DICOS fait doublon (la tâche
   manuelle n'a pas de clé DICOS) ; à traiter au P1 (proposer de fusionner). Le district d'une tâche se déduit des gares
   des bases (gare inconnue des matrices = sans district, toujours affichée).
+
+## 9. Lot P1 — écran vue Jour, fait le 15 oct. 2026
+
+- **Fait** : vue Jour (Gantt par agent groupé par base puis poste, guichets B-CS, taxi, chef de bord), « À attribuer »,
+  glisser-déposer contrôlé par le moteur (refus expliqué, agent occupé → agent libre proposé), « Attribuer à… » (clavier,
+  mobile), panneau d'une tâche (dossier, trajet calculé, contrôles), ajout ALEA / tâche libre, doublon saisie ↔ DICOS
+  (« Garder DICOS, supprimer la saisie »), **attribution automatique** (prévue au P2, livrée ici : aperçu, accepter une par une
+  ou tout), temps réel, mobile (agenda + « À attribuer »). Code : `web/src/components/planner/`, `lib/planner/adapt.ts`,
+  `lib/planner/board.ts`.
+- **Écarts à la maquette** : Semaine / Mois affichés « bientôt » (P3) ; pas de badge « En retard » iRail sur les blocs (P4) ;
+  pas de compteur par heure sous chaque bloc B-CS (un compteur « n/3 » par heure occupée) ; la ligne taxi d'une saisie
+  « TAXI » n'est pas attribuée d'office (à faire depuis « Attribuer à… ») ; zone d'une gare desservie par deux bases = la
+  première base de la liste.
+- **Reste au P2-P3** : modèles de tâches techniques, Semaine / Mois, règles modifiables (`planner_rules`).

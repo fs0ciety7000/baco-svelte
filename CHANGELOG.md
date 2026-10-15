@@ -3,11 +3,18 @@
 Toutes les évolutions de CSM visibles par les agents, de la plus récente à la plus ancienne.
 Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
-## [2026.10.15] — Planificateur de tâches PMR : premières briques
+## [2026.10.15] — Planificateur de tâches PMR (vue Jour)
 
 ### Nouveautés
 
-- **PMR & Groupes › Planificateur** (PACO/RCCA, modérateurs, administrateurs) : nouvel onglet qui remplacera les classeurs « planificateur de tâches » DSO et DSE. L'écran arrive dans une prochaine mise à jour ; CSM prépare déjà les données : agents de gare et leurs services, prises en charge à répartir, guichets B-CS et temps de trajet entre gares.
+- **Planificateur de tâches PMR (vue Jour)** — PMR & Groupes › Planificateur (PACO/RCCA, modérateurs, administrateurs), pour remplacer les classeurs « planificateur de tâches » DSO et DSE :
+  - une ligne par agent de gare (services lus dans Quinyx), regroupée par gare de base puis poste, le temps en horizontal (Large / Normal / Détail, ouverture sur « maintenant ») ; hors service hachuré, temps libre, trajets en voiture calculés ; lignes des guichets B-CS (capacité par heure), du taxi et du chef de bord ;
+  - colonne « À attribuer » triée par heure (acceptées DICOS, en attente, par zone et par gare) ;
+  - **glisser-déposer** une prise en charge sur un agent : les agents possibles s'éclairent, les autres se grisent avec la raison (hors zone, hors service, occupé, trajet impossible, guichet complet) ; sur un agent occupé, CSM propose un agent libre ; « Annuler » juste après ; sans souris : « Attribuer à… » ;
+  - panneau d'une tâche : fenêtre, source DICOS, autres tâches du même dossier, trajet calculé, contrôles, changer ou retirer l'agent ;
+  - **Ajouter une tâche** : colle des lignes au format ALEA / classeurs (analyse en direct, nom et téléphone ignorés) ou crée une tâche libre ; une saisie qui double une prise en charge DICOS est signalée (« Garder DICOS, supprimer la saisie ») ;
+  - **Attribuer automatiquement** : proposition à vérifier, à accepter une par une ou en bloc ; ce qui reste sans solution propose un taxi ou le chef de bord ;
+  - mises à jour en direct ; sur téléphone : agenda d'un agent et liste « À attribuer » avec « Attribuer à… ». Semaine et Mois arrivent ensuite.
 - **Extension CSM 1.9.0** : à chaque synchro DICOS, les dossiers « à vérifier » (en attente d'acceptation) de tes gares partent aussi vers CSM, pour être planifiés avant même d'être acceptés. Seuls le numéro de dossier, les trains, gares, heures, le sens, le type et le nombre de voyageurs sont envoyés : jamais de nom ni de coordonnées. Le popup affiche les totaux « Dossiers en attente ».
 - **Administration › Quinyx** : chaque groupe a un rôle, « Équipe » (PACO/RCCA, comme avant) ou « Gares » (agents de gare CPI, SPI, OPI, PA et EXTRA, avec leur gare de base, pour le planificateur). Les agents de gare n'apparaissent pas dans Ressources › Planning.
 
