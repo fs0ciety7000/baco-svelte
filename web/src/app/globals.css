@@ -3,9 +3,9 @@
 
 /*
  * Design system CSM « Tactical premium » (docs/DESIGN-DIRECTION.md).
- * Couleurs : uniquement les jetons sémantiques (bg, surface, surface-2, border, border-strong, fg, fg-muted,
+ * Couleurs : uniquement les jetons sémantiques (bg, surface, surface-2, surface-3, border, border-strong, fg, fg-muted,
  * fg-subtle, accent, accent-fg, ok, warn, danger, info, progress). La palette Tailwind par défaut est désactivée.
- * Forme (rayons, chanfrein) et typographie viennent du thème (src/design/tokens.ts → themes.css).
+ * Forme (rayons, chanfrein), profondeur (ombres) et typographie viennent du thème (src/design/tokens.ts → themes.css).
  */
 
 @custom-variant dark (&:where([data-scheme="dark"], [data-scheme="dark"] *));
@@ -18,6 +18,8 @@
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
+  /* v4 (15 oct. 2026) : survol, élément actif ou surélevé. */
+  --color-surface-3: var(--surface-3);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-fg: var(--fg);
@@ -38,6 +40,11 @@
   --font-mono: var(--font-code);
   --font-display: var(--font-title);
 
+  /* Profondeur (v4) : `shadow-rest` (cartes au repos, quasi invisible), `shadow-float` (panneau ancré, menus, ⌘K,
+     dialogues, barre d'actions). `none` pour les thèmes « angle » (direction d'origine, chanfreins). */
+  --shadow-rest: var(--shadow-1);
+  --shadow-float: var(--shadow-2);
+
   /* Échelle typographique (audit du 9 oct. 2026 : rien sous 12 px, données ≥ 13 px) : label 12/16, small 13/18,
      hint 13/18 (aides, erreurs, toasts), body 15/22 en confortable (14/20 en compact), body-lg 16/24, h3 20/24,
      h2 28/32, h1 40/40, stat 32/1. */
@@ -56,10 +63,15 @@
   --text-h3--line-height: 1.5rem;
   --text-h2: 1.75rem;
   --text-h2--line-height: 2rem;
-  --text-h1: 2.5rem;
-  --text-h1--line-height: 2.5rem;
+  --text-h1: var(--fs-h1);
+  --text-h1--line-height: var(--lh-h1);
   --text-stat: 2rem;
   --text-stat--line-height: 1;
+  /* v4 : valeur des compteurs (bande de compteurs, 30 / 36) et titre de panneau (17 / 24). */
+  --text-kpi: 1.875rem;
+  --text-kpi--line-height: 2.25rem;
+  --text-panel: 1.0625rem;
+  --text-panel--line-height: 1.5rem;
 
   --radius-*: initial;
   --radius-none: 0;
@@ -67,13 +79,19 @@
   /* Rayons du thème : boîtes (cartes, dialogues, panneaux) et contrôles (boutons, champs, badges, puces). */
   --radius-box: var(--r-box);
   --radius-control: var(--r-control);
+  /* Pilules (v4) : badges, puces de filtre, compteurs ; 0 pour la forme « angle », 2 px pour Quai. */
+  --radius-pill: var(--r-pill);
 
   /* Hauteurs de contrôle, pilotées par la densité (voir :root plus bas). */
   --spacing-control: var(--control-h);
   --spacing-control-sm: var(--control-h-sm);
   --spacing-row: var(--row-h);
+  /* Champs de formulaire (v4) : 38 px en confortable, 32 px en compact, 44 px au tactile. */
+  --spacing-field: var(--field-h);
 
   --ease-hud: cubic-bezier(0.2, 0, 0, 1);
+  /* Longue traîne (arrivée de page, panneaux) : « smooth beats bouncy », jamais de rebond. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --animate-pulse-dot: pulse-dot 2s var(--ease-hud) infinite;
   --animate-nav-progress: nav-progress 8s cubic-bezier(0.1, 0.6, 0.2, 1) 150ms both;
   --animate-fade-in: fade-in 220ms var(--ease-hud);
@@ -129,10 +147,12 @@
 }
 
 :root {
-  /* Contrôles : 36 px (confortable), 32 px (compact), 44 px au tactile. Lignes de tableau : 40 / 32 / 44. */
-  --control-h: 2.25rem;
+  /* Contrôles : 36 px (confortable), 32 px (compact), 44 px au tactile. Lignes de tableau : 40 / 32 / 44. Un thème
+     compact par nature (Cabine) fixe `--theme-row-h` / `--theme-control-h` / `--theme-field-h`. */
+  --control-h: var(--theme-control-h, 2.25rem);
   --control-h-sm: 2rem;
-  --row-h: 2.5rem;
+  --row-h: var(--theme-row-h, 2.5rem);
+  --field-h: var(--theme-field-h, 2.375rem);
   /* Durées du mouvement (miroir de MOTION dans src/lib/motion.ts). */
   --d-micro: 150ms;
   --d-enter: 240ms;
@@ -148,6 +168,7 @@
   --control-h: 2rem;
   --control-h-sm: 1.75rem;
   --row-h: 2rem;
+  --field-h: 2rem;
   --fs-body: 0.875rem;
   --lh-body: 1.25rem;
 }
@@ -159,6 +180,7 @@
     --control-h: 2.75rem;
     --control-h-sm: 2.75rem;
     --row-h: 2.75rem;
+    --field-h: 2.75rem;
   }
 }
 
@@ -168,6 +190,7 @@
     color: var(--fg);
     -webkit-text-size-adjust: 100%;
     text-rendering: optimizeLegibility;
+    font-feature-settings: var(--font-features, normal);
   }
 
   body {
@@ -223,6 +246,7 @@
       --bg: #fff;
       --surface: #fff;
       --surface-2: #f3f3f3;
+      --surface-3: #ebebeb;
       --fg: #000;
       --fg-muted: #444;
       --fg-subtle: #555;
@@ -304,6 +328,38 @@
 
   .tabular {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Chiffres des compteurs (v4) : police du texte en chiffres tabulaires dans les directions Signal / Quai / Cabine
+     (fin du zéro barré de la mono), police des titres ailleurs. */
+  .figures {
+    font-family: var(--figures-font, var(--font-display));
+    font-weight: var(--figures-weight, 600);
+    letter-spacing: var(--figures-track, 0);
+    text-transform: var(--figures-case, none);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Halo de focus des champs (v4) : bordure accent + anneau de 3 px à 22 %, jamais masqué. */
+  .focus-halo:focus-visible,
+  .focus-halo:has(:focus-visible) {
+    border-color: var(--accent);
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent);
+  }
+
+  /* Trait accent sous un titre de carte (direction Quai : `--title-rule` = 24 px ; 0 ailleurs). */
+  .title-rule {
+    position: relative;
+  }
+  .title-rule::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -5px;
+    width: var(--title-rule, 0px);
+    height: 2px;
+    background: var(--accent);
   }
 
   /* Libellé mono en capitales (eyebrows, en-têtes de tableau, badges). */

@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 const Tabs = TabsPrimitive.Root;
 
 /**
- * Onglets « segmented » : fond surface-2 sur l'actif, trait accent de 2 px qui glisse (GSAP), compteur en chip.
+ * Onglets (v4) : texte plein sur l'actif, trait accent de 2 px arrondi qui glisse (GSAP), compteur en pastille neutre.
  * Défilement horizontal sur mobile, sans barre visible.
  */
 function TabsList({
@@ -36,7 +36,7 @@ function TabsList({
       <span
         aria-hidden
         ref={bar}
-        className="pointer-events-none invisible absolute bottom-0 left-0 h-0.5 w-px origin-left bg-accent"
+        className="pointer-events-none invisible absolute bottom-0 left-0 h-0.5 w-px origin-left rounded-pill bg-accent"
       />
     </TabsPrimitive.List>
   );
@@ -52,14 +52,14 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "inline-flex h-control shrink-0 cursor-pointer items-center gap-2 px-4 text-body font-medium text-fg-muted transition-colors hover:text-fg data-[state=active]:bg-surface-2 data-[state=active]:text-fg",
+        "inline-flex h-control shrink-0 cursor-pointer items-center gap-2 px-3 text-body font-medium text-fg-muted transition-colors hover:text-fg data-[state=active]:text-fg",
         className,
       )}
       {...props}
     >
       {children}
       {count !== undefined ? (
-        <span className="border border-border bg-surface px-1.5 font-mono text-small tabular">
+        <span className="inline-grid h-5 min-w-5 place-items-center rounded-pill bg-surface-2 px-1.5 text-label font-semibold tracking-normal text-fg-muted tabular">
           {count}
         </span>
       ) : null}

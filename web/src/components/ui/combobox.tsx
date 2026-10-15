@@ -7,7 +7,7 @@ import { foldStation } from "@/lib/stations/search";
 import { cn, pl } from "@/lib/utils";
 
 import { useControllableValue, useFormBridge, useStopNativeChange } from "./form-bridge";
-import { fieldBase } from "./input";
+import { fieldBase, triggerBase } from "./input";
 import { firstEnabled, Listbox, nextEnabled, optionId, type ListOption } from "./listbox";
 import { PickerSurface, usePickerSheet } from "./popover";
 import { labelText } from "./select";
@@ -381,10 +381,7 @@ function Combobox<T extends string>(props: ComboboxProps<T>) {
               data-testid={props["data-testid"]}
               {...ariaInput}
               onClick={() => (open ? close() : openList())}
-              className={cn(
-                "flex min-h-control w-full min-w-0 cursor-pointer items-center gap-2 rounded-control border border-border-strong bg-surface px-3 py-1.5 text-left text-body-lg text-fg outline-none focus-visible:border-accent focus-visible:outline-1 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger",
-                className,
-              )}
+              className={cn(triggerBase, "text-body-lg", className)}
             >
               <span
                 className={cn(
@@ -478,7 +475,7 @@ function Combobox<T extends string>(props: ComboboxProps<T>) {
               onKeyDown={onKeyDown}
               className={cn(
                 fieldBase,
-                "h-control pointer-coarse:text-body-lg",
+                "h-field pointer-coarse:text-body-lg",
                 !allowFree && "pr-9",
                 className,
               )}

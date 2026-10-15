@@ -5,7 +5,9 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-// Bouton CSM. Primaire = chanfreiné, fond accent (une seule action primaire par zone).
+// Bouton CSM. Primaire = chanfreiné (thèmes « angle »), fond accent (une seule action primaire par zone). Secondaire
+// (v4) : fond des contrôles du thème (`--control-bg` : surface le jour, surface-2 la nuit), bordure forte ≥ 3:1 ;
+// fantôme : survol en surface-3.
 const buttonVariants = cva(
   "relative inline-flex shrink-0 cursor-pointer rounded-control items-center justify-center gap-2 font-medium whitespace-nowrap select-none transition-[background-color,color,border-color,transform] duration-150 ease-hud active:translate-y-px disabled:pointer-events-none disabled:not-aria-busy:opacity-45 aria-busy:cursor-progress [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
@@ -14,8 +16,8 @@ const buttonVariants = cva(
         primary:
           "chamfer chamfer-sm text-accent-fg [--fill:var(--accent)] [--frame:var(--accent)] hover:[--fill:color-mix(in_oklab,var(--accent)_88%,var(--fg))]",
         secondary:
-          "border border-border-strong bg-surface text-fg hover:border-fg-muted hover:bg-surface-2",
-        ghost: "text-fg hover:bg-surface-2",
+          "border border-border-strong bg-(--control-bg) text-fg hover:border-fg-muted hover:bg-surface-3",
+        ghost: "text-fg hover:bg-surface-3",
         danger:
           "border border-danger/60 bg-[color-mix(in_oklab,var(--danger)_10%,transparent)] text-danger hover:bg-[color-mix(in_oklab,var(--danger)_18%,transparent)]",
         link: "link h-auto px-0",

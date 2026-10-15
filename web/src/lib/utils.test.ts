@@ -14,4 +14,12 @@ describe("cn", () => {
     expect(cn("text-small font-medium text-fg")).toBe("text-small font-medium text-fg");
     expect(cn("text-hint", "text-fg-muted")).toBe("text-hint text-fg-muted");
   });
+
+  it("connaît les jetons v4 (surface-3, kpi, panel, ombres, hauteur de champ)", () => {
+    expect(cn("text-kpi", "text-fg")).toBe("text-kpi text-fg");
+    expect(cn("text-panel", "text-fg-muted")).toBe("text-panel text-fg-muted");
+    expect(cn("bg-surface-2", "bg-surface-3")).toBe("bg-surface-3");
+    expect(cn("shadow-rest", "shadow-float")).toBe("shadow-float");
+    expect(cn("h-control", "h-field")).toBe("h-field");
+  });
 });

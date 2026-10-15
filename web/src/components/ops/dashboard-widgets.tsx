@@ -4,7 +4,8 @@ import { MessageSquareText, Train, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { DelayBadge, TrainChip } from "@/components/pmr/train-chip";
+import { DelayBadge } from "@/components/pmr/train-chip";
+import { TrainChip } from "@/components/ui/train-chip";
 import { EmptyState, Skeleton } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/status-badge";

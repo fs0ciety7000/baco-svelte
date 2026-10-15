@@ -16,7 +16,7 @@ périmé est un bug.
 
 1. `docs/CSM-V2.md` — cahier des charges v2 (pivot Next.js + PocketBase, retours UX, feuille de route).
 2. Ce fichier — contraintes (§6), workflow (§4), journal (§8).
-3. `docs/DESIGN-DIRECTION.md` + `docs/references/*.jpg` — direction « Tactical premium ».
+3. `docs/DESIGN-DIRECTION.md` + `docs/references/*.jpg` — direction « Tactical premium » ; refonte v4 « Signal / Quai / Cabine » : `docs/design/REFONTE-DESIGN-V4.md` (lots 0-2 faits le 15 oct.).
 4. `docs/SAUVEGARDE-SUPABASE.md` — sauvegarde de la base BACO et procédure de restauration.
 5. `docs/AUDIT.md`, `docs/PROPOSITION.md` §3-6 — audit, parcours métier, nouveautés.
 
@@ -1311,6 +1311,15 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   communes (avant le 15 oct.) » (aussi en tête du PDF) ; `b201_reports.content` figé par les règles. « Copier » et
   « Épingler au Journal » : la synthèse de la relève seule, sans les notes. PDF : une section par district demandé.
   Retour arrière testé (notes reversées dans `b201_reports.content` sous « ### Notes DSO »…). 661 contrôles de règles.
+- 2026-10-15 — **Refonte du design v4, lots 0 à 2** (`docs/design/REFONTE-DESIGN-V4.md` ; décision de l'utilisateur : « Signal,
+  défauts » + les trois directions). Captures « avant » / « après » hors dépôt (scratchpad `design-v4/`). Jetons : `jour` /
+  `nuit` deviennent **Signal** (identifiants gardés), 4 thèmes **Quai** (IBM Plex) et **Cabine** (Inter Tight + JetBrains Mono,
+  sans préchargement, compact 32 px en desktop), un « Automatique » par direction (`auto`, `quai-auto`, `cabine-auto`),
+  `surface-3` (dérivé pour les 11 « Autres thèmes », couleurs inchangées), ombres repos / flottante (aucune pour « angle »),
+  forme `net` 8 / 6 px, `rounded-pill`, `text-kpi` / `text-panel`, chiffres des compteurs sans mono. Composants de base :
+  cartes, `StatStrip` / `Stat` (accueil), tableaux, badges en pilule, puces, champs 38 px à halo de focus, `EmptyState` compact,
+  `TrainChip` dans `components/ui`, `/design`. Trois couleurs ajustées pour l'AA (Quai Jour `warn`, Cabine Jour `warn`, Cabine
+  Nuit `border-strong`). Restent : shell (lot 3), écrans (4 à 6).
 
 ---
 

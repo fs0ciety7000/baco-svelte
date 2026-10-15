@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRef } from "react";
 
 import { gsap, MOTION, MOTION_OK, useGSAP } from "@/lib/motion";
@@ -17,39 +18,16 @@ const toneVar: Record<Tone, string> = {
   progress: "var(--progress)",
 };
 
-type StatCardProps = {
-  label: string;
-  value: number;
-  tone?: Tone;
-  delta?: { value: string; good: boolean };
-  hint?: string;
-  active?: boolean;
-  onClick?: () => void;
-  className?: string;
-};
-
 const formatter = new Intl.NumberFormat("fr-BE");
 
 /**
- * Indicateur : bande multicolore de 2 px, bordure gauche du ton, label mono, valeur display tabulaire
- * animée (compteur GSAP, sans animation si mouvement réduit ou si la valeur ne change pas).
- * Cliquable = filtre (rôle bouton, aria-pressed).
+ * Compteur animé (GSAP) : aucun tween au montage ni en mouvement réduit, seulement quand la valeur change vraiment.
+ * Le nœud texte est géré par React : on modifie sa valeur, on ne le remplace pas.
  */
-function StatCard({
-  label,
-  value,
-  tone = "neutral",
-  delta,
-  hint,
-  active,
-  onClick,
-  className,
-}: StatCardProps) {
-  const ref = useRef<HTMLElement>(null);
+function useCounter(value: number) {
+  const scope = useRef<HTMLElement>(null);
   const valueRef = useRef<HTMLSpanElement>(null);
-  // Valeur de départ = valeur affichée : aucun compteur au montage (rien n'a changé), seulement sur un vrai changement.
   const previous = useRef(value);
-
   useGSAP(
     () => {
       const el = valueRef.current;
@@ -66,40 +44,158 @@ function StatCard({
           ease: "power3.out",
           snap: { v: 1 },
           onUpdate: () => {
-            // Nœud texte géré par React : on modifie sa valeur, on ne le remplace pas.
             if (el.firstChild) el.firstChild.nodeValue = formatter.format(state.v);
           },
         });
       });
       return () => mm.revert();
     },
-    { scope: ref, dependencies: [value] },
+    { scope, dependencies: [value] },
   );
+  return { scope, valueRef };
+}
 
+/**
+ * Bande de compteurs (v4, 15 oct. 2026) : une seule boîte, cellules séparées d'un trait, passe à la ligne sans trou.
+ * Filet accent au-dessus dans la direction Quai (`--strip-rule`). Contient des `<Stat>`.
+ */
+function StatStrip({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="stat-strip"
+      className={cn(
+        "grid grid-cols-[repeat(auto-fill,minmax(min(100%,9.5rem),1fr))] overflow-hidden rounded-box border border-border border-t-(length:--strip-rule) border-t-accent bg-surface shadow-rest",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+type StatProps = {
+  label: string;
+  value: number;
+  /** Ton de la cellule « chaude » (valeur colorée, fond teinté à 7 %) ; sans ton ou à zéro : neutre. */
+  tone?: Tone;
+  /** Détail d'une ligne (masqué sous 640 px). */
+  hint?: string;
+  href?: string;
+  onClick?: () => void;
+  active?: boolean;
+  className?: string;
+};
+
+/**
+ * Cellule de la bande : libellé 13 px, valeur `text-kpi` en chiffres tabulaires de la police du texte (fin du zéro barré
+ * de la mono), zéro estompé. Lien (`href`), filtre (`onClick` → bouton `aria-pressed`) ou simple affichage.
+ */
+function Stat({ label, value, tone, hint, href, onClick, active, className }: StatProps) {
+  const { scope, valueRef } = useCounter(value);
+  const hot = !!tone && tone !== "neutral" && value !== 0;
+  const body = (
+    <>
+      <span className="label-mono truncate text-fg-muted">{label}</span>
+      <span
+        className={cn(
+          "figures text-h3 text-fg sm:text-kpi",
+          value === 0 && "font-medium text-fg-subtle",
+          hot && "text-(--tone)",
+        )}
+      >
+        <span ref={valueRef}>{formatter.format(value)}</span>
+      </span>
+      {hint ? (
+        <span className="hidden truncate text-label tracking-normal text-fg-subtle sm:block">
+          {hint}
+        </span>
+      ) : null}
+    </>
+  );
+  const cls = cn(
+    "-mt-px -ml-px flex min-w-0 flex-col gap-0.5 border-t border-l border-border px-4 py-3 text-left",
+    hot && "bg-[color-mix(in_oklab,var(--tone)_7%,var(--surface))]",
+    (href || onClick) && "cursor-pointer transition-colors hover:bg-surface-2",
+    active && "bg-accent-soft hover:bg-accent-soft",
+    className,
+  );
+  const style = { "--tone": toneVar[tone ?? "neutral"] } as React.CSSProperties;
+  if (href)
+    return (
+      <Link ref={scope as never} href={href} style={style} className={cls}>
+        {body}
+      </Link>
+    );
+  if (onClick)
+    return (
+      <button
+        ref={scope as never}
+        type="button"
+        onClick={onClick}
+        aria-pressed={!!active}
+        style={style}
+        className={cls}
+      >
+        {body}
+      </button>
+    );
+  return (
+    <div ref={scope as never} style={style} className={cls}>
+      {body}
+    </div>
+  );
+}
+
+type StatCardProps = {
+  label: string;
+  value: number;
+  tone?: Tone;
+  delta?: { value: string; good: boolean };
+  hint?: string;
+  active?: boolean;
+  onClick?: () => void;
+  className?: string;
+};
+
+/**
+ * Indicateur isolé (Statistiques, widgets) : carte du thème, filet gauche du ton, valeur `text-kpi` en chiffres de la
+ * police du texte (v4) ou des titres (« Autres thèmes »). Préférer `StatStrip` + `Stat` pour une rangée de compteurs.
+ * Cliquable = filtre (rôle bouton, aria-pressed).
+ */
+function StatCard({
+  label,
+  value,
+  tone = "neutral",
+  delta,
+  hint,
+  active,
+  onClick,
+  className,
+}: StatCardProps) {
+  const { scope, valueRef } = useCounter(value);
   const Comp = onClick ? "button" : "article";
   return (
     <Comp
-      ref={ref as never}
+      ref={scope as never}
       type={onClick ? "button" : undefined}
       onClick={onClick}
       aria-pressed={onClick ? !!active : undefined}
       style={{ "--tone": toneVar[tone] } as React.CSSProperties}
       className={cn(
-        "chamfer flex min-w-0 flex-col gap-2 p-4 pl-5 text-left",
+        "chamfer flex min-w-0 flex-col gap-1 p-4 pl-5 text-left shadow-rest [--frame:var(--card-frame)]",
         active && "[--frame:var(--accent)] [--fill:var(--surface-2)]",
         onClick && "cursor-pointer hover:[--fill:var(--surface-2)]",
         className,
       )}
     >
       <span aria-hidden className="absolute top-1 bottom-0 left-0 w-0.5 bg-(--tone)" />
-      <span className="label-mono text-fg-muted">{label}</span>
-      <span className="display tabular text-stat text-fg">
+      <span className="label-mono truncate text-fg-muted">{label}</span>
+      <span className="figures text-kpi text-fg">
         <span ref={valueRef}>{formatter.format(value)}</span>
       </span>
       {delta || hint ? (
         <span className="flex items-center gap-2 text-small">
           {delta ? (
-            <span className={cn("font-mono tabular", delta.good ? "text-ok" : "text-danger")}>
+            <span className={cn("tabular", delta.good ? "text-ok" : "text-danger")}>
               {delta.value}
             </span>
           ) : null}
@@ -110,4 +206,4 @@ function StatCard({
   );
 }
 
-export { StatCard };
+export { Stat, StatCard, StatStrip };

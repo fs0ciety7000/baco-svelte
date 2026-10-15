@@ -321,3 +321,36 @@ Principe de refonte validé par l'utilisateur (« plus agréable à utiliser / r
   points SPI, PN, imports) ; tableau de bord en cartes (une par référentiel, anomalies en lignes de 44 px avec icône
   d'état, compteur mono) ; listes de gestion = tableau dense en desktop, `ListCard` + actions en icônes en mobile,
   panneau `Sheet` pour créer / modifier, suppression confirmée par dialogue `danger`.
+
+## Refonte v4 « Signal / Quai / Cabine » — lots 0 à 2 (15 oct. 2026, `docs/design/REFONTE-DESIGN-V4.md`)
+
+Décision de l'utilisateur : **« Signal, défauts »** (direction A, oui aux 10 questions du §9) **et les trois directions
+disponibles**. Écarts validés, appliqués aux jetons et aux composants de base (le shell et les écrans suivent aux lots 3 à 6) :
+
+- **Signal = défaut de tous les agents** : les thèmes `jour` / `nuit` (identifiants gardés pour les préférences et le cookie
+  `csm_ui`) deviennent « Signal · Jour » (pétrole `#00666B`, gris teintés 200) et « Signal · Nuit » (ambre `#F8BC49`, bleu-noir
+  `#0C0E12`). « Automatique » = Signal Nuit / Jour.
+- **Quai** (`quai-jour`, `quai-nuit`, `quai-auto`) : bleu SNCB en accent, **`info` en cyan** pour rester distinct, IBM Plex
+  (sans préchargement), rayons 3 / 2 px (pilules à 2 px), en-têtes de tableau `surface-3` en gras, trait accent sous les titres
+  de carte, filet accent au-dessus de la bande de compteurs. Jour : `warn` assombri à `#955700` (AA sur `surface-3`).
+- **Cabine** (`cabine-jour`, `cabine-nuit`, `cabine-auto`) : accent **encre** (la couleur est réservée aux statuts), gris
+  chauds, Inter Tight + JetBrains Mono (sans préchargement), rayons 6 / 5 px, **lignes et contrôles 32 px en desktop** (le
+  tactile garde 44 px), puce choisie en encre pleine ; la nuit, séparation par un trait fin. Jour : `warn` `#8C5700` ; Nuit :
+  `border-strong` `#6C6762` (≥ 3:1 sur `surface-2`).
+- **Nouveau jeton `surface-3`** (survol, actif, surélevé) : fixé pour les directions et Contraste élevé, **dérivé** pour les
+  11 « Autres thèmes » (`surface-2` poussé de 6 % vers `fg`) sans toucher leurs couleurs.
+- **Ombres** : `shadow-rest` (cartes, quasi invisible) et `shadow-float` (popovers, dialogues, panneaux, toasts) — variables
+  `--shadow-1` / `--shadow-2` par thème ; **aucune** pour la forme « angle » ; liseré clair interne la nuit.
+- **Forme `net` 8 / 6 px**, nouveau rayon **`rounded-pill`** (`--r-pill` : 999 px, 0 pour « angle », 2 px pour Quai) pour
+  badges, puces de filtre, compteurs.
+- **Typographie des directions** : titres 600 serrés, `text-h1` 24 / 30 (40 ailleurs), **`text-kpi`** 30 / 36 et
+  **`text-panel`** 17 / 24 ; chiffres des compteurs en **`.figures`** = police du texte en chiffres tabulaires (fin du zéro barré
+  de la mono) ; la mono reste aux n° de train, heures et références. Les « Autres thèmes » gardent leurs titres, chanfreins et
+  libellés en capitales mono.
+- **Composants** : cartes séparées par le ton (contour du thème `--card-frame`, aucun la nuit dans Signal / Quai) ; **bande de
+  compteurs** `StatStrip` + `Stat` (zéro estompé, cellule chaude teintée à 7 %) ; tableaux à en-tête `--th-bg` 12 px et
+  séparateurs à 70 % ; badges en pilule teintée (`--tint` : 12 % le jour, 16 % la nuit), sans contour dans les directions ;
+  puces en pilule (`--chip-on-*`) ; `Segmented` en relief (segment choisi sur `--control-on`, plus d'accent plein) ; champs
+  **38 px** (`h-field`) avec **halo de focus** (`focus-halo`), fond `--control-bg` (surface-2 la nuit) ; **`EmptyState`
+  compact** (une ligne sur `surface-2`) par défaut, `variant="first"` pour une première utilisation ; **`TrainChip`** dans
+  `components/ui` (encre inversée, `size` md / sm).

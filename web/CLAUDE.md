@@ -822,3 +822,25 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - Écrans : `/reseau/pn` (`PnBoard` + `PnMap` réutilisable : `points`, `zones`, `showZones`, `fitKey`, survol croisé ;
   URL `?q=&district=&zone=&ligne=&pn=&zones=1&vue=carte` par `history.replaceState`), fiche de ligne (section PN triée
   par BK, `data-testid="line-crossings"`), `/admin/referentiels/zones-spi` (`SpiZonesAdmin`). E2E `e2e/reseau-pn.spec.ts`.
+
+## Design v4 « Signal / Quai / Cabine » (lots 0-2, 15 oct. 2026, `../docs/design/REFONTE-DESIGN-V4.md`)
+
+- **Thèmes** (`src/design/tokens.ts`) : `DIRECTIONS` (Signal = `jour` / `nuit` / `auto`, Quai = `quai-jour` / `quai-nuit` /
+  `quai-auto`, Cabine = `cabine-jour` / `cabine-nuit` / `cabine-auto`), `THEME_CHOICES` (valeurs du cookie `csm_ui`),
+  `isAutoChoice`, `autoThemes(choice)`, `choiceScheme(choice)` (pas de `data-scheme` pour un automatique : **ne jamais tester
+  `theme === "auto"`**, il y en a trois). Un thème porte en plus `direction`, `shadows`, `tint`, `style` (variables de
+  composant : `--th-bg|fg|weight|rule`, `--title-rule`, `--strip-rule`, `--chip-on-*`, `--card-frame`, `--theme-row-h`,
+  `--theme-control-h`, `--theme-field-h`) ; `surface-3` est dérivé (`deriveSurface3`) quand il manque. Variables générées en
+  plus : `--surface-3`, `--shadow-1` / `--shadow-2`, `--tint`, `--r-pill`, `--control-bg`, `--control-on`, `--badge-ring`,
+  `--figures-*`, `--fs-h1` / `--lh-h1`, `--font-features`.
+- **Polices** : Inter Tight (`--font-inter-tight`) et JetBrains Mono (`--font-jetbrains-mono`) par `next/font/google`,
+  `preload: false` comme Plex (Cabine seulement).
+- **Utilitaires** : `bg-surface-3`, `shadow-rest`, `shadow-float`, `rounded-pill`, `h-field` / `min-h-field` (38 / 32 / 44 px),
+  `text-kpi`, `text-panel`, `.figures` (chiffres des compteurs), `.focus-halo` (halo de focus des champs), `.title-rule`. Tous
+  déclarés dans `cn()` (`src/lib/utils.ts`).
+- **Composants** : `StatStrip` + `Stat` (`ui/stat-card.tsx`, bande de compteurs ; `StatCard` gardé pour un indicateur isolé),
+  `Count` (`ui/card.tsx`, compteur en pilule ; `CardHeader count`), `fieldBase` / `triggerBase` (`ui/input.tsx`), styles de
+  puces partagés `CHIP_BASE` / `CHIP_ON` / `CHIP_OFF` (`ui/chip-styles.ts` : `FilterChip`, `DistrictPicker`, `ToggleChip`),
+  `EmptyState variant="compact" | "first"`, **`TrainChip`** dans `ui/train-chip.tsx` (`size` md / sm ; `DelayBadge` reste dans
+  `components/pmr/train-chip.tsx`). Sélecteur de thème : `data-testid` `direction-<id>` et `theme-<choix>`.
+- E2E : les cookies `csm_ui` posés par les tests utilisent `E2E_BASE_URL` (port local).

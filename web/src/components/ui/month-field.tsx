@@ -181,7 +181,7 @@ function MonthField({
                   if (settle() !== before) e.preventDefault();
                 }
               }}
-              className={cn(fieldBase, "h-control pr-11 tabular")}
+              className={cn(fieldBase, "h-field pr-11 tabular")}
             />
             <button
               ref={buttonRef}

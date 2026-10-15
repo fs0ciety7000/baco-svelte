@@ -165,7 +165,7 @@ for (const t of ["nuit", "jour"] as const) {
       {
         name: "csm_ui",
         value: JSON.stringify({ theme: t, density: "confortable" }),
-        url: "http://localhost:3000",
+        url: process.env.E2E_BASE_URL ?? "http://localhost:3000",
       },
     ]);
     const p = info.project.name;

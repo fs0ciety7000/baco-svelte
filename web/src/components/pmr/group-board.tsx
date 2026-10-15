@@ -22,7 +22,9 @@ import { DayStrip, NextBadge, NowLine, scrollToMission, useNowMinute } from "./d
 import { HIGHLIGHT, IoBadges } from "./assist-board";
 import { PhoneLink } from "./phone-link";
 import { AbsentBadge } from "./absent-badge";
-import { DelayBadge, TrainChip } from "./train-chip";
+import { TrainChip } from "@/components/ui/train-chip";
+
+import { DelayBadge } from "./train-chip";
 
 // Missions de GROUPE DICOS (lecture seule, demande du 9 oct. 2026) : même présentation que les missions PMR
 // (trajet, IN/OUT, district, gare assistée surlignée), avec le nom du groupe et ses comptages.

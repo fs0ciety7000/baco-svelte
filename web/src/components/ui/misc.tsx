@@ -3,40 +3,80 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-/** État vide : bordure pointillée, label mono, une phrase d'aide, une action. */
+/**
+ * État vide (v4, 15 oct. 2026) : par défaut **compact**, une ligne dans le cadre de la liste (icône 16 px, titre,
+ * phrase d'aide à la suite, action à droite) ; `variant="first"` pour une première utilisation (grand cadre pointillé
+ * centré, une phrase d'aide, une action).
+ */
 function EmptyState({
   title = "Aucune donnée",
   description,
   icon,
   action,
+  variant = "compact",
   className,
 }: {
   title?: string;
   description?: string;
   icon?: React.ReactNode;
   action?: React.ReactNode;
+  variant?: "compact" | "first";
   className?: string;
 }) {
+  if (variant === "first")
+    return (
+      <div
+        data-slot="empty"
+        data-variant="first"
+        className={cn(
+          "flex flex-col items-center gap-3 rounded-box border border-dashed border-border-strong px-6 py-10 text-center",
+          className,
+        )}
+      >
+        <span data-slot="empty-icon" className="text-fg-muted" aria-hidden>
+          {icon ?? <Inbox className="size-6" />}
+        </span>
+        <p data-slot="empty-title" className="text-body font-semibold text-fg">
+          {title}
+        </p>
+        {description ? (
+          <p data-slot="empty-desc" className="max-w-sm text-body text-fg-muted">
+            {description}
+          </p>
+        ) : null}
+        {action}
+      </div>
+    );
   return (
     <div
       data-slot="empty"
+      data-variant="compact"
       className={cn(
-        "flex flex-col items-center gap-3 rounded-box border border-dashed border-border-strong px-6 py-10 text-center",
+        "flex flex-wrap items-center gap-x-3 gap-y-2 rounded-box bg-surface-2 px-3 py-2.5 text-left",
         className,
       )}
     >
-      <span data-slot="empty-icon" className="text-fg-muted" aria-hidden>
-        {icon ?? <Inbox className="size-6" />}
+      <span
+        data-slot="empty-icon"
+        className="text-fg-muted [&_svg]:size-4 [&_svg]:shrink-0"
+        aria-hidden
+      >
+        {icon ?? <Inbox />}
       </span>
-      <p data-slot="empty-title" className="text-body font-semibold text-fg">
-        {title}
+      <p className="min-w-0 flex-1 text-body">
+        <span data-slot="empty-title" className="font-medium text-fg">
+          {title}
+        </span>
+        {description ? (
+          <span
+            data-slot="empty-desc"
+            className="text-fg-muted before:mx-1.5 before:text-fg-subtle before:content-['·']"
+          >
+            {description}
+          </span>
+        ) : null}
       </p>
-      {description ? (
-        <p data-slot="empty-desc" className="max-w-sm text-body text-fg-muted">
-          {description}
-        </p>
-      ) : null}
-      {action}
+      {action ? <div className="flex shrink-0 items-center gap-2">{action}</div> : null}
     </div>
   );
 }
@@ -78,7 +118,7 @@ function Kbd({ className, ...props }: React.ComponentProps<"kbd">) {
   return (
     <kbd
       className={cn(
-        "inline-flex h-5 min-w-5 items-center justify-center rounded-[min(var(--r-control),4px)] border border-border-strong bg-surface-2 px-1 font-mono text-[0.75rem] text-fg-muted",
+        "inline-flex h-5 min-w-5 items-center justify-center rounded-[min(var(--r-control),4px)] border border-b-2 border-border-strong bg-(--control-bg) px-1 font-mono text-[0.75rem] text-fg-muted",
         className,
       )}
       {...props}

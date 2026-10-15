@@ -41,7 +41,9 @@ import { DayStrip, NextBadge, NowLine, scrollToMission, useNowMinute } from "./d
 import { CopyButton } from "./copy";
 import { PhoneLink } from "./phone-link";
 import { AbsentBadge } from "./absent-badge";
-import { DelayBadge, TrainChip } from "./train-chip";
+import { TrainChip } from "@/components/ui/train-chip";
+
+import { DelayBadge } from "./train-chip";
 
 const toneVar = {
   info: "var(--info)",

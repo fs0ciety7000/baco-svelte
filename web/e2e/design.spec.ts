@@ -26,7 +26,7 @@ for (const theme of THEMES) {
       {
         name: "csm_ui",
         value: JSON.stringify({ theme, density: "confortable" }),
-        url: "http://localhost:3000",
+        url: process.env.E2E_BASE_URL ?? "http://localhost:3000",
       },
     ]);
     await page.reload();

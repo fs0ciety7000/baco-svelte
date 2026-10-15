@@ -35,7 +35,7 @@ import { Select } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { EmptyState, Kbd, PageHeader, Skeleton } from "@/components/ui/misc";
 import { Sheet } from "@/components/ui/sheet";
-import { StatCard } from "@/components/ui/stat-card";
+import { Stat, StatCard, StatStrip } from "@/components/ui/stat-card";
 import {
   Badge,
   ORDER_STATUS,
@@ -48,9 +48,17 @@ import { ListCard, Td, Th, THead, Tr } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/toast";
 import { Tooltip } from "@/components/ui/tooltip";
+import { TrainChip } from "@/components/ui/train-chip";
 import { contrast } from "@/design/contrast";
 import type { UiPreferences } from "@/design/preferences";
-import { AUTO_THEMES, COLOR_TOKENS, THEMES, themeById } from "@/design/tokens";
+import {
+  AUTO_THEMES,
+  autoThemes,
+  COLOR_TOKENS,
+  isAutoChoice,
+  THEMES,
+  themeById,
+} from "@/design/tokens";
 import { useStaggerIn } from "@/lib/motion";
 import { lineLabel } from "@/lib/lines";
 
@@ -218,7 +226,7 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   useStaggerIn(ref);
 
-  const current = ui.theme === "auto" ? AUTO_THEMES.dark : ui.theme;
+  const current = isAutoChoice(ui.theme) ? autoThemes(ui.theme).dark : ui.theme;
 
   return (
     <div
@@ -248,11 +256,27 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
       <Section id="themes" title="Thème et densité">
         <ThemeSwitcher value={ui} onChange={setUi} />
         <p className="text-body text-fg-muted">
-          « Automatique » suit le système : {themeById(AUTO_THEMES.dark).label} en sombre,{" "}
-          {themeById(AUTO_THEMES.light).label} en clair. La densité compacte réduit contrôles et
-          lignes à 32 px (44 px restent garantis sur écran tactile).
+          « Automatique » suit le système : le thème Nuit de la direction en sombre, son thème Jour
+          en clair (défaut : {themeById(AUTO_THEMES.dark).label} /{" "}
+          {themeById(AUTO_THEMES.light).label}). La densité compacte réduit contrôles et lignes à 32
+          px (44 px restent garantis sur écran tactile).
         </p>
         <Swatches themeId={current} />
+        {/* Profondeur (v4) : la page, la carte, la zone, le survol ; ombre de repos et ombre flottante. */}
+        <div data-testid="depth" className="grid gap-3 rounded-box bg-bg p-3 sm:grid-cols-4">
+          {(
+            [
+              ["bg-surface shadow-rest", "Carte · surface + ombre de repos"],
+              ["bg-surface-2", "Zone · surface-2"],
+              ["bg-surface-3", "Survol, actif · surface-3"],
+              ["bg-surface shadow-float", "Flottant · ombre flottante"],
+            ] as const
+          ).map(([cls, label]) => (
+            <div key={label} className={`flex h-20 items-end rounded-box p-3 text-small ${cls}`}>
+              {label}
+            </div>
+          ))}
+        </div>
       </Section>
 
       <Section id="comparatif" title={`Les ${THEMES.length} thèmes côte à côte`}>
@@ -265,10 +289,19 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
 
       <Section id="typo" title="Typographie">
         <div className="flex flex-col gap-3">
-          <p className="label-mono text-fg-muted">Label mono 11 · // Commandes · 12 actives</p>
-          <p className="display text-h1">Titre H1 display 40</p>
+          <p className="label-mono text-fg-muted">Libellé 12 · // Commandes · 12 actives</p>
+          <p className="display text-h1">
+            Titre de page (H1 : 24 dans Signal, Quai, Cabine ; 40 ailleurs)
+          </p>
           <p className="display text-h2">Titre H2 display 28</p>
           <p className="display text-h3">Titre H3 display 20</p>
+          <p className="text-panel font-semibold">Titre de panneau 17 / 24</p>
+          <p className="flex items-baseline gap-3">
+            <span className="figures text-kpi">1 234</span>
+            <span className="text-small text-fg-muted">
+              Compteur 30 / 36 en chiffres tabulaires (police du texte dans les directions v4)
+            </span>
+          </p>
           <p className="text-body-lg">
             Texte courant large 16/24 — Geist, pour les paragraphes importants.
           </p>
@@ -280,7 +313,20 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
         </div>
       </Section>
 
-      <Section id="indicateurs" title="Indicateurs (StatCard)">
+      <Section id="indicateurs" title="Bande de compteurs et indicateurs">
+        <StatStrip data-testid="design-stat-strip">
+          <Stat label="Bons à envoyer" value={counts.toConfirm} tone="warn" hint="depuis 30 min" />
+          <Stat label="Bons en cours" value={counts.active} />
+          <Stat label="Missions PMR du jour" value={counts.today} hint="12 IN · 9 OUT" />
+          <Stat label="Groupes du jour" value={0} />
+          <Stat label="Impactées (retard)" value={counts.late} tone="danger" />
+          <Stat
+            label="Filtre « aujourd'hui »"
+            value={counts.today}
+            active={filter === "today"}
+            onClick={() => setFilter(filter === "today" ? "all" : "today")}
+          />
+        </StatStrip>
         <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:grid-cols-4 md:overflow-visible md:px-0">
           <StatCard
             className="min-w-44 snap-start"
@@ -423,6 +469,18 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
           <Badge tone="accent">Live</Badge>
           <Badge tone="info">Bus</Badge>
           <Badge tone="neutral">Taxi</Badge>
+          <Badge tone="warn" className="font-mono tabular">
+            +6
+          </Badge>
+        </div>
+        <div className="flex flex-wrap items-center gap-2" data-testid="design-train-chips">
+          <TrainChip train="2167" />
+          <TrainChip train="IC 9632" />
+          <TrainChip train="" />
+          <TrainChip train="Taxi" taxi />
+          <span className="flex items-center gap-1.5 text-small text-fg-muted">
+            dans une ligne de texte <TrainChip train="2167" size="sm" /> à 06:42
+          </span>
         </div>
       </Section>
 
@@ -592,8 +650,18 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
       </Section>
 
       <Section id="etats" title="États vides et chargement">
+        <Card>
+          <CardHeader title="Missions impactées" count={0} />
+          <CardContent>
+            <EmptyState
+              title="Aucune mission impactée"
+              description="Les retards des trains de mission s'affichent ici."
+            />
+          </CardContent>
+        </Card>
         <div className="grid gap-4 md:grid-cols-2">
           <EmptyState
+            variant="first"
             title="Aucune commande"
             description="Rien à envoyer pour l'instant. Les nouvelles commandes apparaîtront ici en direct."
             action={

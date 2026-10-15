@@ -60,7 +60,7 @@ export function ScrollTable({
   return (
     <div
       className={cn(
-        "@container relative w-full min-w-0 rounded-box border border-border",
+        "@container relative w-full min-w-0 rounded-box border border-(--card-frame) bg-surface shadow-rest",
         className,
       )}
       data-scroll-left={edges.left || undefined}
@@ -80,12 +80,12 @@ export function ScrollTable({
             "w-full border-collapse text-body",
             // Lignes « pleine largeur » (repère « maintenant », `data-band`) exclues des colonnes collantes.
             stickyFirst &&
-              "[&_tr:not([data-band])>td:first-child]:sticky [&_tr:not([data-band])>td:first-child]:left-0 [&_tr:not([data-band])>td:first-child]:z-[1] [&_tr:not([data-band])>td:first-child]:bg-inherit [&_tr:not([data-band])>td:first-child]:shadow-[inset_3px_0_0_var(--status)] [&_th:first-child]:sticky [&_th:first-child]:left-0 [&_th:first-child]:z-[2] [&_th:first-child]:bg-surface-2",
+              "[&_tr:not([data-band])>td:first-child]:sticky [&_tr:not([data-band])>td:first-child]:left-0 [&_tr:not([data-band])>td:first-child]:z-[1] [&_tr:not([data-band])>td:first-child]:bg-inherit [&_tr:not([data-band])>td:first-child]:shadow-[inset_3px_0_0_var(--status)] [&_th:first-child]:sticky [&_th:first-child]:left-0 [&_th:first-child]:z-[2] [&_th:first-child]:bg-(--th-bg)",
             stickyFirst &&
               edges.left &&
               "[&_tr:not([data-band])>td:first-child]:shadow-[inset_3px_0_0_var(--status),8px_0_10px_-8px_color-mix(in_oklab,var(--fg)_35%,transparent)] [&_th:first-child]:shadow-[8px_0_10px_-8px_color-mix(in_oklab,var(--fg)_35%,transparent)]",
             stickyLast &&
-              "[&_tr:not([data-band])>td:last-child]:sticky [&_tr:not([data-band])>td:last-child]:right-0 [&_tr:not([data-band])>td:last-child]:z-[1] [&_tr:not([data-band])>td:last-child]:bg-inherit [&_th:last-child]:sticky [&_th:last-child]:right-0 [&_th:last-child]:z-[2] [&_th:last-child]:bg-surface-2",
+              "[&_tr:not([data-band])>td:last-child]:sticky [&_tr:not([data-band])>td:last-child]:right-0 [&_tr:not([data-band])>td:last-child]:z-[1] [&_tr:not([data-band])>td:last-child]:bg-inherit [&_th:last-child]:sticky [&_th:last-child]:right-0 [&_th:last-child]:z-[2] [&_th:last-child]:bg-(--th-bg)",
             stickyLast &&
               edges.right &&
               "[&_tr:not([data-band])>td:last-child]:shadow-[-8px_0_10px_-8px_color-mix(in_oklab,var(--fg)_35%,transparent)] [&_th:last-child]:shadow-[-8px_0_10px_-8px_color-mix(in_oklab,var(--fg)_35%,transparent)]",

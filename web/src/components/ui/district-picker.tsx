@@ -7,12 +7,15 @@ import { cn } from "@/lib/utils";
 
 import { DISTRICT_CODE_OPTIONS, type DistrictOption } from "@/lib/district-param";
 
+import { CHIP_BASE, CHIP_OFF, CHIP_ON } from "./chip-styles";
 import { useControllableValue, useMultiFormBridge } from "./form-bridge";
 
-const chip =
-  "inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-2 rounded-control border px-3 text-small font-medium transition-colors duration-150 outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 md:min-h-control-sm";
-const chipOn = "border-accent bg-accent-soft text-fg";
-const chipOff = "border-border-strong bg-surface text-fg-muted hover:border-fg-muted hover:text-fg";
+const chip = cn(
+  CHIP_BASE,
+  "min-h-11 gap-2 outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent md:min-h-control-sm",
+);
+const chipOn = CHIP_ON;
+const chipOff = CHIP_OFF;
 
 /**
  * Choix des districts en puces toujours visibles (refonte R4, 14 oct. 2026) : un, plusieurs ou aucun (« Tous »).
