@@ -53,7 +53,9 @@ function guessName(): string {
 }
 
 export function PasskeyLoginButton({ next }: { next?: string }) {
-  const [supported, setSupported] = useState(false);
+  // Rendu dès le serveur (presque tous les navigateurs gèrent WebAuthn) puis retiré s'il n'est pas pris en charge :
+  // l'apparition après coup agrandissait la carte et décalait la page de connexion (CLS, lot 5).
+  const [supported, setSupported] = useState(true);
   const [pending, start] = useTransition();
   const [error, setError] = useState("");
   useEffect(() => setSupported(browserSupportsWebAuthn()), []);

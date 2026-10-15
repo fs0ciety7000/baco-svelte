@@ -61,7 +61,7 @@ import {
   THEMES,
   themeById,
 } from "@/design/tokens";
-import { useStaggerIn } from "@/lib/motion";
+import { useStaggerIn } from "@/lib/motion-core";
 import { lineLabel } from "@/lib/lines";
 
 import { PickersDemo } from "./pickers-demo";

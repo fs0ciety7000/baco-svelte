@@ -94,7 +94,9 @@ export default async function Page({
             maxLength={60}
           />
         </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-72">
+        {/* Largeur fixée : sans elle, la liste (champ au rendu serveur, bouton une fois hydratée en mobile) changeait de
+            largeur et « Afficher » remontait d'une rangée (CLS 0,14 en 390 px, lot 5). */}
+        <label className="flex w-full min-w-0 flex-col gap-1 sm:w-72">
           <span className="text-small text-fg-muted">Ligne</span>
           <Combobox
             name="ligne"

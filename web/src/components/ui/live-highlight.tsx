@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef } from "react";
 
-import { gsap, highlightElements, MOTION, NO_MOTION } from "@/lib/motion";
+import { EASE, highlightElements, MOTION, NO_MOTION } from "@/lib/motion-core";
 
 /**
  * Signale les lignes arrivées ou modifiées en direct (audit motion du 9 oct. 2026 : le direct changeait sans le dire).
@@ -32,12 +32,11 @@ export function LiveHighlight({
     lastContext.current = context;
     if (!swap || was === null || was === context || window.matchMedia(NO_MOTION).matches) return;
     const roots = document.querySelectorAll<HTMLElement>(`[data-hl-scope="${CSS.escape(scope)}"]`);
-    if (roots.length)
-      gsap.fromTo(
-        roots,
-        { autoAlpha: 0.35 },
-        { autoAlpha: 1, duration: MOTION.micro, ease: "hud", clearProps: "opacity,visibility" },
-      );
+    for (const root of roots)
+      root.animate([{ opacity: 0.35 }, { opacity: 1 }], {
+        duration: MOTION.micro * 1000,
+        easing: EASE.hud,
+      });
   }, [context, scope, swap]);
   const key = JSON.stringify(sigs);
   useEffect(() => {

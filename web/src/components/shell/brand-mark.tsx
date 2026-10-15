@@ -1,9 +1,15 @@
 "use client";
 
-import gsap from "gsap";
+import type { gsap as Gsap } from "gsap";
 import { useEffect, useRef, useState } from "react";
 
-import { NO_MOTION } from "@/lib/motion";
+import { NO_MOTION } from "@/lib/motion-core";
+
+type GsapApi = typeof Gsap;
+// GSAP chargé à la demande (lot 5) : l'emblème est dans le pied de page de chaque écran, GSAP ne doit pas peser sur le
+// bundle initial. Chargé seulement quand l'emblème devient visible ou au premier survol.
+let gsapPromise: Promise<GsapApi> | null = null;
+const loadGsap = () => (gsapPromise ??= import("gsap").then((m) => m.gsap as GsapApi));
 
 // Emblèmes animés de l'éditeur (charte CARDOR Media, https://cardormedia.com/marque) : le Dragon de CM Interactive
 // (« glitch ») et la roue du Car d'Or (un tour, le noyau bat). Repris du site cardormedia.com (Logo.svelte /
@@ -55,7 +61,7 @@ function loadMark(name: MarkName): Promise<string> {
   return p;
 }
 
-function glitch(svg: SVGSVGElement, root: SVGGElement) {
+function glitch(gsap: GsapApi, svg: SVGSVGElement, root: SVGGElement) {
   const { x: vx, y: vy, width: vw, height: vh } = svg.viewBox.baseVal;
   const t2 = root.querySelector<SVGGElement>(".t2");
   const facets = [...root.querySelectorAll<SVGGElement>(".t2 .part")];
@@ -128,7 +134,7 @@ function glitch(svg: SVGSVGElement, root: SVGGElement) {
   return { build, reveal };
 }
 
-function spin(root: SVGGElement) {
+function spin(gsap: GsapApi, root: SVGGElement) {
   const core = root.querySelectorAll(".t3 .part");
   const build = () =>
     gsap
@@ -158,23 +164,37 @@ export function BrandMark({ name, className }: { name: MarkName; className?: str
     const svg = el?.querySelector("svg");
     const root = svg?.querySelector<SVGGElement>("g[data-root]");
     if (!el || !svg || !root || window.matchMedia(NO_MOTION).matches) return;
-    const motion = name === "occ-interactive" ? glitch(svg, root) : spin(root);
+    type Motion = { build: () => gsap.core.Timeline; reveal: () => gsap.core.Timeline };
+    let motion: Motion | null = null;
     let current: gsap.core.Timeline | null = null;
+    let alive = true;
+    const ready = () =>
+      loadGsap().then((gsap) => {
+        if (alive && !motion)
+          motion = name === "occ-interactive" ? glitch(gsap, svg, root) : spin(gsap, root);
+        return alive ? motion : null;
+      });
     const play = () => {
       if (current?.isActive() || document.hidden) return;
-      current?.kill();
-      current = motion.build();
+      void ready().then((m) => {
+        if (!m || current?.isActive()) return;
+        current?.kill();
+        current = m.build();
+      });
     };
     const io = new IntersectionObserver(([e]) => {
       if (!e?.isIntersecting) return;
       io.disconnect();
-      current = motion.reveal();
+      void ready().then((m) => {
+        if (m) current = m.reveal();
+      });
     });
     io.observe(el);
     const host = el.closest<HTMLElement>("[data-brand-host]") ?? el.parentElement;
     host?.addEventListener("pointerenter", play);
     host?.addEventListener("focusin", play);
     return () => {
+      alive = false;
       io.disconnect();
       host?.removeEventListener("pointerenter", play);
       host?.removeEventListener("focusin", play);

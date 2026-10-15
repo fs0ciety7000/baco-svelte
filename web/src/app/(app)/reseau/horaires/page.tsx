@@ -226,7 +226,9 @@ async function RelationsView({ sp, q }: { sp: Search; q: string }) {
             ]}
           />
         </label>
-        <label className="flex min-w-0 flex-col gap-1 md:w-36">
+        {/* Largeur fixée (lot 5) : la liste est un champ au rendu serveur et un bouton une fois hydratée en mobile ; sans
+            largeur, les filtres suivants changeaient de rangée (CLS). */}
+        <label className="flex w-36 min-w-0 flex-col gap-1">
           <span className="text-small text-fg-muted">Ligne</span>
           <Combobox
             name="ligne"
@@ -660,7 +662,7 @@ async function LineView({ line, day }: { line: string; day: DayFilter }) {
         <FormAutoSubmit live />
         <input type="hidden" name="vue" value="ligne" />
         <input type="hidden" name="jours" value={day} />
-        <label className="flex min-w-0 flex-col gap-1 md:w-48">
+        <label className="flex w-full min-w-0 flex-col gap-1 sm:w-48">
           <span className="text-small text-fg-muted">Ligne</span>
           <Combobox
             name="ligne"

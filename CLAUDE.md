@@ -1331,6 +1331,21 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   compteur par onglet (`NavTab.count`). Compteurs dessinés en CSS (`content: attr(data-count)`) et annoncés par
   `aria-describedby` : le texte et le nom des liens ne changent pas (E2E intacts). `fitTabs` déplacé dans `module-tabs-fit.ts`
   (le test importait sinon une Server Action « server-only »). Restent : écrans (lot 4, en parallèle), mouvement (5), reste (6).
+- 2026-10-15 — **Refonte v4, lot 5 « Mouvement et performance »** (agent, en parallèle du lot 4). `lib/motion-core.ts` **sans
+  GSAP** : arrivée de page en CSS (`.motion-enter`, fondu + 6 px, 320 ms, `--ease-out`, cascade 4 × 40 ms, jamais au premier
+  affichage ni sur un filtre, rien en mouvement réduit), trait d'onglet, `highlight`, `ghostFlip` (plus d'animation de
+  `left` / `width` / `height`), compteurs, frise « Ma journée », écran commun et intro de connexion en CSS / Web Animations ;
+  emblèmes du pied de page : GSAP par `import()`. **GSAP (≈ 40 Ko compressés) sort du bundle de toutes les pages sauf**
+  Accueil, Missions PMR, Groupes, Historique et Clients PMR, qui l'importent encore par `app/(app)/dashboard.tsx`
+  (`useStaggerIn` depuis `@/lib/motion`) et `components/pmr/day-progress.tsx` (zone du lot 4 : à basculer). Mesures
+  Playwright (`npm run start:standalone`, médiane de 5) : JS initial bon bus 359 → 322 Ko, connexion 209 → 171 Ko ; CLS
+  mobile Ressources › Lignes 0,141 → 0, Horaires 0,061 → 0, Journal 0,052 → 0,007, Ma journée 0,044 → 0,001, connexion
+  0,025 → 0 (largeur des listes personnalisées fixée, libellé « En direct » réservé, bouton passkey rendu par le serveur,
+  hauteur du fil du Journal par défaut, ligne DICOS de la barre latérale posée d'après le droit). Gares : rendu progressif
+  (150 + « Afficher 150 de plus ») ; Historique PMR paginé par 200 (`listAssists({ page })`). Champs : plus de transition de
+  `box-shadow`. **`loading.tsx` essayé puis retiré** (LCP plus tardif au chargement complet, 404 → 200, contenu un instant en
+  double pour les E2E stricts). Trouvé, non corrigé (préexistant) : la recherche pendant la frappe de Réseau › Gares
+  recharge la page entière (RSC 200 puis navigation document).
 
 - 2026-10-15 — **Retours sur le lot 3** : pas de compteur sur l'Accueil dans la barre latérale ; **pastille « Flux » sur le rail** (768-1279 px : une pastille par source, détail en infobulle et pour les lecteurs d'écran, `feed-rail`).
 - 2026-10-15 — **Refonte v4, lot 4 « Écrans clés »** (réponses par défaut validées) : **Accueil** (date + service du jour,

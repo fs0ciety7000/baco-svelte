@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 import * as React from "react";
 import { Drawer } from "vaul";
 
-import { ghostFlip } from "@/lib/motion";
+import { ghostFlip } from "@/lib/motion-core";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
