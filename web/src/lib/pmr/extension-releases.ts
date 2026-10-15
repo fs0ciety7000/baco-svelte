@@ -5,6 +5,13 @@ export type ExtensionNote = { version: string; date: string; notes: string[] };
 
 export const EXTENSION_NOTES: ExtensionNote[] = [
   {
+    version: "1.9.1",
+    date: "2026-10-15",
+    notes: [
+      "Planificateur PMR : le nombre de voyageurs d'un dossier « à vérifier » n'est plus compté deux fois quand DICOS les décrit sous deux formes.",
+    ],
+  },
+  {
     version: "1.9.0",
     date: "2026-10-15",
     notes: [

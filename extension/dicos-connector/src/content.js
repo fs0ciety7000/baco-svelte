@@ -316,8 +316,11 @@
         .slice(0, 31)
         .map((t) => ({
           travelDate: cut(t && t.travelDate, 40),
-          disableds: arr(t && t.traveler && t.traveler.disableds)
-            .concat(arr(t && t.disableds))
+          // `traveler.disableds` et `disableds` décrivent les MÊMES voyageurs : le premier non vide, jamais les deux.
+          disableds: (arr(t && t.traveler && t.traveler.disableds).length
+            ? arr(t && t.traveler && t.traveler.disableds)
+            : arr(t && t.disableds)
+          )
             .slice(0, 20)
             .map((x) => ({
               symbol: cut(x && x.symbol, 60),
