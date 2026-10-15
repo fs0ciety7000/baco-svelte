@@ -88,6 +88,35 @@ export function durationLabel(ms: number): string {
   return `${m} min ${String(s).padStart(2, "0")} s`;
 }
 
+/**
+ * Service du jour pour l'en-tête de l'accueil (v4, 15 oct. 2026) : « service PM jusqu'à 22:00 » pendant le service,
+ * « service PM à 14:00 » avant ; vide sans choix, choix périmé ou service terminé. Le choix manuel passe avant l'horaire
+ * Quinyx (même règle que le widget « Fin de service »).
+ */
+export function serviceLabel(
+  choice: ShiftChoice | null,
+  quinyx: { start: string; end: string; label: string } | null,
+  now: Date = new Date(),
+): string {
+  const hm = (d: Date) =>
+    new Intl.DateTimeFormat("fr-BE", {
+      timeZone: "Europe/Brussels",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(d);
+  const active = choice && !isStale(choice, now) ? choice : null;
+  const state = active
+    ? shiftState(active, now)
+    : quinyx
+      ? windowState(new Date(quinyx.start), new Date(quinyx.end), now)
+      : null;
+  if (!state || state.phase === "termine") return "";
+  const name = active ? SHIFTS[active.kind].label : (quinyx?.label.split(" · ")[0] ?? "");
+  return state.phase === "en-cours"
+    ? `service ${name} jusqu'à ${hm(state.end)}`
+    : `service ${name} à ${hm(state.start)}`;
+}
+
 /** « 02:41:05 » pour le grand compteur. */
 export function clockLabel(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));

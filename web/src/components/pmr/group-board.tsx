@@ -7,7 +7,7 @@ import { LiveHighlight } from "@/components/ui/live-highlight";
 import { Sheet } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/status-badge";
 import { ScrollTable } from "@/components/ui/scroll-table";
-import { ListCard, Td, Th, THead, Tr } from "@/components/ui/table";
+import { Td, Th, THead, Tr } from "@/components/ui/table";
 import { formatDay } from "@/lib/orders/time";
 import { inDistricts, districtsLabel } from "@/lib/pmr/district-filter";
 import { DISTRICT_LABEL } from "@/lib/pmr/districts";
@@ -19,7 +19,7 @@ import type { GroupMission } from "@/server/data/groups";
 
 import { AleaButton } from "./alea-export";
 import { DayStrip, NextBadge, NowLine, scrollToMission, useNowMinute } from "./day-progress";
-import { HIGHLIGHT, IoBadges } from "./assist-board";
+import { CardStation, StationCell } from "./assist-board";
 import { PhoneLink } from "./phone-link";
 import { AbsentBadge } from "./absent-badge";
 import { TrainChip } from "@/components/ui/train-chip";
@@ -34,24 +34,45 @@ const STATUS = {
   realisee: { label: "Réalisée", tone: "ok" },
   annulee: { label: "Annulée", tone: "danger" },
 } as const;
+const STATUS_TONE = { info: "var(--info)", ok: "var(--ok)", danger: "var(--danger)" } as const;
 
 const legOf = groupLegOf;
 const trainOf = groupTrain;
 const total = groupTotal;
 
-function Route({ g, district }: { g: GroupMission; district: string }) {
+/** Trajet en texte (panneau) : « 20:16 Mons → 20:41 Quiévrain ». */
+function Route({ g }: { g: GroupMission }) {
   const l = legOf(g);
-  const end = (name: string, time: string, assisted: boolean, d: string) => (
-    <span className={assisted && inDistricts(d, district) ? HIGHLIGHT : ""}>
-      {time ? <span className="font-mono tabular text-fg-muted">{time} </span> : null}
-      <span className={assisted ? "font-medium text-fg" : ""}>{name}</span>
-    </span>
-  );
   return (
     <span className={g.status === "annulee" ? "line-through" : ""}>
-      {end(l.dep, l.depTime, l.inA, l.depDistrict)} <span className="text-fg-muted">→</span>{" "}
-      {end(l.arr, l.arrTime, l.outA, l.arrDistrict)}
+      {l.depTime ? <span className="font-mono tabular text-fg-muted">{l.depTime} </span> : null}
+      <span className={l.inA ? "font-medium text-fg" : ""}>{l.dep}</span>{" "}
+      <span className="text-fg-muted">→</span>{" "}
+      {l.arrTime ? <span className="font-mono tabular text-fg-muted">{l.arrTime} </span> : null}
+      <span className={l.outA ? "font-medium text-fg" : ""}>{l.arr}</span>
     </span>
+  );
+}
+
+/** Bouton « Export ALEA » des Groupes (barre d'outils, v4 lot 4). */
+export function GroupAlea({
+  rows,
+  district = "",
+  canMark,
+}: {
+  rows: GroupMission[];
+  district?: string;
+  canMark: boolean;
+}) {
+  return (
+    <AleaButton
+      kind="groupe"
+      canMark={canMark}
+      disabled={!rows.length}
+      eyebrow="Groupes"
+      description={`Par train et par gare, une ligne par groupe${district ? ` (district ${districtsLabel(district)})` : ""}. Missions annulées exclues.`}
+      compute={() => aleaGroupBlocks(groupEnds(rows, district))}
+    />
   );
 }
 
@@ -59,7 +80,6 @@ export function GroupBoard({
   rows,
   district = "",
   delays,
-  canMark = false,
   now,
   today,
 }: {
@@ -67,8 +87,6 @@ export function GroupBoard({
   /** Minute courante (Bruxelles) au rendu serveur et jour courant : repère « maintenant » et mini-frise (15 oct. 2026). */
   now?: number;
   today?: string;
-  /** Peut cocher « encodé » dans l'export ALEA. */
-  canMark?: boolean;
   district?: string;
   /** États iRail des trains du jour : badge de retard à la gare assistée. */
   delays?: TrainStates;
@@ -100,16 +118,6 @@ export function GroupBoard({
           rows.map((r) => [r.id, `${r.status}|${r.time}|${r.arrTime}|${total(r)}`]),
         )}
       />
-      <div className="flex justify-end">
-        <AleaButton
-          kind="groupe"
-          canMark={canMark}
-          disabled={!rows.length}
-          eyebrow="Groupes"
-          description={`Par train et par gare, une ligne par groupe${district ? ` (district ${districtsLabel(district)})` : ""}. Missions annulées exclues.`}
-          compute={() => aleaGroupBlocks(groupEnds(rows, district))}
-        />
-      </div>
       {todayRows.length ? (
         <DayStrip
           times={pickups}
@@ -137,7 +145,7 @@ export function GroupBoard({
               nextTime={nextTime}
               index={split.insertAt}
               variant={variant}
-              colSpan={9}
+              colSpan={8}
             />
           ) : null;
         return (
@@ -146,7 +154,8 @@ export function GroupBoard({
               {formatDay(d)} · {list.length} {pl(list.length, "trajet")}
             </h2>
             <div className="hidden md:block">
-              {/* Défilement horizontal propre (15 oct. 2026) : train collant, en-tête collé. */}
+              {/* Défilement horizontal propre (15 oct. 2026) : train collant, en-tête collé ; v4 lot 4 : sens dans la
+                  cellule de gare, gare assistée en gras. */}
               <ScrollTable
                 label={`Groupes du ${formatDay(d)}`}
                 stickyFirst
@@ -155,9 +164,8 @@ export function GroupBoard({
                 <THead>
                   <tr>
                     <Th>Train</Th>
-                    <Th>Heure</Th>
-                    <Th>Trajet (départ → arrivée)</Th>
-                    <Th>Sens</Th>
+                    <Th>Départ · IN</Th>
+                    <Th>Arrivée · OUT</Th>
                     <Th>Groupe</Th>
                     <Th numeric>Adultes</Th>
                     <Th numeric>Enfants</Th>
@@ -166,99 +174,146 @@ export function GroupBoard({
                   </tr>
                 </THead>
                 <tbody data-testid="groups-table" data-hl-scope="groups">
-                  {list.map((g, i) => [
-                    i === split.insertAt ? nowLine("row") : null,
-                    <Tr
-                      key={g.id}
-                      data-hl={g.id}
-                      data-past={split.past[i] || undefined}
-                      data-next={i === split.next || undefined}
-                      selected={open?.id === g.id}
-                      className={cn(
-                        "cursor-pointer",
-                        split.past[i] &&
-                          open?.id !== g.id &&
-                          "[&>td]:text-fg-muted [&>td>*]:opacity-60",
-                      )}
-                      onClick={() => setOpen(g)}
-                    >
-                      <Td>
-                        <span className="inline-flex items-center gap-1.5">
-                          <TrainChip train={g.train} taxi={g.transport === "taxi"} />
-                          <DelayBadge impact={missionImpact(g, delays)} />
-                        </span>
-                      </Td>
-                      <Td className="font-mono whitespace-nowrap tabular">
-                        {g.time || g.arrTime || "—"}
-                        {i === split.next ? <NextBadge /> : null}
-                      </Td>
-                      <Td className="min-w-52 max-w-80">
-                        <Route g={g} district={district} />
-                      </Td>
-                      <Td>
-                        <IoBadges leg={legOf(g)} district={district} />
-                      </Td>
-                      <Td className="max-w-56 truncate">
-                        <button
-                          type="button"
-                          className="cursor-pointer text-left link"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpen(g);
-                          }}
-                        >
-                          {g.groupName || "Groupe"}
-                        </button>
-                      </Td>
-                      <Td numeric>{g.adults}</Td>
-                      <Td numeric>{g.children}</Td>
-                      <Td numeric>{g.seniors}</Td>
-                      <Td>
-                        <span className="inline-flex flex-wrap items-center gap-1.5">
-                          <Badge tone={STATUS[g.status].tone}>{STATUS[g.status].label}</Badge>
-                          {g.absent ? <AbsentBadge /> : null}
-                        </span>
-                      </Td>
-                    </Tr>,
-                  ])}
+                  {list.map((g, i) => {
+                    const l = legOf(g);
+                    const barred = g.status === "annulee";
+                    return [
+                      i === split.insertAt ? nowLine("row") : null,
+                      <Tr
+                        key={g.id}
+                        data-hl={g.id}
+                        data-past={split.past[i] || undefined}
+                        data-next={i === split.next || undefined}
+                        selected={open?.id === g.id}
+                        statusColor={STATUS_TONE[STATUS[g.status].tone]}
+                        className={cn(
+                          "cursor-pointer",
+                          split.past[i] &&
+                            open?.id !== g.id &&
+                            "[&>td]:text-fg-muted [&>td>*]:opacity-60",
+                        )}
+                        onClick={() => setOpen(g)}
+                      >
+                        <Td>
+                          <span className="inline-flex items-center gap-1.5">
+                            <TrainChip train={g.train} taxi={g.transport === "taxi"} />
+                            <DelayBadge impact={missionImpact(g, delays)} />
+                          </span>
+                        </Td>
+                        <Td className="min-w-44">
+                          <StationCell
+                            name={l.dep}
+                            time={l.depTime}
+                            district={l.depDistrict}
+                            filter={district}
+                            io="IN"
+                            assisted={l.inA}
+                            done={l.inDone}
+                            barred={barred}
+                            next={i === split.next}
+                          />
+                        </Td>
+                        <Td className="min-w-44">
+                          <StationCell
+                            name={l.arr}
+                            time={l.arrTime}
+                            district={l.arrDistrict}
+                            filter={district}
+                            io="OUT"
+                            assisted={l.outA}
+                            done={l.outDone}
+                            barred={barred}
+                          />
+                        </Td>
+                        <Td className="max-w-56 truncate">
+                          <button
+                            type="button"
+                            className="cursor-pointer text-left link"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpen(g);
+                            }}
+                          >
+                            {g.groupName || "Groupe"}
+                          </button>
+                        </Td>
+                        <Td numeric>{g.adults}</Td>
+                        <Td numeric>{g.children}</Td>
+                        <Td numeric>{g.seniors}</Td>
+                        <Td>
+                          <span className="inline-flex flex-wrap items-center gap-1.5">
+                            <Badge tone={STATUS[g.status].tone}>{STATUS[g.status].label}</Badge>
+                            {g.absent ? <AbsentBadge /> : null}
+                          </span>
+                        </Td>
+                      </Tr>,
+                    ];
+                  })}
                   {split.insertAt === list.length ? nowLine("row") : null}
                 </tbody>
               </ScrollTable>
             </div>
             <ul className="flex flex-col gap-2 md:hidden" data-hl-scope="groups">
-              {list.map((g, i) => [
-                i === split.insertAt ? nowLine("card") : null,
-                <li
-                  key={g.id}
-                  className={cn(
-                    "min-w-0",
-                    split.past[i] && "opacity-60",
-                    i === split.next && "[&_[data-hl]]:ring-1 [&_[data-hl]]:ring-info",
-                  )}
-                  data-past={split.past[i] || undefined}
-                  data-next={i === split.next || undefined}
-                >
-                  <button
-                    type="button"
-                    className="w-full cursor-pointer text-left"
-                    onClick={() => setOpen(g)}
+              {list.map((g, i) => {
+                const l = legOf(g);
+                const barred = g.status === "annulee";
+                return [
+                  i === split.insertAt ? nowLine("card") : null,
+                  <li
+                    key={g.id}
+                    className={cn(
+                      "min-w-0",
+                      split.past[i] && "opacity-60",
+                      i === split.next && "[&_[data-hl]]:ring-1 [&_[data-hl]]:ring-info",
+                    )}
+                    data-past={split.past[i] || undefined}
+                    data-next={i === split.next || undefined}
                   >
-                    <ListCard
+                    <button
+                      type="button"
                       data-hl={g.id}
-                      title={
-                        <span className="inline-flex flex-wrap items-center gap-2">
-                          <TrainChip train={g.train} taxi={g.transport === "taxi"} />
-                          <DelayBadge impact={missionImpact(g, delays)} />
-                          {g.absent ? <AbsentBadge /> : null}
-                          <Route g={g} district={district} />
-                        </span>
+                      style={
+                        { "--status": STATUS_TONE[STATUS[g.status].tone] } as React.CSSProperties
                       }
-                      meta={`${g.groupName || "Groupe"} · ${total(g)} pers.${g.children ? ` dont ${g.children} enfants` : ""}`}
-                      aside={<Badge tone={STATUS[g.status].tone}>{STATUS[g.status].label}</Badge>}
-                    />
-                  </button>
-                </li>,
-              ])}
+                      className="flex w-full min-w-0 cursor-pointer flex-col gap-2 rounded-box border border-(--card-frame) bg-surface px-3 py-2.5 text-left shadow-[inset_3px_0_0_var(--status)]"
+                      onClick={() => setOpen(g)}
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <TrainChip train={g.train} taxi={g.transport === "taxi"} />
+                        <DelayBadge impact={missionImpact(g, delays)} />
+                        {g.absent ? <AbsentBadge /> : null}
+                        {i === split.next ? <NextBadge /> : null}
+                        <span className="ml-auto shrink-0">
+                          <Badge tone={STATUS[g.status].tone}>{STATUS[g.status].label}</Badge>
+                        </span>
+                      </span>
+                      <span className="grid grid-cols-[3rem_minmax(0,1fr)] gap-x-2 gap-y-1 text-body">
+                        <CardStation
+                          time={l.depTime}
+                          name={l.dep}
+                          io="IN"
+                          assisted={l.inA}
+                          done={l.inDone}
+                          strong={l.inA && inDistricts(l.depDistrict, district)}
+                          barred={barred}
+                        />
+                        <CardStation
+                          time={l.arrTime}
+                          name={l.arr}
+                          io="OUT"
+                          assisted={l.outA}
+                          done={l.outDone}
+                          strong={l.outA && inDistricts(l.arrDistrict, district)}
+                          barred={barred}
+                        />
+                      </span>
+                      <span className="text-small text-fg-muted">
+                        {`${g.groupName || "Groupe"} · ${total(g)} pers.${g.children ? ` dont ${g.children} enfants` : ""}`}
+                      </span>
+                    </button>
+                  </li>,
+                ];
+              })}
               {split.insertAt === list.length ? nowLine("card") : null}
             </ul>
           </section>
@@ -274,7 +329,7 @@ export function GroupBoard({
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-body">
             <dt className="text-small text-fg-muted">Trajet</dt>
             <dd>
-              <Route g={open} district={district} />
+              <Route g={open} />
             </dd>
             <dt className="text-small text-fg-muted">Assistance</dt>
             <dd>

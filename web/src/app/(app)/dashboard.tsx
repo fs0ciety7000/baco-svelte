@@ -33,7 +33,7 @@ import {
   type LogDigest,
 } from "@/components/ops/dashboard-widgets";
 import { ShiftWidget, type QuinyxShift } from "@/components/dashboard/shift-widget";
-import { KpiStrip, TodoQueue, todoItems } from "@/components/dashboard/todo";
+import { KpiStrip, NextPickups, TodoQueue, todoItems } from "@/components/dashboard/todo";
 import { ModuleTabs } from "@/components/shell/module-tabs";
 import { useShell } from "@/components/shell/shell-context";
 import { Button } from "@/components/ui/button";
@@ -48,7 +48,7 @@ import { useStaggerIn } from "@/lib/motion";
 import { brusselsDay, daysBetween, formatDay, isValidDay } from "@/lib/orders/time";
 import { cn, pl } from "@/lib/utils";
 import type { FavoriteStation } from "@/lib/ops/irail";
-import type { ShiftChoice } from "@/lib/shift";
+import { serviceLabel, type ShiftChoice } from "@/lib/shift";
 import type { DashboardStats } from "@/server/data/dashboard";
 import type { ImpactedMission, TodayPmr } from "@/server/data/impacts";
 import type { Notification } from "@/server/data/ops";
@@ -260,6 +260,8 @@ function Widget({
       className={cn(
         "@container min-w-0",
         meta.wide && "md:col-span-2",
+        // « Fin de service » est dans la colonne droite de l'accueil dès 1280 px (hors personnalisation).
+        id === "service" && !editing && "xl:hidden",
         isDragging && "z-10 opacity-80",
         hidden && "opacity-50",
       )}
@@ -378,6 +380,11 @@ export function Dashboard({
   const shown: WidgetId[] = (
     editing ? layout.order : layout.order.filter((id) => !layout.hidden.includes(id))
   ).filter((id) => !absorbed(id));
+  // Colonne droite (≥ 1280 px) : « Fin de service » si le widget est affiché (il quitte alors la grille à cette largeur),
+  // « Prochaines prises en charge » avec le droit des missions.
+  const showShift = !layout.hidden.includes("service");
+  const aside = showShift || !!ops.today;
+  const service = serviceLabel(ops.shift, ops.quinyx);
 
   return (
     <div
@@ -388,14 +395,15 @@ export function Dashboard({
       <div className="md:hidden">
         <ModuleTabs moduleId="accueil" />
       </div>
-      {/* En-tête d'une ligne (11 oct. 2026) : salutation, date, personnalisation. */}
+      {/* En-tête d'une ligne (11 oct. 2026 ; v4 : date + service du jour) : salutation, personnalisation. */}
       <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <div className="flex min-w-0 items-baseline gap-3">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
           <h1 className="display truncate text-h3 text-fg md:text-h2">
             Bonjour{firstName ? `, ${firstName}` : ""}
           </h1>
-          <p className="truncate text-small text-fg-muted first-letter:uppercase">
+          <p className="text-small text-fg-muted first-letter:uppercase" data-testid="today-line">
             {dateLabel.format(new Date())}
+            {service ? ` · ${service}` : ""}
           </p>
         </div>
         <div className="flex gap-2">
@@ -423,14 +431,36 @@ export function Dashboard({
       </header>
       {!editing ? (
         <>
-          <KpiStrip
-            stats={stats}
-            today={ops.today}
-            impacted={ops.impacts ? ops.impacts.length : null}
-          />
-          <TodoQueue
-            items={todoItems({ stats, impacts: ops.impacts, mentions: ops.mentions, log: ops.log })}
-          />
+          <KpiStrip stats={stats} today={ops.today} impacts={ops.impacts} />
+          {/* File « À traiter » ; dès 1280 px, colonne droite « Fin de service » + « Prochaines prises en charge »
+              (v4, lot 4). Les widgets restent personnalisables en dessous. */}
+          <div className="flex flex-col gap-4 xl:grid xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start xl:gap-5">
+            <TodoQueue
+              items={todoItems({
+                stats,
+                impacts: ops.impacts,
+                mentions: ops.mentions,
+                log: ops.log,
+              })}
+            />
+            {aside ? (
+              <aside
+                className="hidden flex-col gap-4 xl:flex"
+                aria-label="Mon service et prochaines prises en charge"
+                data-testid="home-aside"
+              >
+                {showShift ? (
+                  <Card className="min-w-0">
+                    <CardHeader title="Fin de service" />
+                    <CardContent className="pt-3">
+                      <ShiftWidget initial={ops.shift} quinyx={ops.quinyx} />
+                    </CardContent>
+                  </Card>
+                ) : null}
+                {ops.today ? <NextPickups data={ops.today} /> : null}
+              </aside>
+            ) : null}
+          </div>
         </>
       ) : null}
       {editing ? (

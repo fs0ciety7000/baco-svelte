@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { clockLabel, durationLabel, isStale, shiftDayFor, shiftState, shiftWindow } from "./shift";
+import {
+  clockLabel,
+  durationLabel,
+  isStale,
+  serviceLabel,
+  shiftDayFor,
+  shiftState,
+  shiftWindow,
+} from "./shift";
 
 describe("service de l'agent", () => {
   it("fenêtres en heure de Bruxelles, nuit sur deux jours", () => {
@@ -36,5 +44,23 @@ describe("service de l'agent", () => {
     expect(durationLabel(3 * 3600_000 + 7 * 60_000 + 30_000)).toBe("3 h 07");
     expect(durationLabel(42 * 60_000 + 5_000)).toBe("42 min 05 s");
     expect(clockLabel(2 * 3600_000 + 41 * 60_000 + 5_000)).toBe("02:41:05");
+  });
+
+  it("libellé de l'en-tête : en cours, avant, terminé, Quinyx", () => {
+    const pm = { kind: "pm" as const, day: "2026-10-15" };
+    expect(serviceLabel(pm, null, new Date("2026-10-15T13:58:00Z"))).toBe(
+      "service PM jusqu'à 22:00",
+    );
+    expect(serviceLabel(pm, null, new Date("2026-10-15T09:00:00Z"))).toBe("service PM à 14:00");
+    expect(serviceLabel(pm, null, new Date("2026-10-15T21:00:00Z"))).toBe("");
+    expect(serviceLabel(null, null)).toBe("");
+    const q = {
+      start: "2026-10-15T05:00:00Z",
+      end: "2026-10-15T13:00:00Z",
+      label: "PACO · 07:00 – 15:00",
+    };
+    expect(serviceLabel(null, q, new Date("2026-10-15T10:00:00Z"))).toBe(
+      "service PACO jusqu'à 15:00",
+    );
   });
 });

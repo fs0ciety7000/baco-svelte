@@ -363,3 +363,25 @@ disponibles**. Écarts validés, appliqués aux jetons et aux composants de base
   bas mobile : fond `surface`, trait arrondi en haut de l'actif, badges ronds teintés. Palette ⌘K : 672 px, `shadow-float`, champ
   56 px, groupes séparés par un filet, résultat actif `surface-3` + trait accent. Les « Autres thèmes » gardent barre `surface`,
   titres de section en capitales mono et coins droits (aucune carte ni ombre pour la forme « angle »).
+
+## Refonte v4 — lot 4 « Écrans clés » (15 oct. 2026)
+
+Composants signature 3, 4, 6, 8 et 9 du plan (`docs/design/REFONTE-DESIGN-V4.md` §3), réponses par défaut validées :
+
+- **Accueil** : titre « Bonjour, prénom » + date et service du jour (`serviceLabel`, `lib/shift.ts`) ; bande de compteurs avec
+  détail d'une ligne ; **file « À traiter » par gravité** (titres de groupe Urgent / À faire aujourd'hui / Pour information,
+  pastille d'icône de nature teintée `--tint`, puce de train + retard dans la méta, action nommée par ligne, **une seule
+  primaire** : premier bon à envoyer, sinon le premier élément) ; colonne droite ≥ 1280 px (Fin de service, Prochaines prises
+  en charge), le widget « Fin de service » quitte alors la grille.
+- **Barre d'outils des listes PMR** : une ligne en desktop (période `SegmentedNav`, districts en menu `DistrictMenu`, recherche,
+  puce « Filtres (n) » qui replie le reste, actions à droite) ; mobile : période, recherche, puis districts / filtres / actions.
+  Ligne d'état 13 px dessous (nombre, fraîcheur DICOS, En direct).
+- **Tableau dense** : colonnes « Départ · IN » / « Arrivée · OUT » (`StationCell` : heure mono, gare en gras si assistée dans le
+  district filtré, puce de sens en encre inversée — verte cochée une fois validée —, district en dessous) ; cartes mobiles avec
+  les deux gares sur une grille heure / gare.
+- **Bon de commande** : rail d'étapes collant (≥ 1280 px, vert / rouge / accent pour la section à l'écran), sections en cartes
+  avec résumé à droite du titre (desktop), **aperçu en billet** (`OrderTicket` : perforation peinte avec `--bg`, itinéraire en
+  pointillés, extrémités pleines ; `compact` en tête en mobile), barre d'actions flottante `shadow-float` qui garde sa place
+  dans le flux.
+- **États vides** : `EmptyState framed` (ligne vide dans le cadre de la liste) ; `variant="first"` seulement quand DICOS n'a
+  jamais été synchronisé.

@@ -36,9 +36,14 @@ import {
 import { safeCall } from "@/lib/orders/safe-call";
 import { isEditable, type Status } from "@/lib/orders/status";
 import { useAutosave } from "@/lib/orders/use-autosave";
+import { sectionState, stepStates, TAXI_STEPS } from "@/lib/orders/steps";
+import { formatLongDay } from "@/lib/orders/time";
+import { TrainChip } from "@/components/ui/train-chip";
 
 import { TemplateDialog } from "./bus-form";
-import { PdfLink, SendDialog } from "./send-dialog";
+import { SendDialog } from "./send-dialog";
+import { OrderSteps } from "./order-steps";
+import { OrderTicket } from "./order-ticket";
 import { StartPanel, type StartPanelProps } from "./start-panel";
 import { OrderActionBar } from "./order-action-bar";
 import { ArchivedBadge } from "./archived-badge";
@@ -143,6 +148,13 @@ export function TaxiForm(props: TaxiFormProps) {
   const to = parseEmails([...(company?.emails ?? []), d.taxi_email]).join("; ");
   const missing = useMemo(() => checkTaxiForSend(d, { companyEmail: to }), [d, to]);
   const err = (f: string) => (showErrors ? missing.find((m) => m.field === f)?.message : undefined);
+  // Rail d'étapes (v4 lot 4) : mêmes champs manquants que la validation d'envoi.
+  const steps = useMemo(() => stepStates(TAXI_STEPS, missing), [missing]);
+  const stepOf = (id: string) =>
+    sectionState(
+      steps.find((s) => s.id === id),
+      showErrors,
+    );
 
   // Aller-retour : le retour est pré-rempli à l'inverse de l'aller.
   const setRoundTrip = (on: boolean) =>
@@ -198,7 +210,9 @@ export function TaxiForm(props: TaxiFormProps) {
   };
 
   return (
-    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,45rem)_minmax(16rem,1fr)] lg:items-start lg:gap-6">
+    // v4 lot 4 : rail d'étapes collant (≥ 1280 px) | formulaire en cartes | aperçu en billet (≥ 1024 px).
+    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,45rem)_minmax(16rem,1fr)] lg:items-start lg:gap-6 xl:grid-cols-[9.5rem_minmax(0,46rem)_minmax(17rem,21rem)] xl:gap-5">
+      <OrderSteps steps={steps} className="sticky top-20 hidden xl:flex" />
       <form
         className="flex min-w-0 flex-col gap-3"
         aria-label="Bon de commande taxi"
@@ -212,7 +226,7 @@ export function TaxiForm(props: TaxiFormProps) {
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-3">
-            <span className="label-mono text-fg-muted" data-testid="order-number">
+            <span className="text-h3 font-semibold text-fg tabular" data-testid="order-number">
               {number ? `Taxi n° ${number}` : "Nouveau bon taxi"}
             </span>
             <StatusBadge status={props.status} />
@@ -233,18 +247,24 @@ export function TaxiForm(props: TaxiFormProps) {
             {autosave.error}
           </p>
         ) : null}
+        {/* Mobile : l'aperçu passe en tête, en version compacte (trajet, prise en charge, PDF). */}
+        <OrderTicket
+          compact
+          className="lg:hidden"
+          eyebrow={`Aperçu du bon${number ? ` · taxi n° ${number}` : ""}`}
+          route={`${d.from_station || "Départ"} → ${d.to_station || "Arrivée"}`}
+          when={taxiWhen(d)}
+          pdfHref={orderId ? `/api/commandes/taxi/${orderId}/pdf` : ""}
+        />
         {!orderId && props.start && editable ? <StartPanel kind="taxi" {...props.start} /> : null}
 
         <fieldset disabled={!editable} className="contents">
           <FormSection
+            id="bon-trajet"
             index={1}
             title="Trajet"
             summary={summary.trajet}
-            state={
-              err("trip") || err("from_station") || err("to_station") || err("return")
-                ? "error"
-                : undefined
-            }
+            state={stepOf("bon-trajet")}
           >
             <div className="grid grid-cols-2 gap-3">
               <Field label="Date" required error={err("trip")}>
@@ -339,10 +359,11 @@ export function TaxiForm(props: TaxiFormProps) {
           </FormSection>
 
           <FormSection
+            id="bon-passager"
             index={2}
             title="Passager"
             summary={summary.passager}
-            state={err("pmr_client") || err("pmr_count") || err("pmr_reason") ? "error" : undefined}
+            state={stepOf("bon-passager")}
           >
             <Segmented
               label="Type de transport"
@@ -472,10 +493,11 @@ export function TaxiForm(props: TaxiFormProps) {
           </FormSection>
 
           <FormSection
+            id="bon-fournisseur"
             index={3}
             title="Fournisseur"
             summary={summary.fournisseur}
-            state={err("taxi_company") || err("taxi_email") ? "error" : undefined}
+            state={stepOf("bon-fournisseur")}
           >
             <Field
               label="Société de taxi"
@@ -519,6 +541,7 @@ export function TaxiForm(props: TaxiFormProps) {
           </FormSection>
 
           <FormSection
+            id="bon-facturation"
             index={4}
             title="Facturation et motif"
             summary={d.billing}
@@ -564,39 +587,55 @@ export function TaxiForm(props: TaxiFormProps) {
         />
       </form>
 
-      <aside
-        className="hidden flex-col gap-3 border border-border bg-surface p-4 lg:sticky lg:top-20 lg:flex"
-        aria-label="Aperçu du bon"
-      >
-        <p className="label-mono text-fg-muted">Aperçu du bon {number ? `n° ${number}` : ""}</p>
-        <p className="display text-h3 text-fg">
-          {d.from_station || "Départ"} → {d.to_station || "Arrivée"}
-        </p>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-small">
-          <dt className="text-fg-muted">Prise en charge</dt>
-          <dd className="tabular">{d.trip_day ? `${d.trip_day} ${d.trip_time}` : "—"}</dd>
-          {cleanVias(d.via_stations).length ? (
-            <>
-              <dt className="text-fg-muted">Via</dt>
-              <dd data-testid="preview-via">{cleanVias(d.via_stations).join(" → ")}</dd>
-            </>
-          ) : null}
-          {d.is_pmr && d.pmr_file ? (
-            <>
-              <dt className="text-fg-muted">N° de dossier</dt>
-              <dd className="font-mono tabular">{d.pmr_file}</dd>
-            </>
-          ) : null}
-          <dt className="text-fg-muted">Retour</dt>
-          <dd className="tabular">{d.round_trip ? `${d.return_day} ${d.return_time}` : "Non"}</dd>
-          <dt className="text-fg-muted">Passager</dt>
-          <dd>{summary.passager}</dd>
-          <dt className="text-fg-muted">Taxi</dt>
-          <dd>{company?.name ?? "—"}</dd>
-          <dt className="text-fg-muted">Facturation</dt>
-          <dd>{d.billing}</dd>
-        </dl>
-        <PdfLink href={orderId ? `/api/commandes/taxi/${orderId}/pdf` : ""} />
+      {/* Aperçu en billet (v4 lot 4) : le bon lui-même, itinéraire en pointillés (départ, via, arrivée). */}
+      <aside className="hidden lg:sticky lg:top-20 lg:block" aria-label="Aperçu du bon">
+        <OrderTicket
+          data-testid="order-ticket"
+          eyebrow={`Aperçu du bon${number ? ` · taxi n° ${number}` : ""}`}
+          route={`${d.from_station || "Départ"} → ${d.to_station || "Arrivée"}`}
+          when={taxiWhen(d)}
+          rows={[
+            ...(d.train_number
+              ? [{ label: "Train", value: <TrainChip train={d.train_number} size="sm" /> }]
+              : []),
+            ...(cleanVias(d.via_stations).length
+              ? [
+                  {
+                    label: "Via",
+                    value: cleanVias(d.via_stations).join(" → "),
+                    testId: "preview-via",
+                  },
+                ]
+              : []),
+            ...(d.is_pmr && d.pmr_file
+              ? [
+                  {
+                    label: "N° de dossier",
+                    value: <span className="font-mono tabular">{d.pmr_file}</span>,
+                  },
+                ]
+              : []),
+            {
+              label: "Retour",
+              value: (
+                <span className="tabular">
+                  {d.round_trip ? `${d.return_day} ${d.return_time}` : "Non"}
+                </span>
+              ),
+            },
+            { label: "Passager", value: summary.passager },
+            company
+              ? { label: "Taxi", value: company.name }
+              : { label: "Taxi", value: "à choisir", tone: "danger" as const },
+            { label: "Facturation", value: d.billing },
+          ]}
+          stops={
+            d.from_station && d.to_station
+              ? [d.from_station, ...cleanVias(d.via_stations), d.to_station]
+              : []
+          }
+          pdfHref={orderId ? `/api/commandes/taxi/${orderId}/pdf` : ""}
+        />
       </aside>
 
       <SendDialog
@@ -612,6 +651,16 @@ export function TaxiForm(props: TaxiFormProps) {
       <TemplateDialog open={tplOpen} onOpenChange={setTplOpen} kind="taxi" data={d} />
     </div>
   );
+}
+
+/** « jeudi 15 octobre 2026 · prise en charge 16:00 ». */
+function taxiWhen(d: TaxiDraft): string {
+  return [
+    d.trip_day ? formatLongDay(d.trip_day) : "",
+    d.trip_time ? `prise en charge ${d.trip_time}` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 /**

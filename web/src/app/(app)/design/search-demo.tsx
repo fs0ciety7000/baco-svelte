@@ -6,7 +6,7 @@ import { StationInput } from "@/components/orders/station-input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CheckboxGroup } from "@/components/ui/checkbox-group";
 import { Combobox } from "@/components/ui/combobox";
-import { DistrictPicker } from "@/components/ui/district-picker";
+import { DistrictMenu, DistrictPicker } from "@/components/ui/district-picker";
 import { DISTRICT_NAME_OPTIONS } from "@/lib/district-param";
 import { Field } from "@/components/ui/field";
 import type { ListOption } from "@/components/ui/listbox";
@@ -116,6 +116,10 @@ export function SearchDemo() {
               mine={["DSO", "DSE"]}
               data-testid="demo-district-picker"
             />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <p className="text-small text-fg-muted">Districts en menu (barre d&apos;outils PMR)</p>
+            <DistrictMenu name="demo-district" mine={["DSO"]} defaultValues={["DSO"]} />
           </div>
           <div className="flex flex-col gap-1.5">
             <p className="text-small text-fg-muted">Districts d&apos;un compte (sans « Tous »)</p>

@@ -49,6 +49,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/toast";
 import { Tooltip } from "@/components/ui/tooltip";
 import { TrainChip } from "@/components/ui/train-chip";
+import { SegmentedNav } from "@/components/ui/filters";
+import { OrderTicket } from "@/components/orders/order-ticket";
 import { contrast } from "@/design/contrast";
 import type { UiPreferences } from "@/design/preferences";
 import {
@@ -650,6 +652,33 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
       </Section>
 
       <Section id="etats" title="États vides et chargement">
+        {/* v4 lot 4 : ligne vide dans le cadre de la liste, période en contrôle segmenté de navigation. */}
+        <SegmentedNav
+          label="Période"
+          items={[
+            { label: "Aujourd'hui", href: "/design#etats", current: true },
+            { label: "Demain", href: "/design?p=demain#etats", current: false },
+            { label: "7 jours", href: "/design?p=7j#etats", current: false },
+          ]}
+        />
+        <EmptyState
+          framed
+          title="Aucune mission"
+          description="Aucune mission PMR pour ces filtres."
+        />
+        <div className="max-w-sm">
+          <OrderTicket
+            eyebrow="Aperçu du bon · C3 n° 529"
+            route="Quiévrain → Mons"
+            when="jeudi 15 octobre 2026 · départ 15:30"
+            rows={[
+              { label: "Type", value: "Remplacement" },
+              { label: "Société", value: "à choisir", tone: "danger" },
+            ]}
+            stops={["Quiévrain", "Thulin", "Boussu", "Mons"]}
+            pdfHref=""
+          />
+        </div>
         <Card>
           <CardHeader title="Missions impactées" count={0} />
           <CardContent>

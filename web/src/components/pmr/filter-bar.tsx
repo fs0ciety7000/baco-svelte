@@ -1,17 +1,18 @@
 import { EyeOff, Search } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { DateRangePicker } from "@/components/ui/date-field";
 import { FilterForm } from "@/components/ui/filter-form";
 import {
-  ChipRow,
   ClearFilters,
   CollapsibleFilters,
   FilterChip,
   FilterSubmit,
+  SegmentedNav,
 } from "@/components/ui/filters";
 import { CheckboxGroup } from "@/components/ui/checkbox-group";
-import { DistrictPicker } from "@/components/ui/district-picker";
+import { DistrictMenu } from "@/components/ui/district-picker";
 import { Input } from "@/components/ui/input";
 import { isAllDistricts } from "@/lib/district-param";
 import { districtCodes, normalizeDistricts } from "@/lib/pmr/district-filter";
@@ -31,13 +32,28 @@ export type PmrFilters = {
 
 export const hideCancelled = (f: PmrFilters) => f.annulees === "masquees";
 
-/** Filtres des missions PMR en GET (URL partageable, sans JS) + raccourcis de dates. */
+/** Nombre de filtres repliés actifs (puce « Filtres (n) ») : statuts cochés, annulées masquées, période libre. */
+export function foldedFilterCount(input: {
+  statuses: number;
+  hideCancelled: boolean;
+  customPeriod: boolean;
+}): number {
+  return input.statuses + Number(input.hideCancelled) + Number(input.customPeriod);
+}
+
+/**
+ * Barre d'outils des Missions PMR et des Groupes (v4 lot 4, 15 oct. 2026), filtres en GET (URL partageable, sans JS).
+ * Desktop : une ligne — période en contrôle segmenté, districts en menu, recherche, « Filtres (n) » qui replie le reste
+ * (statuts, plage de dates, « Masquer les annulées »), actions à droite (Export ALEA). Mobile : période, recherche, puis
+ * districts et filtres ; le premier résultat arrive bien plus haut qu'avec les quatre rangées de filtres.
+ */
 export function PmrFilterBar({
   action,
   filters,
   shortcuts,
   statuses = ASSIST_STATUSES,
   myDistricts = "",
+  actions,
 }: {
   action: string;
   filters: PmrFilters;
@@ -46,9 +62,11 @@ export function PmrFilterBar({
   statuses?: readonly string[];
   /**
    * Districts du jour de l'agent (codes, « DSO,DSE ») : filtre par défaut des Missions PMR et des Groupes. Avec cette
-   * prop, le `DistrictPicker` propose la puce « Mes districts » (district explicite dans l'URL).
+   * prop, le menu des districts propose « Mes districts » (district explicite dans l'URL).
    */
   myDistricts?: string;
+  /** Actions à droite de la barre (Export ALEA). */
+  actions?: ReactNode;
 }) {
   const hidden = hideCancelled(filters);
   const checked = parseStatuses(filters.statut, statuses);
@@ -73,25 +91,70 @@ export function PmrFilterBar({
     ),
   );
   toggle.set("annulees", hidden ? "affichees" : "masquees");
+  const period = shortcuts.map((s) => ({
+    label: s.label,
+    href: `${action}?${new URLSearchParams({ ...keep, du: s.du, au: s.au })}`,
+    current: filters.du === s.du && (filters.au ?? s.du) === s.au,
+  }));
+  const folded = foldedFilterCount({
+    statuses: checked.length,
+    hideCancelled: hidden,
+    customPeriod: !period.some((p) => p.current),
+  });
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
-        <ChipRow aria-label="Raccourcis de dates" className="max-w-full min-w-0">
-          {shortcuts.map((s) => {
-            const active = filters.du === s.du && (filters.au ?? s.du) === s.au;
-            return (
-              <FilterChip key={s.label} asChild pressed={active}>
-                <Link
-                  href={`${action}?${new URLSearchParams({ ...keep, du: s.du, au: s.au })}`}
-                  aria-current={active ? "true" : undefined}
-                >
-                  {s.label}
-                </Link>
-              </FilterChip>
-            );
-          })}
-        </ChipRow>
-        <span aria-hidden className="hidden h-5 w-px shrink-0 bg-border sm:block" />
+    <FilterForm
+      action={action}
+      role="search"
+      className="flex flex-wrap items-center gap-2"
+      data-testid="pmr-toolbar"
+    >
+      <input type="hidden" name="annulees" value={hidden ? "masquees" : "affichees"} />
+      <SegmentedNav label="Période" items={period} data-testid="period" className="md:order-1" />
+      {/* Mobile : période, recherche, puis districts / filtres / actions ; desktop : période, districts, recherche. */}
+      <label className="relative min-w-0 basis-full md:order-3 md:w-64 md:basis-auto">
+        <span className="sr-only">Recherche</span>
+        <Search
+          aria-hidden
+          className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted"
+        />
+        <Input
+          name="q"
+          defaultValue={filters.q}
+          placeholder="Gare, train, réf. DICOS…"
+          className="pl-9"
+          maxLength={60}
+        />
+      </label>
+      <div className="min-w-0 md:order-2">
+        {/* Districts en menu (un, plusieurs ou tous) ; « Mes districts » = districts du jour. */}
+        <DistrictMenu
+          name="district"
+          label="Districts"
+          defaultValues={districtCodes(current)}
+          emptyValue="tous"
+          mine={districtCodes(myDistricts)}
+          data-testid="district-picker"
+        />
+      </div>
+      <CollapsibleFilters always active={folded} toggleClassName="md:order-4">
+        {/* Plusieurs statuts à la fois (12 oct. 2026) ; aucune case = tous. */}
+        <CheckboxGroup
+          legend="Statut"
+          name="statut"
+          options={statuses.map((s) => ({
+            value: s,
+            label: ASSIST_STATUS[s as keyof typeof ASSIST_STATUS]?.label ?? s,
+          }))}
+          defaultValues={checked}
+        />
+        <DateRangePicker
+          nameFrom="du"
+          nameTo="au"
+          defaultFrom={filters.du ?? ""}
+          defaultTo={filters.au ?? ""}
+          presets={["today", "tomorrow", "7d", "week"]}
+          fieldClassName="md:w-40"
+        />
         <FilterChip asChild pressed={hidden}>
           <Link
             href={`${action}?${toggle}`}
@@ -103,69 +166,12 @@ export function PmrFilterBar({
             Masquer les annulées
           </Link>
         </FilterChip>
-      </div>
-      <FilterForm
-        action={action}
-        role="search"
-        className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end"
-      >
-        <input type="hidden" name="annulees" value={hidden ? "masquees" : "affichees"} />
-        <label className="col-span-2 flex min-w-0 flex-col gap-1 md:w-60">
-          <span className="text-small text-fg-muted">Recherche</span>
-          <span className="relative">
-            <Search
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted"
-            />
-            <Input
-              name="q"
-              defaultValue={filters.q}
-              placeholder="Gare, train, réf. DICOS…"
-              className="pl-9"
-              maxLength={60}
-            />
-          </span>
-        </label>
-        {/* Districts en puces (refonte R4) : un, plusieurs ou « Tous » ; « Mes districts » = districts du jour. */}
-        <div className="col-span-2 flex min-w-0 flex-col gap-1 md:w-auto">
-          <span className="text-small text-fg-muted" id="pmr-district-label">
-            District
-          </span>
-          <DistrictPicker
-            name="district"
-            label="District"
-            defaultValues={districtCodes(current)}
-            emptyValue="tous"
-            mine={districtCodes(myDistricts)}
-            data-testid="district-picker"
-          />
-        </div>
-        <CollapsibleFilters active={[statut].filter(Boolean).length}>
-          {/* Plusieurs statuts à la fois (12 oct. 2026) ; aucune case = tous. */}
-          <CheckboxGroup
-            legend="Statut"
-            name="statut"
-            className="col-span-2 md:col-span-1"
-            options={statuses.map((s) => ({
-              value: s,
-              label: ASSIST_STATUS[s as keyof typeof ASSIST_STATUS]?.label ?? s,
-            }))}
-            defaultValues={checked}
-          />
-          <DateRangePicker
-            nameFrom="du"
-            nameTo="au"
-            defaultFrom={filters.du ?? ""}
-            defaultTo={filters.au ?? ""}
-            presets={["today", "tomorrow", "7d", "week"]}
-            fieldClassName="md:w-40"
-          />
-          <div className="col-span-2 flex gap-2">
-            <FilterSubmit />
-            <ClearFilters href={action} />
-          </div>
-        </CollapsibleFilters>
-      </FilterForm>
-    </div>
+        <ClearFilters href={action} />
+      </CollapsibleFilters>
+      {actions ? (
+        <div className="ml-auto flex flex-wrap items-center gap-2 md:order-5">{actions}</div>
+      ) : null}
+      <FilterSubmit />
+    </FilterForm>
   );
 }

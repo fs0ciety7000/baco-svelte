@@ -195,23 +195,30 @@ function FormSection({
           onClick={() => setOpen((o) => !o)}
           className="flex min-h-12 w-full cursor-pointer items-center gap-3 px-4 py-2 text-left md:cursor-default"
         >
+          {/* v4 lot 4 : numéro en pastille teintée (verte = complète, rouge = à compléter), comme le rail d'étapes. */}
           <span
             className={cn(
-              "label-mono grid size-6 shrink-0 place-items-center rounded-pill border",
+              "grid size-6 shrink-0 place-items-center rounded-pill text-label font-semibold tabular",
               state === "error"
-                ? "border-danger text-danger"
+                ? "bg-[color-mix(in_oklab,var(--danger)_var(--tint,12%),var(--surface))] text-danger"
                 : state === "complete"
-                  ? "border-ok text-ok"
-                  : "border-border-strong text-fg-muted",
+                  ? "bg-[color-mix(in_oklab,var(--ok)_var(--tint,12%),var(--surface))] text-ok"
+                  : "bg-surface-3 text-fg-muted",
             )}
             aria-hidden
           >
-            {state === "complete" ? <Check className="size-3.5" /> : index}
+            {state === "complete" ? <Check className="size-3.5" strokeWidth={3} /> : index}
           </span>
-          <span className="flex min-w-0 flex-1 flex-col">
-            <span className="text-body font-semibold text-fg">{title}</span>
+          <span className="flex min-w-0 flex-1 flex-col md:flex-row md:items-baseline md:gap-3">
+            <span className="shrink-0 text-body font-semibold text-fg">{title}</span>
             {summary && !open ? (
               <span className="truncate text-small text-fg-muted md:hidden">{summary}</span>
+            ) : null}
+            {/* Desktop : résumé de la section à droite du titre (« Remplacement · 15/10/2026 »). */}
+            {summary ? (
+              <span className="hidden min-w-0 flex-1 truncate text-right text-small text-fg-subtle md:block">
+                {summary}
+              </span>
             ) : null}
           </span>
           {state === "error" ? <span className="sr-only">(à compléter)</span> : null}

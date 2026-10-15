@@ -44,8 +44,13 @@ import {
 } from "@/lib/orders/stops";
 import { stationsFromTrain, type TrainRoute } from "@/lib/orders/train-route";
 import { useAutosave } from "@/lib/orders/use-autosave";
+import { BUS_STEPS, sectionState, stepStates } from "@/lib/orders/steps";
+import { formatLongDay } from "@/lib/orders/time";
+import { TrainChip } from "@/components/ui/train-chip";
 
-import { PdfLink, SendDialog } from "./send-dialog";
+import { SendDialog } from "./send-dialog";
+import { OrderSteps } from "./order-steps";
+import { OrderTicket } from "./order-ticket";
 import { StartPanel, type StartPanelProps } from "./start-panel";
 import { OrderActionBar } from "./order-action-bar";
 import { useFormDeletion } from "./delete-order";
@@ -134,6 +139,13 @@ export function BusForm(props: BusFormProps) {
   );
   const err = (field: string) =>
     showErrors ? missing.find((m) => m.field === field)?.message : undefined;
+  // Rail d'étapes (v4 lot 4) : mêmes champs manquants que la validation d'envoi.
+  const steps = useMemo(() => stepStates(BUS_STEPS, missing), [missing]);
+  const stepOf = (id: string) =>
+    sectionState(
+      steps.find((s) => s.id === id),
+      showErrors,
+    );
 
   // Trajet tiré du référentiel des trains (14 oct. 2026) : le serveur cherche les trains qui passent par les deux gares
   // (Server Action, le navigateur ne reçoit que le résultat) ; repli sur le réseau des lignes (`routeBetween`) quand aucun
@@ -376,7 +388,9 @@ export function BusForm(props: BusFormProps) {
   };
 
   return (
-    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,45rem)_minmax(16rem,1fr)] lg:items-start lg:gap-6">
+    // v4 lot 4 : rail d'étapes collant (≥ 1280 px) | formulaire en cartes | aperçu en billet (≥ 1024 px).
+    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,45rem)_minmax(16rem,1fr)] lg:items-start lg:gap-6 xl:grid-cols-[9.5rem_minmax(0,46rem)_minmax(17rem,21rem)] xl:gap-5">
+      <OrderSteps steps={steps} className="sticky top-20 hidden xl:flex" />
       <form
         className="flex min-w-0 flex-col gap-3"
         aria-label="Bon de commande bus"
@@ -390,7 +404,7 @@ export function BusForm(props: BusFormProps) {
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-3">
-            <span className="label-mono text-fg-muted" data-testid="order-number">
+            <span className="text-h3 font-semibold text-fg tabular" data-testid="order-number">
               {number ? `C3 n° ${number}` : "Nouveau bon"}
             </span>
             <StatusBadge status={props.status} />
@@ -412,14 +426,25 @@ export function BusForm(props: BusFormProps) {
           </p>
         ) : null}
 
+        {/* Mobile : l'aperçu passe en tête, en version compacte (trajet, date, PDF). */}
+        <OrderTicket
+          compact
+          className="lg:hidden"
+          eyebrow={`Aperçu du bon${number ? ` · C3 n° ${number}` : ""}`}
+          route={`${d.origin || "Origine"} → ${d.destination || "Destination"}`}
+          when={busWhen(d)}
+          pdfHref={orderId ? `/api/commandes/bus/${orderId}/pdf` : ""}
+        />
+
         {!orderId && props.start && editable ? <StartPanel kind="bus" {...props.start} /> : null}
 
         <fieldset disabled={!editable} className="contents">
           <FormSection
+            id="bon-incident"
             index={1}
             title="Incident"
             summary={summary.incident}
-            state={err("reason") || err("order_date") ? "error" : undefined}
+            state={stepOf("bon-incident")}
           >
             <Segmented
               label="Type C3"
@@ -455,10 +480,11 @@ export function BusForm(props: BusFormProps) {
           </FormSection>
 
           <FormSection
+            id="bon-trajet"
             index={2}
             title="Trajet"
             summary={summary.trajet}
-            state={err("origin") || err("destination") ? "error" : undefined}
+            state={stepOf("bon-trajet")}
           >
             <TrainNumberField
               value={d.train_number}
@@ -637,10 +663,11 @@ export function BusForm(props: BusFormProps) {
           </FormSection>
 
           <FormSection
+            id="bon-fournisseur"
             index={3}
             title="Fournisseur"
             summary={summary.fournisseur}
-            state={err("company") ? "error" : undefined}
+            state={stepOf("bon-fournisseur")}
           >
             <Field
               label="Société"
@@ -688,10 +715,11 @@ export function BusForm(props: BusFormProps) {
           </FormSection>
 
           <FormSection
+            id="bon-bus"
             index={4}
             title="Bus"
             summary={summary.bus}
-            state={err("buses") ? "error" : undefined}
+            state={stepOf("bon-bus")}
           >
             <ol className="flex flex-col gap-3">
               {d.buses.map((b, i) => (
@@ -828,6 +856,7 @@ export function BusForm(props: BusFormProps) {
           </FormSection>
 
           <FormSection
+            id="bon-options"
             index={5}
             title="Options"
             summary="Voyageurs, PMR, notes"
@@ -884,10 +913,7 @@ export function BusForm(props: BusFormProps) {
         />
       </form>
 
-      <aside
-        className="hidden flex-col gap-3 lg:sticky lg:top-20 lg:flex"
-        aria-label="Aperçu du bon"
-      >
+      <aside className="hidden lg:sticky lg:top-20 lg:block" aria-label="Aperçu du bon">
         <BusPreview draft={d} companyName={company?.name ?? ""} number={number} orderId={orderId} />
       </aside>
 
@@ -906,6 +932,15 @@ export function BusForm(props: BusFormProps) {
   );
 }
 
+/** « jeudi 15 octobre 2026 · départ 15:30 » (date de circulation et premier départ prévu). */
+function busWhen(d: BusDraft): string {
+  const first = d.buses.find((b) => !b.cancelled && b.planned)?.planned;
+  return [d.order_date ? formatLongDay(d.order_date) : "", first ? `départ ${first}` : ""]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** Aperçu du bon bus en forme de billet (v4 lot 4) : le bon lui-même, itinéraire en pointillés de gares. */
 function BusPreview({
   draft: d,
   companyName,
@@ -918,52 +953,45 @@ function BusPreview({
   orderId: string | null;
 }) {
   const active = d.buses.filter((b) => !b.cancelled);
-  const stops = d.direct
-    ? []
-    : d.stops_mode === "manuel"
-      ? d.stops_manual.split("\n").filter(Boolean)
-      : d.stops;
+  const stops = d.stops_mode === "manuel" ? d.stops_manual.split("\n").filter(Boolean) : d.stops;
+  const route = d.origin && d.destination ? [d.origin, ...stops, d.destination] : [];
   return (
-    <div className="flex flex-col gap-3 border border-border bg-surface p-4">
-      <p className="label-mono text-fg-muted">Aperçu du bon {number ? `n° ${number}` : ""}</p>
-      <p className="display text-h3 text-fg">
-        {d.origin || "Origine"} → {d.destination || "Destination"}
-      </p>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-small">
-        <dt className="text-fg-muted">Type</dt>
-        <dd>{C3_TYPES.find((t) => t.value === d.c3_type)?.label}</dd>
-        <dt className="text-fg-muted">Date</dt>
-        <dd className="tabular">{d.order_date || "—"}</dd>
-        {d.train_number ? (
-          <>
-            <dt className="text-fg-muted">Train</dt>
-            <dd className="tabular">{d.train_number}</dd>
-          </>
-        ) : null}
-        <dt className="text-fg-muted">Desserte</dt>
-        <dd>
-          {d.direct
-            ? "Direct"
-            : `Omnibus${stops.length ? ` · ${stops.length} ${pl(stops.length, "arrêt")}` : ""}`}
-          {d.round_trip ? " · A-R" : ""}
-        </dd>
-        <dt className="text-fg-muted">Société</dt>
-        <dd>{companyName || "—"}</dd>
-        <dt className="text-fg-muted">Bus</dt>
-        <dd className="tabular">
-          {active.length} × {d.bus_capacity} places
-          {active[0]?.planned ? ` · ${active.map((b) => b.planned || "—").join(", ")}` : ""}
-        </dd>
-      </dl>
-      {stops.length ? (
-        <p className="text-small text-fg-muted">Arrêts : {stops.join(" · ")}</p>
-      ) : null}
-      <PdfLink href={orderId ? `/api/commandes/bus/${orderId}/pdf` : ""} />
-      <p className="text-hint text-fg-muted">
-        Raccourci : <kbd className="font-mono">Ctrl</kbd> + <kbd className="font-mono">Entrée</kbd>{" "}
-        pour préparer l&apos;envoi.
-      </p>
-    </div>
+    <OrderTicket
+      data-testid="order-ticket"
+      eyebrow={`Aperçu du bon${number ? ` · C3 n° ${number}` : ""}`}
+      route={`${d.origin || "Origine"} → ${d.destination || "Destination"}`}
+      when={busWhen(d)}
+      rows={[
+        { label: "Type", value: C3_TYPES.find((t) => t.value === d.c3_type)?.label ?? "—" },
+        ...(d.train_number
+          ? [{ label: "Train", value: <TrainChip train={d.train_number} size="sm" /> }]
+          : []),
+        {
+          label: "Desserte",
+          value: `${d.direct ? "Direct" : "Omnibus"}${stops.length ? ` · ${stops.length} ${pl(stops.length, "arrêt")}` : ""}${d.round_trip ? " · A-R" : ""}`,
+        },
+        companyName
+          ? { label: "Société", value: companyName }
+          : { label: "Société", value: "à choisir", tone: "danger" as const },
+        {
+          label: "Bus",
+          value: (
+            <span className="tabular">
+              {active.length} × {d.bus_capacity} places
+              {active[0]?.planned ? ` · ${active.map((b) => b.planned || "—").join(", ")}` : ""}
+            </span>
+          ),
+        },
+      ]}
+      stops={route}
+      pdfHref={orderId ? `/api/commandes/bus/${orderId}/pdf` : ""}
+      footer={
+        <p className="text-hint text-fg-muted">
+          Raccourci : <kbd className="font-mono">Ctrl</kbd> +{" "}
+          <kbd className="font-mono">Entrée</kbd> pour préparer l&apos;envoi.
+        </p>
+      }
+    />
   );
 }
 

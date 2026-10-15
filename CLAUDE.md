@@ -1333,6 +1333,14 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   (le test importait sinon une Server Action « server-only »). Restent : écrans (lot 4, en parallèle), mouvement (5), reste (6).
 
 - 2026-10-15 — **Retours sur le lot 3** : pas de compteur sur l'Accueil dans la barre latérale ; **pastille « Flux » sur le rail** (768-1279 px : une pastille par source, détail en infobulle et pour les lecteurs d'écran, `feed-rail`).
+- 2026-10-15 — **Refonte v4, lot 4 « Écrans clés »** (réponses par défaut validées) : **Accueil** (date + service du jour,
+  file « À traiter » groupée Urgent / À faire aujourd'hui / Pour information, logique pure `todoItems` / `groupTodo` /
+  `primaryTodo` testée, une action nommée par ligne et une seule primaire, colonne droite ≥ 1280 px « Fin de service » +
+  « Prochaines prises en charge », widgets gardés dessous) ; **Missions PMR / Groupes / Historique** (barre d'outils sur une
+  ligne : `SegmentedNav` période, `DistrictMenu`, recherche, `CollapsibleFilters always` « Filtres (n) », ALEA à droite ;
+  `StationCell` : sens dans la cellule de gare) ; **bons bus / taxi** (rail d'étapes `OrderSteps` ≥ 1280 px,
+  `lib/orders/steps.ts` testé, aperçu en billet `OrderTicket`, compact en tête en mobile, barre d'actions flottante +
+  `scroll-padding-bottom`) ; `EmptyState framed`. Aucune logique métier changée. Captures hors dépôt (`design-v4/lot4/`).
 
 ---
 

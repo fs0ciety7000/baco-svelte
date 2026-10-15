@@ -23,6 +23,10 @@ const busOrderSchema = z.object({
   origin: z.string().default(""),
   destination: z.string().default(""),
   bus_count: z.number().default(0),
+  /** N° C3 (accueil « À traiter », v4). */
+  number: z.number().default(0),
+  /** Fin du service (bus démobilisés) : ancienneté du bon à envoyer. */
+  ended_at: z.string().default(""),
   created: z.string(),
   updated: z.string(),
 });

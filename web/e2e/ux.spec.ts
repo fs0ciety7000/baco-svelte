@@ -56,10 +56,15 @@ test("« Masquer les annulées » se bascule, garde les filtres et reste mémori
 }) => {
   await login(page, "/pmr");
   const chip = () => page.getByTestId("hide-cancelled");
+  // v4 lot 4 : « Masquer les annulées » est dans le panneau « Filtres (n) » de la barre d'outils.
+  const openFilters = async () => {
+    if (!(await chip().isVisible())) await page.getByTestId("filters-toggle").click();
+  };
   // Point de départ connu : annulées affichées.
   await page.goto("/pmr?annulees=affichees");
   await expect(chip()).toHaveAttribute("aria-pressed", "false");
   await page.goto("/pmr?district=DSO");
+  await openFilters();
   await chip().click();
   await expect(page).toHaveURL(/annulees=masquees/);
   await expect(page).toHaveURL(/district=DSO/);
@@ -75,6 +80,7 @@ test("« Masquer les annulées » se bascule, garde les filtres et reste mémori
   await login(page2, "/groupes");
   await expect(page2.getByTestId("hide-cancelled")).toHaveAttribute("aria-pressed", "true");
   await other.close();
+  await openFilters();
   await chip().click();
   await expect(page).toHaveURL(/annulees=affichees/);
   await page.goto("/pmr");
