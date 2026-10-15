@@ -69,6 +69,7 @@ export default async function AccueilPage() {
         mentions: notifs ? notifs.items : null,
         shift: parseShift(prefs.shift),
         quinyx: quinyxShift,
+        renderedAt: Date.now(),
       }}
       initialLayout={normalizeLayout(prefs.dashboard)}
     />

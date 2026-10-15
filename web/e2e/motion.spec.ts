@@ -145,3 +145,42 @@ test("changer un filtre ne recharge pas la page", async ({ page }) => {
   );
   expect(same, "navigation côté client attendue (next/form)").toBe(true);
 });
+
+// Saisie « en direct » (FormAutoSubmit live) : au remontage du formulaire, le champ focalisé émettait `change` pendant le
+// commit de React et le formulaire partait en soumission native (navigation document complète, 15 oct. 2026).
+for (const { path, field } of [
+  { path: "/reseau/gares", field: "q" },
+  { path: "/reseau/horaires", field: "q" },
+  { path: "/reseau/lignes", field: "gare" },
+]) {
+  test(`la recherche pendant la frappe ne recharge pas la page (${path})`, async ({ page }) => {
+    await login(page);
+    await page.goto(path);
+    const box = page.locator(`main form input[name="${field}"]`).first();
+    await box.waitFor();
+    await page.evaluate(() => {
+      (window as unknown as { __sameDocument: boolean }).__sameDocument = true;
+    });
+    let documents = 0;
+    page.on("request", (r) => {
+      if (r.isNavigationRequest() && r.frame() === page.mainFrame()) documents += 1;
+    });
+    await box.click();
+    await box.pressSequentially("mon", { delay: 60 });
+    await expect(page).toHaveURL(new RegExp(`[?&]${field}=mon`));
+    // La soumission native partait juste après la réponse RSC : lui laisser le temps de partir.
+    await page.waitForTimeout(1200);
+    const same = await page.evaluate(
+      () => (window as unknown as { __sameDocument?: boolean }).__sameDocument === true,
+    );
+    expect(same, "navigation côté client attendue (next/form)").toBe(true);
+    expect(documents, "aucune navigation document").toBe(0);
+    // Focus et curseur rendus au champ du formulaire remonté.
+    const fresh = page.locator(`main form input[name="${field}"]`).first();
+    await expect(fresh).toBeFocused();
+    expect(await fresh.evaluate((el: HTMLInputElement) => [el.value, el.selectionStart])).toEqual([
+      "mon",
+      3,
+    ]);
+  });
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 
 // Après une soumission « en direct », le formulaire est remonté (FilterForm a pour clé les paramètres d'URL) : le champ
 // en cours de saisie et la position du curseur sont rendus au nouveau formulaire.
@@ -12,10 +12,17 @@ const g = globalThis as { __csmLiveFocus?: { path: string; name: string; pos: nu
  * (bouton Filtrer conservé). Retour utilisateur du 8 oct. 2026 : « il faudrait que ça filtre automatiquement ».
  * `live` : la recherche texte part aussi pendant la frappe (après 450 ms sans touche), retour du 14 oct. 2026 : une
  * abréviation tapée (« fcr ») ne donnait rien tant qu'on n'appuyait pas sur Entrée.
+ *
+ * Écouteurs posés et RETIRÉS en effet de mise en page (15 oct. 2026) : au remontage du formulaire, React retire l'ancien
+ * du DOM avec le champ encore focalisé ; le navigateur émet alors `blur` puis `change` sur ce champ, et le
+ * `requestSubmit()` qui suivait partait pendant le commit de React, sans que `next/form` puisse l'intercepter →
+ * soumission native, navigation document complète (Réseau › Gares, Horaires, Lignes). Le nettoyage d'un effet de mise
+ * en page passe avant le retrait du DOM, celui d'un `useEffect` après. En saisie en direct, `change` d'un champ texte est
+ * en plus ignoré : la frappe a déjà sa minuterie.
  */
 export function FormAutoSubmit({ live = false }: { live?: boolean }) {
   const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const form = ref.current?.closest("form");
     if (!form) return;
     const saved = g.__csmLiveFocus;
@@ -32,6 +39,9 @@ export function FormAutoSubmit({ live = false }: { live?: boolean }) {
       const t = e.target as HTMLInputElement | null;
       // Une date en cours de saisie au clavier (valeur partielle) ne déclenche pas la recherche.
       if (t?.type === "date" && t.value && !t.checkValidity()) return;
+      if (live && t instanceof HTMLInputElement && ["text", "search"].includes(t.type) && t.name)
+        return;
+      if (!form.isConnected) return;
       form.requestSubmit();
     };
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -46,7 +56,7 @@ export function FormAutoSubmit({ live = false }: { live?: boolean }) {
           name: t.name,
           pos: t.selectionStart ?? t.value.length,
         };
-        form.requestSubmit();
+        if (form.isConnected) form.requestSubmit();
       }, 450);
     };
     form.addEventListener("change", onChange);

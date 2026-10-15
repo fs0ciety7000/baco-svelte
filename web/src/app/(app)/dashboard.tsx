@@ -85,6 +85,8 @@ export type OpsDigest = {
   mentions: Notification[] | null;
   shift: ShiftChoice | null;
   quinyx: QuinyxShift | null;
+  /** Heure du rendu serveur (ms), premier rendu du widget « Fin de service » identique serveur / client. */
+  renderedAt: number;
 };
 
 function WidgetBody({
@@ -100,7 +102,7 @@ function WidgetBody({
   const router = useRouter();
   switch (id) {
     case "service":
-      return <ShiftWidget initial={ops.shift} quinyx={ops.quinyx} />;
+      return <ShiftWidget initial={ops.shift} quinyx={ops.quinyx} renderedAt={ops.renderedAt} />;
     case "commandes":
       if (!stats)
         return (
@@ -453,7 +455,11 @@ export function Dashboard({
                   <Card className="min-w-0">
                     <CardHeader title="Fin de service" />
                     <CardContent className="pt-3">
-                      <ShiftWidget initial={ops.shift} quinyx={ops.quinyx} />
+                      <ShiftWidget
+                        initial={ops.shift}
+                        quinyx={ops.quinyx}
+                        renderedAt={ops.renderedAt}
+                      />
                     </CardContent>
                   </Card>
                 ) : null}
