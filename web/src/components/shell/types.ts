@@ -18,6 +18,8 @@ export type ShellUser = {
     today: boolean;
     /** Proposition d'après la prestation Quinyx du jour (l'agent garde la main). */
     suggested?: { districts: string[]; label: string } | null;
+    /** Districts posés d'office d'après la prestation Quinyx du jour (libellé de la prestation). */
+    auto?: string | null;
   } | null;
 };
 

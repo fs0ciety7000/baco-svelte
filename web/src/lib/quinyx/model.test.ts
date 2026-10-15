@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  pickDutyShift,
   currentShift,
   isCapturedCode,
   mapQuinyxBatch,
@@ -313,5 +314,36 @@ describe("quinyxGroupId", () => {
     expect(quinyxGroupId("https://web.quinyx.com/schedule/990123/")).toBe("990123");
     expect(quinyxGroupId(" 990123 ")).toBe("990123");
     expect(quinyxGroupId("Mons")).toBe("Mons");
+  });
+});
+
+describe("districts du jour d'après Quinyx", () => {
+  // Heures UTC (octobre : Bruxelles = UTC+2).
+  const night = {
+    day: "2026-10-15",
+    start: "2026-10-15T20:00:00Z",
+    end: "2026-10-16T04:00:00Z",
+    d: "DSO",
+  };
+  const am = {
+    day: "2026-10-15",
+    start: "2026-10-15T04:00:00Z",
+    end: "2026-10-15T12:00:00Z",
+    d: "DSE",
+  };
+  it("prend la prestation à venir du jour (nuit de 22:00 vue l'après-midi)", () => {
+    expect(pickDutyShift([night], Date.parse("2026-10-15T13:00:00Z"), "2026-10-15")?.d).toBe("DSO");
+  });
+  it("garde la nuit de la veille tant qu'elle dure, après minuit", () => {
+    expect(pickDutyShift([night], Date.parse("2026-10-16T02:00:00Z"), "2026-10-16")?.d).toBe("DSO");
+  });
+  it("prend la prestation en cours (AM dès 6:00)", () => {
+    expect(pickDutyShift([am, night], Date.parse("2026-10-15T05:00:00Z"), "2026-10-15")?.d).toBe(
+      "DSE",
+    );
+  });
+  it("après la dernière prestation du jour, la garde ; aucune = rien", () => {
+    expect(pickDutyShift([am], Date.parse("2026-10-15T15:00:00Z"), "2026-10-15")?.d).toBe("DSE");
+    expect(pickDutyShift([], Date.now(), "2026-10-15")).toBeNull();
   });
 });

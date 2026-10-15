@@ -90,10 +90,13 @@ export function DutyChip({
   districts,
   today,
   suggested = null,
+  auto = null,
 }: {
   districts: string[];
   today: boolean;
   suggested?: { districts: string[]; label: string } | null;
+  /** Districts posés d'office d'après la prestation Quinyx du jour (libellé de la prestation). */
+  auto?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
@@ -125,7 +128,12 @@ export function DutyChip({
             ? "border-transparent bg-surface-2 text-fg hover:bg-surface-3"
             : "border-[color-mix(in_oklab,var(--warn)_45%,transparent)] bg-[color-mix(in_oklab,var(--warn)_var(--tint),var(--surface))] text-fg hover:border-warn",
         )}
-        title="Districts où je travaille aujourd'hui"
+        title={
+          auto
+            ? `Districts du jour d'après Quinyx (${auto}) : clique pour changer`
+            : "Districts où je travaille aujourd'hui"
+        }
+        data-auto={auto ? "quinyx" : undefined}
       >
         <MapPin aria-hidden className="size-3.5" />
         {set ? (
@@ -147,7 +155,13 @@ export function DutyChip({
         open={open}
         onOpenChange={setOpen}
         initial={today ? districts : (suggested?.districts ?? [])}
-        hint={!today && suggested?.districts.length ? suggested.label : undefined}
+        hint={
+          auto
+            ? `Activés d'après ta prestation Quinyx : ${auto}`
+            : !today && suggested?.districts.length
+              ? suggested.label
+              : undefined
+        }
       />
     </>
   );

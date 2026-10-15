@@ -1,11 +1,12 @@
 import "server-only";
 
+import type PocketBase from "pocketbase";
 import type { RecordModel } from "pocketbase";
 import { cache } from "react";
 
 import { anyDistrictFilter } from "@/lib/district-param";
 import { addDays, brusselsDay, pbDate } from "@/lib/orders/time";
-import { agentName, type QuinyxKind } from "@/lib/quinyx/model";
+import { agentName, pickDutyShift, type QuinyxKind } from "@/lib/quinyx/model";
 
 import { pbForRequest } from "./orders";
 
@@ -77,15 +78,23 @@ export async function listPlanning(
   return rows.map(planningShift);
 }
 
-/** Prestations d'un compte CSM (rattachement validé) entre deux jours. */
-export async function myShifts(userId: string, from: string, to: string): Promise<PlanningShift[]> {
-  const pb = await pbForRequest();
+/**
+ * Prestations d'un compte CSM entre deux jours : rattachement validé par l'admin, ou rattachement **proposé** (nom complet
+ * identique et unique, `user_suggested`) tant que l'admin n'a rien validé (15 oct. 2026 : sans validation, les districts du
+ * jour n'étaient jamais proposés). Avec le client donné (getCurrentUser) ou celui de la requête.
+ */
+export async function myShifts(
+  userId: string,
+  from: string,
+  to: string,
+  client?: PocketBase,
+): Promise<PlanningShift[]> {
+  const pb = client ?? (await pbForRequest());
   const rows = await pb.collection("quinyx_shifts").getFullList({
-    filter: pb.filter("agent.user = {:u} && agent.confirmed = true && day >= {:f} && day <= {:t}", {
-      u: userId,
-      f: from,
-      t: to,
-    }),
+    filter: pb.filter(
+      "((agent.user = {:u} && agent.confirmed = true) || (agent.confirmed = false && agent.user_suggested = {:u})) && day >= {:f} && day <= {:t}",
+      { u: userId, f: from, t: to },
+    ),
     sort: "start",
     expand: "agent,agent.user",
     fields: SHIFT_FIELDS,
@@ -93,19 +102,18 @@ export async function myShifts(userId: string, from: string, to: string): Promis
   return rows.map(planningShift);
 }
 
-/**
- * Prestation du jour de l'agent : en cours, sinon la prochaine d'aujourd'hui, sinon la dernière d'aujourd'hui (nuit de
- * la veille comprise tant qu'elle dure). Une seule lecture par requête (layout + accueil : `cache`).
- */
-export const todayShiftOf = cache(async (userId: string): Promise<PlanningShift | null> => {
+/** Prestation du jour de l'agent (`pickDutyShift`, lib/quinyx/model.ts). */
+async function shiftOf(userId: string, client?: PocketBase): Promise<PlanningShift | null> {
   const today = brusselsDay();
-  const list = await myShifts(userId, addDays(today, -1), today).catch(() => []);
-  const now = Date.now();
-  const live = list.find((s) => Date.parse(s.start) <= now && now < Date.parse(s.end));
-  if (live) return live;
-  const todays = list.filter((s) => s.day === today);
-  return todays.find((s) => Date.parse(s.start) > now) ?? todays.at(-1) ?? null;
-});
+  const list = await myShifts(userId, addDays(today, -1), today, client).catch(() => []);
+  return pickDutyShift(list, Date.now(), today);
+}
+
+/** Une seule lecture par requête (layout + accueil : `cache`). */
+export const todayShiftOf = cache((userId: string) => shiftOf(userId));
+
+/** Variante pour `getCurrentUser` (client déjà authentifié par le jeton de l'agent). */
+export const dutyShiftOf = cache((userId: string, client: PocketBase) => shiftOf(userId, client));
 
 export type QuinyxSync = { label: string; at: string; from: string; to: string; count: number };
 

@@ -794,13 +794,15 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   un lot à la fois par groupe, `last_sync` posé seulement sans erreur ; prestations gardées seulement si l'agent est
   rattaché, ou proposé, à un compte de l'équipe : `isTeamAccount`, `TEAM_ROLES` ; les autres comptent dans `notTeam`) ;
   routes `api/equipe/quinyx/ingest` (2 Mo, 20 / min / jeton) et `api/equipe/quinyx/config` (groupes activés).
-- Données : `server/data/quinyx.ts` (`listPlanning`, `myShifts` / `todayShiftOf` = rattachement **validé** seulement,
+- Données : `server/data/quinyx.ts` (`listPlanning`, `myShifts` / `todayShiftOf` / `dutyShiftOf` = rattachement validé, ou proposé (`user_suggested`) tant que l'admin n'a rien validé,
   `quinyxSyncs`, `adminQuinyx`). Écrans : `/ressources/planning` (`components/team/planning.tsx` : `PlanningDay`,
   `PlanningWeek` — grille `planning-grid` en desktop, `planning-week-list` en mobile —, `QuinyxFreshness`) ;
   `/admin/quinyx` (`components/admin/quinyx-admin.tsx`, actions `admin/quinyx/actions.ts`, l'adresse
   `…/schedule/<n°>` collée est réduite au numéro, un compte CSM = un agent Quinyx).
-- Districts du jour : `(app)/layout.tsx` → `duty.suggested` (prestation du jour) tant que le jour n'est pas coché ;
-  `DutyChip` / `DutyDialog` pré-cochent et l'expliquent (`duty-quinyx`). Widget « Fin de service » : prop `quinyx`
+- **Districts du jour posés d'office** (15 oct. 2026) : `getCurrentUser` → `applyQuinyxDuty` (`server/auth.ts`) : sans choix de
+  l'agent aujourd'hui, `duty_day` / `duty_districts` pris de la prestation (`pickDutyShift`, `lib/quinyx/model.ts`, testé : en
+  cours, sinon prochaine du jour, sinon dernière du jour) et `SessionUser.dutyFromQuinyx` = libellé ; à la requête seulement,
+  rien en base. `DutyChip auto` (barre du haut et Journal : `data-auto="quinyx"`, infobulle, phrase dans la fenêtre). Widget « Fin de service » : prop `quinyx`
   (`windowState` de `lib/shift.ts`), un choix manuel reste prioritaire.
 - Extension 1.8.0 : `src/quinyx.js` (onglet Quinyx, tri avant envoi), `src/quinyx-inject.js` (relève `x-app-version`),
   service worker `syncQuinyx` (bouton du popup ou ouverture d'une page `/schedule/`, au plus toutes les 3 h).

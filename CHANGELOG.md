@@ -64,6 +64,7 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 ### Corrections
 
+- **Districts du jour d'après Quinyx** : ils sont maintenant activés d'office selon ta prestation (en cours, ou la prochaine du jour : une nuit OCC Mons active Sud-Ouest dès 22:00, un matin OCC SE active Sud-Est dès 6:00), même si ton compte Quinyx n'a pas encore été validé par un administrateur. Tu peux toujours en choisir d'autres ; ton choix reste prioritaire pour la journée.
 - Missions PMR et Groupes : « Masquer les annulées » est de nouveau visible directement dans la barre de filtres ; en mobile, les boutons ALEA ont un libellé court.
 - Les boutons ont la même hauteur que les champs voisins (plus de léger décalage sur une même ligne).
 - Missions PMR et Groupes : le tableau n'est plus coupé à droite ; il défile dans son cadre avec l'en-tête, la colonne Train et le bouton Copier toujours visibles.

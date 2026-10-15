@@ -199,6 +199,22 @@ export function shiftLabel(s: { code: string; section: string }): string {
   return s.section ? `${s.code} · ${s.section}` : s.code;
 }
 
+/**
+ * Prestation qui fixe les districts du jour d'un agent (15 oct. 2026 : district activé d'office d'après Quinyx) : celle en
+ * cours (nuit de la veille comprise tant qu'elle dure), sinon la prochaine du jour, sinon la dernière du jour. Liste
+ * triée par début ; `day` = jour de service (Europe/Brussels), `start` / `end` = instants ISO.
+ */
+export function pickDutyShift<T extends { day: string; start: string; end: string }>(
+  list: readonly T[],
+  now: number,
+  today: string,
+): T | null {
+  const live = list.find((s) => Date.parse(s.start) <= now && now < Date.parse(s.end));
+  if (live) return live;
+  const todays = list.filter((s) => s.day === today);
+  return todays.find((s) => Date.parse(s.start) > now) ?? todays.at(-1) ?? null;
+}
+
 // --- Correspondance agent Quinyx ↔ compte CSM ---
 
 const tokens = (s: string) => fold(s).split(" ").filter(Boolean);

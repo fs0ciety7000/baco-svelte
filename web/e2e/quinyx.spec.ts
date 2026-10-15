@@ -42,6 +42,7 @@ const brusselsDay = (d = new Date()) =>
 const pbTime = (ms: number) => new Date(ms).toISOString().replace("T", " ");
 
 let GROUP = "990001";
+let ME = "";
 let LABEL = "E2E Quinyx desktop";
 
 test.beforeAll(async ({}, info) => {
@@ -64,6 +65,7 @@ test.beforeAll(async ({}, info) => {
     `/api/collections/users/records?perPage=1&filter=${encodeURIComponent(`email="${identity}" || username="${identity}"`)}`,
   );
   const me = users.items[0]?.id as string;
+  ME = me;
   const g = await pb("POST", "/api/collections/quinyx_groups/records", {
     group_id: GROUP,
     label: LABEL,
@@ -167,6 +169,23 @@ test("accueil : fin de service selon Quinyx", async ({ page }) => {
   const widget = page.getByTestId("shift-widget");
   test.skip((await widget.count()) === 0, "widget « Fin de service » masqué pour ce compte");
   await expect(page.getByTestId("shift-quinyx").first()).toContainText("PACO_AM · PACO Mons");
+});
+
+test("districts du jour posés d'office d'après la prestation Quinyx", async ({ page }, info) => {
+  test.skip(
+    info.project.name !== "desktop",
+    "compte E2E partagé : un seul format écrit les districts du jour",
+  );
+  // Pas de choix fait aujourd'hui : la prestation en cours (PACO_AM, district DSO) les donne.
+  await pb("PATCH", `/api/collections/users/records/${ME}`, { duty_day: "", duty_districts: [] });
+  await login(page, "/operations/journal");
+  // Puce de la barre du haut et puce du Journal : toutes deux posées d'après Quinyx.
+  const chips = page.getByTestId("duty-chip");
+  await expect(chips).toHaveCount(2);
+  for (const c of await chips.all()) await expect(c).toHaveAttribute("data-auto", "quinyx");
+  const chip = chips.first();
+  await expect(chip).toContainText("DSO");
+  await expect(chip).toHaveAttribute("title", /PACO_AM · PACO Mons/);
 });
 
 test("administration : groupes, lieux, agents", async ({ page }, info) => {

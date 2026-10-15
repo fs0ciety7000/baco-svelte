@@ -179,7 +179,11 @@ export default async function Page({
         <div className="hidden min-w-0 flex-1 md:flex">{searchForm}</div>
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <LiveRefresh topics={["ops_log", "ops_log_reads"]} />
-          <DutyChip districts={user.duty_districts ?? []} today={user.duty_day === today} />
+          <DutyChip
+            districts={user.duty_districts ?? []}
+            today={user.duty_day === today}
+            auto={user.dutyFromQuinyx ?? null}
+          />
           <span className="max-md:hidden">{csvLink}</span>
         </div>
       </div>

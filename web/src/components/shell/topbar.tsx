@@ -79,6 +79,7 @@ export function Topbar() {
             districts={user.duty.districts}
             today={user.duty.today}
             suggested={user.duty.suggested ?? null}
+            auto={user.duty.auto ?? null}
           />
         ) : null}
         {/* Recherche élargie (≥ 1280 px) : un champ d'apparence, qui ouvre la palette ⌘K. */}

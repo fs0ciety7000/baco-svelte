@@ -4,9 +4,12 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { z } from "zod";
 
-import { can } from "@/lib/permissions";
+import { brusselsDay } from "@/lib/orders/time";
+import { can, isScreen } from "@/lib/permissions";
+import { DUTY_NAME, shiftLabel } from "@/lib/quinyx/model";
 import { accountLinks, visibleModules } from "@/navigation";
 
+import { dutyShiftOf } from "./data/quinyx";
 import { createPb } from "./pocketbase";
 import { readSessionToken, resolveActing } from "./session";
 import { sessionAlive } from "./sessions";
@@ -44,6 +47,11 @@ const userSchema = z.object({
 export type SessionUser = z.infer<typeof userSchema> & {
   /** « Voir en tant que » : l'administrateur qui regarde CSM avec ce compte (lecture seule). */
   impersonatedBy?: { id: string; name: string };
+  /**
+   * Districts du jour posés d'office d'après la prestation Quinyx (15 oct. 2026) : libellé de la prestation (« PACO_N ·
+   * OCC MONS »). Absent si l'agent a choisi lui-même aujourd'hui ou s'il n'a pas de prestation. Rien n'est écrit en base.
+   */
+  dutyFromQuinyx?: string;
 };
 
 /**
@@ -63,11 +71,30 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     ]);
     const user: SessionUser = userSchema.parse(record);
     if (actor) user.impersonatedBy = actor;
-    return user.role === "disabled" || !alive ? null : user;
+    if (user.role === "disabled" || !alive) return null;
+    await applyQuinyxDuty(user, pb);
+    return user;
   } catch {
     return null;
   }
 });
+
+/**
+ * Districts du jour pas encore choisis aujourd'hui : ceux de la prestation Quinyx en cours, sinon de la prochaine du jour
+ * (« PACO_N · OCC MONS » → Sud-Ouest dès la prise de service de 22:00, nuit comprise jusqu'à 06:00). Appliqués à la
+ * requête seulement : tout ce qui lit les districts du jour (filtres, cloche, relève, ma journée) les suit, et un choix
+ * fait par l'agent reste prioritaire. Une erreur de lecture (pas de droit `quinyx:read`, collection absente) = rien.
+ */
+async function applyQuinyxDuty(user: SessionUser, pb: ReturnType<typeof createPb>) {
+  const today = brusselsDay();
+  if (user.duty_day === today || isScreen(user)) return;
+  const shift = await dutyShiftOf(user.id, pb).catch(() => null);
+  const name = shift ? DUTY_NAME[shift.district] : undefined;
+  if (!shift || !name) return;
+  user.duty_day = today;
+  user.duty_districts = [name];
+  user.dutyFromQuinyx = shiftLabel(shift);
+}
 
 /**
  * Mode maintenance (Admin › Santé), lu une fois par requête. Écran d'attente pour les agents sur TOUTES les pages et

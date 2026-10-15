@@ -1377,6 +1377,8 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
 
 - 2026-10-15 — **Refonte v4 terminée (lots 0 à 6)** ; retours sur le lot 6 : en mobile, « En direct » du Suivi (`LiveRefresh compact`) et « Export CSV » des Statistiques en icône seule (libellé pour les lecteurs d'écran) ; n° de train de l'export ALEA en `TrainChip` ; `e2e/auth.spec.ts` suit `E2E_BASE_URL`.
 
+- 2026-10-15 — **Districts du jour posés d'office d'après Quinyx** (retour : « la détection ne fonctionne pas, ça doit activer le district selon la prestation par défaut » ; ex. PACO_N OCC MONS → Sud-Ouest dès 22:00, PACO_AM OCC SE → Sud-Est dès 6:00). Deux causes : la prestation n'était qu'une **proposition** dans la fenêtre de choix, et seul un rattachement Quinyx **validé** par l'admin comptait. Désormais `getCurrentUser` applique, si l'agent n'a rien choisi aujourd'hui, le district de la prestation en cours / prochaine du jour / dernière du jour (`pickDutyShift`, nuit de la veille comprise), **à la requête seulement** (rien écrit en base : tout ce qui lit les districts du jour suit, un choix de l'agent reste prioritaire) ; rattachement validé **ou proposé** (`user_suggested`, nom identique et unique, tant que l'admin n'a rien validé). Puce « d'après Quinyx » (`data-auto`). Limite : les tâches PocketBase qui lisent `users.duty_districts` (alerte de synchro DICOS) ne voient pas ce district.
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)
