@@ -44,7 +44,7 @@ import { StatusBadge, statusColor } from "@/components/ui/status-badge";
 import { ListCard } from "@/components/ui/table";
 import { toast } from "@/components/ui/toast";
 import { type DashboardLayout, type WidgetId } from "@/design/dashboard-layout";
-import { useStaggerIn } from "@/lib/motion";
+import { useStaggerIn } from "@/lib/motion-core";
 import { brusselsDay, daysBetween, formatDay, isValidDay } from "@/lib/orders/time";
 import { cn, pl } from "@/lib/utils";
 import type { FavoriteStation } from "@/lib/ops/irail";

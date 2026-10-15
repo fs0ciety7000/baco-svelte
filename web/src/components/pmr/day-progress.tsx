@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/status-badge";
-import { gsap, highlightElements, MOTION_OK, NO_MOTION, useGSAP } from "@/lib/motion";
+import { animateFrom, highlightElements, NO_MOTION } from "@/lib/motion-core";
 import {
   brusselsMinutes,
   fromMinutes,
@@ -80,24 +80,15 @@ export function NowLine({
 }) {
   const line = useRef<HTMLSpanElement>(null);
   const first = useRef(true);
-  useGSAP(
-    () => {
-      if (first.current) {
-        first.current = false;
-        return;
-      }
-      const mm = gsap.matchMedia();
-      mm.add(MOTION_OK, () => {
-        gsap.fromTo(
-          line.current,
-          { scaleX: 0 },
-          { scaleX: 1, duration: 0.45, ease: "hud", transformOrigin: "left center" },
-        );
-      });
-      return () => mm.revert();
-    },
-    { dependencies: [index] },
-  );
+  // Le trait se redessine (de gauche à droite) quand le repère change de place ; jamais au premier rendu.
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    if (!line.current) return;
+    return animateFrom([line.current], { transform: "scaleX(0)" }, { duration: 450 });
+  }, [index]);
   const until = untilLabel(nextTime, now);
   const text = `Maintenant · ${fromMinutes(now)}`;
   const sub = nextTime ? `prochaine ${until || "imminente"}` : "plus rien aujourd'hui";
@@ -106,7 +97,7 @@ export function NowLine({
       <span
         ref={line}
         aria-hidden
-        className="absolute inset-x-0 top-1/2 h-0.5 -translate-y-1/2 bg-info"
+        className="absolute inset-x-0 top-1/2 h-0.5 origin-left -translate-y-1/2 bg-info"
       />
       <span className="sticky left-2 z-[1] ml-2 inline-flex max-w-[calc(100%-1rem)] min-w-0 items-center gap-2 overflow-hidden rounded-control border border-[color-mix(in_oklab,var(--info)_45%,transparent)] bg-surface px-2 py-0.5 text-small whitespace-nowrap text-info shadow-sm">
         <span aria-hidden className="size-2 shrink-0 animate-pulse-dot rounded-full bg-info" />
@@ -227,13 +218,18 @@ export function DayStrip({
           })}
         </div>
         {inRange ? (
+          // Curseur déplacé par `transform` (calque pleine largeur décalé de `cursor` %), jamais par `left`.
           <span
             aria-hidden
-            data-testid="strip-cursor"
-            className="pointer-events-none absolute -top-1 -bottom-1 w-0.5 -translate-x-1/2 bg-info transition-[left] duration-700 ease-hud motion-reduce:transition-none"
-            style={{ left: `${cursor}%` }}
+            className="pointer-events-none absolute -top-1 -bottom-1 left-0 w-full transition-transform duration-700 ease-hud motion-reduce:transition-none"
+            style={{ transform: `translateX(${cursor}%)` }}
           >
-            <span className="absolute -top-1 left-1/2 size-2 -translate-x-1/2 rounded-full bg-info" />
+            <span
+              data-testid="strip-cursor"
+              className="absolute inset-y-0 left-0 w-0.5 -translate-x-1/2 bg-info"
+            >
+              <span className="absolute -top-1 left-1/2 size-2 -translate-x-1/2 rounded-full bg-info" />
+            </span>
           </span>
         ) : null}
       </div>

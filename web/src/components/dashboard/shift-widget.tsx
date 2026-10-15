@@ -141,8 +141,8 @@ export function ShiftWidget({
             className="h-2 overflow-hidden rounded-control bg-surface-2"
           >
             <div
-              className="h-full bg-progress transition-[width] duration-1000 ease-linear"
-              style={{ width: `${(state.progress * 100).toFixed(2)}%` }}
+              className="h-full w-full origin-left bg-progress transition-transform duration-1000 ease-linear motion-reduce:transition-none"
+              style={{ transform: `scaleX(${state.progress.toFixed(4)})` }}
             />
           </div>
           <p className="text-small text-fg-muted">
