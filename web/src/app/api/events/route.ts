@@ -32,6 +32,8 @@ const TOPICS = new Set([
   "ops_log_reads",
   "notifications",
   "level_crossings",
+  // Planificateur de tâches PMR (15 oct. 2026) : attributions et tâches DICOS en direct.
+  "planner_tasks",
   // Présence en direct : produit par ce serveur (server/presence.ts), pas par PocketBase.
   "presence",
 ]);

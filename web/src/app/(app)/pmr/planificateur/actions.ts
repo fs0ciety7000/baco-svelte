@@ -108,6 +108,114 @@ export async function assignTask(
   }
 }
 
+const batchItem = z.object({
+  id: pbId,
+  target: assignSchema,
+  expectedUpdated: stamp,
+});
+export type AssignItem = z.input<typeof batchItem>;
+export type AssignItemResult =
+  | { id: string; ok: true; updated: string }
+  | { id: string; ok: false; error: string; conflict?: boolean };
+
+/**
+ * Attribution groupée (proposition de l'attribution automatique, tâches liées par une correspondance ou un même train) :
+ * 300 tâches au plus, droits vérifiés une fois, verrou optimiste PAR tâche, résultat par tâche (une tâche refusée ne
+ * bloque pas les autres). `origin` = « auto » quand `auto` est vrai (proposition acceptée), sinon « manuel ».
+ */
+export async function assignTasks(
+  items: AssignItem[],
+  auto = false,
+): Promise<PlannerResult<{ results: AssignItemResult[] }>> {
+  try {
+    await need("planner:write");
+    const list = z.array(batchItem).min(1, "Aucune tâche.").max(300).parse(items);
+    const pb = await pbForRequest();
+    const agents = new Map<string, boolean>();
+    const results: AssignItemResult[] = [];
+    for (const it of list) {
+      try {
+        const cur = await lockedTask(pb, it.id, it.expectedUpdated);
+        if (cur.status === "annulee")
+          throw new Refused("Tâche annulée dans DICOS : elle ne peut pas être attribuée.");
+        const t = it.target;
+        if (t.kind === "agent") {
+          let okAgent = agents.get(t.agentId);
+          if (okAgent === undefined) {
+            const a = await pb
+              .collection("quinyx_agents")
+              .getOne(t.agentId, { fields: "id,purpose" })
+              .catch(() => null);
+            okAgent = a?.purpose === "gares";
+            agents.set(t.agentId, okAgent);
+          }
+          if (!okAgent) throw new Refused("Choisis un agent de gare.");
+        }
+        const r = await pb.collection("planner_tasks").update(cur.id, {
+          assignee_kind: t.kind,
+          assignee_agent: t.kind === "agent" ? t.agentId : "",
+          assignee_label: t.kind === "bcs" ? t.label || String(cur.station ?? "") : (t.label ?? ""),
+          status: cur.status === "faite" ? "faite" : "attribuee",
+          origin: auto ? "auto" : "manuel",
+        });
+        results.push({ id: it.id, ok: true, updated: String(r.updated) });
+      } catch (e) {
+        const f = fail(e);
+        results.push({ id: it.id, ...f });
+      }
+    }
+    revalidatePath("/pmr/planificateur");
+    return { ok: true, results };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/**
+ * Doublon probable : une tâche saisie à la main correspond à une tâche DICOS (même dossier, train, sens et gare). On
+ * garde la tâche DICOS et on supprime la saisie ; si seule la saisie était attribuée, son attribution passe à la tâche
+ * DICOS. Correspondance revérifiée ici (jamais d'après le navigateur seul) ; droits : `planner:write`.
+ */
+export async function resolveDuplicate(manualId: string, dicosId: string): Promise<PlannerResult> {
+  try {
+    await need("planner:write");
+    const pb = await pbForRequest();
+    const [m, d] = await Promise.all([
+      pb.collection("planner_tasks").getOne(pbId.parse(manualId)),
+      pb.collection("planner_tasks").getOne(pbId.parse(dicosId)),
+    ]);
+    const same = (k: string) => String(m[k] ?? "") === String(d[k] ?? "");
+    const trainOf = (r: typeof m) =>
+      String(r.train ?? "")
+        .replace(/\s+/g, "")
+        .toUpperCase();
+    const keyOf = (r: typeof m) => String(r.station_key || stationKey(String(r.station ?? "")));
+    if (
+      (m.source !== "manuel" && m.source !== "modele") ||
+      (d.source !== "dicos_mission" && d.source !== "dicos_pending") ||
+      !m.dossier ||
+      !same("dossier") ||
+      !same("kind") ||
+      trainOf(m) !== trainOf(d) ||
+      keyOf(m) !== keyOf(d)
+    )
+      throw new Refused("Ces deux tâches ne correspondent pas (dossier, train, sens ou gare).");
+    if (m.assignee_kind && !d.assignee_kind && d.status !== "annulee")
+      await pb.collection("planner_tasks").update(d.id, {
+        assignee_kind: m.assignee_kind,
+        assignee_agent: m.assignee_kind === "agent" ? m.assignee_agent : "",
+        assignee_label: m.assignee_label ?? "",
+        status: d.status === "faite" ? "faite" : "attribuee",
+        origin: "manuel",
+      });
+    await pb.collection("planner_tasks").delete(m.id);
+    revalidatePath("/pmr/planificateur");
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
 /** Retire l'attribution d'une tâche (retour dans « À attribuer » ; une tâche annulée reste annulée). */
 export async function unassignTask(
   id: string,
