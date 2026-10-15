@@ -221,14 +221,18 @@ export function DayStrip({
           // Curseur déplacé par `transform` (calque pleine largeur décalé de `cursor` %), jamais par `left`.
           <span
             aria-hidden
-            className="pointer-events-none absolute -top-1 -bottom-1 left-0 w-full transition-transform duration-700 ease-hud motion-reduce:transition-none"
-            style={{ transform: `translateX(${cursor}%)` }}
+            className="pointer-events-none absolute inset-x-0 -top-1 -bottom-1 overflow-x-clip"
           >
             <span
-              data-testid="strip-cursor"
-              className="absolute inset-y-0 left-0 w-0.5 -translate-x-1/2 bg-info"
+              className="absolute inset-0 transition-transform duration-700 ease-hud motion-reduce:transition-none"
+              style={{ transform: `translateX(${cursor}%)` }}
             >
-              <span className="absolute -top-1 left-1/2 size-2 -translate-x-1/2 rounded-full bg-info" />
+              <span
+                data-testid="strip-cursor"
+                className="absolute inset-y-0 left-0 w-0.5 -translate-x-1/2 bg-info"
+              >
+                <span className="absolute -top-1 left-1/2 size-2 -translate-x-1/2 rounded-full bg-info" />
+              </span>
             </span>
           </span>
         ) : null}
