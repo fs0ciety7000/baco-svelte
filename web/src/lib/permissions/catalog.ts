@@ -50,6 +50,7 @@ export const TASKS: { id: string; group: string; label: string }[] = [
   { id: "commandes.archives", group: "Commandes", label: "Archives des bons (PDF)" },
   { id: "pmr.missions", group: "PMR", label: "Missions PMR et groupes" },
   { id: "pmr.nominatif", group: "PMR", label: "Clients, matériel et données nominatives" },
+  { id: "pmr.planificateur", group: "PMR", label: "Planificateur de tâches PMR" },
   { id: "operations.trains", group: "Réseau", label: "Trains en direct" },
   { id: "ressources.trains", group: "Réseau", label: "Horaires, gares et lignes" },
   { id: "ressources.ptcar", group: "Réseau", label: "PtCar" },
@@ -263,6 +264,32 @@ const ENTRIES: CatalogEntry[] = [
     "Voir les zones PMR",
     "Peut voir les zones PMR et leurs dépôts",
     PM,
+  ),
+  // Planificateur de tâches PMR (15 oct. 2026, docs/design/CADRAGE-PLANIFICATEUR-PMR.md) : les PACO / RCCA planifient
+  // (décision de l'utilisateur) ; les référentiels (bases, guichets B-CS, modèles) sont réservés aux admins.
+  extra(
+    "planner:read",
+    "pmr.planificateur",
+    "Voir le planificateur",
+    "Peut voir le planificateur de tâches PMR (agents de gare, services, tâches)",
+    PM,
+  ),
+  extra(
+    "planner:write",
+    "pmr.planificateur",
+    "Planifier les tâches",
+    "Peut attribuer, retirer, encoder et supprimer les tâches du planificateur",
+    PM,
+    ["planner:read"],
+  ),
+  extra(
+    "planner:manage",
+    "pmr.planificateur",
+    "Gérer les référentiels du planificateur",
+    "Peut modifier les bases, les guichets B-CS et les modèles de tâches, et supprimer une tâche venue de DICOS",
+    [],
+    ["planner:read"],
+    "sensible",
   ),
   // ---- Opérations
   ...module("live", "operations.trains", [

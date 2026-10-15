@@ -188,6 +188,22 @@ export const MODULES: NavModule[] = [
         permission: "pmr:read",
         keywords: ["école", "groupe", "DICOS"],
       },
+      {
+        // Planificateur de tâches PMR (15 oct. 2026) : agents de gare (Quinyx) et prises en charge DICOS.
+        href: "/pmr/planificateur",
+        label: "Planificateur",
+        permission: "planner:read",
+        keywords: [
+          "planning",
+          "agents de gare",
+          "CPI",
+          "OPI",
+          "SPI",
+          "B-CS",
+          "attribuer",
+          "tâches",
+        ],
+      },
       { href: "/pmr/clients", label: "Clients", permission: "pmr:read" },
       {
         href: "/pmr/materiel",

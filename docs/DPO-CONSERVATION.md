@@ -25,11 +25,24 @@ s'authentifie auprès de CSM avec un **jeton personnel révocable**.
 | Comptes agents | nom, e-mail, fonction, district, rôle, empreinte du mot de passe (bcrypt) | agents | administrateurs |
 | Journal d'audit | qui a modifié quoi et quand | agents | administrateurs |
 | Horaires Quinyx (14 oct. 2026) | prénom, nom et identifiant Quinyx de l'agent ; jour, début et fin de ses prestations publiées PACO / RCCA / EXTRA (type et lieu, ex. « PACO_AM · PACO Mons ») ; compte CSM rattaché | agents PACO / RCCA (et collègues en EXTRA) | tous les agents de l'équipe (pas l'Invité ni l'Écran) ; configuration et rattachement : administrateurs |
+| Horaires des agents de gare (planificateur PMR, 15 oct. 2026) | prénom, nom et identifiant Quinyx ; jour, début et fin des prestations publiées CPI / SPI / OPI / PA / EXTRA, poste et gare de base (déduits du type et de la section, ex. « CPI_AM · CPI MONS ») | agents de gare des dix gares de base (**sans compte CSM**) | agents avec `quinyx:read` (PACO/RCCA, modérateurs, administrateurs) ; le planificateur avec `planner:read` |
+| Tâches du planificateur PMR (15 oct. 2026) | n° de dossier DICOS, gare, train, heure, type et nombre de voyageurs (donnée de santé : type d'assistance), agent de gare attribué ; **jamais** le nom ni les coordonnées du voyageur | voyageurs PMR (indirectement, par le n° de dossier) ; agents de gare | agents avec `planner:read` |
 
 **Horaires Quinyx** : seules les prestations de travail publiées sont lues. Les repos, compensations, absences,
 congés, visites médicales (IDEWE), commentaires, e-mails et téléphones de Quinyx sont **écartés dans le navigateur**
 avant tout envoi, puis une seconde fois par le serveur. Finalité : savoir qui est en service et proposer à chacun son
 district du jour (l'agent garde la main) ; aucune évaluation ni contrôle individuel.
+
+**Horaires des agents de gare** (planificateur PMR, décision de l'utilisateur du 15 oct. 2026, revient sur « seulement
+l'équipe CSM ») : pour les groupes Quinyx réglés « Gares » par un administrateur, les prestations publiées CPI, SPI,
+OPI, PA et EXTRA de **tous** les agents du groupe sont gardées (ils n'ont pas de compte CSM). Même tri qu'au-dessus :
+repos, congés, absences, formations et visites médicales (RW, CW, CV, RR, ADA, IDEV…) sont écartés dans le navigateur
+puis par le serveur. Finalité : répartir les prises en charge PMR entre les agents en service (remplace les classeurs
+Excel où ces horaires étaient recopiés à la main).
+
+**Dossiers DICOS en attente** (planificateur PMR) : l'extension lit la liste « à vérifier » de DICOS et n'envoie que le
+n° de dossier, son statut, les trains, gares, heures, sens, type et nombre de voyageurs et la vérification par gare ;
+le client, les remarques et le point de rencontre ne quittent jamais DICOS.
 
 Le **type d'assistance** décrit une situation de handicap : c'est une **donnée de santé** au sens de l'article 9 du RGPD.
 
@@ -48,6 +61,7 @@ le code source, ni présente dans les captures d'écran ou les documents de trav
 | Journal d'exploitation (messages des agents et messages iRail, pièces jointes, lectures, historique des modifications) | **24 mois** après la publication du message (tâche `journal-retention`, chaque nuit à 3 h 50 UTC ; réglable par `CSM_JOURNAL_RETENTION_MONTHS`) | supprimés, pièces jointes comprises, avec leurs lignes du journal d'audit ; un message reste tant qu'une de ses réponses est plus récente, une consigne encore épinglée reste | ☐ **À valider** |
 | Prestations Quinyx (horaires des agents) | **90 jours** après le jour de la prestation (tâche `quinyx-retention`, chaque nuit à 3 h 25 UTC) | supprimées | ☐ **À valider** |
 | Fiche « agent Quinyx » (nom, identifiant Quinyx, compte CSM rattaché) | **180 jours** sans prestation reçue | supprimée avec son rattachement | ☐ |
+| Tâches du planificateur PMR (n° de dossier, type et nombre de voyageurs, agent attribué) | **90 jours** après le jour de la tâche (tâche `planner-retention`, chaque nuit à 3 h 35 UTC) | supprimées | ☐ **À valider** |
 | Journal des synchronisations DICOS, horaires ATMS | 60 jours | supprimés (aucune donnée personnelle) | — |
 | Jetons de connecteur des agents | jusqu'à révocation par l'agent ou désactivation du compte | supprimés | ☐ |
 | Sauvegardes de la base | 1 par nuit, 14 conservées (réglable, `CSM_BACKUP_KEEP`) ; copie hors serveur sur Cloudflare R2 une fois activée + copie locale du volume | écrasées ; une donnée effacée disparaît des sauvegardes après la dernière conservée (14 jours par défaut) | ☐ |
@@ -86,3 +100,8 @@ le code source, ni présente dans les captures d'écran ou les documents de trav
    agents qui ont un compte CSM de l'équipe (PACO/RCCA, modérateur, administrateur) sont gardés ; pour les autres
    agents du groupe Quinyx, seuls le prénom et le nom sont enregistrés (rattachement manuel par l'admin), fiche
    supprimée après 180 jours.
+9. Planificateur de tâches PMR (15 oct. 2026) : les horaires des **agents de gare** (sans compte CSM) des groupes
+   Quinyx « Gares » sont gardés 90 jours et visibles des PACO/RCCA qui planifient ; les tâches (n° de dossier, type
+   d'assistance, agent attribué) sont gardées 90 jours. Faut-il informer les agents de gare (note de service) ? La durée
+   de 90 jours est-elle adaptée (suivi d'une réclamation sur une prise en charge) ? Une feuille de tâches par agent
+   (lien ou PDF, lot P4) pourra porter le nom du voyageur : à trancher.

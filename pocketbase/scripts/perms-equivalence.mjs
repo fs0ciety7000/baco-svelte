@@ -49,6 +49,10 @@ const HARD = {
 	'bus:reopen': (r) => ADMIN(r) || r === 'moderator' || r === 'paco', // lib/orders.js isCoordinator
 	'taxi:reopen': (r) => ADMIN(r) || r === 'moderator' || r === 'paco',
 	'pmr_equipment:manage': (r) => ADMIN(r) || r === 'moderator' || r === 'paco', // isCoordinator, pmr_equipment
+	// Planificateur PMR (1760004900, 15 oct. 2026) : PACO/RCCA et au-dessus ; référentiels du planificateur : admin / sysop.
+	'planner:read': (r) => ADMIN(r) || r === 'moderator' || r === 'paco',
+	'planner:write': (r) => ADMIN(r) || r === 'moderator' || r === 'paco',
+	'planner:manage': (r) => ADMIN(r),
 	'suppliers:read': (r) => ACTIVE(r) && r !== 'guest', // navigation hideFor guest (onglet Fournisseurs)
 	'pmr_zones:read': (r) => ACTIVE(r) && r !== 'guest',
 	'spi:read': (r) => ACTIVE(r) && r !== 'guest',

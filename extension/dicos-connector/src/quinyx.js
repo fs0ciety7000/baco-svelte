@@ -7,13 +7,19 @@
   if (globalThis.__csmQuinyx) return;
   globalThis.__csmQuinyx = true;
 
-  const CAPTURE = (name) => {
-    const f = String(name || "")
+  // Tri selon le rôle du groupe (1.9.0, demandé à CSM avec la liste des groupes) : « equipe » = PACO / RCCA / EXTRA ;
+  // « gares » (planificateur PMR) = CPI / SPI / OPI / PA / EXTRA des agents de gare. Repos, congés, absences, formations,
+  // visites médicales (RW, CW, CV, RR, ADA, IDEV…) ne quittent jamais la page.
+  const fold = (name) =>
+    String(name || "")
       .normalize("NFD")
       .replace(/[̀-ͯ]/g, "")
       .toUpperCase()
       .replace(/[^A-Z0-9]+/g, " ")
       .trim();
+  const CAPTURE = (name, purpose) => {
+    const f = fold(name);
+    if (purpose === "gares") return /^(CPI|SPI|OPI|PA|EXTRA)( |$)/.test(f);
     return /^(PACO|RCCA) /.test(f) || /^EXTRA( |$)/.test(f);
   };
   const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -45,7 +51,7 @@
     }
   }
 
-  async function readGroup(group) {
+  async function readGroup(group, purpose) {
     if (!/^\d{1,15}$/.test(String(group))) return { error: "Groupe Quinyx invalide." };
     try {
       const pub = await get(`/extapi/v1/schedule/publish-date/by-group/${group}`, group);
@@ -75,7 +81,7 @@
           s &&
           String(s.status || "").toUpperCase() === "ASSIGNED" &&
           Number(s.employeeId) > 0 &&
-          CAPTURE(typeName.get(String(s.shiftTypeId))) &&
+          CAPTURE(typeName.get(String(s.shiftTypeId)), purpose) &&
           String(s.begin || "").slice(0, 10) <= publishedUntil,
       );
       const MAX = 1500;
@@ -116,7 +122,7 @@
   chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     if (msg && msg.cmd === "quinyx-ping") return void reply(true);
     if (!msg || msg.cmd !== "quinyx-read") return;
-    readGroup(msg.group).then(reply);
+    readGroup(msg.group, msg.purpose === "gares" ? "gares" : "equipe").then(reply);
     return true; // réponse asynchrone
   });
 

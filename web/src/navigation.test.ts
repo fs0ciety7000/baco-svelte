@@ -35,7 +35,14 @@ describe("navigation", () => {
     expect(tabs("accueil")).toEqual(["À traiter", "Statistiques"]);
     expect(tabs("operations")).toEqual(["Journal", "Ma journée", "B201"]);
     expect(tabs("commandes")).toEqual(["Suivi", "Bus", "Taxi", "Archives", "Fournisseurs"]);
-    expect(tabs("pmr")).toEqual(["Missions", "Groupes", "Clients", "Matériel", "Historique"]);
+    expect(tabs("pmr")).toEqual([
+      "Missions",
+      "Groupes",
+      "Planificateur",
+      "Clients",
+      "Matériel",
+      "Historique",
+    ]);
     expect(tabs("reseau")).toEqual([
       "Trains en direct",
       "Horaires",

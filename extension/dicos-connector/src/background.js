@@ -54,6 +54,33 @@ async function push(day, payload) {
   return { ok: true, result };
 }
 
+// --- Dossiers DICOS « à vérifier » (planificateur PMR, 1.9.0) ---
+// Le content script ne transmet que dossier, statut, trains, gares, heures, sens, type et nombre, vérifications par gare
+// (ni client, ni remarques, ni point de rencontre) ; CSM convertit et relie aux missions acceptées.
+async function pushPending(dossiers) {
+  const { csmUrl, token } = await config();
+  if (!csmUrl || !token) return { ok: false, error: "Configure l'URL CSM et le jeton de connecteur." };
+  if (!(await hasPermission(csmUrl))) return { ok: false, error: NO_PERMISSION };
+  let res;
+  try {
+    res = await fetch(`${csmUrl}/api/pmr/pending/ingest`, {
+      method: "POST",
+      headers: headers(token),
+      body: JSON.stringify({ dossiers: Array.isArray(dossiers) ? dossiers.slice(0, 1000) : [] }),
+    });
+  } catch (_) {
+    return { ok: false, error: "CSM injoignable (dossiers en attente)." };
+  }
+  if (res.status === 401) return { ok: false, error: "Jeton de connecteur refusé par CSM." };
+  if (res.status === 404) return { ok: false, error: "CSM ne connaît pas encore les dossiers en attente (mise à jour à venir)." };
+  if (!res.ok) return { ok: false, error: `CSM a refusé les dossiers en attente (HTTP ${res.status}).` };
+  try {
+    return { ok: true, result: await res.json() };
+  } catch (_) {
+    return { ok: false, error: "Réponse CSM illisible." };
+  }
+}
+
 // --- Temps d'arrêt ATMS (export ALEA « Obligatoire », 9 oct. 2026) ---
 // Pour chaque train des missions synchronisées : itinéraire lu dans un onglet ATMS connecté (content script atms.js,
 // même origine, session de l'agent), puis envoyé à CSM qui calcule les temps d'arrêt prévus. Sans onglet ATMS ouvert,
@@ -235,7 +262,9 @@ async function syncQuinyx() {
     if (!/^\d{1,15}$/.test(id)) continue;
     let r;
     try {
-      r = await chrome.tabs.sendMessage(tab.id, { cmd: "quinyx-read", group: id });
+      // Rôle du groupe (1.9.0) : « gares » = agents de gare du planificateur PMR, sinon l'équipe PACO / RCCA.
+      const purpose = g && g.purpose === "gares" ? "gares" : "equipe";
+      r = await chrome.tabs.sendMessage(tab.id, { cmd: "quinyx-read", group: id, purpose });
     } catch (_) {
       r = { error: "Onglet Quinyx fermé ou rechargé pendant la synchro." };
     }
@@ -304,6 +333,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
       if (v.token && (!last || Date.now() - last > 3 * 3600_000)) runQuinyx();
     });
     return false;
+  }
+  if (msg && msg.cmd === "pending") {
+    pushPending(msg.dossiers).then(reply, (e) => reply({ ok: false, error: String((e && e.message) || e).slice(0, 160) }));
+    return true;
   }
   if (msg && msg.cmd === "atms") {
     syncAtms(msg.trains).then(reply, (e) => reply({ error: String((e && e.message) || e).slice(0, 160) }));

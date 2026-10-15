@@ -5,6 +5,15 @@ export type ExtensionNote = { version: string; date: string; notes: string[] };
 
 export const EXTENSION_NOTES: ExtensionNote[] = [
   {
+    version: "1.9.0",
+    date: "2026-10-15",
+    notes: [
+      "Planificateur PMR : à chaque synchro DICOS, les dossiers « à vérifier » (en attente d'acceptation) de tes gares partent aussi vers CSM. Seuls le n° de dossier, son statut, les trains, gares, heures, sens, type et nombre de voyageurs et la vérification par gare sont envoyés : ni nom, ni coordonnées, ni remarques.",
+      "Horaires Quinyx : les groupes réglés « Gares » dans Administration › Quinyx envoient les prestations des agents de gare (CPI, SPI, OPI, PA, EXTRA) ; repos, congés et absences ne quittent jamais Quinyx.",
+      "Le popup affiche les totaux « Dossiers en attente ».",
+    ],
+  },
+  {
     version: "1.8.0",
     date: "2026-10-14",
     notes: [

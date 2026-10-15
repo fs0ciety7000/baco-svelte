@@ -20,6 +20,7 @@ import {
 } from "@/server/dicos-service";
 import { loadStationDistricts } from "@/server/station-districts";
 import { readExtensionRelease } from "@/server/extension";
+import { syncPlannerFromAssists } from "@/server/planner-sync";
 import { createPb } from "@/server/pocketbase";
 import { allow } from "@/server/rate-limit";
 
@@ -178,6 +179,9 @@ export async function POST(request: Request) {
   // `last_seen_sync` / `last_seen_by` (base de « Absente de DICOS », 11 oct. 2026).
   const seenMissions: string[] = [];
   const seenGroups: string[] = [];
+  // Missions écrites par jour : reprises ensuite par le planificateur de tâches PMR (`syncPlannerFromAssists`).
+  const touched = new Map<string, string[]>();
+  const touch = (day: string, id: string) => touched.set(day, [...(touched.get(day) ?? []), id]);
 
   // v3 : dossiers complets → une ligne par trajet. Tous les trajets du dossier sont repris (y compris ceux d'un
   // autre jour : retour le 14/10 d'un aller le 08/10), chacun sur son propre jour de service.
@@ -211,6 +215,7 @@ export async function POST(request: Request) {
               : null,
       };
       await upsert(pb, svc.id, `j${dicos_id}`, base, mission, c, seenMissions);
+      touch(assist.day, `j${dicos_id}`);
     }
   }
 
@@ -240,6 +245,7 @@ export async function POST(request: Request) {
             : null,
     };
     await upsert(pb, svc.id, `j${dicos_id}`, base, mission, c, seenMissions);
+    touch(assist.day, `j${dicos_id}`);
   }
 
   // Groupes : une ligne par trajet dans `group_missions` (dédup `j<journeyId>`), écrite par le compte de service.
@@ -283,6 +289,18 @@ export async function POST(request: Request) {
     }
   }
 
+  // Planificateur de tâches PMR (15 oct. 2026) : tâches reliées ou créées pour les missions de ce lot. Jamais
+  // bloquant : une erreur ici n'empêche ni l'ingestion ni la réponse (compteur `planner.failed`).
+  const planner = { received: 0, created: 0, updated: 0, unchanged: 0, skipped: 0, failed: 0 };
+  for (const [d, ids] of [...touched].slice(0, 10)) {
+    try {
+      const p = await syncPlannerFromAssists(pb, d, ids);
+      for (const k of Object.keys(planner) as (keyof typeof planner)[]) planner[k] += p[k];
+    } catch {
+      planner.failed++;
+    }
+  }
+
   // Journal des synchros (date « synchronisé il y a X min » des écrans) : jamais bloquant pour l'ingestion.
   const log = (
     kind: "missions" | "groups",
@@ -309,7 +327,14 @@ export async function POST(request: Request) {
 
   const release = await readExtensionRelease();
   return Response.json(
-    { day: body.day, received, ...c, groups: g, extension: { latest: release?.version ?? null } },
+    {
+      day: body.day,
+      received,
+      ...c,
+      groups: g,
+      planner,
+      extension: { latest: release?.version ?? null },
+    },
     { headers: { "cache-control": "no-store" } },
   );
 }

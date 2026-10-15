@@ -300,6 +300,92 @@
     };
   }
 
+  // Dossiers « à vérifier » (planificateur PMR, 1.9.0) : liste des dossiers en attente d'acceptation des gares de
+  // l'agent (mêmes identifiants de gare que les missions), lue une fois par synchro. On n'envoie QUE ce qui sert au
+  // planificateur : ni client, ni remarques, ni point de rencontre. Jamais bloquant pour la synchro des missions.
+  const PENDING_API = location.origin + "/api/reservations/disableds/to-check";
+  const cut = (v, n) => (v === null || v === undefined ? "" : String(v).slice(0, n));
+  const tri = (v) => (v === true ? true : v === false ? false : null);
+  const arr = (v) => (Array.isArray(v) ? v : []);
+  function pickPending(d) {
+    return {
+      id: cut(d.id, 40),
+      displayId: cut(d.displayId, 40),
+      status: cut(d.status, 30),
+      travels: arr(d.travels)
+        .slice(0, 31)
+        .map((t) => ({
+          travelDate: cut(t && t.travelDate, 40),
+          disableds: arr(t && t.traveler && t.traveler.disableds)
+            .concat(arr(t && t.disableds))
+            .slice(0, 20)
+            .map((x) => ({
+              symbol: cut(x && x.symbol, 60),
+              assistanceType: cut(x && x.assistanceType, 20),
+              quantity: Number(x && x.quantity) || 1,
+            })),
+          journeys: arr(t && t.journeys)
+            .slice(0, 20)
+            .map((j) => ({
+              id: cut(j && j.id, 40),
+              trainNumber: cut(j && j.trainNumber, 20),
+              departureName: cut(j && j.departureName, 120),
+              arrivalName: cut(j && j.arrivalName, 120),
+              departureUicCode: cut(j && j.departureUicCode, 20),
+              arrivalUicCode: cut(j && j.arrivalUicCode, 20),
+              departureTime: cut(j && j.departureTime, 40),
+              arrivalTime: cut(j && j.arrivalTime, 40),
+              withDepartureAssistance: !!(j && j.withDepartureAssistance === true),
+              withArrivalAssistance: !!(j && j.withArrivalAssistance === true),
+              isDepartureOk: tri(j && j.isDepartureOk),
+              isArrivalOk: tri(j && j.isArrivalOk),
+              isTrainCancelled: !!(j && j.isTrainCancelled === true),
+            })),
+        })),
+    };
+  }
+  async function syncPending() {
+    if (!stationIds.length || !bearer) return null;
+    const ids = stationIds.map((id) => encodeURIComponent(String(id)));
+    const q = ids.map((id) => `DepartureStations=${id}`).concat(ids.map((id) => `ArrivalStations=${id}`)).join("&");
+    progress("Dossiers en attente", 0, 0, true);
+    let list;
+    try {
+      await gate();
+      list = await dicos(`${PENDING_API}?${q}`, { method: "GET" });
+    } catch (err) {
+      if (err && err.code === "expired") return { error: "Session DICOS expirée (dossiers en attente)." };
+      return { error: `Dossiers en attente : erreur DICOS${err && err.status ? ` (HTTP ${err.status})` : ""}.` };
+    }
+    const items = Array.isArray(list) ? list : arr(list && (list.items || list.reservations || list.data));
+    const dossiers = items.filter((d) => d && typeof d === "object" && d.type !== "Group").slice(0, 1000).map(pickPending);
+    const total = { found: dossiers.length, received: 0, created: 0, updated: 0, unchanged: 0, skipped: 0 };
+    for (let i = 0; i < dossiers.length || i === 0; i += 200) {
+      progress("Dossiers en attente : envoi vers CSM", Math.min(i, dossiers.length), dossiers.length, true);
+      const res = await chrome.runtime.sendMessage({ cmd: "pending", dossiers: dossiers.slice(i, i + 200) });
+      if (!res || !res.ok) return { ...total, error: (res && res.error) || "Échec de l'envoi des dossiers en attente." };
+      for (const k of ["received", "created", "updated", "unchanged", "skipped"]) total[k] += Number(res.result && res.result[k]) || 0;
+      if (!dossiers.length) break;
+    }
+    return total;
+  }
+  async function withPending(r) {
+    if (!r || r.busy || r.error) return r;
+    let pending;
+    try {
+      pending = await syncPending();
+    } catch (err) {
+      pending = { error: String((err && err.message) || err).slice(0, 160) };
+    } finally {
+      try {
+        chrome.storage.local.remove("progress");
+      } catch (_) {}
+    }
+    const out = { ...r, pending };
+    setLast(out);
+    return out;
+  }
+
   // `fresh` (bouton de synchro manuelle) = rafraîchir vraiment : on purge le cache de détail pour reprendre
   // toute mission même si son statut n'a pas changé (le cache ne capte pas les corrections de point de rencontre, etc.).
   async function doSync(day, { fresh = false } = {}) {
@@ -431,7 +517,7 @@
       if (document.hidden || syncing) return; // onglet caché : on ne sollicite pas DICOS
       // En auto, on purge le cache tous les ~6 cycles pour reprendre d'éventuelles corrections DICOS sans surcharge.
       autoTicks = (autoTicks + 1) % 6;
-      doSync(localDay(), { fresh: autoTicks === 0 });
+      doSync(localDay(), { fresh: autoTicks === 0 }).then(withPending);
     }, ms);
   }
 
@@ -440,7 +526,7 @@
   const addDays = (day, n) => new Date(Date.parse(day + "T12:00:00Z") + n * 86_400_000).toISOString().slice(0, 10);
   async function doSyncRange(start, days, { fresh = true } = {}) {
     const n = Math.max(1, Math.min(7, Number(days) || 1));
-    if (n === 1) return doSync(start, { fresh });
+    if (n === 1) return withPending(await doSync(start, { fresh }));
     const total = { day: `${start} → ${addDays(start, n - 1)}`, days: n, found: 0, dossiers: 0, received: 0, created: 0, updated: 0, unchanged: 0, skipped: 0, groups: { received: 0, created: 0, updated: 0, unchanged: 0, skipped: 0 }, atms: { requested: 0, fetched: 0, stored: 0, failed: 0 } };
     try {
       for (let i = 0; i < n; i++) {
@@ -461,7 +547,7 @@
       rangeLabel = "";
     }
     setLast(total);
-    return total;
+    return withPending(total);
   }
 
   chrome.runtime.onMessage.addListener((msg, _sender, reply) => {

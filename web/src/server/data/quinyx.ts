@@ -6,7 +6,7 @@ import { cache } from "react";
 
 import { anyDistrictFilter } from "@/lib/district-param";
 import { addDays, brusselsDay, pbDate } from "@/lib/orders/time";
-import { agentName, pickDutyShift, type QuinyxKind } from "@/lib/quinyx/model";
+import { agentName, pickDutyShift, type GroupPurpose, type QuinyxKind } from "@/lib/quinyx/model";
 
 import { pbForRequest } from "./orders";
 
@@ -66,7 +66,8 @@ export async function listPlanning(
   districts: readonly string[] = [],
 ): Promise<PlanningShift[]> {
   const pb = await pbForRequest();
-  const filter = [pb.filter("day >= {:f} && day <= {:t}", { f: from, t: to })];
+  // Prestations de l'équipe seulement : celles des agents de gare (groupes « gares », `post` posé) vont au planificateur.
+  const filter = [pb.filter('day >= {:f} && day <= {:t} && post = ""', { f: from, t: to })];
   if (districts.length) filter.push(anyDistrictFilter(pb, "district", districts));
   const rows = await pb.collection("quinyx_shifts").getFullList({
     filter: filter.join(" && "),
@@ -121,7 +122,7 @@ export type QuinyxSync = { label: string; at: string; from: string; to: string; 
 export async function quinyxSyncs(): Promise<QuinyxSync[]> {
   const pb = await pbForRequest();
   const rows = await pb.collection("quinyx_groups").getFullList({
-    filter: "enabled = true",
+    filter: 'enabled = true && purpose != "gares"',
     fields: "label,last_sync,last_from,last_to,last_count",
     sort: "label",
   });
@@ -141,6 +142,8 @@ export type QuinyxGroupRow = {
   groupId: string;
   label: string;
   district: string;
+  /** Rôle du groupe : équipe (PACO / RCCA) ou gares (planificateur PMR). */
+  purpose: GroupPurpose;
   enabled: boolean;
   lastSync: string;
   lastFrom: string;
@@ -168,15 +171,21 @@ export async function adminQuinyx(): Promise<{
   groups: QuinyxGroupRow[];
   places: QuinyxPlaceRow[];
   agents: QuinyxAgentRow[];
+  /** Agents de gare (groupes « gares ») : jamais rattachés à un compte CSM, seulement comptés. */
+  stationAgents: number;
   users: { id: string; name: string }[];
 }> {
   const pb = await pbForRequest();
   const [groups, places, agents, users] = await Promise.all([
     pb.collection("quinyx_groups").getFullList({ sort: "label", expand: "last_by" }),
     pb.collection("quinyx_places").getFullList({ sort: "pattern" }),
-    pb
-      .collection("quinyx_agents")
-      .getFullList({ sort: "last_name,first_name", expand: "user,user_suggested" }),
+    pb.collection("quinyx_agents").getFullList({
+      sort: "last_name,first_name",
+      expand: "user,user_suggested",
+      fields:
+        "id,quinyx_id,first_name,last_name,user,confirmed,user_suggested,last_seen,purpose," +
+        "expand.user.name,expand.user.username,expand.user_suggested.name,expand.user_suggested.username",
+    }),
     pb.collection("users").getFullList({
       fields: "id,name,username,role",
       filter: 'role != "connector" && role != "screen"',
@@ -190,6 +199,7 @@ export async function adminQuinyx(): Promise<{
       groupId: str(g.group_id),
       label: str(g.label),
       district: str(g.district),
+      purpose: g.purpose === "gares" ? "gares" : "equipe",
       enabled: !!g.enabled,
       lastSync: iso(g.last_sync),
       lastFrom: str(g.last_from),
@@ -199,17 +209,20 @@ export async function adminQuinyx(): Promise<{
       lastVersion: str(g.last_version),
     })),
     places: places.map((p) => ({ id: p.id, pattern: str(p.pattern), district: str(p.district) })),
-    agents: agents.map((a) => ({
-      id: a.id,
-      quinyxId: str(a.quinyx_id),
-      name: agentName(a),
-      userId: str(a.user),
-      userName: nameOf(a.expand?.user as RecordModel | undefined),
-      confirmed: !!a.confirmed,
-      suggestedId: str(a.user_suggested),
-      suggestedName: nameOf(a.expand?.user_suggested as RecordModel | undefined),
-      lastSeen: iso(a.last_seen),
-    })),
+    stationAgents: agents.filter((a) => a.purpose === "gares").length,
+    agents: agents
+      .filter((a) => a.purpose !== "gares")
+      .map((a) => ({
+        id: a.id,
+        quinyxId: str(a.quinyx_id),
+        name: agentName(a),
+        userId: str(a.user),
+        userName: nameOf(a.expand?.user as RecordModel | undefined),
+        confirmed: !!a.confirmed,
+        suggestedId: str(a.user_suggested),
+        suggestedName: nameOf(a.expand?.user_suggested as RecordModel | undefined),
+        lastSeen: iso(a.last_seen),
+      })),
     users: users
       .filter((u) => u.role !== "disabled")
       .map((u) => ({ id: u.id, name: str(u.name) || str(u.username) })),
