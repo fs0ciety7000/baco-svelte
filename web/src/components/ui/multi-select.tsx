@@ -7,7 +7,7 @@ import { cn, pl } from "@/lib/utils";
 
 import { filterOptions } from "./combobox";
 import { useControllableValue, useMultiFormBridge, useStopNativeChange } from "./form-bridge";
-import { fieldBase } from "./input";
+import { fieldBase, triggerBase } from "./input";
 import {
   firstEnabled,
   Listbox,
@@ -228,7 +228,8 @@ function MultiSelect<T extends string>({
             onClick={() => (open ? close() : openList())}
             onKeyDown={onKeyDown}
             className={cn(
-              "flex min-h-control w-full min-w-0 cursor-pointer items-center gap-2 rounded-control border border-border-strong bg-surface px-3 py-1.5 text-left text-body text-fg transition-colors duration-150 outline-none hover:border-fg-muted focus-visible:border-accent focus-visible:outline-1 focus-visible:outline-offset-0 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger pointer-coarse:text-body-lg",
+              triggerBase,
+              "pointer-coarse:text-body-lg",
               open && "border-accent",
               className,
             )}
@@ -271,7 +272,7 @@ function MultiSelect<T extends string>({
                   setActive(0);
                 }}
                 placeholder="Rechercher…"
-                className={cn(fieldBase, "h-control pl-9 pointer-coarse:text-body-lg")}
+                className={cn(fieldBase, "h-field pl-9 pointer-coarse:text-body-lg")}
               />
             </span>
           </div>

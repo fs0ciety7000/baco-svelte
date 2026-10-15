@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/misc";
+import { Stat, StatStrip } from "@/components/ui/stat-card";
 import type { LogDigest } from "@/components/ops/dashboard-widgets";
 import { brusselsDay, daysBetween, formatDay, isValidDay } from "@/lib/orders/time";
 import { cn, pl } from "@/lib/utils";
@@ -171,7 +172,7 @@ export function TodoQueue({ items }: { items: TodoItem[] }) {
   );
 }
 
-/** Bande de compteurs compacte (un seul cadre, séparateurs), cliquables. */
+/** Bande de compteurs de l'accueil (`StatStrip`), cellules cliquables. */
 export function KpiStrip({
   stats,
   today,
@@ -214,39 +215,13 @@ export function KpiStrip({
       href: "/pmr",
     });
   if (!cells.length) return null;
+  // Bande de compteurs du design system (v4) : chiffres tabulaires de la police du texte, zéro estompé, cellule chaude
+  // teintée de son statut.
   return (
-    <div
-      data-testid="kpi-strip"
-      className="grid grid-cols-2 overflow-hidden rounded-box border border-border bg-surface sm:grid-cols-3 xl:grid-cols-6"
-    >
-      {cells.map((c) => {
-        const body = (
-          <>
-            <span className="truncate text-small text-fg-muted">{c.label}</span>
-            <span
-              className={cn(
-                "font-mono text-h3 font-semibold tabular",
-                c.value === 0 && "font-medium text-fg-subtle",
-                c.tone === "warn" && "text-warn",
-                c.tone === "danger" && "text-danger",
-              )}
-            >
-              {c.value}
-            </span>
-          </>
-        );
-        const cls =
-          "flex min-w-0 flex-col gap-0.5 border-t border-l border-border px-3 py-2 -mt-px -ml-px";
-        return c.href ? (
-          <Link key={c.label} href={c.href} className={cn(cls, "hover:bg-surface-2")}>
-            {body}
-          </Link>
-        ) : (
-          <div key={c.label} className={cls}>
-            {body}
-          </div>
-        );
-      })}
-    </div>
+    <StatStrip data-testid="kpi-strip">
+      {cells.map((c) => (
+        <Stat key={c.label} label={c.label} value={c.value} tone={c.tone} href={c.href} />
+      ))}
+    </StatStrip>
   );
 }

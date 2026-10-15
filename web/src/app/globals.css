@@ -79,6 +79,8 @@
   /* Rayons du thème : boîtes (cartes, dialogues, panneaux) et contrôles (boutons, champs, badges, puces). */
   --radius-box: var(--r-box);
   --radius-control: var(--r-control);
+  /* Pilules (v4) : badges, puces de filtre, compteurs ; 0 pour la forme « angle », 2 px pour Quai. */
+  --radius-pill: var(--r-pill);
 
   /* Hauteurs de contrôle, pilotées par la densité (voir :root plus bas). */
   --spacing-control: var(--control-h);

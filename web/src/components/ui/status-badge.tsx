@@ -25,7 +25,11 @@ export const ORDER_STATUS = {
 
 export type OrderStatus = keyof typeof ORDER_STATUS;
 
-/** Badge : casse normale (lisibilité, audit du 9 oct. 2026), pastille, fond du ton à 12 %, bordure à 40 % (contraste testé). */
+/**
+ * Badge (v4, 15 oct. 2026) : pilule pleine teintée (part du ton = `--tint` du thème : 12 % le jour, 16 % la nuit dans
+ * Signal), pastille ronde, casse normale ; contour à `--badge-ring` (aucun dans les directions v4, 40 % ailleurs).
+ * Contraste testé dans `tokens.test.ts`.
+ */
 function Badge({
   tone = "neutral",
   className,
@@ -37,12 +41,12 @@ function Badge({
       data-slot="badge"
       style={{ "--tone": toneVar[tone] } as React.CSSProperties}
       className={cn(
-        "inline-flex h-6 items-center gap-1.5 rounded-control border text-small font-medium border-[color-mix(in_oklab,var(--tone)_40%,transparent)] bg-[color-mix(in_oklab,var(--tone)_12%,var(--surface))] px-2 whitespace-nowrap text-(--tone)",
+        "inline-flex h-6 items-center gap-1.5 rounded-pill border border-[color-mix(in_oklab,var(--tone)_var(--badge-ring),transparent)] bg-[color-mix(in_oklab,var(--tone)_var(--tint),var(--surface))] px-2 text-small font-medium whitespace-nowrap text-(--tone)",
         className,
       )}
       {...props}
     >
-      <span aria-hidden className="size-1.5 rounded-control bg-(--tone)" />
+      <span aria-hidden className="size-1.5 shrink-0 rounded-pill bg-(--tone)" />
       {children}
     </span>
   );

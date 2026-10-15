@@ -5,6 +5,7 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+import { CHIP_BASE, CHIP_OFF, CHIP_ON } from "./chip-styles";
 import { useFormBridge } from "./form-bridge";
 
 // Briques des formulaires de commande (audit UX §5) : contrôle segmenté, section repliable avec résumé,
@@ -86,7 +87,7 @@ function Segmented<T extends string | number>({
       aria-label={label}
       data-wrap={wrap || undefined}
       className={cn(
-        "relative w-full rounded-control border border-border-strong bg-surface p-0.5 sm:w-auto",
+        "relative w-full rounded-control bg-surface-2 p-0.5 sm:w-auto",
         wrap ? "grid grid-cols-2 gap-0.5" : "flex",
         className,
       )}
@@ -134,9 +135,10 @@ function Segmented<T extends string | number>({
                     options.length % 2 === 1 && i === options.length - 1 && "col-span-2",
                   )
                 : "h-control-sm flex-auto truncate whitespace-nowrap sm:flex-none",
+              // v4 : segment choisi en relief (fond `--control-on`, contour fort, ombre de repos), sans accent plein.
               active
-                ? "bg-accent text-accent-fg"
-                : "text-fg-muted hover:bg-surface-2 hover:text-fg",
+                ? "bg-(--control-on) font-semibold text-fg shadow-rest ring-1 ring-border-strong"
+                : "text-fg-muted hover:bg-surface-3 hover:text-fg",
             )}
           >
             {o.label}
@@ -183,7 +185,7 @@ function FormSection({
     <section
       id={id}
       aria-labelledby={`${contentId}-titre`}
-      className="min-w-0 scroll-mt-24 rounded-box border border-border bg-surface"
+      className="min-w-0 scroll-mt-24 rounded-box border border-(--card-frame) bg-surface shadow-rest"
     >
       <h2 id={`${contentId}-titre`} className="m-0">
         <button
@@ -195,7 +197,7 @@ function FormSection({
         >
           <span
             className={cn(
-              "label-mono grid size-6 shrink-0 place-items-center border",
+              "label-mono grid size-6 shrink-0 place-items-center rounded-pill border",
               state === "error"
                 ? "border-danger text-danger"
                 : state === "complete"
@@ -355,14 +357,9 @@ function ToggleChip({
       aria-pressed={pressed}
       disabled={disabled}
       onClick={() => onPressedChange(!pressed)}
-      className={cn(
-        "inline-flex h-control-sm cursor-pointer items-center gap-1.5 rounded-control border px-3 text-small transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50",
-        pressed
-          ? "border-accent bg-accent-soft text-fg"
-          : "border-border-strong bg-surface text-fg-muted hover:text-fg",
-      )}
+      className={cn(CHIP_BASE, "h-control-sm font-normal", pressed ? CHIP_ON : CHIP_OFF)}
     >
-      {pressed ? <Check aria-hidden className="size-3.5 text-accent" /> : null}
+      {pressed ? <Check aria-hidden className="size-3.5" /> : null}
       {children}
     </button>
   );

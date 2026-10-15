@@ -108,7 +108,7 @@ function Sheet({
           // la liste fermait le panneau et la page se réagençait sous le curseur).
           onInteractOutside={docked ? (e) => e.preventDefault() : undefined}
           className={cn(
-            "fixed z-50 flex flex-col border-border bg-surface outline-none",
+            "fixed z-50 flex flex-col border-border bg-surface shadow-float outline-none",
             docked
               ? "top-12 right-0 bottom-0 w-[28rem] border-l"
               : desktop

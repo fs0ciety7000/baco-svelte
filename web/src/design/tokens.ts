@@ -762,18 +762,22 @@ export const THEMES: Theme[] = SOURCES.map((t) => ({
   colors: { ...t.colors, "surface-3": deriveSurface3(t.colors) } as Record<ColorToken, string>,
 }));
 
-/** Forme : rayon des boîtes (cartes, dialogues), rayon des contrôles (boutons, champs, badges), chanfrein. */
+/**
+ * Forme : rayon des boîtes (cartes, dialogues), rayon des contrôles (boutons, champs), rayon des pilules (badges,
+ * puces de filtre, compteurs : `rounded-pill`, v4), chanfrein.
+ */
 export const SHAPES: Record<
   Shape,
-  { box: string; control: string; chamfer: string; chamferSm: string }
+  { box: string; control: string; pill: string; chamfer: string; chamferSm: string }
 > = {
-  angle: { box: "0px", control: "0px", chamfer: "8px", chamferSm: "6px" },
-  soft: { box: "8px", control: "6px", chamfer: "0px", chamferSm: "0px" },
-  pill: { box: "12px", control: "999px", chamfer: "0px", chamferSm: "0px" },
-  // Signal (v4) : boîtes 8 px, contrôles 6 px (4 / 4 avant le 15 oct. 2026).
-  net: { box: "8px", control: "6px", chamfer: "0px", chamferSm: "0px" },
-  quai: { box: "3px", control: "2px", chamfer: "0px", chamferSm: "0px" },
-  cabine: { box: "6px", control: "5px", chamfer: "0px", chamferSm: "0px" },
+  angle: { box: "0px", control: "0px", pill: "0px", chamfer: "8px", chamferSm: "6px" },
+  soft: { box: "8px", control: "6px", pill: "999px", chamfer: "0px", chamferSm: "0px" },
+  pill: { box: "12px", control: "999px", pill: "999px", chamfer: "0px", chamferSm: "0px" },
+  // Signal (v4) : boîtes 8 px, contrôles 6 px (4 / 4 avant le 15 oct. 2026), badges et puces en pilule.
+  net: { box: "8px", control: "6px", pill: "999px", chamfer: "0px", chamferSm: "0px" },
+  // Quai : angles presque droits partout, pilules comprises.
+  quai: { box: "3px", control: "2px", pill: "2px", chamfer: "0px", chamferSm: "0px" },
+  cabine: { box: "6px", control: "5px", pill: "999px", chamfer: "0px", chamferSm: "0px" },
 };
 
 /**
@@ -910,6 +914,7 @@ function block(selector: string, theme: Theme, indent = ""): string {
     ...MODULE_IDS.map((m) => `--mod-${m}: ${theme.modules?.[m] ?? "var(--accent)"};`),
     `--r-box: ${shape.box};`,
     `--r-control: ${shape.control};`,
+    `--r-pill: ${shape.pill};`,
     `--chamfer: ${shape.chamfer};`,
     `--chamfer-sm: ${shape.chamferSm};`,
     `--shadow-1: ${shadows.rest};`,
@@ -941,6 +946,11 @@ function block(selector: string, theme: Theme, indent = ""): string {
     `--chip-on-fg: ${style.chipOnFg ?? "var(--fg)"};`,
     `--chip-on-border: ${style.chipOnBorder ?? "var(--accent)"};`,
     `--card-frame: ${style.cardFrame ?? "var(--border)"};`,
+    // Fond des champs et boutons secondaires (v4 : surface-2 la nuit dans les directions) ; segment choisi ; contour des
+    // badges (aucun dans les directions v4, 40 % du ton ailleurs comme avant).
+    `--control-bg: ${theme.direction && theme.scheme === "dark" ? "var(--surface-2)" : "var(--surface)"};`,
+    `--control-on: ${theme.scheme === "dark" ? "var(--surface-3)" : "var(--surface)"};`,
+    `--badge-ring: ${theme.direction ? "0%" : "40%"};`,
     ...(style.rowH ? [`--theme-row-h: ${style.rowH};`] : []),
     ...(style.controlH ? [`--theme-control-h: ${style.controlH};`] : []),
     ...(style.fieldH ? [`--theme-field-h: ${style.fieldH};`] : []),

@@ -2,9 +2,15 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-// Champs : bordure border-strong (≥ 3:1), focus en accent, erreur via aria-invalid.
+// Champs (v4, 15 oct. 2026) : 38 px (`h-field`, 32 en compact, 44 au tactile), fond des contrôles du thème
+// (`--control-bg` : surface le jour, surface-2 la nuit), bordure border-strong (≥ 3:1), halo de focus accent de 3 px,
+// erreur via aria-invalid.
 export const fieldBase =
-  "rounded-control w-full min-w-0 border border-border-strong bg-surface px-3 text-body text-fg placeholder:text-fg-subtle transition-colors duration-150 outline-none hover:border-fg-muted focus-visible:border-accent focus-visible:outline-1 focus-visible:outline-offset-0 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger aria-invalid:focus-visible:outline-danger";
+  "focus-halo rounded-control w-full min-w-0 border border-border-strong bg-(--control-bg) px-3 text-body text-fg placeholder:text-fg-subtle transition-[border-color,box-shadow] duration-150 outline-none hover:border-fg-muted disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger";
+
+/** Déclencheur de liste (Select, MultiSelect, Combobox en liste fermée) : même allure qu'un champ. */
+export const triggerBase =
+  "focus-halo flex min-h-field w-full min-w-0 cursor-pointer items-center gap-2 rounded-control border border-border-strong bg-(--control-bg) px-3 py-1.5 text-left text-body text-fg transition-[border-color,box-shadow] duration-150 outline-none hover:border-fg-muted disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger";
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
@@ -13,7 +19,7 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       data-slot="input"
       className={cn(
         fieldBase,
-        "h-control file:mr-3 file:border-0 file:bg-transparent file:text-small file:text-fg",
+        "h-field file:mr-3 file:border-0 file:bg-transparent file:text-small file:text-fg",
         type === "number" && "tabular text-right",
         className,
       )}
@@ -39,7 +45,7 @@ function Select({ className, children, ...props }: React.ComponentProps<"select"
     <div className="relative">
       <select
         data-slot="select"
-        className={cn(fieldBase, "h-control cursor-pointer appearance-none pr-9", className)}
+        className={cn(fieldBase, "h-field cursor-pointer appearance-none pr-9", className)}
         {...props}
       >
         {children}

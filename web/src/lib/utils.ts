@@ -6,10 +6,11 @@ import { extendTailwindMerge } from "tailwind-merge";
 const twMerge = extendTailwindMerge({
   extend: {
     classGroups: {
-      rounded: [{ rounded: ["box", "control"] }],
+      rounded: [{ rounded: ["box", "control", "pill"] }],
       // v4 (15 oct. 2026) : ombres du thème, hauteurs de contrôle / ligne / champ.
       shadow: [{ shadow: ["rest", "float"] }],
       h: [{ h: ["control", "control-sm", "row", "field"] }],
+      "min-h": [{ "min-h": ["control", "control-sm", "row", "field"] }],
       "font-size": [
         {
           text: [

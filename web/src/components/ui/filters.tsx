@@ -9,9 +9,12 @@ import * as React from "react";
 import { FormAutoSubmit as FormAutoSubmitLazy } from "@/components/ui/form-auto-submit";
 import { cn, pl } from "@/lib/utils";
 
+import { CHIP_BASE, CHIP_OFF, CHIP_ON } from "./chip-styles";
+
 /**
  * Puce de filtre (raccourcis de dates, vues, catégories) : un seul style dans toute l'application (audit UI du
- * 9 oct. 2026 : 5 styles de puces). Sélection = contour accent + fond `accent-soft`. `asChild` pour un lien.
+ * 9 oct. 2026 : 5 styles de puces), en pilule depuis la v4. Sélection = jetons `--chip-on-*` du thème (contour accent +
+ * fond `accent-soft` ; encre pleine dans Cabine). `asChild` pour un lien.
  */
 export function FilterChip({
   pressed,
@@ -25,13 +28,7 @@ export function FilterChip({
       data-slot="filter-chip"
       data-pressed={pressed || undefined}
       {...(!asChild ? { type: "button", "aria-pressed": !!pressed } : {})}
-      className={cn(
-        "inline-flex h-control-sm shrink-0 cursor-pointer items-center gap-1.5 rounded-control border px-3 text-small font-medium whitespace-nowrap transition-colors duration-150",
-        pressed
-          ? "border-accent bg-accent-soft text-fg"
-          : "border-border text-fg-muted hover:border-border-strong hover:text-fg",
-        className,
-      )}
+      className={cn(CHIP_BASE, "h-control-sm", pressed ? CHIP_ON : CHIP_OFF, className)}
       {...props}
     />
   );
@@ -87,7 +84,7 @@ export function CollapsibleFilters({
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen((o) => !o)}
-        className="col-span-2 inline-flex h-control items-center gap-2 rounded-control border border-border-strong px-3 text-body text-fg md:hidden"
+        className="col-span-2 inline-flex h-control items-center gap-2 rounded-control border border-border-strong bg-(--control-bg) px-3 text-body text-fg md:hidden"
       >
         <SlidersHorizontal aria-hidden className="size-4" />
         Filtres

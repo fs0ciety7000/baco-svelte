@@ -27,6 +27,7 @@
   --mod-admin: var(--accent);
   --r-box: 8px;
   --r-control: 6px;
+  --r-pill: 999px;
   --chamfer: 0px;
   --chamfer-sm: 0px;
   --shadow-1: inset 0 1px 0 rgb(255 255 255 / 0.04);
@@ -58,6 +59,9 @@
   --chip-on-fg: var(--fg);
   --chip-on-border: var(--accent);
   --card-frame: transparent;
+  --control-bg: var(--surface-2);
+  --control-on: var(--surface-3);
+  --badge-ring: 0%;
 }
 
 [data-theme="jour"] {
@@ -86,6 +90,7 @@
   --mod-admin: var(--accent);
   --r-box: 8px;
   --r-control: 6px;
+  --r-pill: 999px;
   --chamfer: 0px;
   --chamfer-sm: 0px;
   --shadow-1: 0 1px 0 rgb(20 25 28 / 0.04), 0 1px 2px rgb(20 25 28 / 0.05);
@@ -117,6 +122,9 @@
   --chip-on-fg: var(--fg);
   --chip-on-border: var(--accent);
   --card-frame: var(--border);
+  --control-bg: var(--surface);
+  --control-on: var(--surface);
+  --badge-ring: 0%;
 }
 
 [data-theme="quai-jour"] {
@@ -145,6 +153,7 @@
   --mod-admin: var(--accent);
   --r-box: 3px;
   --r-control: 2px;
+  --r-pill: 2px;
   --chamfer: 0px;
   --chamfer-sm: 0px;
   --shadow-1: 0 1px 0 rgb(14 23 33 / 0.04), 0 1px 2px rgb(14 23 33 / 0.05);
@@ -176,6 +185,9 @@
   --chip-on-fg: var(--fg);
   --chip-on-border: var(--accent);
   --card-frame: var(--border);
+  --control-bg: var(--surface);
+  --control-on: var(--surface);
+  --badge-ring: 0%;
 }
 
 [data-theme="quai-nuit"] {
@@ -204,6 +216,7 @@
   --mod-admin: var(--accent);
   --r-box: 3px;
   --r-control: 2px;
+  --r-pill: 2px;
   --chamfer: 0px;
   --chamfer-sm: 0px;
   --shadow-1: inset 0 1px 0 rgb(255 255 255 / 0.04);
@@ -235,6 +248,9 @@
   --chip-on-fg: var(--fg);
   --chip-on-border: var(--accent);
   --card-frame: transparent;
+  --control-bg: var(--surface-2);
+  --control-on: var(--surface-3);
+  --badge-ring: 0%;
 }
 
 [data-theme="cabine-jour"] {
@@ -263,6 +279,7 @@
   --mod-admin: var(--accent);
   --r-box: 6px;
   --r-control: 5px;
+  --r-pill: 999px;
   --chamfer: 0px;
   --chamfer-sm: 0px;
   --shadow-1: 0 1px 0 rgb(31 25 21 / 0.03), 0 1px 2px rgb(31 25 21 / 0.05);
@@ -294,6 +311,9 @@
   --chip-on-fg: var(--bg);
   --chip-on-border: var(--fg);
   --card-frame: var(--border);
+  --control-bg: var(--surface);
+  --control-on: var(--surface);
+  --badge-ring: 0%;
   --theme-row-h: 2rem;
   --theme-control-h: 2rem;
   --theme-field-h: 2.125rem;
@@ -325,6 +345,7 @@
   --mod-admin: var(--accent);
   --r-box: 6px;
   --r-control: 5px;
+  --r-pill: 999px;
   --chamfer: 0px;
   --chamfer-sm: 0px;
   --shadow-1: none;
@@ -356,6 +377,9 @@
   --chip-on-fg: var(--bg);
   --chip-on-border: var(--fg);
   --card-frame: var(--border);
+  --control-bg: var(--surface-2);
+  --control-on: var(--surface-3);
+  --badge-ring: 0%;
   --theme-row-h: 2rem;
   --theme-control-h: 2rem;
   --theme-field-h: 2.125rem;
@@ -387,6 +411,7 @@
   --mod-admin: var(--accent);
   --r-box: 8px;
   --r-control: 6px;
+  --r-pill: 999px;
   --chamfer: 0px;
   --chamfer-sm: 0px;
   --shadow-1: none;
@@ -418,6 +443,9 @@
   --chip-on-fg: var(--fg);
   --chip-on-border: var(--accent);
   --card-frame: var(--border);
+  --control-bg: var(--surface);
+  --control-on: var(--surface-3);
+  --badge-ring: 40%;
 }
 
 [data-theme="commandement"] {
@@ -446,6 +474,7 @@
   --mod-admin: var(--accent);
   --r-box: 0px;
   --r-control: 0px;
+  --r-pill: 0px;
   --chamfer: 8px;
   --chamfer-sm: 6px;
   --shadow-1: none;
@@ -477,6 +506,9 @@
   --chip-on-fg: var(--fg);
   --chip-on-border: var(--accent);
   --card-frame: var(--border);
+  --control-bg: var(--surface);
+  --control-on: var(--surface-3);
+  --badge-ring: 40%;
 }
 
 [data-theme="craie"] {
@@ -505,6 +537,7 @@
   --mod-admin: #C3BDB0;
   --r-box: 12px;
   --r-control: 999px;
+  --r-pill: 999px;
   --chamfer: 0px;
   --chamfer-sm: 0px;
   --shadow-1: inset 0 1px 0 rgb(255 255 255 / 0.04);
@@ -536,6 +569,9 @@
   --chip-on-fg: var(--fg);
   --chip-on-border: var(--accent);
   --card-frame: var(--border);
+  --control-bg: var(--surface);
+  --control-on: var(--surface-3);
+  --badge-ring: 40%;
 }
 
 [data-theme="craie-jour"] {
@@ -564,6 +600,7 @@
   --mod-admin: #615D54;
   --r-box: 12px;
   --r-control: 999px;
+  --r-pill: 999px;
   --chamfer: 0px;
   --chamfer-sm: 0px;
   --shadow-1: 0 1px 0 rgb(0 0 0 / 0.03), 0 1px 2px rgb(0 0 0 / 0.05);
@@ -595,6 +632,9 @@
   --chip-on-fg: var(--fg);
   --chip-on-border: var(--accent);
   --card-frame: var(--border);
+  --control-bg: var(--surface);
+  --control-on: var(--surface);
+  --badge-ring: 40%;
 }
 
 [data-theme="ivoire"] {
@@ -623,6 +663,7 @@
   --mod-admin: var(--accent);
   --r-box: 0px;
   --r-control: 0px;
+  --r-pill: 0px;
   --chamfer: 8px;
   --chamfer-sm: 6px;
   --shadow-1: none;
@@ -654,6 +695,9 @@
   --chip-on-fg: var(--fg);
   --chip-on-border: var(--accent);
   --card-frame: var(--border);
+  --control-bg: var(--surface);
+  --control-on: var(--surface);
+  --badge-ring: 40%;
 }
 
 [data-theme="porcelaine"] {
@@ -682,6 +726,7 @@
   --mod-admin: var(--accent);
   --r-box: 8px;
   --r-control: 6px;
+  --r-pill: 999px;
   --chamfer: 0px;
   --chamfer-sm: 0px;
   --shadow-1: 0 1px 0 rgb(0 0 0 / 0.03), 0 1px 2px rgb(0 0 0 / 0.05);
@@ -713,6 +758,9 @@
   --chip-on-fg: var(--fg);
   --chip-on-border: var(--accent);
   --card-frame: var(--border);
+  --control-bg: var(--surface);
+  --control-on: var(--surface);
+  --badge-ring: 40%;
 }
 
 [data-theme="rail"] {
@@ -741,6 +789,7 @@
   --mod-admin: var(--accent);
   --r-box: 0px;
   --r-control: 0px;
+  --r-pill: 0px;
   --chamfer: 8px;
   --chamfer-sm: 6px;
   --shadow-1: none;
@@ -772,6 +821,9 @@
   --chip-on-fg: var(--fg);
   --chip-on-border: var(--accent);
   --card-frame: var(--border);
+  --control-bg: var(--surface);
+  --control-on: var(--surface-3);
+  --badge-ring: 40%;
 }
 
 [data-theme="nocturne"] {
@@ -800,6 +852,7 @@
   --mod-admin: var(--accent);
   --r-box: 8px;
   --r-control: 6px;
+  --r-pill: 999px;
   --chamfer: 0px;
   --chamfer-sm: 0px;
   --shadow-1: inset 0 1px 0 rgb(255 255 255 / 0.04);
@@ -831,6 +884,9 @@
   --chip-on-fg: var(--fg);
   --chip-on-border: var(--accent);
   --card-frame: var(--border);
+  --control-bg: var(--surface);
+  --control-on: var(--surface-3);
+  --badge-ring: 40%;
 }
 
 [data-theme="graphite"] {
@@ -859,6 +915,7 @@
   --mod-admin: var(--accent);
   --r-box: 8px;
   --r-control: 6px;
+  --r-pill: 999px;
   --chamfer: 0px;
   --chamfer-sm: 0px;
   --shadow-1: inset 0 1px 0 rgb(255 255 255 / 0.04);
@@ -890,6 +947,9 @@
   --chip-on-fg: var(--fg);
   --chip-on-border: var(--accent);
   --card-frame: var(--border);
+  --control-bg: var(--surface);
+  --control-on: var(--surface-3);
+  --badge-ring: 40%;
 }
 
 [data-theme="prune"] {
@@ -918,6 +978,7 @@
   --mod-admin: var(--accent);
   --r-box: 8px;
   --r-control: 6px;
+  --r-pill: 999px;
   --chamfer: 0px;
   --chamfer-sm: 0px;
   --shadow-1: inset 0 1px 0 rgb(255 255 255 / 0.04);
@@ -949,6 +1010,9 @@
   --chip-on-fg: var(--fg);
   --chip-on-border: var(--accent);
   --card-frame: var(--border);
+  --control-bg: var(--surface);
+  --control-on: var(--surface-3);
+  --badge-ring: 40%;
 }
 
 [data-theme="foret"] {
@@ -977,6 +1041,7 @@
   --mod-admin: var(--accent);
   --r-box: 0px;
   --r-control: 0px;
+  --r-pill: 0px;
   --chamfer: 8px;
   --chamfer-sm: 6px;
   --shadow-1: none;
@@ -1008,6 +1073,9 @@
   --chip-on-fg: var(--fg);
   --chip-on-border: var(--accent);
   --card-frame: var(--border);
+  --control-bg: var(--surface);
+  --control-on: var(--surface-3);
+  --badge-ring: 40%;
 }
 
 [data-theme="contraste"] {
@@ -1036,6 +1104,7 @@
   --mod-admin: var(--accent);
   --r-box: 0px;
   --r-control: 0px;
+  --r-pill: 0px;
   --chamfer: 8px;
   --chamfer-sm: 6px;
   --shadow-1: none;
@@ -1067,6 +1136,9 @@
   --chip-on-fg: var(--fg);
   --chip-on-border: var(--accent);
   --card-frame: var(--border);
+  --control-bg: var(--surface);
+  --control-on: var(--surface-3);
+  --badge-ring: 40%;
 }
 
 [data-theme="auto"] {
@@ -1095,6 +1167,7 @@
   --mod-admin: var(--accent);
   --r-box: 8px;
   --r-control: 6px;
+  --r-pill: 999px;
   --chamfer: 0px;
   --chamfer-sm: 0px;
   --shadow-1: inset 0 1px 0 rgb(255 255 255 / 0.04);
@@ -1126,6 +1199,9 @@
   --chip-on-fg: var(--fg);
   --chip-on-border: var(--accent);
   --card-frame: transparent;
+  --control-bg: var(--surface-2);
+  --control-on: var(--surface-3);
+  --badge-ring: 0%;
 }
 
 @media (prefers-color-scheme: light) {
@@ -1155,6 +1231,7 @@
     --mod-admin: var(--accent);
     --r-box: 8px;
     --r-control: 6px;
+    --r-pill: 999px;
     --chamfer: 0px;
     --chamfer-sm: 0px;
     --shadow-1: 0 1px 0 rgb(20 25 28 / 0.04), 0 1px 2px rgb(20 25 28 / 0.05);
@@ -1186,6 +1263,9 @@
     --chip-on-fg: var(--fg);
     --chip-on-border: var(--accent);
     --card-frame: var(--border);
+    --control-bg: var(--surface);
+    --control-on: var(--surface);
+    --badge-ring: 0%;
   }
 }
 
@@ -1215,6 +1295,7 @@
   --mod-admin: var(--accent);
   --r-box: 3px;
   --r-control: 2px;
+  --r-pill: 2px;
   --chamfer: 0px;
   --chamfer-sm: 0px;
   --shadow-1: inset 0 1px 0 rgb(255 255 255 / 0.04);
@@ -1246,6 +1327,9 @@
   --chip-on-fg: var(--fg);
   --chip-on-border: var(--accent);
   --card-frame: transparent;
+  --control-bg: var(--surface-2);
+  --control-on: var(--surface-3);
+  --badge-ring: 0%;
 }
 
 @media (prefers-color-scheme: light) {
@@ -1275,6 +1359,7 @@
     --mod-admin: var(--accent);
     --r-box: 3px;
     --r-control: 2px;
+    --r-pill: 2px;
     --chamfer: 0px;
     --chamfer-sm: 0px;
     --shadow-1: 0 1px 0 rgb(14 23 33 / 0.04), 0 1px 2px rgb(14 23 33 / 0.05);
@@ -1306,6 +1391,9 @@
     --chip-on-fg: var(--fg);
     --chip-on-border: var(--accent);
     --card-frame: var(--border);
+    --control-bg: var(--surface);
+    --control-on: var(--surface);
+    --badge-ring: 0%;
   }
 }
 
@@ -1335,6 +1423,7 @@
   --mod-admin: var(--accent);
   --r-box: 6px;
   --r-control: 5px;
+  --r-pill: 999px;
   --chamfer: 0px;
   --chamfer-sm: 0px;
   --shadow-1: none;
@@ -1366,6 +1455,9 @@
   --chip-on-fg: var(--bg);
   --chip-on-border: var(--fg);
   --card-frame: var(--border);
+  --control-bg: var(--surface-2);
+  --control-on: var(--surface-3);
+  --badge-ring: 0%;
   --theme-row-h: 2rem;
   --theme-control-h: 2rem;
   --theme-field-h: 2.125rem;
@@ -1398,6 +1490,7 @@
     --mod-admin: var(--accent);
     --r-box: 6px;
     --r-control: 5px;
+    --r-pill: 999px;
     --chamfer: 0px;
     --chamfer-sm: 0px;
     --shadow-1: 0 1px 0 rgb(31 25 21 / 0.03), 0 1px 2px rgb(31 25 21 / 0.05);
@@ -1429,6 +1522,9 @@
     --chip-on-fg: var(--bg);
     --chip-on-border: var(--fg);
     --card-frame: var(--border);
+    --control-bg: var(--surface);
+    --control-on: var(--surface);
+    --badge-ring: 0%;
     --theme-row-h: 2rem;
     --theme-control-h: 2rem;
     --theme-field-h: 2.125rem;

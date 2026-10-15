@@ -151,7 +151,7 @@ function TimeField({
           onKeyDown={onKeyDown}
           className={cn(
             fieldBase,
-            "h-control tabular",
+            "h-field tabular",
             now && "pr-11",
             pending && !current && "border-dashed placeholder:text-warn",
           )}

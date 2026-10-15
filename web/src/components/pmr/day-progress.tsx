@@ -100,9 +100,7 @@ export function NowLine({
   );
   const until = untilLabel(nextTime, now);
   const text = `Maintenant · ${fromMinutes(now)}`;
-  const sub = nextTime
-    ? `prochaine ${until || "imminente"}`
-    : "plus rien aujourd'hui";
+  const sub = nextTime ? `prochaine ${until || "imminente"}` : "plus rien aujourd'hui";
   const body = (
     <div className="relative flex h-8 items-center" aria-label={`${text}, ${sub}`} role="note">
       <span
