@@ -814,6 +814,37 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - Extension 1.8.0 : `src/quinyx.js` (onglet Quinyx, tri avant envoi), `src/quinyx-inject.js` (relève `x-app-version`),
   service worker `syncQuinyx` (bouton du popup ou ouverture d'une page `/schedule/`, au plus toutes les 3 h).
 - E2E `e2e/quinyx.spec.ts` (groupes fictifs 990001 / 990002, agents « E2E Quinyx <format> », le compte E2E rattaché).
+- **Groupes « gares »** (planificateur PMR, 15 oct. 2026) : `quinyx_groups.purpose` (`equipe` | `gares`, Admin › Quinyx,
+  renvoyé par `/api/equipe/quinyx/config`, l'extension trie selon lui). `mapQuinyxBatch(batch, places, district, { purpose,
+  bases })` : groupe `gares` → `isStationCode` (CPI / SPI / OPI / PA / EXTRA en tête du type), `stationPost`, `stationBase`
+  (section, sinon type, sinon unité ; comparaison tolérante avec `planner_bases`, une seule base possible sinon rien),
+  district = celui de la base ; heures réelles de la prestation. Ingestion : prestations de **tous** les agents (pas de
+  filtre « équipe », pas de compte proposé), `quinyx_agents.purpose = gares`. `listPlanning` (`post = ""`), `quinyxSyncs`
+  et l'admin (agents comptés à part, `stationAgents`) ignorent les agents de gare.
+
+## Planificateur de tâches PMR (lot P0, 15 oct. 2026, `../docs/design/CADRAGE-PLANIFICATEUR-PMR.md`)
+
+- Droits : `planner:read` / `planner:write` (PACO/RCCA et au-dessus), `planner:manage` (admin / sysop, sensible :
+  référentiels, suppression d'une tâche DICOS). Onglet `/pmr/planificateur` (`requireRoute`, page minimale au P0).
+- **Dossiers DICOS en attente** : l'extension 1.9.0 lit `GET /api/reservations/disableds/to-check` (identifiants de gare
+  répétés) après chaque synchro (`withPending` dans `content.js`), réduit chaque dossier (`pickPending` : jamais client,
+  remarques ni point de rencontre) et l'envoie à `POST /api/pmr/pending/ingest` (`connectorRequest`, 20 / min, 2 Mo,
+  jours J-2 → J+60). Mapping pur `lib/pmr/dicos-pending.ts` (testé) : `mapPendingDossier` → une tâche par bout assisté
+  (IN départ, OUT arrivée), clé `<journey.id>:IN|OUT`, type par `DICOS_SYMBOL` (fauteuil prioritaire), `pax` = somme des
+  quantités, `light` = aucune « Full », `dicos_status` proposal / cancelled (train supprimé = annulé), `station_ok`.
+  **`start = end = heure du train`** : la fenêtre (T−15 → T+5…) est calculée à l'affichage par `lib/planner/` (autre lot).
+- **Missions acceptées** : fin de `POST /api/pmr/missions/ingest` → `syncPlannerFromAssists(pb, jour, ids)`
+  (`server/planner-sync.ts`, jamais bloquant, compteur `planner` dans la réponse) : `tasksFromAssist` (même clé que le
+  dossier en attente) relie la tâche (source `dicos_mission`, `accepted`, `assist`) ou la crée. `nextPlannerStatus` : une
+  annulation passe la tâche en `annulee` **en gardant l'agent** ; rétablie = `attribuee` si une destination est posée,
+  sinon `a_attribuer` ; `faite` reste. L'attribution n'est jamais touchée par une synchro ; tâche manuelle / de modèle
+  jamais réécrite ; aucune suppression.
+- Données : `server/data/planner.ts` → `plannerDay(day, districts)` = `{ day, bases, agents, tasks, bcs, templates }`
+  (agents = prestations de gare du jour et nuit de la veille qui déborde ; `PlannerTask.district` déduit des bases ;
+  `updated` = verrou optimiste). Actions `app/(app)/pmr/planificateur/actions.ts` : `assignTask(id, { kind, agentId?,
+  label? }, expectedUpdated)`, `unassignTask(id, expectedUpdated)`, `createManualTasks(day, lines)` (lignes du parseur,
+  heures « HH:MM » ou ISO, fin avant début = lendemain, 200 au plus), `deleteTask(id)` ; résultat `{ ok, … } | { ok:
+  false, error, conflict? }`. Un fichier `"use server"` n'exporte que des fonctions async (le schéma zod reste local).
 
 ## « Voir en tant que » (Administration, 14 oct. 2026)
 

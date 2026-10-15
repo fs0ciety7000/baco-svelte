@@ -6,7 +6,7 @@
 > disponibilités, le district, la zone et les temps de trajet. Vue Gantt / calendrier jour, semaine, mois ; glisser-déposer ;
 > « si l'agent est occupé, en chercher un autre ». Les règles s'affineront au fil de l'eau.
 >
-> **Statut : ébauche soumise, réponses reçues le 15 oct. (§4), rien n'est codé.** Règles détaillées : `REGLES-PLANIFICATEUR-PMR.md` (sans donnée
+> **Statut : P0 + P1 validés le 15 oct. ; lot P0 (socle de données) fait (§8), écran et moteur au lot P1.** Règles détaillées : `REGLES-PLANIFICATEUR-PMR.md` (sans donnée
 > personnelle). Les classeurs eux-mêmes (noms d'agents et de voyageurs, téléphones) restent hors dépôt. Les identifiants des
 > plannings Quinyx ne vont jamais dans Git : ils se saisissent dans Administration › Quinyx.
 
@@ -192,3 +192,26 @@ Conséquences pour le planificateur :
 10. Quand un jour est-il « figé » ? Les PMR de dernière minute arrivent-elles dans « À attribuer » avec une alerte ?
 11. Nom et téléphone du voyageur sur la feuille de l'agent : oui (avec `pmr:read`) ou jamais ?
 12. Taxi et « chef de bord » : simples destinations d'attribution (comme un agent), d'accord ?
+
+## 8. Lot P0 — fait le 15 oct. 2026
+
+- **Droits** : `planner:read`, `planner:write` (PACO/RCCA, modérateur, admin, sysop), `planner:manage` (admin, sysop ;
+  sensible). Choix d'implémentation : les référentiels se gèrent avec `planner:manage` (et non `referentiels:manage`
+  proposé en §3.1) ; une tâche venue de DICOS ne se supprime qu'avec `planner:manage`.
+- **Données** (`pocketbase/pb_migrations/1760004900_planner.js`) : `quinyx_groups.purpose`, `quinyx_agents.purpose`,
+  `quinyx_shifts.post` / `base` ; `planner_bases` (10 bases, matrice §3.1 des règles, couvertures §4, postes §1.3 ; zone
+  de Braine-le-Comte = FMS ; « Faisceau A Charleroi » non repris), `bcs_counters` (30 guichets, N67 = semaine, R67 =
+  week-end — à confirmer), `planner_templates` (vide), `planner_tasks`. `planner_rules` (§3.1) **pas créée** : durées et
+  fenêtres restent dans le moteur pur du lot P1 tant qu'aucune règle ne doit changer sans déploiement.
+- **Quinyx « gares »** : Administration › Quinyx règle le rôle de chaque groupe ; prestations CPI / SPI / OPI / PA / EXTRA de
+  tous les agents, poste d'après le type, gare de base d'après la section (tolérant : « CPI MONS », « SPI Liège » →
+  Liège-Guillemins). B-CS non capté (simple capacité, §5).
+- **DICOS en attente** (§7) : extension 1.9.0, `POST /api/pmr/pending/ingest`, une tâche par bout assisté
+  (`<journey.id>:IN|OUT`), début = fin = heure du train (fenêtre calculée à l'affichage). Mission acceptée → tâche reliée
+  (source `dicos_mission`, `assist`) ; annulation → « annulée », agent gardé ; jamais de suppression. Train supprimé
+  (`isTrainCancelled`) traité comme une annulation.
+- **Pour l'écran (P1)** : `plannerDay(day, districts)` (`web/src/server/data/planner.ts`), actions `assignTask`,
+  `unassignTask`, `createManualTasks`, `deleteTask` (`web/src/app/(app)/pmr/planificateur/actions.ts`).
+- **Limites connues** : une tâche encodée à la main pour un dossier qui arrive ensuite de DICOS fait doublon (la tâche
+  manuelle n'a pas de clé DICOS) ; à traiter au P1 (proposer de fusionner). Le district d'une tâche se déduit des gares
+  des bases (gare inconnue des matrices = sans district, toujours affichée).

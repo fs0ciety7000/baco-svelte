@@ -3,6 +3,18 @@
 Toutes les évolutions de CSM visibles par les agents, de la plus récente à la plus ancienne.
 Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
+## [2026.10.15] — Planificateur de tâches PMR : premières briques
+
+### Nouveautés
+
+- **PMR & Groupes › Planificateur** (PACO/RCCA, modérateurs, administrateurs) : nouvel onglet qui remplacera les classeurs « planificateur de tâches » DSO et DSE. L'écran arrive dans une prochaine mise à jour ; CSM prépare déjà les données : agents de gare et leurs services, prises en charge à répartir, guichets B-CS et temps de trajet entre gares.
+- **Extension CSM 1.9.0** : à chaque synchro DICOS, les dossiers « à vérifier » (en attente d'acceptation) de tes gares partent aussi vers CSM, pour être planifiés avant même d'être acceptés. Seuls le numéro de dossier, les trains, gares, heures, le sens, le type et le nombre de voyageurs sont envoyés : jamais de nom ni de coordonnées. Le popup affiche les totaux « Dossiers en attente ».
+- **Administration › Quinyx** : chaque groupe a un rôle, « Équipe » (PACO/RCCA, comme avant) ou « Gares » (agents de gare CPI, SPI, OPI, PA et EXTRA, avec leur gare de base, pour le planificateur). Les agents de gare n'apparaissent pas dans Ressources › Planning.
+
+### Sécurité
+
+- Nouveaux droits « Voir le planificateur » et « Planifier les tâches » (PACO/RCCA et au-dessus) ; « Gérer les référentiels du planificateur » (bases, guichets B-CS, modèles de tâches) réservé aux administrateurs. Une prise en charge venue de DICOS ne se modifie pas à la main (on l'attribue seulement) et ne se supprime pas sans ce dernier droit.
+
 ## [2026.10.14.1] — Nouveaux menus, rôles personnalisés, annuaire refait
 
 ### Nouveautés

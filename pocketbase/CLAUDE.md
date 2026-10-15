@@ -12,7 +12,7 @@ pocketbase migrate up $P                                   # appliquer les migra
 pocketbase superuser upsert <email> <mot de passe> $P      # compte superuser local
 pocketbase serve --http 127.0.0.1:8090 $P                  # serveur local
 CSM_IMPORT_RESET=1 pocketbase csm-import /home/user/csm-backup $P   # import de la sauvegarde Supabase (hors Git)
-PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (≈ 661 contrôles ; CSM_INTERNAL_SECRET pour « en tant que »)
+PB_SUPERUSER_EMAIL=… PB_SUPERUSER_PASSWORD=… node scripts/test-rules.mjs  # tests des règles (≈ 733 contrôles, 714 sans CSM_INTERNAL_SECRET (« en tant que »))
 node scripts/perms-equivalence.mjs pb_data/data.db         # rôles v3 : ancien calcul ↔ users.perms (0 écart attendu)
 pocketbase perms-check $P                                  # même contrôle en JSVM, LECTURE SEULE, code 1 si écart (prod : tâche Coolify)
 CSM_IMPORT_SCOPE=commandes CSM_IMPORT_RESET=1 pocketbase csm-import … $P  # Commandes + PMR, comptes gardés
@@ -407,3 +407,22 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   `…/crossings/finish` reçoit `retire` (PN `baco` actifs sans `infrabel_id` non rapprochés) → `active = false`,
   `infrabel_seen = "absent"` ; réactivé par un agent → `"garde"` (hook), plus jamais désactivé par l'import ; rapproché plus
   tard → réactivé. 642 contrôles de règles.
+- **Planificateur de tâches PMR, lot P0** (`1760004900_planner.js`, `planner.pb.js`, 15 oct. 2026,
+  `docs/design/CADRAGE-PLANIFICATEUR-PMR.md`) : `quinyx_groups.purpose` / `quinyx_agents.purpose` (`equipe` | `gares`,
+  existants = equipe, défaut posé par hook ; le connecteur ne change pas `purpose` d'un groupe), `quinyx_shifts.post`
+  (CPI / SPI / OPI / PA / EXTRA ou vide) et `base` (nom FR de la gare de base). Référentiels pré-remplis (REGLES §1.3,
+  §3.1, §5) : `planner_bases` (10 bases, `travel` = [{station, minutes}], `covers` = codes : Mons ↔ Tournai, Mons →
+  Braine-le-Comte, Liège ↔ Verviers, Libramont ↔ Arlon ; trajet retour repris du sens connu ; jamais Mons → Charleroi ;
+  code figé ; lue aussi par le connecteur), `bcs_counters` (30 guichets, fins 14:36…14:46 corrigées, 3 PMR light / h,
+  base = gare de base qui couvre), `planner_templates` (**vide** : modèles des classeurs à vérifier). Lecture
+  `planner:read`, écriture `planner:manage`. **`planner_tasks`** : lecture `planner:read` (+ connecteur) ; création
+  `planner:write` avec source `manuel` | `modele` et sans `source_key` / `dicos_status` / `station_ok` / `assist`, ou
+  connecteur avec source `dicos_*` et sans attribution ; modification `planner:write` sans source ni champ DICOS, et pour
+  une tâche DICOS sans jour, type, heures, gares, train, type PMR, nombre, light, dossier (on attribue, annote, marque
+  faite) ; connecteur sur une tâche DICOS seulement, jamais d'attribution ; suppression `planner:write` pour une tâche
+  manuelle / de modèle, sinon `planner:manage`. Index unique partiel `source_key` (`<journeyId>:IN|OUT`). Hook :
+  `created_by` / `updated_by` = appelant (valeur du corps ignorée, superuser : rien), fin = début si absente, fin avant
+  début refusée, attribution cohérente (« agent » exige `assignee_agent`, attribuée / faite exige une destination,
+  « à attribuer » n'en a pas ; annulée garde la sienne). Cron `planner-retention` (3 h 35 UTC) : tâches > 90 j. Audit
+  des trois référentiels (pas des tâches : volume). Clés `planner:*` ajoutées à `perms-check` / `perms-equivalence`.
+  `down` testé sur une copie. 714 contrôles de règles (sans le secret interne).
