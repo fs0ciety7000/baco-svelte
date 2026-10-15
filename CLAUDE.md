@@ -1321,6 +1321,8 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   `TrainChip` dans `components/ui`, `/design`. Trois couleurs ajustées pour l'AA (Quai Jour `warn`, Cabine Jour `warn`, Cabine
   Nuit `border-strong`). Restent : shell (lot 3), écrans (4 à 6).
 
+- 2026-10-15 — **Retours sur les lots 0-2 de la refonte** : sélecteur à boutons en relief neutre gardé ; **boutons alignés sur les champs (38 px**, Cabine 34 px) ; pas de bouton « Reprendre dans <district> » sur les notes communes de la B201.
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)

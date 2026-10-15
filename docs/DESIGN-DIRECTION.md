@@ -132,7 +132,7 @@ de chaque paire texte/fond dans les 5 thèmes (AAA pour le texte du thème Contr
 |---|---|
 | Jeton `border-strong` (bordure des champs, ≥ 3:1) | `border` n'atteint que 1,4:1 : un champ doit rester repérable (WCAG 1.4.11) |
 | Jeton `accent-fg` = fond du thème (texte sur l'accent) | 5,6:1 à 14:1 selon le thème |
-| Contrôles 36 px (confortable), 32 px (compact), **44 px au tactile** quelle que soit la densité | Références Linear / Vercel ; mobile obligatoire |
+| Contrôles et champs 38 px (confortable, alignés le 15 oct. 2026), 32 px (compact), **44 px au tactile** quelle que soit la densité | Références Linear / Vercel ; mobile obligatoire |
 | Palier de texte **13/18** pour aides, erreurs, toasts | Plus lisible que 12 px pour des messages à lire |
 | Mono minimum 11 px ; capitales mono réservées aux eyebrows, en-têtes de tableau, badges, labels de StatCard | Retour v1 : trop de petits libellés en capitales |
 | Chanfrein dessiné par `::before`/`::after` (élément non clippé) | `clip-path` coupait l'anneau de focus |

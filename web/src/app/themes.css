@@ -315,7 +315,7 @@
   --control-on: var(--surface);
   --badge-ring: 0%;
   --theme-row-h: 2rem;
-  --theme-control-h: 2rem;
+  --theme-control-h: 2.125rem;
   --theme-field-h: 2.125rem;
 }
 
@@ -381,7 +381,7 @@
   --control-on: var(--surface-3);
   --badge-ring: 0%;
   --theme-row-h: 2rem;
-  --theme-control-h: 2rem;
+  --theme-control-h: 2.125rem;
   --theme-field-h: 2.125rem;
 }
 
@@ -1459,7 +1459,7 @@
   --control-on: var(--surface-3);
   --badge-ring: 0%;
   --theme-row-h: 2rem;
-  --theme-control-h: 2rem;
+  --theme-control-h: 2.125rem;
   --theme-field-h: 2.125rem;
 }
 
@@ -1526,7 +1526,7 @@
     --control-on: var(--surface);
     --badge-ring: 0%;
     --theme-row-h: 2rem;
-    --theme-control-h: 2rem;
+    --theme-control-h: 2.125rem;
     --theme-field-h: 2.125rem;
   }
 }

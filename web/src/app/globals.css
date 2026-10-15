@@ -147,9 +147,10 @@
 }
 
 :root {
-  /* Contrôles : 36 px (confortable), 32 px (compact), 44 px au tactile. Lignes de tableau : 40 / 32 / 44. Un thème
-     compact par nature (Cabine) fixe `--theme-row-h` / `--theme-control-h` / `--theme-field-h`. */
-  --control-h: var(--theme-control-h, 2.25rem);
+  /* Contrôles (boutons) et champs : même hauteur, 38 px (confortable), 32 px (compact), 44 px au tactile (alignés le
+     15 oct. 2026 : un bouton à côté d'un champ ne décroche plus). Lignes de tableau : 40 / 32 / 44. Un thème compact par
+     nature (Cabine) fixe `--theme-row-h` / `--theme-control-h` / `--theme-field-h`. */
+  --control-h: var(--theme-control-h, 2.375rem);
   --control-h-sm: 2rem;
   --row-h: var(--theme-row-h, 2.5rem);
   --field-h: var(--theme-field-h, 2.375rem);
