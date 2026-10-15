@@ -7,6 +7,8 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 ### Nouveautés
 
+- **Planificateur PMR** : les missions DICOS nouvellement créées arrivent seules dans « À attribuer » (reprise toutes les 5 minutes), et une mission annulée dans DICOS disparaît seule du planificateur.
+
 - **Planificateur de tâches PMR (vue Jour)** — PMR & Groupes › Planificateur (PACO/RCCA, modérateurs, administrateurs), pour remplacer les classeurs « planificateur de tâches » DSO et DSE :
   - une ligne par agent de gare (services lus dans Quinyx), regroupée par gare de base puis poste, le temps en horizontal (Large / Normal / Détail, ouverture sur « maintenant ») ; hors service hachuré, temps libre, trajets en voiture calculés ; lignes des guichets B-CS (capacité par heure), du taxi et du chef de bord ;
   - colonne « À attribuer » triée par heure (acceptées DICOS, en attente, par zone et par gare) ;

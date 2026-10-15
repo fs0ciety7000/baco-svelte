@@ -1013,3 +1013,10 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   suppression ; `synced_by` = propriétaire du jeton personnel. Dossiers en attente : `countPendingTasks` +
   `reservePendingQuota` (2 000 tâches par requête, 6 000 par jeton et par jour, mémoire `globalThis`, 429).
   `tasksFromAssist` : type inconnu = light. `mapPendingDossier` : `disableds` OU `traveler.disableds` (le premier non vide).
+- **Missions DICOS → « À attribuer » et annulées retirées** (demande du 15 oct. 2026) : `server/planner-scheduler.ts`
+  (démarré par `instrumentation.ts`, production ou `CSM_PLANNER_SYNC=on`, compte de service requis) rejoue toutes les 5 min
+  `syncPlannerFromAssists` sur J-1 → J+2 : toute mission acceptée (même ingérée avant le planificateur) a sa tâche ; une
+  mission ou un dossier annulé passe la tâche en `annulee`. `plannerDay` **n'affiche plus les tâches annulées** (filtre
+  `status != 'annulee'`, ni dans le Gantt ni dans « À attribuer » ni dans les compteurs) ; la fiche reste en base avec son
+  agent et revient si DICOS rétablit la mission. Remplace « annulée barrée, agent gardé » de l'audit.
+

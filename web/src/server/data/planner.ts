@@ -240,12 +240,14 @@ export async function plannerDay(
         "id,day,start,end,code,section,kind,post,base,district,agent,expand.agent.id,expand.agent.first_name,expand.agent.last_name",
       batch: 500,
     }),
+    // Tâches annulées (mission DICOS annulée, dossier annulé, assistance retirée) : retirées de l'écran, décision du
+    // 15 oct. 2026 ; la fiche reste en base (agent gardé) et réapparaît si DICOS la rétablit.
     // Tâches du jour + jours voisins pour les contrôles et l'affichage de la nuit : tâches ATTRIBUÉES de la veille à
     // partir de 18 h (agents dont la nuit déborde sur le jour) et toutes celles du lendemain avant 8 h (nuit de D, que
     // l'axe affiche). Les compteurs « à attribuer » ne comptent que le jour de planification (`boardCounters(…, day)`).
     pb.collection("planner_tasks").getFullList({
       filter: pb.filter(
-        "day = {:d} || (day = {:y} && assignee_kind != '' && start >= {:eve}) || (day = {:n} && start < {:morn})",
+        "status != 'annulee' && (day = {:d} || (day = {:y} && assignee_kind != '' && start >= {:eve}) || (day = {:n} && start < {:morn}))",
         {
           d: day,
           y: addDays(day, -1),
