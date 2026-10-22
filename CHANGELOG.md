@@ -11,8 +11,13 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 - **« Synchroniser ce jour »** dans la fenêtre ALEA : l'extension lit les missions (et groupes) du jour choisi dans ton onglet DICOS ouvert, les envoie à CSM et la fenêtre se met à jour, sans passer par le popup de l'extension.
 - **Extension CSM 1.10.0** : nécessaire pour « Synchroniser ce jour ». Seule l'adresse CSM à laquelle l'extension est connectée peut demander une synchro, et la page ne reçoit qu'un résumé chiffré.
 
+### Améliorations
+
+- **Missions PMR et Groupes — repère « maintenant »** : l'arrivée d'un trajet compte aussi. Si le débarquement à l'arrivée est la prochaine prise en charge, « Prochaine » s'affiche à côté de la gare d'arrivée (en mobile, l'heure d'arrivée passe en bleu). Un trajet déjà parti mais pas encore arrivé n'est plus grisé, seule sa gare de départ l'est. Sous la ligne « maintenant », « Débarquement à venir » rappelle les arrivées encore à assister des trajets placés au-dessus (train, heure, gare) ; un clic ramène au trajet. Toujours une seule ligne par trajet.
+
 ### Corrections
 
+- **Missions PMR (mobile)** : le badge OUT d'une gare d'arrivée assistée passait sous le bouton Copier de la carte.
 - **Missions PMR et Groupes : tout le tableau tient à l'écran**, sans barre de défilement horizontale : un nom de gare long passe à la ligne au lieu d'élargir la colonne, et « Absente de DICOS » s'affiche en court (« Hors DICOS », explication complète au survol) sous le statut.
 - **Missions PMR et Groupes** : avec une longue liste, la page s'allongeait bien au-delà du tableau ; en faisant défiler, la barre latérale remontait avec le pied de page et laissait un grand vide. La barre latérale reste maintenant en place et la page s'arrête au pied de page.
 

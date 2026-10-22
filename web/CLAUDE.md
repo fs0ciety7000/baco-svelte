@@ -186,7 +186,13 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   l'arrivée) par demi-heure sur 6 h – 22 h au moins, curseur `strip-cursor` (transition CSS), clic sur une tranche =
   défilement vers la première mission de l'heure (`scrollToMission`, puis `highlightElements`), « Aller à maintenant »
   (`go-now`). Logique pure `lib/pmr/now-line.ts` (`nowSplit`, `dayPhase`, `untilLabel`, `stripRange`, `stripBuckets`,
-  `stripTicks`, `indexAtMinute` ; testée). Pas de repère sans regroupement par jour (Historique). E2E
+  `stripTicks`, `indexAtMinute` ; testée). **Bout OUT compté** (22 oct. 2026) : une ligne par trajet, triée par
+  départ, mais `nowSplit` compare départs (`start`, sauf `startAssisted: false`) ET arrivées assistées (`end`) : `next` +
+  `nextSide` + `nextTime` = prise en charge la plus proche (« Prochaine » sur la gare concernée en desktop, `StationCell
+  next` ; en mobile pastille dans l'en-tête et heure `data-next-time` en `text-info`), `half[i]` = départ passé / arrivée à
+  venir (gare de départ seule estompée, `data-faded`), `pending` = arrivées à venir des trajets au-dessus du repère, rendues
+  sous la ligne par `NowLine pending` (`now-pending`, 3 au plus + « + N », clic = `scrollToMission`) via `pendingArrivals` ;
+  `noSplit(n)` = découpe neutre. Pas de repère sans regroupement par jour (Historique). E2E
   `e2e/pmr-journee.spec.ts` (horloge fixée par `page.clock.install`).
 - E2E `e2e/pmr.spec.ts` (fixtures superuser, captures `test-results/pmr-*`).
 

@@ -39,11 +39,49 @@ describe("repère « maintenant »", () => {
     expect(s.insertAt).toBe(3);
     expect(s.next).toBe(3);
     expect(s.past).toEqual([true, true, false, false, false]);
+    expect(s.half).toEqual([false, false, true, false, false]);
+    expect(s.nextSide).toBe("in");
+    expect(s.nextTime).toBe("13:50");
+    // Débarquement de 14:10 (départ 12:30, au-dessus du repère) rappelé sur le repère.
+    expect(s.pending).toEqual([{ index: 2, side: "out", time: "14:10" }]);
+  });
+
+  it("une arrivée plus proche que le prochain départ devient la prochaine, sur la gare d'arrivée", () => {
+    // Train 4569 : IN 19:13 (passé) → OUT 20:09 ; mission suivante au départ de 20:30.
+    const s = nowSplit(
+      [
+        { start: "19:13", end: "20:09" },
+        { start: "20:30" },
+        { start: "20:40", end: "21:00", startAssisted: false },
+      ],
+      hm("19:40"),
+      "today",
+    );
+    expect(s.insertAt).toBe(1);
+    expect(s).toMatchObject({ next: 0, nextSide: "out", nextTime: "20:09" });
+    expect(s.past).toEqual([false, false, false]);
+    expect(s.half).toEqual([true, false, false]);
+    expect(s.pending).toEqual([{ index: 0, side: "out", time: "20:09" }]);
+    // Départ non assisté : jamais la prochaine, l'arrivée oui.
+    const t = nowSplit(
+      [{ start: "20:40", end: "21:00", startAssisted: false }],
+      hm("20:35"),
+      "today",
+    );
+    expect(t).toMatchObject({ next: 0, nextSide: "out", nextTime: "21:00", pending: [] });
   });
 
   it("tout est passé : repère en fin de liste, plus de prochaine", () => {
     const s = nowSplit(items.slice(0, 2), hm("23:00"), "today");
-    expect(s).toEqual({ insertAt: 2, next: -1, past: [true, true] });
+    expect(s).toEqual({
+      insertAt: 2,
+      next: -1,
+      nextSide: "in",
+      nextTime: "",
+      past: [true, true],
+      half: [false, false],
+      pending: [],
+    });
   });
 
   it("avant la première : repère en tête", () => {
@@ -51,10 +89,11 @@ describe("repère « maintenant »", () => {
   });
 
   it("autre jour : pas de repère ; jour passé tout estompé", () => {
-    expect(nowSplit(items, 0, "past")).toEqual({
+    expect(nowSplit(items, 0, "past")).toMatchObject({
       insertAt: -1,
       next: -1,
       past: [true, true, true, true, true],
+      pending: [],
     });
     expect(nowSplit(items, 0, "future").past.every((p) => !p)).toBe(true);
   });

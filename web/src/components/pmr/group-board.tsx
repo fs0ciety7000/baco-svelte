@@ -13,7 +13,7 @@ import { inDistricts, districtsLabel } from "@/lib/pmr/district-filter";
 import { DISTRICT_LABEL } from "@/lib/pmr/districts";
 import { aleaGroupBlocks } from "@/lib/pmr/model";
 import { groupEnds, groupLegOf, groupTotal, groupTrain } from "@/lib/pmr/legs";
-import { dayPhase, indexAtMinute, nowSplit } from "@/lib/pmr/now-line";
+import { dayPhase, indexAtMinute, noSplit, nowSplit, pendingArrivals } from "@/lib/pmr/now-line";
 import { missionImpact, type TrainStates } from "@/lib/pmr/train-delay";
 import type { GroupMission } from "@/server/data/groups";
 
@@ -100,10 +100,14 @@ export function GroupBoard({
   const nowMin = useNowMinute(now ?? 0);
   const timed = now !== undefined && !!today;
   const startOf = (g: GroupMission) => g.time || g.arrTime;
-  const nowItem = (g: GroupMission) => ({
-    start: startOf(g),
-    end: (legOf(g).outA && g.arrTime) || undefined,
-  });
+  const nowItem = (g: GroupMission) => {
+    const l = legOf(g);
+    return {
+      start: startOf(g),
+      end: (l.outA && g.arrTime) || undefined,
+      startAssisted: (l.inA || !l.outA) && !!g.time,
+    };
+  };
   const todayRows = timed ? rows.filter((r) => r.day === today) : [];
   const pickups = todayRows
     .filter((g) => g.status !== "annulee")
@@ -139,17 +143,23 @@ export function GroupBoard({
         const list = rows.filter((r) => r.day === d);
         const split = timed
           ? nowSplit(list.map(nowItem), nowMin, dayPhase(d, today!))
-          : { insertAt: -1, next: -1, past: list.map(() => false) };
-        const nextTime = split.next >= 0 && list[split.next] ? startOf(list[split.next]!) : "";
+          : noSplit(list.length);
+        const nextIn = (i: number) => i === split.next && split.nextSide === "in";
+        const nextOut = (i: number) => i === split.next && split.nextSide === "out";
         const nowLine = (variant: "row" | "card") =>
           split.insertAt >= 0 ? (
             <NowLine
               key="maintenant"
               now={nowMin}
-              nextTime={nextTime}
+              nextTime={split.nextTime}
               index={split.insertAt}
               variant={variant}
               colSpan={8}
+              pending={pendingArrivals(split, list, (g) => ({
+                id: g.id,
+                train: g.train,
+                station: legOf(g).arr,
+              }))}
             />
           ) : null;
         return (
@@ -214,7 +224,8 @@ export function GroupBoard({
                             assisted={l.inA}
                             done={l.inDone}
                             barred={barred}
-                            next={i === split.next}
+                            next={nextIn(i)}
+                            faded={split.half[i]}
                           />
                         </Td>
                         <Td className="max-w-72 min-w-44">
@@ -227,6 +238,7 @@ export function GroupBoard({
                             assisted={l.outA}
                             done={l.outDone}
                             barred={barred}
+                            next={nextOut(i)}
                           />
                         </Td>
                         <Td className="max-w-48 truncate">
@@ -285,8 +297,8 @@ export function GroupBoard({
                       <span className="flex min-w-0 items-center gap-2">
                         <TrainChip train={g.train} taxi={g.transport === "taxi"} />
                         <DelayBadge impact={missionImpact(g, delays)} />
-                        {g.absent ? <AbsentBadge /> : null}
                         {i === split.next ? <NextBadge /> : null}
+                        {g.absent ? <AbsentBadge /> : null}
                         <span className="ml-auto shrink-0">
                           <Badge tone={STATUS[g.status].tone}>{STATUS[g.status].label}</Badge>
                         </span>
@@ -300,6 +312,8 @@ export function GroupBoard({
                           done={l.inDone}
                           strong={l.inA && inDistricts(l.depDistrict, district)}
                           barred={barred}
+                          next={nextIn(i)}
+                          faded={split.half[i]}
                         />
                         <CardStation
                           time={l.arrTime}
@@ -309,6 +323,7 @@ export function GroupBoard({
                           done={l.outDone}
                           strong={l.outA && inDistricts(l.arrDistrict, district)}
                           barred={barred}
+                          next={nextOut(i)}
                         />
                       </span>
                       <span className="text-small text-fg-muted">

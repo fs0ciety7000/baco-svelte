@@ -31,7 +31,7 @@ import {
   type AssistStatus,
 } from "@/lib/pmr/model";
 import { aleaEnds, groupEnds, legOf, type Leg } from "@/lib/pmr/legs";
-import { dayPhase, indexAtMinute, nowSplit } from "@/lib/pmr/now-line";
+import { dayPhase, indexAtMinute, noSplit, nowSplit, pendingArrivals } from "@/lib/pmr/now-line";
 import { missionImpact, type TrainStates } from "@/lib/pmr/train-delay";
 import type { GroupMission } from "@/server/data/groups";
 import type { Assist, PmrEvent } from "@/server/data/pmr";
@@ -141,6 +141,7 @@ export function StationCell({
   done,
   barred,
   next,
+  faded,
 }: {
   name: string;
   time: React.ReactNode;
@@ -150,11 +151,21 @@ export function StationCell({
   assisted: boolean;
   done?: boolean;
   barred?: boolean;
+  /** Prochaine prise en charge de la journée à cette gare (départ OU arrivée). */
   next?: boolean;
+  /** Bout passé d'un trajet encore en cours (départ passé, arrivée à venir) : estompé seul. */
+  faded?: boolean;
 }) {
   const mine = inDistricts(district, filter);
   return (
-    <span className={cn("flex min-w-0 flex-col leading-tight", barred && "text-fg-subtle")}>
+    <span
+      className={cn(
+        "flex min-w-0 flex-col leading-tight",
+        barred && "text-fg-subtle",
+        faded && "opacity-60",
+      )}
+      data-faded={faded || undefined}
+    >
       {/* Nom complet sur deux lignes au besoin (22 oct. 2026 : rien de tronqué, aucun défilement horizontal). */}
       <span className="flex min-w-0 items-center gap-1.5">
         {time ? (
@@ -192,6 +203,8 @@ export function CardStation({
   done,
   strong,
   barred,
+  next,
+  faded,
 }: {
   time: string;
   name: string;
@@ -200,13 +213,25 @@ export function CardStation({
   done?: boolean;
   strong: boolean;
   barred: boolean;
+  next?: boolean;
+  faded?: boolean;
 }) {
   return (
     <>
-      <span className="font-mono text-small font-medium text-fg-muted tabular">
+      <span
+        className={cn(
+          "font-mono text-small font-medium text-fg-muted tabular",
+          faded && "opacity-60",
+          next && "font-semibold text-info",
+        )}
+        data-next-time={next || undefined}
+      >
         {time || "--:--"}
       </span>
-      <span className="inline-flex min-w-0 items-center gap-1.5">
+      <span
+        className={cn("inline-flex min-w-0 items-center gap-1.5", faded && "opacity-60")}
+        data-faded={faded || undefined}
+      >
         <span
           className={cn(
             "truncate",
@@ -351,10 +376,14 @@ export function AssistBoard({
       const t = [l.inA ? a.time : "", l.outA ? a.arrTime || a.time : ""].filter(Boolean);
       return t.length ? t : [a.time];
     });
-  const nowItem = (a: Assist) => ({
-    start: a.time,
-    end: (legOf(a).outA && a.arrTime) || undefined,
-  });
+  const nowItem = (a: Assist) => {
+    const l = legOf(a);
+    return {
+      start: a.time,
+      end: (l.outA && a.arrTime) || undefined,
+      startAssisted: l.inA || !l.outA,
+    };
+  };
   const todaySplit = nowSplit(todayRows.map(nowItem), nowMin, "today");
 
   return (
@@ -385,17 +414,23 @@ export function AssistBoard({
         const split =
           timed && d
             ? nowSplit(list.map(nowItem), nowMin, dayPhase(d, today!))
-            : { insertAt: -1, next: -1, past: list.map(() => false) };
-        const nextTime = split.next >= 0 ? (list[split.next]?.time ?? "") : "";
+            : noSplit(list.length);
+        const nextIn = (i: number) => i === split.next && split.nextSide === "in";
+        const nextOut = (i: number) => i === split.next && split.nextSide === "out";
         const nowLine = (variant: "row" | "card") =>
           split.insertAt >= 0 ? (
             <NowLine
               key="maintenant"
               now={nowMin}
-              nextTime={nextTime}
+              nextTime={split.nextTime}
               index={split.insertAt}
               variant={variant}
               colSpan={groupByDay ? 8 : 9}
+              pending={pendingArrivals(split, list, (a) => ({
+                id: a.id,
+                train: a.train,
+                station: legOf(a).arr,
+              }))}
             />
           ) : null;
         return (
@@ -487,7 +522,8 @@ export function AssistBoard({
                                 {a.time || "--:--"}
                               </button>
                             }
-                            next={i === split.next}
+                            next={nextIn(i)}
+                            faded={split.half[i]}
                           />
                         </Td>
                         <Td className="max-w-72 min-w-44">
@@ -500,6 +536,7 @@ export function AssistBoard({
                             done={l.outDone}
                             barred={barred}
                             time={l.arrTime || ""}
+                            next={nextOut(i)}
                           />
                         </Td>
                         <Td className="max-w-44 min-w-28">
@@ -571,7 +608,7 @@ export function AssistBoard({
                           <AssistBadge status={a.status} />
                         </span>
                       </span>
-                      <span className="grid grid-cols-[3rem_minmax(0,1fr)] gap-x-2 gap-y-1 text-body">
+                      <span className="grid grid-cols-[3rem_minmax(0,1fr)] gap-x-2 gap-y-1 pr-12 text-body">
                         <CardStation
                           time={a.time}
                           name={l.dep}
@@ -580,6 +617,8 @@ export function AssistBoard({
                           done={l.inDone}
                           strong={l.inA && inDistricts(l.depDistrict, district)}
                           barred={barred}
+                          next={nextIn(i)}
+                          faded={split.half[i]}
                         />
                         <CardStation
                           time={l.arrTime}
@@ -589,6 +628,7 @@ export function AssistBoard({
                           done={l.outDone}
                           strong={l.outA && inDistricts(l.arrDistrict, district)}
                           barred={barred}
+                          next={nextOut(i)}
                         />
                       </span>
                       <span className="pr-12 text-small text-fg-muted">

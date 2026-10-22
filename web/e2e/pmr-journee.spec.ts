@@ -128,6 +128,12 @@ test("missions PMR : repère « maintenant », passées estompées, prochaine, m
   // 13:10 a un débarquement à 14:10 : pas estompée.
   expect(kinds).toEqual(["past", "past", "past", "row", "now", "next", "row", "row"]);
   await expect(scope.getByTestId("next-badge")).toHaveCount(1);
+  // Trajet de 13:10 (départ passé) : gare de départ estompée seule, débarquement de 14:10 rappelé sous le repère.
+  await expect(scope.locator("[data-faded]")).toHaveCount(1);
+  const pendingRow = now.getByTestId("now-pending");
+  await expect(pendingRow).toContainText("99703");
+  await expect(pendingRow).toContainText("14:10");
+  await expect(pendingRow).toContainText(`${ST} Arrivée-Très-Long-Nom 3`);
   // Mini-frise : curseur sur la journée, « Aller à maintenant » ramène le repère à l'écran.
   const strip = page.getByTestId("day-strip");
   await expect(strip.getByTestId("strip-cursor")).toBeVisible();
@@ -137,6 +143,32 @@ test("missions PMR : repère « maintenant », passées estompées, prochaine, m
   await expect(now).toBeInViewport();
   await noHorizontalScroll(page);
   await page.screenshot({ path: `test-results/pmr-maintenant-${info.project.name}.png` });
+});
+
+test("missions PMR : un débarquement plus proche que le prochain départ devient « Prochaine » sur la gare d'arrivée", async ({
+  page,
+}, info) => {
+  const desktop = info.project.name === "desktop";
+  // 14:07 : le départ de 14:05 est passé, le prochain départ est à 16:30 ; le débarquement de 14:10 (trajet de 13:10) passe avant.
+  await page.clock.install({ time: brussels("14:07") });
+  await login(page, "/pmr");
+  await page.goto(`/pmr?district=tous&q=${ST}`);
+  const scope = page.getByTestId(desktop ? "assists-table" : "assists-cards");
+  await expect(scope.getByTestId("now-line")).toContainText("dans 3 min");
+  const badge = scope.getByTestId("next-badge");
+  await expect(badge).toHaveCount(1);
+  // Desktop : pastille à côté de la gare d'arrivée du trajet de 13:10 ; mobile : pastille dans l'en-tête de la carte et
+  // heure d'arrivée (14:10) mise en avant.
+  if (desktop)
+    await expect(badge.locator("xpath=..")).toContainText(`${ST} Arrivée-Très-Long-Nom 3`);
+  else await expect(scope.locator("[data-next-time]")).toHaveText("14:10");
+  await expect(scope.locator("[data-next]")).toContainText("99703");
+  await noHorizontalScroll(page);
+  await badge.scrollIntoViewIfNeeded();
+  if (process.env.E2E_SHOTS_DIR)
+    await page.screenshot({
+      path: `${process.env.E2E_SHOTS_DIR}/pmr-prochaine-out-${info.project.name}.png`,
+    });
 });
 
 test("missions PMR : tableau sans coupure, panneau ancré compris (1280 px)", async ({

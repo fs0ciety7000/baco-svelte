@@ -1415,6 +1415,11 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   de gare bornées (`max-w-72`), nom qui passe à la ligne (heure et puces IN / OUT gardées sur la ligne), badges de statut
   empilés, `AbsentBadge compact` (« Hors DICOS »). E2E `layout-scroll` : aucun débordement horizontal du tableau à 1 440 px
   (gares longues, missions « Hors DICOS » simulées par une synchro complète plus récente).
+- 2026-10-22 — **Repère « maintenant » : le bout OUT compte** (retour : train 4569 IN Bierges-Walibi 19:13 → OUT Charleroi-Central
+  20:09, l'arrivée n'apparaissait jamais comme à venir ; « sans afficher tout deux fois ») : toujours une ligne par trajet ;
+  la prochaine prise en charge compare départs et arrivées (« Prochaine » sur la gare d'arrivée si c'est elle), trajet parti
+  mais pas arrivé non grisé (départ seul estompé), « Débarquement à venir » sous la ligne « maintenant » pour les arrivées des
+  trajets placés au-dessus (clic = retour au trajet). Badge OUT des cartes mobiles qui passait sous « Copier » corrigé.
 - 2026-10-22 — **Lot du 15 au 22 oct. poussé en production** (accord de l'utilisateur : « ok prod ») : `csm-prod` = 1d8b277
   (139 commits depuis 7681554, 14 migrations : rôles v3, navigation v3, refonte v4, B201 par district, PN / zones SPI,
   planificateur PMR, ALEA par jour, correctifs de mise en page). Sauvegarde PocketBase de la prod faite juste avant (R2, tâches

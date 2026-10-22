@@ -23,32 +23,122 @@ export function dayPhase(day: string, today: string): DayPhase {
   return day < today ? "past" : day > today ? "future" : "today";
 }
 
-/** Une ligne de la liste : heure de la première prise en charge, et de la dernière (débarquement à l'arrivée). */
-export type NowItem = { start: string; end?: string };
+/**
+ * Une ligne de la liste (un trajet) : heure de départ (`start`, ordre de la liste), heure du débarquement à l'arrivée si
+ * l'arrivée est assistée (`end`). `startAssisted: false` : le départ n'est pas une prise en charge (seule l'arrivée est
+ * assistée), il sert à l'ordre mais n'est jamais « la prochaine ».
+ */
+export type NowItem = { start: string; end?: string; startAssisted?: boolean };
+
+/** Un bout à venir : ligne, côté (IN au départ, OUT à l'arrivée) et heure. */
+export type NowEnd = { index: number; side: "in" | "out"; time: string };
 
 export type NowSplit = {
   /** Index où insérer le repère (avant cette ligne ; = longueur : en fin de liste) ; -1 : pas de repère (autre jour). */
   insertAt: number;
-  /** Index de la prochaine mission (première dont l'heure n'est pas passée) ; -1 s'il n'y en a plus. */
+  /** Ligne de la prochaine prise en charge (départ OU arrivée, la plus proche) ; -1 s'il n'y en a plus. */
   next: number;
+  /** Côté de la prochaine prise en charge (la pastille « Prochaine » va sur cette gare). */
+  nextSide: "in" | "out";
+  /** Heure de la prochaine prise en charge (vide s'il n'y en a plus). */
+  nextTime: string;
   /** Ligne passée (estompée) : toutes ses prises en charge sont avant maintenant. */
   past: boolean[];
+  /** Départ passé mais arrivée à venir : seule la gare de départ est estompée. */
+  half: boolean[];
+  /**
+   * Arrivées à venir des trajets placés AVANT le repère (départ déjà passé) : rappelées sur le repère, triées par heure,
+   * pour qu'un débarquement à venir ne se cache pas au-dessus de la ligne « maintenant ».
+   */
+  pending: NowEnd[];
 };
 
 /**
- * Découpe d'une liste triée par heure. Repère avant la première ligne dont l'heure de départ est à venir ; une ligne
- * est passée quand sa dernière prise en charge (`end`, sinon `start`) l'est. Ligne sans heure : ni passée, ni repère.
+ * Découpe d'une liste triée par heure de départ, une ligne par trajet. Repère avant la première ligne dont le départ est
+ * à venir ; une ligne est passée quand sa dernière prise en charge (`end`, sinon `start`) l'est. La prochaine prise en
+ * charge compare départs ET arrivées (22 oct. 2026 : un débarquement à 20:09 passe avant un embarquement à 20:30).
+ * Ligne sans heure : ni passée, ni repère.
  */
 export function nowSplit(items: NowItem[], nowMin: number, phase: DayPhase): NowSplit {
-  if (phase !== "today") return { insertAt: -1, next: -1, past: items.map(() => phase === "past") };
+  const none = items.map(() => false);
+  if (phase !== "today")
+    return {
+      insertAt: -1,
+      next: -1,
+      nextSide: "in",
+      nextTime: "",
+      past: items.map(() => phase === "past"),
+      half: none,
+      pending: [],
+    };
   let insertAt = items.length;
-  const past = items.map((it, i) => {
+  let best: NowEnd | null = null;
+  let bestMin = Infinity;
+  const consider = (index: number, side: "in" | "out", time: string, m: number) => {
+    // À égalité, la ligne la plus haute, puis le départ.
+    if (m < bestMin) {
+      best = { index, side, time };
+      bestMin = m;
+    }
+  };
+  const past: boolean[] = [];
+  const half: boolean[] = [];
+  const outs: { index: number; time: string; m: number }[] = [];
+  items.forEach((it, i) => {
     const s = toMinutes(it.start);
+    const e = toMinutes(it.end ?? "");
     if (s !== null && s >= nowMin && insertAt === items.length) insertAt = i;
-    const e = toMinutes(it.end ?? "") ?? s;
-    return e !== null && e < nowMin;
+    if (s !== null && s >= nowMin && it.startAssisted !== false) consider(i, "in", it.start, s);
+    if (e !== null && e >= nowMin) {
+      consider(i, "out", it.end!, e);
+      outs.push({ index: i, time: it.end!, m: e });
+    }
+    const last = e ?? s;
+    past.push(last !== null && last < nowMin);
+    half.push(s !== null && s < nowMin && e !== null && e >= nowMin);
   });
-  return { insertAt, next: insertAt < items.length ? insertAt : -1, past };
+  const pending = outs
+    .filter((o) => o.index < insertAt)
+    .sort((a, b) => a.m - b.m || a.index - b.index)
+    .map(({ index, time }) => ({ index, side: "out" as const, time }));
+  const b = best as NowEnd | null;
+  return {
+    insertAt,
+    next: b ? b.index : -1,
+    nextSide: b ? b.side : "in",
+    nextTime: b ? b.time : "",
+    past,
+    half,
+    pending,
+  };
+}
+
+/** Découpe neutre (pas de repère : Historique, autre format). */
+export function noSplit(n: number): NowSplit {
+  return {
+    insertAt: -1,
+    next: -1,
+    nextSide: "in",
+    nextTime: "",
+    past: Array.from({ length: n }, () => false),
+    half: Array.from({ length: n }, () => false),
+    pending: [],
+  };
+}
+
+/** Arrivée à venir rappelée sur le repère : train, heure, gare d'arrivée, ligne à rejoindre. */
+export type PendingArrival = { id: string; train: string; time: string; station: string };
+
+/** Arrivées à venir des trajets au-dessus du repère, prêtes à afficher (`pick` lit la ligne). */
+export function pendingArrivals<T>(
+  split: NowSplit,
+  list: T[],
+  pick: (row: T) => { id: string; train: string; station: string },
+): PendingArrival[] {
+  return split.pending.flatMap((p) => {
+    const row = list[p.index];
+    return row ? [{ ...pick(row), time: p.time }] : [];
+  });
 }
 
 /** « dans 12 min », « dans 1 h 05 » ; vide si l'heure est passée ou inconnue. */

@@ -14,6 +14,7 @@ import {
   stripRange,
   stripTicks,
   untilLabel,
+  type PendingArrival,
 } from "@/lib/pmr/now-line";
 import { cn, pl } from "@/lib/utils";
 
@@ -63,12 +64,16 @@ export function scrollToMission(id: string | null) {
  * Repère « maintenant » : trait `info` sur toute la largeur, heure courante et délai jusqu'à la prochaine prise en
  * charge. Quand une mission vient de passer (le repère descend), le trait se redessine (GSAP, 450 ms).
  */
+/** Arrivées rappelées sur le repère au plus (au-delà : « + N »). */
+const MAX_PENDING = 3;
+
 export function NowLine({
   now,
   nextTime,
   index,
   variant,
   colSpan = 1,
+  pending = [],
 }: {
   now: number;
   /** Heure de la prochaine mission (vide : plus rien aujourd'hui). */
@@ -77,6 +82,11 @@ export function NowLine({
   index: number;
   variant: "row" | "card";
   colSpan?: number;
+  /**
+   * Arrivées à venir des trajets déjà partis (au-dessus du repère, 22 oct. 2026) : rappelées sous la ligne, un clic
+   * ramène au trajet. La liste garde une ligne par trajet.
+   */
+  pending?: PendingArrival[];
 }) {
   const line = useRef<HTMLSpanElement>(null);
   const first = useRef(true);
@@ -92,6 +102,33 @@ export function NowLine({
   const until = untilLabel(nextTime, now);
   const text = `Maintenant · ${fromMinutes(now)}`;
   const sub = nextTime ? `prochaine ${until || "imminente"}` : "plus rien aujourd'hui";
+  const shown = pending.slice(0, MAX_PENDING);
+  const more = pending.length - shown.length;
+  const arrivals = pending.length ? (
+    <div
+      className="sticky left-2 flex max-w-[calc(100%-1rem)] min-w-0 flex-wrap items-center gap-1.5 px-2 pb-1.5 text-small"
+      data-testid="now-pending"
+    >
+      <span className="text-fg-muted">
+        {pending.length > 1 ? "Débarquements à venir :" : "Débarquement à venir :"}
+      </span>
+      {shown.map((p) => (
+        <button
+          key={p.id}
+          type="button"
+          className="inline-flex min-h-11 max-w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-control border border-border bg-surface px-2 hover:bg-surface-2 focus-visible:outline-1 focus-visible:outline-accent md:min-h-7"
+          aria-label={`Aller au trajet du train ${p.train || "?"}, débarquement à ${p.time} à ${p.station}`}
+          onClick={() => scrollToMission(p.id)}
+        >
+          <span className="font-mono font-semibold tabular">{p.train || "—"}</span>
+          <span className="font-mono tabular text-info">{p.time}</span>
+          <span className="min-w-0 truncate">{p.station || "—"}</span>
+          <span className="shrink-0 text-hint text-fg-muted">OUT</span>
+        </button>
+      ))}
+      {more > 0 ? <span className="text-fg-muted">+ {more}</span> : null}
+    </div>
+  ) : null;
   const body = (
     <div className="relative flex h-8 items-center" aria-label={`${text}, ${sub}`} role="note">
       <span
@@ -112,12 +149,14 @@ export function NowLine({
     return (
       <li data-testid="now-line" className="list-none">
         {body}
+        {arrivals}
       </li>
     );
   return (
     <tr data-band="" data-testid="now-line">
       <td colSpan={colSpan} className="p-0">
         {body}
+        {arrivals}
       </td>
     </tr>
   );
