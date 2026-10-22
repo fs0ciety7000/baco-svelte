@@ -1,6 +1,6 @@
 {
   "version": "1.10.0",
-  "builtAt": "2026-10-22T14:51:06.388Z",
+  "builtAt": "2026-10-22T15:11:45.808Z",
   "files": [
     {
       "name": "csm-dicos-connector-chrome-v1.10.0.zip",
@@ -13,6 +13,12 @@
       "browser": "firefox",
       "bytes": 35100,
       "sha256": "e20f1a9f87f39d3ddea69086c82e074cc1120158e8a608a8ca45c0244afa10eb"
+    },
+    {
+      "name": "csm-dicos-connector-firefox-v1.10.0.xpi",
+      "browser": "firefox-signed",
+      "bytes": 43299,
+      "sha256": "62b9caa204765b0e83776f779df1f592bd51adf6dc22237f83eedd8df904e295"
     }
   ]
 }
