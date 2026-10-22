@@ -317,7 +317,48 @@ async function runQuinyx() {
   return quinyxRunning;
 }
 
-chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
+// Synchro d'un jour demandée par CSM (export ALEA, 1.10.0) : seulement depuis la page CSM à laquelle l'extension est
+// connectée (même origine que l'URL enregistrée), un jour AAAA-MM-JJ ; lue dans un onglet DICOS ouvert (session de
+// l'agent), envoyée à CSM comme une synchro manuelle d'un jour. Aucune donnée ne repart vers la page : un résumé chiffré.
+const DICOS_TABS = "https://dicos.intern-belgiantrain.be/*";
+async function syncDayFromCsm(day, sender) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(day || ""))) return { ok: false, error: "Jour invalide." };
+  let origin = "";
+  try {
+    origin = new URL(String((sender && (sender.origin || sender.url || (sender.tab && sender.tab.url))) || "")).origin;
+  } catch (_) {}
+  const v = await chrome.storage.local.get(["csmUrl", "token"]);
+  if (!v.token || !origin || String(v.csmUrl || "").replace(/\/+$/, "") !== origin)
+    return { ok: false, code: "not-linked", error: "Extension non connectée à ce CSM." };
+  const tabs = await chrome.tabs.query({ url: DICOS_TABS });
+  if (!tabs.length) return { ok: false, code: "no-dicos", error: "Ouvre DICOS dans un onglet (session connectée)." };
+  // Onglet visible d'abord (session la plus fraîche).
+  tabs.sort((a, b) => Number(b.active) - Number(a.active) || (b.lastAccessed || 0) - (a.lastAccessed || 0));
+  let r;
+  try {
+    r = await chrome.tabs.sendMessage(tabs[0].id, { cmd: "sync", day, days: 1 });
+  } catch (_) {
+    return { ok: false, code: "reload-dicos", error: "Recharge l'onglet DICOS (extension mise à jour depuis son ouverture)." };
+  }
+  if (!r) return { ok: false, error: "Pas de réponse de l'onglet DICOS." };
+  if (r.busy) return { ok: false, code: "busy", error: "Une synchro DICOS est déjà en cours : réessaie dans un instant." };
+  if (r.error) return { ok: false, error: String(r.error).slice(0, 200) };
+  const n = (x) => Number(x) || 0;
+  return {
+    ok: true,
+    day,
+    missions: n(r.received),
+    created: n(r.created),
+    updated: n(r.updated),
+    groups: n(r.groups && r.groups.received),
+  };
+}
+
+chrome.runtime.onMessage.addListener((msg, sender, reply) => {
+  if (msg && msg.cmd === "dicos-sync") {
+    syncDayFromCsm(msg.day, sender).then(reply, (e) => reply({ ok: false, error: String((e && e.message) || e).slice(0, 160) }));
+    return true;
+  }
   if (msg && msg.cmd === "csm-permission") {
     hasPermission(String(msg.origin || "")).then(reply);
     return true;

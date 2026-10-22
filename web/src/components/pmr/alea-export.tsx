@@ -1,10 +1,19 @@
 "use client";
 
 import { TrainChip } from "@/components/ui/train-chip";
-import { CheckSquare2, ClipboardList, Loader2, Square } from "lucide-react";
+import { CheckSquare2, ClipboardList, Loader2, RefreshCw, Square } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { aleaDwell, aleaMarks, setAleaMark, type AleaMark } from "@/app/(app)/pmr/actions";
+import {
+  aleaDay,
+  aleaDwell,
+  aleaMarks,
+  setAleaMark,
+  type AleaDayData,
+  type AleaMark,
+} from "@/app/(app)/pmr/actions";
+import { DateField } from "@/components/ui/date-field";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/misc";
@@ -12,11 +21,14 @@ import { Badge } from "@/components/ui/status-badge";
 import { toast } from "@/components/ui/toast";
 import { subscribeLive } from "@/lib/live";
 import { safeCall } from "@/lib/orders/safe-call";
-import { brusselsTime, formatDay, pbDate } from "@/lib/orders/time";
+import { addDays, brusselsTime, formatDay, pbDate, sinceLabel } from "@/lib/orders/time";
 import { aleaDecision, type AleaDecision, type AleaDwell, type AleaGroup } from "@/lib/pmr/model";
 import { cn } from "@/lib/utils";
 
 import { CopyButton, CopyIcon, useCopy } from "./copy";
+import { useDicosDaySync } from "./dicos-day-sync";
+
+const NO_BLOCKS: AleaGroup[] = [];
 
 const DECISION: Record<AleaDecision["status"], { label: string; tone: "danger" | "ok" | "warn" }> =
   {
@@ -56,6 +68,7 @@ export function AleaButton({
   compute,
   label = "Export ALEA",
   shortLabel = "ALEA",
+  pickDay,
 }: {
   /** Liste d'origine : sert de portée aux blocs « encodés » (PMR et groupes séparés) ; « commun » = blocs fusionnés. */
   kind: "pmr" | "groupe" | "commun";
@@ -68,6 +81,12 @@ export function AleaButton({
   eyebrow: string;
   description: string;
   compute: () => AleaGroup[];
+  /**
+   * Choix du jour dans la fenêtre (22 oct. 2026). `listDay` = jour de la liste affichée (une seule journée : ses blocs
+   * viennent de `compute`), sinon null ; les autres jours sont lus par `aleaDay` (même district). Ouvre aussi
+   * « Synchroniser ce jour » par l'extension DICOS (1.10.0).
+   */
+  pickDay?: { listDay: string | null; today: string; district: string };
 }) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<Filter>("tous");
@@ -76,7 +95,44 @@ export function AleaButton({
   const [dwell, setDwell] = useState<Record<string, AleaDwell> | null>(null);
   const [dwellError, setDwellError] = useState<string | null>(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const groups = useMemo(() => (open ? compute() : []), [open]);
+  const listBlocks = useMemo(() => (open ? compute() : NO_BLOCKS), [open]);
+  // Jour choisi : la liste de la page si c'est son jour (et rien de synchronisé depuis), sinon lu sur le serveur.
+  const [day, setDay] = useState(pickDay ? (pickDay.listDay ?? pickDay.today) : "");
+  const [remote, setRemote] = useState<{ day: string; data: AleaDayData } | null>(null);
+  const [remoteError, setRemoteError] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
+  const remoteWanted = Boolean(pickDay) && (day !== pickDay?.listDay || reload > 0);
+  const loadingDay = remoteWanted && remote?.day !== day && !remoteError;
+  const groups = !remoteWanted ? listBlocks : remote?.day === day ? remote.data.blocks : NO_BLOCKS;
+  const daySync = useDicosDaySync(open && Boolean(pickDay));
+  useEffect(() => {
+    if (!open || !pickDay || !remoteWanted || !day) return;
+    let cancelled = false;
+    setRemoteError(null);
+    void safeCall(aleaDay({ kind, day, district: pickDay.district })).then((res) => {
+      if (cancelled) return;
+      if (res.ok) setRemote({ day, data: res.data });
+      else setRemoteError(res.error);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, day, reload, remoteWanted]);
+  const syncDay = async () => {
+    const r = await daySync.sync(day);
+    if (!r.ok) {
+      toast.error(r.error || "Synchro DICOS impossible.");
+      return;
+    }
+    toast.success(
+      `${formatDay(day)} synchronisé : ${r.missions} ${r.missions > 1 ? "trajets PMR" : "trajet PMR"}${
+        r.groups ? `, ${r.groups} ${r.groups > 1 ? "groupes" : "groupe"}` : ""
+      }.`,
+    );
+    setRemote(null);
+    setReload((n) => n + 1);
+  };
   // Blocs déjà saisis dans ALEA (partagés par l'équipe, en direct pendant que la fenêtre est ouverte).
   const [marks, setMarks] = useState<Record<string, AleaMark>>({});
   const [busy, setBusy] = useState<string | null>(null);
@@ -183,8 +239,17 @@ export function AleaButton({
         type="button"
         variant="secondary"
         size="sm"
-        onClick={() => setOpen(true)}
-        disabled={disabled}
+        onClick={() => {
+          // Réouverture : jour de la liste affichée (elle a pu changer de période depuis).
+          if (pickDay) {
+            setDay(pickDay.listDay ?? pickDay.today);
+            setReload(0);
+            setRemote(null);
+            setRemoteError(null);
+          }
+          setOpen(true);
+        }}
+        disabled={disabled && !pickDay}
         aria-label={label}
       >
         <ClipboardList aria-hidden /> <span className="md:hidden">{shortLabel}</span>
@@ -197,10 +262,34 @@ export function AleaButton({
           description={description}
           className="max-h-[92dvh] max-w-5xl"
         >
-          {groups.length === 0 ? (
+          {pickDay ? (
+            <DayBar
+              day={day}
+              today={pickDay.today}
+              onDay={(d) => {
+                setRemoteError(null);
+                setDay(d);
+              }}
+              loading={loadingDay}
+              error={remoteError}
+              sync={remoteWanted && remote?.day === day ? remote.data.sync : undefined}
+              ext={daySync.ext}
+              running={daySync.running === day}
+              onSync={() => void syncDay()}
+            />
+          ) : null}
+          {loadingDay ? (
+            <p className="inline-flex items-center gap-2 py-6 text-small text-fg-muted">
+              <Loader2 aria-hidden className="size-4 animate-spin" /> Lecture des missions du jour…
+            </p>
+          ) : groups.length === 0 ? (
             <EmptyState
               title="Rien à exporter"
-              description="Aucune assistance prévue dans la liste affichée."
+              description={
+                pickDay
+                  ? `Aucune assistance prévue le ${formatDay(day)}${pickDay.district ? " dans ce district" : ""}. Si DICOS en a, clique « Synchroniser ce jour ».`
+                  : "Aucune assistance prévue dans la liste affichée."
+              }
             />
           ) : (
             <div className="flex flex-col gap-3">
@@ -377,5 +466,116 @@ export function AleaButton({
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+/**
+ * Barre du jour de la fenêtre ALEA : jour (← / champ / →, « Aujourd'hui »), état de la synchro DICOS de ce jour et
+ * « Synchroniser ce jour » (extension 1.10.0 + onglet DICOS ouvert).
+ */
+function DayBar({
+  day,
+  today,
+  onDay,
+  loading,
+  error,
+  sync,
+  ext,
+  running,
+  onSync,
+}: {
+  day: string;
+  today: string;
+  onDay: (day: string) => void;
+  loading: boolean;
+  error: string | null;
+  sync: AleaDayData["sync"] | undefined;
+  ext: ReturnType<typeof useDicosDaySync>["ext"];
+  running: boolean;
+  onSync: () => void;
+}) {
+  const last = sync?.lastAt ? pbDate(sync.lastAt) : null;
+  const ready = ext.state === "ready";
+  const extHint =
+    ext.state === "none"
+      ? "Extension DICOS non détectée sur cette page."
+      : ext.state === "old"
+        ? `Extension ${ext.version} : la synchro depuis CSM demande la version 1.10.0.`
+        : ext.state === "unlinked"
+          ? "Extension non connectée à ce CSM."
+          : null;
+  return (
+    <div
+      className="mb-3 flex flex-col gap-2 border-b border-border pb-3"
+      data-testid="alea-day-bar"
+    >
+      <div className="flex flex-wrap items-end gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="border border-border"
+          aria-label="Jour précédent"
+          onClick={() => onDay(addDays(day, -1))}
+        >
+          ←
+        </Button>
+        <label className="flex w-40 flex-col gap-1 text-small text-fg-muted">
+          Jour
+          <DateField value={day} onValueChange={(d) => d && onDay(d)} data-testid="alea-day" />
+        </label>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="border border-border"
+          aria-label="Jour suivant"
+          onClick={() => onDay(addDays(day, 1))}
+        >
+          →
+        </Button>
+        {day !== today ? (
+          <Button type="button" variant="ghost" size="sm" onClick={() => onDay(today)}>
+            Aujourd&apos;hui
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="sm:ml-auto"
+          disabled={!ready || running}
+          loading={running}
+          onClick={onSync}
+          title={extHint ?? "Lit ce jour dans ton onglet DICOS ouvert et l'envoie à CSM"}
+          data-testid="alea-sync-day"
+        >
+          {running ? null : <RefreshCw aria-hidden />}
+          {running ? "Synchro DICOS…" : "Synchroniser ce jour"}
+        </Button>
+      </div>
+      <p className="text-small text-fg-muted" aria-live="polite">
+        {loading ? null : error ? (
+          <span className="text-danger">{error}</span>
+        ) : sync === undefined ? null : !sync ? null : !last ? (
+          <span className="text-warn">Ce jour n&apos;a jamais été synchronisé avec DICOS.</span>
+        ) : sync.covered ? (
+          <>Synchronisé avec DICOS {sinceLabel(last)}.</>
+        ) : (
+          <span className="text-warn">Synchro DICOS de ce jour incomplète.</span>
+        )}
+        {extHint ? (
+          <>
+            {" "}
+            {extHint}{" "}
+            <Link href="/extension" className="link">
+              Extension CSM
+            </Link>
+          </>
+        ) : ready && !running ? (
+          <> Garde un onglet DICOS ouvert pour synchroniser.</>
+        ) : null}
+      </p>
+    </div>
   );
 }

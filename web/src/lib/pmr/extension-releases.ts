@@ -5,6 +5,14 @@ export type ExtensionNote = { version: string; date: string; notes: string[] };
 
 export const EXTENSION_NOTES: ExtensionNote[] = [
   {
+    version: "1.10.0",
+    date: "2026-10-22",
+    notes: [
+      "Export ALEA : choisis le jour dans la fenêtre ALEA de CSM et clique « Synchroniser ce jour » : l'extension lit les missions de ce jour dans ton onglet DICOS ouvert et les envoie à CSM, sans passer par le popup.",
+      "Seule l'adresse CSM à laquelle l'extension est connectée peut demander une synchro ; la page ne reçoit qu'un résumé chiffré (nombre de missions et de groupes).",
+    ],
+  },
+  {
     version: "1.9.1",
     date: "2026-10-15",
     notes: [

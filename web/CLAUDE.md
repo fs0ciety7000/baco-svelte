@@ -150,6 +150,16 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - **Groupes** (**`/groupes`**, onglet du module PMR via `groupes/layout.tsx` ; `/pmr/groupes` redirige) : `group_missions` (ingérée par `mapGroupList`, réservations DICOS `Group` sans PMR),
   `server/data/groups.ts`, `components/pmr/group-board.tsx` (réutilise `Leg`, `IoBadges` d'`assist-board`),
   ALEA de groupe `aleaGroupBlocks` (`lib/pmr/model.ts`). Contact lisible avec `pmr:read`.
+- **ALEA d'un jour choisi + « Synchroniser ce jour »** (22 oct. 2026) : `AleaButton pickDay={{ listDay, today, district }}`
+  (`AssistAlea` / `GroupAlea` reçoivent `days={{ list: du === au ? du : null, today }}` de la page) : barre `DayBar`
+  (`alea-day-bar`, `alea-day`, « Jour précédent / suivant », `alea-sync-day`) ; le jour de la liste garde `compute()`, tout
+  autre jour (ou après une synchro) est lu par la Server Action `aleaDay({ kind, day, district })` (`pmr/actions.ts` : blocs
+  calculés côté serveur + `sync` du jour, sans nom). Pont avec l'extension : `useDicosDaySync` (`components/pmr/dicos-day-sync.ts`,
+  postMessage même origine : `ping` → `hello { sync: true, configured }` ; `sync { day, id }` → `sync-result { ok, missions,
+  groups, error, code }`, délai 5 min). `csm-link.js` est injecté sur **toutes** les pages CSM depuis l'extension 1.10.0 (la
+  connexion par jeton reste limitée à `/extension` et `/pmr/extension`) ; le service worker (`dicos-sync`) n'accepte qu'une page
+  de l'adresse CSM enregistrée et passe par un onglet DICOS ouvert. E2E `e2e/alea-jour.spec.ts` (extension simulée par
+  `addInitScript`, données de demain « XA… », trains 996xx).
 - **Export ALEA** : `components/pmr/alea-export.tsx` (`AleaButton`, partagé PMR / groupes), modèle `aleaGroups` /
   `aleaGroupBlocks` / `aleaDecision` / `stationKey` (`lib/pmr/model.ts`, testés), temps d'arrêt par la Server Action
   `aleaDwell` (`pmr/actions.ts`) : horaire **ATMS** (`train_schedules`, poussé par l'extension via

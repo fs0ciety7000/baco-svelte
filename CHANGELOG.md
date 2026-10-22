@@ -3,6 +3,14 @@
 Toutes les évolutions de CSM visibles par les agents, de la plus récente à la plus ancienne.
 Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
+## [2026.10.22] — Export ALEA : choix du jour et synchro DICOS depuis CSM
+
+### Nouveautés
+
+- **Export ALEA — choix du jour** (Missions PMR, ALEA PMR + groupes, Groupes) : la fenêtre ALEA a son propre sélecteur de jour (← / date / →, « Aujourd'hui »), indépendant de la liste affichée ; elle indique si ce jour a été synchronisé avec DICOS.
+- **« Synchroniser ce jour »** dans la fenêtre ALEA : l'extension lit les missions (et groupes) du jour choisi dans ton onglet DICOS ouvert, les envoie à CSM et la fenêtre se met à jour, sans passer par le popup de l'extension.
+- **Extension CSM 1.10.0** : nécessaire pour « Synchroniser ce jour ». Seule l'adresse CSM à laquelle l'extension est connectée peut demander une synchro, et la page ne reçoit qu'un résumé chiffré.
+
 ## [2026.10.15] — Planificateur de tâches PMR (vue Jour)
 
 ### Nouveautés

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CSM — Connecteur DICOS",
-  "version": "1.9.1",
+  "version": "1.10.0",
   "description": "Synchronise les missions PMR et groupes de DICOS vers CSM, avec les temps d'arrêt ATMS et les horaires publiés dans Quinyx, en réutilisant les sessions ouvertes. Aucun mot de passe ni jeton SNCB stocké.",
   "permissions": [
     "storage",
@@ -75,8 +75,8 @@
     },
     {
       "matches": [
-        "https://test-csm.fs0ciety.org/pmr/extension*",
-        "https://csm.fs0ciety.org/pmr/extension*"
+        "https://test-csm.fs0ciety.org/*",
+        "https://csm.fs0ciety.org/*"
       ],
       "js": [
         "src/csm-link.js"

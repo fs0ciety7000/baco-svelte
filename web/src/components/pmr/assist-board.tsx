@@ -851,17 +851,22 @@ export function AssistAlea({
   groups,
   district = "",
   canMark,
+  days,
 }: {
   rows: Assist[];
   groups?: GroupMission[];
   district?: string;
   canMark: boolean;
+  /** Choix du jour dans la fenêtre ALEA (22 oct. 2026) : jour de la liste (une seule journée) et jour courant. */
+  days?: { list: string | null; today: string };
 }) {
+  const pickDay = days ? { listDay: days.list, today: days.today, district } : undefined;
   return (
     <>
       {groups?.length ? (
         <AleaButton
           kind="commun"
+          pickDay={pickDay}
           label="ALEA PMR + groupes"
           shortLabel="ALEA + groupes"
           canMark={canMark}
@@ -878,6 +883,7 @@ export function AssistAlea({
       ) : null}
       <AleaButton
         kind="pmr"
+        pickDay={pickDay}
         canMark={canMark}
         disabled={!rows.length}
         eyebrow="Missions PMR"

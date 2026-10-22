@@ -59,14 +59,18 @@ export function GroupAlea({
   rows,
   district = "",
   canMark,
+  days,
 }: {
   rows: GroupMission[];
   district?: string;
   canMark: boolean;
+  /** Choix du jour dans la fenêtre ALEA (22 oct. 2026). */
+  days?: { list: string | null; today: string };
 }) {
   return (
     <AleaButton
       kind="groupe"
+      pickDay={days ? { listDay: days.list, today: days.today, district } : undefined}
       canMark={canMark}
       disabled={!rows.length}
       eyebrow="Groupes"

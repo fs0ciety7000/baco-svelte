@@ -1395,6 +1395,11 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   unique `lib/planner/adapt.ts`, logique d'écran `lib/planner/board.ts` (testés). Semaine / Mois affichés « bientôt » (P3).
 - 2026-10-15 — **Planificateur : missions DICOS et annulations** (demande de l'utilisateur) : en plus des dossiers en attente, les **missions DICOS nouvellement créées** arrivent dans « À attribuer » (reprise de fond `server/planner-scheduler.ts`, toutes les 5 min, J-1 → J+2, compte de service), et une mission / un dossier **annulé se retire seul du planificateur** (tâche `annulee` masquée partout ; fiche gardée en base avec son agent, réapparaît si DICOS la rétablit). Revient sur « annulée barrée, agent gardé » de l'audit.
 
+- 2026-10-22 — **Export ALEA : choix du jour et synchro depuis CSM** (demande de l'utilisateur : « pouvoir choisir la date
+  voulue, scraper les missions du jour choisi via l'extension ») : sélecteur de jour dans la fenêtre ALEA (Missions PMR, commun,
+  Groupes), blocs d'un autre jour lus par `aleaDay` ; bouton « Synchroniser ce jour » → extension **1.10.0** (`csm-link.js` sur
+  toutes les pages CSM, commande `dicos-sync` du service worker : origine = URL CSM enregistrée, onglet DICOS ouvert, résumé
+  chiffré seulement vers la page). Logique du service worker vérifiée avec un `chrome` simulé ; E2E `alea-jour` (desktop + mobile).
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)

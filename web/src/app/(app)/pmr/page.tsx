@@ -65,7 +65,15 @@ export default async function Page({ searchParams }: { searchParams: Promise<Pmr
           { label: "Demain", du: addDays(today, 1), au: addDays(today, 1) },
           { label: "7 jours", du: today, au: addDays(today, 6) },
         ]}
-        actions={<AssistAlea rows={rows} groups={groups} district={district} canMark={canMark} />}
+        actions={
+          <AssistAlea
+            rows={rows}
+            groups={groups}
+            district={district}
+            canMark={canMark}
+            days={{ list: du === au ? du : null, today }}
+          />
+        }
       />
       <ListStatus
         count={

@@ -11,16 +11,24 @@ import {
   clientSchema,
   EQUIPMENT_STATES,
   equipmentSchema,
+  aleaGroupBlocks,
+  aleaGroups,
+  mergeAleaBlocks,
   stationKey,
   type AleaDwell,
+  type AleaGroup,
 } from "@/lib/pmr/model";
+import { aleaEnds, groupEnds } from "@/lib/pmr/legs";
+import { listGroups, type GroupMission } from "@/server/data/groups";
 import { requireUser, type SessionUser } from "@/server/auth";
 import { train as irailTrain } from "@/server/irail";
 import { pbForRequest } from "@/server/data/orders";
 import { isValidDay } from "@/lib/orders/time";
 import {
+  dicosSyncState,
   getAssist,
   getClientDetail,
+  listAssists,
   listPmrEvents,
   type Assist,
   type ClientDetail,
@@ -530,6 +538,50 @@ export async function setAleaMark(
         ?.marked_by;
       return { ok: true, data: { by: u?.name || u?.username || "?", at: String(now.created) } };
     }
+  } catch (e) {
+    unstable_rethrow(e);
+    return fail(e);
+  }
+}
+
+// Export ALEA d'un jour choisi dans la fenêtre (demande du 22 oct. 2026) : blocs calculés côté serveur depuis les
+// missions (et groupes) du jour, même district que la liste ; avec l'état de la synchro DICOS de ce jour, pour proposer
+// « Synchroniser ce jour » par l'extension. Aucun nom de voyageur dans les blocs.
+const aleaDaySchema = z.object({
+  kind: z.enum(["pmr", "groupe", "commun"]),
+  day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  district: z.string().max(60).default(""),
+});
+
+export type AleaDayData = {
+  blocks: AleaGroup[];
+  /** Synchro DICOS complète de ce jour ; `lastAt` = dernière synchro reçue (ISO) ou null. */
+  sync: { covered: boolean; lastAt: string | null } | null;
+};
+
+export async function aleaDay(input: z.input<typeof aleaDaySchema>): Promise<Result<AleaDayData>> {
+  try {
+    const p = aleaDaySchema.parse(input);
+    const user = await need(p.kind === "pmr" ? "deplacements:read" : "pmr:read");
+    if (!isValidDay(p.day)) throw new Error("DROIT:Jour invalide.");
+    const range = { from: p.day, to: p.day, district: p.district, hideCancelled: true };
+    const [assists, groups, sync] = await Promise.all([
+      p.kind === "groupe"
+        ? Promise.resolve([] as Assist[])
+        : listAssists(range, { canPmr: can(user, "pmr:read"), all: true }).then((r) => r.rows),
+      p.kind === "pmr"
+        ? Promise.resolve([] as GroupMission[])
+        : listGroups(range).then((r) => r.rows),
+      dicosSyncState(p.kind === "groupe" ? "groups" : "missions", p.day, p.day),
+    ]);
+    const pmr = () => aleaGroups(aleaEnds(assists, p.district));
+    const grp = () => aleaGroupBlocks(groupEnds(groups, p.district));
+    const blocks =
+      p.kind === "pmr" ? pmr() : p.kind === "groupe" ? grp() : mergeAleaBlocks(pmr(), grp());
+    return {
+      ok: true,
+      data: { blocks, sync: sync ? { covered: sync.covered, lastAt: sync.lastAt } : null },
+    };
   } catch (e) {
     unstable_rethrow(e);
     return fail(e);
