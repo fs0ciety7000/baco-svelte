@@ -292,7 +292,7 @@ export function AutoPreview(p: AutoPreviewProps) {
           une par une ou tout. Rien n&apos;est attribué avant d&apos;accepter.
         </p>
       </div>
-      <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2">
+      <ul className="relative flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2">
         {unassigned.map((u) => (
           <li
             key={u.taskId}

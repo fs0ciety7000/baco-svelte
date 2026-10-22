@@ -134,7 +134,7 @@ export function MarkdownEditor({
           aria-label="Aperçu des notes"
           data-testid="b201-notes-preview"
           className={cn(
-            "min-h-56 min-w-0 overflow-auto rounded-control border border-dashed border-border-strong px-3 py-2 lg:block",
+            "relative min-h-56 min-w-0 overflow-auto rounded-control border border-dashed border-border-strong px-3 py-2 lg:block",
             tab === "preview" ? "block" : "hidden",
           )}
         >

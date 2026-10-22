@@ -475,7 +475,7 @@ function CommonNotes({ content, byName }: { content: string; byName: string }) {
         Écrites avant les notes par district, pour tous les districts. Les nouvelles notes vont dans
         le district concerné.
       </p>
-      <div className="max-h-72 overflow-auto">
+      <div className="relative max-h-72 overflow-auto">
         <ChatMarkdown body={content} className="min-w-0" />
       </div>
     </section>
@@ -529,7 +529,7 @@ function Versions({
                   </Button>
                 ) : null}
               </div>
-              <div className="max-h-48 overflow-auto">
+              <div className="relative max-h-48 overflow-auto">
                 <ChatMarkdown body={v.content} className="text-small" />
               </div>
             </li>

@@ -409,7 +409,7 @@ function ProcedureForm({
           bibliothèque des documents.
         </p>
         {docs.length ? (
-          <div className="max-h-48 overflow-auto rounded-control border border-border px-2 py-1">
+          <div className="relative max-h-48 overflow-auto rounded-control border border-border px-2 py-1">
             <CheckboxGroup
               legend="Documents liés"
               hideLegend

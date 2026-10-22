@@ -226,7 +226,7 @@ export function SpiZonesAdmin({
 
         <section aria-label="Zones" className="flex min-w-0 flex-col gap-2">
           <h2 className="label-mono text-fg-muted">Zones · {zones.length}</h2>
-          <ul className="flex flex-col divide-y divide-border overflow-y-auto rounded-box border border-(--card-frame) bg-surface xl:max-h-[30rem] shadow-rest">
+          <ul className="relative flex flex-col divide-y divide-border overflow-y-auto rounded-box border border-(--card-frame) bg-surface xl:max-h-[30rem] shadow-rest">
             {zones.map((z) => (
               <li key={z.id} className="flex min-h-12 items-center gap-3 px-3 py-1.5">
                 <span aria-hidden className="size-3 rounded-sm" style={{ background: z.color }} />

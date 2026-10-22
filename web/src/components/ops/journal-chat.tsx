@@ -664,7 +664,7 @@ export function JournalChat({
               )}
             </button>
             {pinsOpen ? (
-              <ul className="flex max-h-[40dvh] flex-col gap-2 overflow-y-auto px-3 pb-3">
+              <ul className="relative flex max-h-[40dvh] flex-col gap-2 overflow-y-auto px-3 pb-3">
                 {pinned.map((p) => (
                   <li key={p.id}>
                     <button

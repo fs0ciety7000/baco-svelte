@@ -457,7 +457,7 @@ export function PnBoard({
         />
       ) : desktop ? (
         <div className="grid h-[calc(100dvh-16rem)] min-h-[32rem] grid-cols-[minmax(20rem,26rem)_minmax(0,1fr)] gap-3">
-          <div className="min-h-0 overflow-y-auto rounded-box border border-(--card-frame) bg-surface shadow-rest">
+          <div className="relative min-h-0 overflow-y-auto rounded-box border border-(--card-frame) bg-surface shadow-rest">
             {shown.length ? (
               rows
             ) : (

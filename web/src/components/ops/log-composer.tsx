@@ -593,7 +593,7 @@ export function LogComposer({
       >
         {options ? (
           <div
-            className="flex max-h-[45dvh] flex-col gap-3 overflow-y-auto rounded-box bg-surface-2 p-3"
+            className="relative flex max-h-[45dvh] flex-col gap-3 overflow-y-auto rounded-box bg-surface-2 p-3"
             data-testid="log-options"
           >
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

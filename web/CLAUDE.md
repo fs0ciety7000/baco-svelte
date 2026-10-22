@@ -171,6 +171,9 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   focalisable nommée, `@container` : colonnes secondaires masquées par `hidden @5xl:table-cell` (District) / `@6xl`
   (Réf. DICOS), visibles dans le panneau. Une ligne pleine largeur porte `data-band` (exclue des colonnes collantes).
   Utilisé par Missions PMR et Groupes (et `/design`).
+  La zone de défilement est **`relative`** (22 oct. 2026) : sans elle, les `sr-only` en position absolue des lignes sortaient
+  du cadre et allongeaient la page (barre latérale qui remontait). Règle générale : toute liste à défilement interne d'une
+  page est positionnée ; E2E `e2e/layout-scroll.spec.ts`.
 - **Où en est-on dans la journée ?** (15 oct. 2026, Missions PMR et Groupes) : les pages passent `now`
   (`brusselsMinutes(new Date())`) et `today` ; `useNowMinute(now)` (`components/pmr/day-progress.tsx`) part de la valeur du
   serveur (pas d'écart d'hydratation) et se relit toutes les 30 s et au retour sur l'onglet. `NowLine` (`data-testid=now-line`,

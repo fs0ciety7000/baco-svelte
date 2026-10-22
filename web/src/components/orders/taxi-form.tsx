@@ -847,7 +847,7 @@ export function PmrClientPicker({
           id="pmr-results"
           role="listbox"
           aria-label="Clients trouvés"
-          className="flex max-h-64 flex-col overflow-y-auto border border-border"
+          className="relative flex max-h-64 flex-col overflow-y-auto border border-border"
         >
           {loading ? <li className="px-3 py-2 text-small text-fg-muted">Recherche…</li> : null}
           {!loading && results.length === 0 ? (

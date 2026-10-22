@@ -73,7 +73,7 @@ export function ScrollTable({
         aria-label={label}
         tabIndex={0}
         data-slot="scroll-table"
-        className="max-h-[max(20rem,calc(100dvh-9rem))] overflow-auto overscroll-x-contain rounded-box [scrollbar-color:var(--border-strong)_transparent] [scrollbar-width:thin] focus-visible:outline-1 focus-visible:outline-offset-[-1px] focus-visible:outline-accent"
+        className="relative max-h-[max(20rem,calc(100dvh-9rem))] overflow-auto overscroll-x-contain rounded-box [scrollbar-color:var(--border-strong)_transparent] [scrollbar-width:thin] focus-visible:outline-1 focus-visible:outline-offset-[-1px] focus-visible:outline-accent"
       >
         <table
           className={cn(

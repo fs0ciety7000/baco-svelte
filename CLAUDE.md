@@ -300,6 +300,10 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
 - (v2) **Déplacer une page = l'ajouter à `web/src/lib/redirects.ts`** (navigation v3) : les notifications en base, les
   favoris et ⌘K portent d'anciens liens (`/operations?train=`, `/operations/carte-pn?pn=`…). Ne jamais rediriger
   `/pmr/extension` tant que l'extension ne déclare pas `/extension*` dans ses `content_scripts` (connexion cassée).
+- (v2) **Un conteneur à défilement interne (`overflow-auto` / `overflow-y-auto`) dans la page doit être positionné
+  (`relative`)** : sinon les éléments en position absolue qu'il contient (`sr-only` des badges, boutons…) prennent pour
+  référence un ancêtre extérieur, échappent au défilement et allongent la page (22 oct. : Missions PMR 2 881 px pour un shell
+  de 1 035, barre latérale collante et pied de page qui remontaient). E2E `layout-scroll.spec.ts`.
 - (v2) Playwright : un libellé avec astérisque requis (`Arrivée *`) ne répond pas à `getByLabel(…, { exact: true })` ;
   passer par `getByRole(…, { name, exact: true })`.
 
@@ -1400,6 +1404,10 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   Groupes), blocs d'un autre jour lus par `aleaDay` ; bouton « Synchroniser ce jour » → extension **1.10.0** (`csm-link.js` sur
   toutes les pages CSM, commande `dicos-sync` du service worker : origine = URL CSM enregistrée, onglet DICOS ouvert, résumé
   chiffré seulement vers la page). Logique du service worker vérifiée avec un `chrome` simulé ; E2E `alea-jour` (desktop + mobile).
+- 2026-10-22 — **Barre latérale et pied de page qui remontaient sur Missions PMR** (retour de l'utilisateur, capture) : `sr-only`
+  des badges IN / OUT « validé » en position absolue hors du cadre de `ScrollTable` (zone de défilement non positionnée) →
+  page de ~1 800 px de trop. `relative` sur la zone de défilement de `ScrollTable` et sur les autres listes à défilement
+  interne de page ; E2E de non-régression (échoue sans le correctif).
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)

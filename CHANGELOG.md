@@ -11,6 +11,10 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 - **« Synchroniser ce jour »** dans la fenêtre ALEA : l'extension lit les missions (et groupes) du jour choisi dans ton onglet DICOS ouvert, les envoie à CSM et la fenêtre se met à jour, sans passer par le popup de l'extension.
 - **Extension CSM 1.10.0** : nécessaire pour « Synchroniser ce jour ». Seule l'adresse CSM à laquelle l'extension est connectée peut demander une synchro, et la page ne reçoit qu'un résumé chiffré.
 
+### Corrections
+
+- **Missions PMR et Groupes** : avec une longue liste, la page s'allongeait bien au-delà du tableau ; en faisant défiler, la barre latérale remontait avec le pied de page et laissait un grand vide. La barre latérale reste maintenant en place et la page s'arrête au pied de page.
+
 ## [2026.10.15] — Planificateur de tâches PMR (vue Jour)
 
 ### Nouveautés
