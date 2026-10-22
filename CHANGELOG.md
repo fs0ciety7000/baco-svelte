@@ -13,6 +13,7 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 ### Corrections
 
+- **Missions PMR et Groupes : tout le tableau tient à l'écran**, sans barre de défilement horizontale : un nom de gare long passe à la ligne au lieu d'élargir la colonne, et « Absente de DICOS » s'affiche en court (« Hors DICOS », explication complète au survol) sous le statut.
 - **Missions PMR et Groupes** : avec une longue liste, la page s'allongeait bien au-delà du tableau ; en faisant défiler, la barre latérale remontait avec le pied de page et laissait un grand vide. La barre latérale reste maintenant en place et la page s'arrête au pied de page.
 
 ## [2026.10.15] — Planificateur de tâches PMR (vue Jour)

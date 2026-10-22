@@ -15,6 +15,7 @@ test.skip(!identity || !password || !suEmail, "E2E_IDENTITY / PB_SUPERUSER_* non
 const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date());
 let root = "";
 const created: string[] = [];
+const syncs: string[] = [];
 
 async function pb(method: string, path: string, body?: unknown) {
   const res = await fetch(`${PB}${path}`, {
@@ -36,26 +37,48 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   for (const id of created) await pb("DELETE", `/api/collections/pmr_assists/records/${id}`);
+  for (const id of syncs) await pb("DELETE", `/api/collections/dicos_syncs/records/${id}`);
 });
 
 test("Missions PMR : longue liste, la page ne dépasse pas le shell", async ({ page }, info) => {
   const tag = `${info.project.name}-${Math.random().toString(36).slice(2, 6)}`;
+  // Compte E2E (auteur de la synchro DICOS simulée) : les missions prévues vues avant la dernière synchro complète de cet
+  // agent s'affichent « Hors DICOS » (badge sous le statut, 22 oct. 2026).
+  const me = (
+    await pb(
+      "GET",
+      `/api/collections/users/records?filter=${encodeURIComponent(`email="${identity}" || username="${identity}"`)}`,
+    )
+  )?.items?.[0]?.id as string | undefined;
+  const seen = new Date(Date.now() - 3600_000).toISOString().replace("T", " ");
+  if (me) {
+    const sync = await pb("POST", "/api/collections/dicos_syncs/records", {
+      kind: "missions",
+      day: today,
+      complete: true,
+      synced_by: me,
+      session_start: new Date().toISOString().replace("T", " "),
+    });
+    if (sync?.id) syncs.push(sync.id);
+  }
   for (let i = 0; i < 40; i++) {
     const r = await pb("POST", "/api/collections/pmr_assists/records", {
       dicos_id: `e2e-layout-${tag}-${i}`,
       day: today,
       time: `${String(5 + Math.floor(i / 3)).padStart(2, "0")}:${String((i % 3) * 15).padStart(2, "0")}`,
-      station: `XL ${tag} Départ ${i}`,
-      other_station: `XL ${tag} Arrivée ${i}`,
+      // Noms longs (comme « BRUSSELS AIRPORT-ZAVENTEM ») : le tableau doit tenir sans défilement horizontal.
+      station: `XL ${tag} BRUSSELS AIRPORT-ZAVENTEM ${i}`,
+      other_station: `XL ${tag} CHARLEROI-CENTRAL ARRIVÉE ${i}`,
       in_assist: true,
       out_assist: true,
-      in_status: "realisee",
-      out_status: "realisee",
+      in_status: i % 2 ? "realisee" : "",
+      out_status: i % 2 ? "realisee" : "",
+      ...(i % 2 || !me ? {} : { last_seen_by: me, last_seen_sync: seen }),
       direction: "depart",
       train: String(99400 + i),
       pax: 1,
       pmr_type: "NV",
-      status: "realisee",
+      status: i % 2 ? "realisee" : "prevue",
       transport: "train",
     });
     if (!r?.id) throw new Error(`fixture : ${JSON.stringify(r).slice(0, 200)}`);
@@ -77,6 +100,14 @@ test("Missions PMR : longue liste, la page ne dépasse pas le shell", async ({ p
     Math.ceil(sizes.shell) + 1,
   );
   if (info.project.name === "desktop") {
+    // Tout se voit d'un coup d'œil : aucune barre de défilement horizontale dans le tableau (retour du 22 oct. 2026).
+    await expect(page.getByTestId("absent-badge").first()).toBeVisible();
+    const overflow = await page.evaluate(() =>
+      Array.from(document.querySelectorAll<HTMLElement>("[data-slot='scroll-table']")).map(
+        (el) => el.scrollWidth - el.clientWidth,
+      ),
+    );
+    for (const o of overflow) expect(o, "défilement horizontal du tableau").toBeLessThanOrEqual(1);
     await page.evaluate(() => window.scrollTo(0, 99999));
     const top = await page.evaluate(
       () =>

@@ -126,7 +126,7 @@ export function NowLine({
 /** Prochaine mission (première dont l'heure n'est pas passée) : pastille à côté de l'heure. */
 export function NextBadge() {
   return (
-    <Badge tone="info" className="ml-2 h-5 px-1.5 text-hint" data-testid="next-badge">
+    <Badge tone="info" className="h-5 shrink-0 px-1.5 text-hint" data-testid="next-badge">
       Prochaine
     </Badge>
   );

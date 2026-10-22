@@ -5,7 +5,7 @@ const TITLE =
   "probablement annulée ou supprimée dans DICOS. À vérifier avant d'agir.";
 
 /** Mission ou groupe « Absente de DICOS » (`isAbsentFromDicos`, 11 oct. 2026). */
-export function AbsentBadge({ className }: { className?: string }) {
+export function AbsentBadge({ className, compact }: { className?: string; compact?: boolean }) {
   return (
     <Badge
       tone="warn"
@@ -14,7 +14,9 @@ export function AbsentBadge({ className }: { className?: string }) {
       data-testid="absent-badge"
       className={className}
     >
-      Absente de DICOS
+      {/* Tableaux : libellé court sous le statut (22 oct. 2026 : le libellé long élargissait la colonne au point de faire
+          défiler le tableau). Le nom accessible et l'infobulle gardent la phrase complète. */}
+      {compact ? "Hors DICOS" : "Absente de DICOS"}
     </Badge>
   );
 }

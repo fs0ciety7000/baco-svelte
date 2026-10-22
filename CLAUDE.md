@@ -1408,6 +1408,10 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   des badges IN / OUT « validé » en position absolue hors du cadre de `ScrollTable` (zone de défilement non positionnée) →
   page de ~1 800 px de trop. `relative` sur la zone de défilement de `ScrollTable` et sur les autres listes à défilement
   interne de page ; E2E de non-régression (échoue sans le correctif).
+- 2026-10-22 — **Missions PMR / Groupes sans défilement horizontal** (retour : « il faut tout voir d'un coup d'œil ») : colonnes
+  de gare bornées (`max-w-72`), nom qui passe à la ligne (heure et puces IN / OUT gardées sur la ligne), badges de statut
+  empilés, `AbsentBadge compact` (« Hors DICOS »). E2E `layout-scroll` : aucun débordement horizontal du tableau à 1 440 px
+  (gares longues, missions « Hors DICOS » simulées par une synchro complète plus récente).
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)

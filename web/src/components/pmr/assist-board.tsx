@@ -155,7 +155,8 @@ export function StationCell({
   const mine = inDistricts(district, filter);
   return (
     <span className={cn("flex min-w-0 flex-col leading-tight", barred && "text-fg-subtle")}>
-      <span className="inline-flex min-w-0 items-center gap-1.5">
+      {/* Nom complet sur deux lignes au besoin (22 oct. 2026 : rien de tronqué, aucun défilement horizontal). */}
+      <span className="flex min-w-0 items-center gap-1.5">
         {time ? (
           <span className="shrink-0 font-mono text-small font-medium tabular text-fg-muted">
             {time}
@@ -163,7 +164,7 @@ export function StationCell({
         ) : null}
         <span
           className={cn(
-            "truncate",
+            "min-w-0 break-words",
             barred && "line-through",
             assisted && mine && !barred
               ? "font-semibold text-fg"
@@ -464,7 +465,7 @@ export function AssistBoard({
                             {formatDay(a.day)}
                           </Td>
                         ) : null}
-                        <Td className="min-w-44">
+                        <Td className="max-w-72 min-w-44">
                           <StationCell
                             name={l.dep}
                             district={l.depDistrict}
@@ -489,7 +490,7 @@ export function AssistBoard({
                             next={i === split.next}
                           />
                         </Td>
-                        <Td className="min-w-44">
+                        <Td className="max-w-72 min-w-44">
                           <StationCell
                             name={l.arr}
                             district={l.arrDistrict}
@@ -501,7 +502,7 @@ export function AssistBoard({
                             time={l.arrTime || ""}
                           />
                         </Td>
-                        <Td className="max-w-48 min-w-32">
+                        <Td className="max-w-44 min-w-28">
                           <span className="block truncate" title={a.pmrType || undefined}>
                             {a.pmrType ? (PMR_TYPE_LABEL[a.pmrType] ?? a.pmrType) : "type ?"}
                           </span>
@@ -516,9 +517,9 @@ export function AssistBoard({
                           {a.dicosRef || "—"}
                         </Td>
                         <Td>
-                          <span className="inline-flex flex-wrap items-center gap-1.5">
+                          <span className="flex flex-col items-start gap-1">
                             <AssistBadge status={a.status} />
-                            {a.absent ? <AbsentBadge /> : null}
+                            {a.absent ? <AbsentBadge compact /> : null}
                           </span>
                         </Td>
                         <Td>

@@ -204,7 +204,7 @@ export function GroupBoard({
                             <DelayBadge impact={missionImpact(g, delays)} />
                           </span>
                         </Td>
-                        <Td className="min-w-44">
+                        <Td className="max-w-72 min-w-44">
                           <StationCell
                             name={l.dep}
                             time={l.depTime}
@@ -217,7 +217,7 @@ export function GroupBoard({
                             next={i === split.next}
                           />
                         </Td>
-                        <Td className="min-w-44">
+                        <Td className="max-w-72 min-w-44">
                           <StationCell
                             name={l.arr}
                             time={l.arrTime}
@@ -229,7 +229,7 @@ export function GroupBoard({
                             barred={barred}
                           />
                         </Td>
-                        <Td className="max-w-56 truncate">
+                        <Td className="max-w-48 truncate">
                           <button
                             type="button"
                             className="cursor-pointer text-left link"
@@ -245,9 +245,9 @@ export function GroupBoard({
                         <Td numeric>{g.children}</Td>
                         <Td numeric>{g.seniors}</Td>
                         <Td>
-                          <span className="inline-flex flex-wrap items-center gap-1.5">
+                          <span className="flex flex-col items-start gap-1">
                             <Badge tone={STATUS[g.status].tone}>{STATUS[g.status].label}</Badge>
-                            {g.absent ? <AbsentBadge /> : null}
+                            {g.absent ? <AbsentBadge compact /> : null}
                           </span>
                         </Td>
                       </Tr>,
