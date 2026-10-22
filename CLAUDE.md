@@ -304,6 +304,9 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   (`relative`)** : sinon les éléments en position absolue qu'il contient (`sr-only` des badges, boutons…) prennent pour
   référence un ancêtre extérieur, échappent au défilement et allongent la page (22 oct. : Missions PMR 2 881 px pour un shell
   de 1 035, barre latérale collante et pied de page qui remontaient). E2E `layout-scroll.spec.ts`.
+- (v2) **Tâche planifiée Coolify : commande de 255 caractères au plus** (« Server Error » au-delà) : découper en plusieurs
+  tâches exécutées une fois (ex. jeton superuser dans `/tmp/a`, puis appel, puis suppression du fichier), et supprimer
+  chaque tâche après sa première exécution (`GET …/scheduled-tasks/<uuid>/executions`).
 - (v2) Playwright : un libellé avec astérisque requis (`Arrivée *`) ne répond pas à `getByLabel(…, { exact: true })` ;
   passer par `getByRole(…, { name, exact: true })`.
 
@@ -1412,6 +1415,11 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   de gare bornées (`max-w-72`), nom qui passe à la ligne (heure et puces IN / OUT gardées sur la ligne), badges de statut
   empilés, `AbsentBadge compact` (« Hors DICOS »). E2E `layout-scroll` : aucun débordement horizontal du tableau à 1 440 px
   (gares longues, missions « Hors DICOS » simulées par une synchro complète plus récente).
+- 2026-10-22 — **Lot du 15 au 22 oct. poussé en production** (accord de l'utilisateur : « ok prod ») : `csm-prod` = 1d8b277
+  (139 commits depuis 7681554, 14 migrations : rôles v3, navigation v3, refonte v4, B201 par district, PN / zones SPI,
+  planificateur PMR, ALEA par jour, correctifs de mise en page). Sauvegarde PocketBase de la prod faite juste avant (R2, tâches
+  Coolify exécutées une fois : **commande limitée à 255 caractères** → jeton dans un fichier temporaire supprimé aussitôt).
+  Déploiements terminés, santé 200 ; `perms-check` : 30 comptes, 0 écart (2 retraits voulus par dépendance).
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)
