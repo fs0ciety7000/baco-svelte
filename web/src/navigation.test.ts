@@ -56,6 +56,7 @@ describe("navigation", () => {
       "Contacts",
       "Collègues",
       "Planning",
+      "Non pourvus",
       "Procédures et documents",
     ]);
   });

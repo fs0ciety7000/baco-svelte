@@ -58,6 +58,7 @@ function run(app) {
 		'presence:read': (r) => r !== 'guest',
 		'team:read': (r) => r !== 'guest',
 		'quinyx:read': (r) => r !== 'guest',
+		'quinyx_open:read': (r) => admin(r),
 		'timetable:read': (r) => r !== 'guest',
 		'referentiels:manage': (r) => admin(r)
 	};

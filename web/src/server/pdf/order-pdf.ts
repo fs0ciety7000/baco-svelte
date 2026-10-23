@@ -841,3 +841,65 @@ export async function roadmapPdf(input: RoadmapPdfInput, ctx: PdfContext): Promi
   footer(doc, font, at, `Feuille de route ${input.abbr || input.station} ${input.day}`);
   return doc.save();
 }
+
+// --- Services Quinyx non pourvus (23 oct. 2026) ---
+
+export type OpenShiftsPdfInput = {
+  /** « octobre 2026 » ou « année 2026 ». */
+  period: string;
+  /** Filtres appliqués, en clair (« Zone : OCC Mons · Fonction : RCCA »). */
+  filters: string;
+  totals: {
+    total: number;
+    zones: [string, number][];
+    functions: [string, number][];
+    kinds: [string, number][];
+  };
+  /** Lignes déjà mises en forme (`openPdfRows`). */
+  rows: string[][][];
+};
+
+export async function openShiftsPdf(
+  input: OpenShiftsPdfInput,
+  ctx: PdfContext,
+): Promise<Uint8Array> {
+  const { doc, font, l, at } = await setup(
+    `Services non pourvus ${input.period}`,
+    `Services PACO / RCCA non pourvus · ${input.period}`,
+    ctx,
+  );
+  header(l, officeFor("Sud-Ouest"), ctx.agentName, {
+    name: "Planning Quinyx",
+    lines: ["Services publiés sans agent affecté"],
+  });
+  title(
+    l,
+    "Services non pourvus",
+    `${input.totals.total} service${input.totals.total > 1 ? "s" : ""} PACO / RCCA sans agent`,
+    input.period,
+  );
+  l.section("Synthèse");
+  if (input.filters) l.field("Filtres", input.filters);
+  const line = (list: [string, number][]) => list.map(([k, n]) => `${k} : ${n}`).join(" · ") || "—";
+  l.field("Par zone", line(input.totals.zones));
+  l.field("Par fonction", line(input.totals.functions));
+  l.field("Par service", line(input.totals.kinds));
+
+  l.section("Détail");
+  if (!input.rows.length) l.field("Services", "Aucun service non pourvu pour ces filtres.");
+  else
+    gridTable(
+      l,
+      [
+        { title: "Date", w: 62 },
+        { title: "Zone", w: 132 },
+        { title: "Fonction", w: 52 },
+        { title: "Service", w: 46 },
+        { title: "Horaire", w: 70 },
+        { title: "Type Quinyx · section", w: WIDTH - 362 },
+      ],
+      input.rows.map((cells) => ({ cells })),
+    );
+  footer(doc, font, at, `Services non pourvus ${input.period}`);
+  return doc.save();
+}

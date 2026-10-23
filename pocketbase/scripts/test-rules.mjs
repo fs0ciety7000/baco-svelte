@@ -1494,6 +1494,30 @@ try {
 				check(`${who} ne lit pas ${c}`, r.status !== 200 || r.json.totalItems === 0, `HTTP ${r.status} ${r.json?.totalItems}`);
 			}
 		}
+		// Services non pourvus (1760005000, 23 oct. 2026) : lecture `quinyx_open:read` (admin / sysop par défaut), écriture
+		// par le compte de service seul, suppression aussi admin.
+		const op = await api('POST', '/api/collections/quinyx_open_shifts/records', {
+			token: qc?.token,
+			body: { quinyx_id: `${gid}9`, group_id: gid, day: '2026-10-05', start: '2026-10-05 04:00:00.000Z', end: '2026-10-05 12:00:00.000Z', code: 'RCCA_AM', section: 'RCCA Test', kind: 'am', function: 'rcca', district: 'DSO' }
+		});
+		check('connecteur écrit un service non pourvu', op.status === 200, `HTTP ${op.status} ${JSON.stringify(op.json).slice(0, 80)}`);
+		const opA = await api('POST', '/api/collections/quinyx_open_shifts/records', {
+			token: roles.admin.token,
+			body: { quinyx_id: `${gid}10`, group_id: gid, day: '2026-10-05', start: '2026-10-05 04:00:00.000Z', end: '2026-10-05 12:00:00.000Z', code: 'PACO_AM', kind: 'am', function: 'paco' }
+		});
+		check('admin n invente pas de service non pourvu', opA.status >= 400, `HTTP ${opA.status}`);
+		const opR = await api('GET', `/api/collections/quinyx_open_shifts/records/${op.json?.id}`, { token: roles.admin.token });
+		check('admin lit les services non pourvus', opR.status === 200, `HTTP ${opR.status}`);
+		for (const [who, tok] of [['PACO/RCCA', roles.user.token], ['modérateur', roles.modo.token], ['invité', roles.reader.token], ['écran', qs?.token]]) {
+			const r = await api('GET', '/api/collections/quinyx_open_shifts/records?perPage=1', { token: tok });
+			check(`${who} ne lit pas les services non pourvus (sans quinyx_open:read)`, r.status !== 200 || r.json.totalItems === 0, `HTTP ${r.status} ${r.json?.totalItems}`);
+		}
+		const opU = await api('PATCH', `/api/collections/quinyx_open_shifts/records/${op.json?.id}`, { token: roles.user.token, body: { code: 'X' } });
+		check('PACO/RCCA ne modifie pas un service non pourvu', opU.status >= 400, `HTTP ${opU.status}`);
+		const opQ = await api('PATCH', `/api/collections/quinyx_open_shifts/records/${op.json?.id}`, { token: qc?.token, body: { quinyx_id: '1' } });
+		check('identifiant d un service non pourvu figé', opQ.status >= 400, `HTTP ${opQ.status}`);
+		const opD = await api('DELETE', `/api/collections/quinyx_open_shifts/records/${op.json?.id}`, { token: qc?.token });
+		check('connecteur retire un service pourvu depuis', opD.status === 204, `HTTP ${opD.status}`);
 		const shD = await api('DELETE', `/api/collections/quinyx_shifts/records/${sh.json?.id}`, { token: qc?.token });
 		check('connecteur retire une prestation disparue de Quinyx', shD.status === 204, `HTTP ${shD.status}`);
 		const agD = await api('DELETE', `/api/collections/quinyx_agents/records/${ag.json?.id}`, { token: roles.user.token });

@@ -66,6 +66,7 @@ const CATALOG = [
 	{"key":"referentiels:manage","requires":[],"legacy":[],"roles":[],"level":"sensible","v2":false},
 	{"key":"team:read","requires":[],"legacy":[],"roles":["paco","moderator"],"level":"normal","v2":false},
 	{"key":"quinyx:read","requires":[],"legacy":[],"roles":["paco","moderator"],"level":"normal","v2":false},
+	{"key":"quinyx_open:read","requires":[],"legacy":[],"roles":[],"level":"normal","v2":false},
 	{"key":"presence:read","requires":[],"legacy":[],"roles":["paco","moderator"],"level":"normal","v2":false},
 	{"key":"changelog:read","requires":[],"legacy":[],"roles":["paco","moderator"],"level":"normal","v2":false},
 	{"key":"changelog:write","requires":["changelog:read"],"legacy":[],"roles":["moderator"],"level":"normal","v2":false},

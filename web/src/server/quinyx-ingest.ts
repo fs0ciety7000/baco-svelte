@@ -6,10 +6,12 @@ import type { RecordModel } from "pocketbase";
 import { pbDate } from "@/lib/orders/time";
 import {
   isTeamAccount,
+  mapOpenShifts,
   mapQuinyxBatch,
   removalAllowed,
   suggestUser,
   type GroupPurpose,
+  type MappedOpenShift,
   type MappedShift,
   type Place,
   type PlannerBaseRef,
@@ -97,6 +99,8 @@ export type IngestCounts = {
   notTeam: number;
   agents: number;
   failed: number;
+  /** Services non pourvus (PACO / RCCA sans agent) : reçus, créés, mis à jour, retirés (pourvus ou supprimés). */
+  open?: { received: number; kept: number; created: number; updated: number; removed: number };
 };
 
 // Un seul lot à la fois par groupe (deux agents qui synchronisent en même temps), registre partagé entre les copies
@@ -335,6 +339,10 @@ async function ingestGroup(
     }
   }
 
+  // --- Services non pourvus (23 oct. 2026) : groupes « équipe », extension 1.11.0 et plus (champ `open` présent) ---
+  if (!gares && batch.open)
+    c.open = await ingestOpen(pb, batch, places, String(group.district ?? ""), end, c, now);
+
   // Fraîcheur posée seulement sur une synchro sans erreur (sinon « synchronisé il y a 2 min » mentirait).
   if (c.failed) return c;
   await pb
@@ -380,5 +388,118 @@ function changed(cur: RecordModel, rec: ReturnType<typeof shiftRecord>): boolean
     (cur.district ?? "") !== rec.district ||
     (cur.post ?? "") !== rec.post ||
     (cur.base ?? "") !== rec.base
+  );
+}
+
+/**
+ * Services non pourvus d'un lot : upsert par identifiant Quinyx ; sur un lot complet (prestations ET liste `open`
+ * entières, sans erreur), retrait des services de la période et des sections reçues qui ne sont plus « non pourvus »
+ * (pourvus ou supprimés dans Quinyx). Aucune donnée personnelle : pas de plafond de retrait (une publication peut
+ * pourvoir beaucoup de services d'un coup).
+ */
+async function ingestOpen(
+  pb: PocketBase,
+  batch: QuinyxBatch,
+  places: Place[],
+  groupDistrict: string,
+  end: string,
+  c: IngestCounts,
+  now: string,
+): Promise<NonNullable<IngestCounts["open"]>> {
+  const mapped = mapOpenShifts(batch, places, groupDistrict);
+  const out = {
+    received: batch.open?.length ?? 0,
+    kept: mapped.shifts.length,
+    created: 0,
+    updated: 0,
+    removed: 0,
+  };
+  const stored = await pb.collection("quinyx_open_shifts").getFullList({
+    filter: pb.filter("group_id = {:g} && day >= {:f} && day <= {:t}", {
+      g: batch.group,
+      f: batch.from,
+      t: end,
+    }),
+  });
+  const byId = new Map(stored.map((r) => [String(r.quinyx_id), r]));
+  const missing = mapped.shifts.map((s) => s.quinyx_id).filter((q) => !byId.has(q));
+  for (const part of chunks(missing, 40))
+    for (const r of await pb.collection("quinyx_open_shifts").getFullList({
+      filter: `${pb.filter("group_id = {:g}", { g: batch.group })} && (${orFilter(pb, "quinyx_id", part)})`,
+    }))
+      byId.set(String(r.quinyx_id), r);
+  const seen = new Set<string>();
+  let failed = 0;
+  for (const s of mapped.shifts) {
+    seen.add(s.quinyx_id);
+    const rec = openRecord(s, now);
+    try {
+      const cur = byId.get(s.quinyx_id);
+      if (!cur) {
+        try {
+          await pb.collection("quinyx_open_shifts").create({ quinyx_id: s.quinyx_id, ...rec });
+          out.created++;
+        } catch (e) {
+          const again = await pb
+            .collection("quinyx_open_shifts")
+            .getFirstListItem(pb.filter("quinyx_id = {:q}", { q: s.quinyx_id }))
+            .catch(() => null);
+          if (!again) throw e;
+          await pb.collection("quinyx_open_shifts").update(again.id, rec);
+          out.updated++;
+        }
+      } else if (openChanged(cur, rec)) {
+        await pb.collection("quinyx_open_shifts").update(cur.id, rec);
+        out.updated++;
+      }
+    } catch {
+      failed++;
+    }
+  }
+  const sections = new Set(["", ...batch.sections.map((s) => s.name.trim())]);
+  if (batch.complete && batch.openComplete !== false && !failed && !c.failed) {
+    for (const r of stored) {
+      if (seen.has(String(r.quinyx_id)) || !sections.has(String(r.section ?? ""))) continue;
+      try {
+        await pb.collection("quinyx_open_shifts").delete(r.id);
+        out.removed++;
+      } catch {
+        failed++;
+      }
+    }
+  }
+  c.failed += failed;
+  return out;
+}
+
+function openRecord(s: MappedOpenShift, now: string) {
+  return {
+    group_id: s.group_id,
+    day: s.day,
+    start: s.start,
+    end: s.end,
+    code: s.code,
+    section: s.section,
+    kind: s.kind,
+    function: s.function,
+    district: s.district,
+    status: s.status,
+    last_seen: now,
+  };
+}
+
+function openChanged(cur: RecordModel, rec: ReturnType<typeof openRecord>): boolean {
+  // `last_seen` seul ne justifie pas une écriture à chaque synchro (au plus toutes les 3 h par agent).
+  return (
+    cur.day !== rec.day ||
+    cur.group_id !== rec.group_id ||
+    !same(String(cur.start), rec.start) ||
+    !same(String(cur.end), rec.end) ||
+    cur.code !== rec.code ||
+    (cur.section ?? "") !== rec.section ||
+    cur.kind !== rec.kind ||
+    cur.function !== rec.function ||
+    (cur.district ?? "") !== rec.district ||
+    (cur.status ?? "") !== rec.status
   );
 }

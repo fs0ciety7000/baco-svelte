@@ -1420,6 +1420,13 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   la prochaine prise en charge compare départs et arrivées (« Prochaine » sur la gare d'arrivée si c'est elle), trajet parti
   mais pas arrivé non grisé (départ seul estompé), « Débarquement à venir » sous la ligne « maintenant » pour les arrivées des
   trajets placés au-dessus (clic = retour au trajet). Badge OUT des cartes mobiles qui passait sous « Copier » corrigé.
+- 2026-10-23 — **Services Quinyx non pourvus** (demande : « lister tous les services non alignés PACO / RCCA AM / PM / NUIT pour
+  OCC Mons et OCC Namur, route API, export PDF / Excel, filtres zone / mois / année / RCCA ou PACO, vue par défaut pour les
+  admins / sysop » ; « non aligné » = **non pourvu**, réponse de l'utilisateur) : extension **1.11.0** (services PACO / RCCA publiés
+  sans agent, champ `open` du lot, aucun nom), collection `quinyx_open_shifts` (`1760005000`, aucune donnée personnelle,
+  gardée 2 ans), clé **`quinyx_open:read`** (admin / sysop par défaut, accordable), page **Ressources › Planning › Non pourvus**,
+  route `GET /api/equipe/quinyx/non-pourvus` (`format=json|csv|xlsx|pdf`) ; Excel écrit sans dépendance (`lib/xlsx.ts`).
+  Un service pourvu / supprimé est retiré à la synchro complète suivante (pas de plafond : rien de personnel).
 - 2026-10-22 — **Lot du 15 au 22 oct. poussé en production** (accord de l'utilisateur : « ok prod ») : `csm-prod` = 1d8b277
   (139 commits depuis 7681554, 14 migrations : rôles v3, navigation v3, refonte v4, B201 par district, PN / zones SPI,
   planificateur PMR, ALEA par jour, correctifs de mise en page). Sauvegarde PocketBase de la prod faite juste avant (R2, tâches

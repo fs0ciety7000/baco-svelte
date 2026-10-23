@@ -124,3 +124,15 @@ règles (`pocketbase/scripts/test-rules.mjs`).
 
 Questions encore ouvertes : visibilité du planning de toute l'équipe par tous (oui aujourd'hui) ; historique gardé
 (J-7 lu, 90 jours conservés) ; validation DPO.
+
+## 8. Services non pourvus (23 oct. 2026)
+
+Demande : lister les services PACO / RCCA AM / PM / Nuit d'OCC Mons et OCC Namur publiés **sans agent affecté** (« non
+alignés » = non pourvus, réponse de l'utilisateur), avec route API, export PDF / Excel et filtres zone / mois / année / fonction,
+vue par défaut pour les administrateurs. L'extension 1.11.0 envoie ces services dans le même lot (champ `open` : identifiant,
+section, type, début, fin, statut ; jamais d'agent) ; CSM les garde dans `quinyx_open_shifts` (2 ans) et les retire quand ils
+sont pourvus ou supprimés (synchro complète suivante). Écran Ressources › Planning › Non pourvus, route
+`/api/equipe/quinyx/non-pourvus` (JSON, CSV, Excel, PDF), droit `quinyx_open:read`. Limite : un compte Quinyx qui ne voit pas
+les services non attribués de son groupe n'en envoie aucun (la liste reste celle de la dernière synchro complète d'un compte qui
+les voit).
+

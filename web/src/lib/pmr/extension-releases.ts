@@ -5,6 +5,14 @@ export type ExtensionNote = { version: string; date: string; notes: string[] };
 
 export const EXTENSION_NOTES: ExtensionNote[] = [
   {
+    version: "1.11.0",
+    date: "2026-10-23",
+    notes: [
+      "Horaires Quinyx : la synchro envoie aussi les services PACO / RCCA publiés sans agent affecté (services non pourvus), pour la vue Ressources › Planning › Non pourvus. Aucun nom n'est envoyé pour ces services.",
+      "Le popup affiche le nombre de services non pourvus par groupe.",
+    ],
+  },
+  {
     version: "1.10.0",
     date: "2026-10-22",
     notes: [

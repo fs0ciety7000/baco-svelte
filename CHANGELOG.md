@@ -3,6 +3,15 @@
 Toutes les évolutions de CSM visibles par les agents, de la plus récente à la plus ancienne.
 Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
+## [2026.10.23] — Services Quinyx non pourvus
+
+### Nouveautés
+
+- **Ressources › Planning › Non pourvus** (administrateurs par défaut) : liste des services PACO / RCCA (AM, PM, Nuit) publiés dans Quinyx sans agent affecté, pour OCC Mons et OCC Namur. Filtres par mois ou année entière, zone (groupe Quinyx), fonction PACO / RCCA et service AM / PM / Nuit ; compteurs en tête.
+- **Exports Excel, PDF et CSV** de la liste filtrée (feuille « Totaux » par zone, fonction et service dans le classeur Excel). Les mêmes données sont lisibles par une route API pour un autre outil.
+- **Extension CSM 1.11.0** : la synchro Quinyx envoie aussi les services non pourvus (aucun nom n'est envoyé pour ces services). Un service pourvu ou supprimé dans Quinyx disparaît de la liste à la synchro suivante.
+- Le droit « Voir les services non pourvus » peut être donné à un autre rôle dans Administration › Rôles.
+
 ## [2026.10.22] — Export ALEA : choix du jour et synchro DICOS depuis CSM
 
 ### Nouveautés

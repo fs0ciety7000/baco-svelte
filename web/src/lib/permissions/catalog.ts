@@ -420,6 +420,14 @@ const ENTRIES: CatalogEntry[] = [
     "Peut voir le planning Quinyx de l'équipe",
     PM,
   ),
+  // Services Quinyx non pourvus (23 oct. 2026) : admin / sysop par défaut (ils ont tout), accordable à un rôle.
+  extra(
+    "quinyx_open:read",
+    "equipe",
+    "Voir les services non pourvus",
+    "Peut voir et exporter les services PACO / RCCA publiés dans Quinyx sans agent affecté",
+    [],
+  ),
   extra(
     "presence:read",
     "equipe",

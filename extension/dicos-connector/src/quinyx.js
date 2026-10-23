@@ -1,7 +1,7 @@
 // Content script Quinyx (onglet web.quinyx.com connecté, même origine) : lit le planning PUBLIÉ d'un groupe avec la
 // session de l'agent (cookies du navigateur, jamais lus ni conservés) et n'en garde que le nécessaire (CSM, Équipe ›
 // Planning, 14 oct. 2026) : prestations PACO / RCCA / EXTRA affectées, avec leur type, section, début et fin, et le
-// prénom / nom des agents concernés. Repos, absences, compensations, visites médicales, commentaires, e-mails et
+// prénom / nom des agents concernés ; depuis la 1.11.0, aussi les services PACO / RCCA publiés sans agent (non pourvus). Repos, absences, compensations, visites médicales, commentaires, e-mails et
 // téléphones ne quittent jamais la page. Le tri est refait par CSM (source unique : web/src/lib/quinyx/model.ts).
 (() => {
   if (globalThis.__csmQuinyx) return;
@@ -84,10 +84,24 @@
           CAPTURE(typeName.get(String(s.shiftTypeId)), purpose) &&
           String(s.begin || "").slice(0, 10) <= publishedUntil,
       );
+      // Services PACO / RCCA publiés SANS agent (1.11.0, « services non pourvus ») : groupes « équipe » seulement, aucun
+      // agent donc aucune donnée personnelle ; supprimés / annulés écartés. CSM retrie (mapOpenShifts).
+      const OPEN_CODE = (name) => /^(PACO|RCCA) /.test(fold(name));
+      const open =
+        purpose === "gares"
+          ? []
+          : (Array.isArray(shifts) ? shifts : []).filter(
+              (s) =>
+                s &&
+                !(Number(s.employeeId) > 0) &&
+                !/DELET|CANCEL/.test(String(s.status || "").toUpperCase()) &&
+                OPEN_CODE(typeName.get(String(s.shiftTypeId))) &&
+                String(s.begin || "").slice(0, 10) <= publishedUntil,
+            );
       const MAX = 1500;
       const people = new Set(kept.slice(0, MAX).map((s) => String(s.employeeId)));
       const workerList = Array.isArray(workers) ? workers : [];
-      const usedTypes = new Set(kept.map((s) => String(s.shiftTypeId)));
+      const usedTypes = new Set([...kept, ...open.slice(0, MAX)].map((s) => String(s.shiftTypeId)));
       const unit = (Array.isArray(sections) ? sections : []).find((s) => String(s.id) === String(group));
       return {
         batch: {
@@ -112,6 +126,15 @@
           })),
           // Liste tronquée : lot incomplet, CSM ne retire rien.
           complete: kept.length <= MAX,
+          open: open.slice(0, MAX).map((s) => ({
+            id: Number(s.id) || 0,
+            groupId: Number(s.groupId) || 0,
+            begin: String(s.begin || "").slice(0, 19),
+            end: String(s.end || "").slice(0, 19),
+            shiftTypeId: Number(s.shiftTypeId) || 0,
+            status: String(s.status || "").slice(0, 20),
+          })),
+          openComplete: open.length <= MAX,
         },
       };
     } catch (e) {

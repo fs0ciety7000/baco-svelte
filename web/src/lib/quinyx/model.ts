@@ -163,6 +163,25 @@ export const quinyxBatchSchema = z.object({
   visible: z.array(id).max(500).optional(),
   /** Lot complet (rien de tronqué) : les prestations disparues de Quinyx sont alors retirées de CSM. */
   complete: z.boolean().optional(),
+  /**
+   * Services PACO / RCCA publiés SANS agent affecté (extension 1.11.0, 23 oct. 2026) ; absent des versions antérieures
+   * (rien n'est alors ajouté ni retiré). Aucun agent, donc aucune donnée personnelle.
+   */
+  open: z
+    .array(
+      z.object({
+        id,
+        groupId: id,
+        begin: localDateTime,
+        end: localDateTime,
+        shiftTypeId: id,
+        status: z.string().max(20).optional(),
+      }),
+    )
+    .max(1500)
+    .optional(),
+  /** Liste `open` tronquée : les services non pourvus disparus ne sont pas retirés. */
+  openComplete: z.boolean().optional(),
 });
 export type QuinyxBatch = z.infer<typeof quinyxBatchSchema>;
 
@@ -267,6 +286,169 @@ export function mapQuinyxBatch(
     }
   }
   return { shifts, agents: [...agents.values()], ignored };
+}
+
+// --- Services non pourvus (23 oct. 2026) ---
+
+export const OPEN_FUNCTIONS = ["paco", "rcca"] as const;
+export type OpenFunction = (typeof OPEN_FUNCTIONS)[number];
+export const FUNCTION_LABEL: Record<OpenFunction, string> = { paco: "PACO", rcca: "RCCA" };
+export const OPEN_KINDS = ["am", "pm", "nuit", "autre"] as const;
+export type OpenKind = (typeof OPEN_KINDS)[number];
+
+/** Fonction d'un service d'après son type (« PACO_AM » → paco, « RCCA_N » → rcca) ; "" pour tout le reste (EXTRA…). */
+export function openFunction(code: string): OpenFunction | "" {
+  const m = fold(code).match(/^(PACO|RCCA) /);
+  return m ? (m[1]!.toLowerCase() as OpenFunction) : "";
+}
+
+export type MappedOpenShift = {
+  quinyx_id: string;
+  group_id: string;
+  day: string;
+  start: string;
+  end: string;
+  code: string;
+  section: string;
+  kind: OpenKind;
+  function: OpenFunction;
+  district: string;
+  status: string;
+};
+
+/**
+ * Services non pourvus à garder : type PACO_… / RCCA_… (pas EXTRA), sans agent, jour dans la période et au plus tard à la
+ * date de publication, durée de 0 à 24 h. Un service marqué supprimé / annulé dans Quinyx est ignoré.
+ */
+export function mapOpenShifts(
+  batch: QuinyxBatch,
+  places: Place[],
+  groupDistrict = "",
+): { shifts: MappedOpenShift[]; ignored: number } {
+  const types = new Map(batch.types.map((t) => [t.id, t.name.trim()]));
+  const sections = new Map(batch.sections.map((s) => [s.id, s.name.trim()]));
+  const shifts: MappedOpenShift[] = [];
+  let ignored = 0;
+  for (const s of batch.open ?? []) {
+    const code = types.get(s.shiftTypeId) ?? "";
+    const fn = openFunction(code);
+    const d = s.begin.slice(0, 10);
+    const status = (s.status ?? "").toUpperCase();
+    if (
+      !fn ||
+      /DELET|CANCEL/.test(status) ||
+      d < batch.from ||
+      d > batch.to ||
+      d > batch.publishedUntil
+    ) {
+      ignored++;
+      continue;
+    }
+    const startTime = s.begin.slice(11, 16);
+    const start = brusselsToUtc(d, startTime);
+    const end = brusselsToUtc(s.end.slice(0, 10), s.end.slice(11, 16));
+    if (end <= start || Date.parse(end) - Date.parse(start) > 24 * 3600_000) {
+      ignored++;
+      continue;
+    }
+    const section = s.groupId === batch.group ? "" : (sections.get(s.groupId) ?? "");
+    const kind = shiftKind(code, startTime);
+    shifts.push({
+      quinyx_id: s.id,
+      group_id: batch.group,
+      day: d,
+      start,
+      end,
+      code: code.slice(0, 80),
+      section: section.slice(0, 80),
+      kind: kind === "extra" ? "autre" : kind,
+      function: fn,
+      district:
+        placeDistrict(`${code} ${section}`, places) ||
+        placeDistrict(batch.unit, places) ||
+        ((QUINYX_DISTRICTS as readonly string[]).includes(groupDistrict) ? groupDistrict : ""),
+      status: status.slice(0, 20),
+    });
+  }
+  return { shifts, ignored };
+}
+
+/** Filtres de la vue « Services non pourvus » (et de l'export). */
+export type OpenFilter = {
+  year: number;
+  /** 1 à 12 ; 0 = toute l'année. */
+  month: number;
+  /** Groupes Quinyx (OCC Mons, OCC Namur…) ; vide = tous. */
+  groups: string[];
+  functions: OpenFunction[];
+  kinds: OpenKind[];
+};
+
+/** Bornes de jours « AAAA-MM-JJ » (incluses) d'un mois ou d'une année. */
+export function openPeriod(year: number, month: number): { from: string; to: string } {
+  const y = String(year).padStart(4, "0");
+  if (!month) return { from: `${y}-01-01`, to: `${y}-12-31` };
+  const m = String(month).padStart(2, "0");
+  const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return { from: `${y}-${m}-01`, to: `${y}-${m}-${String(last).padStart(2, "0")}` };
+}
+
+/** Lecture des paramètres d'URL de la vue / de la route (valeurs inconnues écartées, défaut : mois de `today`). */
+export function parseOpenFilter(
+  params: { get(name: string): string | null; getAll(name: string): string[] },
+  today: string,
+): OpenFilter {
+  const list = (name: string) =>
+    params
+      .getAll(name)
+      .flatMap((v) => v.split(","))
+      .map((v) => v.trim().toLowerCase())
+      .filter(Boolean);
+  const year = Number(params.get("annee"));
+  const rawMonth = params.get("mois");
+  const month = rawMonth === null ? Number(today.slice(5, 7)) : Number(rawMonth);
+  return {
+    year: Number.isInteger(year) && year >= 2020 && year <= 2100 ? year : Number(today.slice(0, 4)),
+    month: Number.isInteger(month) && month >= 0 && month <= 12 ? month : Number(today.slice(5, 7)),
+    groups: params
+      .getAll("zone")
+      .flatMap((v) => v.split(","))
+      .map((v) => v.trim())
+      .filter((v) => /^\d{1,15}$/.test(v)),
+    functions: list("fonction").filter((v): v is OpenFunction =>
+      (OPEN_FUNCTIONS as readonly string[]).includes(v),
+    ),
+    kinds: list("type").filter((v): v is OpenKind => (OPEN_KINDS as readonly string[]).includes(v)),
+  };
+}
+
+/** Paramètres d'URL d'un filtre (liens d'export). */
+export function openFilterQuery(f: OpenFilter): string {
+  const q = new URLSearchParams({ annee: String(f.year), mois: String(f.month) });
+  for (const g of f.groups) q.append("zone", g);
+  for (const v of f.functions) q.append("fonction", v);
+  for (const v of f.kinds) q.append("type", v);
+  return q.toString();
+}
+
+export const MONTH_NAMES = [
+  "janvier",
+  "février",
+  "mars",
+  "avril",
+  "mai",
+  "juin",
+  "juillet",
+  "août",
+  "septembre",
+  "octobre",
+  "novembre",
+  "décembre",
+] as const;
+
+/** « octobre 2026 » ou « année 2026 ». */
+export function openPeriodLabel(f: Pick<OpenFilter, "year" | "month">): string {
+  return f.month ? `${MONTH_NAMES[f.month - 1]} ${f.year}` : `année ${f.year}`;
 }
 
 /** Libellé d'une prestation : « PACO_AM · PACO Mons ». */

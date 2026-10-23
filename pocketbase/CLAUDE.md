@@ -434,3 +434,10 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   d'attribution = `quinyx_agents.purpose = gares` (contrôlé à la création et quand l'agent change), jour d'une tâche
   manuelle / de modèle borné à J-2 → J+60 (Bruxelles, `ops.brusselsDay`). Refus par `throw new BadRequestError`.
   `down` testé sur une copie. 746 contrôles de règles (avec le secret interne).
+- **Services Quinyx non pourvus** (`1760005000_quinyx_open_shifts.js`, 23 oct. 2026) : `quinyx_open_shifts` (n° de prestation
+  Quinyx unique et figé, groupe, jour, début, fin, code, section, `kind` am / pm / nuit / autre, `function` paco / rcca,
+  district, statut Quinyx, `last_seen`) ; **aucune donnée personnelle** (pas d'agent). Lecture admin / sysop ou
+  `perms ~ '"quinyx_open:read"'` (jamais l'Écran) + connecteur ; création / modification connecteur seul ; suppression
+  connecteur ou admin. Purge `quinyx-retention` : 2 ans. Clé ajoutée à `perms-check` / `perms-equivalence` (admin / sysop).
+  756 contrôles de règles.
+

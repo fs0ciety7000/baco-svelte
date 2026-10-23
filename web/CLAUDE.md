@@ -843,6 +843,27 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   filtre « équipe », pas de compte proposé), `quinyx_agents.purpose = gares`. `listPlanning` (`post = ""`), `quinyxSyncs`
   et l'admin (agents comptés à part, `stationAgents`) ignorent les agents de gare.
 
+## Services Quinyx non pourvus (23 oct. 2026)
+
+- Services PACO / RCCA publiés **sans agent** (OCC Mons, OCC Namur) : l'extension 1.11.0 ajoute `open` (+ `openComplete`) au
+  lot Quinyx des groupes « équipe » ; `mapOpenShifts` (`lib/quinyx/model.ts`, testé : PACO_ / RCCA_ seulement, EXTRA écarté,
+  supprimé / annulé écarté, jour ≤ publication) ; `ingestOpen` (`server/quinyx-ingest.ts`) : upsert par `quinyx_id`, retrait sur
+  lot complet (prestations ET `open`) des services de la période et des sections reçues absents (pourvus ou supprimés), sans
+  plafond ; lot sans `open` (ancienne extension) : rien. Réponse de l'ingestion : `open { received, kept, created, updated,
+  removed }` (popup « N service(s) non pourvu(s) »).
+- Lecture : clé **`quinyx_open:read`** (catalogue, admin / sysop par défaut) ; `server/data/quinyx-open.ts` (`openZones` =
+  groupes « équipe », `listOpenShifts(filter)` 5 000 au plus). Filtres purs `parseOpenFilter` / `openFilterQuery` /
+  `openPeriod` / `openPeriodLabel` (`annee`, `mois` 0 = année, `zone` = n° de groupe répétable, `fonction` paco / rcca, `type`
+  am / pm / nuit ; défaut = mois en cours).
+- Page `/ressources/planning/non-pourvus` (onglet « Non pourvus », `permission: "quinyx_open:read"`) : barre de filtres
+  (`Select` mois / année, `MultiSelect` zone / fonction / service), compteurs `StatStrip`, tableau `open-table` / cartes
+  `open-cards`, boutons `open-export-xlsx|pdf|csv`.
+- Route `GET /api/equipe/quinyx/non-pourvus?format=json|csv|xlsx|pdf` (404 sans le droit) : `lib/quinyx/open-export.ts`
+  (`openCsv` BOM « ; » formules neutralisées, `openXlsx` feuilles « Non pourvus » + « Totaux », `openPdfRows`, `openTotals`),
+  `openShiftsPdf` (`server/pdf/order-pdf.ts`). **Excel sans dépendance** : `lib/xlsx.ts` (`xlsxWorkbook`, cellules `inlineStr`
+  jamais évaluées, en-tête en gras, largeurs, ZIP stocké + CRC32 ; testé, relu par openpyxl).
+- E2E `e2e/quinyx-open.spec.ts` (groupes fictifs 990301 / 990302, compte admin E2E ; l'agent PACO/RCCA reçoit 404).
+
 ## Planificateur de tâches PMR (lot P0, 15 oct. 2026, `../docs/design/CADRAGE-PLANIFICATEUR-PMR.md`)
 
 - Droits : `planner:read` / `planner:write` (PACO/RCCA et au-dessus), `planner:manage` (admin / sysop, sensible :
