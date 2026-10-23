@@ -5,6 +5,14 @@ export type ExtensionNote = { version: string; date: string; notes: string[] };
 
 export const EXTENSION_NOTES: ExtensionNote[] = [
   {
+    version: "1.12.0",
+    date: "2026-10-23",
+    notes: [
+      "Horaires Quinyx : quand le commentaire d'une prestation PACO / RCCA porte « +SE » (OCC Mons) ou « +SO » (OCC Namur), l'extension signale à CSM que l'agent a fait les deux postes. Seul le code (SE, SO) est envoyé, jamais le texte du commentaire ni le nom.",
+      "Le popup affiche le nombre de postes en fusion par groupe.",
+    ],
+  },
+  {
     version: "1.11.0",
     date: "2026-10-23",
     notes: [

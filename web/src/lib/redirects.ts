@@ -13,6 +13,8 @@ export type LegacyRedirect = { source: string; destination: string };
 export const LEGACY_REDIRECTS: LegacyRedirect[] = [
   // Opérations : Trains en direct, Carte PN et Statistiques changent de module.
   { source: "/operations", destination: "/reseau" },
+  // Services Quinyx : « non pourvus » renommés « non alignés » (23 oct. 2026, fusions +SE / +SO comprises).
+  { source: "/ressources/planning/non-pourvus", destination: "/ressources/planning/non-alignes" },
   { source: "/operations/statistiques", destination: "/statistiques" },
   { source: "/operations/carte-pn", destination: "/reseau/pn" },
   // « Main courante » renommée « Journal » (9 oct. 2026).

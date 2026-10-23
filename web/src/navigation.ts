@@ -291,11 +291,22 @@ export const MODULES: NavModule[] = [
         keywords: ["Quinyx", "horaires", "service", "AM", "PM", "nuit", "qui travaille"],
       },
       {
-        // Services PACO / RCCA publiés sans agent (23 oct. 2026) : admin / sysop par défaut.
-        href: "/ressources/planning/non-pourvus",
-        label: "Non pourvus",
+        // Postes PACO / RCCA sans agent propre (vides ou couverts par fusion +SE / +SO, 23 oct. 2026) : admin / sysop.
+        href: "/ressources/planning/non-alignes",
+        label: "Non alignés",
         permission: "quinyx_open:read",
-        keywords: ["Quinyx", "services non pourvus", "trous", "PACO", "RCCA", "export", "Excel"],
+        keywords: [
+          "Quinyx",
+          "services non alignés",
+          "non pourvus",
+          "fusion",
+          "+SE",
+          "+SO",
+          "PACO",
+          "RCCA",
+          "export",
+          "Excel",
+        ],
       },
       {
         href: "/ressources/documents",

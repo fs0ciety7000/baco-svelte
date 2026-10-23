@@ -3,13 +3,16 @@
 Toutes les évolutions de CSM visibles par les agents, de la plus récente à la plus ancienne.
 Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
-## [2026.10.23] — Services Quinyx non pourvus
+## [2026.10.23] — Services Quinyx non alignés
 
 ### Nouveautés
 
-- **Ressources › Planning › Non pourvus** (administrateurs par défaut) : liste des services PACO / RCCA (AM, PM, Nuit) publiés dans Quinyx sans agent affecté, pour OCC Mons et OCC Namur. Filtres par mois ou année entière, zone (groupe Quinyx), fonction PACO / RCCA et service AM / PM / Nuit ; compteurs en tête par prestation (PACO AM, PACO PM, PACO Nuit, RCCA AM, RCCA PM : la nuit n'existe qu'en PACO).
-- **Exports Excel, PDF et CSV** de la liste filtrée (feuille « Totaux » par zone, fonction et service dans le classeur Excel). Les mêmes données sont lisibles par une route API pour un autre outil.
-- **Extension CSM 1.11.0** : la synchro Quinyx envoie aussi les services non pourvus (aucun nom n'est envoyé pour ces services). Un service pourvu ou supprimé dans Quinyx disparaît de la liste à la synchro suivante.
+- **Ressources › Planning › Non alignés** (administrateurs par défaut) : les postes PACO / RCCA d'OCC Mons et d'OCC Namur qui n'ont pas eu leur propre agent, avec la raison :
+  - **sans agent** : service publié dans Quinyx sans personne ;
+  - **couvert par fusion** : l'agent de l'autre OCC a fait les deux postes (commentaire « +SE » sur OCC Mons = il a aussi fait Namur, « +SO » sur OCC Namur = il a aussi fait Mons).
+- **Statistiques** en tête : postes non alignés, couverts par fusion, sans agent, et le détail par prestation (PACO AM, PACO PM, PACO Nuit, RCCA AM, RCCA PM : la nuit n'existe qu'en PACO). Filtres par mois ou année entière, zone, fonction, service et couverture.
+- **Exports Excel, PDF et CSV** de la liste filtrée (feuille « Totaux » dans le classeur Excel). Les mêmes données sont lisibles par une route API pour un autre outil.
+- **Extension CSM 1.12.0** : la synchro Quinyx envoie aussi les services sans agent et les marqueurs « +SE » / « +SO ». Seul le code du marqueur part, jamais le texte du commentaire ni le nom de l'agent.
 - Le droit « Voir les services non pourvus » peut être donné à un autre rôle dans Administration › Rôles.
 
 ## [2026.10.22] — Export ALEA : choix du jour et synchro DICOS depuis CSM

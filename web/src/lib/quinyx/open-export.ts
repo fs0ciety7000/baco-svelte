@@ -1,6 +1,13 @@
 import { formatShortDay } from "@/lib/orders/time";
 
-import { FUNCTION_LABEL, KIND_LABEL, type OpenFunction, type OpenKind } from "./model";
+import {
+  ALIGN_LABEL,
+  FUNCTION_LABEL,
+  KIND_LABEL,
+  type AlignStatus,
+  type OpenFunction,
+  type OpenKind,
+} from "./model";
 import { xlsxWorkbook, type XlsxCell } from "@/lib/xlsx";
 
 // Export des services Quinyx non pourvus (23 oct. 2026) : mêmes colonnes en CSV, Excel et PDF. Pur, testé.
@@ -15,7 +22,19 @@ export type OpenRow = {
   kind: OpenKind;
   function: OpenFunction;
   district: string;
+  status: AlignStatus;
+  /** Zone de l'agent qui a fait les deux postes (fusion). */
+  coveredBy: string;
+  /** « +SE » / « +SO ». */
+  marker: string;
 };
+
+/** « Couvert par fusion (+SE, agent OCC Mons) » / « Sans agent ». */
+export function coverText(r: Pick<OpenRow, "status" | "coveredBy" | "marker">): string {
+  if (r.status !== "fusion") return ALIGN_LABEL.vide;
+  const who = [r.marker, r.coveredBy ? `agent ${r.coveredBy}` : ""].filter(Boolean).join(", ");
+  return who ? `${ALIGN_LABEL.fusion} (${who})` : ALIGN_LABEL.fusion;
+}
 
 export const OPEN_COLUMNS = [
   "Date",
@@ -26,6 +45,7 @@ export const OPEN_COLUMNS = [
   "Service",
   "Début",
   "Fin",
+  "Couverture",
   "Type Quinyx",
   "Section",
 ] as const;
@@ -49,6 +69,7 @@ export function openCells(r: OpenRow): string[] {
     KIND_LABEL[r.kind],
     r.from,
     r.to,
+    coverText(r),
     r.code,
     r.section,
   ];
@@ -63,6 +84,8 @@ export function openTotals(rows: OpenRow[]) {
   };
   return {
     total: rows.length,
+    fusion: rows.filter((r) => r.status === "fusion").length,
+    empty: rows.filter((r) => r.status === "vide").length,
     /** « PACO AM », « PACO Nuit », « RCCA PM »… (la nuit n'existe qu'en PACO). */
     services: count((r) => `${FUNCTION_LABEL[r.function]} ${KIND_LABEL[r.kind]}`),
     zones: count((r) => r.zone),
@@ -89,7 +112,9 @@ export function openXlsx(rows: OpenRow[], title: string): Uint8Array {
   const totals: XlsxCell[][] = [
     [title],
     [],
-    ["Total", t.total],
+    ["Postes non alignés", t.total],
+    ["Couverts par fusion (+SE / +SO)", t.fusion],
+    ["Sans agent", t.empty],
     [],
     ["Par prestation", "Services"],
     ...t.services.map(([k, n]): XlsxCell[] => [k, n]),
@@ -107,9 +132,9 @@ export function openXlsx(rows: OpenRow[], title: string): Uint8Array {
     {
       name: "Non pourvus",
       rows: [[...OPEN_COLUMNS], ...rows.map((r) => openCells(r))],
-      widths: [12, 11, 18, 9, 9, 8, 7, 7, 18, 18],
+      widths: [12, 11, 18, 9, 9, 8, 7, 7, 34, 18, 18],
     },
-    { name: "Totaux", rows: totals, widths: [24, 10] },
+    { name: "Totaux", rows: totals, widths: [32, 10] },
   ]);
 }
 
@@ -121,11 +146,14 @@ export function openPdfRows(rows: OpenRow[]): string[][][] {
     [FUNCTION_LABEL[r.function]],
     [KIND_LABEL[r.kind]],
     [`${r.from} – ${r.to}`],
+    r.status === "fusion"
+      ? [`Fusion ${r.marker}`.trim(), r.coveredBy ? `agent ${r.coveredBy}` : ""].filter(Boolean)
+      : [ALIGN_LABEL.vide],
     [r.code, r.section].filter(Boolean),
   ]);
 }
 
-/** Nom de fichier : « services-non-pourvus-2026-10 » / « services-non-pourvus-2026 ». */
+/** Nom de fichier : « services-non-alignes-2026-10 » / « services-non-alignes-2026 ». */
 export function openFileName(year: number, month: number): string {
-  return `services-non-pourvus-${year}${month ? `-${String(month).padStart(2, "0")}` : ""}`;
+  return `services-non-alignes-${year}${month ? `-${String(month).padStart(2, "0")}` : ""}`;
 }

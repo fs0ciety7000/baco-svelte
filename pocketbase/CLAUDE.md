@@ -440,4 +440,8 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   `perms ~ '"quinyx_open:read"'` (jamais l'Écran) + connecteur ; création / modification connecteur seul ; suppression
   connecteur ou admin. Purge `quinyx-retention` : 2 ans. Clé ajoutée à `perms-check` / `perms-equivalence` (admin / sysop).
   756 contrôles de règles.
+- **Postes couverts par fusion** (`1760005010_quinyx_covers.js`, 23 oct. 2026) : `quinyx_covers` (prestation PACO / RCCA dont le
+  commentaire Quinyx porte « +SE » / « +SO », n° figé, groupe, jour, début, fin, code, section, type, fonction, district,
+  `cover` = district de l'autre poste couvert) ; ni agent ni texte du commentaire. Mêmes règles que `quinyx_open_shifts`,
+  purge 2 ans. 762 contrôles de règles.
 

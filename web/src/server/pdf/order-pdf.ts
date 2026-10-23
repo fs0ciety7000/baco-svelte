@@ -851,6 +851,8 @@ export type OpenShiftsPdfInput = {
   filters: string;
   totals: {
     total: number;
+    fusion: number;
+    empty: number;
     services: [string, number][];
     zones: [string, number][];
     functions: [string, number][];
@@ -865,18 +867,18 @@ export async function openShiftsPdf(
   ctx: PdfContext,
 ): Promise<Uint8Array> {
   const { doc, font, l, at } = await setup(
-    `Services non pourvus ${input.period}`,
-    `Services PACO / RCCA non pourvus · ${input.period}`,
+    `Services non alignés ${input.period}`,
+    `Services PACO / RCCA non alignés · ${input.period}`,
     ctx,
   );
   header(l, officeFor("Sud-Ouest"), ctx.agentName, {
     name: "Planning Quinyx",
-    lines: ["Services publiés sans agent affecté"],
+    lines: ["Postes sans agent propre (vides ou couverts par fusion)"],
   });
   title(
     l,
-    "Services non pourvus",
-    `${input.totals.total} service${input.totals.total > 1 ? "s" : ""} PACO / RCCA sans agent`,
+    "Services non alignés",
+    `${input.totals.total} poste${input.totals.total > 1 ? "s" : ""} PACO / RCCA : ${input.totals.fusion} couvert${input.totals.fusion > 1 ? "s" : ""} par fusion, ${input.totals.empty} sans agent`,
     input.period,
   );
   l.section("Synthèse");
@@ -888,20 +890,21 @@ export async function openShiftsPdf(
   l.field("Par service", line(input.totals.kinds));
 
   l.section("Détail");
-  if (!input.rows.length) l.field("Services", "Aucun service non pourvu pour ces filtres.");
+  if (!input.rows.length) l.field("Services", "Aucun service non aligné pour ces filtres.");
   else
     gridTable(
       l,
       [
-        { title: "Date", w: 62 },
-        { title: "Zone", w: 132 },
-        { title: "Fonction", w: 52 },
-        { title: "Service", w: 46 },
-        { title: "Horaire", w: 70 },
-        { title: "Type Quinyx · section", w: WIDTH - 362 },
+        { title: "Date", w: 60 },
+        { title: "Zone", w: 100 },
+        { title: "Fonction", w: 46 },
+        { title: "Service", w: 40 },
+        { title: "Horaire", w: 64 },
+        { title: "Couverture", w: 100 },
+        { title: "Type Quinyx · section", w: WIDTH - 410 },
       ],
       input.rows.map((cells) => ({ cells })),
     );
-  footer(doc, font, at, `Services non pourvus ${input.period}`);
+  footer(doc, font, at, `Services non alignés ${input.period}`);
   return doc.save();
 }

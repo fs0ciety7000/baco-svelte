@@ -1428,6 +1428,12 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   route `GET /api/equipe/quinyx/non-pourvus` (`format=json|csv|xlsx|pdf`) ; Excel écrit sans dépendance (`lib/xlsx.ts`).
   Un service pourvu / supprimé est retiré à la synchro complète suivante (pas de plafond : rien de personnel). Précision de
   l'utilisateur : **la nuit n'existe qu'en PACO** (pas de RCCA de nuit) → compteurs PACO AM / PM / Nuit, RCCA AM / PM.
+  Puis **« non aligné »** (vocabulaire de l'utilisateur) = poste sans son propre agent : vide, OU **couvert par fusion** —
+  commentaire Quinyx « +SE » sur OCC Mons (l'agent fait aussi Namur), « +SO » sur OCC Namur (aussi Mons). Extension
+  **1.12.0** : le marqueur est cherché dans les textes de la prestation, seul son code part (`covers`) ; collection
+  `quinyx_covers` (`1760005010`, sans agent ni texte) ; vue renommée **Ressources › Planning › Non alignés**
+  (`/ressources/planning/non-alignes`, redirection depuis `non-pourvus`), route `/api/equipe/quinyx/non-alignes`. **À
+  vérifier sur une vraie synchro** : le nom du champ commentaire de Quinyx n'a pas été relevé.
 - 2026-10-22 — **Lot du 15 au 22 oct. poussé en production** (accord de l'utilisateur : « ok prod ») : `csm-prod` = 1d8b277
   (139 commits depuis 7681554, 14 migrations : rôles v3, navigation v3, refonte v4, B201 par district, PN / zones SPI,
   planificateur PMR, ALEA par jour, correctifs de mise en page). Sauvegarde PocketBase de la prod faite juste avant (R2, tâches

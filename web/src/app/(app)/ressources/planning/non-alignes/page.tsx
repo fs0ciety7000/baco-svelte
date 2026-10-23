@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/status-badge";
 import { ListCard, Table, Td, Th, THead, Tr } from "@/components/ui/table";
 import { brusselsDay, formatShortDay } from "@/lib/orders/time";
 import {
+  ALIGN_LABEL,
   FUNCTION_LABEL,
   KIND_LABEL,
   MONTH_NAMES,
@@ -23,21 +24,21 @@ import {
   openPeriodLabel,
   parseOpenFilter,
 } from "@/lib/quinyx/model";
-import { openTotals, weekday } from "@/lib/quinyx/open-export";
+import { coverText, openTotals, weekday } from "@/lib/quinyx/open-export";
 import { pl } from "@/lib/utils";
 import { requireRoute } from "@/server/auth";
 import { listOpenShifts, openZones } from "@/server/data/quinyx-open";
 
-export const metadata: Metadata = { title: "Services non pourvus · Planning · CSM" };
+export const metadata: Metadata = { title: "Services non alignés · Planning · CSM" };
 
-// Services PACO / RCCA publiés dans Quinyx sans agent affecté (23 oct. 2026) : OCC Mons et OCC Namur (groupes Quinyx
-// « équipe »). Droit `quinyx_open:read` (admin / sysop par défaut). Exports CSV / Excel / PDF par la route
-// `/api/equipe/quinyx/non-pourvus`.
+// Services non alignés (23 oct. 2026) : postes PACO / RCCA d'OCC Mons et d'OCC Namur (groupes Quinyx « équipe ») sans agent
+// propre — restés vides, ou couverts par l'agent de l'autre OCC (commentaire « +SE » / « +SO » dans Quinyx). Droit `quinyx_open:read` (admin / sysop par défaut). Exports CSV / Excel / PDF par la route
+// `/api/equipe/quinyx/non-alignes`.
 
 type SP = Record<string, string | string[] | undefined>;
 
 export default async function Page({ searchParams }: { searchParams: Promise<SP> }) {
-  await requireRoute("/ressources/planning/non-pourvus");
+  await requireRoute("/ressources/planning/non-alignes");
   const raw = await searchParams;
   const params = new URLSearchParams();
   for (const [k, v] of Object.entries(raw))
@@ -48,7 +49,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
   const shifts = await listOpenShifts(filter, zones);
   const totals = openTotals(shifts);
   const query = openFilterQuery(filter);
-  const exportHref = (format: string) => `/api/equipe/quinyx/non-pourvus?${query}&format=${format}`;
+  const exportHref = (format: string) => `/api/equipe/quinyx/non-alignes?${query}&format=${format}`;
   const thisYear = Number(today.slice(0, 4));
   const years = [thisYear + 1, thisYear, thisYear - 1, thisYear - 2].filter(
     (y) => y >= 2026 || y === filter.year,
@@ -64,9 +65,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
   const kindOptions = openKindsFor(filter.functions);
 
   return (
-    <section className="flex flex-col gap-4" aria-label="Services non pourvus">
+    <section className="flex flex-col gap-4" aria-label="Services non alignés">
       <FilterForm
-        action="/ressources/planning/non-pourvus"
+        action="/ressources/planning/non-alignes"
         className={TOOLBAR}
         data-testid="open-toolbar"
       >
@@ -139,6 +140,21 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             data-testid="open-kind"
           />
         </label>
+        <label className="w-44">
+          <span className="sr-only">Couverture</span>
+          <MultiSelect
+            name="couverture"
+            label="Couverture"
+            options={[
+              { value: "fusion", label: ALIGN_LABEL.fusion, hint: "+SE / +SO" },
+              { value: "vide", label: ALIGN_LABEL.vide },
+            ]}
+            defaultValues={filter.statuses}
+            allLabel="Toute couverture"
+            noun="couverture"
+            data-testid="open-status"
+          />
+        </label>
         <button type="submit" tabIndex={-1} aria-hidden className="sr-only">
           Afficher
         </button>
@@ -164,8 +180,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         </span>
       </FilterForm>
 
-      <StatStrip aria-label={`Services non pourvus, ${openPeriodLabel(filter)}`}>
-        <Stat label="Non pourvus" value={totals.total} tone={totals.total ? "warn" : "neutral"} />
+      <StatStrip aria-label={`Services non alignés, ${openPeriodLabel(filter)}`}>
+        <Stat label="Non alignés" value={totals.total} tone={totals.total ? "warn" : "neutral"} />
+        <Stat label="Couverts par fusion" value={totals.fusion} />
+        <Stat label="Sans agent" value={totals.empty} tone={totals.empty ? "danger" : "neutral"} />
         {services.map((sv) => (
           <Stat
             key={`${sv.function}-${sv.kind}`}
@@ -179,7 +197,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
         count={
           <ListCount
             n={shifts.length}
-            label={pl(shifts.length, "service non pourvu", "services non pourvus")}
+            label={pl(shifts.length, "poste non aligné", "postes non alignés")}
             extra={<span className="text-fg-muted"> · {openPeriodLabel(filter)}</span>}
           />
         }
@@ -188,10 +206,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
       {!shifts.length ? (
         <EmptyState
           framed
-          title="Aucun service non pourvu"
+          title="Aucun service non aligné"
           description={
             zones.length
-              ? "Rien pour ces filtres. Les services non pourvus arrivent avec la synchro Quinyx de l'extension CSM (1.11.0 ou plus)."
+              ? "Rien pour ces filtres. Les postes non alignés arrivent avec la synchro Quinyx de l'extension CSM (1.12.0 ou plus)."
               : "Aucun groupe Quinyx lisible : vérifie les groupes dans Administration › Quinyx."
           }
         />
@@ -206,12 +224,16 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
                   <Th>Fonction</Th>
                   <Th>Service</Th>
                   <Th>Horaire</Th>
+                  <Th>Couverture</Th>
                   <Th>Type Quinyx</Th>
                 </tr>
               </THead>
               <tbody>
-                {shifts.map((s) => (
-                  <Tr key={s.id} data-testid="open-row">
+                {shifts.map((s, i) => (
+                  <Tr
+                    key={`${s.day}-${s.groupId}-${s.function}-${s.kind}-${i}`}
+                    data-testid="open-row"
+                  >
                     <Td className="whitespace-nowrap">
                       <span className="font-mono tabular">{formatShortDay(s.day)}</span>{" "}
                       <span className="text-small text-fg-muted">{weekday(s.day)}</span>
@@ -231,7 +253,16 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
                     <Td className="font-mono whitespace-nowrap tabular">
                       {s.from} – {s.to}
                     </Td>
+                    <Td>
+                      <Badge tone={s.status === "fusion" ? "info" : "danger"} title={coverText(s)}>
+                        {s.status === "fusion" ? `Fusion ${s.marker}` : ALIGN_LABEL.vide}
+                      </Badge>
+                      {s.status === "fusion" && s.coveredBy ? (
+                        <span className="block text-small text-fg-muted">agent {s.coveredBy}</span>
+                      ) : null}
+                    </Td>
                     <Td className="text-small text-fg-muted">
+                      {s.inferred ? "aucun service publié · " : ""}
                       {s.code}
                       {s.section ? ` · ${s.section}` : ""}
                     </Td>
@@ -241,19 +272,23 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
             </Table>
           </div>
           <ul className="flex flex-col gap-2 md:hidden" data-testid="open-cards">
-            {shifts.map((s) => (
-              <li key={s.id}>
+            {shifts.map((s, i) => (
+              <li key={`${s.day}-${s.groupId}-${s.function}-${s.kind}-${i}`}>
                 <ListCard
-                  statusColor={s.function === "rcca" ? "var(--info)" : "var(--border-strong)"}
+                  statusColor={s.status === "fusion" ? "var(--info)" : "var(--danger)"}
                   title={
                     <>
                       <span className="font-mono tabular">{formatShortDay(s.day)}</span>{" "}
                       <span className="text-small text-fg-muted">{weekday(s.day)}</span>
                     </>
                   }
-                  meta={[`${s.from} – ${s.to}`, s.zone, s.district, s.code]
-                    .filter(Boolean)
-                    .join(" · ")}
+                  meta={[
+                    `${s.from} – ${s.to}`,
+                    s.zone,
+                    s.status === "fusion"
+                      ? `fusion ${s.marker}${s.coveredBy ? ` (${s.coveredBy})` : ""}`
+                      : "sans agent",
+                  ].join(" · ")}
                   aside={
                     <Badge tone={s.function === "rcca" ? "info" : "neutral"}>
                       {FUNCTION_LABEL[s.function]} {KIND_LABEL[s.kind]}

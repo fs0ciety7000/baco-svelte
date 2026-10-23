@@ -98,6 +98,31 @@
                 OPEN_CODE(typeName.get(String(s.shiftTypeId))) &&
                 String(s.begin || "").slice(0, 10) <= publishedUntil,
             );
+      // Postes couverts par fusion (1.12.0) : commentaire « +SE » sur une prestation d'OCC Mons, « +SO » sur OCC Namur
+      // (« +CE »…) = l'agent a fait les deux postes. Le marqueur est cherché dans les textes de la prestation ; seul son code
+      // part (SE, SO, CE), jamais le commentaire. Groupes « équipe », prestations PACO / RCCA affectées seulement.
+      const COVER = /\+\s*D?(SE|SO|CE)(?![A-Za-z0-9])/i;
+      const coverOf = (s) => {
+        const texts = [];
+        const add = (v, depth) => {
+          if (typeof v === "string") texts.push(v);
+          else if (v && typeof v === "object" && depth < 2)
+            for (const [k, x] of Object.entries(v)) if (!/^(begin|end|status|id|.*Id)$/.test(k)) add(x, depth + 1);
+        };
+        add(s, 0);
+        for (const t of texts) {
+          const m = COVER.exec(t);
+          if (m) return m[1].toUpperCase();
+        }
+        return "";
+      };
+      const covers =
+        purpose === "gares"
+          ? []
+          : kept
+              .filter((s) => OPEN_CODE(typeName.get(String(s.shiftTypeId))))
+              .map((s) => ({ s, cover: coverOf(s) }))
+              .filter((x) => x.cover);
       const MAX = 1500;
       const people = new Set(kept.slice(0, MAX).map((s) => String(s.employeeId)));
       const workerList = Array.isArray(workers) ? workers : [];
@@ -135,6 +160,14 @@
             status: String(s.status || "").slice(0, 20),
           })),
           openComplete: open.length <= MAX,
+          covers: covers.slice(0, MAX).map(({ s, cover }) => ({
+            id: Number(s.id) || 0,
+            groupId: Number(s.groupId) || 0,
+            begin: String(s.begin || "").slice(0, 19),
+            end: String(s.end || "").slice(0, 19),
+            shiftTypeId: Number(s.shiftTypeId) || 0,
+            cover,
+          })),
         },
       };
     } catch (e) {

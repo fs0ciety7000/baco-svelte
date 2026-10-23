@@ -843,7 +843,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   filtre « équipe », pas de compte proposé), `quinyx_agents.purpose = gares`. `listPlanning` (`post = ""`), `quinyxSyncs`
   et l'admin (agents comptés à part, `stationAgents`) ignorent les agents de gare.
 
-## Services Quinyx non pourvus (23 oct. 2026)
+## Services Quinyx non alignés (23 oct. 2026)
 
 - Services PACO / RCCA publiés **sans agent** (OCC Mons, OCC Namur) : l'extension 1.11.0 ajoute `open` (+ `openComplete`) au
   lot Quinyx des groupes « équipe » ; `mapOpenShifts` (`lib/quinyx/model.ts`, testé : PACO_ / RCCA_ seulement, EXTRA écarté,
@@ -855,16 +855,24 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   groupes « équipe », `listOpenShifts(filter)` 5 000 au plus). Filtres purs `parseOpenFilter` / `openFilterQuery` /
   `openPeriod` / `openPeriodLabel` (`annee`, `mois` 0 = année, `zone` = n° de groupe répétable, `fonction` paco / rcca, `type`
   am / pm / nuit ; défaut = mois en cours).
-- Page `/ressources/planning/non-pourvus` (onglet « Non pourvus », `permission: "quinyx_open:read"`) : barre de filtres
+- Page (onglet « Non alignés », `permission: "quinyx_open:read"`) : barre de filtres
   (`Select` mois / année, `MultiSelect` zone / fonction / service), compteurs `StatStrip` par prestation réelle
   (`OPEN_SERVICES` : PACO AM / PM / Nuit, RCCA AM / PM — **pas de RCCA de nuit**, précision de l'utilisateur ; `openKindsFor`
   retire « Nuit » du filtre quand RCCA seul est choisi ; totaux `services` dans l'Excel et le PDF), tableau `open-table` / cartes
   `open-cards`, boutons `open-export-xlsx|pdf|csv`.
-- Route `GET /api/equipe/quinyx/non-pourvus?format=json|csv|xlsx|pdf` (404 sans le droit) : `lib/quinyx/open-export.ts`
+- Route `GET /api/equipe/quinyx/non-alignes?format=json|csv|xlsx|pdf` (404 sans le droit) : `lib/quinyx/open-export.ts`
   (`openCsv` BOM « ; » formules neutralisées, `openXlsx` feuilles « Non pourvus » + « Totaux », `openPdfRows`, `openTotals`),
   `openShiftsPdf` (`server/pdf/order-pdf.ts`). **Excel sans dépendance** : `lib/xlsx.ts` (`xlsxWorkbook`, cellules `inlineStr`
   jamais évaluées, en-tête en gras, largeurs, ZIP stocké + CRC32 ; testé, relu par openpyxl).
-- E2E `e2e/quinyx-open.spec.ts` (groupes fictifs 990301 / 990302, compte admin E2E ; l'agent PACO/RCCA reçoit 404).
+- **Non aligné = vide OU couvert par fusion** : l'extension 1.12.0 envoie `covers` (prestations PACO / RCCA affectées dont un
+  texte porte « +SE » / « +SO » / « +CE », code seul) → `mapCovers` (marqueur → district couvert, vers soi-même ignoré) →
+  `quinyx_covers` (`syncSlots`, même logique que `quinyx_open_shifts`). Lecture : `alignRows(open, covers, zones)` (pur,
+  testé) rapproche par district + jour + fonction + service : service vide + fusion = « couvert par fusion » ; fusion sans
+  service publié = ligne déduite (`inferred`) dans la zone du district couvert. Filtre `couverture` (fusion / vide), compteurs
+  « Couverts par fusion » / « Sans agent », colonne « Couverture » (`coverText`). Page `/ressources/planning/non-alignes`
+  (redirection depuis `non-pourvus`), route `/api/equipe/quinyx/non-alignes`.
+- E2E `e2e/quinyx-non-alignes.spec.ts` (groupes fictifs 990301 / 990302 + « autre OCC » 990311 / 990312 avec une fusion,
+  districts DSO / DCE pour ne pas se croiser ; compte admin E2E ; l'agent PACO/RCCA reçoit 404).
 
 ## Planificateur de tâches PMR (lot P0, 15 oct. 2026, `../docs/design/CADRAGE-PLANIFICATEUR-PMR.md`)
 

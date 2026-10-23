@@ -296,6 +296,7 @@ async function syncQuinyx() {
         removalSkipped: j.removalSkipped === true,
         notTeam: Number(j.notTeam) || 0,
         open: j.open ? Number(j.open.kept) || 0 : null,
+        covers: j.covers ? Number(j.covers.kept) || 0 : null,
       });
     } catch (_) {
       out.groups.push({ label, error: "CSM injoignable pour le planning." });

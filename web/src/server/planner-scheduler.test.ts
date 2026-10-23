@@ -9,6 +9,11 @@ import { plannerSyncDays } from "./planner-scheduler";
 
 describe("plannerSyncDays", () => {
   it("reprend la veille, le jour et les deux jours suivants", () => {
-    expect(plannerSyncDays("2026-10-31")).toEqual(["2026-10-30", "2026-10-31", "2026-11-01", "2026-11-02"]);
+    expect(plannerSyncDays("2026-10-31")).toEqual([
+      "2026-10-30",
+      "2026-10-31",
+      "2026-11-01",
+      "2026-11-02",
+    ]);
   });
 });

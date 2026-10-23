@@ -7,9 +7,10 @@ import { getCurrentUser } from "@/server/auth";
 import { listOpenShifts, openZones } from "@/server/data/quinyx-open";
 import { openShiftsPdf } from "@/server/pdf/order-pdf";
 
-// Services Quinyx non pourvus (23 oct. 2026) : route de lecture et d'export, droit `quinyx_open:read` (admin / sysop par
-// défaut). `?format=json` (défaut), `csv`, `xlsx` ou `pdf` ; filtres `annee`, `mois` (0 = année entière), `zone` (n° de
-// groupe Quinyx, répétable), `fonction` (paco / rcca), `type` (am / pm / nuit). Aucune donnée personnelle.
+// Services Quinyx non alignés (23 oct. 2026) : postes PACO / RCCA sans agent propre — vides, ou couverts par l'agent de l'autre
+// OCC (« +SE / +SO »). Route de lecture et d'export, droit `quinyx_open:read` (admin / sysop par défaut). `?format=json` (défaut), `csv`, `xlsx` ou `pdf` ; filtres `annee`, `mois` (0 = année entière), `zone` (n° de
+// groupe Quinyx, répétable), `fonction` (paco / rcca), `type` (am / pm / nuit),
+// `couverture` (fusion / vide). Aucune donnée personnelle.
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,7 +41,7 @@ export async function GET(request: Request) {
     return new Response(openCsv(shifts), { headers: headers("text/csv; charset=utf-8", "csv") });
   if (format === "xlsx")
     return new Response(
-      Buffer.from(openXlsx(shifts, `Services non pourvus · ${openPeriodLabel(filter)}`)),
+      Buffer.from(openXlsx(shifts, `Services non alignés · ${openPeriodLabel(filter)}`)),
       {
         headers: headers(
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -79,6 +80,10 @@ export async function GET(request: Request) {
         kind: s.kind,
         code: s.code,
         section: s.section,
+        status: s.status,
+        coveredBy: s.coveredBy,
+        marker: s.marker,
+        inferred: s.inferred,
       })),
     },
     { headers: { "Cache-Control": "no-store" } },

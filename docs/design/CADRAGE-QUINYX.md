@@ -136,3 +136,11 @@ sont pourvus ou supprimés (synchro complète suivante). Écran Ressources › P
 les services non attribués de son groupe n'en envoie aucun (la liste reste celle de la dernière synchro complète d'un compte qui
 les voit).
 
+**Précision du 23 oct. (après-midi)** : « non aligné » = poste sans son propre agent, qu'il soit resté vide ou **couvert par
+fusion** : commentaire « +SE » sur une prestation d'OCC Mons (l'agent a aussi fait Namur), « +SO » sur OCC Namur (aussi Mons).
+Extension 1.12.0 : marqueur cherché dans les textes de la prestation, seul son code est envoyé (`covers`) ; collection
+`quinyx_covers` ; la vue rapproche un service vide et une fusion (même district, jour, fonction, service) et affiche aussi une
+fusion sans service publié de l'autre côté. La nuit n'existe qu'en PACO. Vue : Ressources › Planning › Non alignés. **À
+vérifier** : le champ qui porte le commentaire dans les réponses Quinyx n'a pas été relevé (si aucun marqueur n'arrive, une
+capture HAR de la page planning, analysée par script, permettra de le trouver).
+

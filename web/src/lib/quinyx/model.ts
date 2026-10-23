@@ -182,6 +182,23 @@ export const quinyxBatchSchema = z.object({
     .optional(),
   /** Liste `open` tronquée : les services non pourvus disparus ne sont pas retirés. */
   openComplete: z.boolean().optional(),
+  /**
+   * Prestations PACO / RCCA affectées dont le commentaire porte « +SE » / « +SO » / « +CE » (extension 1.12.0) : l'agent a
+   * aussi fait le poste de l'autre OCC. Seul le code du marqueur est envoyé (jamais le commentaire ni l'agent).
+   */
+  covers: z
+    .array(
+      z.object({
+        id,
+        groupId: id,
+        begin: localDateTime,
+        end: localDateTime,
+        shiftTypeId: id,
+        cover: z.string().max(4),
+      }),
+    )
+    .max(1500)
+    .optional(),
 });
 export type QuinyxBatch = z.infer<typeof quinyxBatchSchema>;
 
@@ -390,6 +407,148 @@ export function mapOpenShifts(
   return { shifts, ignored };
 }
 
+/** District couvert d'après le marqueur (« SE » / « DSE » → DSE, « SO » → DSO, « CE » → DCE) ; "" sinon. */
+export function coverDistrict(marker: string): string {
+  const m = fold(marker).replace(/^D/, "");
+  return m === "SE" ? "DSE" : m === "SO" ? "DSO" : m === "CE" ? "DCE" : "";
+}
+
+export type MappedCover = Omit<MappedOpenShift, "status"> & { cover: string };
+
+/**
+ * Prestations « +SE / +SO » à garder : PACO / RCCA, marqueur reconnu et différent du district de la prestation (un agent de
+ * Mons noté « +SO » ne couvre rien de plus), jour dans la période et au plus tard à la date de publication.
+ */
+export function mapCovers(
+  batch: QuinyxBatch,
+  places: Place[],
+  groupDistrict = "",
+): { covers: MappedCover[]; ignored: number } {
+  const asOpen = mapOpenShifts(
+    {
+      ...batch,
+      open: (batch.covers ?? []).map((c) => ({
+        id: c.id,
+        groupId: c.groupId,
+        begin: c.begin,
+        end: c.end,
+        shiftTypeId: c.shiftTypeId,
+      })),
+    },
+    places,
+    groupDistrict,
+  );
+  const byId = new Map((batch.covers ?? []).map((c) => [c.id, c.cover]));
+  const covers: MappedCover[] = [];
+  let ignored = asOpen.ignored;
+  for (const o of asOpen.shifts) {
+    const cover = coverDistrict(byId.get(o.quinyx_id) ?? "");
+    if (!cover || cover === o.district) {
+      ignored++;
+      continue;
+    }
+    covers.push({
+      quinyx_id: o.quinyx_id,
+      group_id: o.group_id,
+      day: o.day,
+      start: o.start,
+      end: o.end,
+      code: o.code,
+      section: o.section,
+      kind: o.kind,
+      function: o.function,
+      district: o.district,
+      cover,
+    });
+  }
+  return { covers, ignored };
+}
+
+/** Raison d'un poste non aligné : couvert par l'agent de l'autre OCC (+SE / +SO), ou resté sans agent. */
+export type AlignStatus = "fusion" | "vide";
+export const ALIGN_LABEL: Record<AlignStatus, string> = {
+  fusion: "Couvert par fusion",
+  vide: "Sans agent",
+};
+
+type SlotIn = {
+  groupId: string;
+  district: string;
+  day: string;
+  start: string;
+  end: string;
+  code: string;
+  section: string;
+  kind: OpenKind;
+  function: OpenFunction;
+};
+
+export type AlignRow = SlotIn & {
+  /** Zone (groupe Quinyx) du poste non aligné. */
+  zone: string;
+  status: AlignStatus;
+  /** Zone de l'agent qui a fait les deux postes (fusion). */
+  coveredBy: string;
+  /** Marqueur relevé (« +SE »). */
+  marker: string;
+  /** Aucun service publié pour ce poste : déduit du marqueur seul. */
+  inferred: boolean;
+};
+
+/**
+ * Postes non alignés d'une période : services publiés sans agent (`open`) et postes couverts par l'agent de l'autre OCC
+ * (`covers`, marqueur « +SE » / « +SO »). Un poste = zone (district) + jour + fonction + service ; un service sans agent qui
+ * correspond à une fusion devient « couvert par fusion » ; une fusion sans service publié de l'autre côté ajoute la ligne.
+ * La zone d'une fusion = le groupe « équipe » du district couvert.
+ */
+export function alignRows(
+  open: (SlotIn & { zone: string })[],
+  covers: (SlotIn & { zone: string; cover: string })[],
+  zones: { groupId: string; label: string; district: string }[],
+): AlignRow[] {
+  const key = (district: string, s: { day: string; function: string; kind: string }) =>
+    `${district}|${s.day}|${s.function}|${s.kind}`;
+  const pending = new Map<string, (SlotIn & { zone: string; cover: string })[]>();
+  for (const c of covers) {
+    const k = key(c.cover, c);
+    pending.set(k, [...(pending.get(k) ?? []), c]);
+  }
+  const marker = (c: { cover: string }) => `+${c.cover.replace(/^D/, "")}`;
+  const rows: AlignRow[] = open.map((o) => {
+    const c = pending.get(key(o.district, o))?.shift();
+    return c
+      ? { ...o, status: "fusion", coveredBy: c.zone, marker: marker(c), inferred: false }
+      : { ...o, status: "vide", coveredBy: "", marker: "", inferred: false };
+  });
+  for (const list of pending.values())
+    for (const c of list) {
+      const target = zones.find((z) => z.district === c.cover);
+      rows.push({
+        groupId: target?.groupId ?? "",
+        zone: target?.label ?? c.cover,
+        district: c.cover,
+        day: c.day,
+        start: c.start,
+        end: c.end,
+        code: c.code,
+        section: "",
+        kind: c.kind,
+        function: c.function,
+        status: "fusion",
+        coveredBy: c.zone,
+        marker: marker(c),
+        inferred: true,
+      });
+    }
+  return rows.sort(
+    (a, b) =>
+      a.day.localeCompare(b.day) ||
+      a.start.localeCompare(b.start) ||
+      a.zone.localeCompare(b.zone, "fr") ||
+      a.function.localeCompare(b.function),
+  );
+}
+
 /** Filtres de la vue « Services non pourvus » (et de l'export). */
 export type OpenFilter = {
   year: number;
@@ -399,6 +558,8 @@ export type OpenFilter = {
   groups: string[];
   functions: OpenFunction[];
   kinds: OpenKind[];
+  /** Couvert par fusion / sans agent ; vide = les deux. */
+  statuses: AlignStatus[];
 };
 
 /** Bornes de jours « AAAA-MM-JJ » (incluses) d'un mois ou d'une année. */
@@ -436,6 +597,7 @@ export function parseOpenFilter(
       (OPEN_FUNCTIONS as readonly string[]).includes(v),
     ),
     kinds: list("type").filter((v): v is OpenKind => (OPEN_KINDS as readonly string[]).includes(v)),
+    statuses: list("couverture").filter((v): v is AlignStatus => v === "fusion" || v === "vide"),
   };
 }
 
@@ -445,6 +607,7 @@ export function openFilterQuery(f: OpenFilter): string {
   for (const g of f.groups) q.append("zone", g);
   for (const v of f.functions) q.append("fonction", v);
   for (const v of f.kinds) q.append("type", v);
+  for (const v of f.statuses) q.append("couverture", v);
   return q.toString();
 }
 

@@ -4,8 +4,10 @@ import type { RecordModel } from "pocketbase";
 
 import { pbDate } from "@/lib/orders/time";
 import {
+  alignRows,
   brusselsClock,
   openPeriod,
+  type AlignRow,
   type OpenFilter,
   type OpenFunction,
   type OpenKind,
@@ -19,24 +21,8 @@ import { pbForRequest } from "./orders";
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 const iso = (v: unknown) => pbDate(str(v))?.toISOString() ?? "";
 
-export type OpenShift = {
-  id: string;
-  groupId: string;
-  /** Nom du groupe Quinyx (« OCC Mons ») ; n° du groupe si son nom n'est pas lisible. */
-  zone: string;
-  day: string;
-  start: string;
-  end: string;
-  /** Heures de Bruxelles « HH:MM ». */
-  from: string;
-  to: string;
-  code: string;
-  section: string;
-  kind: OpenKind;
-  function: OpenFunction;
-  district: string;
-  lastSeen: string;
-};
+/** Poste non aligné tel qu'affiché (heures de Bruxelles « HH:MM » en plus). */
+export type OpenShift = AlignRow & { from: string; to: string };
 
 export type OpenZone = { groupId: string; label: string; district: string };
 
@@ -54,41 +40,63 @@ export async function openZones(): Promise<OpenZone[]> {
   }));
 }
 
-/** Services non pourvus du filtre, triés par jour puis heure (5 000 au plus : une année de deux groupes tient large). */
+type Raw = {
+  groupId: string;
+  zone: string;
+  district: string;
+  day: string;
+  start: string;
+  end: string;
+  code: string;
+  section: string;
+  kind: OpenKind;
+  function: OpenFunction;
+};
+
+const FIELDS = "group_id,day,start,end,code,section,kind,function,district";
+
+/**
+ * Postes non alignés du filtre : services sans agent + postes couverts par l'agent de l'autre OCC (« +SE / +SO »), triés
+ * par jour puis heure. La période entière est lue pour toutes les zones (une fusion relie deux zones), puis filtrée.
+ */
 export async function listOpenShifts(f: OpenFilter, zones?: OpenZone[]): Promise<OpenShift[]> {
   const pb = await pbForRequest();
+  const zs = zones ?? (await openZones());
+  const names = new Map(zs.map((z) => [z.groupId, z.label]));
   const { from, to } = openPeriod(f.year, f.month);
-  const parts = [pb.filter("day >= {:f} && day <= {:t}", { f: from, t: to })];
-  const any = (field: string, values: string[]) =>
-    values.length
-      ? `(${values.map((v, i) => pb.filter(`${field} = {:${field}${i}}`, { [`${field}${i}`]: v })).join(" || ")})`
-      : "";
-  for (const p of [any("group_id", f.groups), any("function", f.functions), any("kind", f.kinds)])
-    if (p) parts.push(p);
-  const rows = await pb.collection("quinyx_open_shifts").getList(1, 5000, {
-    filter: parts.join(" && "),
-    sort: "day,start,code",
-    fields: "id,group_id,day,start,end,code,section,kind,function,district,last_seen",
+  const filter = pb.filter("day >= {:f} && day <= {:t}", { f: from, t: to });
+  const raw = (r: RecordModel): Raw => ({
+    groupId: str(r.group_id),
+    zone: names.get(str(r.group_id)) || `Groupe ${str(r.group_id)}`,
+    district: str(r.district),
+    day: str(r.day),
+    start: iso(r.start),
+    end: iso(r.end),
+    code: str(r.code),
+    section: str(r.section),
+    kind: (str(r.kind) || "autre") as OpenKind,
+    function: (str(r.function) || "paco") as OpenFunction,
   });
-  const names = new Map((zones ?? (await openZones())).map((z) => [z.groupId, z.label]));
-  return rows.items.map((r) => {
-    const start = iso(r.start);
-    const end = iso(r.end);
-    return {
-      id: r.id,
-      groupId: str(r.group_id),
-      zone: names.get(str(r.group_id)) || `Groupe ${str(r.group_id)}`,
-      day: str(r.day),
-      start,
-      end,
-      from: brusselsClock(start),
-      to: brusselsClock(end),
-      code: str(r.code),
-      section: str(r.section),
-      kind: (str(r.kind) || "autre") as OpenKind,
-      function: (str(r.function) || "paco") as OpenFunction,
-      district: str(r.district),
-      lastSeen: iso(r.last_seen),
-    };
-  });
+  const [open, covers] = await Promise.all([
+    pb
+      .collection("quinyx_open_shifts")
+      .getList(1, 5000, { filter, sort: "day,start", fields: FIELDS }),
+    pb
+      .collection("quinyx_covers")
+      .getList(1, 5000, { filter, sort: "day,start", fields: `${FIELDS},cover` })
+      .catch(() => ({ items: [] as RecordModel[] })),
+  ]);
+  return alignRows(
+    open.items.map(raw),
+    covers.items.map((r) => ({ ...raw(r), cover: str(r.cover) })),
+    zs,
+  )
+    .filter(
+      (r) =>
+        (!f.groups.length || f.groups.includes(r.groupId)) &&
+        (!f.functions.length || f.functions.includes(r.function)) &&
+        (!f.kinds.length || f.kinds.includes(r.kind)) &&
+        (!f.statuses.length || f.statuses.includes(r.status)),
+    )
+    .map((r) => ({ ...r, from: brusselsClock(r.start), to: brusselsClock(r.end) }));
 }

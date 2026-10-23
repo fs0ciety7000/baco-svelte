@@ -1516,6 +1516,25 @@ try {
 		check('PACO/RCCA ne modifie pas un service non pourvu', opU.status >= 400, `HTTP ${opU.status}`);
 		const opQ = await api('PATCH', `/api/collections/quinyx_open_shifts/records/${op.json?.id}`, { token: qc?.token, body: { quinyx_id: '1' } });
 		check('identifiant d un service non pourvu figé', opQ.status >= 400, `HTTP ${opQ.status}`);
+		// Postes couverts par fusion « +SE / +SO » (1760005010) : mêmes règles.
+		const cv = await api('POST', '/api/collections/quinyx_covers/records', {
+			token: qc?.token,
+			body: { quinyx_id: `${gid}11`, group_id: gid, day: '2026-10-05', start: '2026-10-05 04:00:00.000Z', end: '2026-10-05 12:00:00.000Z', code: 'PACO_AM', kind: 'am', function: 'paco', district: 'DSO', cover: 'DSE' }
+		});
+		check('connecteur écrit un poste couvert par fusion', cv.status === 200, `HTTP ${cv.status} ${JSON.stringify(cv.json).slice(0, 80)}`);
+		const cvA = await api('POST', '/api/collections/quinyx_covers/records', {
+			token: roles.admin.token,
+			body: { quinyx_id: `${gid}12`, group_id: gid, day: '2026-10-05', start: '2026-10-05 04:00:00.000Z', end: '2026-10-05 12:00:00.000Z', code: 'PACO_AM', kind: 'am', function: 'paco', cover: 'DSE' }
+		});
+		check('admin n invente pas de fusion', cvA.status >= 400, `HTTP ${cvA.status}`);
+		const cvR = await api('GET', `/api/collections/quinyx_covers/records/${cv.json?.id}`, { token: roles.admin.token });
+		check('admin lit les fusions', cvR.status === 200, `HTTP ${cvR.status}`);
+		for (const [who, tok] of [['PACO/RCCA', roles.user.token], ['écran', qs?.token]]) {
+			const r = await api('GET', '/api/collections/quinyx_covers/records?perPage=1', { token: tok });
+			check(`${who} ne lit pas les fusions (sans quinyx_open:read)`, r.status !== 200 || r.json.totalItems === 0, `HTTP ${r.status} ${r.json?.totalItems}`);
+		}
+		const cvD = await api('DELETE', `/api/collections/quinyx_covers/records/${cv.json?.id}`, { token: qc?.token });
+		check('connecteur retire une fusion disparue', cvD.status === 204, `HTTP ${cvD.status}`);
 		const opD = await api('DELETE', `/api/collections/quinyx_open_shifts/records/${op.json?.id}`, { token: qc?.token });
 		check('connecteur retire un service pourvu depuis', opD.status === 204, `HTTP ${opD.status}`);
 		const shD = await api('DELETE', `/api/collections/quinyx_shifts/records/${sh.json?.id}`, { token: qc?.token });
