@@ -79,9 +79,9 @@ test.beforeAll(async ({}, info) => {
       `${month}-04`,
       `${month}-04 20:00:00.000Z`,
       `${month}-05 04:00:00.000Z`,
-      "RCCA_N",
+      "PACO_N",
       "nuit",
-      "rcca",
+      "paco",
     ],
   ];
   for (const [i, [day, start, end, code, kind, fn]] of rows.entries()) {
@@ -111,15 +111,19 @@ test("admin : liste du mois, filtre, exports", async ({ page }, info) => {
   await loginAdmin(page, "/ressources/planning");
   await page.goto(`/ressources/planning/non-pourvus?zone=${GROUP}`);
   const scope = page.getByTestId(desktop ? "open-table" : "open-cards");
-  await expect(scope.getByText("RCCA_N")).toBeVisible();
+  await expect(scope.getByText("PACO_N")).toBeVisible();
+  // Compteurs par prestation réelle : pas de « RCCA Nuit » (la nuit est PACO seulement).
+  const stats = page.getByLabel(/^Services non pourvus, /);
+  await expect(stats.getByText("PACO Nuit", { exact: true })).toBeVisible();
+  await expect(stats.getByText("RCCA Nuit", { exact: true })).toHaveCount(0);
   await expect(scope.locator(desktop ? "[data-testid=open-row]" : ":scope > li")).toHaveCount(3);
-  // Filtre par fonction (URL) : seulement RCCA.
+  // Filtre par fonction (URL) : seulement RCCA (un service, PM).
   await page.goto(`/ressources/planning/non-pourvus?zone=${GROUP}&fonction=rcca`);
   await expect(
     page
       .getByTestId(desktop ? "open-table" : "open-cards")
       .locator(desktop ? "[data-testid=open-row]" : ":scope > li"),
-  ).toHaveCount(2);
+  ).toHaveCount(1);
   await noHorizontalScroll(page);
   if (process.env.E2E_SHOTS_DIR)
     await page.screenshot({

@@ -63,6 +63,8 @@ export function openTotals(rows: OpenRow[]) {
   };
   return {
     total: rows.length,
+    /** « PACO AM », « PACO Nuit », « RCCA PM »… (la nuit n'existe qu'en PACO). */
+    services: count((r) => `${FUNCTION_LABEL[r.function]} ${KIND_LABEL[r.kind]}`),
     zones: count((r) => r.zone),
     functions: count((r) => FUNCTION_LABEL[r.function]),
     kinds: count((r) => KIND_LABEL[r.kind]),
@@ -88,6 +90,9 @@ export function openXlsx(rows: OpenRow[], title: string): Uint8Array {
     [title],
     [],
     ["Total", t.total],
+    [],
+    ["Par prestation", "Services"],
+    ...t.services.map(([k, n]): XlsxCell[] => [k, n]),
     [],
     ["Par zone", "Services"],
     ...t.zones.map(([k, n]): XlsxCell[] => [k, n]),

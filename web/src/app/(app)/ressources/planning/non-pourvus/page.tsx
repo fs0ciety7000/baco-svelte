@@ -17,7 +17,9 @@ import {
   KIND_LABEL,
   MONTH_NAMES,
   OPEN_FUNCTIONS,
+  OPEN_SERVICES,
   openFilterQuery,
+  openKindsFor,
   openPeriodLabel,
   parseOpenFilter,
 } from "@/lib/quinyx/model";
@@ -31,8 +33,6 @@ export const metadata: Metadata = { title: "Services non pourvus · Planning · 
 // Services PACO / RCCA publiés dans Quinyx sans agent affecté (23 oct. 2026) : OCC Mons et OCC Namur (groupes Quinyx
 // « équipe »). Droit `quinyx_open:read` (admin / sysop par défaut). Exports CSV / Excel / PDF par la route
 // `/api/equipe/quinyx/non-pourvus`.
-
-const SERVICE_KINDS = ["am", "pm", "nuit"] as const;
 
 type SP = Record<string, string | string[] | undefined>;
 
@@ -53,7 +53,15 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
   const years = [thisYear + 1, thisYear, thisYear - 1, thisYear - 2].filter(
     (y) => y >= 2026 || y === filter.year,
   );
-  const byKind = (k: string) => shifts.filter((s) => s.kind === k).length;
+  // Prestations qui existent : PACO AM / PM / Nuit, RCCA AM / PM (pas de RCCA de nuit, précision du 23 oct. 2026).
+  const services = OPEN_SERVICES.filter(
+    (sv) =>
+      (!filter.functions.length || filter.functions.includes(sv.function)) &&
+      (!filter.kinds.length || filter.kinds.includes(sv.kind)),
+  );
+  const count = (fn: string, kind: string) =>
+    shifts.filter((s) => s.function === fn && s.kind === kind).length;
+  const kindOptions = openKindsFor(filter.functions);
 
   return (
     <section className="flex flex-col gap-4" aria-label="Services non pourvus">
@@ -120,9 +128,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
           <MultiSelect
             name="type"
             label="Service"
-            options={SERVICE_KINDS.map((k) => ({ value: k, label: KIND_LABEL[k] }))}
-            defaultValues={filter.kinds.filter((k) => k !== "autre")}
-            allLabel="AM, PM et Nuit"
+            options={kindOptions.map((k) => ({
+              value: k,
+              label: KIND_LABEL[k],
+              hint: k === "nuit" ? "PACO seulement" : undefined,
+            }))}
+            defaultValues={filter.kinds.filter((k) => kindOptions.includes(k))}
+            allLabel={kindOptions.includes("nuit") ? "AM, PM et Nuit" : "AM et PM"}
             noun="service"
             data-testid="open-kind"
           />
@@ -154,11 +166,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<SP>
 
       <StatStrip aria-label={`Services non pourvus, ${openPeriodLabel(filter)}`}>
         <Stat label="Non pourvus" value={totals.total} tone={totals.total ? "warn" : "neutral"} />
-        <Stat label="AM" value={byKind("am")} />
-        <Stat label="PM" value={byKind("pm")} />
-        <Stat label="Nuit" value={byKind("nuit")} />
-        <Stat label="PACO" value={shifts.filter((s) => s.function === "paco").length} />
-        <Stat label="RCCA" value={shifts.filter((s) => s.function === "rcca").length} />
+        {services.map((sv) => (
+          <Stat
+            key={`${sv.function}-${sv.kind}`}
+            label={`${FUNCTION_LABEL[sv.function]} ${KIND_LABEL[sv.kind]}`}
+            value={count(sv.function, sv.kind)}
+          />
+        ))}
       </StatStrip>
 
       <ListStatus

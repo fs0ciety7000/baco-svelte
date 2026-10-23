@@ -4,6 +4,7 @@ import {
   mapOpenShifts,
   openFilterQuery,
   openFunction,
+  openKindsFor,
   openPeriod,
   openPeriodLabel,
   parseOpenFilter,
@@ -32,7 +33,7 @@ function batch(over: Partial<QuinyxBatch> = {}): QuinyxBatch {
     ],
     types: [
       { id: 1, name: "PACO_AM" },
-      { id: 2, name: "RCCA_N" },
+      { id: 2, name: "PACO_N" },
       { id: 3, name: "EXTRA - OCC SO" },
       { id: 4, name: "PACO 10-18" },
     ],
@@ -91,7 +92,7 @@ function batch(over: Partial<QuinyxBatch> = {}): QuinyxBatch {
 describe("services non pourvus : conversion", () => {
   it("fonction PACO / RCCA d'après le type, rien pour EXTRA", () => {
     expect(openFunction("PACO_AM")).toBe("paco");
-    expect(openFunction("RCCA_N")).toBe("rcca");
+    expect(openFunction("RCCA_PM")).toBe("rcca");
     expect(openFunction("EXTRA - OCC SO")).toBe("");
     expect(openFunction("PACOX")).toBe("");
   });
@@ -109,7 +110,12 @@ describe("services non pourvus : conversion", () => {
       day: "2026-10-05",
     });
     expect(am!.start).toBe("2026-10-05T04:00:00.000Z"); // 06:00 heure d'été de Bruxelles
-    expect(nuit).toMatchObject({ function: "rcca", kind: "nuit", day: "2026-10-05" });
+    expect(nuit).toMatchObject({
+      function: "paco",
+      kind: "nuit",
+      section: "RCCA Mons",
+      day: "2026-10-05",
+    });
     expect(other).toMatchObject({ function: "paco", kind: "pm" }); // « PACO 10-18 » : type d'après l'heure
   });
 
@@ -169,6 +175,12 @@ describe("services non pourvus : filtres", () => {
     expect(openPeriodLabel({ year: 2026, month: 0 })).toBe("année 2026");
   });
 
+  it("nuit en PACO seulement : RCCA seul ne propose que AM et PM", () => {
+    expect(openKindsFor([])).toEqual(["am", "pm", "nuit"]);
+    expect(openKindsFor(["paco"])).toEqual(["am", "pm", "nuit"]);
+    expect(openKindsFor(["rcca"])).toEqual(["am", "pm"]);
+  });
+
   it("filtres en clair", () => {
     expect(
       openFilterText(
@@ -195,11 +207,11 @@ describe("services non pourvus : exports", () => {
     {
       zone: "OCC Namur",
       day: "2026-10-06",
-      from: "22:00",
-      to: "06:00",
-      code: "=RCCA_N",
+      from: "14:00",
+      to: "22:00",
+      code: "=RCCA_PM",
       section: "",
-      kind: "nuit",
+      kind: "pm",
       function: "rcca",
       district: "DSE",
     },
@@ -231,7 +243,7 @@ describe("services non pourvus : exports", () => {
   it("CSV : BOM, « ; », formule neutralisée", () => {
     const csv = openCsv(rows);
     expect(csv.startsWith("﻿Date;Jour;Zone")).toBe(true);
-    expect(csv).toContain(";'=RCCA_N;");
+    expect(csv).toContain(";'=RCCA_PM;");
   });
 
   it("nom de fichier", () => {

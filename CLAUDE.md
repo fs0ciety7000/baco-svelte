@@ -1426,7 +1426,8 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   sans agent, champ `open` du lot, aucun nom), collection `quinyx_open_shifts` (`1760005000`, aucune donnée personnelle,
   gardée 2 ans), clé **`quinyx_open:read`** (admin / sysop par défaut, accordable), page **Ressources › Planning › Non pourvus**,
   route `GET /api/equipe/quinyx/non-pourvus` (`format=json|csv|xlsx|pdf`) ; Excel écrit sans dépendance (`lib/xlsx.ts`).
-  Un service pourvu / supprimé est retiré à la synchro complète suivante (pas de plafond : rien de personnel).
+  Un service pourvu / supprimé est retiré à la synchro complète suivante (pas de plafond : rien de personnel). Précision de
+  l'utilisateur : **la nuit n'existe qu'en PACO** (pas de RCCA de nuit) → compteurs PACO AM / PM / Nuit, RCCA AM / PM.
 - 2026-10-22 — **Lot du 15 au 22 oct. poussé en production** (accord de l'utilisateur : « ok prod ») : `csm-prod` = 1d8b277
   (139 commits depuis 7681554, 14 migrations : rôles v3, navigation v3, refonte v4, B201 par district, PN / zones SPI,
   planificateur PMR, ALEA par jour, correctifs de mise en page). Sauvegarde PocketBase de la prod faite juste avant (R2, tâches

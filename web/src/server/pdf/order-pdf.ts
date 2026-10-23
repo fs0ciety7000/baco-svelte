@@ -851,6 +851,7 @@ export type OpenShiftsPdfInput = {
   filters: string;
   totals: {
     total: number;
+    services: [string, number][];
     zones: [string, number][];
     functions: [string, number][];
     kinds: [string, number][];
@@ -881,6 +882,7 @@ export async function openShiftsPdf(
   l.section("Synthèse");
   if (input.filters) l.field("Filtres", input.filters);
   const line = (list: [string, number][]) => list.map(([k, n]) => `${k} : ${n}`).join(" · ") || "—";
+  l.field("Par prestation", line(input.totals.services));
   l.field("Par zone", line(input.totals.zones));
   l.field("Par fonction", line(input.totals.functions));
   l.field("Par service", line(input.totals.kinds));

@@ -856,7 +856,9 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `openPeriod` / `openPeriodLabel` (`annee`, `mois` 0 = année, `zone` = n° de groupe répétable, `fonction` paco / rcca, `type`
   am / pm / nuit ; défaut = mois en cours).
 - Page `/ressources/planning/non-pourvus` (onglet « Non pourvus », `permission: "quinyx_open:read"`) : barre de filtres
-  (`Select` mois / année, `MultiSelect` zone / fonction / service), compteurs `StatStrip`, tableau `open-table` / cartes
+  (`Select` mois / année, `MultiSelect` zone / fonction / service), compteurs `StatStrip` par prestation réelle
+  (`OPEN_SERVICES` : PACO AM / PM / Nuit, RCCA AM / PM — **pas de RCCA de nuit**, précision de l'utilisateur ; `openKindsFor`
+  retire « Nuit » du filtre quand RCCA seul est choisi ; totaux `services` dans l'Excel et le PDF), tableau `open-table` / cartes
   `open-cards`, boutons `open-export-xlsx|pdf|csv`.
 - Route `GET /api/equipe/quinyx/non-pourvus?format=json|csv|xlsx|pdf` (404 sans le droit) : `lib/quinyx/open-export.ts`
   (`openCsv` BOM « ; » formules neutralisées, `openXlsx` feuilles « Non pourvus » + « Totaux », `openPdfRows`, `openTotals`),

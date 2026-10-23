@@ -296,7 +296,24 @@ export const FUNCTION_LABEL: Record<OpenFunction, string> = { paco: "PACO", rcca
 export const OPEN_KINDS = ["am", "pm", "nuit", "autre"] as const;
 export type OpenKind = (typeof OPEN_KINDS)[number];
 
-/** Fonction d'un service d'après son type (« PACO_AM » → paco, « RCCA_N » → rcca) ; "" pour tout le reste (EXTRA…). */
+/** Prestations qui existent (précision de l'utilisateur, 23 oct. 2026) : la nuit est PACO seulement, pas de RCCA de nuit. */
+export const OPEN_SERVICES: readonly { function: OpenFunction; kind: OpenKind }[] = [
+  { function: "paco", kind: "am" },
+  { function: "paco", kind: "pm" },
+  { function: "paco", kind: "nuit" },
+  { function: "rcca", kind: "am" },
+  { function: "rcca", kind: "pm" },
+];
+
+/** Services proposés au filtre pour les fonctions choisies (RCCA seul : pas de nuit). */
+export function openKindsFor(functions: readonly OpenFunction[]): OpenKind[] {
+  const fns = functions.length ? functions : OPEN_FUNCTIONS;
+  return (["am", "pm", "nuit"] as const).filter((k) =>
+    OPEN_SERVICES.some((s) => s.kind === k && fns.includes(s.function)),
+  );
+}
+
+/** Fonction d'un service d'après son type (« PACO_AM » → paco, « RCCA_PM » → rcca) ; "" pour tout le reste (EXTRA…). */
 export function openFunction(code: string): OpenFunction | "" {
   const m = fold(code).match(/^(PACO|RCCA) /);
   return m ? (m[1]!.toLowerCase() as OpenFunction) : "";

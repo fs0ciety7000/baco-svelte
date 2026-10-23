@@ -7,7 +7,7 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 ### Nouveautés
 
-- **Ressources › Planning › Non pourvus** (administrateurs par défaut) : liste des services PACO / RCCA (AM, PM, Nuit) publiés dans Quinyx sans agent affecté, pour OCC Mons et OCC Namur. Filtres par mois ou année entière, zone (groupe Quinyx), fonction PACO / RCCA et service AM / PM / Nuit ; compteurs en tête.
+- **Ressources › Planning › Non pourvus** (administrateurs par défaut) : liste des services PACO / RCCA (AM, PM, Nuit) publiés dans Quinyx sans agent affecté, pour OCC Mons et OCC Namur. Filtres par mois ou année entière, zone (groupe Quinyx), fonction PACO / RCCA et service AM / PM / Nuit ; compteurs en tête par prestation (PACO AM, PACO PM, PACO Nuit, RCCA AM, RCCA PM : la nuit n'existe qu'en PACO).
 - **Exports Excel, PDF et CSV** de la liste filtrée (feuille « Totaux » par zone, fonction et service dans le classeur Excel). Les mêmes données sont lisibles par une route API pour un autre outil.
 - **Extension CSM 1.11.0** : la synchro Quinyx envoie aussi les services non pourvus (aucun nom n'est envoyé pour ces services). Un service pourvu ou supprimé dans Quinyx disparaît de la liste à la synchro suivante.
 - Le droit « Voir les services non pourvus » peut être donné à un autre rôle dans Administration › Rôles.
