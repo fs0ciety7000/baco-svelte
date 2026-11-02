@@ -1439,6 +1439,8 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   planificateur PMR, ALEA par jour, correctifs de mise en page). Sauvegarde PocketBase de la prod faite juste avant (R2, tâches
   Coolify exécutées une fois : **commande limitée à 255 caractères** → jeton dans un fichier temporaire supprimé aussitôt).
   Déploiements terminés, santé 200 ; `perms-check` : 30 comptes, 0 écart (2 retraits voulus par dépendance).
+- 2026-11-02 — **Bons bus C3 : `business.expert.central@belgiantrain.be` en copie** de l'e-mail au fournisseur (demande de
+  l'utilisateur), en plus du bureau PACO du district (`BUS_CC` dans `web/src/lib/orders/mail.ts`) ; taxi inchangé.
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)

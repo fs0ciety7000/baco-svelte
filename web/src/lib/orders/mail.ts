@@ -159,8 +159,18 @@ function render(intro: string, rows: Row[], sign: string[], outro: string[] = OU
 }
 
 /** Copie : boîte du bureau PACO, sauf si elle figure déjà parmi les destinataires. */
-const ccFor = (office: PacoOffice, to: string[]) =>
-  to.some((a) => a.toLowerCase() === office.email) ? [] : [office.email];
+const ccFor = (office: PacoOffice, to: string[], extra: string[] = []) => {
+  const seen = new Set(to.map((a) => a.toLowerCase()));
+  return [office.email, ...extra].filter((a) => {
+    const k = a.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+};
+
+/** Copie systématique des réquisitoires bus C3 (demande du 2 nov. 2026). */
+export const BUS_CC = ["business.expert.central@belgiantrain.be"];
 
 // ---------------------------------------------------------------------------------------------------
 // Bus
@@ -223,7 +233,7 @@ export function busMail(detail: BusMailDetail, opts: MailOptions): OrderMail {
   const intro = `Veuillez trouver ci-dessous le récapitulatif de notre réquisitoire de bus de remplacement C3 n° ${detail.meta.number}.`;
   return {
     to,
-    cc: ccFor(office, to),
+    cc: ccFor(office, to, BUS_CC),
     subject,
     ...render(intro, rows, signature(opts.agentName, office)),
     filename: busFilename(d),

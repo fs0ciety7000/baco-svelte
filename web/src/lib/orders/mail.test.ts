@@ -71,7 +71,10 @@ describe("busMail", () => {
 
   it("destinataires et copie du bureau du district", () => {
     expect(m.to).toEqual(["planning@bus-exemple.be", "dispatch@bus-exemple.be"]);
-    expect(m.cc).toEqual(["paco.namur@belgiantrain.be"]);
+    expect(m.cc).toEqual([
+      "paco.namur@belgiantrain.be",
+      "business.expert.central@belgiantrain.be",
+    ]);
   });
 
   it("sujet et nom de fichier", () => {

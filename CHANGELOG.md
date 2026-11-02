@@ -3,6 +3,11 @@
 Toutes les évolutions de CSM visibles par les agents, de la plus récente à la plus ancienne.
 Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
+## [2026.11.02] — Copie des réquisitoires bus C3
+
+### Améliorations
+
+- **Bons bus C3 — e-mail au fournisseur** : le brouillon Outlook met désormais aussi en copie (Cc) l'adresse business.expert.central@belgiantrain.be, en plus du bureau PACO du district. La copie est affichée dans la fenêtre « Valider l'envoi ». Les bons taxi ne changent pas.
 ## [2026.10.23] — Services Quinyx non alignés
 
 ### Nouveautés

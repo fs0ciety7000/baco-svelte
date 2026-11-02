@@ -32,6 +32,7 @@ import {
   type BusLine,
 } from "@/lib/orders/schemas";
 import { safeCall } from "@/lib/orders/safe-call";
+import { BUS_CC } from "@/lib/orders/mail";
 import { isEditable, type Status } from "@/lib/orders/status";
 import { orderTrainRoute, type OrderTrain } from "@/app/(app)/commandes/train-actions";
 import {
@@ -924,7 +925,7 @@ export function BusForm(props: BusFormProps) {
         onOpenChange={setSendOpen}
         missing={missing}
         to={parseEmails([company?.email ?? "", d.company_email]).join("; ")}
-        cc={props.officeEmail}
+        cc={[props.officeEmail, ...BUS_CC].filter(Boolean).join("; ")}
         flush={autosave.flush}
       />
       <TemplateDialog open={tplOpen} onOpenChange={setTplOpen} kind="bus" data={d} />
