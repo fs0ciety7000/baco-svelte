@@ -273,7 +273,8 @@ PACO Sud-Ouest`;
         const emailTo = society?.email || "";
         const sensText = form.is_aller_retour ? 'A/R' : 'AS';
         const subject = encodeURIComponent(`Réquisitoire Bus (${sensText}) - ${form.relation} - ${new Date(form.date_commande).toLocaleDateString('fr-BE')}`);
-        window.location.href = `mailto:${emailTo}?subject=${subject}&body=${encodeURIComponent(emailBody)}`;
+        const emailCc = encodeURIComponent('business.expert.central@belgiantrain.be');
+        window.location.href = `mailto:${emailTo}?cc=${emailCc}&subject=${subject}&body=${encodeURIComponent(emailBody)}`;
     }
 
     async function copyToClipboard() {
