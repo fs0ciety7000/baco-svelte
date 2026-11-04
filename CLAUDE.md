@@ -1521,6 +1521,10 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
 - 2026-11-04 — **Lot de retours poussé en production** (`csm-prod` = fa1c21d, hooks seulement). Premier déploiement de `csm-web-prod`
   échoué : `next/font` n'a pas pu lire la feuille Google Fonts (« Cannot read properties of null (reading '1') », passager : le même
   commit venait d'être construit en préversion) → relancé seul par `POST /deploy` (PocketBase déjà déployé), terminé, santé 200.
+- 2026-11-04 — **Carte, cloche, extension 1.13.1** : tuiles du fond de carte en file d'attente côté serveur (4 s au plus au lieu d'un 429,
+  600 / min / agent) et réessayées 3 fois par la carte (carrés gris en plein écran) ; cloche lue à l'ouverture (`markNotifications
+  all`) ; extension 1.13.1 : URL de prod par défaut, **onglet DICOS / Quinyx rechargé seul** quand la session a expiré (jamais l'onglet
+  actif d'une fenêtre au premier plan, 1 fois / 15 min / onglet, `healAt`), cause : le Bearer n'est capté qu'en vol par `inject.js`.
 
 ---
 

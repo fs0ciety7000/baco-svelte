@@ -39,6 +39,7 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 - Carte PN : les listes des filtres (district, zone, ligne) ne passent plus derrière la carte.
 - **Cartes : plus de carrés gris** — les tuiles du fond de carte demandées en rafale (plein écran, zoom) attendent leur tour au lieu d'être refusées, et une tuile ratée est redemandée jusqu'à trois fois.
 - **Cloche : ouvrir les notifications les marque lues** (la pastille disparaît ; les nouvelles restent signalées le temps de l'ouverture).
+- **Extension CSM 1.13.1** : l'adresse de production (https://csm.fs0ciety.org) est proposée par défaut (une adresse déjà enregistrée est gardée) ; la synchro automatique recharge seule un onglet DICOS ou Quinyx dont la session a expiré (jamais l'onglet que tu utilises, au plus une fois par quart d'heure) puis réessaie : « session à rafraîchir » ne s'affiche plus que si tu es vraiment déconnecté. Mets à jour l'extension depuis la page Extension CSM.
 - **Gares d'Anvers (Antwerpen, Berchem, Ekeren, Mortsel, Hoboken…) en district DNE** par défaut (appliqué au prochain import quotidien du référentiel ; une correction faite à la main reste prioritaire).
 - **E-mail de basculement BACO → CSM** (Administration › Campagnes) aux couleurs « Encre et sable ».
 - Barre du haut : l'icône « En ligne maintenant » ne chevauche plus le champ de recherche sur grand écran.
