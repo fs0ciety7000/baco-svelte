@@ -32,10 +32,11 @@ test("navigation principale et onglets en routes", async ({ page, isMobile }, te
   if (isMobile) {
     const bar = page.getByRole("navigation", { name: "Navigation principale" });
     // Navigation v3 (14 oct. 2026) : 4 modules + « Plus » ; libellé court affiché, nom complet annoncé.
-    await expect(bar.getByRole("link")).toHaveText(["Temps réel", "Opérations", "Bons", "PMR"]);
+    await expect(bar.getByRole("link")).toHaveText(["Temps réel", "Journal", "Bons", "PMR"]);
     await expect(bar.getByRole("link", { name: "Bus et taxis", exact: true })).toBeVisible();
     await bar.getByRole("button", { name: "Plus" }).click();
     const sheet = page.getByRole("dialog", { name: "Plus" });
+    await expect(sheet.getByRole("link", { name: "Opérations", exact: true })).toBeVisible();
     await expect(sheet.getByRole("link", { name: "Réseau", exact: true })).toBeVisible();
     await expect(sheet.getByRole("link", { name: "Ressources", exact: true })).toBeVisible();
     // Module Équipe supprimé ; PACO/RCCA : pas d'administration.
@@ -49,6 +50,7 @@ test("navigation principale et onglets en routes", async ({ page, isMobile }, te
     // Les compteurs (non lus, à envoyer…) suivent le libellé du module.
     await expect(side.getByRole("list").getByRole("link")).toHaveText([
       /^Temps réel/,
+      /^Journal/,
       /^Opérations/,
       /^Bus et taxis/,
       /^PMR/,
@@ -58,8 +60,10 @@ test("navigation principale et onglets en routes", async ({ page, isMobile }, te
     // Chaque module ouvre sur ce que compte sa pastille : Suivi « À envoyer », Journal.
     await side.getByRole("link", { name: /^Bus et taxis/ }).click();
     await expect(page).toHaveURL(/\/commandes\/suivi$/);
-    await side.getByRole("link", { name: /^Opérations/ }).click();
+    await side.getByRole("link", { name: /^Journal/ }).click();
     await expect(page).toHaveURL(/\/operations\/journal$/);
+    await side.getByRole("link", { name: /^Opérations/ }).click();
+    await expect(page).toHaveURL(/\/operations\/journee$/);
   }
   // Mon profil : menu du compte (navigation v3).
   await page.getByRole("button", { name: /^Menu de / }).click();

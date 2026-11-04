@@ -1476,6 +1476,12 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   catégorie seulement pour iRail ; filtres « Tout / catégories / Sans iRail » retirés ; restent Urgents (Infos) et Avec les
   retirés) ; valeurs en base inchangées (aucune migration). `?entree=` d'un message de l'autre type redirige vers le bon
   onglet. `JournalScreen` (`operations/journal/journal-screen.tsx`) partagé ; `listLog(…, { view })`.
+- 2026-11-04 — **Journal = module de la barre latérale** (demande : « mettre le journal dans la sidebar ») : module `journal`
+  (Infos · Perturbations, pastille `counts.journal`, icône MessagesSquare), 2e de la barre latérale et de la barre du bas
+  mobile (Temps réel · Journal · Bons · PMR · Plus) ; **Opérations** (Ma journée · B201, `href` `/operations/journee`) passe dans
+  « Plus ». **Adresses inchangées** grâce aux groupes de routes `operations/(journal)/` (layout `moduleId="journal"`) et
+  `operations/(ops)/` (layout Opérations) : liens des notifications en base et favoris intacts. Règle « 6 modules au plus » de
+  la navigation v3 portée à **7**. `redirects.test.ts` lit les groupes de routes.
 
 ---
 

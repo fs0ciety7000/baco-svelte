@@ -10,6 +10,7 @@ import {
   Home,
   Library,
   ListFilter,
+  MessagesSquare,
   Mail,
   MonitorSmartphone,
   Plus,
@@ -50,7 +51,7 @@ export type NavTab = {
   count?: ShellCountKey;
 };
 /** Compteurs du shell (`app/shell-actions.ts`) : bons à envoyer, missions impactées, non lus du Journal. */
-export type ShellCountKey = "commandes" | "pmr" | "operations";
+export type ShellCountKey = "commandes" | "pmr" | "journal";
 export type NavModule = {
   id: string;
   href: string;
@@ -86,19 +87,20 @@ export const MODULES: NavModule[] = [
     ],
   },
   {
-    id: "operations",
+    // Journal (4 nov. 2026, demande : « mettre le journal dans la sidebar ») : module à part, sorti d'Opérations ; les
+    // adresses restent /operations/journal et /operations/perturbations (groupe de routes `(journal)`). Infos ouvre le
+    // module et porte la pastille des non-lus ; Perturbations reçoit les perturbations et travaux iRail.
+    id: "journal",
     section: "travail",
     href: "/operations/journal",
-    label: "Opérations",
-    icon: Radio,
+    label: "Journal",
+    icon: MessagesSquare,
     mobile: true,
     tabs: [
-      // Journal en deux onglets (4 nov. 2026) : « Infos » (messages des agents) ouvre le module et porte la pastille des
-      // non-lus ; « Perturbations » reçoit les perturbations et travaux iRail.
       {
         href: "/operations/journal",
         label: "Infos",
-        count: "operations",
+        count: "journal",
         permission: "journal:read",
         keywords: ["journal", "main courante", "messages", "consignes", "infos"],
       },
@@ -108,6 +110,15 @@ export const MODULES: NavModule[] = [
         permission: "journal:read",
         keywords: ["journal", "iRail", "travaux", "perturbations", "incidents réseau"],
       },
+    ],
+  },
+  {
+    id: "operations",
+    section: "travail",
+    href: "/operations/journee",
+    label: "Opérations",
+    icon: Radio,
+    tabs: [
       {
         href: "/operations/journee",
         label: "Ma journée",

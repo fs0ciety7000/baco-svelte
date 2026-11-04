@@ -11,11 +11,11 @@ import {
 } from "./navigation";
 
 describe("navigation", () => {
-  it("6 modules au plus, 4 dans la barre mobile + « Plus » (Accueil, Opérations, Bons, PMR)", () => {
-    expect(MODULES.length).toBeLessThanOrEqual(6);
+  it("7 modules au plus (Journal ajouté le 4 nov. 2026), 4 dans la barre mobile + « Plus »", () => {
+    expect(MODULES.length).toBeLessThanOrEqual(7);
     expect(MODULES.filter((m) => m.mobile).map((m) => m.id)).toEqual([
       "accueil",
-      "operations",
+      "journal",
       "commandes",
       "pmr",
     ]);
@@ -26,6 +26,7 @@ describe("navigation", () => {
     const tabs = (id: string) => mods.find((m) => m.id === id)?.tabs.map((t) => t.label);
     expect(mods.map((m) => m.id)).toEqual([
       "accueil",
+      "journal",
       "operations",
       "commandes",
       "pmr",
@@ -33,7 +34,8 @@ describe("navigation", () => {
       "ressources",
     ]);
     expect(tabs("accueil")).toEqual(["À traiter", "Statistiques"]);
-    expect(tabs("operations")).toEqual(["Infos", "Perturbations", "Ma journée", "B201"]);
+    expect(tabs("journal")).toEqual(["Infos", "Perturbations"]);
+    expect(tabs("operations")).toEqual(["Ma journée", "B201"]);
     expect(tabs("commandes")).toEqual(["Suivi", "Bus", "Taxi", "Archives", "Fournisseurs"]);
     expect(tabs("pmr")).toEqual([
       "Missions",
@@ -63,7 +65,8 @@ describe("navigation", () => {
 
   it("chaque module ouvre sur l'écran que compte sa pastille (Journal, Suivi « À envoyer »)", () => {
     const mods = visibleModules({ role: "paco" });
-    expect(mods.find((m) => m.id === "operations")?.href).toBe("/operations/journal");
+    expect(mods.find((m) => m.id === "journal")?.href).toBe("/operations/journal");
+    expect(mods.find((m) => m.id === "operations")?.href).toBe("/operations/journee");
     expect(mods.find((m) => m.id === "commandes")?.href).toBe("/commandes/suivi");
   });
 
@@ -103,10 +106,10 @@ describe("navigation", () => {
 
   it("PACO/RCCA voit tous les modules, sauf l'administration", () => {
     const mods = visibleModules({ role: "paco" });
-    expect(mods).toHaveLength(6);
+    expect(mods).toHaveLength(7);
     expect(adminModule({ role: "paco" })).toBeNull();
     expect(adminModule({ role: "moderator" })).toBeNull();
-    expect(visibleModules({ role: "moderator" })).toHaveLength(6);
+    expect(visibleModules({ role: "moderator" })).toHaveLength(7);
   });
 
   it("administration réservée à l'admin ; Référentiels ouvert à qui a referentiels:manage", () => {

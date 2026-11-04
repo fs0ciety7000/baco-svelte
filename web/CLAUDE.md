@@ -338,6 +338,9 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 
 ## Journal (ex-main courante, 9 oct. 2026)
 
+- **Module « Journal » de la barre latérale (4 nov. 2026)** : `app/(app)/operations/(journal)/` (layout `ModuleLayout
+  moduleId="journal"`, pages `journal/` et `perturbations/`) et `operations/(ops)/` (layout Opérations : `journee/`, `b201/`) ;
+  groupes de routes = adresses inchangées. Compteur `ShellCountKey` « journal » (ex-« operations »).
 - **Deux onglets depuis le 4 nov. 2026** : `JournalScreen({ view })` (`app/(app)/operations/journal/journal-screen.tsx`) rendu par
   `/operations/journal` (**Infos** : `source != "irail"`, composer, consignes, filtre Urgents) et `/operations/perturbations`
   (**Perturbations** : iRail, lecture seule). `listLog(input, { coordinator, view })`. Plus de choix de catégorie (le composer

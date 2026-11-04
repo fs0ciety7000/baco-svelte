@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -10,13 +10,31 @@ import { LEGACY_REDIRECTS } from "./redirects";
 
 const APP = path.resolve(process.cwd(), "src/app/(app)");
 
-/** Une page existe pour ce chemin (`:id` → `[id]`). */
+/** Dossiers « groupe de routes » `(nom)` d'un dossier : transparents dans l'URL (Journal, 4 nov. 2026). */
+function groups(dir: string): string[] {
+  try {
+    return readdirSync(dir, { withFileTypes: true })
+      .filter((d) => d.isDirectory() && /^\(.+\)$/.test(d.name))
+      .map((d) => path.join(dir, d.name));
+  } catch {
+    return [];
+  }
+}
+
+function findPage(dir: string, parts: string[]): boolean {
+  if (!parts.length)
+    return existsSync(path.join(dir, "page.tsx")) || groups(dir).some((g) => findPage(g, []));
+  const [head, ...rest] = parts as [string, ...string[]];
+  return findPage(path.join(dir, head), rest) || groups(dir).some((g) => findPage(g, parts));
+}
+
+/** Une page existe pour ce chemin (`:id` → `[id]`), groupes de routes compris. */
 function pageExists(route: string): boolean {
   const parts = route
     .split("/")
     .filter(Boolean)
     .map((p) => (p.startsWith(":") ? `[${p.slice(1)}]` : p));
-  return existsSync(path.join(APP, ...parts, "page.tsx"));
+  return findPage(APP, parts);
 }
 
 describe("redirections des anciennes routes (navigation v3)", () => {

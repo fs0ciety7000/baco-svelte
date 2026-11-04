@@ -14,7 +14,7 @@ import { allow } from "@/server/rate-limit";
 
 export type ShellStatus = {
   /** Bons envoyés non confirmés (Commandes), missions impactées par un retard (PMR), messages non lus 24 h (Opérations). */
-  counts: { commandes?: number; pmr?: number; operations?: number };
+  counts: { commandes?: number; pmr?: number; journal?: number };
   /** Dernière synchro DICOS (missions) reçue ; null = jamais ou sans droit. */
   dicosAt: string | null;
   /** État d'iRail vu par le serveur (dernier appel réel) ; null = aucun appel depuis 30 min. */
@@ -65,7 +65,7 @@ export async function shellStatus(): Promise<ShellStatus | null> {
           skipTotal: true,
         });
         const ids = recent.items.map((r) => r.id);
-        if (!ids.length) return void (out.counts.operations = 0);
+        if (!ids.length) return void (out.counts.journal = 0);
         const read = new Set<string>();
         for (let i = 0; i < ids.length; i += 50) {
           const params: Record<string, string> = { me: user.id };
@@ -79,7 +79,7 @@ export async function shellStatus(): Promise<ShellStatus | null> {
           });
           for (const r of rows) read.add(String(r.entry));
         }
-        out.counts.operations = ids.filter((id) => !read.has(id)).length;
+        out.counts.journal = ids.filter((id) => !read.has(id)).length;
       })(),
     );
   // Un compteur en échec (collection absente, réseau) n'empêche pas les autres.

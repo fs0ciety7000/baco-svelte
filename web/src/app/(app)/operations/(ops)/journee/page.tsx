@@ -15,7 +15,7 @@ import { requireRoute } from "@/server/auth";
 import { handoverDistricts } from "@/server/data/handover";
 import { buildTimeline } from "@/server/data/timeline";
 
-import { LiveRefresh } from "../../commandes/live-refresh";
+import { LiveRefresh } from "@/app/(app)/commandes/live-refresh";
 
 export const metadata: Metadata = { title: "Ma journée · CSM" };
 

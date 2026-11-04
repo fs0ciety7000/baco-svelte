@@ -16,7 +16,7 @@ import { useShellStatus } from "./shell-status";
 export const COUNT_META: Record<ShellCountKey, { tone: string; title: string }> = {
   commandes: { tone: "var(--warn)", title: "bons terminés à envoyer" },
   pmr: { tone: "var(--danger)", title: "missions impactées par un retard" },
-  operations: { tone: "var(--info)", title: "messages non lus dans Infos (24 h)" },
+  journal: { tone: "var(--info)", title: "messages non lus dans Infos (24 h)" },
 };
 
 /** Valeur d'un compteur (0 ou absent = rien à afficher). */

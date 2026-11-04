@@ -25,7 +25,7 @@ import {
 } from "@/server/data/ops";
 import { pbForRequest } from "@/server/data/orders";
 
-import { LiveRefresh } from "../../commandes/live-refresh";
+import { LiveRefresh } from "@/app/(app)/commandes/live-refresh";
 
 export type JournalSearch = LogFilters & { entree?: string; train?: string; categorie?: string };
 

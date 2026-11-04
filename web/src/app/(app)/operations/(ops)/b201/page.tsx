@@ -19,7 +19,7 @@ import { requireRoute } from "@/server/auth";
 import { b201Data } from "@/server/data/b201";
 import { buildHandover, handoverDistricts } from "@/server/data/handover";
 
-import { LiveRefresh } from "../../commandes/live-refresh";
+import { LiveRefresh } from "@/app/(app)/commandes/live-refresh";
 
 export const metadata: Metadata = { title: "B201 · CSM" };
 
