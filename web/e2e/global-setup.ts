@@ -1,10 +1,13 @@
 // Préparation commune des E2E : les comptes de test (E2E_IDENTITY, E2E_ADMIN_IDENTITY) ont « vu » toutes les
 // versions du changelog, sinon la fenêtre « CSM a été mis à jour » (une fois par compte) recouvrirait les écrans des
-// autres tests. `e2e/changelog.spec.ts` teste la fenêtre avec ses propres comptes. Sans superuser : rien à faire.
+// autres tests. `e2e/changelog.spec.ts` teste la fenêtre avec ses propres comptes. Même chose pour la visite guidée
+// (`preferences.tour`, première connexion ; `e2e/tour.spec.ts` la teste avec des comptes jetables). Sans superuser : rien.
 
 const pbUrl = process.env.PB_URL ?? "http://127.0.0.1:8090";
 
 export const ALL_SEEN = "9999.12.31";
+/** Visite guidée déjà vue (version très haute : jamais remontrée aux comptes E2E). */
+export const TOUR_SEEN = { seen: "2026-11-04T00:00:00.000Z", version: 9999 };
 
 export default async function globalSetup() {
   const email = process.env.PB_SUPERUSER_EMAIL;
@@ -34,11 +37,14 @@ export default async function globalSetup() {
       user.preferences && typeof user.preferences === "object"
         ? (user.preferences as Record<string, unknown>)
         : {};
-    if (preferences.changelogSeen === ALL_SEEN) continue;
+    const tour = preferences.tour as { version?: unknown } | undefined;
+    if (preferences.changelogSeen === ALL_SEEN && tour?.version === TOUR_SEEN.version) continue;
     await fetch(`${pbUrl}/api/collections/users/records/${user.id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json", authorization: token },
-      body: JSON.stringify({ preferences: { ...preferences, changelogSeen: ALL_SEEN } }),
+      body: JSON.stringify({
+        preferences: { ...preferences, changelogSeen: ALL_SEEN, tour: TOUR_SEEN },
+      }),
     });
   }
 }

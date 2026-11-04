@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { expect, test, type Page } from "@playwright/test";
 
+import { TOUR_SEEN } from "./global-setup";
 import { noHorizontalScroll } from "./helpers";
 
 // Nouveautés (14 oct. 2026) : page /changelog (CHANGELOG.md + annonces), redirection de /equipe/nouveautes, lien en
@@ -42,7 +43,8 @@ async function createAgent(token: string, tag: string, preferences?: Record<stri
       name: "Agent Nouveautés",
       role: "paco",
       verified: true,
-      ...(preferences ? { preferences } : {}),
+      // Visite guidée déjà vue : sinon elle passe avant la fenêtre de mise à jour (première connexion).
+      preferences: { tour: TOUR_SEEN, ...preferences },
     }),
   });
   expect(r.ok, await r.clone().text()).toBe(true);

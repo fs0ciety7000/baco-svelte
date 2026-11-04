@@ -3,6 +3,7 @@
 import { type ReactNode, Suspense } from "react";
 
 import { UpdateDialog } from "@/components/changelog/update-dialog";
+import { TourProvider } from "@/components/tour/tour-provider";
 import type { UiPreferences } from "@/design/preferences";
 import type { ReleaseSummary } from "@/lib/changelog";
 
@@ -28,6 +29,7 @@ export function AppShell({
   version = null,
   update = null,
   roles = DEFAULT_ROLES,
+  tour = false,
   children,
 }: {
   user: ShellUser;
@@ -38,42 +40,46 @@ export function AppShell({
   version?: string | null;
   /** Dernière version pas encore vue par l'agent : fenêtre « CSM a été mis à jour » (une fois). */
   update?: ReleaseSummary | null;
+  /** Visite guidée à lancer d'office (première connexion ; le layout ne passe alors pas `update`). */
+  tour?: boolean;
   children: ReactNode;
 }) {
   return (
     <RolesProvider roles={roles}>
       <ShellProvider user={user} initialUi={ui} version={version}>
         <ShellStatusProvider enabled>
-          <a
-            href="#contenu"
-            className="sr-only z-50 bg-accent px-3 py-2 text-accent-fg focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
-          >
-            Aller au contenu
-          </a>
-          <div className="flex min-h-dvh">
-            <Sidebar />
-            <div className="flex min-w-0 flex-1 flex-col">
-              <Topbar />
-              <main id="contenu" className="flex-1">
-                {children}
-              </main>
-              <footer
-                data-print="hide"
-                className="px-4 pt-6 pb-[calc(var(--safe-bottom)+5rem)] text-center md:px-6 md:pb-4 md:text-left"
-              >
-                <StudioCredit />
-              </footer>
+          <TourProvider autoStart={tour}>
+            <a
+              href="#contenu"
+              className="sr-only z-50 bg-accent px-3 py-2 text-accent-fg focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+            >
+              Aller au contenu
+            </a>
+            <div className="flex min-h-dvh">
+              <Sidebar />
+              <div className="flex min-w-0 flex-1 flex-col">
+                <Topbar />
+                <main id="contenu" className="flex-1">
+                  {children}
+                </main>
+                <footer
+                  data-print="hide"
+                  className="px-4 pt-6 pb-[calc(var(--safe-bottom)+5rem)] text-center md:px-6 md:pb-4 md:text-left"
+                >
+                  <StudioCredit />
+                </footer>
+              </div>
             </div>
-          </div>
-          <Suspense fallback={null}>
-            <NavProgress />
-          </Suspense>
-          <PageShortcuts />
-          <TelephonyInit />
-          <PageTransition />
-          <MobileTabBar />
-          <CommandPalette />
-          {update ? <UpdateDialog release={update} /> : null}
+            <Suspense fallback={null}>
+              <NavProgress />
+            </Suspense>
+            <PageShortcuts />
+            <TelephonyInit />
+            <PageTransition />
+            <MobileTabBar />
+            <CommandPalette />
+            {update ? <UpdateDialog release={update} /> : null}
+          </TourProvider>
         </ShellStatusProvider>
       </ShellProvider>
     </RolesProvider>

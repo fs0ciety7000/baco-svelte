@@ -82,6 +82,7 @@ export function Topbar() {
         <button
           type="button"
           aria-label="Rechercher, aller à"
+          data-tour="search"
           aria-keyshortcuts="Control+K"
           onClick={() => setPaletteOpen(true)}
           className={cn(
@@ -99,6 +100,7 @@ export function Topbar() {
           variant="ghost"
           className={cn(SHELL_ICON, "md:hidden")}
           aria-label="Rechercher"
+          data-tour="search"
           onClick={() => setPaletteOpen(true)}
         >
           <Search className="size-5" aria-hidden />

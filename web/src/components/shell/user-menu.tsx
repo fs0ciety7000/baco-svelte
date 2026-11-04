@@ -1,12 +1,13 @@
 "use client";
 
 import * as Menu from "@radix-ui/react-dropdown-menu";
-import { LogOut, Palette, Shield, SwatchBook } from "lucide-react";
+import { Compass, LogOut, Palette, Shield, SwatchBook } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
 import { logout } from "@/app/connexion/actions";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import { useTour } from "@/components/tour/tour-provider";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,7 @@ export function UserMenu() {
   const { user, admin, account: personal, ui, setUi } = useShell();
   const roleLabel = useRoleLabel();
   const [prefsOpen, setPrefsOpen] = useState(false);
+  const tour = useTour();
 
   return (
     <>
@@ -36,6 +38,7 @@ export function UserMenu() {
         <Menu.Trigger
           className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-control outline-none hover:bg-surface-3 focus-visible:ring-2 focus-visible:ring-accent md:pointer-fine:size-[2.125rem]"
           aria-label={`Menu de ${user.name || user.email}`}
+          data-tour="account"
           title={`${user.name || user.email} · ${roleLabel(user.role)}`}
         >
           <Avatar
@@ -66,6 +69,13 @@ export function UserMenu() {
             {personal.length ? <Menu.Separator className="my-1 h-px bg-border" /> : null}
             <Menu.Item className={itemClass} onSelect={() => setPrefsOpen(true)}>
               <Palette /> Affichage (thème, densité)
+            </Menu.Item>
+            <Menu.Item
+              className={itemClass}
+              onSelect={() => tour.openWelcome()}
+              data-testid="user-menu-tour"
+            >
+              <Compass /> Visite guidée
             </Menu.Item>
             <Menu.Item asChild className={itemClass}>
               <Link href="/design">

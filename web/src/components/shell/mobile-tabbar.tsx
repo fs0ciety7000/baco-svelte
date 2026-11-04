@@ -89,6 +89,7 @@ export function MobileTabBar() {
     <>
       <nav
         data-print="hide"
+        data-tour="nav"
         aria-label="Navigation principale"
         className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface md:hidden"
       >
@@ -101,6 +102,7 @@ export function MobileTabBar() {
               type="button"
               onClick={() => setMore(true)}
               aria-haspopup="dialog"
+              data-tour="more"
               className={cn(ITEM, "cursor-pointer", moreActive && "text-fg")}
             >
               <span

@@ -251,6 +251,7 @@ export function AleaButton({
         }}
         disabled={disabled && !pickDay}
         aria-label={label}
+        data-tour="alea"
       >
         <ClipboardList aria-hidden /> <span className="md:hidden">{shortLabel}</span>
         <span className="hidden md:inline">{label}</span>

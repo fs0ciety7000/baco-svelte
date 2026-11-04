@@ -330,6 +330,7 @@ export function Sidebar() {
   return (
     <nav
       data-print="hide"
+      data-tour="nav"
       aria-label="Navigation principale"
       className="sticky top-0 hidden h-dvh w-24 shrink-0 flex-col overflow-y-auto border-r border-nav-rule bg-nav md:flex xl:w-58"
     >

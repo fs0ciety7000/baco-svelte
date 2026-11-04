@@ -9,6 +9,7 @@ import {
   Bus,
   CalendarClock,
   Car,
+  Compass,
   CornerDownLeft,
   FileText,
   KeyRound,
@@ -46,6 +47,8 @@ import { choiceScheme, THEMES, type ThemeChoice } from "@/design/tokens";
 import type { PaletteGroupId } from "@/lib/search/palette";
 
 import { CHANGELOG_LINK } from "@/navigation";
+
+import { useTour } from "@/components/tour/tour-provider";
 
 import { useShell } from "./shell-context";
 
@@ -87,6 +90,7 @@ function hitValue(query: string, heading: string, h: SearchHit): string {
 export function CommandPalette() {
   const { modules, admin, account, actions, ui, setUi, paletteOpen, setPaletteOpen } = useShell();
   const router = useRouter();
+  const tour = useTour();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -247,6 +251,16 @@ export function CommandPalette() {
                   onSelect={() => go(CHANGELOG_LINK.href)}
                 >
                   <Sparkles /> {CHANGELOG_LINK.label}
+                </CommandItem>
+                <CommandItem
+                  value="Revoir la visite guidée aide tutoriel découvrir prise en main"
+                  onSelect={() => {
+                    setPaletteOpen(false);
+                    tour.openWelcome();
+                  }}
+                  data-testid="palette-tour"
+                >
+                  <Compass /> Revoir la visite guidée
                 </CommandItem>
               </CommandGroup>
               {admin ? (

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { identity, login, noHorizontalScroll, password } from "./helpers";
-import { ALL_SEEN } from "./global-setup";
+import { ALL_SEEN, TOUR_SEEN } from "./global-setup";
 
 // Module Opérations : trains en direct (iRail simulé : e2e/mock-services.mjs), main courante (publication, « Lu »,
 // correction, pièce jointe, retrait), carte PN (PN de démo), statistiques, cloche ; captures desktop + mobile
@@ -49,7 +49,7 @@ test.beforeAll(async () => {
   // Préférences propres (pas de gare favorite au départ) et districts du jour pas encore choisis.
   await pb("PATCH", `/api/collections/users/records/${agentId}`, {
     // Changelog « tout vu » gardé (sinon la fenêtre de mise à jour recouvre l'écran : voir global-setup.ts).
-    preferences: { changelogSeen: ALL_SEEN },
+    preferences: { changelogSeen: ALL_SEEN, tour: TOUR_SEEN },
     duty_day: "",
     duty_districts: [],
   });
@@ -87,7 +87,7 @@ test.afterAll(async () => {
   for (const w of watches?.items ?? [])
     await pb("DELETE", `/api/collections/train_watches/records/${w.id}`);
   await pb("PATCH", `/api/collections/users/records/${agentId}`, {
-    preferences: { changelogSeen: ALL_SEEN },
+    preferences: { changelogSeen: ALL_SEEN, tour: TOUR_SEEN },
   });
   for (const f of fixtures.reverse())
     await pb("DELETE", `/api/collections/${f.col}/records/${f.id}`);

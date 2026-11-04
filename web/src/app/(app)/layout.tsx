@@ -6,6 +6,7 @@ import { AppShell } from "@/components/shell/app-shell";
 import { parseUiCookie, UI_COOKIE } from "@/design/preferences";
 import { pendingRelease, releaseSummary, seenVersion } from "@/lib/changelog";
 import { brusselsDay } from "@/lib/orders/time";
+import { shouldAutoStartTour } from "@/lib/tour/steps";
 import { can, isScreen } from "@/lib/permissions";
 import { userDistricts } from "@/lib/team";
 import { maintenanceState, requireUser } from "@/server/auth";
@@ -36,12 +37,16 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     isScreen(user) || user.impersonatedBy
       ? null
       : pendingRelease(all, seenVersion(user.preferences));
+  // Visite guidée à la première connexion (jamais pour l'Écran ni en « Voir en tant que ») : elle passe avant la fenêtre
+  // « CSM a été mis à jour », qui n'est pas montrée en plus (la visite note la version comme vue).
+  const tour = shouldAutoStartTour(user);
   return (
     <AppShell
+      tour={tour}
       ui={ui}
       roles={await listRoles()}
       version={all[0]?.version ?? null}
-      update={pending ? releaseSummary(pending) : null}
+      update={pending && !tour ? releaseSummary(pending) : null}
       user={{
         id: user.id,
         name: user.name,

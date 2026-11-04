@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
-import { ALL_SEEN } from "./global-setup";
+import { ALL_SEEN, TOUR_SEEN } from "./global-setup";
 import { chooseOption, noHorizontalScroll } from "./helpers";
 
 // Administration › Rôles (rôles v3, lots L4-L5) : créer un rôle à partir de PACO/RCCA, retirer un droit, l'attribuer à un
@@ -41,7 +41,7 @@ async function createAgent(token: string, tag: string) {
       name: `Agent Rôles ${tag}`,
       role: "paco",
       verified: true,
-      preferences: { changelogSeen: ALL_SEEN },
+      preferences: { changelogSeen: ALL_SEEN, tour: TOUR_SEEN },
     }),
   });
   expect(r.ok, await r.clone().text()).toBe(true);
