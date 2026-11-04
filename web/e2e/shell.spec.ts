@@ -38,7 +38,7 @@ test("navigation principale et onglets en routes", async ({ page, isMobile }, te
     const sheet = page.getByRole("dialog", { name: "Plus" });
     await expect(sheet.getByRole("link", { name: "Opérations", exact: true })).toBeVisible();
     await expect(sheet.getByRole("link", { name: "Réseau", exact: true })).toBeVisible();
-    await expect(sheet.getByRole("link", { name: "Ressources", exact: true })).toBeVisible();
+    await expect(sheet.getByRole("link", { name: "Annuaire et ressources", exact: true })).toBeVisible();
     // Module Équipe supprimé ; PACO/RCCA : pas d'administration.
     await expect(sheet.getByRole("link", { name: "Équipe", exact: true })).toHaveCount(0);
     await expect(sheet.getByRole("link", { name: "Administration" })).toHaveCount(0);
@@ -55,7 +55,7 @@ test("navigation principale et onglets en routes", async ({ page, isMobile }, te
       /^Bus et taxis/,
       /^PMR/,
       /^Réseau/,
-      /^Ressources/,
+      /^Annuaire et ressources/,
     ]);
     // Chaque module ouvre sur ce que compte sa pastille : Suivi « À envoyer », Journal.
     await side.getByRole("link", { name: /^Bus et taxis/ }).click();

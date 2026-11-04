@@ -127,7 +127,7 @@ describe("ordre des groupes", () => {
   it("en-tête « Module › Type »", () => {
     expect(paletteHeading("stations")).toBe("Réseau › Gares");
     expect(paletteHeading("suppliers")).toBe("Bus et taxis › Fournisseurs");
-    expect(paletteHeading("team")).toBe("Ressources › Collègues");
+    expect(paletteHeading("team")).toBe("Annuaire et ressources › Collègues");
   });
 });
 

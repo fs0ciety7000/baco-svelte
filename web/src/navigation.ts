@@ -308,7 +308,7 @@ export const MODULES: NavModule[] = [
     id: "ressources",
     section: "reference",
     href: "/ressources",
-    label: "Ressources",
+    label: "Annuaire et ressources",
     icon: Library,
     tabs: [
       {

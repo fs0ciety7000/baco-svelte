@@ -98,11 +98,11 @@ export const PALETTE_GROUPS = {
   relations: { module: "Réseau", label: "Relations" },
   trains: { module: "Réseau", label: "Horaires" },
   ptcar: { module: "Réseau", label: "PtCar" },
-  contacts: { module: "Ressources", label: "Contacts" },
-  procedures: { module: "Ressources", label: "Procédures" },
-  documents: { module: "Ressources", label: "Documents" },
+  contacts: { module: "Annuaire et ressources", label: "Contacts" },
+  procedures: { module: "Annuaire et ressources", label: "Procédures" },
+  documents: { module: "Annuaire et ressources", label: "Documents" },
   ebp: { module: "Réseau", label: "EBP" },
-  team: { module: "Ressources", label: "Collègues" },
+  team: { module: "Annuaire et ressources", label: "Collègues" },
   users: { module: "Administration", label: "Comptes" },
 } as const;
 

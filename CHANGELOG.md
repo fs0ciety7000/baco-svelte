@@ -19,6 +19,7 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 ### Améliorations
 
+- **« Annuaire et ressources »** : nouveau nom du module Ressources dans la barre latérale (contacts, collègues, planning, procédures et documents). Les adresses ne changent pas.
 - Les couleurs vives sont réservées aux statuts (vert, ambre, rouge, bleu, violet) : la marque reste sobre et les alertes se voient mieux.
 - Cartes plus arrondies, boutons et champs harmonisés, entrée active de la barre latérale marquée d'un trait sable.
 - Nouvelles icônes de l'application (onglet du navigateur, écran d'accueil du téléphone) et nouvelle image d'aperçu des liens.

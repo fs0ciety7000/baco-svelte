@@ -49,9 +49,9 @@ export const CHAPTERS: TourChapter[] = [
       {
         id: "modules",
         title: "Les modules de CSM",
-        body: "À gauche, les modules : Temps réel, Journal, Bus et taxis, PMR & Groupes, Réseau, Ressources. Tu ne vois que ceux auxquels tu as accès.",
+        body: "À gauche, les modules : Temps réel, Journal, Bus et taxis, PMR & Groupes, Réseau, Annuaire et ressources. Tu ne vois que ceux auxquels tu as accès.",
         mobileBody:
-          "En bas, les modules principaux : Temps réel, Journal, Bons, PMR. « Plus » ouvre les autres (Réseau, Ressources…).",
+          "En bas, les modules principaux : Temps réel, Journal, Bons, PMR. « Plus » ouvre les autres (Réseau, Annuaire et ressources…).",
         targets: ['[data-tour="nav"]'],
       },
       {
