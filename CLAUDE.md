@@ -1510,6 +1510,14 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   N min » du popup se met en pause quand l'onglet DICOS est caché : c'est le travail de la synchro d'équipe.
 - 2026-11-04 — **Poussé en production** (demande de l'utilisateur) : `csm-prod` = 3d09045 (connexion insensible à la casse,
   synchro DICOS du jour ~10 min ; aucune migration). Déploiement confirmé par l'utilisateur.
+- 2026-11-04 — **Lot de retours** : « Vu » dans la file « À traiter » (`preferences.todoSeen`, impacts et consignes ; notifications
+  marquées lues), widgets de Temps réel en mode « Personnaliser » (`WidgetEditor`, largeur Normal / Large), liens des notifications
+  corrigés (`normalizeNotificationLink`, groupes → `/groupes`, iRail → Perturbations, jour + district + train), onglet PMR « Missions »
+  → « PMR », e-mail de campagne aux couleurs Encre et sable, **Réseau › Zones SPI et Points SPI** (lecture ; tuiles et zones ouvertes à
+  `timetable:read`), Carte PN : `isolate` (filtres derrière Leaflet) + plein écran (`lib/fullscreen.ts`), gares d'Anvers en DNE
+  (graine). **Page de transition BACO** prête sur la branche locale `baco-transition` (non poussée, `BACO_FROZEN=1` sur Vercel au gel ;
+  réécriture `/api-proxy` de `vercel.json` à couper aussi). **Prod** : 10 bons bus « brouillon » passés en « envoyé » à la demande de
+  l'utilisateur (superuser, terminé → envoyé, sauvegarde `pre_envoyes_20261104.zip` avant) ; 4 taxis « brouillon » laissés.
 
 ---
 
