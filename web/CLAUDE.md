@@ -959,6 +959,11 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - Logo : `components/brand/csm-logo.tsx` → `CsmLogo` (symbole + « csm ») et `CsmSymbol`, props `animate` (point de
   correspondance, `.csm-logo-play` / `.csm-logo-dot` dans globals.css, rien en mouvement réduit) et `decorative` (dans un
   lien déjà nommé). Tracés copiés des fichiers maîtres de la charte : ne jamais les redessiner.
+- Modules renommés (4 nov. 2026) : `accueil` = « Temps réel », `commandes` = « Bus et taxis » (`shortLabel` « Bons ») ; ids et
+  adresses inchangés. **Bandeau d'incident** : `liveIncident(user)` (`server/data/incident.ts` : `bus_orders` du jour en
+  « brouillon » avec `otto:read`, `ops_log` urgences + perturbations iRail 6 h avec `journal:read`) → `buildIncident`
+  (`lib/ops/incident.ts`, testé) → `IncidentBanner` (`data-testid="incident-banner"`, CSS `.incident-*` de globals.css, bus
+  animés 3 fois seulement : E2E motion). **`--safe-bottom`** (globals.css) pour toute marge basse.
 - Icônes `public/icons/*`, `src/app/favicon.ico`, `public/brand/og-csm.png` (`node scripts/og-image.mjs` : Chromium de
   `/opt/pw-browsers/chromium` en local si le Playwright du projet ne trouve pas son navigateur).
 

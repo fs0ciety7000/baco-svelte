@@ -170,6 +170,10 @@
   --focus: var(--accent);
   /* Identité CSM « Encre et sable » (4 nov. 2026) : sable du passage du logo, identique dans tous les thèmes. */
   --brand-sable: #c9b48a;
+  /* Marge du bas (barre d'onglets mobile, barre d'actions, Journal, toasts). Chrome Android « bord à bord » fait varier
+     safe-area-inset-bottom quand sa barre d'adresse se replie : la barre d'onglets grandissait puis rétrécissait (« elle
+     saute », 4 nov. 2026). safe-area-max-inset-bottom est stable ; repli sur l'ancienne valeur ailleurs. */
+  --safe-bottom: env(safe-area-max-inset-bottom, env(safe-area-inset-bottom, 0px));
 }
 
 /* Logo CSM (components/brand/csm-logo.tsx) : le point de correspondance suit la ligne du train, prend le passage et
@@ -483,7 +487,7 @@
   }
 
   .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: var(--safe-bottom);
   }
 }
 
@@ -679,4 +683,122 @@ html[data-acting] .fixed.top-12.bottom-0 {
   letter-spacing: 0.04em;
   white-space: nowrap;
   pointer-events: none;
+}
+
+/* Bandeau « Incident en cours » de l'accueil Temps réel (components/dashboard/incident-banner.tsx, 4 nov. 2026) : carte
+   encre dans les deux schémas, couleurs fixes (lisibles sur l'encre quel que soit le thème). L'arc des bus se trace
+   (pathLength = 1), puis deux bus le parcourent trois fois (pas de boucle infinie : E2E motion) ; rien ne bouge en mouvement réduit (arc tracé, bus masqués). */
+.incident-hero {
+  background: #1f1d1a;
+  color: #f4f1ea;
+  border: 1px solid #33302b;
+  box-shadow: var(--shadow-1);
+}
+.incident-muted {
+  color: #b9b1a2;
+}
+.incident-tag {
+  color: #ffb4a9;
+  background: rgb(254 132 119 / 0.14);
+}
+.incident-live {
+  background: #fe8477;
+}
+.incident-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--control-h);
+  padding: 0 1rem;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  font-weight: 600;
+  font-size: var(--fs-body);
+  color: inherit;
+  outline: none;
+}
+.incident-btn:hover {
+  background: rgb(255 255 255 / 0.06);
+}
+.incident-btn:focus-visible {
+  box-shadow: 0 0 0 2px #c9b48a;
+}
+.incident-btn svg {
+  width: 1rem;
+  height: 1rem;
+}
+.incident-btn-primary {
+  background: var(--brand-sable);
+  color: #141311;
+  border-color: transparent;
+}
+.incident-btn-primary:hover {
+  background: #d6c39b;
+}
+.incident-rail {
+  stroke: #8e877b;
+  stroke-width: 2.5;
+}
+.incident-sleeper {
+  stroke: #5f5a51;
+  stroke-width: 3;
+}
+.incident-cut {
+  stroke: #fe8477;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.incident-bypass {
+  fill: none;
+  stroke: var(--brand-sable);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+.incident-station {
+  fill: #1f1d1a;
+  stroke: #f4f1ea;
+  stroke-width: 2.5;
+}
+.incident-label {
+  fill: #f4f1ea;
+  font: 500 12px var(--font-ui, sans-serif);
+}
+.incident-bus {
+  fill: var(--brand-sable);
+  offset-path: path("M60 112 C 110 20, 300 20, 360 112");
+  offset-rotate: 0deg;
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .incident-bypass {
+    stroke-dashoffset: 1;
+    animation: incident-draw 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.3s forwards;
+  }
+  .incident-bus {
+    animation: incident-bus 5s cubic-bezier(0.45, 0, 0.25, 1) 1.8s 3;
+  }
+  .incident-bus-2 {
+    animation-delay: 4.3s;
+  }
+}
+@keyframes incident-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes incident-bus {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  8%,
+  88% {
+    opacity: 1;
+  }
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
 }

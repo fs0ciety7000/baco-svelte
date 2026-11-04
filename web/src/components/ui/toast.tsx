@@ -9,7 +9,7 @@ function Toaster() {
       position="bottom-right"
       duration={4000}
       offset={16}
-      mobileOffset={{ bottom: "calc(env(safe-area-inset-bottom) + 72px)" }}
+      mobileOffset={{ bottom: "calc(var(--safe-bottom) + 72px)" }}
       toastOptions={{
         unstyled: true,
         classNames: {

@@ -6,6 +6,7 @@ import { requireUser } from "@/server/auth";
 import { dashboardStats } from "@/server/data/dashboard";
 import { todayShiftOf } from "@/server/data/quinyx";
 import { impactedMissions, todayPmr } from "@/server/data/impacts";
+import { liveIncident } from "@/server/data/incident";
 import { favoritesOf, latestLog, listNotifications, listPinned } from "@/server/data/ops";
 import { brusselsTime, pbDate } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
@@ -15,7 +16,7 @@ import { parseShift } from "@/lib/shift";
 
 import { Dashboard } from "./dashboard";
 
-export const metadata: Metadata = { title: "Accueil · CSM" };
+export const metadata: Metadata = { title: "Temps réel · CSM" };
 
 export default async function AccueilPage() {
   const user = await requireUser();
@@ -30,13 +31,14 @@ export default async function AccueilPage() {
         kind: qs.kind,
       }
     : null;
-  const [stats, pinned, latest, impacts, today, notifs] = await Promise.all([
+  const [stats, pinned, latest, impacts, today, notifs, incident] = await Promise.all([
     can(user, "otto:read") ? dashboardStats() : null,
     can(user, "journal:read") ? listPinned().catch(() => []) : null,
     can(user, "journal:read") ? latestLog(5).catch(() => []) : null,
     impactedMissions(user).catch(() => []),
     todayPmr(user).catch(() => null),
     listNotifications(20).catch(() => null),
+    liveIncident(user).catch(() => null),
   ]);
   // Widget main courante : épinglées puis dernières entrées (5 au total).
   const log =
@@ -61,6 +63,7 @@ export default async function AccueilPage() {
     <Dashboard
       firstName={firstName}
       stats={stats}
+      incident={incident}
       ops={{
         log,
         favorites: can(user, "live:read") ? favoritesOf(user.preferences) : null,

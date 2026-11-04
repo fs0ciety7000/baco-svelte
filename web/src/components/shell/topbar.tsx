@@ -51,7 +51,7 @@ export function Topbar() {
       <p className="min-w-0 truncate text-body-lg font-semibold tracking-[-0.01em] text-fg md:shrink-0">
         {mod?.label ??
           account.find((l) => pathname === l.href || pathname.startsWith(`${l.href}/`))?.label ??
-          (pathname === CHANGELOG_LINK.href ? CHANGELOG_LINK.label : "Accueil")}
+          (pathname === CHANGELOG_LINK.href ? CHANGELOG_LINK.label : "Temps réel")}
         {adminPage ? (
           <span
             className="hidden font-normal text-fg-muted md:inline"

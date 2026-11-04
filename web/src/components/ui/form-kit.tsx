@@ -246,7 +246,7 @@ function ActionBar({ children, className, ...props }: React.ComponentProps<"div"
   return (
     <div
       className={cn(
-        "sticky bottom-[calc(env(safe-area-inset-bottom)+3.5625rem)] z-20 -mx-4 flex flex-wrap items-center gap-2 border-t border-border bg-[color-mix(in_oklab,var(--surface)_94%,transparent)] px-4 py-2 backdrop-blur md:bottom-0 md:mx-0 md:border md:py-3",
+        "sticky bottom-[calc(var(--safe-bottom)+3.5625rem)] z-20 -mx-4 flex flex-wrap items-center gap-2 border-t border-border bg-[color-mix(in_oklab,var(--surface)_94%,transparent)] px-4 py-2 backdrop-blur md:bottom-0 md:mx-0 md:border md:py-3",
         className,
       )}
       {...props}

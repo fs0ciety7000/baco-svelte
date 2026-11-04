@@ -191,7 +191,7 @@ test("fournisseur et agent de l'équipe", async ({ page, isMobile }) => {
   const input = dialog.getByRole("combobox");
   await input.fill(`Transports ${STATION}`);
   const suppliers = dialog.getByTestId("palette-group-suppliers");
-  await expect(suppliers).toContainText("Commandes › Fournisseurs");
+  await expect(suppliers).toContainText("Bus et taxis › Fournisseurs");
   const supplier = suppliers.getByRole("option", { name: new RegExp(`Transports ${STATION}`) });
   await expect(supplier).toBeVisible();
   // Agent E2E : annuaire de l'équipe (champs de l'annuaire seulement).

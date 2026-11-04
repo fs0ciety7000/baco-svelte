@@ -33,7 +33,9 @@ import {
   type LogDigest,
 } from "@/components/ops/dashboard-widgets";
 import { ShiftWidget, type QuinyxShift } from "@/components/dashboard/shift-widget";
+import { IncidentBanner } from "@/components/dashboard/incident-banner";
 import { KpiStrip, NextPickups, TodoQueue, todoItems } from "@/components/dashboard/todo";
+import type { Incident } from "@/lib/ops/incident";
 import { ModuleTabs } from "@/components/shell/module-tabs";
 import { useShell } from "@/components/shell/shell-context";
 import { Button } from "@/components/ui/button";
@@ -58,11 +60,11 @@ import { LiveRefresh } from "./commandes/live-refresh";
 
 const TITLES: Record<WidgetId, { eyebrow: string; title: string; wide?: boolean }> = {
   service: { eyebrow: "Mon service", title: "Fin de service" },
-  commandes: { eyebrow: "Commandes", title: "Vue du jour", wide: true },
+  commandes: { eyebrow: "Bus et taxis", title: "Vue du jour", wide: true },
   impacts: { eyebrow: "PMR et groupes", title: "Missions impactées", wide: true },
   "pmr-jour": { eyebrow: "PMR et groupes", title: "Aujourd'hui en PMR" },
   mentions: { eyebrow: "Pour toi", title: "Mentions et alertes" },
-  "a-confirmer": { eyebrow: "Commandes", title: "À envoyer", wide: true },
+  "a-confirmer": { eyebrow: "Bus et taxis", title: "À envoyer", wide: true },
   raccourcis: { eyebrow: "Actions", title: "Raccourcis" },
   trains: { eyebrow: "Opérations", title: "Trains perturbés" },
   "main-courante": { eyebrow: "Opérations", title: "Journal" },
@@ -339,11 +341,14 @@ function Widget({
 export function Dashboard({
   firstName,
   stats,
+  incident = null,
   ops,
   initialLayout,
 }: {
   firstName: string;
   stats: DashboardStats | null;
+  /** Incident en cours (bandeau Temps réel, 4 nov. 2026) : `null` quand tout est calme. */
+  incident?: Incident | null;
   ops: OpsDigest;
   initialLayout: DashboardLayout;
 }) {
@@ -433,6 +438,7 @@ export function Dashboard({
       </header>
       {!editing ? (
         <>
+          {incident ? <IncidentBanner incident={incident} /> : null}
           <KpiStrip stats={stats} today={ops.today} impacts={ops.impacts} />
           {/* File « À traiter » ; dès 1280 px, colonne droite « Fin de service » + « Prochaines prises en charge »
               (v4, lot 4). Les widgets restent personnalisables en dessous. */}

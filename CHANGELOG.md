@@ -16,6 +16,12 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 - Cartes plus arrondies, boutons et champs harmonisés, entrée active de la barre latérale marquée d'un trait sable.
 - Nouvelles icônes de l'application (onglet du navigateur, écran d'accueil du téléphone) et nouvelle image d'aperçu des liens.
 - L'ancienne palette « Signal » (pétrole le jour, ambre la nuit) reste disponible dans Affichage › Autres thèmes, avec les autres thèmes.
+- **Accueil → « Temps réel »** et **Commandes → « Bus et taxis »** : les deux modules changent de nom (adresses inchangées, l'onglet mobile reste « Bons »).
+- **Bandeau « Incident en cours »** en haut de Temps réel, seulement quand il se passe quelque chose : bons bus du jour en cours ou urgence au Journal dans les 6 dernières heures. Trajet, motif, bus encore sur la route, voyageurs reportés, urgences et perturbations iRail, avec un schéma de la voie coupée que les bus contournent. Boutons « Suivre les bus » (Suivi du jour) et « Ouvrir le Journal ».
+
+### Corrections
+
+- **Mobile : la barre d'onglets du bas ne « saute » plus** quand la barre d'adresse du navigateur se replie ou réapparaît (Chrome Android) ; même correction pour le Journal, la barre d'actions des bons et les messages en bas d'écran.
 
 ## [2026.11.02] — Copie des réquisitoires bus C3
 

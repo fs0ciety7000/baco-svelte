@@ -79,10 +79,10 @@ export function parsePaletteQuery(input: string): PaletteQuery | null {
 /** Groupes de résultats de la palette, avec leur module (en-tête « Module › Type »). */
 export const PALETTE_GROUPS = {
   live: { module: "Réseau", label: "Trains en direct" },
-  bus: { module: "Commandes", label: "Bons bus" },
-  taxi: { module: "Commandes", label: "Bons taxi" },
-  suppliers: { module: "Commandes", label: "Fournisseurs" },
-  archives: { module: "Commandes", label: "Archives" },
+  bus: { module: "Bus et taxis", label: "Bons bus" },
+  taxi: { module: "Bus et taxis", label: "Bons taxi" },
+  suppliers: { module: "Bus et taxis", label: "Fournisseurs" },
+  archives: { module: "Bus et taxis", label: "Archives" },
   pmr: { module: "PMR", label: "Missions PMR" },
   groups: { module: "PMR", label: "Groupes" },
   journal: { module: "Opérations", label: "Journal" },

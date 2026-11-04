@@ -74,7 +74,7 @@ function TabLink({ module: m, active }: { module: NavModule; active: boolean }) 
 /**
  * Barre d'onglets mobile (< 768 px) : 4 modules (Accueil, Opérations, Bons, PMR ; 14 oct. 2026) + « Plus ». Fond
  * `surface`, trait accent arrondi en haut de l'onglet actif, badges ronds teintés (lot 3 du design v4),
- * safe-area-inset-bottom respectée. « Plus » ouvre les autres modules, l'administration et les Nouveautés.
+ * marge du bas `--safe-bottom` (stable sous Chrome Android, voir globals.css). « Plus » ouvre les autres modules, l'administration et les Nouveautés.
  */
 export function MobileTabBar() {
   const { modules, admin, version } = useShell();

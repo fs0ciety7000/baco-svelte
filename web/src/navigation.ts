@@ -70,7 +70,8 @@ export const MODULES: NavModule[] = [
     id: "accueil",
     section: "travail",
     href: "/",
-    label: "Accueil",
+    // « Temps réel » depuis l'identité du 4 nov. 2026 (ex-Accueil) : le pôle temps réel des correspondances.
+    label: "Temps réel",
     icon: Home,
     mobile: true,
     tabs: [
@@ -129,7 +130,8 @@ export const MODULES: NavModule[] = [
     section: "travail",
     shortLabel: "Bons",
     href: "/commandes/suivi",
-    label: "Commandes",
+    // « Bus et taxis » depuis le 4 nov. 2026 (ex-Commandes) : les transports de remplacement.
+    label: "Bus et taxis",
     icon: Bus,
     mobile: true,
     tabs: [

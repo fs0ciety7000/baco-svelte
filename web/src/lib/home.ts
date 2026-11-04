@@ -2,13 +2,13 @@
 // joignable par « Accueil ». Liste fermée (aucune redirection libre).
 
 export const HOME_CHOICES = [
-  { href: "/", label: "Tableau de bord" },
+  { href: "/", label: "Temps réel" },
   { href: "/pmr", label: "Missions PMR" },
   { href: "/groupes", label: "Groupes" },
   { href: "/operations/journal", label: "Journal" },
   { href: "/operations/journee", label: "Ma journée" },
   { href: "/reseau", label: "Trains en direct" },
-  { href: "/commandes/suivi", label: "Commandes" },
+  { href: "/commandes/suivi", label: "Bus et taxis" },
   { href: "/ressources", label: "Contacts" },
 ] as const;
 

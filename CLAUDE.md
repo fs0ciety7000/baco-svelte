@@ -41,7 +41,7 @@ le 11 oct.** : il ne vit plus que sur `main` (BACO en production) et la branche 
 | 5d | Réseau : PN Infrabel + zones SPI (lot A du plan du 15 oct.) | 🔄 15 oct. (branche `reseau-pn-spi`, non poussée) — 1 290 PN Infrabel (CC0) dont 183 rapprochés des 211 PN BACO, zones SPI des gares (carte COI relevée), Carte PN refaite, admin Zones SPI |
 | 5e | Planificateur de tâches PMR (remplace les classeurs Excel DSO / DSE) | 🔄 15 oct. — P0 (socle, Quinyx gares, dossiers DICOS en attente, extension 1.9.1) + P1 (moteur, vue Jour) livrés sur la branche de session, audit + revue corrigés ; à valider (captures) avant la préversion. Cadrage `docs/design/CADRAGE-PLANIFICATEUR-PMR.md`, règles `docs/design/REGLES-PLANIFICATEUR-PMR.md` |
 | 5c | Horaires Quinyx (Équipe › Planning) | 🔄 1er lot le 14 oct. (branche `claude/quinyx-horaires`, PR vers `csm-preview`) — extension 1.8.0, ingestion, 4 collections, planning, admin, districts du jour proposés, widget « Fin de service » réel ; cadrage `docs/design/CADRAGE-QUINYX.md` |
-| 7b | Identité « Encre et sable » (dépôt `csm-brand`) appliquée au site | 🔄 4 nov. — lots 1-2 (thèmes `jour` / `nuit` repeints, Onest, logo, icônes) sur la branche de session ; incident « Temps réel » et renommages à venir. `docs/DESIGN-DIRECTION.md` § Identité |
+| 7b | Identité « Encre et sable » (dépôt `csm-brand`) appliquée au site | 🔄 4 nov. — préversion : thèmes `jour` / `nuit` repeints, Onest, logo, icônes, modules Temps réel / Bus et taxis, bandeau d'incident, barre mobile stable ; « Correspondances menacées » à cadrer. `docs/DESIGN-DIRECTION.md` § Identité |
 | 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | ✅ 8 oct. — **PRODUCTION en ligne le 10 oct. : https://csm.fs0ciety.org** (`csm-web-prod` + `csm-pocketbase-prod`, environnement Coolify `prod`, branche **`csm-prod`**, données BACO importées le 10 oct., sauvegardes R2) ; **test-csm = preview** (branche de session) ; projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
 | — | Hotfix sécurité BACO (`supabase/migrations/20261008120000_security_hotfix.sql`) | ✅ appliqué par l'utilisateur (SQL Editor) le 8 oct., vérifié : 0 ERROR (36 avant). Suite **non appliquée** : `20261008130000_hotfix_followup.sql` (test NULL de `get_my_role()`) et `20261008140000_pn_data_update_fix.sql` (XSS stocké carte PN), accord requis ; protection des mots de passe compromis encore désactivée |
 
@@ -308,6 +308,8 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
 - (v2) **Tâche planifiée Coolify : commande de 255 caractères au plus** (« Server Error » au-delà) : découper en plusieurs
   tâches exécutées une fois (ex. jeton superuser dans `/tmp/a`, puis appel, puis suppression du fichier), et supprimer
   chaque tâche après sa première exécution (`GET …/scheduled-tasks/<uuid>/executions`).
+- (v2) **Marge du bas : toujours `var(--safe-bottom)`**, jamais `env(safe-area-inset-bottom)` directement : sous Chrome Android
+  « bord à bord », cette dernière change quand la barre d'adresse se replie et tout ce qui est collé en bas saute (4 nov. 2026).
 - (v2) Playwright : un libellé avec astérisque requis (`Arrivée *`) ne répond pas à `getByLabel(…, { exact: true })` ;
   passer par `getByRole(…, { name, exact: true })`.
 
@@ -1449,6 +1451,12 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   Signal conservé en `signal-jour` / `signal-nuit` / `signal-auto` (Autres thèmes), logo `components/brand/csm-logo.tsx` (barre
   latérale, barre du haut mobile, connexion), icônes PWA, favicon et image de partage. Proposés ensuite : bandeau d'incident
   à l'accueil, carte « Correspondances menacées », renommages Accueil → Temps réel, Commandes → Bus et taxis.
+  Suite le même jour (« 1, 3 à faire » + « la barre saute sur mobile ») : modules renommés **Temps réel** (ex-Accueil) et
+  **Bus et taxis** (ex-Commandes ; mobile « Bons »), adresses inchangées ; **bandeau « Incident en cours »**
+  (`lib/ops/incident.ts` pur et testé, `server/data/incident.ts`, `components/dashboard/incident-banner.tsx`) = bons bus du
+  jour « brouillon » + urgences du Journal 6 h (perturbations iRail seules = comptées, pas d'incident) ; **marge du bas
+  `--safe-bottom`** = `env(safe-area-max-inset-bottom)` (Chrome Android bord à bord faisait varier `safe-area-inset-bottom` :
+  barre d'onglets qui sautait). Carte « Correspondances menacées » non faite (source à définir).
 
 ---
 

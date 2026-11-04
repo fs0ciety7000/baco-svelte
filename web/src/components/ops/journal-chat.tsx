@@ -590,9 +590,9 @@ export function JournalChat({
               }
         }
         className={cn(
-          "flex min-h-[26rem] flex-col overflow-hidden rounded-box border border-(--card-frame) bg-bg shadow-rest max-sm:-mx-4 max-sm:rounded-none max-sm:border-x-0 [--journal-gap:calc(env(safe-area-inset-bottom)+5.25rem)] [--journal-top:7.3rem] md:[--journal-gap:1.5rem] md:[--journal-top:5rem]",
+          "flex min-h-[26rem] flex-col overflow-hidden rounded-box border border-(--card-frame) bg-bg shadow-rest max-sm:-mx-4 max-sm:rounded-none max-sm:border-x-0 [--journal-gap:calc(var(--safe-bottom)+5.25rem)] [--journal-top:7.3rem] md:[--journal-gap:1.5rem] md:[--journal-top:5rem]",
           full &&
-            "fixed inset-0 z-[45] min-h-0 rounded-none border-0 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
+            "fixed inset-0 z-[45] min-h-0 rounded-none border-0 pt-[env(safe-area-inset-top)] pb-[var(--safe-bottom)]",
         )}
         data-testid="journal"
       >

@@ -32,8 +32,8 @@ test("navigation principale et onglets en routes", async ({ page, isMobile }, te
   if (isMobile) {
     const bar = page.getByRole("navigation", { name: "Navigation principale" });
     // Navigation v3 (14 oct. 2026) : 4 modules + « Plus » ; libellé court affiché, nom complet annoncé.
-    await expect(bar.getByRole("link")).toHaveText(["Accueil", "Opérations", "Bons", "PMR"]);
-    await expect(bar.getByRole("link", { name: "Commandes", exact: true })).toBeVisible();
+    await expect(bar.getByRole("link")).toHaveText(["Temps réel", "Opérations", "Bons", "PMR"]);
+    await expect(bar.getByRole("link", { name: "Bus et taxis", exact: true })).toBeVisible();
     await bar.getByRole("button", { name: "Plus" }).click();
     const sheet = page.getByRole("dialog", { name: "Plus" });
     await expect(sheet.getByRole("link", { name: "Réseau", exact: true })).toBeVisible();
@@ -48,15 +48,15 @@ test("navigation principale et onglets en routes", async ({ page, isMobile }, te
     const side = page.getByRole("navigation", { name: "Navigation principale" });
     // Les compteurs (non lus, à envoyer…) suivent le libellé du module.
     await expect(side.getByRole("list").getByRole("link")).toHaveText([
-      /^Accueil/,
+      /^Temps réel/,
       /^Opérations/,
-      /^Commandes/,
+      /^Bus et taxis/,
       /^PMR/,
       /^Réseau/,
       /^Ressources/,
     ]);
     // Chaque module ouvre sur ce que compte sa pastille : Suivi « À envoyer », Journal.
-    await side.getByRole("link", { name: /^Commandes/ }).click();
+    await side.getByRole("link", { name: /^Bus et taxis/ }).click();
     await expect(page).toHaveURL(/\/commandes\/suivi$/);
     await side.getByRole("link", { name: /^Opérations/ }).click();
     await expect(page).toHaveURL(/\/operations\/journal$/);
@@ -66,7 +66,7 @@ test("navigation principale et onglets en routes", async ({ page, isMobile }, te
   await page.getByTestId("user-menu-profil").click();
   await expect(page).toHaveURL(/\/profil$/);
   await page.goto("/commandes");
-  const tabs = page.getByRole("navigation", { name: "Onglets Commandes" });
+  const tabs = page.getByRole("navigation", { name: "Onglets Bus et taxis" });
   await expect(tabs.getByRole("link")).toHaveText([
     "Suivi",
     "Bus",
