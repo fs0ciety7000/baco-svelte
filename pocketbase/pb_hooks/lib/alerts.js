@@ -115,11 +115,16 @@ function dicosChangeAlert(app, before, record, kind, auth) {
 		kind === 'groupe'
 			? `groupe de ${after.adults + after.children + after.seniors} pers.`
 			: `${after.pax || 1} × ${after.pmr_type || 'PMR'}`;
-	const link = `${kind === 'groupe' ? '/groupes' : '/pmr'}?du=${after.day}&au=${after.day}`;
+	const base = `${kind === 'groupe' ? '/groupes' : '/pmr'}?du=${after.day}&au=${after.day}`;
 	let sent = 0;
 	for (const c of changes) {
 		const name = ops.DISTRICT_NAME[c.district];
 		if (!name) continue;
+		// Lien vers la ligne (4 nov. 2026) : district de la gare (le filtre par défaut suit les districts du jour de
+		// l'agent), train s'il est connu, annulées affichées pour une annulation (« Masquer les annulées »).
+		let link = `${base}&district=${c.district}`;
+		if (after.train) link += `&q=${encodeURIComponent(String(after.train).replace(/^[A-Z]+\s*/, ''))}`;
+		if (c.change === 'cancelled') link += '&statut=annulee';
 		const title =
 			c.change === 'new'
 				? `DICOS : ${kind === 'groupe' ? 'nouveau groupe' : 'nouvelle mission'} à ${c.station} ${c.time}`

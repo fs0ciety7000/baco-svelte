@@ -275,7 +275,7 @@ export function HandoverView({
             {data.disturbances.slice(0, 10).map((l) => (
               <li key={l.id}>
                 <Link
-                  href={`/operations/journal?entree=${l.id}`}
+                  href={`/operations/perturbations?entree=${l.id}`}
                   className={cn(
                     "flex min-w-0 items-baseline gap-2 rounded-box px-1 py-1 hover:bg-surface-2",
                   )}

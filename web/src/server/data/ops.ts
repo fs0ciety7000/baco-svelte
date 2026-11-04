@@ -4,6 +4,7 @@ import type { RecordModel } from "pocketbase";
 import { z } from "zod";
 
 import { hiddenCategories, hiddenFilter } from "@/lib/notification-prefs";
+import { normalizeNotificationLink } from "@/lib/notification-link";
 import { parseFavorites, type FavoriteStation } from "@/lib/ops/irail";
 import { plainText } from "@/lib/ops/chat-markdown";
 import { LOG_CATEGORIES, type LogCategory } from "@/lib/ops/log";
@@ -512,8 +513,13 @@ export async function listNotifications(
         : "systeme") as Notification["kind"],
       title: str(n.title),
       body: str(n.body),
-      // Lien interne seulement (règle PocketBase + contrôle ici).
-      link: /^\/(?!\/)/.test(str(n.link)) ? str(n.link) : "",
+      // Lien interne seulement (règle PocketBase + contrôle ici), corrigé pour les notifications déjà en base (pages
+      // déplacées, onglet Perturbations, Groupes, jour et district) : cloche, widgets, navigateur et service worker.
+      link: normalizeNotificationLink(str(n.link), str(n.kind), {
+        created: str(n.created),
+        title: str(n.title),
+        body: str(n.body),
+      }),
       readAt: str(n.read_at),
       created: str(n.created),
     })),

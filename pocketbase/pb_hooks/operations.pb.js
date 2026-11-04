@@ -145,7 +145,8 @@ cronAdd('train-watches', '*/2 * * * *', () => {
 				const notified = last.notifiedDelay || 0;
 				const label = w.getString('label') || train;
 				// Trains en direct : module Réseau depuis la navigation v3 (les anciens liens `/operations?train=` sont redirigés).
-				const link = `/reseau?train=${encodeURIComponent(train)}`;
+				// Jour posé : un lien ouvert le lendemain montre le train du bon jour (la page ouvre sinon le jour courant).
+				const link = `/reseau?train=${encodeURIComponent(train)}&jour=${today}`;
 				let msg = '';
 				if (state.cancelled && !last.cancelled) msg = `${label} : suppression signalée`;
 				else if (state.delay >= threshold && state.delay >= notified + (notified ? 10 : 0)) msg = `${label} : +${state.delay} min`;
