@@ -48,6 +48,11 @@ export type NavTab = {
   icon?: LucideIcon;
   /** Compteur du shell porté par l'onglet (barre du haut, onglets mobiles) : clé de `ShellStatus.counts`. */
   count?: ShellCountKey;
+  /**
+   * Onglet masqué des menus et de ⌘K (page encore ouverte par son adresse à qui en a le droit) : Planificateur PMR, en
+   * attente (4 nov. 2026).
+   */
+  hidden?: boolean;
 };
 /** Compteurs du shell (`app/shell-actions.ts`) : bons à envoyer, missions impactées, non lus du Journal. */
 export type ShellCountKey = "commandes" | "pmr" | "journal";
@@ -212,6 +217,8 @@ export const MODULES: NavModule[] = [
         href: "/pmr/planificateur",
         label: "Planificateur",
         permission: "planner:read",
+        // Masqué de la navigation (demande du 4 nov. 2026) : adresse directe seulement, avec `planner:read`.
+        hidden: true,
         keywords: [
           "planning",
           "agents de gare",
@@ -463,13 +470,21 @@ export function tabAllowed(user: PermissionSubject, tab: NavTab): boolean {
 
 /** Modules visibles pour l'agent : un module sans onglet autorisé disparaît (l'Accueil reste). */
 export function visibleModules(user: PermissionSubject): NavModule[] {
-  return MODULES.map((m) => ({ ...m, tabs: m.tabs.filter((t) => tabAllowed(user, t)) }))
+  return MODULES.map((m) => ({
+    ...m,
+    tabs: m.tabs.filter((t) => !t.hidden && tabAllowed(user, t)),
+  }))
     .filter((m) => m.id === "accueil" || m.tabs.length > 0)
     .map((m) =>
       m.tabs.length > 0 && !m.tabs.some((t) => t.href === m.href)
         ? { ...m, href: m.tabs[0]!.href }
         : m,
     );
+}
+
+/** Garde d'une page d'onglet : onglet autorisé, masqué ou non des menus. */
+export function routeAllowed(user: PermissionSubject, href: string): boolean {
+  return MODULES.some((m) => m.tabs.some((t) => t.href === href && tabAllowed(user, t)));
 }
 
 /** Liens du menu du compte visibles pour l'agent. */

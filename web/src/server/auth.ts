@@ -7,7 +7,7 @@ import { z } from "zod";
 import { brusselsDay } from "@/lib/orders/time";
 import { can, isScreen } from "@/lib/permissions";
 import { DUTY_NAME, shiftLabel } from "@/lib/quinyx/model";
-import { accountLinks, visibleModules } from "@/navigation";
+import { accountLinks, routeAllowed } from "@/navigation";
 
 import { dutyShiftOf } from "./data/quinyx";
 import { createPb } from "./pocketbase";
@@ -151,9 +151,7 @@ export async function requireAdmin(): Promise<SessionUser> {
  */
 export async function requireRoute(href: string): Promise<SessionUser> {
   const user = await requireUser();
-  const allowed =
-    visibleModules(user).some((m) => m.tabs.some((t) => t.href === href)) ||
-    accountLinks(user).some((l) => l.href === href);
+  const allowed = routeAllowed(user, href) || accountLinks(user).some((l) => l.href === href);
   if (!allowed) notFound();
   return user;
 }

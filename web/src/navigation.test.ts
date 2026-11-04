@@ -7,6 +7,7 @@ import {
   adminModule,
   MODULES,
   quickActions,
+  routeAllowed,
   visibleModules,
 } from "./navigation";
 
@@ -37,14 +38,7 @@ describe("navigation", () => {
     expect(tabs("journal")).toEqual(["Infos", "Perturbations"]);
     expect(tabs("operations")).toEqual(["Ma journée", "B201"]);
     expect(tabs("commandes")).toEqual(["Suivi", "Bus", "Taxi", "Archives", "Fournisseurs"]);
-    expect(tabs("pmr")).toEqual([
-      "PMR",
-      "Groupes",
-      "Planificateur",
-      "Clients",
-      "Matériel",
-      "Historique",
-    ]);
+    expect(tabs("pmr")).toEqual(["PMR", "Groupes", "Clients", "Matériel", "Historique"]);
     expect(tabs("reseau")).toEqual([
       "Trains en direct",
       "Horaires",
@@ -153,5 +147,15 @@ describe("navigation", () => {
     expect(activeModule("/groupes", mods)?.id).toBe("pmr");
     expect(activeModule("/profil", mods)).toBeUndefined();
     expect(activeModule("/admin/audit", mods)?.id).toBe("admin");
+  });
+
+  it("Planificateur masqué des menus mais ouvert par son adresse avec le droit (4 nov. 2026)", () => {
+    expect(
+      visibleModules({ role: "admin" }).some((m) =>
+        m.tabs.some((t) => t.href === "/pmr/planificateur"),
+      ),
+    ).toBe(false);
+    expect(routeAllowed({ role: "admin" }, "/pmr/planificateur")).toBe(true);
+    expect(routeAllowed({ role: "guest" }, "/pmr/planificateur")).toBe(false);
   });
 });
