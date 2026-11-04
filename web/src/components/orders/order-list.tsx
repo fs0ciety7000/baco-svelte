@@ -1,4 +1,5 @@
 import { FileText } from "lucide-react";
+import { orderRefLabel } from "@/lib/orders/order-ref";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -183,7 +184,7 @@ export function OrderList({
         <Table>
           <THead>
             <tr>
-              <Th>N°</Th>
+              <Th>Commande</Th>
               <Th>Date</Th>
               <Th>Heure</Th>
               <Th>Trajet</Th>
@@ -210,7 +211,7 @@ export function OrderList({
                       href={orderHref(r)}
                       className="after:absolute after:inset-0 focus-visible:outline-1 focus-visible:outline-accent"
                     >
-                      {r.number || "—"}
+                      {orderRefLabel(r.orderRef, r.number)}
                     </Link>
                   </span>
                 </Td>
@@ -236,7 +237,7 @@ export function OrderList({
                         target="_blank"
                         rel="noopener noreferrer"
                         className="relative z-10 inline-flex min-h-11 items-center gap-1 link"
-                        aria-label={`PDF archivé du bon n° ${r.number}`}
+                        aria-label={`PDF archivé du bon ${orderRefLabel(r.orderRef, r.number)}`}
                       >
                         <FileText aria-hidden className="size-4" /> PDF
                       </a>
@@ -270,7 +271,7 @@ export function OrderList({
                     {routeLabel(r)}
                   </span>
                 }
-                meta={`n° ${r.number} · ${formatDay(r.day)}${r.time ? ` ${r.time}` : ""}${r.company ? ` · ${r.company}` : ""}`}
+                meta={`${orderRefLabel(r.orderRef, r.number)} · ${formatDay(r.day)}${r.time ? ` ${r.time}` : ""}${r.company ? ` · ${r.company}` : ""}`}
                 aside={
                   <span className="flex flex-col items-end gap-1">
                     <StatusBadge status={r.status} />

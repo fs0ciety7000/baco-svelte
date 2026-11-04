@@ -56,6 +56,8 @@ import { StartPanel, type StartPanelProps } from "./start-panel";
 import { OrderActionBar } from "./order-action-bar";
 import { useFormDeletion } from "./delete-order";
 import { ArchivedBadge } from "./archived-badge";
+import { CopyButton } from "@/components/pmr/copy";
+import { orderRefLabel } from "@/lib/orders/order-ref";
 import { lineLabel } from "@/lib/lines";
 import { StationInput } from "./station-input";
 import { TrainNumberField } from "./train-field";
@@ -66,6 +68,8 @@ export type BusFormProps = {
   formKey?: string;
   orderId: string | null;
   number: number | null;
+  /** N° de commande généré (`CMD-XXXXXX`), affiché à la place du n° de bon séquentiel. */
+  orderRef?: string | null;
   status: Status;
   statusBeforeCancel: string;
   updated: string | null;
@@ -124,12 +128,14 @@ export function BusForm(props: BusFormProps) {
   });
   const orderId = autosave.id;
   const number = autosave.number ?? props.number;
+  const orderRef = autosave.orderRef ?? props.orderRef ?? null;
   const del = useFormDeletion({
     kind: "bus",
     serverDeletion: props.deletion,
     initialId: props.orderId,
     id: orderId,
     number,
+    orderRef,
     relation: d.relation,
   });
 
@@ -406,8 +412,9 @@ export function BusForm(props: BusFormProps) {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-3">
             <span className="text-h3 font-semibold text-fg tabular" data-testid="order-number">
-              {number ? `C3 n° ${number}` : "Nouveau bon"}
+              {orderRef || number ? `C3 · ${orderRefLabel(orderRef, number)}` : "Nouveau bon"}
             </span>
+            {orderRef ? <CopyButton text={orderRef} /> : null}
             <StatusBadge status={props.status} />
             {props.archived ? <ArchivedBadge /> : null}
           </div>
@@ -431,7 +438,7 @@ export function BusForm(props: BusFormProps) {
         <OrderTicket
           compact
           className="lg:hidden"
-          eyebrow={`Aperçu du bon${number ? ` · C3 n° ${number}` : ""}`}
+          eyebrow={`Aperçu du bon${orderRef || number ? ` · ${orderRefLabel(orderRef, number)}` : ""}`}
           route={`${d.origin || "Origine"} → ${d.destination || "Destination"}`}
           when={busWhen(d)}
           pdfHref={orderId ? `/api/commandes/bus/${orderId}/pdf` : ""}
@@ -915,7 +922,13 @@ export function BusForm(props: BusFormProps) {
       </form>
 
       <aside className="hidden lg:sticky lg:top-20 lg:block" aria-label="Aperçu du bon">
-        <BusPreview draft={d} companyName={company?.name ?? ""} number={number} orderId={orderId} />
+        <BusPreview
+          draft={d}
+          companyName={company?.name ?? ""}
+          number={number}
+          orderRef={orderRef}
+          orderId={orderId}
+        />
       </aside>
 
       <SendDialog
@@ -946,11 +959,13 @@ function BusPreview({
   draft: d,
   companyName,
   number,
+  orderRef,
   orderId,
 }: {
   draft: BusDraft;
   companyName: string;
   number: number | null;
+  orderRef: string | null;
   orderId: string | null;
 }) {
   const active = d.buses.filter((b) => !b.cancelled);
@@ -959,7 +974,7 @@ function BusPreview({
   return (
     <OrderTicket
       data-testid="order-ticket"
-      eyebrow={`Aperçu du bon${number ? ` · C3 n° ${number}` : ""}`}
+      eyebrow={`Aperçu du bon${orderRef || number ? ` · ${orderRefLabel(orderRef, number)}` : ""}`}
       route={`${d.origin || "Origine"} → ${d.destination || "Destination"}`}
       when={busWhen(d)}
       rows={[

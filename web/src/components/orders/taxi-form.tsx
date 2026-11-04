@@ -47,6 +47,8 @@ import { OrderTicket } from "./order-ticket";
 import { StartPanel, type StartPanelProps } from "./start-panel";
 import { OrderActionBar } from "./order-action-bar";
 import { ArchivedBadge } from "./archived-badge";
+import { CopyButton } from "@/components/pmr/copy";
+import { orderRefLabel } from "@/lib/orders/order-ref";
 import { useFormDeletion } from "./delete-order";
 import { StationInput } from "./station-input";
 import { ViaStationsField } from "./via-stations-field";
@@ -70,6 +72,8 @@ export type TaxiFormProps = {
   formKey?: string;
   orderId: string | null;
   number: number | null;
+  /** N° de commande généré (`CMD-XXXXXX`), affiché à la place du n° de bon séquentiel. */
+  orderRef?: string | null;
   status: Status;
   statusBeforeCancel: string;
   updated: string | null;
@@ -126,12 +130,14 @@ export function TaxiForm(props: TaxiFormProps) {
   });
   const orderId = autosave.id;
   const number = autosave.number ?? props.number;
+  const orderRef = autosave.orderRef ?? props.orderRef ?? null;
   const del = useFormDeletion({
     kind: "taxi",
     serverDeletion: props.deletion,
     initialId: props.orderId,
     id: orderId,
     number,
+    orderRef,
   });
 
   const company = reference.companies.find((c) => c.id === d.taxi_company);
@@ -227,8 +233,11 @@ export function TaxiForm(props: TaxiFormProps) {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-3">
             <span className="text-h3 font-semibold text-fg tabular" data-testid="order-number">
-              {number ? `Taxi n° ${number}` : "Nouveau bon taxi"}
+              {orderRef || number
+                ? `Taxi · ${orderRefLabel(orderRef, number)}`
+                : "Nouveau bon taxi"}
             </span>
+            {orderRef ? <CopyButton text={orderRef} /> : null}
             <StatusBadge status={props.status} />
             {props.archived ? <ArchivedBadge /> : null}
           </div>
@@ -251,7 +260,7 @@ export function TaxiForm(props: TaxiFormProps) {
         <OrderTicket
           compact
           className="lg:hidden"
-          eyebrow={`Aperçu du bon${number ? ` · taxi n° ${number}` : ""}`}
+          eyebrow={`Aperçu du bon${orderRef || number ? ` · ${orderRefLabel(orderRef, number)}` : ""}`}
           route={`${d.from_station || "Départ"} → ${d.to_station || "Arrivée"}`}
           when={taxiWhen(d)}
           pdfHref={orderId ? `/api/commandes/taxi/${orderId}/pdf` : ""}
@@ -591,7 +600,7 @@ export function TaxiForm(props: TaxiFormProps) {
       <aside className="hidden lg:sticky lg:top-20 lg:block" aria-label="Aperçu du bon">
         <OrderTicket
           data-testid="order-ticket"
-          eyebrow={`Aperçu du bon${number ? ` · taxi n° ${number}` : ""}`}
+          eyebrow={`Aperçu du bon${orderRef || number ? ` · ${orderRefLabel(orderRef, number)}` : ""}`}
           route={`${d.from_station || "Départ"} → ${d.to_station || "Arrivée"}`}
           when={taxiWhen(d)}
           rows={[

@@ -95,6 +95,39 @@ try {
 		body: { reason: 'Test règles modifié' }
 	});
 	check('agent modifie sa commande', upd.status === 200 && upd.json.reason === 'Test règles modifié', `HTTP ${upd.status}`);
+	// N° de commande (`order_ref`, 4 nov. 2026) : tiré par le serveur, jamais choisi ni modifié par le client.
+	const REF = /^CMD-[0-9A-HJKMNP-TV-Z]{6}$/;
+	check('bon bus : n° de commande généré', REF.test(order.json?.order_ref ?? ''), `${order.json?.order_ref}`);
+	const refForged = await api('POST', '/api/collections/bus_orders/records', {
+		token: u.token,
+		body: { status: 'brouillon', reason: 'Réf. forgée', created_by: u.id, order_ref: 'CMD-AAAAAA' }
+	});
+	check(
+		'bon bus : n° de commande du client ignoré à la création',
+		refForged.status === 200 && REF.test(refForged.json.order_ref) && refForged.json.order_ref !== 'CMD-AAAAAA',
+		`HTTP ${refForged.status} ${refForged.json?.order_ref}`
+	);
+	const refDup = await api('POST', '/api/collections/bus_orders/records', {
+		token: u.token,
+		body: { status: 'brouillon', reason: 'Copie', created_by: u.id, order_ref: order.json?.order_ref }
+	});
+	check(
+		'bon bus : une copie reçoit un n° de commande neuf',
+		refDup.status === 200 && REF.test(refDup.json.order_ref) && refDup.json.order_ref !== order.json?.order_ref,
+		`HTTP ${refDup.status}`
+	);
+	const refUpd = await api('PATCH', `/api/collections/bus_orders/records/${order.json.id}`, {
+		token: u.token,
+		body: { order_ref: 'CMD-BBBBBB', reason: 'Test règles modifié' }
+	});
+	check(
+		'bon bus : n° de commande non modifiable',
+		refUpd.status >= 400 || refUpd.json?.order_ref === order.json?.order_ref,
+		`HTTP ${refUpd.status} ${refUpd.json?.order_ref}`
+	);
+	const refAdm = await api('PATCH', `/api/collections/bus_orders/records/${order.json.id}`, { token: root, body: { order_ref: 'CMD-CCCCCC' } });
+	check('bon bus : n° de commande non modifiable (superuser)', refAdm.json?.order_ref === order.json?.order_ref, `HTTP ${refAdm.status} ${refAdm.json?.order_ref}`);
+	for (const r of [refForged, refDup]) if (r.json?.id) { await api('DELETE', `/api/collections/bus_orders/records/${r.json.id}`, { token: root }); auditIds.push(r.json.id); }
 	// Depuis le 14 oct. 2026, le créateur supprime son bon pendant 8 h (contrôles dédiés plus bas) : un AUTRE agent, non.
 	const del = await api('DELETE', `/api/collections/bus_orders/records/${order.json.id}`, { token: roles.moderator.token });
 	check("agent ne supprime pas le bon d'un autre", del.status >= 400, `HTTP ${del.status}`);
@@ -253,6 +286,9 @@ try {
 		body: { status: 'brouillon', created_by: u.id, to_station: 'Test' }
 	});
 	check('agent crée une commande taxi', tx.status === 200 && tx.json.number > 0, `HTTP ${tx.status}`);
+	check('bon taxi : n° de commande généré', /^CMD-[0-9A-HJKMNP-TV-Z]{6}$/.test(tx.json?.order_ref ?? ''), `${tx.json?.order_ref}`);
+	const txRef = await api('PATCH', `/api/collections/taxi_orders/records/${tx.json.id}`, { token: u.token, body: { order_ref: 'CMD-DDDDDD' } });
+	check('bon taxi : n° de commande non modifiable', txRef.status >= 400 || txRef.json?.order_ref === tx.json?.order_ref, `HTTP ${txRef.status}`);
 	const txs = await api('POST', '/api/collections/taxi_orders/records', {
 		token: u.token,
 		body: { status: 'brouillon', created_by: roles.admin.id }

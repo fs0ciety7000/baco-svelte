@@ -2,6 +2,7 @@
 // partagée par le serveur (`app/search-actions.ts`) et testée : lecture de la saisie (n° de train, relation, ligne,
 // abréviation de gare), ordre des groupes selon ce que la saisie ressemble le plus, rangement des gares.
 
+import { orderRefQuery } from "@/lib/orders/order-ref";
 import { foldStation } from "@/lib/stations/search";
 
 /** Ce que la saisie peut désigner (plusieurs lectures à la fois : « L36 » = ligne 36 ET relation L36). */
@@ -12,6 +13,8 @@ export type PaletteQuery = {
   trainNumber: number | null;
   /** N° de bon / de taxi (1 à 6 chiffres). */
   orderNumber: number | null;
+  /** N° de commande (`CMD-7K4P2M`, complet ou partiel) : forme à chercher dans `order_ref`. */
+  orderRef: string | null;
   /** Ligne d'infrastructure normalisée (« 96 », « 124A »). */
   line: string | null;
   /** Vrai si la saisie est explicitement une ligne (« L.96 », « L 96 ») : pas d'autre lecture. */
@@ -39,6 +42,7 @@ export function parsePaletteQuery(input: string): PaletteQuery | null {
     q,
     trainNumber: digits && q.length >= 2 && q.length <= 5 && n > 0 ? n : null,
     orderNumber: digits && q.length <= 6 && n > 0 ? n : null,
+    orderRef: orderRefQuery(q),
     line: null,
     lineOnly: false,
     relation: null,
@@ -72,7 +76,8 @@ export function parsePaletteQuery(input: string): PaletteQuery | null {
     out.text = false;
     return out;
   }
-  if (/^[A-Z]{2,5}$/i.test(q)) out.abbr = q.toUpperCase();
+  // « CMD… » : un n° de commande, pas une abréviation de gare.
+  if (/^[A-Z]{2,5}$/i.test(q) && !out.orderRef) out.abbr = q.toUpperCase();
   return out;
 }
 
@@ -134,6 +139,7 @@ const DEFAULT_ORDER: PaletteGroupId[] = [
  */
 export function paletteGroupOrder(p: PaletteQuery): PaletteGroupId[] {
   const first: PaletteGroupId[] = [];
+  if (p.orderRef) first.push("bus", "taxi");
   if (p.relation) first.push("relations");
   if (p.lineOnly || (p.line && !p.trainNumber && !p.relation)) first.push("lines");
   if (p.trainNumber) first.push("live", "trains", "bus", "taxi", "pmr", "groups", "pn");

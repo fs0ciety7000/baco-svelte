@@ -12,6 +12,7 @@ const bus = (id: string, day: string) =>
     status: "termine",
     relation: id === "b1" ? "TC_2026-1012-01" : "",
     number: id === "b1" ? 529 : 0,
+    order_ref: id === "b1" ? "CMD-7K4P2M" : "",
     bus_count: 2,
     ended_at: "",
   }) as never;
@@ -82,7 +83,7 @@ describe("todoItems", () => {
       severity: "warn",
     });
     expect(items.find((i) => i.key === "bus-b1")).toMatchObject({
-      title: "Bon C3 n° 529 terminé, à envoyer à la société",
+      title: "Bon C3 CMD-7K4P2M terminé, à envoyer à la société",
       code: "TC_2026-1012-01",
       detail: "Mons → Namur · 2 bus",
       severity: "info",

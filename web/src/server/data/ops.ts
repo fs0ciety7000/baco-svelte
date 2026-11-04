@@ -1,5 +1,6 @@
 import "server-only";
 
+import { orderRefLabel } from "@/lib/orders/order-ref";
 import type { RecordModel } from "pocketbase";
 import { z } from "zod";
 
@@ -76,7 +77,7 @@ function links(r: RecordModel): LinkedObject[] {
     out.push({
       kind: "bus",
       id: bus.id,
-      label: `Bus C3 n° ${num(bus.number) || "—"} · ${str(bus.origin) || "?"} → ${str(bus.destination) || "?"}`,
+      label: `Bus C3 ${orderRefLabel(str(bus.order_ref), num(bus.number))} · ${str(bus.origin) || "?"} → ${str(bus.destination) || "?"}`,
       href: `/commandes/bus/${bus.id}`,
     });
   else if (str(r.bus_order))
@@ -86,7 +87,7 @@ function links(r: RecordModel): LinkedObject[] {
     out.push({
       kind: "taxi",
       id: taxi.id,
-      label: `Taxi n° ${num(taxi.number) || "—"} · ${str(taxi.from_station) || "?"} → ${str(taxi.to_station) || "?"}`,
+      label: `Taxi ${orderRefLabel(str(taxi.order_ref), num(taxi.number))} · ${str(taxi.from_station) || "?"} → ${str(taxi.to_station) || "?"}`,
       href: `/commandes/taxi/${taxi.id}`,
     });
   else if (str(r.taxi_order))
@@ -400,29 +401,38 @@ export async function searchLinkables(kind: LinkedObject["kind"], q: string): Pr
     if (kind === "bus") {
       const res = await pb.collection("bus_orders").getList(1, 8, {
         filter: term
-          ? pb.filter("(number = {:n} || origin ~ {:q} || destination ~ {:q})", { n, q: term })
+          ? pb.filter(
+              "(number = {:n} || order_ref ~ {:q} || origin ~ {:q} || destination ~ {:q})",
+              {
+                n,
+                q: term,
+              },
+            )
           : "",
         sort: "-order_date,-number",
-        fields: "id,number,origin,destination",
+        fields: "id,number,order_ref,origin,destination",
       });
       return res.items.map((b) => ({
         kind,
         id: b.id,
-        label: `Bus C3 n° ${num(b.number)} · ${str(b.origin)} → ${str(b.destination)}`,
+        label: `Bus C3 ${orderRefLabel(str(b.order_ref), num(b.number))} · ${str(b.origin)} → ${str(b.destination)}`,
       }));
     }
     if (kind === "taxi") {
       const res = await pb.collection("taxi_orders").getList(1, 8, {
         filter: term
-          ? pb.filter("(number = {:n} || from_station ~ {:q} || to_station ~ {:q})", { n, q: term })
+          ? pb.filter(
+              "(number = {:n} || order_ref ~ {:q} || from_station ~ {:q} || to_station ~ {:q})",
+              { n, q: term },
+            )
           : "",
         sort: "-trip_at",
-        fields: "id,number,from_station,to_station",
+        fields: "id,number,order_ref,from_station,to_station",
       });
       return res.items.map((t) => ({
         kind,
         id: t.id,
-        label: `Taxi n° ${num(t.number)} · ${str(t.from_station)} → ${str(t.to_station)}`,
+        label: `Taxi ${orderRefLabel(str(t.order_ref), num(t.number))} · ${str(t.from_station)} → ${str(t.to_station)}`,
       }));
     }
     if (kind === "pmr") {

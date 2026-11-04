@@ -38,6 +38,15 @@ describe("parsePaletteQuery", () => {
     expect(parsePaletteQuery("0000")!.trainNumber).toBeNull();
   });
 
+  it("n° de commande (CMD-…) : bons bus et taxi en tête, pas une abréviation de gare", () => {
+    const p = parsePaletteQuery("cmd-7k4p")!;
+    expect(p.orderRef).toBe("CMD-7K4P");
+    expect(p.abbr).toBeNull();
+    expect(paletteGroupOrder(p).slice(0, 2)).toEqual(["bus", "taxi"]);
+    expect(parsePaletteQuery("CMD")!.abbr).toBeNull();
+    expect(parsePaletteQuery("Mons")!.orderRef).toBeNull();
+  });
+
   it("« L.96 », « L 96 », « l-124a » : ligne seulement", () => {
     for (const [q, line] of [
       ["L.96", "96"],

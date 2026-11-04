@@ -145,6 +145,31 @@ function nextNumber(app, table) {
 	return row.n;
 }
 
+/**
+ * N° de commande (`order_ref`, 4 nov. 2026) : identifiant aléatoire de chaque bon bus ou taxi, indépendant du n° TC
+ * (`relation`, saisi par l'agent) et du n° de bon séquentiel (`number`). Format `CMD-` + 6 caractères de l'alphabet de
+ * Crockford sans 0 / 1 (ni I, L, O, U) : lisible au téléphone. Unique sur les DEUX collections (≈ 7 × 10⁸ valeurs).
+ */
+const REF_ALPHABET = '23456789ABCDEFGHJKMNPQRSTVWXYZ';
+const REF_PATTERN = /^CMD-[23456789ABCDEFGHJKMNPQRSTVWXYZ]{6}$/;
+
+function refTaken(app, ref) {
+	const row = new DynamicModel({ n: 0 });
+	app.db()
+		.newQuery('SELECT (SELECT COUNT(*) FROM bus_orders WHERE order_ref = {:r}) + (SELECT COUNT(*) FROM taxi_orders WHERE order_ref = {:r}) AS n')
+		.bind({ r: ref })
+		.one(row);
+	return row.n > 0;
+}
+
+function newOrderRef(app) {
+	for (let i = 0; i < 12; i++) {
+		const ref = 'CMD-' + $security.randomStringWithAlphabet(6, REF_ALPHABET);
+		if (!refTaken(app, ref)) return ref;
+	}
+	throw new Error('N° de commande : aucune valeur libre après 12 essais.');
+}
+
 /** Nombre de bons qui citent une société (bus : `bus_orders.company`, taxi : `taxi_orders.taxi_company`). */
 function companyUses(app, collection, id) {
 	const ref = collection === 'bus_companies' ? ['bus_orders', 'company'] : ['taxi_orders', 'taxi_company'];
@@ -182,4 +207,4 @@ function checkDelete(record, auth) {
 	}
 }
 
-module.exports = { checkDelete, DELETE_WINDOW_MS, checkTransition, stamp, writeEvent, nextNumber, recipient, isCoordinator, companyUses, TRANSITIONS, COORDINATOR };
+module.exports = { newOrderRef, REF_ALPHABET, REF_PATTERN, checkDelete, DELETE_WINDOW_MS, checkTransition, stamp, writeEvent, nextNumber, recipient, isCoordinator, companyUses, TRANSITIONS, COORDINATOR };

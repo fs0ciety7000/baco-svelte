@@ -1,5 +1,6 @@
 import "server-only";
 
+import { orderRefLabel } from "@/lib/orders/order-ref";
 import {
   PDFDocument,
   rgb,
@@ -30,13 +31,13 @@ export type PdfContext = {
 };
 
 export type BusPdfDetail = {
-  meta: Pick<OrderMeta, "number" | "status">;
+  meta: Pick<OrderMeta, "number" | "status"> & { orderRef?: string };
   draft: BusDraft;
   company: { name: string; email: string; phone: string; address: string } | null;
 };
 
 export type TaxiPdfDetail = {
-  meta: Pick<OrderMeta, "number" | "status">;
+  meta: Pick<OrderMeta, "number" | "status"> & { orderRef?: string };
   draft: TaxiDraft;
   company: Pick<TaxiCompany, "name" | "emails" | "phones" | "addresses"> | null;
   client: Pick<PmrClient, "lastName" | "firstName" | "type"> | null;
@@ -426,11 +427,12 @@ function busTable(l: Layout, d: BusDraft, drivers: PdfContext["drivers"]) {
 
 export async function busOrderPdf(detail: BusPdfDetail, ctx: PdfContext): Promise<Uint8Array> {
   const d = detail.draft;
-  const n = detail.meta.number;
+  // N° de commande (4 nov. 2026) à la place du n° de bon séquentiel (titre, pied de page).
+  const n = orderRefLabel(detail.meta.orderRef, detail.meta.number);
   const office = officeFor(d.district);
   const { doc, font, l, at } = await setup(
-    `Réquisitoire bus C3 n° ${n}`,
-    `Réquisitoire bus C3 n° ${n}`,
+    `Réquisitoire bus C3 ${n}`,
+    `Réquisitoire bus C3 ${n}`,
     ctx,
   );
   const c = detail.company;
@@ -453,6 +455,8 @@ export async function busOrderPdf(detail: BusPdfDetail, ctx: PdfContext): Promis
   const relationLabel = d.c3_type === 3 ? "N° de commande / BNX" : "Relation";
   const stops = busStops(d);
   l.section("Service demandé");
+  // N° de commande généré par CSM (4 nov. 2026), indépendant du n° TC (`relation`, ligne inchangée ci-dessous).
+  if (detail.meta.orderRef) l.field("N° de commande", detail.meta.orderRef, { bold: true });
   l.field("Date de circulation", formatLongDay(d.order_date), { bold: true });
   l.field("Heure d'appel", d.call_time || "—");
   l.field(
@@ -487,7 +491,7 @@ export async function busOrderPdf(detail: BusPdfDetail, ctx: PdfContext): Promis
   l.field("N° SAP de la commande (PO)", "4522 944 778");
   l.field(relationLabel, d.relation);
 
-  footer(doc, font, at, `Réquisitoire C3 n° ${n}`);
+  footer(doc, font, at, `Réquisitoire C3 ${n}`);
   return doc.save();
 }
 
@@ -498,10 +502,10 @@ const when = (day: string, time: string) => `${formatLongDay(day)}${time ? ` à 
 
 export async function taxiOrderPdf(detail: TaxiPdfDetail, ctx: PdfContext): Promise<Uint8Array> {
   const d = detail.draft;
-  const n = detail.meta.number;
+  const n = orderRefLabel(detail.meta.orderRef, detail.meta.number);
   const s = detail.snapshot;
   const office = officeFor(d.district);
-  const { doc, font, l, at } = await setup(`Commande taxi n° ${n}`, `Commande taxi n° ${n}`, ctx);
+  const { doc, font, l, at } = await setup(`Commande taxi ${n}`, `Commande taxi ${n}`, ctx);
   const c = detail.company;
   const emails = parseEmails([...(c?.emails ?? []), d.taxi_email]);
   header(l, office, ctx.agentName, {
@@ -543,6 +547,7 @@ export async function taxiOrderPdf(detail: TaxiPdfDetail, ctx: PdfContext): Prom
   }
 
   l.section("Référence et motif");
+  if (detail.meta.orderRef) l.field("N° de commande", detail.meta.orderRef, { bold: true });
   if (!d.is_pmr || d.relation_number) l.field("Référence / relation", d.relation_number);
   l.field("Motif", d.reason);
 
@@ -583,7 +588,7 @@ export async function taxiOrderPdf(detail: TaxiPdfDetail, ctx: PdfContext): Prom
   }
   l.y -= 52;
 
-  footer(doc, font, at, `Commande taxi n° ${n}`);
+  footer(doc, font, at, `Commande taxi ${n}`);
   return doc.save();
 }
 

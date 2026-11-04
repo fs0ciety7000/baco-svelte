@@ -1,5 +1,6 @@
 "use client";
 
+import { orderRefLabel } from "@/lib/orders/order-ref";
 import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -113,7 +114,7 @@ export function TrackingBoard({
         <Table>
           <THead>
             <tr>
-              <Th>N°</Th>
+              <Th>Commande</Th>
               <Th>Date</Th>
               <Th>Heure</Th>
               <Th>Trajet</Th>
@@ -149,9 +150,9 @@ export function TrackingBoard({
                         setActive(i);
                         show(r);
                       }}
-                      aria-label={`Ouvrir la commande ${r.kind} n° ${r.number}`}
+                      aria-label={`Ouvrir la commande ${r.kind} ${orderRefLabel(r.orderRef, r.number)}`}
                     >
-                      {r.number || "—"}
+                      {orderRefLabel(r.orderRef, r.number)}
                     </button>
                   </span>
                 </Td>
@@ -201,7 +202,7 @@ export function TrackingBoard({
                     {r.origin || "?"} → {r.destination || "?"}
                   </span>
                 }
-                meta={`n° ${r.number} · ${formatDay(r.day)}${r.company ? ` · ${r.company}` : ""}${showSince && r.endedAt ? ` · ${sinceLabel(pbDate(r.endedAt) ?? new Date())}` : ""}`}
+                meta={`${orderRefLabel(r.orderRef, r.number)} · ${formatDay(r.day)}${r.company ? ` · ${r.company}` : ""}${showSince && r.endedAt ? ` · ${sinceLabel(pbDate(r.endedAt) ?? new Date())}` : ""}`}
                 aside={<StatusBadge status={r.status} />}
               />
             </button>
@@ -219,7 +220,7 @@ export function TrackingBoard({
         }}
         eyebrow={
           open
-            ? `${open.kind === "bus" ? "Bus C3" : open.isPmr ? "Taxi PMR" : "Taxi"} n° ${open.number}`
+            ? `${open.kind === "bus" ? "Bus C3" : open.isPmr ? "Taxi PMR" : "Taxi"} · ${orderRefLabel(open.orderRef, open.number)}`
             : undefined
         }
         title={open ? `${open.origin || "?"} → ${open.destination || "?"}` : "Commande"}

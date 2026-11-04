@@ -25,6 +25,8 @@ const busOrderSchema = z.object({
   bus_count: z.number().default(0),
   /** N° C3 (accueil « À traiter », v4). */
   number: z.number().default(0),
+  /** N° de commande généré (`CMD-XXXXXX`), affiché à la place de `number`. */
+  order_ref: z.string().default(""),
   /** Fin du service (bus démobilisés) : ancienneté du bon à envoyer. */
   ended_at: z.string().default(""),
   created: z.string(),

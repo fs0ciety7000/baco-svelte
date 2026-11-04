@@ -235,7 +235,11 @@ test("bus : création, enregistrement automatique, fin, envoi", async ({ page },
   await expect(page.getByTestId("autosave")).toHaveAttribute("data-state", "saved", {
     timeout: 10_000,
   });
-  const number = /n° (\d+)/.exec((await page.getByTestId("order-number").textContent()) ?? "")?.[1];
+  // N° de commande généré par le serveur (4 nov. 2026), affiché à la place du n° de bon séquentiel.
+  const number = /CMD-[0-9A-Z]{6}/.exec(
+    (await page.getByTestId("order-number").textContent()) ?? "",
+  )?.[0];
+  expect(number).toMatch(/^CMD-[0-9A-HJKMNP-TV-Z]{6}$/);
   // Même route après création (pas de remontage du formulaire), l'identifiant passe dans ?id=.
   await expect(page).toHaveURL(/\/commandes\/nouveau\?id=[a-z0-9]{15}&k=[a-z0-9]{8}$/);
   const id = new URL(page.url()).searchParams.get("id");
@@ -566,9 +570,11 @@ test("taxi PMR : deux gares via (ordonnées) et n° de dossier", async ({ page }
 
   // Repris dans le panneau du Suivi (trajet complet + n° de dossier).
   if (p === "desktop") {
-    const n = /n° (\d+)/.exec((await page.getByTestId("order-number").textContent()) ?? "")?.[1];
+    const n = /CMD-[0-9A-Z]{6}/.exec(
+      (await page.getByTestId("order-number").textContent()) ?? "",
+    )?.[0];
     await page.goto("/commandes/suivi?vue=en-cours&type=taxi");
-    await page.getByRole("button", { name: `Ouvrir la commande taxi n° ${n}` }).click();
+    await page.getByRole("button", { name: `Ouvrir la commande taxi ${n}` }).click();
     const panel = page.getByTestId("order-panel");
     await expect(panel).toContainText("Mons → Frameries → Ghlin → Tournai");
     await expect(panel).toContainText("2026-10-14-0134");
@@ -587,7 +593,9 @@ test("suppression d'un bon par son créateur (confirmation, retour à la liste)"
     timeout: 10_000,
   });
   const id = new URL(page.url()).searchParams.get("id") ?? "";
-  const n = /n° (\d+)/.exec((await page.getByTestId("order-number").textContent()) ?? "")?.[1];
+  const n = /CMD-[0-9A-Z]{6}/.exec(
+    (await page.getByTestId("order-number").textContent()) ?? "",
+  )?.[0];
   fixtures.push({ col: "taxi_orders", id });
   // Fiche rechargée : droit calculé par le serveur.
   await page.goto(`/commandes/taxi/${id}`);
@@ -606,7 +614,7 @@ test("suppression d'un bon par son créateur (confirmation, retour à la liste)"
     await page.getByTestId("sheet-delete-order").click();
   }
   await expect(page.getByTestId("delete-order-question")).toHaveText(
-    `Supprimer définitivement le bon taxi n° ${n} ?`,
+    `Supprimer définitivement le bon taxi ${n} ?`,
   );
   if (p === "desktop") await page.screenshot({ path: `${SHOTS}/supprimer-confirmation-${p}.png` });
   await page.getByTestId("delete-order-confirm").click();
@@ -640,7 +648,7 @@ test("bon envoyé il y a plus de 30 jours : dans Archives, plus dans le Suivi", 
   await expect(page.getByTestId("orders-count")).toHaveText(/^\s*0\s+commandes/);
   await page.goto("/commandes/suivi?vue=toutes&type=taxi");
   await expect(
-    page.getByRole("button", { name: `Ouvrir la commande taxi n° ${old.number}` }),
+    page.getByRole("button", { name: `Ouvrir la commande taxi ${old.order_ref}` }),
   ).toHaveCount(0);
   await page.goto("/commandes/archives");
   const list = page.getByTestId("archived-orders");

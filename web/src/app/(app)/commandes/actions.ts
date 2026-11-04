@@ -118,7 +118,7 @@ export async function saveBusOrder(
   id: string | null,
   input: unknown,
   expectedUpdated?: string,
-): Promise<ActionResult<{ id: string; number: number; updated: string }>> {
+): Promise<ActionResult<{ id: string; number: number; orderRef: string; updated: string }>> {
   try {
     const user = await writer("bus", id ? "update" : "write");
     const draft = busDraftSchema.parse(input);
@@ -135,7 +135,12 @@ export async function saveBusOrder(
           .create({ ...body, status: "brouillon", created_by: user.id });
     return {
       ok: true,
-      data: { id: r.id, number: r.number as number, updated: r.updated as string },
+      data: {
+        id: r.id,
+        number: r.number as number,
+        orderRef: String(r.order_ref ?? ""),
+        updated: r.updated as string,
+      },
     };
   } catch (e) {
     return fail(e);
@@ -207,7 +212,7 @@ export async function saveTaxiOrder(
   id: string | null,
   input: unknown,
   expectedUpdated?: string,
-): Promise<ActionResult<{ id: string; number: number; updated: string }>> {
+): Promise<ActionResult<{ id: string; number: number; orderRef: string; updated: string }>> {
   try {
     const user = await writer("taxi", id ? "update" : "write");
     const draft = taxiDraftSchema.parse(input);
@@ -227,7 +232,12 @@ export async function saveTaxiOrder(
           .create({ ...body, status: "brouillon", created_by: user.id });
     return {
       ok: true,
-      data: { id: r.id, number: r.number as number, updated: r.updated as string },
+      data: {
+        id: r.id,
+        number: r.number as number,
+        orderRef: String(r.order_ref ?? ""),
+        updated: r.updated as string,
+      },
     };
   } catch (e) {
     return fail(e);

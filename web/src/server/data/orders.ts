@@ -15,6 +15,7 @@ import {
   type TaxiDraft,
 } from "@/lib/orders/schemas";
 import { archiveCutoff, isArchivedOrder, orderClosedAt } from "@/lib/orders/archive";
+import { orderDeleteLabel, orderRefQuery } from "@/lib/orders/order-ref";
 import { isStatus, orderDeletion, type OrderKind, type Status } from "@/lib/orders/status";
 import { viaList } from "@/lib/orders/via";
 import { foldStation, type StationRef } from "@/lib/stations/search";
@@ -71,6 +72,8 @@ export type OrderMeta = {
   kind: OrderKind;
   id: string;
   number: number;
+  /** N° de commande généré par le serveur (`CMD-XXXXXX`), indépendant du n° TC ; vide si absent. */
+  orderRef: string;
   status: Status;
   statusBeforeCancel: string;
   cancelReason: string;
@@ -99,6 +102,7 @@ function meta(kind: OrderKind, r: RecordModel): OrderMeta {
     kind,
     id: r.id,
     number: num(r.number),
+    orderRef: str(r.order_ref),
     status: isStatus(r.status) ? r.status : "brouillon",
     statusBeforeCancel: str(r.status_before_cancel),
     cancelReason: str(r.cancel_reason),
@@ -141,12 +145,7 @@ export function deletionFor(
     wasSent: events.some((e) => e.to === "envoye"),
   });
   if (!d) return null;
-  const label =
-    m.kind === "bus"
-      ? /^TC_/i.test(relation.trim())
-        ? relation.trim()
-        : `bus n° ${m.number}`
-      : `taxi n° ${m.number}`;
+  const label = orderDeleteLabel(m.kind, m.orderRef, m.number, relation);
   return { ...d, label };
 }
 
@@ -328,6 +327,8 @@ export type OrderRow = {
   kind: OrderKind;
   id: string;
   number: number;
+  /** N° de commande généré (`CMD-XXXXXX`). */
+  orderRef: string;
   status: Status;
   day: string;
   time: string;
@@ -379,6 +380,7 @@ function busRow(r: RecordModel): OrderRow {
     kind: "bus",
     id: r.id,
     number: num(r.number),
+    orderRef: str(r.order_ref),
     status: isStatus(r.status) ? r.status : "brouillon",
     day: str(r.order_date).slice(0, 10),
     time: firstPlanned || str(r.call_time).slice(0, 5),
@@ -413,6 +415,7 @@ function taxiRow(r: RecordModel, canPmr = false): OrderRow {
     kind: "taxi",
     id: r.id,
     number: num(r.number),
+    orderRef: str(r.order_ref),
     status: isStatus(r.status) ? r.status : "brouillon",
     day: at.day,
     time: at.time,
@@ -537,6 +540,8 @@ function buildFilter(
       ...fields.map((f) => pb.filter(`${f} ~ {:q}`, { q: p.q })),
     ];
     if (String(n) === p.q) ors.push(pb.filter("number = {:n}", { n }));
+    const ref = orderRefQuery(p.q);
+    if (ref) ors.push(pb.filter("order_ref ~ {:r}", { r: ref }));
     parts.push(`(${ors.join(" || ")})`);
   }
   return parts.map((x) => `(${x})`).join(" && ");
@@ -568,8 +573,8 @@ export async function listOrders(
         expand: kind === "bus" ? "company,created_by" : "taxi_company,created_by",
         fields:
           kind === "bus"
-            ? "id,number,status,order_date,call_time,origin,destination,relation,bus_count,buses,created_by,district,sent_at,ended_at,cancelled_at,updated,reason,expand.company.name,expand.created_by.name"
-            : "id,number,status,trip_at,from_station,to_station,via_station,via_stations,relation_number,taxi_name,vehicles,is_pmr,time_pending,created_by,author,district,sent_at,ended_at,cancelled_at,updated,reason,pmr_reason,expand.taxi_company.name,expand.created_by.name",
+            ? "id,number,order_ref,status,order_date,call_time,origin,destination,relation,bus_count,buses,created_by,district,sent_at,ended_at,cancelled_at,updated,reason,expand.company.name,expand.created_by.name"
+            : "id,number,order_ref,status,trip_at,from_station,to_station,via_station,via_stations,relation_number,taxi_name,vehicles,is_pmr,time_pending,created_by,author,district,sent_at,ended_at,cancelled_at,updated,reason,pmr_reason,expand.taxi_company.name,expand.created_by.name",
       });
       return {
         rows: res.items.map(kind === "bus" ? busRow : taxiRowFor(!!ctx.canPmr)),

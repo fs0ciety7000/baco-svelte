@@ -1,4 +1,5 @@
 import { assertNotActing } from "./session";
+import { orderRefLabel } from "@/lib/orders/order-ref";
 import "server-only";
 
 import { busFilename, taxiFilename } from "@/lib/orders/mail";
@@ -44,7 +45,14 @@ export async function archiveOrder(
       if (order.meta.status !== "envoye") return { ok: false, error: "Bon non finalisé." };
       pdf = await busOrderPdf(order, { agentName: orderAgent(order.meta), drivers: ref.drivers });
       filename = busFilename(order.draft);
-      reference = order.draft.relation.trim() || `Bon bus n° ${order.meta.number}`;
+      // N° de commande (4 nov. 2026) à la place du n° de bon séquentiel, suivi du n° TC s'il est saisi (recherche
+      // des Archives sur l'un ou l'autre).
+      reference = [
+        `Bon bus ${orderRefLabel(order.meta.orderRef, order.meta.number)}`,
+        order.draft.relation.trim(),
+      ]
+        .filter(Boolean)
+        .join(" · ");
       route = `${order.draft.origin} → ${order.draft.destination}`;
       day = order.draft.order_date;
       district = order.draft.district;
@@ -53,7 +61,7 @@ export async function archiveOrder(
       if (order.meta.status !== "envoye") return { ok: false, error: "Bon non finalisé." };
       pdf = await taxiOrderPdf(order, { agentName: orderAgent(order.meta) });
       filename = taxiFilename(order.draft);
-      reference = `Taxi n° ${order.meta.number}`;
+      reference = `Taxi ${orderRefLabel(order.meta.orderRef, order.meta.number)}`;
       route = `${order.draft.from_station} → ${order.draft.to_station}`;
       day = order.draft.trip_day;
       district = order.draft.district;

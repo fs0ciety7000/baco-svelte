@@ -686,7 +686,7 @@ export function DesignShowcase({ initial }: { initial: UiPreferences }) {
         />
         <div className="max-w-sm">
           <OrderTicket
-            eyebrow="Aperçu du bon · C3 n° 529"
+            eyebrow="Aperçu du bon · CMD-7K4P2M"
             route="Quiévrain → Mons"
             when="jeudi 15 octobre 2026 · départ 15:30"
             rows={[

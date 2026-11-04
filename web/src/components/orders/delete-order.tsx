@@ -1,5 +1,7 @@
 "use client";
 
+import { orderDeleteLabel } from "@/lib/orders/order-ref";
+
 import { Trash2 } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 
@@ -36,6 +38,7 @@ export function useFormDeletion(opts: {
   initialId: string | null;
   id: string | null;
   number: number | null;
+  orderRef?: string | null;
   relation?: string;
 }): { deletion: { until: string | null } | null; label: string } {
   const [createdHere, setCreatedHere] = useState<string | null>(null);
@@ -43,13 +46,7 @@ export function useFormDeletion(opts: {
     if (!opts.initialId && opts.id && !createdHere)
       setCreatedHere(new Date(Date.now() + ORDER_DELETE_WINDOW_MS).toISOString());
   }, [opts.initialId, opts.id, createdHere]);
-  const rel = (opts.relation ?? "").trim();
-  const label =
-    opts.kind === "bus"
-      ? /^TC_/i.test(rel)
-        ? rel
-        : `bus n° ${opts.number ?? ""}`
-      : `taxi n° ${opts.number ?? ""}`;
+  const label = orderDeleteLabel(opts.kind, opts.orderRef, opts.number, opts.relation ?? "");
   if (opts.serverDeletion) return { deletion: { until: opts.serverDeletion.until }, label };
   if (createdHere && opts.id) return { deletion: { until: createdHere }, label };
   return { deletion: null, label };

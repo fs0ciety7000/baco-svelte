@@ -1,4 +1,5 @@
 import { DISTRICTS } from "@/lib/orders/schemas";
+import { orderRefLabel } from "@/lib/orders/order-ref";
 import { z } from "zod";
 
 import { parseDistricts } from "@/lib/district-param";
@@ -90,7 +91,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ day:
           time: e.time,
           company: e.company,
           route: `${e.origin || "?"} → ${e.destination || "?"}`,
-          ref: e.number ? `n° ${e.number}${e.ref ? ` · ${e.ref}` : ""}` : e.ref,
+          ref:
+            e.orderRef || e.number
+              ? `${orderRefLabel(e.orderRef, e.number)}${e.ref ? ` · ${e.ref}` : ""}`
+              : e.ref,
           manual: !e.orderId,
         })),
       })),

@@ -30,6 +30,7 @@ export async function BusOrderView({
         formKey={formKey}
         orderId={meta.id}
         number={meta.number}
+        orderRef={meta.orderRef}
         status={meta.status}
         statusBeforeCancel={meta.statusBeforeCancel}
         updated={meta.updated}

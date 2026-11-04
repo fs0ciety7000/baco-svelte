@@ -19,6 +19,7 @@ import {
   pbDate,
 } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
+import { orderRefLabel } from "@/lib/orders/order-ref";
 import { userDistricts } from "@/lib/team";
 import { aleaEnds, groupEnds, groupLegOf, groupTotal, legOf } from "@/lib/pmr/legs";
 import { aleaGroupBlocks, aleaGroups, type AleaGroup } from "@/lib/pmr/model";
@@ -79,7 +80,7 @@ async function orders(
       .getFullList({
         filter: 'status = "brouillon" || status = "termine"',
         sort: "order_date",
-        fields: "id,status,number,order_date,call_time,origin,destination,relation",
+        fields: "id,status,number,order_ref,order_date,call_time,origin,destination,relation",
         batch: 200,
       })
       .catch(() => [] as RecordModel[]);
@@ -88,7 +89,7 @@ async function orders(
       place(str(r.status), day, {
         id: r.id,
         kind: "bus",
-        label: `Bus${r.number ? ` n° ${r.number}` : ""} ${str(r.origin) || "?"} → ${str(r.destination) || "?"}${r.relation ? ` (${str(r.relation)})` : ""}`,
+        label: `Bus${r.order_ref || r.number ? ` ${orderRefLabel(str(r.order_ref), Number(r.number) || 0)}` : ""} ${str(r.origin) || "?"} → ${str(r.destination) || "?"}${r.relation ? ` (${str(r.relation)})` : ""}`,
         day: day ? formatDay(day) : "",
         time: str(r.call_time),
         late: day ? Math.max(0, daysBetween(day, today)) : 0,
@@ -102,7 +103,7 @@ async function orders(
       .getFullList({
         filter: 'status = "brouillon" || status = "termine"',
         sort: "trip_at",
-        fields: "id,status,trip_at,from_station,to_station,taxi_name",
+        fields: "id,status,order_ref,trip_at,from_station,to_station,taxi_name",
         batch: 200,
       })
       .catch(() => [] as RecordModel[]);
@@ -112,7 +113,7 @@ async function orders(
       place(str(r.status), day, {
         id: r.id,
         kind: "taxi",
-        label: `Taxi ${str(r.from_station) || "?"} → ${str(r.to_station) || "?"}${r.taxi_name ? ` (${str(r.taxi_name)})` : ""}`,
+        label: `Taxi${r.order_ref ? ` ${str(r.order_ref)}` : ""} ${str(r.from_station) || "?"} → ${str(r.to_station) || "?"}${r.taxi_name ? ` (${str(r.taxi_name)})` : ""}`,
         day: day ? formatDay(day) : "",
         time: at ? brusselsTime(at) : "",
         late: day ? Math.max(0, daysBetween(day, today)) : 0,

@@ -59,7 +59,7 @@ export function OrderActionBar({
   listHref: string;
   /** Suppression permise (`orderDeletion`) : `until` = fin de la fenêtre de 8 h du créateur, `null` = sans limite. */
   deletion?: { until: string | null } | null;
-  /** Désignation du bon dans la confirmation (« TC_1234 », « taxi n° 12 »). */
+  /** Désignation du bon dans la confirmation (« bus CMD-7K4P2M (TC_1234) », « taxi CMD-3QX9WB »). */
   deleteLabel?: string;
 }) {
   const [menuOpen, setMenuOpen] = React.useState(false);

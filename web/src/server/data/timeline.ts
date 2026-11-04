@@ -4,6 +4,7 @@ import { DUTY_SHORT } from "@/lib/ops/log";
 import type { Timeline, TimelineItem } from "@/lib/ops/timeline";
 import { brusselsDay } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
+import { orderRefLabel } from "@/lib/orders/order-ref";
 import { groupLegOf, groupTotal, legOf } from "@/lib/pmr/legs";
 import { stationMatchesAny } from "@/lib/stations/search";
 import { missionImpact, type TrainStates } from "@/lib/pmr/train-delay";
@@ -136,8 +137,8 @@ export async function buildTimeline(
       title: `${o.origin || "?"} → ${o.destination || "?"}`,
       detail:
         o.kind === "bus"
-          ? `${o.busCount} bus${o.company ? ` · ${o.company}` : ""}${o.number ? ` · n° ${o.number}` : ""}`
-          : `${o.company || "Taxi"}${o.number ? ` · n° ${o.number}` : ""}`,
+          ? `${o.busCount} bus${o.company ? ` · ${o.company}` : ""}${o.orderRef || o.number ? ` · ${orderRefLabel(o.orderRef, o.number)}` : ""}`
+          : `${o.company || "Taxi"}${o.orderRef || o.number ? ` · ${orderRefLabel(o.orderRef, o.number)}` : ""}`,
       io: "",
       station: o.origin,
       district,

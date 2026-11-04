@@ -3,6 +3,8 @@ import "server-only";
 import type { RecordModel } from "pocketbase";
 import { z } from "zod";
 
+import { archiveReference } from "@/lib/orders/order-ref";
+
 import { pbForRequest } from "./orders";
 
 // Archives des bons (11 oct. 2026) : lecture avec le jeton de l'agent (règles `archives:read`).
@@ -74,8 +76,16 @@ export async function listArchives(input: Record<string, string | undefined>) {
     fields:
       "id,kind,order_id,reference,route,service_day,district,created,r2_at,r2_error,expand.generated_by.name,expand.generated_by.username",
   });
+  const rows = res.items.map(archived);
+  // N° de commande des bons (4 nov. 2026) : affiché à la place du n° séquentiel des archives anciennes.
+  const refs = await orderRefs(
+    pb,
+    rows.map((r) => [r.kind, r.orderId] as const),
+  );
+  for (const r of rows)
+    r.reference = archiveReference(r.reference, r.kind, refs.get(`${r.kind}-${r.orderId}`));
   return {
-    rows: res.items.map(archived),
+    rows,
     page: res.page,
     totalPages: res.totalPages,
     total: res.totalItems,
@@ -129,4 +139,27 @@ export async function unarchivedOrders(limit: number) {
     }
   }
   return { todo: out, remaining };
+}
+
+/** `kind-id` → n° de commande des bons cités (50 au plus par type, bons supprimés absents). */
+async function orderRefs(
+  pb: Awaited<ReturnType<typeof pbForRequest>>,
+  items: readonly (readonly ["bus" | "taxi", string])[],
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  await Promise.all(
+    (["bus", "taxi"] as const).map(async (kind) => {
+      const ids = [...new Set(items.filter(([k]) => k === kind).map(([, id]) => id))]
+        .filter((id) => /^[a-z0-9]{15}$/.test(id))
+        .slice(0, 60);
+      if (!ids.length) return;
+      const filter = ids.map((id) => pb.filter("id = {:id}", { id })).join(" || ");
+      const rows = await pb
+        .collection(kind === "bus" ? "bus_orders" : "taxi_orders")
+        .getFullList({ filter, fields: "id,order_ref" })
+        .catch(() => [] as RecordModel[]);
+      for (const r of rows) if (str(r.order_ref)) out.set(`${kind}-${r.id}`, str(r.order_ref));
+    }),
+  );
+  return out;
 }

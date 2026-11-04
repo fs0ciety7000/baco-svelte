@@ -437,6 +437,7 @@ export async function getClientDetail(id: string, opts: { canAssists: boolean; c
     taxis: (taxis?.items ?? []).map((t) => ({
       id: t.id,
       number: num(t.number),
+      orderRef: str(t.order_ref),
       status: str(t.status),
       tripAt: str(t.trip_at),
       route: `${str(t.from_station) || "?"} → ${str(t.to_station) || "?"}`,

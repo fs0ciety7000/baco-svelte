@@ -1,5 +1,6 @@
 "use client";
 
+import { orderRefLabel } from "@/lib/orders/order-ref";
 import { Archive, ArchiveRestore, Plus, Save } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -226,7 +227,7 @@ export function ClientBoard({
                           {formatShortDay(dayOf(t.tripAt))}
                         </span>
                         <span className="min-w-0 flex-1 truncate text-small">
-                          n° {t.number} · {t.route}
+                          {orderRefLabel(t.orderRef, t.number)} · {t.route}
                         </span>
                         {isStatus(t.status) ? <StatusBadge status={t.status} /> : null}
                       </Link>

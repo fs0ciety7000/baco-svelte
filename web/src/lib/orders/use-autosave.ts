@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { SaveState } from "@/components/ui/form-kit";
 
 type SaveResult =
-  | { ok: true; data: { id: string; number: number; updated: string } }
+  | { ok: true; data: { id: string; number: number; orderRef?: string; updated: string } }
   | { ok: false; error: string };
 
 /**
@@ -33,6 +33,7 @@ export function useAutosave<T>({
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [number, setNumber] = useState<number | null>(null);
+  const [orderRef, setOrderRef] = useState<string | null>(null);
   const id = useRef(initialId);
   const updated = useRef(initialUpdated ?? undefined);
   const last = useRef(JSON.stringify(value));
@@ -73,6 +74,7 @@ export function useAutosave<T>({
         updated.current = res.data.updated;
         last.current = json;
         setNumber(res.data.number);
+        if (res.data.orderRef) setOrderRef(res.data.orderRef);
         setError(null);
         setSavedAt(new Date());
         setState(JSON.stringify(latest.current) === json ? "saved" : "dirty");
@@ -151,5 +153,16 @@ export function useAutosave<T>({
     if (nextValue !== undefined) last.current = JSON.stringify(nextValue);
   }, []);
 
-  return { state, savedAt, error, flush, rebase, isDirty, version, id: id.current, number };
+  return {
+    state,
+    savedAt,
+    error,
+    flush,
+    rebase,
+    isDirty,
+    version,
+    id: id.current,
+    number,
+    orderRef,
+  };
 }

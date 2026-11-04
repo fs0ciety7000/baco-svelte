@@ -1,5 +1,6 @@
 "use client";
 
+import { orderRefLabel } from "@/lib/orders/order-ref";
 import Link from "next/link";
 
 import { Card, CardHeader } from "@/components/ui/card";
@@ -104,9 +105,10 @@ export function todoItems(input: {
       severity: late >= 2 ? "warn" : "info",
       group: "today",
       kind: "send",
-      title: o.number
-        ? `Bon C3 n° ${o.number} terminé, à envoyer à la société`
-        : "Bon bus terminé, à envoyer à la société",
+      title:
+        o.order_ref || o.number
+          ? `Bon C3 ${orderRefLabel(o.order_ref, o.number)} terminé, à envoyer à la société`
+          : "Bon bus terminé, à envoyer à la société",
       code: /^TC_/i.test(o.relation.trim()) ? o.relation.trim() : undefined,
       detail: [
         `${o.origin || "?"} → ${o.destination || "?"}`,

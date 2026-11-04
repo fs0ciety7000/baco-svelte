@@ -32,6 +32,8 @@ export type B201Entry = {
   orderId?: string;
   kind?: "bus" | "taxi";
   number?: number;
+  /** N° de commande généré (`CMD-XXXXXX`), affiché à la place de `number`. */
+  orderRef?: string;
   status?: OrderRow["status"];
   district: string;
 };
@@ -72,6 +74,7 @@ function entriesFromRows(rows: OrderRow[], buses: Map<string, BusLine[]>): B201E
           orderId: r.id,
           kind: "bus",
           number: r.number,
+          orderRef: r.orderRef,
           status: r.status,
           district: r.district,
         });
@@ -89,6 +92,7 @@ function entriesFromRows(rows: OrderRow[], buses: Map<string, BusLine[]>): B201E
         orderId: r.id,
         kind: "taxi",
         number: r.number,
+        orderRef: r.orderRef,
         status: r.status,
         district: r.district,
       });

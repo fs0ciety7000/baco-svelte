@@ -1,5 +1,6 @@
 "use server";
 
+import { orderRefLabel } from "@/lib/orders/order-ref";
 import type PocketBase from "pocketbase";
 import { unstable_rethrow } from "next/navigation";
 
@@ -261,12 +262,13 @@ async function busOrders({ pb, p, q, terms }: Ctx): Promise<SearchGroup> {
   // N° de bon, n° de train, relation (n° TC) ; gares de départ / d'arrivée (recherche tolérante).
   const ors = [stationFilter(pb, ["origin", "destination"], terms, { fields: ["relation"], q })];
   if (p.orderNumber) ors.push(pb.filter("number = {:n}", { n: p.orderNumber }));
+  if (p.orderRef) ors.push(pb.filter("order_ref ~ {:r}", { r: p.orderRef }));
   if (p.trainNumber) ors.push(pb.filter("train_number = {:t}", { t: q }));
   const r = await pb.collection("bus_orders").getList(1, LIMIT, {
     filter: ors.filter(Boolean).join(" || "),
     sort: "-order_date,-created",
     fields:
-      "id,number,origin,destination,order_date,relation,train_number,status,sent_at,ended_at,cancelled_at,updated",
+      "id,number,order_ref,origin,destination,order_date,relation,train_number,status,sent_at,ended_at,cancelled_at,updated",
     skipTotal: true,
   });
   return group(
@@ -275,7 +277,7 @@ async function busOrders({ pb, p, q, terms }: Ctx): Promise<SearchGroup> {
       const day = str(o.order_date).slice(0, 10);
       return {
         kind: "bus",
-        label: `Bon ${o.number ?? ""} · ${str(o.origin) || "?"} → ${str(o.destination) || "?"}`,
+        label: `Bon ${orderRefLabel(str(o.order_ref), Number(o.number) || 0)} · ${str(o.origin) || "?"} → ${str(o.destination) || "?"}`,
         meta: join(
           isValidDay(day) ? formatDay(day) : "",
           o.relation,
@@ -298,12 +300,13 @@ async function taxiOrders({ pb, p, q, terms }: Ctx): Promise<SearchGroup> {
     }),
   ];
   if (p.orderNumber) ors.push(pb.filter("number = {:n}", { n: p.orderNumber }));
+  if (p.orderRef) ors.push(pb.filter("order_ref ~ {:r}", { r: p.orderRef }));
   if (p.trainNumber) ors.push(pb.filter("train_number = {:t}", { t: q }));
   const r = await pb.collection("taxi_orders").getList(1, LIMIT, {
     filter: ors.filter(Boolean).join(" || "),
     sort: "-trip_at,-number",
     fields:
-      "id,number,from_station,to_station,via_station,via_stations,trip_at,taxi_name,train_number,status,sent_at,ended_at,cancelled_at,updated",
+      "id,number,order_ref,from_station,to_station,via_station,via_stations,trip_at,taxi_name,train_number,status,sent_at,ended_at,cancelled_at,updated",
     skipTotal: true,
   });
   return group(
@@ -312,7 +315,7 @@ async function taxiOrders({ pb, p, q, terms }: Ctx): Promise<SearchGroup> {
       const at = pbDate(str(o.trip_at));
       return {
         kind: "taxi",
-        label: `Taxi ${o.number ?? ""} · ${routeWithVias(str(o.from_station), viaList(o), str(o.to_station))}`,
+        label: `Taxi ${orderRefLabel(str(o.order_ref), Number(o.number) || 0)} · ${routeWithVias(str(o.from_station), viaList(o), str(o.to_station))}`,
         meta: join(
           at ? formatDay(brusselsDay(at)) : "",
           o.taxi_name,
