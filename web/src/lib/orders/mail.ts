@@ -1,5 +1,4 @@
 import { parseEmails, PMR_TYPES, type BusDraft, type TaxiDraft } from "./schemas";
-import { orderRefLabel } from "./order-ref";
 import { cleanVias } from "./via";
 import { formatLongDay, formatShortDay } from "./time";
 import { lineLabel } from "@/lib/lines";
@@ -192,8 +191,8 @@ export function busMail(detail: BusMailDetail, opts: MailOptions): OrderMail {
   const office = officeFor(d.district);
   const to = parseEmails([detail.company?.email ?? "", d.company_email]);
   const relation = d.relation ? ` – relation ${d.relation}` : "";
-  const ref = orderRefLabel(detail.meta.orderRef, detail.meta.number);
-  const subject = `Réquisitoire bus C3 ${ref} – ${formatShortDay(d.order_date)} – ${d.origin || "?"} → ${d.destination || "?"}${relation}`;
+  // Aucun numéro interne chez le fournisseur (CMD- ni n° de bon, 4 nov. 2026) : la relation / n° TC suffit.
+  const subject = `Réquisitoire bus C3 – ${formatShortDay(d.order_date)} – ${d.origin || "?"} → ${d.destination || "?"}${relation}`;
 
   const active = d.buses.map((b, i) => ({ ...b, n: i + 1 })).filter((b) => !b.cancelled);
   const schedule = active.map((b) => {
@@ -206,7 +205,6 @@ export function busMail(detail: BusMailDetail, opts: MailOptions): OrderMail {
   const stops = busStops(d);
 
   const rows: Row[] = [
-    ...(detail.meta.orderRef ? [["N° de commande", detail.meta.orderRef] as Row] : []),
     ["Date de circulation", formatLongDay(d.order_date)],
     ["Type", `C3-${d.c3_type} – ${c3Label(d.c3_type)}`],
     ["Motif", d.reason || "—"],
@@ -233,7 +231,7 @@ export function busMail(detail: BusMailDetail, opts: MailOptions): OrderMail {
     ...(d.pmr_count ? [["Dont PMR", String(d.pmr_count)] as Row] : []),
     ["Horaires prévus", schedule.length ? schedule.join("\n") : "—"],
   ];
-  const intro = `Veuillez trouver ci-dessous le récapitulatif de notre réquisitoire de bus de remplacement C3 ${ref}.`;
+  const intro = `Veuillez trouver ci-dessous le récapitulatif de notre réquisitoire de bus de remplacement C3.`;
   return {
     to,
     cc: ccFor(office, to, BUS_CC),
@@ -264,12 +262,10 @@ export function taxiMail(detail: TaxiMailDetail, opts: MailOptions): OrderMail {
   const d = detail.draft;
   const office = officeFor(d.district);
   const to = parseEmails([...(detail.company?.emails ?? []), d.taxi_email]);
-  const ref = orderRefLabel(detail.meta.orderRef, detail.meta.number);
-  const subject = `Commande taxi ${ref} – ${formatShortDay(d.trip_day)}${d.trip_time ? ` ${d.trip_time}` : ""} – ${d.from_station || "?"} → ${d.to_station || "?"}`;
+  const subject = `Commande taxi – ${formatShortDay(d.trip_day)}${d.trip_time ? ` ${d.trip_time}` : ""} – ${d.from_station || "?"} → ${d.to_station || "?"}`;
   const pmrType = pmrTypeLabel(detail.client?.type || d.pmr_type);
 
   const rows: Row[] = [
-    ...(detail.meta.orderRef ? [["N° de commande", detail.meta.orderRef] as Row] : []),
     ["Date et heure", at(d.trip_day, d.trip_time)],
     ["Départ", d.from_station || "—"],
     ...cleanVias(d.via_stations).map(
@@ -296,7 +292,7 @@ export function taxiMail(detail: TaxiMailDetail, opts: MailOptions): OrderMail {
     ...(d.reason ? [["Motif", d.reason] as Row] : []),
     ["Facturation", `À charge de ${d.billing || "SNCB"}`],
   ];
-  const intro = `Veuillez trouver ci-dessous le récapitulatif de notre commande de taxi ${ref}.`;
+  const intro = `Veuillez trouver ci-dessous le récapitulatif de notre commande de taxi.`;
   return {
     to,
     cc: ccFor(office, to),

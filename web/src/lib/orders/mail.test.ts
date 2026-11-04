@@ -75,9 +75,7 @@ describe("busMail", () => {
   });
 
   it("sujet et nom de fichier", () => {
-    expect(m.subject).toBe(
-      "Réquisitoire bus C3 CMD-7K4P2M – 08/10/2026 – Mons → Tournai – relation R-1234",
-    );
+    expect(m.subject).toBe("Réquisitoire bus C3 – 08/10/2026 – Mons → Tournai – relation R-1234");
     expect(m.filename).toBe("2026-10-08 · C3-2 · Mons → Tournai.pdf");
     expect(
       busFilename({ ...bus.draft, origin: 'Bruxelles/Midi: "quai"', destination: "A<B>|C?" }),
@@ -141,7 +139,7 @@ describe("taxiMail", () => {
   });
 
   it("sujet, nom de fichier et corps", () => {
-    expect(m.subject).toBe("Commande taxi CMD-3QX9WB – 08/10/2026 14:30 – Mons → Tournai");
+    expect(m.subject).toBe("Commande taxi – 08/10/2026 14:30 – Mons → Tournai");
     expect(m.filename).toBe("2026-10-08 · Taxi · Mons → Tournai.pdf");
     for (const s of [
       "jeudi 8 octobre 2026 à 14:30",
@@ -181,14 +179,21 @@ describe("taxiMail", () => {
 describe("e-mail de clôture (cycle v3 du 14 oct. 2026)", () => {
   it("récapitulatif, plus de demande de confirmation, vouvoiement", () => {
     const m = busMail(bus, { agentName: "Agent Test" });
-    expect(m.subject.startsWith("Réquisitoire bus C3 CMD-7K4P2M")).toBe(true);
-    expect(m.text).toContain(
-      "le récapitulatif de notre réquisitoire de bus de remplacement C3 CMD-7K4P2M",
-    );
+    expect(m.subject.startsWith("Réquisitoire bus C3 – ")).toBe(true);
+    expect(m.text).toContain("le récapitulatif de notre réquisitoire de bus de remplacement C3.");
     expect(m.text).toContain("Le bon de commande est joint en PDF.");
     expect(m.text).not.toContain("confirmer");
     expect(m.text).not.toMatch(/\btu\b|\bton\b|\btes\b/);
     const t = taxiMail(taxi, { agentName: "Agent Test" });
-    expect(t.text).toContain("le récapitulatif de notre commande de taxi CMD-3QX9WB");
+    expect(t.text).toContain("le récapitulatif de notre commande de taxi.");
+  });
+
+  it("aucun numéro interne (CMD- ou n° de bon) chez le fournisseur", () => {
+    for (const m of [busMail(bus, { agentName: "A" }), taxiMail(taxi, { agentName: "A" })]) {
+      for (const part of [m.subject, m.text, m.html]) {
+        expect(part).not.toContain("CMD-");
+        expect(part).not.toMatch(/n° (42|7)\b/);
+      }
+    }
   });
 });

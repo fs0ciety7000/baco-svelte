@@ -1548,6 +1548,10 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   `pre_prod_cmd_20261104.zip` avant ; déploiements terminés, santé 200, 0 bon bus / taxi sans `order_ref` en prod. Excel, onglet BUS :
   colonne « Dispo Kim Cars / Degrève » (Kim Cars appelé sur tout le réseau, Degrève pour Ath et Tournai) au lieu de « Dispo <société> ».
 
+- 2026-11-04 — **N° CMD- jamais chez le fournisseur** (« c'est un numéro interne ») : PDF bus / taxi (titre, en-tête, pied, ligne
+  « N° de commande ») et e-mail (objet, intro, tableau) sans CMD- ni n° de bon ; le n° TC / relation reste. CMD- gardé dans CSM
+  (listes, fiches, archives, B201, récap, fichier facturation). Module Ressources renommé « Annuaire et ressources ».
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)

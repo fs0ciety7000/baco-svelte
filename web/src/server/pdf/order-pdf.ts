@@ -1,6 +1,5 @@
 import "server-only";
 
-import { orderRefLabel } from "@/lib/orders/order-ref";
 import {
   PDFDocument,
   rgb,
@@ -427,14 +426,10 @@ function busTable(l: Layout, d: BusDraft, drivers: PdfContext["drivers"]) {
 
 export async function busOrderPdf(detail: BusPdfDetail, ctx: PdfContext): Promise<Uint8Array> {
   const d = detail.draft;
-  // N° de commande (4 nov. 2026) à la place du n° de bon séquentiel (titre, pied de page).
-  const n = orderRefLabel(detail.meta.orderRef, detail.meta.number);
+  // Aucun numéro interne sur le bon envoyé au fournisseur (ni n° de commande CMD-, ni n° de bon : retour du 4 nov. 2026) ;
+  // le n° TC / relation reste dans « Service demandé ».
   const office = officeFor(d.district);
-  const { doc, font, l, at } = await setup(
-    `Réquisitoire bus C3 ${n}`,
-    `Réquisitoire bus C3 ${n}`,
-    ctx,
-  );
+  const { doc, font, l, at } = await setup("Réquisitoire bus C3", "Réquisitoire bus C3", ctx);
   const c = detail.company;
   header(l, office, ctx.agentName, {
     name: c?.name || "Société non renseignée",
@@ -455,8 +450,6 @@ export async function busOrderPdf(detail: BusPdfDetail, ctx: PdfContext): Promis
   const relationLabel = d.c3_type === 3 ? "N° de commande / BNX" : "Relation";
   const stops = busStops(d);
   l.section("Service demandé");
-  // N° de commande généré par CSM (4 nov. 2026), indépendant du n° TC (`relation`, ligne inchangée ci-dessous).
-  if (detail.meta.orderRef) l.field("N° de commande", detail.meta.orderRef, { bold: true });
   l.field("Date de circulation", formatLongDay(d.order_date), { bold: true });
   l.field("Heure d'appel", d.call_time || "—");
   l.field(
@@ -491,7 +484,7 @@ export async function busOrderPdf(detail: BusPdfDetail, ctx: PdfContext): Promis
   l.field("N° SAP de la commande (PO)", "4522 944 778");
   l.field(relationLabel, d.relation);
 
-  footer(doc, font, at, `Réquisitoire C3 ${n}`);
+  footer(doc, font, at, "Réquisitoire C3");
   return doc.save();
 }
 
@@ -502,10 +495,9 @@ const when = (day: string, time: string) => `${formatLongDay(day)}${time ? ` à 
 
 export async function taxiOrderPdf(detail: TaxiPdfDetail, ctx: PdfContext): Promise<Uint8Array> {
   const d = detail.draft;
-  const n = orderRefLabel(detail.meta.orderRef, detail.meta.number);
   const s = detail.snapshot;
   const office = officeFor(d.district);
-  const { doc, font, l, at } = await setup(`Commande taxi ${n}`, `Commande taxi ${n}`, ctx);
+  const { doc, font, l, at } = await setup("Commande taxi", "Commande taxi", ctx);
   const c = detail.company;
   const emails = parseEmails([...(c?.emails ?? []), d.taxi_email]);
   header(l, office, ctx.agentName, {
@@ -547,7 +539,6 @@ export async function taxiOrderPdf(detail: TaxiPdfDetail, ctx: PdfContext): Prom
   }
 
   l.section("Référence et motif");
-  if (detail.meta.orderRef) l.field("N° de commande", detail.meta.orderRef, { bold: true });
   if (!d.is_pmr || d.relation_number) l.field("Référence / relation", d.relation_number);
   l.field("Motif", d.reason);
 
@@ -588,7 +579,7 @@ export async function taxiOrderPdf(detail: TaxiPdfDetail, ctx: PdfContext): Prom
   }
   l.y -= 52;
 
-  footer(doc, font, at, `Commande taxi ${n}`);
+  footer(doc, font, at, "Commande taxi");
   return doc.save();
 }
 
