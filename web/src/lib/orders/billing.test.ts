@@ -86,7 +86,7 @@ describe("fichier facturation", () => {
     expect(monthPeriod("2026-11")).toBe("MOIS de NOVEMBRE 2026");
   });
 
-  it("ligne bus : bus fournis, % fourni, trajets, n° de commande dans la colonne C3", () => {
+  it("ligne bus : bus fournis, % fourni, trajets, coche verte dans la colonne C3", () => {
     const r = busRow(bus());
     const col = (h: string) => r[BUS_HEADER.indexOf(h)];
     expect(r).toHaveLength(BUS_HEADER.length);
@@ -104,7 +104,7 @@ describe("fichier facturation", () => {
     expect(col("Aller ou A/R")).toBe("A/R");
     expect(col("Nbr de trajet simple")).toBe(4);
     expect(col("Direct/Omnibus")).toBe("Omnibus");
-    expect(col("C3")).toBe("CMD-7K4P2M");
+    expect(col("C3")).toBe("✔");
     expect(col("% fourni")).toBe(0.67);
     expect(col("N° facture")).toBe("");
   });
@@ -182,7 +182,7 @@ describe("fichier facturation", () => {
     expect(st(s.rows[hi]![0]!)).toEqual(BILLING_STYLE.header);
     expect(s.heights?.[hi]).toBe(48);
     const first = s.rows[hi + 1]!;
-    expect(v(first[24])).toBe("CMD-22222A"); // tri par jour
+    expect(v(first[24])).toBe("✔");
     expect(v(first[0])).toBe(excelDate("2026-11-01")); // vraie date Excel
     expect(st(first[5])?.numFmt).toBe("0%");
     const total = s.rows[hi + 3]!;

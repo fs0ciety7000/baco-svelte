@@ -3,8 +3,9 @@
 // que CSM ne connaît pas (disponibilité, reçu, n° de facture…) restent vides pour l'équipe de facturation. Mise en forme
 // relevée sur le classeur de référence (polices Arial, fonds, bordures, largeurs, hauteurs, fusions, dates en vraies dates
 // Excel « jj/mm/aaaa », totaux par formules SUM des colonnes « Nbr de bus » et « Nbr de personnes »).
-// Choix : le n° de commande CMD-… va dans la colonne « C3 » (n° du réquisitoire C3, qu'il remplace) pour les bus, dans
-// « N°PACO » pour les taxis et en tête de « Référence » pour les taxis PMR. Jamais de nom de voyageur. Pur, testé.
+// Colonne « C3 » des bus : une coche verte « ✔ » (demande de l'utilisateur du 4 nov. 2026, le fichier tenu à la main y
+// mettait « V »), jamais le n° de commande. CMD-… dans « N°PACO » pour les taxis et en tête de « Référence » pour les taxis
+// PMR. Jamais de nom de voyageur. Pur, testé.
 
 import { colName, excelDate, type XlsxCell, type XlsxSheet, type XlsxStyle } from "@/lib/xlsx";
 
@@ -263,7 +264,7 @@ export function busRow(o: BillingBus): XlsxCell[] {
     o.lines.join(", "),
     o.reason,
     "",
-    o.orderRef || (o.number ? `n° ${o.number}` : ""),
+    "✔",
     "",
   ];
 }
@@ -446,7 +447,7 @@ const BUS_SPECIAL: Record<number, XlsxStyle> = {
   5: { ...BILLING_STYLE.data, numFmt: "0%" },
   13: withFont(BILLING_STYLE.data, { bold: true, color: "0000FF" }),
   24: {
-    ...withFont(BILLING_STYLE.data, { bold: true, color: "008080" }),
+    ...withFont(BILLING_STYLE.data, { bold: true, color: "00B050" }),
     align: { h: "center", v: "center" },
   },
 };
