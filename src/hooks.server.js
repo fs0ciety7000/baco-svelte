@@ -4,6 +4,8 @@ import { redirect } from '@sveltejs/kit'
 
 // Utilisez l'import statique de SvelteKit, c'est plus fiable côté serveur
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public'
+import { env } from '$env/dynamic/private'
+import { transitionPage } from '$lib/server/transition-page.js'
 
 // Cache pour les settings (évite trop de requêtes)
 let settingsCache = { maintenance: false, gate: false, lastCheck: 0 };
@@ -20,8 +22,43 @@ function isValidGatePass(pass) {
   }
 }
 
+// Gel de BACO (bascule vers CSM) : BACO_FROZEN=1 (variable Vercel, lue à l'exécution) → toutes les pages mènent à la
+// page « BACO devient CSM », l'API interne refuse tout (410). Sans la variable, rien ne change (page visible en aperçu
+// sur /transition). Les fichiers statiques (/_app, /brand-csm…) ne passent pas par ici sur Vercel.
+const isFrozen = () => /^(1|true|on|oui)$/i.test(String(env.BACO_FROZEN ?? '').trim())
+
+function transitionResponse(frozen) {
+  return new Response(transitionPage({ frozen }), {
+    status: 200,
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'no-store',
+      'x-robots-tag': 'noindex',
+      'referrer-policy': 'no-referrer',
+      'x-content-type-options': 'nosniff',
+      'content-security-policy':
+        "default-src 'none'; style-src 'unsafe-inline'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    }
+  })
+}
+
 export const handle = async ({ event, resolve }) => {
   const path = event.url.pathname
+
+  // 00. TRANSITION BACO → CSM (avant tout appel Supabase)
+  if (path === '/transition' || path === '/transition/') {
+    return transitionResponse(isFrozen())
+  }
+  if (isFrozen() && !path.startsWith('/_app') && !path.startsWith('/brand-csm/')) {
+    if (path.startsWith('/api') || path.startsWith('/rest')) {
+      return new Response(JSON.stringify({ error: 'BACO est fermé : utilise CSM (https://csm.fs0ciety.org).' }), {
+        status: 410,
+        headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }
+      })
+    }
+    // Pages et données des navigations côté client (__data.json) : SvelteKit convertit la redirection pour ces dernières.
+    throw redirect(307, '/transition')
+  }
 
   // 0. EXCLURE les assets statiques et routes internes (AVANT tout le reste)
   if (

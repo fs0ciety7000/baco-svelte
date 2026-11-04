@@ -1,9 +1,9 @@
 <script>
   import '../app.css';
   import { onMount } from 'svelte';
-  import { page } from '$app/stores';
+  import { page, updated } from '$app/stores';
   import { supabase } from '$lib/supabase';
-  import { goto } from '$app/navigation';
+  import { goto, beforeNavigate } from '$app/navigation';
   import PwaReload from '$lib/components/PwaReload.svelte';
   import Nav from '$lib/components/Nav.svelte';
   import Footer from '$lib/components/Footer.svelte';
@@ -20,6 +20,14 @@
   import SeasonalDecorator from '$lib/components/SeasonalDecorator.svelte';
   // Import du store de présence
   import { presenceState } from '$lib/stores/presence.svelte.js';
+
+  // Nouvelle version déployée (dont le gel de BACO, BACO_FROZEN=1) : la navigation suivante recharge la page depuis le
+  // serveur au lieu de rester dans l'ancienne application (aucune page de BACO n'a de chargement serveur).
+  beforeNavigate(({ willUnload, to }) => {
+    if ($updated && !willUnload && to?.url) {
+      location.href = to.url.href;
+    }
+  });
 
   // --- VARIABLES (MIGRATION RUNES) ---
   // On remplace "let x = y" par "let x = $state(y)" pour la réactivité

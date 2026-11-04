@@ -10,7 +10,9 @@ const config = {
 	preprocess: vitePreprocess(),
 	kit: {
 		// On choisit l'adaptateur selon l'environnement
-		adapter: isCoolify ? adapterNode() : adapterAuto()
+		adapter: isCoolify ? adapterNode() : adapterAuto(),
+		// Détecte un nouveau déploiement (ex. gel de BACO) pour recharger à la navigation suivante (+layout.svelte).
+		version: { pollInterval: 60000 }
 	}
 };
 
