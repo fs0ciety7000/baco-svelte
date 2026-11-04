@@ -1,4 +1,4 @@
-const DEFAULT_CSM_URL = "https://test-csm.fs0ciety.org";
+const DEFAULT_CSM_URL = "https://csm.fs0ciety.org"; // production (1.13.1) ; la préversion reste possible en la saisissant
 // Popup : réglages (URL CSM, jeton de connecteur, auto + période), choix du jour, bouton de synchro manuelle.
 // Il parle au content script de l'onglet DICOS actif (statut + synchro) ; l'envoi vers CSM passe par le service worker.
 const $ = (id) => document.getElementById(id);
@@ -309,9 +309,14 @@ function fmtAuto(st) {
     return `<span class="ok">✓ Tout est à jour</span>${when ? ` <small>(vérifié à ${escapeHtml(when)})</small>` : ""}`;
   const lines = tasks.slice(0, 5).map((t) => {
     const label = String(t.id || "").startsWith("dicos:") ? `DICOS ${String(t.id).slice(6)}` : "Quinyx";
-    return t.ok
-      ? `<span class="ok">✓</span> ${escapeHtml(label)} : synchronisé${t.detail ? ` (${escapeHtml(String(t.detail))})` : ""}`
-      : `${escapeHtml(label)} : <span class="err">${escapeHtml(AUTO_TEXT[t.code] || "échec")}</span>`;
+    const reloaded = t.heal === "reloaded" || t.heal === "no-token";
+    if (t.ok)
+      return `<span class="ok">✓</span> ${escapeHtml(label)} : synchronisé${t.detail ? ` (${escapeHtml(String(t.detail))})` : ""}${reloaded ? " <small>après rechargement de l'onglet</small>" : ""}`;
+    const text =
+      t.code === "session" && reloaded
+        ? "session à rafraîchir : onglet rechargé sans succès, reconnecte-toi"
+        : AUTO_TEXT[t.code] || "échec";
+    return `${escapeHtml(label)} : <span class="err">${escapeHtml(text)}</span>`;
   });
   return `${lines.join("<br>")}${when ? `<br><small>${escapeHtml(when)}</small>` : ""}`;
 }

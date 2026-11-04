@@ -127,6 +127,10 @@ clés d'API*), une fois par version. Le manifest Firefox déclare `data_collecti
 
 - Nécessite un **onglet DICOS ouvert et connecté** (cas nominal en service). Session expirée → recharger DICOS.
 - La synchro automatique **se met en pause** quand l'onglet n'est pas visible (ménage DICOS).
+- Synchro automatique pour l'équipe (1.13.1) : si la session de l'onglet DICOS (ou Quinyx) a expiré, l'extension
+  recharge cet onglet une fois (jamais l'onglet actif d'une fenêtre au premier plan, au plus une fois par onglet et par
+  15 min), attend un nouveau jeton (60 s) et réessaie ; une vraie déconnexion (MFA) reste signalée « session à rafraîchir ».
+- URL CSM par défaut : `https://csm.fs0ciety.org` (production, 1.13.1) ; une adresse déjà enregistrée est gardée.
 - Les codes d'assistance inconnus sont mappés « Autre » côté serveur et complétés au fil des imports.
 
 ## Points ouverts

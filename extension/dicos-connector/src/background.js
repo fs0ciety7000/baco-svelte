@@ -2,9 +2,12 @@
 // Il reçoit les dossiers (v1.1) ou missions bruts du content script et les POSTe à l'endpoint d'ingestion CSM, avec le jeton de
 // connecteur (en-tête x-dicos-token). Il ne voit jamais le Bearer DICOS. Aucune donnée n'est conservée ici.
 
+// Adresse de production par défaut (1.13.1) ; une adresse enregistrée par l'agent (préversion comprise) est gardée.
+const DEFAULT_CSM_URL = "https://csm.fs0ciety.org";
+
 async function config() {
   const v = await chrome.storage.local.get(["csmUrl", "token"]);
-  const csmUrl = String(v.csmUrl || "https://test-csm.fs0ciety.org").replace(/\/+$/, "");
+  const csmUrl = String(v.csmUrl || DEFAULT_CSM_URL).replace(/\/+$/, "");
   return { csmUrl, token: String(v.token || "") };
 }
 
@@ -360,7 +363,8 @@ async function syncDayFromCsm(day, sender) {
 // CSM tient la liste de ce qu'il faut synchroniser (DICOS du jour et du lendemain, Quinyx) selon la fraîcheur des dernières
 // synchros. Toutes les 5 min, l'extension la demande ; si un onglet DICOS ou Quinyx connecté est ouvert sur ce poste, elle
 // réserve la tâche (un seul poste à la fois, bail de 10 min côté CSM), la lance comme une synchro manuelle, puis rapporte
-// le résultat (un code, aucune donnée). Activée par défaut, désactivable dans le popup. Aucun onglet n'est rechargé ni ouvert.
+// le résultat (un code, aucune donnée). Activée par défaut, désactivable dans le popup. Aucun onglet n'est ouvert ; depuis
+// la 1.13.1, un onglet dont la session a expiré est rechargé (voir « Auto-réparation » plus bas).
 const AUTO_ALARM = "csm-auto-sync";
 function scheduleAuto() {
   // Créée une seule fois (le service worker se réveille à chaque alarme : la recréer décalerait le cycle).
@@ -393,13 +397,82 @@ function sessionLike(text) {
   return /session|jeton dicos|périmètre de gares|recharge l'onglet/i.test(String(text || ""));
 }
 
-async function autoDicos(day) {
-  const tabs = await chrome.tabs.query({ url: DICOS_TABS });
-  if (!tabs.length) return { ok: false, code: "no-dicos" };
-  tabs.sort((a, b) => Number(b.active) - Number(a.active) || (b.lastAccessed || 0) - (a.lastAccessed || 0));
+// --- Auto-réparation de la session (1.13.1) ---
+// Le Bearer DICOS n'est capté qu'en vol, quand la SPA appelle son API : un onglet resté inactif garde un jeton expiré
+// (Entra ID, ~1 h), et après une mise à jour de l'extension l'onglet n'a plus de content script ni de jeton. La synchro
+// automatique recharge alors CET onglet une fois (jamais l'onglet actif d'une fenêtre au premier plan : l'agent y
+// travaille peut-être), attend que la SPA émette un nouveau jeton (60 s au plus) et réessaie une fois. Au plus un
+// rechargement par onglet toutes les 15 min ; si la session est vraiment fermée (déconnexion, MFA), le code « session »
+// remonte comme avant. La synchro manuelle (popup) ne recharge jamais rien.
+const HEAL_EVERY = 15 * 60_000;
+const HEAL_WAIT = 60_000;
+
+async function tabInUse(tab) {
+  if (!tab || !tab.active) return false;
+  try {
+    const w = await chrome.windows.get(tab.windowId);
+    return !w || w.focused !== false;
+  } catch (_) {
+    return true; // dans le doute, on ne touche pas à l'onglet
+  }
+}
+
+async function healAllowed(tabId) {
+  const v = await chrome.storage.local.get(["healAt"]);
+  const map = v.healAt && typeof v.healAt === "object" ? { ...v.healAt } : {};
+  const now = Date.now();
+  for (const k of Object.keys(map)) if (!(now - Number(map[k]) < HEAL_EVERY)) delete map[k];
+  const allowed = !map[tabId];
+  if (allowed) map[tabId] = now;
+  await chrome.storage.local.set({ healAt: map });
+  return allowed;
+}
+
+async function waitReady(tabId, ready, timeout) {
+  const end = Date.now() + timeout;
+  await sleep(1500);
+  while (Date.now() < end) {
+    let t;
+    try {
+      t = await chrome.tabs.get(tabId);
+    } catch (_) {
+      return false; // onglet fermé entre-temps
+    }
+    if (t && t.status === "complete") {
+      let ok = false;
+      try {
+        ok = Boolean(await ready());
+      } catch (_) {}
+      if (ok) return true;
+    }
+    await sleep(2000);
+  }
+  return false;
+}
+
+// { reloaded, ready, reason } : `reason` dit pourquoi l'onglet n'a pas été rechargé.
+async function healTab(tab, ready) {
+  if (!tab || typeof tab.id !== "number") return { reloaded: false, reason: "no-tab" };
+  if (await tabInUse(tab)) return { reloaded: false, reason: "in-use" };
+  if (!(await healAllowed(tab.id))) return { reloaded: false, reason: "throttled" };
+  try {
+    await chrome.tabs.reload(tab.id);
+  } catch (_) {
+    return { reloaded: false, reason: "reload-failed" };
+  }
+  return { reloaded: true, ready: await waitReady(tab.id, ready, HEAL_WAIT) };
+}
+
+// Prêt = le content script répond et la SPA a émis un nouveau Bearer depuis le rechargement.
+async function dicosReady(tabId) {
+  const st = await chrome.tabs.sendMessage(tabId, { cmd: "status" });
+  return Boolean(st && st.hasToken);
+}
+
+async function dicosAttempt(tab, day) {
   let r;
   try {
-    r = await chrome.tabs.sendMessage(tabs[0].id, { cmd: "sync", day, days: 1, fresh: false });
+    r = await chrome.tabs.sendMessage(tab.id, { cmd: "sync", day, days: 1, fresh: false });
   } catch (_) {
     return { ok: false, code: "session", detail: "Onglet DICOS à recharger (F5)." };
   }
@@ -409,20 +482,54 @@ async function autoDicos(day) {
   return { ok: true, code: "ok", detail: `${Number(r.received) || 0} mission(s)` };
 }
 
-async function autoQuinyx() {
-  if (!(await quinyxTab())) return { ok: false, code: "no-quinyx" };
+async function autoDicos(day) {
+  const tabs = await chrome.tabs.query({ url: DICOS_TABS });
+  if (!tabs.length) return { ok: false, code: "no-dicos" };
+  tabs.sort((a, b) => Number(b.active) - Number(a.active) || (b.lastAccessed || 0) - (a.lastAccessed || 0));
+  const tab = tabs[0];
+  const out = await dicosAttempt(tab, day);
+  if (out.code !== "session") return out;
+  const heal = await healTab(tab, () => dicosReady(tab.id));
+  if (!heal.reloaded) return { ...out, heal: heal.reason };
+  if (!heal.ready) return { ...out, heal: "no-token" };
+  return { ...(await dicosAttempt(tab, day)), heal: "reloaded" };
+}
+
+function quinyxSession(text) {
+  return /injoignable : recharge|session quinyx expirée|session expirée \?/i.test(String(text || ""));
+}
+
+async function quinyxAttempt() {
   const r = await runQuinyx();
   if (r && r.error)
     return {
       ok: false,
-      code: /injoignable : recharge/i.test(r.error) ? "session" : /CSM injoignable/i.test(r.error) ? "csm" : "error",
+      code: quinyxSession(r.error) ? "session" : /CSM injoignable/i.test(r.error) ? "csm" : "error",
       detail: String(r.error).slice(0, 160),
     };
   const groups = (r && r.groups) || [];
   const failed = groups.filter((g) => g.error);
   if (groups.length && failed.length === groups.length)
-    return { ok: false, code: "error", detail: String(failed[0].error).slice(0, 160) };
+    return {
+      ok: false,
+      code: failed.some((g) => quinyxSession(g.error)) ? "session" : "error",
+      detail: String(failed[0].error).slice(0, 160),
+    };
   return { ok: true, code: "ok", detail: `${groups.length - failed.length} groupe(s)` };
+}
+
+async function autoQuinyx() {
+  const tab = await quinyxTab();
+  if (!tab) return { ok: false, code: "no-quinyx" };
+  const out = await quinyxAttempt();
+  if (out.code !== "session") return out;
+  // Session Quinyx = cookies du navigateur : le rechargement remet le script en place et relance l'application ; une
+  // vraie déconnexion reste signalée.
+  const heal = await healTab(tab, () => reachQuinyx(tab));
+  if (!heal.reloaded) return { ...out, heal: heal.reason };
+  if (!heal.ready) return { ...out, heal: "no-token" };
+  await sleep(3000); // laisser l'application Quinyx émettre ses premières requêtes (version de l'application)
+  return { ...(await quinyxAttempt()), heal: "reloaded" };
 }
 
 async function autoPass() {

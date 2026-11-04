@@ -5,6 +5,14 @@ export type ExtensionNote = { version: string; date: string; notes: string[] };
 
 export const EXTENSION_NOTES: ExtensionNote[] = [
   {
+    version: "1.13.1",
+    date: "2026-11-04",
+    notes: [
+      "Adresse CSM de production par défaut (https://csm.fs0ciety.org) ; une adresse déjà enregistrée, préversion comprise, est gardée.",
+      "La synchro automatique recharge seule un onglet DICOS dont la session a expiré (jamais l'onglet que tu utilises), attend la nouvelle session puis réessaie. Au plus un rechargement par onglet toutes les 15 min ; si tu es vraiment déconnecté, « session à rafraîchir » reste affiché. Même chose pour l'onglet Quinyx.",
+    ],
+  },
+  {
     version: "1.13.0",
     date: "2026-11-04",
     notes: [
