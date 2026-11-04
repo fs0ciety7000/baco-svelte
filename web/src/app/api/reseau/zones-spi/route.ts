@@ -12,7 +12,12 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return new Response("Non connecté", { status: 401 });
-  if (!can(user, "carte_pn:read") && !can(user, "referentiels:manage"))
+  // Carte PN, Réseau › Zones SPI (`timetable:read`, 4 nov. 2026) et vue d'administration.
+  if (
+    !can(user, "carte_pn:read") &&
+    !can(user, "timetable:read") &&
+    !can(user, "referentiels:manage")
+  )
     return new Response("Introuvable", { status: 404 });
   if (!allow(`zones-spi:${user.id}`, 30, 60_000))
     return new Response("Trop de demandes", { status: 429 });

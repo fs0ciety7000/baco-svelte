@@ -1,5 +1,6 @@
 import "server-only";
 
+import { countByZone } from "@/lib/network/spi-view";
 import { zoneShapes, type ZoneShapes } from "@/lib/network/voronoi";
 import { env } from "@/server/env";
 
@@ -113,4 +114,13 @@ export async function listZoneStations(): Promise<ZoneStationRow[]> {
     source: str(r.spi_zone_source),
     updated: str(r.updated),
   }));
+}
+
+/** Réseau › Zones SPI : nombre de PN actifs par zone (lecture avec le jeton de l'agent, `carte_pn:read`). */
+export async function crossingZoneCounts(): Promise<Record<string, number>> {
+  const pb = await pbForRequest();
+  const items = await pb
+    .collection("level_crossings")
+    .getFullList({ filter: "active = true", fields: "zone", batch: 2000 });
+  return countByZone(items.map((r) => ({ zone: str(r.zone) })));
 }

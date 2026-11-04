@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { PnBoard } from "@/components/ops/pn-board";
+import { AdminEditLink } from "@/components/referentiels/ref-ui";
 import { can } from "@/lib/permissions";
 import { requirePermission } from "@/server/auth";
 import { listSpiZones } from "@/server/data/network";
@@ -23,7 +24,8 @@ export default async function Page() {
   ]);
   return (
     <section className="flex min-w-0 flex-col gap-3" aria-label="Carte des passages à niveau">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <AdminEditLink href="/admin/referentiels/pn" show={can(user, "referentiels:manage")} />
         <LiveRefresh topics={["level_crossings"]} />
       </div>
       <PnBoard

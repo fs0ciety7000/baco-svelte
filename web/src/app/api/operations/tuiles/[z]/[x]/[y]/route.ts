@@ -22,8 +22,12 @@ export async function GET(
 ) {
   const user = await getCurrentUser();
   if (!user) return new Response("Non connecté", { status: 401 });
-  // Carte PN, et carte des zones SPI de l'administration (`referentiels:manage`).
-  if (!can(user, "carte_pn:read") && !can(user, "referentiels:manage"))
+  // Carte PN, Réseau › Zones SPI (`timetable:read`, 4 nov. 2026) et carte des zones de l'administration.
+  if (
+    !can(user, "carte_pn:read") &&
+    !can(user, "timetable:read") &&
+    !can(user, "referentiels:manage")
+  )
     return new Response("Introuvable", { status: 404 });
   const p = await params;
   const [z, x, y] = [p.z, p.x, p.y].map((v) => (/^\d{1,6}$/.test(v) ? Number(v) : NaN)) as [
