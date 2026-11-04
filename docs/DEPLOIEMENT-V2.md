@@ -338,6 +338,14 @@ BACO, et les vues EBP ne sont pas traitées. Elle contient des données personne
    créées / mises à jour ouvertes dans l'interface, comptes nouveaux à valider (Administration › Utilisateurs), conflits
    traités ; sortie du mode maintenance ; reprise de la synchro DICOS. Garder les rapports hors dépôt.
 
+**Import partiel du 4 novembre 2026 (prod, bons seulement)** : sans `--base` (sauvegarde du 10 oct. disparue) ni restauration :
+tables BACO `otto_commandes`, `taxi_commands`, `societes_bus`, `chauffeurs_bus`, `taxis`, `audit_logs` (depuis le 10 oct.)
+téléchargées **par le conteneur** (`busybox wget`, jeton Supabase de lecture d'1 h déposé en morceaux par des tâches Coolify
+ponctuelles) dans `/pb_data/delta/data`, puis `pocketbase csm-import-delta /pb_data/delta --since 2026-10-10T12:36:11Z --only
+bus_orders,taxi_orders [--dry-run] --dir=/pb_data --hooksDir=/pb/pb_hooks` (verrou `mkdir` avant l'import réel). Résultat :
+38 bons bus + 1 taxi créés, 0 conflit, relance = 0 écriture. Sauvegarde `pre_delta_20261104.zip` avant, dossier et jeton
+effacés après. À refaire tant que BACO est ouvert.
+
 **Répétition du 11 octobre 2026** (locale, aucune écriture sur la prod) : sauvegarde Supabase fraîche (GET seuls) contre la
 base prod construite le 10 octobre → **1 commande bus créée dans BACO depuis**, rien d'autre (hors `user_presence`, non
 reprise). Scénario fictif (9 créations, 6 mises à jour, 5 conflits, relance = 0 écriture) : voir `pocketbase/CLAUDE.md`.

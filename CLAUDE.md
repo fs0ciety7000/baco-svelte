@@ -310,6 +310,9 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   chaque tâche après sa première exécution (`GET …/scheduled-tasks/<uuid>/executions`).
 - (v2) **Marge du bas : toujours `var(--safe-bottom)`**, jamais `env(safe-area-inset-bottom)` directement : sous Chrome Android
   « bord à bord », cette dernière change quand la barre d'adresse se replie et tout ce qui est collé en bas saute (4 nov. 2026).
+- (v2) **Conteneur PocketBase (Alpine) : `wget` GNU 1.25 tronque les réponses « chunked » de Supabase (~250 octets)** et
+  reprend les fichiers partiels en envoyant `Range` (que PostgREST lit comme une pagination) : utiliser **`busybox wget`**, écrire
+  dans `fichier.$$` puis `mv`. Tâches Coolify : 255 caractères, et l'appel API depuis Python exige un `User-Agent` (403 sinon).
 - (v2) Playwright : un libellé avec astérisque requis (`Arrivée *`) ne répond pas à `getByLabel(…, { exact: true })` ;
   passer par `getByRole(…, { name, exact: true })`.
 
@@ -1492,6 +1495,15 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   module, retrait du Tri du Journal). Sauvegarde PocketBase `pre_prod_20261104.zip` faite juste avant (deux tâches Coolify
   exécutées une fois puis supprimées : jeton superuser dans `/tmp/a`, effacé par la 2e). Déploiements `csm-web-prod` et
   `csm-pocketbase-prod` « finished », santé 200, `perms-check` : 30 comptes, 0 écart.
+- 2026-11-04 — **Import des derniers bons BACO dans la prod** (demande de l'utilisateur, option A + transmission d'un jeton
+  autorisée explicitement) : `csm-import-delta --only bus_orders,taxi_orders --since 2026-10-10T12:36:11Z` (sans `--base` : la
+  sauvegarde du 10 oct. n'existe plus ; BACO : seules 2 modifications de `societes_bus` au journal d'audit) lancé DANS le
+  conteneur `csm-pocketbase-prod` par des tâches Coolify ponctuelles. Données : jeton Supabase **de lecture, 1 h** (compte admin
+  de test) déposé en morceaux dans `/tmp`, tables téléchargées par le conteneur dans `/pb_data/delta/data`. Essai à blanc puis
+  import : **38 bons bus (n° 328 à 365, numéros BACO gardés : aucun bon CSM au-delà de 327) + 1 taxi (n° 4), 0 conflit** ;
+  relance = 39 identiques. Sauvegarde `pre_delta_20261104.zip` avant ; `/pb_data/delta` et `/tmp` nettoyés, tâches supprimées.
+  BACO restant ouvert, **refaire l'import jusqu'au gel** (idempotent ; vérifier d'abord les numéros CSM > 365 : sinon
+  renuméroter les bons BACO importés, choix de l'utilisateur).
 
 ---
 
