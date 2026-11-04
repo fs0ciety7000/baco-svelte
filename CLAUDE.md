@@ -1551,6 +1551,9 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
 - 2026-11-04 — **N° CMD- jamais chez le fournisseur** (« c'est un numéro interne ») : PDF bus / taxi (titre, en-tête, pied, ligne
   « N° de commande ») et e-mail (objet, intro, tableau) sans CMD- ni n° de bon ; le n° TC / relation reste. CMD- gardé dans CSM
   (listes, fiches, archives, B201, récap, fichier facturation). Module Ressources renommé « Annuaire et ressources ».
+- 2026-11-04 — **Poussé en production** (demande de l'utilisateur) : `csm-prod` = c6fe797 (CMD- retiré du PDF et de l'e-mail
+  fournisseur, « Annuaire et ressources », libellé de module aligné à gauche dans la barre latérale large ; aucune migration).
+  Déploiement `csm-web-prod` terminé, santé 200.
 
 ---
 
