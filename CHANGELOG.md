@@ -41,7 +41,7 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 - **Cloche : ouvrir les notifications les marque lues** (la pastille disparaît ; les nouvelles restent signalées le temps de l'ouverture).
 - **Extension CSM 1.13.1** : l'adresse de production (https://csm.fs0ciety.org) est proposée par défaut (une adresse déjà enregistrée est gardée) ; la synchro automatique recharge seule un onglet DICOS ou Quinyx dont la session a expiré (jamais l'onglet que tu utilises, au plus une fois par quart d'heure) puis réessaie : « session à rafraîchir » ne s'affiche plus que si tu es vraiment déconnecté. Mets à jour l'extension depuis la page Extension CSM.
 - **Gares d'Anvers (Antwerpen, Berchem, Ekeren, Mortsel, Hoboken…) en district DNE** par défaut (appliqué au prochain import quotidien du référentiel ; une correction faite à la main reste prioritaire).
-- **E-mail de basculement BACO → CSM** (Administration › Campagnes) aux couleurs « Encre et sable ».
+- **E-mail de basculement BACO → CSM** (Administration › Campagnes) aux couleurs « Encre et sable », signé Nicolas, avec les données officielles SNCB / Infrabel parmi les nouveautés.
 - Barre du haut : l'icône « En ligne maintenant » ne chevauche plus le champ de recherche sur grand écran.
 - **Liens des notifications** : une notification de groupe ouvre Groupes, une perturbation iRail ouvre Journal › Perturbations ; un retard de train ou un changement DICOS ouvre la liste du bon jour filtrée sur le train, tous districts confondus (annulées visibles pour une annulation) ; un train suivi s'ouvre au bon jour. Les anciennes notifications sont corrigées aussi.
 

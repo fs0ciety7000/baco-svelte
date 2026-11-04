@@ -30,7 +30,9 @@ describe("campagne d'e-mail", () => {
     expect(r.html).toContain("border-top:3px solid #C9B48A");
     expect(r.html).toContain(".csm-btn{background:#C9B48A!important");
     expect(r.html).not.toMatch(/#00666B|#F8BC49/i);
-    expect(r.text).toContain("Nicolas & Thomas");
+    expect(r.text).toMatch(/bon service !\nNicolas$/m);
+    expect(r.text).not.toMatch(/Thomas|Besoin d'aide/);
+    expect(r.text).toContain("données officielles de la SNCB et d'Infrabel");
     expect(r.text).toContain("Il est fermé à partir d'aujourd'hui");
     expect(r.html).not.toMatch(/<img|<script|url\(/i);
     expect(r.text).toContain("À partir d'aujourd'hui, BACO devient CSM\n=====");

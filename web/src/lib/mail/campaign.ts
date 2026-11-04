@@ -61,7 +61,7 @@ const JOUR_J: CampaignTemplate = {
     "Le Journal en deux onglets, Infos et Perturbations (réponses, recherche, mentions @DSO), la B201 avec des notes par district et la frise de tes prises en charge du jour.",
     "",
     "### 🗺️ Réseau",
-    "Trains en direct, horaires et relations (IC 14, S1…), lignes, gares, carte des passages à niveau avec leur borne kilométrique et zones SPI.",
+    "Numéros de train, relations (IC, L, S, P), lignes, gares et passages à niveau viennent **directement des données officielles de la SNCB et d'Infrabel**, mises à jour chaque jour. Trains en direct, carte des passages à niveau avec leur borne kilométrique et zones SPI.",
     "",
     "### 📞 Annuaire et téléphone",
     "Recherche dès la première lettre (accents et fautes tolérés), favoris, et appel en un clic avec Genesys Cloud.",
@@ -79,13 +79,10 @@ const JOUR_J: CampaignTemplate = {
     "",
     "Jour, Nuit ou automatique : choisis ton thème dans le menu de ton compte › **Affichage**.",
     "",
-    "::: encadre Besoin d'aide ?",
     "Toutes les nouveautés sont expliquées sur la page **Nouveautés** (en bas de la barre latérale) : https://csm.fs0ciety.org/changelog",
-    "Un souci de connexion ou une question ? Contacte un administrateur CSM.",
-    ":::",
     "",
     "Bonne prise en main et bon service !",
-    "Nicolas & Thomas",
+    "Nicolas",
   ].join("\n"),
 };
 
