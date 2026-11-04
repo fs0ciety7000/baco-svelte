@@ -1,8 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import type { RecordAuthResponse, RecordModel } from "pocketbase";
 import { z } from "zod";
 
+import { identityCandidates } from "@/lib/auth-identity";
 import { homeOf } from "@/lib/home";
 import { createPb as pbFor } from "@/server/pocketbase";
 import { stopImpersonation } from "@/server/impersonation";
@@ -34,7 +36,18 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   let home = "/";
   let redirectTo: string | null = null;
   try {
-    const auth = await pb.collection("users").authWithPassword(identity, password);
+    // Casse de l'adresse ignorée : la saisie telle quelle, puis en minuscules (4 nov. 2026).
+    let auth: RecordAuthResponse<RecordModel> | undefined;
+    let lastError: unknown = null;
+    for (const candidate of identityCandidates(identity)) {
+      try {
+        auth = await pb.collection("users").authWithPassword(candidate, password);
+        break;
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    if (!auth) throw lastError instanceof Error ? lastError : new Error("Identifiant inconnu");
     if (auth.record.role === "disabled") return { error: "Compte désactivé.", identity };
     await writeSessionToken(auth.token);
     await startSession(auth.token, "password");
