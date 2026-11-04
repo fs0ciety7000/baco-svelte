@@ -1482,6 +1482,10 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   « Plus ». **Adresses inchangées** grâce aux groupes de routes `operations/(journal)/` (layout `moduleId="journal"`) et
   `operations/(ops)/` (layout Opérations) : liens des notifications en base et favoris intacts. Règle « 6 modules au plus » de
   la navigation v3 portée à **7**. `redirects.test.ts` lit les groupes de routes.
+- 2026-11-04 — **Administration › Tri du Journal retirée** (accord de l'utilisateur) : page, `JournalRulesEditor`,
+  `lib/ops/journal-rules.ts` (+ test), actions `saveJournalRules` / `reclassBacoMessages` supprimées ; `/admin/journal` → `/admin`
+  (308). Le hook garde `journalCategory` (règles `app_settings.journal_rules` déjà posées, sinon défaut) pour l'étiquette
+  Travaux / Perturbation des messages iRail.
 
 ---
 

@@ -23,7 +23,6 @@ const SCREENS: [string, RegExp][] = [
   ["/admin/roles/paco", /Ce rôle/],
   ["/admin/audit", /audit|Aucune/i],
   ["/admin/extension", /Jetons de l'extension/],
-  ["/admin/journal", /Catégorie donnée aux messages automatiques/],
   ["/admin/sante", /État/],
   // Administration › Référentiels (navigation v3).
   ["/admin/referentiels", /à vérifier/],

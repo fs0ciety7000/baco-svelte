@@ -444,8 +444,8 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   cliquable `log-quote`, bouton `log-reply`, barre `log-replying`) ; recherche plein texte (chaque mot dans le texte,
   l'auteur ou le train) avec surlignage (`ChatMarkdown highlight`) ; image collée → pièce jointe (`onPaste`) ; suggestions
   `@DSO` / `@DSE` / `@DCE` ; mobile : catégorie en liste déroulante, méta compacte (heure seule), actions en icônes, fil
-  bord à bord. Tri automatique : `lib/ops/journal-rules.ts` (`ruleCategory`, miroir du hook, testé), page
-  `/admin/journal` (`JournalRulesEditor`, `saveJournalRules`, `reclassBacoMessages`).
+  bord à bord. Tri automatique : page `/admin/journal` **retirée le 4 nov. 2026** (redirige vers `/admin`) ; le hook garde
+  `journalCategory` pour l'étiquette des messages iRail.
 - **Temps réel partagé** : `lib/live.ts` (`subscribeLive(topics, onChange, onState)`) = UNE connexion SSE par onglet (union
   des sujets). Ne jamais ouvrir un `EventSource` directement : en HTTP/1.1 le navigateur limite à 6 connexions par domaine
   et l'accueil (widgets en direct + cloche) bloquait la navigation. `LiveRefresh`, la cloche et l'ALEA passent par le hub.

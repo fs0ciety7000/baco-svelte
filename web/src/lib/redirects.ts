@@ -39,6 +39,8 @@ export const LEGACY_REDIRECTS: LegacyRedirect[] = [
   { source: "/commandes/b201", destination: "/operations/b201" },
   { source: "/ressources/b201", destination: "/operations/b201" },
   { source: "/operations/releve", destination: "/operations/b201" },
+  // Administration › Tri du Journal retirée le 4 nov. 2026 (Journal en Infos / Perturbations, plus de catégories).
+  { source: "/admin/journal", destination: "/admin" },
   // PMR : Groupes en route courte (9 oct. 2026).
   { source: "/pmr/groupes", destination: "/groupes" },
 ];
