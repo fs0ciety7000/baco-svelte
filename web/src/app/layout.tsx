@@ -7,6 +7,7 @@ import {
   IBM_Plex_Sans_Condensed,
   Inter_Tight,
   JetBrains_Mono,
+  Onest,
   Saira_Condensed,
 } from "next/font/google";
 import { cookies } from "next/headers";
@@ -24,6 +25,13 @@ import { Providers } from "./providers";
 import "./globals.css";
 
 // Polices auto-hébergées par next/font (téléchargées au build, servies par le domaine CSM).
+// Onest : police de l'identité CSM « Encre et sable » (thèmes par défaut depuis le 4 nov. 2026), préchargée.
+const onest = Onest({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-onest",
+  display: "swap",
+});
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
 const geistMono = Geist_Mono({
   subsets: ["latin"],
@@ -99,7 +107,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#0D0B09",
+  themeColor: "#1C1B19",
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
@@ -115,7 +123,17 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       data-scheme={scheme}
       data-density={ui.density}
       data-acting={showActing ? "" : undefined}
-      className={[geist, geistMono, saira, plex, plexCondensed, plexMono, interTight, jetbrainsMono]
+      className={[
+        onest,
+        geist,
+        geistMono,
+        saira,
+        plex,
+        plexCondensed,
+        plexMono,
+        interTight,
+        jetbrainsMono,
+      ]
         .map((f) => f.variable)
         .join(" ")}
     >

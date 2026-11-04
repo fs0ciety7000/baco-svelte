@@ -950,6 +950,18 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   URL `?q=&district=&zone=&ligne=&pn=&zones=1&vue=carte` par `history.replaceState`), fiche de ligne (section PN triée
   par BK, `data-testid="line-crossings"`), `/admin/referentiels/zones-spi` (`SpiZonesAdmin`). E2E `e2e/reseau-pn.spec.ts`.
 
+## Identité « Encre et sable » (4 nov. 2026, dépôt `csm-brand`)
+
+- Thèmes par défaut `jour` / `nuit` = direction **`csm`** (`DIRECTIONS[0]`, « Automatique » = `auto`) : forme `csm` (14 / 10 px,
+  pilules), police `onest` (`--font-onest`, `next/font/google`, préchargée). Signal = `signal-jour` / `signal-nuit` /
+  `signal-auto`. `ThemeStyle.navMark` → `--nav-mark` (trait actif de la barre latérale, sable) ; `--brand-sable` (globals.css)
+  = sable du logo, fixe.
+- Logo : `components/brand/csm-logo.tsx` → `CsmLogo` (symbole + « csm ») et `CsmSymbol`, props `animate` (point de
+  correspondance, `.csm-logo-play` / `.csm-logo-dot` dans globals.css, rien en mouvement réduit) et `decorative` (dans un
+  lien déjà nommé). Tracés copiés des fichiers maîtres de la charte : ne jamais les redessiner.
+- Icônes `public/icons/*`, `src/app/favicon.ico`, `public/brand/og-csm.png` (`node scripts/og-image.mjs` : Chromium de
+  `/opt/pw-browsers/chromium` en local si le Playwright du projet ne trouve pas son navigateur).
+
 ## Design v4 « Signal / Quai / Cabine » (lots 0-2, 15 oct. 2026, `../docs/design/REFONTE-DESIGN-V4.md`)
 
 - **Thèmes** (`src/design/tokens.ts`) : `DIRECTIONS` (Signal = `jour` / `nuit` / `auto`, Quai = `quai-jour` / `quai-nuit` /

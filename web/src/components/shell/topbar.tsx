@@ -1,5 +1,6 @@
 "use client";
 
+import { CsmSymbol } from "@/components/brand/csm-logo";
 import * as Menu from "@radix-ui/react-dropdown-menu";
 import { Plus, Search } from "lucide-react";
 import Link from "next/link";
@@ -45,12 +46,7 @@ export function Topbar() {
         className="flex h-11 shrink-0 items-center gap-2 rounded-control px-1 md:hidden"
         aria-label="Accueil CSM"
       >
-        <span
-          aria-hidden
-          className="display grid size-6 place-items-center rounded-[min(var(--r-control),6px)] bg-fg text-label leading-none text-bg"
-        >
-          C
-        </span>
+        <CsmSymbol decorative className="h-5 w-auto" />
       </Link>
       <p className="min-w-0 truncate text-body-lg font-semibold tracking-[-0.01em] text-fg md:shrink-0">
         {mod?.label ??

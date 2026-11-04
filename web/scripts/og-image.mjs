@@ -15,8 +15,8 @@ const icon = (await readFile(path.join(root, "public/icons/icon-512.png"))).toSt
 const dragon = await readFile(path.join(root, "public/brand/occ-interactive.svg"), "utf8");
 const wheel = await readFile(path.join(root, "public/brand/cardor-monogram.svg"), "utf8");
 
-// Thème par défaut (tokens.ts) : bg, fg, fg-muted, fg-subtle, accent.
-const c = { bg: "#0D0B09", fg: "#EDE7DC", muted: "#B1AA9E", subtle: "#8C857C", accent: "#FAC13B" };
+// Identité CSM « Encre et sable » (thème CSM · Nuit de tokens.ts) : bg, fg, fg-muted, fg-subtle, sable du logo.
+const c = { bg: "#141311", fg: "#EDE8DD", muted: "#ABA393", subtle: "#918A7D", accent: "#C9B48A" };
 
 const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><style>
   * { box-sizing: border-box; margin: 0; }
@@ -25,13 +25,13 @@ const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><style>
   .frame { position: absolute; inset: 0; padding: 72px 80px;
     background-image: linear-gradient(${c.fg}0a 1px, transparent 1px), linear-gradient(90deg, ${c.fg}0a 1px, transparent 1px);
     background-size: 40px 40px; display: flex; align-items: center; gap: 72px; }
-  .icon { width: 360px; height: 360px; flex: none; }
+  .icon { width: 360px; height: 360px; flex: none; border-radius: 48px; }
   .text { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
   .eyebrow { font-family: "DejaVu Sans Mono", monospace; font-size: 24px; letter-spacing: .14em;
     text-transform: uppercase; color: ${c.muted}; display: flex; align-items: center; gap: 14px; }
-  .eyebrow i { width: 16px; height: 16px; background: ${c.accent}; display: inline-block; }
+  .eyebrow i { width: 16px; height: 16px; border-radius: 50%; background: ${c.accent}; display: inline-block; }
   h1 { font-size: 168px; line-height: .9; font-weight: 800; letter-spacing: -.02em; }
-  .rule { width: 120px; height: 6px; background: ${c.accent}; }
+  .rule { width: 120px; height: 6px; border-radius: 3px; background: ${c.accent}; }
   .sub { font-size: 36px; color: ${c.fg}; font-weight: 500; }
   .note { font-size: 26px; color: ${c.muted}; }
   .credit { position: absolute; right: 80px; bottom: 48px; display: flex; align-items: center; gap: 14px;

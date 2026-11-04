@@ -36,12 +36,12 @@ export type ModuleId = (typeof MODULE_IDS)[number];
 
 export type ColorToken = (typeof COLOR_TOKENS)[number];
 export type Scheme = "dark" | "light";
-export type Shape = "angle" | "soft" | "pill" | "net" | "quai" | "cabine";
-export type TypeSet = "saira" | "geist" | "plex" | "pro" | "quai" | "cabine";
+export type Shape = "angle" | "soft" | "pill" | "net" | "quai" | "cabine" | "csm";
+export type TypeSet = "saira" | "geist" | "plex" | "pro" | "quai" | "cabine" | "onest";
 /** « reference » : thèmes mis en avant (directions Signal, Quai, Cabine + Contraste élevé) ; « other » : « Autres thèmes ». */
 export type ThemeGroup = "reference" | "other";
 /** Directions de la refonte v4 (15 oct. 2026) : chacune a un thème Jour, un thème Nuit et un choix « Automatique ». */
-export type DirectionId = "signal" | "quai" | "cabine";
+export type DirectionId = "csm" | "signal" | "quai" | "cabine";
 
 /**
  * Détails de composants propres à une direction, portés par des variables CSS (aucun style ad hoc dans les pages) :
@@ -71,6 +71,8 @@ export type ThemeStyle = {
   navOn?: string;
   navCard?: string;
   navRule?: string;
+  /** Trait de l'entrée active de la barre latérale (CSM : sable) ; sinon la couleur du module, puis l'accent. */
+  navMark?: string;
 };
 
 type BaseColors = Record<Exclude<ColorToken, "surface-3">, string> & { "surface-3"?: string };
@@ -97,6 +99,8 @@ type ThemeSource = Omit<Theme, "colors"> & { colors: BaseColors };
 export const THEME_IDS = [
   "jour",
   "nuit",
+  "signal-jour",
+  "signal-nuit",
   "quai-jour",
   "quai-nuit",
   "cabine-jour",
@@ -119,12 +123,20 @@ export type ThemeId = (typeof THEME_IDS)[number];
 /** Directions : un thème Jour, un thème Nuit, un choix automatique (Nuit / Jour selon le système). */
 export const DIRECTIONS = [
   {
-    id: "signal",
-    label: "Signal",
-    description: "Net et calme, des chiffres qui se lisent de loin",
+    id: "csm",
+    label: "CSM",
+    description: "Encre et sable : l'identité de CSM (défaut)",
     day: "jour",
     night: "nuit",
     auto: "auto",
+  },
+  {
+    id: "signal",
+    label: "Signal",
+    description: "Net et calme, pétrole le jour, ambre la nuit",
+    day: "signal-jour",
+    night: "signal-nuit",
+    auto: "signal-auto",
   },
   {
     id: "quai",
@@ -150,13 +162,13 @@ export const DIRECTIONS = [
   night: ThemeId;
   auto: AutoChoice;
 }[];
-export const AUTO_CHOICES = ["auto", "quai-auto", "cabine-auto"] as const;
+export const AUTO_CHOICES = ["auto", "signal-auto", "quai-auto", "cabine-auto"] as const;
 export type AutoChoice = (typeof AUTO_CHOICES)[number];
 /** Valeurs acceptées dans les préférences (cookie `csm_ui`). */
 export const THEME_CHOICES = [...THEME_IDS, ...AUTO_CHOICES] as const;
 /** Choix possibles de l'agent : un thème fixe, ou un « automatique » d'une direction (Nuit / Jour selon le système). */
 export type ThemeChoice = ThemeId | AutoChoice;
-/** « Automatique » de Signal (défaut de tous les agents). */
+/** « Automatique » de CSM (défaut de tous les agents, identité « Encre et sable » du 4 nov. 2026). */
 export const AUTO_THEMES: Record<Scheme, ThemeId> = { dark: "nuit", light: "jour" };
 
 export function isAutoChoice(choice: string): choice is AutoChoice {
@@ -178,11 +190,11 @@ export function choiceScheme(choice: ThemeChoice): Scheme | undefined {
 // traitement », distinct de l'accent (réservé à l'action : bouton primaire, sélection, focus) ; `surface-3` = survol,
 // élément actif ou surélevé (v4).
 const SOURCES: ThemeSource[] = [
-  // --- Direction A « Signal » (15 oct. 2026), thèmes par défaut : gris teintés d'une seule famille, profondeur par le
-  // ton, pétrole le jour, ambre la nuit, Geist, rayons 8 / 6 px. Identifiants `jour` / `nuit` gardés (préférences et
-  // cookie `csm_ui`). Palettes : REFONTE-DESIGN-V4 §3 A (OKLCH → hex).
+  // --- Direction « Signal » (15 oct. 2026) : thèmes par défaut jusqu'au 4 nov. 2026, identifiants `signal-jour` /
+  // `signal-nuit` depuis (les ids `jour` / `nuit` portent l'identité CSM). Gris teintés d'une seule famille, profondeur
+  // par le ton, pétrole le jour, ambre la nuit, Geist, rayons 8 / 6 px. Palettes : REFONTE-DESIGN-V4 §3 A (OKLCH → hex).
   {
-    id: "jour",
+    id: "signal-jour",
     label: "Signal · Jour",
     description: "Clair et net, pétrole : la journée au bureau",
     scheme: "light",
@@ -215,7 +227,7 @@ const SOURCES: ThemeSource[] = [
     tint: 0.12,
   },
   {
-    id: "nuit",
+    id: "signal-nuit",
     label: "Signal · Nuit",
     description: "Bleu-noir, accent ambre : les écrans de soirée",
     scheme: "dark",
@@ -248,6 +260,88 @@ const SOURCES: ThemeSource[] = [
     },
     tint: 0.16,
     style: { cardFrame: "transparent" },
+  },
+  // --- Identité CSM « Encre et sable » (4 nov. 2026, dépôt csm-brand : DESIGN.md, charte brand/csm/kit/C) : thèmes par
+  // défaut, identifiants `jour` / `nuit` gardés (préférences, cookie `csm_ui`). Monochrome chaud : la marque n'a aucune
+  // teinte vive, vert / ambre / rouge / bleu / violet sont réservés aux statuts. Action = encre le jour, sable la nuit.
+  {
+    id: "jour",
+    label: "CSM · Jour",
+    description: "Pierre claire, encre et sable : l'identité de CSM",
+    scheme: "light",
+    shape: "csm",
+    type: "onest",
+    group: "reference",
+    direction: "csm",
+    colors: {
+      bg: "#F5F2EB",
+      surface: "#FDFCF9",
+      "surface-2": "#F0ECE3",
+      "surface-3": "#E8E3D8",
+      border: "#E3DDD1",
+      "border-strong": "#8A8274",
+      fg: "#1C1B19",
+      "fg-muted": "#5F5A51",
+      "fg-subtle": "#7D766A",
+      accent: "#1C1B19",
+      "accent-fg": "#FBF9F4",
+      ok: "#08704F",
+      warn: "#875405",
+      danger: "#AE2E28",
+      info: "#1A64A6",
+      progress: "#7A4596",
+    },
+    shadows: {
+      rest: "0 1px 2px rgb(28 27 25 / 0.05), 0 8px 24px -14px rgb(28 27 25 / 0.16)",
+      float: "0 1px 2px rgb(28 27 25 / 0.06), 0 16px 40px -14px rgb(28 27 25 / 0.26)",
+    },
+    tint: 0.12,
+    style: {
+      chipOnBg: "#EFE7D6",
+      chipOnBorder: "#C9B48A",
+      navBg: "#EFEBE2",
+      navMark: "#C9B48A",
+    },
+  },
+  {
+    id: "nuit",
+    label: "CSM · Nuit",
+    description: "Encre profonde et sable : l'identité de CSM le soir",
+    scheme: "dark",
+    shape: "csm",
+    type: "onest",
+    group: "reference",
+    direction: "csm",
+    colors: {
+      bg: "#141311",
+      surface: "#1B1A17",
+      "surface-2": "#23211E",
+      "surface-3": "#2C2A26",
+      border: "#33302B",
+      "border-strong": "#7A7468",
+      fg: "#EDE8DD",
+      "fg-muted": "#ABA393",
+      "fg-subtle": "#918A7D",
+      accent: "#C9B48A",
+      "accent-fg": "#141311",
+      ok: "#3FC6A0",
+      warn: "#EE8F3A",
+      danger: "#FF7A85",
+      info: "#66B2FD",
+      progress: "#CFA3EE",
+    },
+    shadows: {
+      rest: "inset 0 1px 0 rgb(255 255 255 / 0.04)",
+      float:
+        "inset 0 1px 0 rgb(255 255 255 / 0.06), 0 0 0 1px #33302B, 0 16px 40px -12px rgb(0 0 0 / 0.65)",
+    },
+    tint: 0.16,
+    style: {
+      cardFrame: "transparent",
+      chipOnBg: "#2E2A22",
+      chipOnBorder: "#C9B48A",
+      navMark: "#C9B48A",
+    },
   },
   // --- Direction B « Quai » : institutionnelle ferroviaire. Bleu SNCB en accent, `info` en cyan pour rester distinct,
   // IBM Plex (sans préchargement), angles presque droits, titres soulignés d'un trait accent, en-têtes marqués.
@@ -790,6 +884,8 @@ export const SHAPES: Record<
   // Quai : angles presque droits partout, pilules comprises.
   quai: { box: "3px", control: "2px", pill: "2px", chamfer: "0px", chamferSm: "0px" },
   cabine: { box: "6px", control: "5px", pill: "999px", chamfer: "0px", chamferSm: "0px" },
+  // CSM « Encre et sable » : cartes 14 px, contrôles 10 px, pilules (identité du 4 nov. 2026).
+  csm: { box: "14px", control: "10px", pill: "999px", chamfer: "0px", chamferSm: "0px" },
 };
 
 /**
@@ -900,6 +996,19 @@ export const TYPESETS: Record<
     h1: { size: "1.5rem", line: "1.875rem" },
     features: '"ss02", "cv11"',
   },
+  // CSM « Encre et sable » : Onest seule (titres 650, approche serrée), chiffres tabulaires de la même famille ; la mono
+  // (Geist Mono) ne sert qu'aux références.
+  onest: {
+    ui: `var(--font-onest), ${SANS_FALLBACK}`,
+    title: `var(--font-onest), ${SANS_FALLBACK}`,
+    code: `var(--font-geist-mono), ${MONO_FALLBACK}`,
+    case: "none",
+    track: "-0.02em",
+    weight: "650",
+    label: { font: `var(--font-onest), ${SANS_FALLBACK}`, case: "none", track: "0" },
+    figures: "sans",
+    h1: { size: "1.625rem", line: "2rem" },
+  },
 };
 
 /** Teinte de fond des badges de statut par défaut (part de la couleur du statut mêlée à `surface`). */
@@ -947,6 +1056,7 @@ function navLines(theme: Theme): string[] {
     `--nav-card: ${style.navCard ?? def.card};`,
     `--nav-rule: ${style.navRule ?? def.rule};`,
     `--nav-card-shadow: ${def.cardShadow};`,
+    ...(style.navMark ? [`--nav-mark: ${style.navMark};`] : []),
   ];
 }
 

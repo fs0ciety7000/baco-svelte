@@ -431,3 +431,21 @@ Statistiques, Administration, pages simples), sans changement de logique métier
   de train en `TrainChip`.
 - **Carte PN** : la carte Leaflet ne change pas ; districts en `MultiSelect` pour que la barre tienne sur une ligne.
 - Les thèmes « angle » gardent chanfreins et capitales mono (`label-mono`, `chamfer`, rayons à 0).
+
+## Identité « Encre et sable » — 4 nov. 2026 (validée, dépôt `csm-brand`)
+
+L'identité de marque commande le site (décision de l'utilisateur : « la brand identity ne suit pas le design existant,
+c'est l'inverse »). Source : dépôt `fs0ciety7000/csm-brand`, `DESIGN.md` et charte `brand/csm/kit/C/csm-guidelines.pdf`,
+maquettes `brand/csm/maquettes-v5.html`.
+
+- **Logo** : deux lignes décalées (le train, le bus) reliées par un passage sable qui dessine le S ; logotype « csm » en
+  Onest. Composant `web/src/components/brand/csm-logo.tsx` (`CsmLogo`, `CsmSymbol`, tracés des fichiers maîtres, ne pas
+  redessiner) ; mouvement : un point parcourt la correspondance une fois (`.csm-logo-play`).
+- **Thèmes `jour` / `nuit` repeints** (identifiants gardés) : direction `csm`, forme `csm` (cartes 14 px, contrôles 10 px,
+  pilules), police `onest`. Action = encre le jour, sable `#C9B48A` la nuit ; trait actif de la barre latérale sable
+  (`--nav-mark`) ; sable du logo `--brand-sable` (fixe). Monochrome chaud : vert / ambre / rouge / bleu / violet
+  réservés aux statuts.
+- **Signal** passe dans une direction à part (`signal-jour`, `signal-nuit`, `signal-auto`) : rien de supprimé.
+- Icônes PWA, favicon et image de partage régénérés (encre, lignes ivoire, passage sable).
+- Lots suivants proposés (non faits) : bandeau d'incident « Temps réel » à l'accueil, carte « Correspondances menacées »,
+  renommage Accueil → Temps réel et Commandes → Bus et taxis (à valider : libellés comparés par les E2E).

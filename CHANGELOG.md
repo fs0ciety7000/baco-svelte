@@ -3,6 +3,20 @@
 Toutes les évolutions de CSM visibles par les agents, de la plus récente à la plus ancienne.
 Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
+## [2026.11.04] — Nouvelle identité visuelle
+
+### Nouveautés
+
+- **Nouvelle identité de CSM, « Encre et sable »** : nouveau logo (deux lignes, le train et le bus, reliées par un passage sable qui forme le S de Solutions), nouvelle police (Onest), nouvelles couleurs. Le logo apparaît dans la barre latérale, la barre du haut en mobile et la page de connexion ; un petit point y parcourt la correspondance à l'ouverture (rien si ton appareil demande moins d'animations).
+- **Thèmes par défaut renouvelés** : « CSM · Jour » (pierre claire et encre) et « CSM · Nuit » (encre profonde et sable). Le réglage « Automatique » suit l'un ou l'autre selon ton appareil.
+
+### Améliorations
+
+- Les couleurs vives sont réservées aux statuts (vert, ambre, rouge, bleu, violet) : la marque reste sobre et les alertes se voient mieux.
+- Cartes plus arrondies, boutons et champs harmonisés, entrée active de la barre latérale marquée d'un trait sable.
+- Nouvelles icônes de l'application (onglet du navigateur, écran d'accueil du téléphone) et nouvelle image d'aperçu des liens.
+- L'ancienne palette « Signal » (pétrole le jour, ambre la nuit) reste disponible dans Affichage › Autres thèmes, avec les autres thèmes.
+
 ## [2026.11.02] — Copie des réquisitoires bus C3
 
 ### Améliorations

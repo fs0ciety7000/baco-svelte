@@ -1,5 +1,6 @@
 "use client";
 
+import { CsmLogo, CsmSymbol } from "@/components/brand/csm-logo";
 import type * as React from "react";
 
 import * as Menu from "@radix-ui/react-dropdown-menu";
@@ -53,7 +54,7 @@ function ActiveMark({ on }: { on: boolean }) {
   return (
     <span
       aria-hidden
-      className="absolute top-2 bottom-2 -left-2 w-[3px] rounded-r-pill bg-[var(--mod,var(--accent))]"
+      className="absolute top-2 bottom-2 -left-2 w-[3px] rounded-r-pill bg-[var(--nav-mark,var(--mod,var(--accent)))]"
     />
   );
 }
@@ -337,18 +338,10 @@ export function Sidebar() {
         aria-label="CSM, accueil"
         className="mx-2 mt-1.5 flex h-10 shrink-0 items-center justify-center gap-2.5 rounded-control px-2 outline-none focus-visible:ring-2 focus-visible:ring-accent xl:justify-start"
       >
-        <span
-          aria-hidden
-          className="display grid size-[26px] shrink-0 place-items-center rounded-[min(var(--r-control),7px)] bg-fg text-small leading-none text-bg"
-        >
-          C
-        </span>
-        <span aria-hidden className="hidden min-w-0 flex-col xl:flex">
-          <span className="display text-body-lg leading-5">CSM</span>
-          <span className="truncate text-label tracking-normal text-fg-muted normal-case">
-            Client Solutions
-          </span>
-        </span>
+        {/* Identité CSM « Encre et sable » : symbole sur le rail, logo complet dès 1280 px (le point de correspondance
+            parcourt le symbole au premier affichage). */}
+        <CsmSymbol animate decorative className="h-[22px] w-auto shrink-0 xl:hidden" />
+        <CsmLogo animate decorative className="hidden h-[22px] w-auto shrink-0 xl:block" />
       </Link>
       {sections.map((s, i) => (
         <div key={s.id} className="px-2">

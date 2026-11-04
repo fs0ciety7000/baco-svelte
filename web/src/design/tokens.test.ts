@@ -112,7 +112,7 @@ describe.each(THEMES)("thème $label", (theme) => {
   );
 });
 
-describe("directions v4 (Signal, Quai, Cabine)", () => {
+describe("directions (CSM, Signal, Quai, Cabine)", () => {
   it.each(DIRECTIONS)("$label : un thème Jour clair et un thème Nuit sombre", (d) => {
     expect(themeById(d.day).scheme).toBe("light");
     expect(themeById(d.night).scheme).toBe("dark");
@@ -120,11 +120,21 @@ describe("directions v4 (Signal, Quai, Cabine)", () => {
     expect(themeById(d.night).direction).toBe(d.id);
   });
 
-  it("Signal garde les identifiants jour / nuit et reste le défaut automatique", () => {
-    expect(DIRECTIONS[0].id).toBe("signal");
+  it("CSM « Encre et sable » porte les identifiants jour / nuit et reste le défaut automatique", () => {
+    expect(DIRECTIONS[0].id).toBe("csm");
+    expect(DIRECTIONS[0].auto).toBe("auto");
     expect(AUTO_THEMES).toEqual({ dark: "nuit", light: "jour" });
-    expect(themeById("jour").label).toBe("Signal · Jour");
-    expect(themeById("nuit").label).toBe("Signal · Nuit");
+    expect(themeById("jour").label).toBe("CSM · Jour");
+    expect(themeById("nuit").label).toBe("CSM · Nuit");
+    expect(themeById("signal-jour").label).toBe("Signal · Jour");
+    expect(themeById("signal-nuit").label).toBe("Signal · Nuit");
+  });
+
+  it("CSM : rayons 14 / 10 px, Onest, action encre le jour et sable la nuit", () => {
+    expect(SHAPES.csm).toMatchObject({ box: "14px", control: "10px" });
+    expect(themeById("jour").colors.accent).toBe("#1C1B19");
+    expect(themeById("nuit").colors.accent).toBe("#C9B48A");
+    expect(themesCss()).toMatch(/\[data-theme="jour"\] \{[^}]*--font-ui: var\(--font-onest\)/);
   });
 
   it("un choix automatique ne fixe pas de schéma, un thème fixe oui", () => {
@@ -143,7 +153,9 @@ describe("directions v4 (Signal, Quai, Cabine)", () => {
 
   it("Signal : rayons 8 / 6 px, chiffres sans mono", () => {
     expect(SHAPES.net).toMatchObject({ box: "8px", control: "6px" });
-    expect(themesCss()).toMatch(/\[data-theme="jour"\] \{[^}]*--figures-font: var\(--font-ui\);/);
+    expect(themesCss()).toMatch(
+      /\[data-theme="signal-jour"\] \{[^}]*--figures-font: var\(--font-ui\);/,
+    );
   });
 });
 

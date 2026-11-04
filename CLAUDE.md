@@ -41,6 +41,7 @@ le 11 oct.** : il ne vit plus que sur `main` (BACO en production) et la branche 
 | 5d | Réseau : PN Infrabel + zones SPI (lot A du plan du 15 oct.) | 🔄 15 oct. (branche `reseau-pn-spi`, non poussée) — 1 290 PN Infrabel (CC0) dont 183 rapprochés des 211 PN BACO, zones SPI des gares (carte COI relevée), Carte PN refaite, admin Zones SPI |
 | 5e | Planificateur de tâches PMR (remplace les classeurs Excel DSO / DSE) | 🔄 15 oct. — P0 (socle, Quinyx gares, dossiers DICOS en attente, extension 1.9.1) + P1 (moteur, vue Jour) livrés sur la branche de session, audit + revue corrigés ; à valider (captures) avant la préversion. Cadrage `docs/design/CADRAGE-PLANIFICATEUR-PMR.md`, règles `docs/design/REGLES-PLANIFICATEUR-PMR.md` |
 | 5c | Horaires Quinyx (Équipe › Planning) | 🔄 1er lot le 14 oct. (branche `claude/quinyx-horaires`, PR vers `csm-preview`) — extension 1.8.0, ingestion, 4 collections, planning, admin, districts du jour proposés, widget « Fin de service » réel ; cadrage `docs/design/CADRAGE-QUINYX.md` |
+| 7b | Identité « Encre et sable » (dépôt `csm-brand`) appliquée au site | 🔄 4 nov. — lots 1-2 (thèmes `jour` / `nuit` repeints, Onest, logo, icônes) sur la branche de session ; incident « Temps réel » et renommages à venir. `docs/DESIGN-DIRECTION.md` § Identité |
 | 6 | Déploiement Coolify : `web` + `pocketbase` (volume, sauvegardes), CI | ✅ 8 oct. — **PRODUCTION en ligne le 10 oct. : https://csm.fs0ciety.org** (`csm-web-prod` + `csm-pocketbase-prod`, environnement Coolify `prod`, branche **`csm-prod`**, données BACO importées le 10 oct., sauvegardes R2) ; **test-csm = preview** (branche de session) ; projet Coolify **CSM** créé par l'API (`csm-web`, `csm-pocketbase`, volume + sauvegardes 2 h / 2 h 30), CI `csm-v2.yml` — `docs/DEPLOIEMENT-V2.md` |
 | — | Hotfix sécurité BACO (`supabase/migrations/20261008120000_security_hotfix.sql`) | ✅ appliqué par l'utilisateur (SQL Editor) le 8 oct., vérifié : 0 ERROR (36 avant). Suite **non appliquée** : `20261008130000_hotfix_followup.sql` (test NULL de `get_my_role()`) et `20261008140000_pn_data_update_fix.sql` (XSS stocké carte PN), accord requis ; protection des mots de passe compromis encore désactivée |
 
@@ -1442,6 +1443,13 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
 - 2026-11-02 — **Bons bus C3 : `business.expert.central@belgiantrain.be` en copie** de l'e-mail au fournisseur (demande de
   l'utilisateur), en plus du bureau PACO du district (`BUS_CC` dans `web/src/lib/orders/mail.ts`) ; taxi inchangé. Même
   ajout dans BACO (`main`, `mailto:` de `/otto`, 0295eb6) à la demande explicite de l'utilisateur (exception à « main intouchable »).
+- 2026-11-04 — **Identité « Encre et sable » appliquée au site** (dépôt `csm-brand` : brand identity choisie par l'utilisateur,
+  piste C2 « Correspondance », charte + maquettes ; « l'identité commande le site, pas l'inverse »). Lots 1-2 : thèmes `jour` /
+  `nuit` repeints (direction `csm`, forme 14 / 10 px, police Onest préchargée, action encre / sable, statuts seuls en couleur),
+  Signal conservé en `signal-jour` / `signal-nuit` / `signal-auto` (Autres thèmes), logo `components/brand/csm-logo.tsx` (barre
+  latérale, barre du haut mobile, connexion), icônes PWA, favicon et image de partage. Proposés ensuite : bandeau d'incident
+  à l'accueil, carte « Correspondances menacées », renommages Accueil → Temps réel, Commandes → Bus et taxis.
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)
