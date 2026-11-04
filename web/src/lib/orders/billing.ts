@@ -105,7 +105,7 @@ export const BUS_HEADER = [
   "Date",
   "Relation",
   "Rédacteur C3",
-  "Dispo société",
+  "Dispo Kim Cars / Degrève", // société appelée d'abord : Kim Cars partout, Degrève pour Ath et Tournai
   "Nbr de bus demandé",
   "% fourni",
   "Remarque",
@@ -496,7 +496,7 @@ export function busSheet(orders: BillingBus[], scope: BillingScope): XlsxSheet {
     merges.push(`A${rows.length}:${span}${rows.length}`);
     rows.push(
       BUS_HEADER.map((h, c) => ({
-        v: h === "Dispo société" ? `Dispo ${title}`.slice(0, 60) : h,
+        v: h,
         s:
           c === 24
             ? {

@@ -1543,6 +1543,11 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   Le classeur réel de l'utilisateur (noms d'agents, n° de dossier) a servi de modèle de mise en page seulement, jamais copié.
   Planificateur PMR **masqué des menus** (`NavTab.hidden`, `routeAllowed` pour la garde de page).
 
+- 2026-11-04 — **Poussé en production** (demande de l'utilisateur) : `csm-prod` = 02f944d (visite guidée, planificateur masqué, n° de
+  commande `CMD-XXXXXX` (migration `1760005100`), récap des archives par semaine, fichier facturation Excel mis en forme). Sauvegarde
+  `pre_prod_cmd_20261104.zip` avant ; déploiements terminés, santé 200, 0 bon bus / taxi sans `order_ref` en prod. Excel, onglet BUS :
+  colonne « Dispo Kim Cars / Degrève » (Kim Cars appelé sur tout le réseau, Degrève pour Ath et Tournai) au lieu de « Dispo <société> ».
+
 ---
 
 ## Annexe — BACO / v1 SvelteKit (référence gelée)

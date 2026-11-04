@@ -178,7 +178,7 @@ describe("fichier facturation", () => {
       .map((r) => v(r[0]));
     expect(titles).toEqual(["Autocars Fictifs", "AUTRE SOCIETE"]);
     const hi = s.rows.findIndex((r) => v(r[0]) === "Date");
-    expect(v(s.rows[hi]![3]!)).toBe("Dispo Autocars Fictifs");
+    expect(v(s.rows[hi]![3]!)).toBe("Dispo Kim Cars / Degrève");
     expect(st(s.rows[hi]![0]!)).toEqual(BILLING_STYLE.header);
     expect(s.heights?.[hi]).toBe(48);
     const first = s.rows[hi + 1]!;
