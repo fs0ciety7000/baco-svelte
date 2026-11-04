@@ -2,7 +2,7 @@ import { inflateRawSync } from "node:zlib";
 
 import { describe, expect, it } from "vitest";
 
-import { colName, crc32, xlsxParts, xlsxWorkbook, zipStore } from "./xlsx";
+import { colName, crc32, excelDate, xlsxParts, xlsxWorkbook, zipStore } from "./xlsx";
 
 const enc = new TextEncoder();
 
@@ -95,5 +95,62 @@ describe("xlsx", () => {
     expect(s1).toContain('<c r="A2" t="inlineStr">');
     expect(s1).toContain('<c r="A3" t="inlineStr" s="1">');
     expect(s1).toContain('<mergeCells count="1"><mergeCell ref="A1:C1"/></mergeCells></worksheet>');
+  });
+
+  it("styles : polices, fonds, bordures, formats, dates, formules, hauteurs, volet figé, mise en page", () => {
+    const head = {
+      font: { name: "Arial", size: 10, bold: true },
+      fill: "D9D9D9",
+      border: { left: "medium", right: "medium", top: "medium", bottom: "medium" },
+      align: { h: "center", v: "center", wrap: true },
+    } as const;
+    const files = unzip(
+      xlsxWorkbook([
+        {
+          name: "BUS",
+          rows: [
+            [
+              { v: "Date", s: head },
+              { v: "Nbr", s: head },
+            ],
+            [
+              { v: excelDate("2026-11-03"), s: { numFmt: "dd/mm/yyyy" } },
+              { v: 2, s: { numFmt: "0%" } },
+            ],
+            [{ v: "TOTAL" }, { f: "SUM(B2:B2)", v: 2, s: head }],
+          ],
+          heights: { 0: 48 },
+          freeze: "A2",
+          landscape: true,
+          fitWidth: true,
+          defaultFont: { name: "Arial", size: 10 },
+        },
+      ]),
+    );
+    const styles = files.get("xl/styles.xml")!;
+    expect(styles).toContain('<numFmt numFmtId="164" formatCode="dd/mm/yyyy"/>');
+    expect(styles).toContain('<b/><sz val="10"/><name val="Arial"/>');
+    expect(styles).toContain('<fgColor rgb="FFD9D9D9"/>');
+    expect(styles).toContain('<left style="medium"><color indexed="64"/></left>');
+    expect(styles).toContain('<alignment horizontal="center" vertical="center" wrapText="1"/>');
+    expect(styles).toContain('numFmtId="9"'); // 0 %
+    const s1 = files.get("xl/worksheets/sheet1.xml")!;
+    expect(s1).toContain('<row r="1" ht="48" customHeight="1">');
+    expect(s1).toMatch(/<c r="A2" s="\d+"><v>46329<\/v><\/c>/);
+    expect(s1).toMatch(/<c r="B3" s="\d+"><f>SUM\(B2:B2\)<\/f><v>2<\/v><\/c>/);
+    expect(s1).toContain(
+      '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>',
+    );
+    expect(s1).toContain('<pageSetUpPr fitToPage="1"/>');
+    expect(s1).toContain('orientation="landscape"');
+    expect(files.get("xl/workbook.xml")).toContain('fullCalcOnLoad="1"');
+    // Aucune partie de macro (classeur .xlsx simple).
+    expect([...files.keys()].some((k) => /vba|macro/i.test(k))).toBe(false);
+  });
+
+  it("dates Excel", () => {
+    expect(excelDate("1900-03-01")).toBe(61);
+    expect(excelDate("2026-11-03")).toBe(46329);
+    expect(excelDate("03/11/2026")).toBeNull();
   });
 });

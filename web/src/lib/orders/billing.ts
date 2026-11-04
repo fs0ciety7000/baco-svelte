@@ -1,10 +1,12 @@
 // Fichier « Transports alternatifs » envoyé à la facturation (4 nov. 2026) : un classeur par mois (ou par semaine) et par
 // district, mis en page comme le fichier tenu jusqu'ici à la main (feuilles BUS, TAXI, TAXI PMR, Données). Les colonnes
-// que CSM ne connaît pas (disponibilité, % fourni, reçu, n° de facture…) restent vides pour l'équipe de facturation.
+// que CSM ne connaît pas (disponibilité, reçu, n° de facture…) restent vides pour l'équipe de facturation. Mise en forme
+// relevée sur le classeur de référence (polices Arial, fonds, bordures, largeurs, hauteurs, fusions, dates en vraies dates
+// Excel « jj/mm/aaaa », totaux par formules SUM des colonnes « Nbr de bus » et « Nbr de personnes »).
 // Choix : le n° de commande CMD-… va dans la colonne « C3 » (n° du réquisitoire C3, qu'il remplace) pour les bus, dans
 // « N°PACO » pour les taxis et en tête de « Référence » pour les taxis PMR. Jamais de nom de voyageur. Pur, testé.
 
-import { colName, type XlsxCell, type XlsxSheet } from "@/lib/xlsx";
+import { colName, excelDate, type XlsxCell, type XlsxSheet, type XlsxStyle } from "@/lib/xlsx";
 
 export type BillingBusLine = {
   plate: string;
@@ -203,19 +205,29 @@ export function composition(capacity: number): string {
 
 const isCancelled = (status: string) => status === "annule";
 
+/**
+ * Bus fournis d'un bon : lignes non annulées, plus une ligne annulée qui porte une plaque ou une heure d'arrivée réelle
+ * (le bus est venu puis a été démobilisé : « démob. annulation » des bons repris de BACO). Un bon annulé garde ses bus
+ * (le classeur de référence compte aussi les bons annulés, avec « Annulé » en remarque).
+ */
+export function providedBuses(o: BillingBus): BillingBusLine[] {
+  return o.buses.filter((b) => !b.cancelled || !!b.plate || !!b.actual);
+}
+
 /** Ligne de la feuille BUS (colonnes `BUS_HEADER`). */
 export function busRow(o: BillingBus): XlsxCell[] {
-  const active = o.buses.filter((b) => !b.cancelled);
+  const provided = providedBuses(o);
+  const requested = o.buses.length;
   const first = (k: "planned" | "actual") =>
-    active
+    provided
       .map((b) => b[k])
       .filter(Boolean)
       .sort()[0] ?? "";
-  const ends = active
+  const ends = provided
     .map((b) => b.demob)
     .filter(Boolean)
     .sort();
-  const dropped = o.buses.length - active.length;
+  const dropped = requested - provided.length;
   const remark = [
     isCancelled(o.status) ? `Annulé${o.cancelReason ? ` : ${o.cancelReason}` : ""}` : "",
     dropped > 0 ? `${dropped} bus annulé${dropped > 1 ? "s" : ""}` : "",
@@ -228,17 +240,17 @@ export function busRow(o: BillingBus): XlsxCell[] {
     o.relation,
     redactorLabel(o.author),
     "",
-    o.buses.length || null,
-    "",
+    requested || null,
+    requested ? Math.round((provided.length / requested) * 100) / 100 : null,
     remark,
     o.callTime,
     first("planned"),
     first("actual"),
     ends[ends.length - 1] ?? "",
-    isCancelled(o.status) ? 0 : active.length,
+    provided.length,
     composition(o.capacity),
     o.company,
-    active
+    provided
       .map((b) => b.plate)
       .filter(Boolean)
       .join(", "),
@@ -246,7 +258,7 @@ export function busRow(o: BillingBus): XlsxCell[] {
     o.roundTrip ? "A/R" : "Aller",
     o.origin,
     o.destination,
-    isCancelled(o.status) ? 0 : active.length * legs,
+    provided.length * legs,
     o.direct ? "Direct" : "Omnibus",
     o.lines.join(", "),
     o.reason,
@@ -325,20 +337,144 @@ export const monthPeriod = (month: string) =>
 const byDay = <T extends { day: string; orderRef: string }>(a: T, b: T) =>
   a.day.localeCompare(b.day) || a.orderRef.localeCompare(b.orderRef);
 
+// --- Mise en forme (relevée sur le classeur de référence) ---
+
+const ARIAL = "Arial";
+const MED = "medium" as const;
+const BOX = { left: MED, right: MED, top: MED, bottom: MED };
+const GRID = { left: "thin", right: "thin", top: "thin", bottom: "thin" } as const;
+const CENTER = { h: "center", v: "center", wrap: true } as const;
+const DATE_FMT = "dd/mm/yyyy";
+
+export const BILLING_STYLE = {
+  sentLabel: {
+    font: { name: ARIAL, size: 11, bold: true, color: "C00000" },
+    fill: "FFBDBD",
+    border: BOX,
+    align: CENTER,
+  },
+  sentDate: {
+    font: { name: ARIAL, size: 14, bold: true, color: "000000" },
+    fill: "D6DCE4",
+    border: BOX,
+    align: CENTER,
+    numFmt: DATE_FMT,
+  },
+  busTitle: {
+    font: { name: ARIAL, size: 24, bold: true, color: "000000" },
+    fill: "BDD7EE",
+    border: BOX,
+    align: CENTER,
+  },
+  taxiTitle: {
+    font: { name: ARIAL, size: 24, bold: true, color: "000000" },
+    fill: "FFE699",
+    border: BOX,
+    align: CENTER,
+  },
+  pmrTitle: {
+    font: { name: ARIAL, size: 24, bold: true, color: "000000" },
+    fill: "C6E0B4",
+    border: BOX,
+    align: CENTER,
+  },
+  busPeriod: {
+    font: { name: ARIAL, size: 16, bold: true, color: "C00000" },
+    fill: "FFE699",
+    border: BOX,
+    align: CENTER,
+  },
+  taxiPeriod: {
+    font: { name: ARIAL, size: 16, bold: true, color: "C00000" },
+    fill: "FBE4D5",
+    border: BOX,
+    align: CENTER,
+  },
+  section: {
+    font: { name: ARIAL, size: 20, bold: true },
+    fill: "C6E0B4",
+    border: BOX,
+    align: CENTER,
+  },
+  sectionOther: {
+    font: { name: ARIAL, size: 20, bold: true },
+    fill: "FFE699",
+    border: BOX,
+    align: CENTER,
+  },
+  header: {
+    font: { name: ARIAL, size: 10, bold: true },
+    fill: "D9D9D9",
+    border: BOX,
+    align: CENTER,
+  },
+  data: { font: { name: ARIAL, size: 10 }, border: GRID, align: CENTER },
+  total: { font: { name: ARIAL, size: 10, bold: true }, border: BOX, align: CENTER },
+} satisfies Record<string, XlsxStyle>;
+
+const withFont = (s: XlsxStyle, font: NonNullable<XlsxStyle["font"]>): XlsxStyle => ({
+  ...s,
+  font: { ...s.font, ...font },
+});
+
+const plain = (v: XlsxCell) => (typeof v === "object" && v !== null ? v.v : v);
+
+/** Ligne de données mise en forme ; les colonnes de date (`dates`, texte « jj/mm/aaaa ») deviennent des dates Excel. */
+function styledRow(
+  values: XlsxCell[],
+  special: Record<number, XlsxStyle>,
+  dates: number[],
+): XlsxCell[] {
+  return values.map((v, c) => {
+    const s = special[c] ?? BILLING_STYLE.data;
+    const raw = plain(v);
+    if (dates.includes(c) && typeof raw === "string") {
+      const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(raw);
+      const serial = m ? excelDate(`${m[3]}-${m[2]}-${m[1]}`) : null;
+      return { v: serial ?? raw, s: { ...s, numFmt: DATE_FMT } };
+    }
+    return { v: raw, s };
+  });
+}
+
+/** Cellules vides portant un style (fond et bordures d'une zone fusionnée). */
+const filled = (n: number, s: XlsxStyle): XlsxCell[] => Array.from({ length: n }, () => ({ s }));
+
+const BUS_SPECIAL: Record<number, XlsxStyle> = {
+  0: withFont(BILLING_STYLE.data, { bold: true }),
+  1: withFont(BILLING_STYLE.data, { bold: true, color: "FF0000" }),
+  5: { ...BILLING_STYLE.data, numFmt: "0%" },
+  13: withFont(BILLING_STYLE.data, { bold: true, color: "0000FF" }),
+  24: {
+    ...withFont(BILLING_STYLE.data, { bold: true, color: "008080" }),
+    align: { h: "center", v: "center" },
+  },
+};
+
 /**
  * Feuille BUS : en-tête (date d'envoi, titre, période), puis une section par société (la plus utilisée d'abord ;
- * « AUTRE SOCIETE » pour les bons sans société) avec son en-tête de colonnes et une ligne de total.
+ * « AUTRE SOCIETE » pour les bons sans société) avec son en-tête de colonnes et une ligne de total (formules SUM des
+ * colonnes « Nbr de bus » et « Nbr de personnes », comme le classeur de référence).
  */
 export function busSheet(orders: BillingBus[], scope: BillingScope): XlsxSheet {
-  const last = colName(BUS_HEADER.length - 2); // titre et période jusqu'à l'avant-dernière colonne (C3)
-  const rows: XlsxCell[][] = [
-    ["DATE D'ENVOI :", "", "", `Transports alternatifs BUS ${scope.district}`],
-    [" (du fichier à la facturation)"],
-    [scope.period],
-  ];
-  rows[0]![1] = frDay(scope.sentOn);
-  const merges = [`A2:B2`, `D1:${last}2`, `A3:${last}3`];
-  const bold = [0, 1, 2];
+  const n = BUS_HEADER.length;
+  const last = colName(n - 3); // X : titre et période jusqu'à « A charge de »
+  const span = colName(n - 2); // Y : sections jusqu'à « C3 »
+  const sent = excelDate(scope.sentOn);
+  const row1 = filled(n - 2, BILLING_STYLE.busTitle);
+  row1[0] = { v: "DATE D'ENVOI :", s: BILLING_STYLE.sentLabel };
+  row1[1] = { s: BILLING_STYLE.sentLabel };
+  row1[2] = { v: sent ?? frDay(scope.sentOn), s: BILLING_STYLE.sentDate };
+  row1[3] = { v: `Transports alternatifs BUS ${scope.district}`, s: BILLING_STYLE.busTitle };
+  const row2 = filled(n - 2, BILLING_STYLE.busTitle);
+  row2[0] = { v: " (du fichier à la facturation)", s: BILLING_STYLE.sentLabel };
+  row2[1] = { s: BILLING_STYLE.sentLabel };
+  row2[2] = { s: BILLING_STYLE.sentDate };
+  const row3 = filled(n - 2, BILLING_STYLE.busPeriod);
+  row3[0] = { v: scope.period, s: BILLING_STYLE.busPeriod };
+  const rows: XlsxCell[][] = [row1, row2, row3];
+  const merges = ["A1:B1", "A2:B2", "C1:C2", `D1:${last}2`, `A3:${last}3`];
+  const heights: Record<number, number> = { 0: 21.75, 1: 30, 2: 30.75 };
   const groups = new Map<string, BillingBus[]>();
   for (const o of orders) {
     const k = o.company.trim();
@@ -349,60 +485,119 @@ export function busSheet(orders: BillingBus[], scope: BillingScope): XlsxSheet {
     .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0], "fr"));
   const sections: [string, BillingBus[]][] = [...named];
   if (groups.get("")?.length) sections.push(["AUTRE SOCIETE", groups.get("")!]);
-  const span = colName(BUS_HEADER.length - 2);
   for (const [title, list] of sections) {
     rows.push([]);
-    rows.push([title]);
+    const style = title === "AUTRE SOCIETE" ? BILLING_STYLE.sectionOther : BILLING_STYLE.section;
+    const head = filled(n - 1, style);
+    head[0] = { v: title, s: style };
+    rows.push(head);
+    heights[rows.length - 1] = 27;
     merges.push(`A${rows.length}:${span}${rows.length}`);
-    bold.push(rows.length - 1);
-    rows.push(BUS_HEADER.map((h) => (h === "Dispo société" ? `Dispo ${title}`.slice(0, 60) : h)));
-    bold.push(rows.length - 1);
+    rows.push(
+      BUS_HEADER.map((h, c) => ({
+        v: h === "Dispo société" ? `Dispo ${title}`.slice(0, 60) : h,
+        s:
+          c === 24
+            ? {
+                ...BILLING_STYLE.header,
+                font: { name: ARIAL, size: 11, bold: true, color: "0070C0" },
+                fill: "E2EFDA",
+              }
+            : c === 19
+              ? withFont(BILLING_STYLE.header, { size: 9 })
+              : BILLING_STYLE.header,
+      })),
+    );
+    heights[rows.length - 1] = 48;
+    const firstData = rows.length + 1;
     const sorted = [...list].sort(byDay);
-    for (const o of sorted) rows.push(busRow(o));
-    const total = (i: number) =>
-      sorted.reduce((s, o) => {
-        const v = busRow(o)[i];
-        return s + (typeof v === "number" ? v : 0);
-      }, 0);
-    const totalRow: XlsxCell[] = Array(BUS_HEADER.length).fill("");
-    totalRow[0] = "Total";
-    totalRow[11] = total(11);
-    totalRow[15] = total(15);
-    totalRow[19] = total(19);
-    rows.push(totalRow);
-    bold.push(rows.length - 1);
+    const values = sorted.map(busRow);
+    for (const v of values) {
+      rows.push(styledRow(v, BUS_SPECIAL, [0]));
+      heights[rows.length - 1] = 25.5;
+    }
+    const lastData = rows.length;
+    const total: XlsxCell[] = Array.from({ length: n }, () => null);
+    total[0] = { v: "TOTAL", s: BILLING_STYLE.total };
+    for (const c of [11, 15]) {
+      const L = colName(c);
+      const sum = values.reduce(
+        (acc, v) => acc + (typeof v[c] === "number" ? (v[c] as number) : 0),
+        0,
+      );
+      total[c] = { f: `SUM(${L}${firstData}:${L}${lastData})`, v: sum, s: BILLING_STYLE.total };
+    }
+    rows.push(total);
+    heights[rows.length - 1] = 21;
   }
   if (!sections.length) {
     rows.push([]);
-    rows.push(["Aucun bon bus sur la période."]);
+    rows.push([
+      { v: "Aucun bon bus sur la période.", s: { font: { name: ARIAL, size: 10, italic: true } } },
+    ]);
   }
   return {
     name: "BUS",
     rows,
-    bold,
     merges,
+    heights,
+    landscape: true,
+    fitWidth: true,
+    defaultFont: { name: ARIAL, size: 10 },
     widths: [
-      11, 20, 14, 10, 9, 8, 30, 9, 10, 10, 9, 8, 14, 18, 14, 9, 9, 18, 18, 9, 10, 12, 26, 12, 14,
-      12,
+      11.29, 20, 13.71, 10, 10, 8.5, 32.86, 8.29, 10.5, 10.5, 9.5, 8.14, 12.57, 13.29, 13.57, 8.29,
+      13.57, 14.57, 14.57, 7.29, 13, 9.86, 23.71, 13.57, 12, 17.14,
     ],
   };
 }
 
+type TaxiLikeStyles = {
+  title: XlsxStyle;
+  period: XlsxStyle;
+  header: XlsxStyle;
+  headerHeight: number;
+};
+
 function taxiLike(
   name: string,
+  styles: TaxiLikeStyles,
   title: string,
   header: string[],
   rowsOf: XlsxCell[][],
   scope: BillingScope,
-  widths: number[],
+  opts: {
+    /** Dernière colonne des zones fusionnées du titre et de la période (index). */
+    span: number;
+    widths: number[];
+    special: Record<number, XlsxStyle>;
+    dates: number[];
+    small: number[];
+  },
 ): XlsxSheet {
-  const last = colName(Math.min(header.length, 15) - 3);
+  const last = colName(opts.span);
+  const r1 = filled(opts.span + 1, styles.title);
+  r1[0] = { v: title, s: styles.title };
+  const r2 = filled(opts.span + 1, styles.period);
+  r2[0] = { v: scope.period, s: styles.period };
+  const head = header.map((h, c) => ({
+    v: h,
+    s: opts.small.includes(c) ? withFont(styles.header, { size: 9 }) : styles.header,
+  }));
+  const heights: Record<number, number> = { 0: 30.75, 1: 20.25, 2: styles.headerHeight };
+  const data = rowsOf.map((r, i) => {
+    heights[i + 3] = 25.5;
+    return styledRow(r, opts.special, opts.dates);
+  });
   return {
     name,
-    rows: [[title], [scope.period], header, ...rowsOf],
-    bold: [0, 1, 2],
+    rows: [r1, r2, head, ...data],
     merges: [`A1:${last}1`, `A2:${last}2`],
-    widths,
+    heights,
+    freeze: "A4",
+    landscape: true,
+    fitWidth: true,
+    defaultFont: { name: ARIAL, size: 10 },
+    widths: opts.widths,
   };
 }
 
@@ -439,24 +634,70 @@ export function billingWorkbook(
       "",
       companies.taxi[i] ?? "",
     ]);
+  const listHead: XlsxStyle = { ...BILLING_STYLE.header, align: { h: "left", v: "center" } };
+  const listCell: XlsxStyle = { font: { name: ARIAL, size: 10 } };
   return [
     busSheet(data.bus, scope),
     taxiLike(
       "TAXI",
+      {
+        title: BILLING_STYLE.taxiTitle,
+        period: BILLING_STYLE.taxiPeriod,
+        header: {
+          ...BILLING_STYLE.header,
+          font: { name: ARIAL, size: 10, color: "000000" },
+          fill: "D6DCE4",
+        },
+        headerHeight: 52.5,
+      },
       `Transports alternatifs TAXI ${scope.district}`,
       TAXI_HEADER,
       std.map(taxiRow),
       scope,
-      [12, 13, 10, 14, 9, 19, 9, 16, 9, 22, 40, 14, 17, 11, 12],
+      {
+        span: 12,
+        widths: [
+          12.71, 13.29, 12.86, 12.43, 9.5, 19.14, 12.14, 14, 15.29, 16, 55.14, 20, 17.14, 11.57,
+          11.86,
+        ],
+        special: {
+          1: withFont(BILLING_STYLE.data, { bold: true, color: "008080" }),
+          5: withFont(BILLING_STYLE.data, { bold: true, color: "183CC9" }),
+          12: withFont(BILLING_STYLE.data, { bold: true, color: "FF0000" }),
+        },
+        dates: [0],
+        small: [6, 7, 8],
+      },
     ),
     taxiLike(
       "TAXI PMR",
+      {
+        title: BILLING_STYLE.pmrTitle,
+        period: BILLING_STYLE.taxiPeriod,
+        header: BILLING_STYLE.header,
+        headerHeight: 36.75,
+      },
       `Transports alternatifs TAXI PMR ${scope.district}`,
       TAXI_PMR_HEADER,
       pmr.map(taxiPmrRow),
       scope,
-      [11, 11, 10, 14, 9, 18, 9, 16, 9, 18, 30, 38, 14, 18, 22, 12, 30],
+      {
+        span: 14,
+        widths: [
+          11.29, 11.57, 13, 13.29, 15.57, 17.71, 9.71, 12.29, 11.43, 16, 36, 38.29, 14.14, 25.14,
+          21.71, 17.29, 40,
+        ],
+        special: { 5: withFont(BILLING_STYLE.data, { bold: true, color: "1F3864" }) },
+        dates: [0, 1],
+        small: [6, 7, 8],
+      },
     ),
-    { name: "Données", rows: lists, widths: [22, 2, 24, 2, 80, 2, 24, 2, 24] },
+    {
+      name: "Données",
+      rows: lists.map((r, i) => r.map((v) => ({ v: plain(v), s: i === 0 ? listHead : listCell }))),
+      defaultFont: { name: ARIAL, size: 10 },
+      heights: { 0: 21 },
+      widths: [22, 2, 24, 2, 80, 2, 24, 2, 24],
+    },
   ];
 }

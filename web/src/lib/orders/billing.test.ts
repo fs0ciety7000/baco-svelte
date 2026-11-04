@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   billingWorkbook,
+  BILLING_STYLE,
   BUS_HEADER,
   busRow,
+  providedBuses,
   busSheet,
   composition,
   frDay,
@@ -16,6 +18,7 @@ import {
   type BillingBus,
   type BillingTaxi,
 } from "./billing";
+import { excelDate, type XlsxCell } from "@/lib/xlsx";
 
 // Données fictives : aucun nom, n° ni société réels.
 const bus = (o: Partial<BillingBus> = {}): BillingBus => ({
@@ -83,7 +86,7 @@ describe("fichier facturation", () => {
     expect(monthPeriod("2026-11")).toBe("MOIS de NOVEMBRE 2026");
   });
 
-  it("ligne bus : bus actifs, heures, n° de commande dans la colonne C3", () => {
+  it("ligne bus : bus fournis, % fourni, trajets, n° de commande dans la colonne C3", () => {
     const r = busRow(bus());
     const col = (h: string) => r[BUS_HEADER.indexOf(h)];
     expect(r).toHaveLength(BUS_HEADER.length);
@@ -102,14 +105,34 @@ describe("fichier facturation", () => {
     expect(col("Nbr de trajet simple")).toBe(4);
     expect(col("Direct/Omnibus")).toBe("Omnibus");
     expect(col("C3")).toBe("CMD-7K4P2M");
-    expect(col("% fourni")).toBe("");
+    expect(col("% fourni")).toBe(0.67);
     expect(col("N° facture")).toBe("");
   });
 
-  it("bon annulé : remarque, aucun bus compté", () => {
+  it("bon annulé : « Annulé » en remarque, bus gardés (comme le classeur de référence)", () => {
     const r = busRow(bus({ status: "annule", cancelReason: "Ligne rétablie" }));
     expect(r[BUS_HEADER.indexOf("Remarque")]).toBe("Annulé : Ligne rétablie · 1 bus annulé");
-    expect(r[BUS_HEADER.indexOf("Nbr de bus")]).toBe(0);
+    expect(r[BUS_HEADER.indexOf("Nbr de bus")]).toBe(2);
+  });
+
+  it("un bus venu puis démobilisé (« démob. annulation ») reste compté comme fourni", () => {
+    const one = bus({
+      roundTrip: false,
+      buses: [
+        { plate: "1-ABC-009", planned: "07:00", actual: "", demob: "08:00", cancelled: true },
+      ],
+    });
+    const r = busRow(one);
+    expect(providedBuses(one)).toHaveLength(1);
+    expect(r[BUS_HEADER.indexOf("Nbr de bus demandé")]).toBe(1);
+    expect(r[BUS_HEADER.indexOf("Nbr de bus")]).toBe(1);
+    expect(r[BUS_HEADER.indexOf("% fourni")]).toBe(1);
+    expect(r[BUS_HEADER.indexOf("Nbr de trajet simple")]).toBe(1);
+    const never = bus({
+      buses: [{ plate: "", planned: "07:00", actual: "", demob: "", cancelled: true }],
+    });
+    expect(busRow(never)[BUS_HEADER.indexOf("Nbr de bus")]).toBe(0);
+    expect(busRow(never)[BUS_HEADER.indexOf("% fourni")]).toBe(0);
   });
 
   it("taxi et taxi PMR : CMD en N°PACO / Référence, dossier sans nom", () => {
@@ -136,44 +159,54 @@ describe("fichier facturation", () => {
     expect(p[TAXI_PMR_HEADER.indexOf("Référence")]).toBe("CMD-3QX9WB · R-9");
   });
 
-  it("feuille BUS : une section par société, « AUTRE SOCIETE » en dernier, totaux", () => {
+  it("feuille BUS : en-tête mis en forme, une section par société, totaux en formules SUM", () => {
     const s = busSheet(
       [bus(), bus({ orderRef: "CMD-22222A", day: "2026-11-01" }), bus({ company: "" })],
       { district: "DSO", period: "MOIS de NOVEMBRE 2026", sentOn: "2026-11-04" },
     );
-    expect(s.rows[0]).toEqual([
-      "DATE D'ENVOI :",
-      "04/11/2026",
-      "",
-      "Transports alternatifs BUS DSO",
-    ]);
-    expect(s.rows[2]).toEqual(["MOIS de NOVEMBRE 2026"]);
-    const titles = s.rows.filter((r) => r.length === 1).map((r) => r[0]);
-    expect(titles).toEqual([
-      " (du fichier à la facturation)",
-      "MOIS de NOVEMBRE 2026",
-      "Autocars Fictifs",
-      "AUTRE SOCIETE",
-    ]);
-    const header = s.rows.find((r) => r[0] === "Date")!;
-    expect(header[3]).toBe("Dispo Autocars Fictifs");
-    const first = s.rows.indexOf(header) + 1;
-    expect(s.rows[first]![24]).toBe("CMD-22222A"); // tri par jour
-    const totals = s.rows.filter((r) => r[0] === "Total");
-    expect(totals[0]![11]).toBe(4);
-    expect(s.merges).toContain("A3:Y3");
+    const v = (c: XlsxCell) => (typeof c === "object" && c !== null ? c.v : c);
+    const st = (c: XlsxCell) => (typeof c === "object" && c !== null ? c.s : undefined);
+    expect(v(s.rows[0]![0]!)).toBe("DATE D'ENVOI :");
+    expect(v(s.rows[0]![2]!)).toBe(excelDate("2026-11-04"));
+    expect(st(s.rows[0]![2]!)?.numFmt).toBe("dd/mm/yyyy");
+    expect(v(s.rows[0]![3]!)).toBe("Transports alternatifs BUS DSO");
+    expect(st(s.rows[0]![3]!)).toEqual(BILLING_STYLE.busTitle);
+    expect(v(s.rows[2]![0]!)).toBe("MOIS de NOVEMBRE 2026");
+    expect(s.merges).toEqual(expect.arrayContaining(["A1:B1", "A2:B2", "C1:C2", "D1:X2", "A3:X3"]));
+    const titles = s.rows
+      .filter((r) => st(r[0]) === BILLING_STYLE.section || st(r[0]) === BILLING_STYLE.sectionOther)
+      .map((r) => v(r[0]));
+    expect(titles).toEqual(["Autocars Fictifs", "AUTRE SOCIETE"]);
+    const hi = s.rows.findIndex((r) => v(r[0]) === "Date");
+    expect(v(s.rows[hi]![3]!)).toBe("Dispo Autocars Fictifs");
+    expect(st(s.rows[hi]![0]!)).toEqual(BILLING_STYLE.header);
+    expect(s.heights?.[hi]).toBe(48);
+    const first = s.rows[hi + 1]!;
+    expect(v(first[24])).toBe("CMD-22222A"); // tri par jour
+    expect(v(first[0])).toBe(excelDate("2026-11-01")); // vraie date Excel
+    expect(st(first[5])?.numFmt).toBe("0%");
+    const total = s.rows[hi + 3]!;
+    expect(v(total[0])).toBe("TOTAL");
+    expect(total[11]).toMatchObject({ f: `SUM(L${hi + 2}:L${hi + 3})`, v: 4 });
+    expect(total[15]).toMatchObject({ f: `SUM(P${hi + 2}:P${hi + 3})`, v: 280 });
+    expect(s).toMatchObject({ landscape: true, fitWidth: true });
   });
 
-  it("classeur : quatre feuilles, aucune ligne vide de données", () => {
+  it("classeur : quatre feuilles, titres fusionnés, volet figé", () => {
     const wb = billingWorkbook(
       { bus: [], taxi: [taxi(), taxi({ isPmr: true, orderRef: "CMD-4444BB" })] },
       { district: "DSE", period: "SEMAINE 45 · du 2 au 8 novembre 2026", sentOn: "2026-11-04" },
       { bus: ["Autocars Fictifs"], taxi: ["Taxi Fictif"] },
     );
+    const v = (c: XlsxCell) => (typeof c === "object" && c !== null ? c.v : c);
     expect(wb.map((s) => s.name)).toEqual(["BUS", "TAXI", "TAXI PMR", "Données"]);
     expect(wb[1]!.rows).toHaveLength(4);
     expect(wb[2]!.rows).toHaveLength(4);
-    expect(wb[1]!.rows[0]).toEqual(["Transports alternatifs TAXI DSE"]);
-    expect(wb[0]!.rows.some((r) => r[0] === "Aucun bon bus sur la période.")).toBe(true);
+    expect(v(wb[1]!.rows[0]![0])).toBe("Transports alternatifs TAXI DSE");
+    expect(wb[1]!.merges).toEqual(["A1:M1", "A2:M2"]);
+    expect(wb[2]!.merges).toEqual(["A1:O1", "A2:O2"]);
+    expect(wb[1]!.freeze).toBe("A4");
+    expect(v(wb[1]!.rows[3]![0])).toBe(excelDate("2026-11-02"));
+    expect(wb[0]!.rows.some((r) => v(r[0]) === "Aucun bon bus sur la période.")).toBe(true);
   });
 });

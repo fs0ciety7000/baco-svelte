@@ -1,16 +1,51 @@
-// Classeur Excel (.xlsx) minimal, sans dépendance (23 oct. 2026, export des services Quinyx non pourvus) : feuilles de
-// texte et de nombres, cellules en `inlineStr` (aucune formule : une valeur « =… » reste du texte), première ligne en
-// gras, largeurs de colonnes. Archive ZIP « stockée » (sans compression) avec CRC32 maison. Pur, testé.
+// Classeur Excel (.xlsx) minimal, sans dépendance (23 oct. 2026, export des services Quinyx non pourvus ; styles le 4 nov.
+// 2026 pour le fichier de facturation) : texte en `inlineStr` (une valeur « =… » reste du texte : seule une cellule
+// `{ f }` porte une formule), nombres, dates en numéro de série Excel avec un format de date, styles (police, fond,
+// bordures, alignement, format numérique), largeurs de colonnes, hauteurs de lignes, cellules fusionnées, volet figé,
+// mise en page. Aucune macro (classeur .xlsx simple). Archive ZIP « stockée » avec CRC32 maison. Pur, testé.
 
-export type XlsxCell = string | number | null | undefined;
+export type XlsxBorder = "thin" | "medium" | "thick";
+
+/** Style d'une cellule ; couleurs en « RRGGBB ». */
+export type XlsxStyle = {
+  font?: { name?: string; size?: number; bold?: boolean; italic?: boolean; color?: string };
+  fill?: string;
+  border?: { left?: XlsxBorder; right?: XlsxBorder; top?: XlsxBorder; bottom?: XlsxBorder };
+  align?: {
+    h?: "left" | "center" | "right" | "justify";
+    v?: "top" | "center" | "bottom" | "justify";
+    wrap?: boolean;
+  };
+  /** Format numérique (« dd/mm/yyyy », « 0% »…). */
+  numFmt?: string;
+};
+
+/** Cellule riche : valeur, style, formule (`f`, sans « = » ; `v` = valeur affichée avant recalcul). */
+export type XlsxRich = {
+  v?: string | number | null;
+  s?: XlsxStyle;
+  f?: string;
+};
+
+export type XlsxCell = string | number | null | undefined | XlsxRich;
+
 export type XlsxSheet = {
   name: string;
   rows: XlsxCell[][];
   widths?: number[];
-  /** Lignes en gras (index 0) ; par défaut, la première seulement. */
+  /** Lignes en gras (index 0) quand aucune cellule n'a de style propre ; par défaut, la première seulement. */
   bold?: number[];
   /** Cellules fusionnées (« A1:C2 »). */
   merges?: string[];
+  /** Hauteur de ligne en points (index 0 → hauteur). */
+  heights?: Record<number, number>;
+  /** Première cellule non figée (« A4 » fige les trois premières lignes). */
+  freeze?: string;
+  /** Mise en page : paysage, A4, ajusté à la largeur d'une page. */
+  landscape?: boolean;
+  fitWidth?: boolean;
+  /** Police par défaut des cellules sans style (« Arial »). */
+  defaultFont?: { name: string; size: number };
 };
 
 const enc = new TextEncoder();
@@ -32,6 +67,14 @@ export function colName(i: number): string {
   return s;
 }
 
+/** Jour « AAAA-MM-JJ » → numéro de série Excel (1900, jours depuis le 30/12/1899) ; null si invalide. */
+export function excelDate(day: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!m) return null;
+  const t = Date.UTC(+m[1]!, +m[2]! - 1, +m[3]!);
+  return Number.isFinite(t) ? Math.round((t - Date.UTC(1899, 11, 30)) / 86_400_000) : null;
+}
+
 /** Nom de feuille accepté par Excel : 31 caractères, sans `[]:*?/\`. */
 function sheetName(name: string, i: number): string {
   return (
@@ -42,7 +85,124 @@ function sheetName(name: string, i: number): string {
   );
 }
 
-function sheetXml(s: XlsxSheet): string {
+const hex = (c: string | undefined) =>
+  c && /^[0-9A-Fa-f]{6}$/.test(c) ? `FF${c.toUpperCase()}` : "";
+
+/** Registre des styles du classeur : polices, fonds, bordures, formats → index `cellXfs`. */
+class StyleBook {
+  fonts: string[];
+  fills = [
+    '<fill><patternFill patternType="none"/></fill>',
+    '<fill><patternFill patternType="gray125"/></fill>',
+  ];
+  borders = ["<border><left/><right/><top/><bottom/><diagonal/></border>"];
+  numFmts: string[] = [];
+  xfs: string[];
+  private keys = new Map<string, number>();
+
+  constructor(base: { name: string; size: number }) {
+    const f = (b: boolean) =>
+      `<font>${b ? "<b/>" : ""}<sz val="${base.size}"/><name val="${esc(base.name)}"/></font>`;
+    this.fonts = [f(false), f(true)];
+    this.xfs = [
+      '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>',
+      '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>',
+    ];
+  }
+
+  private index(list: string[], xml: string): number {
+    const i = list.indexOf(xml);
+    if (i >= 0) return i;
+    list.push(xml);
+    return list.length - 1;
+  }
+
+  id(s: XlsxStyle | undefined): number {
+    if (!s) return 0;
+    const key = JSON.stringify(s);
+    const known = this.keys.get(key);
+    if (known !== undefined) return known;
+    const f = s.font ?? {};
+    const color = hex(f.color);
+    const font = this.index(
+      this.fonts,
+      `<font>${f.bold ? "<b/>" : ""}${f.italic ? "<i/>" : ""}<sz val="${f.size ?? 10}"/>${color ? `<color rgb="${color}"/>` : ""}<name val="${esc(f.name ?? "Arial")}"/></font>`,
+    );
+    const fillColor = hex(s.fill);
+    const fill = fillColor
+      ? this.index(
+          this.fills,
+          `<fill><patternFill patternType="solid"><fgColor rgb="${fillColor}"/><bgColor indexed="64"/></patternFill></fill>`,
+        )
+      : 0;
+    const b = s.border ?? {};
+    const side = (n: "left" | "right" | "top" | "bottom") =>
+      b[n] ? `<${n} style="${b[n]}"><color indexed="64"/></${n}>` : `<${n}/>`;
+    const border =
+      b.left || b.right || b.top || b.bottom
+        ? this.index(
+            this.borders,
+            `<border>${side("left")}${side("right")}${side("top")}${side("bottom")}<diagonal/></border>`,
+          )
+        : 0;
+    let numFmt = 0;
+    if (s.numFmt) {
+      const builtin: Record<string, number> = { "0": 1, "0.00": 2, "0%": 9, "0.00%": 10 };
+      numFmt = builtin[s.numFmt] ?? 164 + this.index(this.numFmts, s.numFmt);
+    }
+    const a = s.align;
+    const align = a
+      ? `<alignment${a.h ? ` horizontal="${a.h}"` : ""}${a.v ? ` vertical="${a.v}"` : ""}${a.wrap ? ' wrapText="1"' : ""}/>`
+      : "";
+    const xf =
+      `<xf numFmtId="${numFmt}" fontId="${font}" fillId="${fill}" borderId="${border}" xfId="0"` +
+      `${numFmt ? ' applyNumberFormat="1"' : ""} applyFont="1"${fill ? ' applyFill="1"' : ""}` +
+      `${border ? ' applyBorder="1"' : ""}${align ? ' applyAlignment="1">' + align + "</xf>" : "/>"}`;
+    const id = this.index(this.xfs, xf);
+    this.keys.set(key, id);
+    return id;
+  }
+
+  xml(): string {
+    const fmts = this.numFmts.length
+      ? `<numFmts count="${this.numFmts.length}">${this.numFmts.map((f, i) => `<numFmt numFmtId="${164 + i}" formatCode="${esc(f)}"/>`).join("")}</numFmts>`
+      : "";
+    return (
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      fmts +
+      `<fonts count="${this.fonts.length}">${this.fonts.join("")}</fonts>` +
+      `<fills count="${this.fills.length}">${this.fills.join("")}</fills>` +
+      `<borders count="${this.borders.length}">${this.borders.join("")}</borders>` +
+      '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+      `<cellXfs count="${this.xfs.length}">${this.xfs.join("")}</cellXfs>` +
+      '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
+      "</styleSheet>"
+    );
+  }
+}
+
+const isRich = (v: XlsxCell): v is XlsxRich => typeof v === "object" && v !== null;
+
+function cellXml(ref: string, v: XlsxCell, style: number): string {
+  const s = style ? ` s="${style}"` : "";
+  const raw = isRich(v) ? v.v : v;
+  if (isRich(v) && v.f) {
+    const cached =
+      typeof raw === "number" && Number.isFinite(raw)
+        ? `<v>${raw}</v>`
+        : raw
+          ? `<v>${esc(String(raw))}</v>`
+          : "";
+    const t = typeof raw === "string" && raw ? ' t="str"' : "";
+    return `<c r="${ref}"${s}${t}><f>${esc(v.f.replace(/^=/, ""))}</f>${cached}</c>`;
+  }
+  if (raw === null || raw === undefined || raw === "") return style ? `<c r="${ref}"${s}/>` : "";
+  if (typeof raw === "number" && Number.isFinite(raw)) return `<c r="${ref}"${s}><v>${raw}</v></c>`;
+  return `<c r="${ref}" t="inlineStr"${s}><is><t xml:space="preserve">${esc(String(raw))}</t></is></c>`;
+}
+
+function sheetXml(s: XlsxSheet, book: StyleBook): string {
   const cols = s.widths?.length
     ? `<cols>${s.widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join("")}</cols>`
     : "";
@@ -55,21 +215,35 @@ function sheetXml(s: XlsxSheet): string {
     .map((row, r) => {
       const cells = row
         .map((v, c) => {
-          if (v === null || v === undefined || v === "") return "";
           const ref = `${colName(c)}${r + 1}`;
-          const style = bold.has(r) ? ' s="1"' : "";
-          if (typeof v === "number" && Number.isFinite(v))
-            return `<c r="${ref}"${style}><v>${v}</v></c>`;
-          return `<c r="${ref}" t="inlineStr"${style}><is><t xml:space="preserve">${esc(String(v))}</t></is></c>`;
+          const style = isRich(v) && v.s ? book.id(v.s) : bold.has(r) ? 1 : 0;
+          return cellXml(ref, v, style);
         })
         .join("");
-      return `<row r="${r + 1}">${cells}</row>`;
+      const h = s.heights?.[r];
+      return `<row r="${r + 1}"${h ? ` ht="${h}" customHeight="1"` : ""}>${cells}</row>`;
     })
     .join("");
+  const freeze = s.freeze && /^([A-Z]{1,3})(\d{1,7})$/.exec(s.freeze);
+  let views = '<sheetViews><sheetView workbookViewId="0"/></sheetViews>';
+  if (freeze) {
+    const colIdx = freeze[1]!.split("").reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0) - 1;
+    const rowIdx = +freeze[2]! - 1;
+    const pane =
+      `<pane${colIdx ? ` xSplit="${colIdx}"` : ""}${rowIdx ? ` ySplit="${rowIdx}"` : ""}` +
+      ` topLeftCell="${s.freeze}" activePane="${colIdx && rowIdx ? "bottomRight" : rowIdx ? "bottomLeft" : "topRight"}" state="frozen"/>`;
+    views = `<sheetViews><sheetView workbookViewId="0">${pane}</sheetView></sheetViews>`;
+  }
+  const pr = s.fitWidth ? '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>' : "";
+  const setup =
+    s.landscape || s.fitWidth
+      ? '<pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/>' +
+        `<pageSetup paperSize="9"${s.landscape ? ' orientation="landscape"' : ""}${s.fitWidth ? ' fitToWidth="1" fitToHeight="0"' : ""}/>`
+      : "";
   return (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-    `${cols}<sheetData>${rows}</sheetData>${merges}</worksheet>`
+    `${pr}${views}<sheetFormatPr defaultRowHeight="15"/>${cols}<sheetData>${rows}</sheetData>${merges}${setup}</worksheet>`
   );
 }
 
@@ -77,6 +251,11 @@ function sheetXml(s: XlsxSheet): string {
 export function xlsxParts(sheets: XlsxSheet[]): [string, string][] {
   const list = sheets.length ? sheets : [{ name: "Feuille 1", rows: [] }];
   const names = list.map((s, i) => sheetName(s.name, i));
+  const book = new StyleBook(list[0]?.defaultFont ?? { name: "Calibri", size: 11 });
+  const sheetParts = list.map((s, i): [string, string] => [
+    `xl/worksheets/sheet${i + 1}.xml`,
+    sheetXml(s, book),
+  ]);
   return [
     [
       "[Content_Types].xml",
@@ -109,7 +288,9 @@ export function xlsxParts(sheets: XlsxSheet[]): [string, string][] {
         names
           .map((n, i) => `<sheet name="${esc(n)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`)
           .join("") +
-        "</sheets></workbook>",
+        "</sheets>" +
+        // Formules (totaux) recalculées à l'ouverture : la valeur écrite n'est qu'un aperçu.
+        '<calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>',
     ],
     [
       "xl/_rels/workbook.xml.rels",
@@ -124,20 +305,8 @@ export function xlsxParts(sheets: XlsxSheet[]): [string, string][] {
         `<Relationship Id="rId${list.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
         "</Relationships>",
     ],
-    [
-      "xl/styles.xml",
-      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-        '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-        '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>' +
-        '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' +
-        '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
-        '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
-        '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
-        '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>' +
-        '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
-        "</styleSheet>",
-    ],
-    ...list.map((s, i): [string, string] => [`xl/worksheets/sheet${i + 1}.xml`, sheetXml(s)]),
+    ["xl/styles.xml", book.xml()],
+    ...sheetParts,
   ];
 }
 
