@@ -7,6 +7,8 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 ### Nouveautés
 
+- **Visite guidée** : à ta première connexion, CSM te propose une courte visite animée en trois chapitres (Prise en main, Bus et taxis, PMR et Groupes) ; tu peux la passer ou la reporter. Relance-la quand tu veux depuis le menu de ton compte (« Visite guidée ») ou avec Ctrl K (« Revoir la visite guidée »).
+
 - **Nouvelle identité de CSM, « Encre et sable »** : nouveau logo (deux lignes, le train et le bus, reliées par un passage sable qui forme le S de Solutions), nouvelle police (Onest), nouvelles couleurs. Le logo apparaît dans la barre latérale, la barre du haut en mobile et la page de connexion ; un petit point y parcourt la correspondance à l'ouverture (rien si ton appareil demande moins d'animations).
 - **Thèmes par défaut renouvelés** : « CSM · Jour » (pierre claire et encre) et « CSM · Nuit » (encre profonde et sable). Le réglage « Automatique » suit l'un ou l'autre selon ton appareil.
 
