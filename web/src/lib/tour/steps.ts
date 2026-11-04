@@ -118,7 +118,7 @@ export const CHAPTERS: TourChapter[] = [
         body: "Remplis les sections dans l'ordre : chacune passe au vert quand elle est complète. Le bon est enregistré en brouillon dès ta première saisie.",
         path: "/commandes/nouveau",
         permission: ["otto:write"],
-        targets: ['[data-testid="order-steps"]', '[data-testid="order-ticket"]'],
+        targets: ['[data-testid="order-steps"]', '[data-slot="order-ticket"]'],
         fallback: "center",
       },
       {

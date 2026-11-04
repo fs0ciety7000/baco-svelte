@@ -1,22 +1,20 @@
 "use client";
 
 import { ArrowLeft, ArrowRight, Check, X } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { EASE, reducedMotion } from "@/lib/motion-core";
+import { SEEK, seekDecision, shouldPush, skipFrom, stepAfter } from "@/lib/tour/seek";
 import { flipFrom, placeCard, sheetSide, spotlightBox, type Box } from "@/lib/tour/position";
 import type { PlannedStep } from "@/lib/tour/steps";
 import { cn } from "@/lib/utils";
 
-import { boxOf, bringIntoView, findTarget, viewport } from "./dom";
+import { boxOf, bringIntoView, findTarget, isShown, viewport } from "./dom";
 
 /** Durée des transitions entre deux cibles (transform / opacity seulement). */
 const MOVE_MS = 280;
-/** Attente d'une cible : plus longue après un changement de page (compilation en développement, données). */
-const WAIT_NAV_MS = 10_000;
-const WAIT_MS = 2_500;
 const MOBILE = "(max-width: 767px)";
 
 export type TourEnd = "done" | "skipped";
@@ -36,15 +34,20 @@ export function TourRunner({
   onEnd: (reason: TourEnd) => void;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  // `index` = étape DEMANDÉE ; `shown` = dernière étape dont la recherche a abouti (cible, ou carte centrée).
   const [index, setIndex] = useState(0);
   const [shown, setShown] = useState<{ index: number; target: HTMLElement | null } | null>(null);
   const [box, setBox] = useState<Box | null>(null);
   const [mobile, setMobile] = useState(false);
   const [sheet, setSheet] = useState<"bottom" | "top">("bottom");
+  const indexRef = useRef(0);
+  indexRef.current = index;
   const dir = useRef<1 | -1>(1);
   const holeRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const nextRef = useRef<HTMLButtonElement>(null);
+  /** Dernière découpe posée sur une cible (point de départ du glissement vers la suivante). */
   const prevHole = useRef<Box | null>(null);
   const prevCard = useRef<{ top: number; left: number } | null>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
@@ -54,8 +57,13 @@ export function TourRunner({
   const titleId = useId();
   const bodyId = useId();
 
-  const step = shown ? steps[shown.index] : undefined;
   const total = steps.length;
+  const step = steps[index];
+  // Recherche en cours (changement de page, attente de la cible) : la carte montre déjà l'étape demandée, sans découpe ;
+  // jamais l'ancienne cible (sa boîte n'a plus de sens sur la nouvelle page).
+  const ready = shown?.index === index;
+  const target = ready ? shown.target : null;
+  const activeBox = target ? box : null;
 
   // Focus rendu à la fin ; format d'écran suivi en direct.
   useEffect(() => {
@@ -72,44 +80,55 @@ export function TourRunner({
 
   const finish = useCallback((reason: TourEnd) => onEnd(reason), [onEnd]);
 
-  // Recherche de la cible de l'étape courante (navigation au besoin).
+  // Recherche de la cible de l'étape demandée (navigation au besoin). Annulée dès qu'une autre étape est demandée :
+  // la page d'une étape quittée n'est jamais redemandée.
   useEffect(() => {
     const s = steps[index];
     if (!s) return void finish("done");
     let cancelled = false;
-    const navigating = !!s.path && window.location.pathname !== s.path;
-    if (navigating) router.push(s.path!);
-    const started = performance.now();
-    const limit = navigating ? WAIT_NAV_MS : WAIT_MS;
     let timer = 0;
+    let pushes = 0;
+    let onPageSince: number | null = null;
+    const started = performance.now();
     const tick = () => {
       if (cancelled) return;
+      const now = performance.now();
       const onPage = !s.path || window.location.pathname === s.path;
+      if (shouldPush({ onPage, elapsed: now - started, pushes })) {
+        pushes += 1;
+        router.push(s.path!);
+      }
+      if (onPage && onPageSince === null) onPageSince = now;
       const el = onPage ? findTarget(s.targets) : null;
-      if (el) {
+      const decision = seekDecision({
+        elapsed: now - started,
+        onPageFor: onPageSince === null ? null : now - onPageSince,
+        found: !!el,
+        fallback: s.fallback,
+      });
+      if (decision === "show" && el) {
         // Défilement immédiat : la découpe glisse ensuite vers la position finale (une seule animation).
         bringIntoView(el);
-        // Boîte posée avec l'étape : la découpe glisse dès ce rendu (sinon elle sauterait au rendu suivant).
         setBox(boxOf(el));
         setShown({ index, target: el });
         return;
       }
-      if (performance.now() - started > limit) {
-        if (onPage && s.fallback === "center") {
-          setBox(null);
-          return void setShown({ index, target: null });
-        }
-        // Étape sautée : même sens ; avant la première, on repart en avant.
-        const to = index + dir.current;
-        if (to < 0) {
-          dir.current = 1;
-          setIndex(index + 1);
-        } else setIndex(to);
+      if (decision === "center") {
+        setBox(null);
+        setShown({ index, target: null });
         return;
       }
-      timer = window.setTimeout(tick, 100);
+      if (decision === "skip") {
+        const next = skipFrom(index, dir.current, steps.length);
+        if (next === "done") return void finish("done");
+        dir.current = next.dir;
+        indexRef.current = next.index;
+        setIndex(next.index);
+        return;
+      }
+      timer = window.setTimeout(tick, SEEK.poll);
     };
-    timer = window.setTimeout(tick, navigating ? 150 : 0);
+    timer = window.setTimeout(tick, 0);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
@@ -117,48 +136,54 @@ export function TourRunner({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- relancée à chaque étape seulement
   }, [index]);
 
-  // Mesure de la cible : au défilement, au redimensionnement, quand elle change de taille.
+  // Suivi de la cible affichée : défilement, redimensionnement, changement de taille, changement de page. Une cible
+  // retirée du DOM ou devenue invisible (passage desktop / mobile, nouveau rendu de la page) est recherchée à nouveau ;
+  // introuvable, la découpe disparaît (jamais une boîte périmée).
   useEffect(() => {
-    const el = shown?.target;
-    if (!el) return;
+    if (!ready || !target) return;
+    const s = steps[index];
     let raf = 0;
     const measure = () => {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
-        if (!el.isConnected) return;
-        setBox(boxOf(el));
+        if (target.isConnected && isShown(target)) return void setBox(boxOf(target));
+        const again = s ? findTarget(s.targets) : null;
+        if (again) setShown({ index, target: again });
+        else setBox(null);
       });
     };
+    measure();
     window.addEventListener("scroll", measure, true);
     window.addEventListener("resize", measure);
     const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
-    ro?.observe(el);
+    ro?.observe(target);
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("scroll", measure, true);
       window.removeEventListener("resize", measure);
       ro?.disconnect();
     };
-  }, [shown]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `steps` est stable pendant la visite
+  }, [ready, target, index, pathname]);
 
-  // Découpe : posée à sa place finale, animée en transform depuis l'ancienne (FLIP).
+  // Découpe : posée à sa place finale, animée en transform depuis la précédente (FLIP) au changement d'étape.
   useLayoutEffect(() => {
     const hole = holeRef.current;
-    if (!hole || !shown) return;
+    if (!hole) return;
     const vp = viewport();
-    const to = box
-      ? spotlightBox(box, vp)
+    const to = activeBox
+      ? spotlightBox(activeBox, vp)
       : { top: vp.height / 2, left: vp.width / 2, width: 0, height: 0 };
     hole.style.transform = `translate(${to.left}px, ${to.top}px)`;
     hole.style.width = `${to.width}px`;
     hole.style.height = `${to.height}px`;
+    if (!activeBox) return;
     const from = prevHole.current;
     prevHole.current = to;
-    if (!from || reducedMotion() || from.width === 0 || to.width === 0) return;
-    if (Math.abs(from.left - to.left) + Math.abs(from.top - to.top) < 2 && from.width === to.width)
-      return;
-    // Mesure au défilement : pas d'animation (la découpe suit la cible).
-    if (holeStep.current === shown.index) return;
+    const newStep = holeStep.current !== index;
+    holeStep.current = index;
+    // Mesure au défilement (même étape) : la découpe suit la cible sans animation.
+    if (!from || !newStep || reducedMotion() || from.width === 0 || to.width === 0) return;
     const f = flipFrom(from, to);
     hole.animate(
       [
@@ -169,31 +194,29 @@ export function TourRunner({
       ],
       { duration: MOVE_MS, easing: EASE.out },
     );
-  }, [box, shown]);
+  }, [activeBox, index]);
 
-  useLayoutEffect(() => {
-    if (shown) holeStep.current = shown.index;
-  });
-
-  // Carte : placée près de la cible (desktop) ; feuille du bas ou du haut (mobile).
+  // Carte : placée près de la cible (desktop, centrée sans cible) ; feuille du bas ou du haut (mobile).
   useLayoutEffect(() => {
     const card = cardRef.current;
-    if (!card || !shown) return;
+    if (!card) return;
     const vp = viewport();
     if (mobile) {
       card.style.top = "";
       card.style.left = "";
-      const side = sheetSide(box, card.offsetHeight, vp);
+      const side = sheetSide(activeBox, card.offsetHeight, vp);
       if (side !== sheet) setSheet(side);
       prevCard.current = null;
       return;
     }
-    const pos = placeCard(box, { width: card.offsetWidth, height: card.offsetHeight }, vp);
+    const pos = placeCard(activeBox, { width: card.offsetWidth, height: card.offsetHeight }, vp);
     card.style.top = `${pos.top}px`;
     card.style.left = `${pos.left}px`;
     const from = prevCard.current;
     prevCard.current = { top: pos.top, left: pos.left };
-    if (!from || reducedMotion() || cardStep.current === shown.index) return;
+    const newStep = ready && cardStep.current !== index;
+    if (ready) cardStep.current = index;
+    if (!from || !newStep || reducedMotion()) return;
     card.animate(
       [
         { transform: `translate(${from.left - pos.left}px, ${from.top - pos.top}px)` },
@@ -201,28 +224,28 @@ export function TourRunner({
       ],
       { duration: MOVE_MS, easing: EASE.out },
     );
-  }, [box, shown, mobile, sheet]);
+  }, [activeBox, ready, index, mobile, sheet]);
 
-  // Nouvelle étape affichée : contenu en fondu, focus sur l'action principale.
+  // Étape prête : contenu en fondu, focus sur l'action principale.
   useEffect(() => {
     const card = cardRef.current;
-    if (!card || !shown) return;
-    cardStep.current = shown.index;
+    if (!card || !ready) return;
     if (!reducedMotion())
       card.animate([{ opacity: 0.4 }, { opacity: 1 }], { duration: 200, easing: EASE.out });
     nextRef.current?.focus({ preventScroll: true });
-  }, [shown]);
+  }, [ready, index]);
 
+  // « Suivant » / « Précédent » partent de l'étape demandée : ils avancent toujours, même pendant une recherche.
   const go = useCallback(
     (delta: 1 | -1) => {
-      if (!shown) return;
-      const to = shown.index + delta;
-      if (to < 0) return;
-      if (to >= total) return finish("done");
+      const to = stepAfter(indexRef.current, delta, total);
+      if (to === null) return;
+      if (to === "done") return finish("done");
       dir.current = delta;
+      indexRef.current = to;
       setIndex(to);
     },
-    [shown, total, finish],
+    [total, finish],
   );
 
   // Clavier : Échap ferme, ← / → naviguent, Tab reste dans la carte ; les raccourcis de CSM sont suspendus.
@@ -258,7 +281,9 @@ export function TourRunner({
     return () => window.removeEventListener("keydown", onKey, true);
   }, [go, finish]);
 
-  const last = shown ? shown.index === total - 1 : false;
+  const last = index === total - 1;
+  // La carte apparaît une fois la première étape trouvée (rien à montrer au tout premier instant).
+  const visible = !!step && shown !== null;
 
   return (
     <div data-tour-root="" data-testid="tour" className="fixed inset-0 z-[65]">
@@ -268,16 +293,16 @@ export function TourRunner({
         ref={holeRef}
         aria-hidden
         data-testid="tour-spotlight"
-        data-target={box ? "on" : "off"}
+        data-target={activeBox ? "on" : "off"}
         className="pointer-events-none absolute top-0 left-0 origin-top-left rounded-control"
         style={{
-          boxShadow: box
+          boxShadow: activeBox
             ? "0 0 0 2px var(--accent), 0 0 0 200vmax color-mix(in oklab, var(--bg) 72%, transparent)"
             : "0 0 0 200vmax color-mix(in oklab, var(--bg) 72%, transparent)",
           opacity: shown ? 1 : 0.6,
         }}
       />
-      {step ? (
+      {visible ? (
         <div
           ref={cardRef}
           role="dialog"
@@ -286,6 +311,8 @@ export function TourRunner({
           aria-describedby={bodyId}
           data-testid="tour-card"
           data-step={step.id}
+          data-state={ready ? "ready" : "seeking"}
+          aria-busy={!ready || undefined}
           className={cn(
             "fixed flex flex-col gap-2 rounded-box border border-border bg-surface p-4 text-fg shadow-float",
             mobile
@@ -300,7 +327,7 @@ export function TourRunner({
             <span className="min-w-0 truncate">{step.chapterTitle}</span>
             <span aria-hidden>·</span>
             <span className="tabular" data-testid="tour-counter">
-              {shown!.index + 1} / {total}
+              {index + 1} / {total}
             </span>
           </p>
           <h2 id={titleId} className="text-h3 font-semibold">
@@ -312,7 +339,7 @@ export function TourRunner({
           <div aria-hidden className="my-1 h-1 overflow-hidden rounded-pill bg-surface-3">
             <div
               className="h-full origin-left rounded-pill bg-accent transition-transform duration-300 ease-hud motion-reduce:transition-none"
-              style={{ transform: `scaleX(${(shown!.index + 1) / total})` }}
+              style={{ transform: `scaleX(${(index + 1) / total})` }}
             />
           </div>
           <div className="flex items-center gap-2">
@@ -333,7 +360,7 @@ export function TourRunner({
               size="sm"
               className="max-md:h-11"
               onClick={() => go(-1)}
-              disabled={shown!.index === 0}
+              disabled={index === 0}
               aria-label="Précédent"
               data-testid="tour-prev"
             >
@@ -362,7 +389,7 @@ export function TourRunner({
         </div>
       ) : null}
       <p className="sr-only" aria-live="polite">
-        {step ? `Étape ${shown!.index + 1} sur ${total} : ${step.title}` : "Chargement de l'étape…"}
+        {step && ready ? `Étape ${index + 1} sur ${total} : ${step.title}` : ""}
       </p>
     </div>
   );

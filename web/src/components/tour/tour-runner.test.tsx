@@ -6,7 +6,10 @@ import type { PlannedStep } from "@/lib/tour/steps";
 import { TourRunner } from "./tour-runner";
 
 const push = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push }),
+  usePathname: () => window.location.pathname,
+}));
 
 beforeAll(() => {
   // Mouvement réduit (aucune animation Web Animations en jsdom), écran desktop.
@@ -29,7 +32,7 @@ beforeAll(() => {
 });
 
 /** Cible visible de 100 × 40 à (200, 100). */
-function target(attr: string) {
+function target(attr: string, parent: HTMLElement = document.body) {
   const el = document.createElement("button");
   el.setAttribute("data-tour", attr);
   el.getBoundingClientRect = () =>
@@ -43,7 +46,7 @@ function target(attr: string) {
       x: 200,
       y: 100,
     }) as DOMRect;
-  document.body.appendChild(el);
+  parent.appendChild(el);
   return el;
 }
 
@@ -134,6 +137,7 @@ describe("TourRunner", () => {
   it("change de page puis attend la cible", async () => {
     const onEnd = vi.fn();
     render(<TourRunner steps={[step("p", { path: "/commandes/suivi" })]} onEnd={onEnd} />);
+    await settle();
     expect(push).toHaveBeenCalledWith("/commandes/suivi");
     window.history.pushState({}, "", "/commandes/suivi");
     await settle(300);
@@ -142,5 +146,86 @@ describe("TourRunner", () => {
     await settle(200);
     expect(screen.getByTestId("tour-card").dataset.step).toBe("p");
     window.history.pushState({}, "", "/");
+  });
+
+  it("cible de taille nulle ou sous un ancêtre masqué = absente (étape sautée)", async () => {
+    target("a");
+    // Présente dans le DOM mais sans boîte (bouton desktop masqué en mobile).
+    const zero = document.createElement("button");
+    zero.setAttribute("data-tour", "zero");
+    document.body.appendChild(zero);
+    const hiddenParent = document.createElement("div");
+    hiddenParent.style.display = "none";
+    document.body.appendChild(hiddenParent);
+    target("cachee", hiddenParent);
+    target("d");
+    render(
+      <TourRunner steps={[step("a"), step("zero"), step("cachee"), step("d")]} onEnd={() => {}} />,
+    );
+    await settle();
+    fireEvent.click(screen.getByTestId("tour-next"));
+    await settle(3000);
+    await settle(3000);
+    expect(screen.getByTestId("tour-card").dataset.step).toBe("d");
+    expect(screen.getByTestId("tour-counter").textContent).toBe("4 / 4");
+  });
+
+  it("« Suivant » avance pendant une recherche ; la page d'une étape quittée n'est plus demandée", async () => {
+    target("a");
+    target("c");
+    render(
+      <TourRunner steps={[step("a"), step("b", { path: "/b" }), step("c")]} onEnd={() => {}} />,
+    );
+    await settle();
+    fireEvent.click(screen.getByTestId("tour-next"));
+    await settle(300);
+    // Page /b pas encore arrivée : la carte montre déjà l'étape demandée, sans découpe périmée.
+    expect(push).toHaveBeenCalledWith("/b");
+    const card = screen.getByTestId("tour-card");
+    expect(card.dataset.step).toBe("b");
+    expect(card.dataset.state).toBe("seeking");
+    expect(screen.getByTestId("tour-counter").textContent).toBe("2 / 3");
+    expect(screen.getByTestId("tour-spotlight").dataset.target).toBe("off");
+    // Un seul clic suffit pour passer à la suite, même pendant la recherche.
+    fireEvent.click(screen.getByTestId("tour-next"));
+    await settle(100);
+    expect(screen.getByTestId("tour-card").dataset.step).toBe("c");
+    expect(screen.getByTestId("tour-card").dataset.state).toBe("ready");
+    expect(screen.getByTestId("tour-spotlight").dataset.target).toBe("on");
+    const pushes = push.mock.calls.length;
+    await settle(8000);
+    expect(push.mock.calls.length).toBe(pushes);
+    expect(screen.getByTestId("tour-card").dataset.step).toBe("c");
+  });
+
+  it("page jamais atteinte : navigation relancée, puis étape sautée au plafond", async () => {
+    target("a");
+    target("c");
+    render(
+      <TourRunner steps={[step("a"), step("b", { path: "/b" }), step("c")]} onEnd={() => {}} />,
+    );
+    await settle();
+    fireEvent.click(screen.getByTestId("tour-next"));
+    await settle(2100);
+    expect(push.mock.calls.filter((c) => c[0] === "/b").length).toBe(2);
+    await settle(9000);
+    expect(screen.getByTestId("tour-card").dataset.step).toBe("c");
+  });
+
+  it("cible retirée du DOM : recherchée à nouveau, sinon plus de découpe (jamais une boîte périmée)", async () => {
+    const first = target("a");
+    render(<TourRunner steps={[step("a"), step("b")]} onEnd={() => {}} />);
+    await settle();
+    expect(screen.getByTestId("tour-spotlight").dataset.target).toBe("on");
+    first.remove();
+    fireEvent.scroll(window);
+    await settle(50);
+    expect(screen.getByTestId("tour-spotlight").dataset.target).toBe("off");
+    // Nouveau rendu de la page : même cible, nouvel élément.
+    target("a");
+    fireEvent(window, new Event("resize"));
+    await settle(50);
+    await settle(50); // nouvelle cible suivie : sa première mesure
+    expect(screen.getByTestId("tour-spotlight").dataset.target).toBe("on");
   });
 });

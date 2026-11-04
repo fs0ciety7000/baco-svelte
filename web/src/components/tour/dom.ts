@@ -2,16 +2,27 @@
 
 import type { Box } from "@/lib/tour/position";
 
-/** Élément réellement affiché (ni `display: none`, ni masqué, ni de taille nulle). */
+/**
+ * Élément réellement affiché : taille non nulle, pas hors de la fenêtre en largeur (une cible qu'on ne peut pas amener à
+ * l'écran par un défilement vertical), ni lui ni un ancêtre en `display: none` / `hidden` / `visibility: hidden`. Une
+ * cible qui ne l'est pas compte comme ABSENTE (étape sautée ou carte centrée), jamais comme une boîte vide.
+ */
 export function isShown(el: Element): boolean {
   const r = el.getBoundingClientRect();
-  if (r.width <= 0 || r.height <= 0) return false;
+  if (!(r.width > 0) || !(r.height > 0)) return false;
+  if (r.left >= window.innerWidth || r.left + r.width <= 0) return false;
   if (typeof (el as HTMLElement).checkVisibility === "function")
     return (el as HTMLElement).checkVisibility({
       visibilityProperty: true,
       opacityProperty: false,
     });
-  return getComputedStyle(el).visibility !== "hidden";
+  for (let n: Element | null = el; n; n = n.parentElement) {
+    if ((n as HTMLElement).hidden) return false;
+    const st = getComputedStyle(n);
+    if (st.display === "none") return false;
+    if (n === el && st.visibility === "hidden") return false;
+  }
+  return true;
 }
 
 /** Première cible visible parmi les sélecteurs, dans l'ordre (le shell a souvent une version desktop et une mobile). */
