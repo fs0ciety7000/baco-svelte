@@ -1525,6 +1525,8 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   600 / min / agent) et réessayées 3 fois par la carte (carrés gris en plein écran) ; cloche lue à l'ouverture (`markNotifications
   all`) ; extension 1.13.1 : URL de prod par défaut, **onglet DICOS / Quinyx rechargé seul** quand la session a expiré (jamais l'onglet
   actif d'une fenêtre au premier plan, 1 fois / 15 min / onglet, `healAt`), cause : le Bearer n'est capté qu'en vol par `inject.js`.
+- 2026-11-04 — **Poussé en production** (demande de l'utilisateur) : `csm-prod` = 9354097 (carte, cloche, extension 1.13.1 ; aucune
+  migration ni hook). Déploiement `csm-web-prod` terminé, santé 200.
 
 ---
 
