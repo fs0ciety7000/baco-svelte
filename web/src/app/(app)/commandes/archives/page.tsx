@@ -1,8 +1,14 @@
-import { Download, ExternalLink } from "lucide-react";
+import { Download, ExternalLink, FileText } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ArchiveAdminBar, ArchiveDelete } from "@/components/orders/archive-tools";
+import { ArchiveWeeks, BillingLinks } from "@/components/orders/archive-weeks";
+import { DUTY_SHORT } from "@/lib/ops/log";
+import { recapItems, recapWeeks } from "@/lib/orders/recap";
+import { isoWeekOf, monthBounds, monthLabelFr, weekBounds, weekKeyOf } from "@/lib/orders/week";
+import { userDistricts } from "@/lib/team";
+import { recapOrders } from "@/server/data/recap";
 import { OrderList } from "@/components/orders/order-list";
 import { DateRangePicker } from "@/components/ui/date-field";
 import {
@@ -12,7 +18,7 @@ import {
   SegmentedNav,
 } from "@/components/ui/filters";
 import { ORDER_ARCHIVE_DAYS } from "@/lib/orders/archive";
-import { isValidDay } from "@/lib/orders/time";
+import { brusselsDay, isValidDay } from "@/lib/orders/time";
 import type { SessionUser } from "@/server/auth";
 import { listOrders } from "@/server/data/orders";
 import { Button } from "@/components/ui/button";
@@ -52,10 +58,11 @@ type SP = {
   page?: string;
   du?: string;
   au?: string;
+  district?: string;
 };
 
 /** Vue des archives en contrôle segmenté, en tête de la barre d'outils (v4 lot 6). */
-function ArchiveTabs({ vue }: { vue: "bons" | "pdf" }) {
+function ArchiveTabs({ vue }: { vue: "bons" | "semaines" | "pdf" }) {
   return (
     <SegmentedNav
       label="Vue des archives"
@@ -67,12 +74,19 @@ function ArchiveTabs({ vue }: { vue: "bons" | "pdf" }) {
           testId: "archives-tab-bons",
         },
         {
+          label: "Récap par semaine",
+          href: "/commandes/archives?vue=semaines",
+          current: vue === "semaines",
+          testId: "archives-tab-semaines",
+        },
+        {
           label: "PDF des bons",
           href: "/commandes/archives?vue=pdf",
           current: vue === "pdf",
           testId: "archives-tab-pdf",
         },
       ]}
+      scroll
     />
   );
 }
@@ -153,10 +167,96 @@ const monthLabel = new Intl.DateTimeFormat("fr-BE", {
   timeZone: "UTC",
 });
 
+/**
+ * Récap par semaine (4 nov. 2026) : bons terminés, envoyés ou annulés des semaines ISO qui touchent le mois choisi, par
+ * semaine ; zip de la semaine, PDF mensuel et fichier « Transports alternatifs » de la facturation (par district).
+ */
+async function WeeklyRecap({ sp, user }: { sp: SP; user: SessionUser }) {
+  const today = brusselsDay();
+  const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.mois ?? "") ? sp.mois! : today.slice(0, 7);
+  // District : choisi, sinon le district du jour de l'agent s'il n'en a qu'un ; « tous » = aucun filtre.
+  const duty = userDistricts(user, today)
+    .map((d) => DUTY_SHORT[d] ?? "")
+    .filter(Boolean);
+  const district =
+    sp.district === "tous"
+      ? ""
+      : ((["DSO", "DSE", "DCE"] as const).find((d) => d === sp.district) ??
+        (sp.district === undefined && duty.length === 1 ? duty[0]! : ""));
+  const m = monthBounds(month);
+  const from = weekBounds(isoWeekOf(m.from)).from;
+  const to = weekBounds(isoWeekOf(m.to)).to;
+  const [data, pdfs] = await Promise.all([
+    recapOrders(user, { from, to, districts: district ? [district] : [] }),
+    archivePdfIndex(),
+  ]);
+  const weeks = recapWeeks(recapItems(data));
+  const current = weekKeyOf(today);
+  const openKey = weeks.some((w) => w.key === current) ? current : (weeks[0]?.key ?? "");
+  const monthQuery = district ? `?district=${district}` : "";
+  return (
+    <>
+      <FilterForm
+        action="/commandes/archives"
+        role="search"
+        className={TOOLBAR}
+        data-testid="archives-toolbar"
+      >
+        <ArchiveTabs vue="semaines" />
+        <input type="hidden" name="vue" value="semaines" />
+        <label className="min-w-44 flex-1 md:min-w-0 md:w-44 md:flex-none">
+          <span className="sr-only">Mois</span>
+          <MonthField name="mois" defaultValue={month} />
+        </label>
+        <label className="min-w-36 flex-1 md:min-w-0 md:w-40 md:flex-none">
+          <span className="sr-only">District</span>
+          <Select
+            name="district"
+            label="District"
+            defaultValue={district || "tous"}
+            options={[
+              { value: "tous", label: "Tous les districts" },
+              { value: "DSO", label: "DSO · Sud-Ouest" },
+              { value: "DSE", label: "DSE · Sud-Est" },
+              { value: "DCE", label: "DCE · Centre" },
+            ]}
+          />
+        </label>
+        <FilterSubmit />
+      </FilterForm>
+      <div className="flex flex-wrap items-center gap-2" data-testid="month-actions">
+        <p className="mr-auto text-small text-fg-muted">
+          <span className="font-medium text-fg capitalize">{monthLabelFr(month)}</span>
+          {district ? ` · ${district}` : " · tous les districts"} · bons terminés, envoyés ou
+          annulés, par date de service.
+        </p>
+        <Button asChild size="sm" variant="secondary">
+          <a
+            href={`/api/commandes/archives/mois/${month}/pdf${monthQuery}`}
+            download
+            data-testid="month-pdf"
+          >
+            <FileText aria-hidden className="size-4" /> Récap mensuel (PDF)
+          </a>
+        </Button>
+        <BillingLinks period={month} district={district} label="Fichier facturation (Excel)" />
+      </div>
+      <ArchiveWeeks weeks={weeks} openKey={openKey} pdfFor={pdfs} district={district} />
+    </>
+  );
+}
+
 export default async function Page({ searchParams }: { searchParams: Promise<SP> }) {
   const user = await requirePermission("archives:read");
   const sp = await searchParams;
   const admin = isAdmin(user);
+  if (sp.vue === "semaines") {
+    return (
+      <section className="flex min-w-0 flex-col gap-4" aria-label="Récap par semaine">
+        <WeeklyRecap sp={sp} user={user} />
+      </section>
+    );
+  }
   if (sp.vue !== "pdf") {
     return (
       <section className="flex min-w-0 flex-col gap-4" aria-label="Bons archivés">

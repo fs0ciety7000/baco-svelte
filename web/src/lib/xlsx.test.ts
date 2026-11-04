@@ -78,4 +78,22 @@ describe("xlsx", () => {
     expect(s1).not.toContain("<f>");
     expect(files.get("xl/workbook.xml")).toContain('name="Totaux  2026"');
   });
+
+  it("lignes en gras choisies et cellules fusionnées (fichier de facturation)", () => {
+    const files = unzip(
+      xlsxWorkbook([
+        {
+          name: "BUS",
+          rows: [["Titre"], ["Sous-titre"], ["Date", "x"]],
+          bold: [0, 2],
+          merges: ["A1:C1", "pas une plage"],
+        },
+      ]),
+    );
+    const s1 = files.get("xl/worksheets/sheet1.xml")!;
+    expect(s1).toContain('<c r="A1" t="inlineStr" s="1">');
+    expect(s1).toContain('<c r="A2" t="inlineStr">');
+    expect(s1).toContain('<c r="A3" t="inlineStr" s="1">');
+    expect(s1).toContain('<mergeCells count="1"><mergeCell ref="A1:C1"/></mergeCells></worksheet>');
+  });
 });

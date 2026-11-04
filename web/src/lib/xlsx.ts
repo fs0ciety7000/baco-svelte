@@ -3,7 +3,15 @@
 // gras, largeurs de colonnes. Archive ZIP « stockée » (sans compression) avec CRC32 maison. Pur, testé.
 
 export type XlsxCell = string | number | null | undefined;
-export type XlsxSheet = { name: string; rows: XlsxCell[][]; widths?: number[] };
+export type XlsxSheet = {
+  name: string;
+  rows: XlsxCell[][];
+  widths?: number[];
+  /** Lignes en gras (index 0) ; par défaut, la première seulement. */
+  bold?: number[];
+  /** Cellules fusionnées (« A1:C2 »). */
+  merges?: string[];
+};
 
 const enc = new TextEncoder();
 
@@ -38,13 +46,18 @@ function sheetXml(s: XlsxSheet): string {
   const cols = s.widths?.length
     ? `<cols>${s.widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join("")}</cols>`
     : "";
+  const bold = new Set(s.bold ?? [0]);
+  const valid = (s.merges ?? []).filter((m) => /^[A-Z]{1,3}\d{1,7}:[A-Z]{1,3}\d{1,7}$/.test(m));
+  const merges = valid.length
+    ? `<mergeCells count="${valid.length}">${valid.map((m) => `<mergeCell ref="${m}"/>`).join("")}</mergeCells>`
+    : "";
   const rows = s.rows
     .map((row, r) => {
       const cells = row
         .map((v, c) => {
           if (v === null || v === undefined || v === "") return "";
           const ref = `${colName(c)}${r + 1}`;
-          const style = r === 0 ? ' s="1"' : "";
+          const style = bold.has(r) ? ' s="1"' : "";
           if (typeof v === "number" && Number.isFinite(v))
             return `<c r="${ref}"${style}><v>${v}</v></c>`;
           return `<c r="${ref}" t="inlineStr"${style}><is><t xml:space="preserve">${esc(String(v))}</t></is></c>`;
@@ -56,7 +69,7 @@ function sheetXml(s: XlsxSheet): string {
   return (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-    `${cols}<sheetData>${rows}</sheetData></worksheet>`
+    `${cols}<sheetData>${rows}</sheetData>${merges}</worksheet>`
   );
 }
 

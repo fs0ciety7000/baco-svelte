@@ -913,3 +913,60 @@ export async function openShiftsPdf(
   footer(doc, font, at, `Services non alignés ${input.period}`);
   return doc.save();
 }
+
+// --- Récapitulatif mensuel des bons (Commandes › Archives, 4 nov. 2026) ---
+
+export type RecapMonthPdfInput = {
+  /** « novembre 2026 ». */
+  period: string;
+  /** Districts couverts, en clair (« Tous les districts », « DSO »). */
+  scope: string;
+  weeks: {
+    label: string;
+    counts: { bus: number; taxi: number; cancelled: number; vehicles: number };
+    /** Lignes déjà mises en forme : n° de commande, n° TC, date, trajet, société, véhicules, statut. */
+    rows: { cells: string[][]; cancelled: boolean }[];
+  }[];
+  totals: { bus: number; taxi: number; cancelled: number; vehicles: number };
+};
+
+const countLine = (c: RecapMonthPdfInput["totals"]) =>
+  `${c.bus} bon${c.bus > 1 ? "s" : ""} bus · ${c.taxi} taxi${c.taxi > 1 ? "s" : ""}${c.cancelled ? ` · ${c.cancelled} annulé${c.cancelled > 1 ? "s" : ""}` : ""} · ${c.vehicles} véhicule${c.vehicles > 1 ? "s" : ""}`;
+
+export async function recapMonthPdf(
+  input: RecapMonthPdfInput,
+  ctx: PdfContext,
+): Promise<Uint8Array> {
+  const { doc, font, l, at } = await setup(
+    `Récapitulatif des bons ${input.period}`,
+    `Récapitulatif des bons bus et taxi · ${input.period}`,
+    ctx,
+  );
+  header(l, officeFor("Sud-Ouest"), ctx.agentName, {
+    name: "Bons bus et taxi",
+    lines: [input.scope, "Bons terminés, envoyés ou annulés (date de service)"],
+  });
+  title(l, "Récapitulatif mensuel des bons", countLine(input.totals), input.period);
+  if (!input.weeks.length) l.field("Bons", "Aucun bon sur ce mois.");
+  for (const w of input.weeks) {
+    l.section(w.label);
+    l.field("Total de la semaine", countLine(w.counts));
+    gridTable(
+      l,
+      [
+        { title: "N° de commande", w: 76 },
+        { title: "N° TC / réf.", w: 74 },
+        { title: "Date", w: 56 },
+        { title: "Trajet", w: WIDTH - 398 },
+        { title: "Société", w: 90 },
+        { title: "Véh.", w: 30 },
+        { title: "Statut", w: 72 },
+      ],
+      w.rows.map((r) => ({ cells: r.cells, strike: r.cancelled })),
+    );
+  }
+  l.section("Total du mois");
+  l.field("Mois", countLine(input.totals), { bold: true });
+  footer(doc, font, at, `Récapitulatif ${input.period}`);
+  return doc.save();
+}

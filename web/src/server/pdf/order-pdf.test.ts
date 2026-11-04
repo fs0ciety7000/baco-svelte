@@ -5,7 +5,7 @@ import { busDraftSchema, taxiDraftSchema } from "@/lib/orders/schemas";
 
 vi.mock("server-only", () => ({}));
 
-const { busOrderPdf, roadmapPdf, safe, taxiOrderPdf } = await import("./order-pdf");
+const { busOrderPdf, recapMonthPdf, roadmapPdf, safe, taxiOrderPdf } = await import("./order-pdf");
 
 // Données fictives.
 const ctx = {
@@ -180,5 +180,50 @@ describe("feuille de route", () => {
     );
     expect(Buffer.from(pdf.slice(0, 5)).toString()).toBe("%PDF-");
     expect(pdf.length).toBeGreaterThan(2000);
+  });
+});
+
+describe("récapitulatif mensuel des bons", () => {
+  it("semaines, lignes annulées et totaux, plusieurs pages", async () => {
+    const row = (i: number) => ({
+      cancelled: i % 7 === 0,
+      cells: [
+        [`CMD-${String(i).padStart(6, "2")}`, "Bus"],
+        ["TC_TEST"],
+        ["03/11/2026", "06:00"],
+        ["Gare Alpha → Gare Bravo"],
+        ["Autocars Fictifs"],
+        ["2"],
+        [i % 7 === 0 ? "Annulé" : "Envoyé / finalisé"],
+      ],
+    });
+    const counts = { bus: 40, taxi: 0, cancelled: 6, vehicles: 68 };
+    const bytes = await recapMonthPdf(
+      {
+        period: "novembre 2026",
+        scope: "Tous les districts",
+        totals: counts,
+        weeks: [
+          {
+            label: "Semaine 45 · du 2 au 8 novembre 2026",
+            counts,
+            rows: Array.from({ length: 40 }, (_, i) => row(i)),
+          },
+        ],
+      },
+      ctx,
+    );
+    expect(head(bytes)).toBe("%PDF-");
+    expect(await pageCount(bytes)).toBeGreaterThan(1);
+    const empty = await recapMonthPdf(
+      {
+        period: "novembre 2026",
+        scope: "DSO",
+        totals: { bus: 0, taxi: 0, cancelled: 0, vehicles: 0 },
+        weeks: [],
+      },
+      ctx,
+    );
+    expect(await pageCount(empty)).toBe(1);
   });
 });
