@@ -1486,6 +1486,12 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   `lib/ops/journal-rules.ts` (+ test), actions `saveJournalRules` / `reclassBacoMessages` supprimées ; `/admin/journal` → `/admin`
   (308). Le hook garde `journalCategory` (règles `app_settings.journal_rules` déjà posées, sinon défaut) pour l'étiquette
   Travaux / Perturbation des messages iRail.
+- 2026-11-04 — **Lot du 23 oct. au 4 nov. poussé en production** (accord de l'utilisateur : « pousse en prod ») : `csm-prod` =
+  2bca7a4 (16 commits depuis f996274 : services Quinyx non alignés (2 migrations), Cc C3, identité « Encre et sable », Temps réel
+  + bandeau d'incident, Bus et taxis, barre mobile, synchro automatique par l'extension 1.13.0, Journal Infos / Perturbations en
+  module, retrait du Tri du Journal). Sauvegarde PocketBase `pre_prod_20261104.zip` faite juste avant (deux tâches Coolify
+  exécutées une fois puis supprimées : jeton superuser dans `/tmp/a`, effacé par la 2e). Déploiements `csm-web-prod` et
+  `csm-pocketbase-prod` « finished », santé 200, `perms-check` : 30 comptes, 0 écart.
 
 ---
 
