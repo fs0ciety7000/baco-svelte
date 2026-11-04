@@ -196,7 +196,7 @@ export const MODULES: NavModule[] = [
     tabs: [
       {
         href: "/pmr",
-        label: "Missions",
+        label: "PMR",
         count: "pmr",
         permission: "deplacements:read",
         keywords: ["missions PMR", "déplacements", "DICOS", "assistance"],
