@@ -6,7 +6,9 @@ describe('page de transition BACO → CSM', () => {
 		const html = transitionPage({ frozen: true });
 		expect(html).toContain('BACO</span> devient CSM');
 		expect(html).toContain(`href="${CSM_URL}"`);
-		expect(html).toContain('Nicolas &amp; Thomas');
+		expect(html).toContain('<p class="who">Nicolas</p>');
+		expect(html).not.toContain('Thomas');
+		expect(html).toContain('SNCB et d’Infrabel');
 		expect(html).not.toMatch(/<script/i);
 		const external = [...html.matchAll(/(?:src|href)="(https?:[^"]+)"/g)]
 			.map((m) => m[1])

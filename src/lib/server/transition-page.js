@@ -47,6 +47,9 @@ const ICONS = {
 	messages: icon(
 		'<path d="M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1"/>'
 	),
+	train: icon(
+		'<path d="M8 3.1V7a4 4 0 0 0 8 0V3.1"/><path d="m9 15-1-1"/><path d="m15 15 1-1"/><path d="M9 19c-2.8 0-5-2.2-5-5v-4a8 8 0 0 1 16 0v4c0 2.8-2.2 5-5 5Z"/><path d="m8 19-2 3"/><path d="m16 19 2 3"/>'
+	),
 	search: icon('<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>'),
 	arrow: icon('<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>'),
 	check: icon('<path d="M20 6 9 17l-5-5"/>')
@@ -60,10 +63,6 @@ const KEEP = [
 	[
 		'Tes données',
 		'Bons de bus et de taxi, missions PMR, Journal, annuaire et procédures : tout a été repris dans CSM, rien n’est perdu.'
-	],
-	[
-		'Ton équipe',
-		'Les mêmes collègues et les mêmes missions, dans un outil plus rapide et plus complet.'
 	]
 ];
 
@@ -85,8 +84,13 @@ const NEWS = [
 	],
 	[
 		'search',
-		'Tout retrouver avec Ctrl K',
-		'Un train, une gare, un bon, un collègue ou une procédure, depuis n’importe quelle page. Et le réseau en direct : trains, lignes, gares, passages à niveau.'
+		'Tout retrouver avec Ctrl K',
+		'Un train, une gare, un bon, un collègue ou une procédure, depuis n’importe quelle page.'
+	],
+	[
+		'train',
+		'Le réseau, de source officielle',
+		'Numéros de train, relations (IC, L, S, P), lignes, gares et passages à niveau viennent directement des données officielles de la SNCB et d’Infrabel, mises à jour chaque jour. Trains en direct, retards et suppressions compris.'
 	]
 ];
 
@@ -158,7 +162,7 @@ h2{font-size:22px;line-height:1.25;font-weight:650;letter-spacing:-.015em;margin
 @media (min-width:768px){h2{font-size:24px}}
 .sub{margin:0 0 18px;color:var(--muted)}
 .keep{display:grid;gap:12px;list-style:none;margin:0;padding:0}
-@media (min-width:768px){.keep{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}}
+@media (min-width:768px){.keep{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}}
 .keep li{padding:18px 20px;display:flex;gap:14px;align-items:flex-start}
 .keep .ico{flex:none;width:20px;height:20px;margin-top:2px;color:var(--ok)}
 .keep h3,.news h3{font-size:16px;line-height:1.3;font-weight:650;margin:0 0 4px}
@@ -166,16 +170,14 @@ h2{font-size:22px;line-height:1.25;font-weight:650;letter-spacing:-.015em;margin
 .news{display:grid;gap:12px;list-style:none;margin:0;padding:0}
 @media (min-width:640px){.news{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}}
 .news li{padding:22px 22px 24px;position:relative}
+@media (min-width:640px){.news li:last-child:nth-child(odd){grid-column:1/-1}}
 .news .badge{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;
 background:var(--sable-soft);color:var(--fg);margin:0 0 14px}
 .news .ico{width:20px;height:20px}
 .help{display:grid;gap:16px;padding:22px;margin:36px 0 0}
-@media (min-width:768px){.help{grid-template-columns:minmax(0,1fr) auto;align-items:center;padding:26px 30px}}
+@media (min-width:768px){.help{padding:26px 30px}}
 .help p{margin:0}
-.help .q{font-weight:650;font-size:16px;margin:0 0 4px}
-.help .a{color:var(--muted)}
 .sign{text-align:left}
-@media (min-width:768px){.sign{text-align:right;border-left:1px solid var(--border);padding-left:30px}}
 .sign .bye{color:var(--muted);font-size:14px}
 .sign .who{font-weight:650;font-size:18px;letter-spacing:-.01em}
 footer{padding:28px 0 calc(28px + env(safe-area-inset-bottom));color:var(--subtle);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:space-between}
@@ -248,13 +250,9 @@ ${symbol}
 </section>
 
 <div class="card help rise d4">
-<div>
-<p class="q">Besoin d'aide&nbsp;?</p>
-<p class="a">Un souci de connexion ou une question&nbsp;: contacte un administrateur CSM.</p>
-</div>
 <div class="sign">
 <p class="bye">Bonne prise en main et bon service&nbsp;!</p>
-<p class="who">Nicolas &amp; Thomas</p>
+<p class="who">Nicolas</p>
 </div>
 </div>
 </main>
