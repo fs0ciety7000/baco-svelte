@@ -1518,6 +1518,9 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   (graine). **Page de transition BACO** prête sur la branche locale `baco-transition` (non poussée, `BACO_FROZEN=1` sur Vercel au gel ;
   réécriture `/api-proxy` de `vercel.json` à couper aussi). **Prod** : 10 bons bus « brouillon » passés en « envoyé » à la demande de
   l'utilisateur (superuser, terminé → envoyé, sauvegarde `pre_envoyes_20261104.zip` avant) ; 4 taxis « brouillon » laissés.
+- 2026-11-04 — **Lot de retours poussé en production** (`csm-prod` = fa1c21d, hooks seulement). Premier déploiement de `csm-web-prod`
+  échoué : `next/font` n'a pas pu lire la feuille Google Fonts (« Cannot read properties of null (reading '1') », passager : le même
+  commit venait d'être construit en préversion) → relancé seul par `POST /deploy` (PocketBase déjà déployé), terminé, santé 200.
 
 ---
 
