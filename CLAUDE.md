@@ -1535,6 +1535,13 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   découpe périmée après changement de page → corrigé). E-mail du jour J sans étape « extension » (synchro automatique). **Gel de
   BACO préparé** sur la branche locale `baco-transition` (gelé par défaut, `BACO_FROZEN=0` = retour arrière, relais `/api-proxy`
   retiré) : envoi sur `main` refusé par le contrôle de la session, en attente du feu vert explicite de l'utilisateur.
+- 2026-11-04 — **N° de commande et récap de facturation** (demandes de l'utilisateur) : `order_ref` `CMD-XXXXXX` (migration
+  `1760005100`, hook seul, unique sur bus + taxi, alphabet sans 0/1/I/L/O/U) **remplace l'ancien n° à l'affichage partout** ;
+  `number` gardé en base (imports BACO, clés d'archives), TC_ (`relation`) inchangé. Archives : **récap par semaine** ISO (date de
+  service), ZIP de la semaine (`/api/commandes/archives/semaine/AAAA-Www`), PDF du mois, **fichier facturation Excel** au format
+  « Transports alternatifs » de l'équipe (BUS par société / TAXI / TAXI PMR / Données ; `…/facturation/<AAAA-MM|AAAA-Www>.xlsx`).
+  Le classeur réel de l'utilisateur (noms d'agents, n° de dossier) a servi de modèle de mise en page seulement, jamais copié.
+  Planificateur PMR **masqué des menus** (`NavTab.hidden`, `routeAllowed` pour la garde de page).
 
 ---
 
