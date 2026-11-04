@@ -126,14 +126,18 @@ export function LiveBoard({
   );
   // Lien de notification vers la page déjà ouverte (navigation douce) : ouvre le train demandé.
   const wantedTrain = params.get("train");
+  const wantedDay = params.get("jour");
   useEffect(() => {
     const t = wantedTrain ? normalizeTrain(wantedTrain) : "";
     if (t && t !== trainId) {
       setTrainId(t);
-      setTrainDay(brusselsDay());
+      // Jour du lien (notification d'un train suivi ouverte le lendemain), sinon aujourd'hui.
+      setTrainDay(
+        /^\d{4}-\d{2}-\d{2}$/.test(wantedDay ?? "") ? (wantedDay as string) : brusselsDay(),
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wantedTrain]);
+  }, [wantedTrain, wantedDay]);
   const [pending, start] = useTransition();
   const abort = useRef<AbortController | null>(null);
 

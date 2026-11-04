@@ -278,7 +278,8 @@ function irailJournal(app) {
 		app.save(r);
 		event(app, r.id, 'create', '', '', '', null, 'iRail');
 		const label = restored ? 'Rétabli' : planned ? 'Travaux' : 'Perturbation';
-		for (const u of recipients) notify(app, u, 'perturbation', `${label} (${districts.join(', ')}) : ${title}`, description, `/operations/journal?entree=${r.id}`, 'ops_log', r.id, districts);
+		// Journal › Perturbations (4 nov. 2026) : l'onglet Infos ne montre plus les messages iRail.
+		for (const u of recipients) notify(app, u, 'perturbation', `${label} (${districts.join(', ')}) : ${title}`, description, `/operations/perturbations?entree=${r.id}`, 'ops_log', r.id, districts);
 		created++;
 	}
 	return created;
@@ -607,6 +608,9 @@ function missionTrains(app, at) {
 			pending = {
 				names: names,
 				title: newCancel ? `Train ${label} supprimé à ${stations}` : `Train ${label} : +${worst} min à ${stations}`,
+				// Missions PMR s'il y en a, sinon Groupes ; jour, train et « tous les districts » : la ligne est dans la liste
+				// même ouverte un autre jour ou avec un autre filtre de district (4 nov. 2026).
+				link: `${pmr ? '/pmr' : '/groupes'}?du=${today}&au=${today}&district=tous&q=${encodeURIComponent(train.replace(/^[A-Z]+/, ''))}`,
 				body: `${parts.join(' et ')} concernée${pmr + groups > 1 ? 's' : ''} (iRail).`
 			};
 			if (newCancel) rec.set('notified_cancel', true);
@@ -618,7 +622,7 @@ function missionTrains(app, at) {
 			// Tous les agents concernés par les missions, avec les districts des gares : la cloche n'affiche que celles des
 			// districts du jour de chacun (tri à l'affichage depuis le 14 oct. 2026 ; jamais sans district).
 			for (const u of users) {
-				notify(app, u.id, 'train', pending.title, pending.body, `/pmr?q=${encodeURIComponent(train.replace(/^[A-Z]+/, ''))}`, 'mission_trains', `${train}:${today}`.slice(0, 40), pending.names);
+				notify(app, u.id, 'train', pending.title, pending.body, pending.link, 'mission_trains', `${train}:${today}`.slice(0, 40), pending.names);
 				sent++;
 			}
 		}
