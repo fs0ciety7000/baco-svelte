@@ -34,6 +34,7 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 - **Temps réel, file « À traiter » : bouton « Vu »** sur les alertes (train supprimé ou en retard, consigne, notification) pour les masquer chez toi ; « Annuler » juste après, ou « Remettre » via « Afficher les éléments vus ». Une alerte revient d'elle-même si la situation s'aggrave ; les bons à envoyer restent toujours affichés.
 - **Temps réel : widgets plus faciles à déplacer** : bouton « Personnaliser » juste au-dessus des widgets (« Terminé », « Annuler », « Par défaut »), poignée sur chaque widget (souris, appui long au doigt ou clavier), Monter / Descendre, widgets masqués listés à part avec « Afficher », largeur Normal ou Large.
 - **PMR & Groupes : l'onglet « Missions » s'appelle « PMR »**.
+- **Gares d'Anvers (Antwerpen, Berchem, Ekeren, Mortsel, Hoboken…) en district DNE** par défaut (appliqué au prochain import quotidien du référentiel ; une correction faite à la main reste prioritaire).
 - **E-mail de basculement BACO → CSM** (Administration › Campagnes) aux couleurs « Encre et sable ».
 - Barre du haut : l'icône « En ligne maintenant » ne chevauche plus le champ de recherche sur grand écran.
 - **Liens des notifications** : une notification de groupe ouvre Groupes, une perturbation iRail ouvre Journal › Perturbations ; un retard de train ou un changement DICOS ouvre la liste du bon jour filtrée sur le train, tous districts confondus (annulées visibles pour une annulation) ; un train suivi s'ouvre au bon jour. Les anciennes notifications sont corrigées aussi.
