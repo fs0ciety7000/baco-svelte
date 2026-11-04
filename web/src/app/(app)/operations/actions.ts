@@ -261,11 +261,15 @@ export async function loadNotifications(): Promise<
   }
 }
 
-export async function markNotifications(input: { ids: string[] | "all" }): Promise<Result> {
+/** Marque lues (ou, avec `unread`, de nouveau non lues : « Annuler » du « Vu » de l'accueil) des notifications de l'agent. */
+export async function markNotifications(input: {
+  ids: string[] | "all";
+  unread?: boolean;
+}): Promise<Result> {
   try {
     await requireUser();
     const pb = await pbForRequest();
-    const at = toPbInstant(new Date().toISOString());
+    const at = input.unread && input.ids !== "all" ? "" : toPbInstant(new Date().toISOString());
     const ids =
       input.ids === "all"
         ? (

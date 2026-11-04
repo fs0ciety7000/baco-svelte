@@ -1,23 +1,13 @@
 "use client";
 
-import {
-  AtSign,
-  Pin,
-  Radio,
-  RefreshCw,
-  Send,
-  TrainFront,
-  TriangleAlert,
-  type LucideIcon,
-} from "lucide-react";
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/misc";
 import { Stat, StatStrip } from "@/components/ui/stat-card";
 import { TrainChip } from "@/components/ui/train-chip";
 import type { LogDigest } from "@/components/ops/dashboard-widgets";
+import { impactSeenKey, pinSeenKey } from "@/lib/dashboard/todo-seen";
 import { brusselsDay, daysBetween, formatDay, isValidDay, pbDate } from "@/lib/orders/time";
 import { cn, pl } from "@/lib/utils";
 import type { DashboardStats } from "@/server/data/dashboard";
@@ -52,6 +42,13 @@ export type TodoItem = {
   delay?: { label: string; tone: "warn" | "danger" };
   /** Référence (TC_…) en mono dans la méta. */
   code?: string;
+  /**
+   * « Vu » (4 nov. 2026) : alerte sans traitement possible, masquable par l'agent. `seenKey` = clé de
+   * `preferences.todoSeen` (état compris : une aggravation revient) ; `notifId` = notification marquée lue. Ni l'un ni
+   * l'autre (bon à envoyer) = vrai travail, pas de « Vu ».
+   */
+  seenKey?: string;
+  notifId?: string;
 };
 
 export const TODO_GROUPS: { id: TodoGroup; label: string }[] = [
@@ -94,6 +91,7 @@ export function todoItems(input: {
       when: m.time,
       href: m.href,
       action: m.kind === "groupe" ? "Voir le groupe" : "Ouvrir la mission",
+      seenKey: impactSeenKey(m, today),
     });
   }
   // Cycle v3 (14 oct. 2026) : bons terminés (bus démobilisés) à finaliser par l'envoi de l'e-mail au fournisseur.
@@ -127,6 +125,7 @@ export function todoItems(input: {
     if (n.readAt) continue;
     const base = {
       key: `notif-${n.id}`,
+      notifId: n.id,
       title: n.title,
       when: hhmm(n.created),
       href: n.link || "/operations/journal",
@@ -180,6 +179,7 @@ export function todoItems(input: {
       when: e.time,
       href: `/operations/journal?entree=${e.id}`,
       action: "Lire",
+      seenKey: pinSeenKey(e.id),
     });
   }
   return out.sort(
@@ -215,125 +215,6 @@ function hhmm(iso: string): string {
       }).format(d);
 }
 
-const ICON: Record<TodoKind, LucideIcon> = {
-  impact: TriangleAlert,
-  send: Send,
-  urgent: Radio,
-  mention: AtSign,
-  dicos: RefreshCw,
-  consigne: Pin,
-  perturbation: TrainFront,
-};
-const TONE: Record<Severity, string> = {
-  danger: "var(--danger)",
-  warn: "var(--warn)",
-  info: "var(--info)",
-  neutral: "var(--fg-muted)",
-};
-const GROUP_DOT: Record<TodoGroup, string> = {
-  urgent: "bg-danger",
-  today: "bg-warn",
-  info: "bg-info",
-};
-
-const SHOWN = 8;
-
-export function TodoQueue({ items }: { items: TodoItem[] }) {
-  const shown = items.slice(0, SHOWN);
-  const primary = primaryTodo(shown);
-  return (
-    <Card data-compact-empty data-testid="todo-queue" className="min-w-0">
-      <CardHeader title="À traiter" count={items.length || undefined} className="pb-1" />
-      {shown.length === 0 ? (
-        <div className="p-3 pt-2">
-          <EmptyState title="Rien à traiter pour l'instant" />
-        </div>
-      ) : (
-        <div className="flex flex-col pb-1.5">
-          {groupTodo(shown).map((g) => (
-            <section key={g.id} aria-labelledby={`todo-${g.id}`} data-testid={`todo-group-${g.id}`}>
-              <h4
-                id={`todo-${g.id}`}
-                className="flex items-center gap-2 px-4 pt-3 pb-1 text-label font-medium tracking-normal text-fg-subtle"
-              >
-                <span aria-hidden className={cn("size-1.5 rounded-pill", GROUP_DOT[g.id])} />
-                {g.label}
-              </h4>
-              <ul className="divide-y divide-[color-mix(in_oklab,var(--border)_70%,transparent)]">
-                {g.items.map((it) => (
-                  <TodoRow key={it.key} it={it} primary={it.key === primary} />
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
-      )}
-      {items.length > shown.length ? (
-        <p className="border-t border-border px-4 py-2 text-small text-fg-muted">
-          Et {items.length - shown.length} de plus :{" "}
-          <Link href="/operations/b201" className="link">
-            B201
-          </Link>{" "}
-          et{" "}
-          <Link href="/commandes/suivi" className="link">
-            suivi des bons
-          </Link>
-          .
-        </p>
-      ) : null}
-    </Card>
-  );
-}
-
-function TodoRow({ it, primary }: { it: TodoItem; primary: boolean }) {
-  const Icon = ICON[it.kind];
-  return (
-    <li
-      data-testid="todo-item"
-      data-group={it.group}
-      style={{ "--tone": TONE[it.severity] } as React.CSSProperties}
-      className="grid min-w-0 grid-cols-[2rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 px-4 py-2.5 sm:grid-cols-[2rem_minmax(0,1fr)_auto]"
-    >
-      <span
-        aria-hidden
-        className="grid size-8 place-items-center rounded-box bg-[color-mix(in_oklab,var(--tone)_var(--tint,12%),var(--surface))] text-(--tone) [&_svg]:size-4"
-      >
-        <Icon />
-      </span>
-      <div className="min-w-0">
-        <p className="line-clamp-2 text-body font-medium text-fg sm:truncate">{it.title}</p>
-        <p className="flex min-w-0 items-center gap-2 text-small text-fg-muted">
-          {it.train ? <TrainChip train={it.train} size="sm" /> : null}
-          {it.delay ? (
-            <span
-              className={cn(
-                "shrink-0 font-mono font-medium whitespace-nowrap tabular",
-                it.delay.tone === "danger" ? "text-danger" : "text-warn",
-              )}
-            >
-              {it.delay.label}
-            </span>
-          ) : null}
-          {it.code ? <span className="shrink-0 font-mono text-fg tabular">{it.code}</span> : null}
-          <span className="truncate">{it.detail}</span>
-        </p>
-      </div>
-      <div className="col-start-2 flex items-center justify-between gap-3 sm:col-start-auto sm:justify-start">
-        <Button asChild size="sm" variant={primary ? "primary" : "secondary"}>
-          <Link href={it.href} data-testid="todo-action">
-            {it.action}
-          </Link>
-        </Button>
-        {it.when ? (
-          <span className="w-12 shrink-0 text-right font-mono text-label text-fg-subtle tabular sm:w-11">
-            {it.when}
-          </span>
-        ) : null}
-      </div>
-    </li>
-  );
-}
-
 /** Ancienneté lisible d'une date PocketBase (« 3 h », « 2 j »), vide si inconnue. */
 export function ageLabel(iso: string, now: Date = new Date()): string {
   const d = pbDate(iso);
@@ -349,10 +230,15 @@ export function KpiStrip({
   stats,
   today,
   impacts,
+  seen,
+  day,
 }: {
   stats: DashboardStats | null;
   today: TodayPmr | null;
   impacts: ImpactedMission[] | null;
+  /** Clés « vu » de l'agent : le nombre reste factuel, l'alerte (rouge) ne compte que les impacts pas encore vus. */
+  seen?: readonly string[];
+  day?: string;
 }) {
   const cells: {
     label: string;
@@ -394,14 +280,20 @@ export function KpiStrip({
     );
   }
   if (impacts !== null) {
-    const first = impacts[0];
+    const seenSet = new Set(seen ?? []);
+    const d = day ?? brusselsDay();
+    const unseen = impacts.filter((m) => !seenSet.has(impactSeenKey(m, d)));
+    const first = unseen[0] ?? impacts[0];
+    const seenCount = impacts.length - unseen.length;
     cells.push({
       label: "Impactées (retard)",
       value: impacts.length,
-      tone: impacts.length ? "danger" : undefined,
+      tone: unseen.length ? "danger" : undefined,
       href: "/pmr",
       hint: first
-        ? `${first.train} · ${first.impact.cancelled ? "supprimé" : `+${first.impact.delay} min`}`
+        ? seenCount && !unseen.length
+          ? `${seenCount} ${pl(seenCount, "vue")}`
+          : `${first.train} · ${first.impact.cancelled ? "supprimé" : `+${first.impact.delay} min`}`
         : "aucun retard",
     });
   }

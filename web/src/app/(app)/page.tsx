@@ -13,6 +13,7 @@ import { can } from "@/lib/permissions";
 
 import { brusselsClock, shiftLabel } from "@/lib/quinyx/model";
 import { parseShift } from "@/lib/shift";
+import { readTodoSeen } from "@/lib/dashboard/todo-seen";
 
 import { Dashboard } from "./dashboard";
 
@@ -73,6 +74,7 @@ export default async function AccueilPage() {
         shift: parseShift(prefs.shift),
         quinyx: quinyxShift,
         renderedAt: Date.now(),
+        todoSeen: Object.keys(readTodoSeen(user.preferences)),
       }}
       initialLayout={normalizeLayout(prefs.dashboard)}
     />
