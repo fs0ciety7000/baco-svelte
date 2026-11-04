@@ -1,27 +1,9 @@
 "use client";
 
-import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  rectSortingStrategy,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { ArrowDown, ArrowUp, Eye, EyeOff, GripVertical, SlidersHorizontal } from "lucide-react";
+import { Check, RotateCcw, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 
 import {
   DisturbanceWidget,
@@ -45,7 +27,13 @@ import { StatCard } from "@/components/ui/stat-card";
 import { StatusBadge, statusColor } from "@/components/ui/status-badge";
 import { ListCard } from "@/components/ui/table";
 import { toast } from "@/components/ui/toast";
-import { type DashboardLayout, type WidgetId } from "@/design/dashboard-layout";
+import { WidgetEditor } from "@/components/dashboard/widget-editor";
+import {
+  DEFAULT_LAYOUT,
+  isWide,
+  type DashboardLayout,
+  type WidgetId,
+} from "@/design/dashboard-layout";
 import { useStaggerIn } from "@/lib/motion-core";
 import { brusselsDay, daysBetween, formatDay, isValidDay } from "@/lib/orders/time";
 import { cn, pl } from "@/lib/utils";
@@ -58,13 +46,14 @@ import type { Notification } from "@/server/data/ops";
 import { saveDashboardLayout } from "../dashboard-actions";
 import { LiveRefresh } from "./commandes/live-refresh";
 
-const TITLES: Record<WidgetId, { eyebrow: string; title: string; wide?: boolean }> = {
+// Largeur par défaut : `DEFAULT_WIDE` (design/dashboard-layout.ts), modifiable dans « Personnaliser ».
+const TITLES: Record<WidgetId, { eyebrow: string; title: string }> = {
   service: { eyebrow: "Mon service", title: "Fin de service" },
-  commandes: { eyebrow: "Bus et taxis", title: "Vue du jour", wide: true },
-  impacts: { eyebrow: "PMR et groupes", title: "Missions impactées", wide: true },
+  commandes: { eyebrow: "Bus et taxis", title: "Vue du jour" },
+  impacts: { eyebrow: "PMR et groupes", title: "Missions impactées" },
   "pmr-jour": { eyebrow: "PMR et groupes", title: "Aujourd'hui en PMR" },
   mentions: { eyebrow: "Pour toi", title: "Mentions et alertes" },
-  "a-confirmer": { eyebrow: "Bus et taxis", title: "À envoyer", wide: true },
+  "a-confirmer": { eyebrow: "Bus et taxis", title: "À envoyer" },
   raccourcis: { eyebrow: "Actions", title: "Raccourcis" },
   trains: { eyebrow: "Opérations", title: "Trains perturbés" },
   "main-courante": { eyebrow: "Opérations", title: "Journal" },
@@ -221,109 +210,25 @@ function WidgetBody({
   }
 }
 
-function Widget({
-  id,
-  index,
-  count,
-  editing,
-  hidden,
-  layout,
-  onLayout,
-  onMove,
-  children,
-}: {
-  id: WidgetId;
-  index: number;
-  count: number;
-  editing: boolean;
-  hidden: boolean;
-  layout: DashboardLayout;
-  onLayout: (l: DashboardLayout) => void;
-  onMove: (id: WidgetId, dir: -1 | 1) => void;
-  children: ReactNode;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    setActivatorNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id,
-    disabled: !editing,
-  });
+function Widget({ id, wide, children }: { id: WidgetId; wide: boolean; children: ReactNode }) {
   const meta = TITLES[id];
   return (
     <div
-      ref={setNodeRef}
       data-stagger
       data-widget={id}
-      style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
         "@container min-w-0",
-        meta.wide && "md:col-span-2",
-        // « Fin de service » est dans la colonne droite de l'accueil dès 1280 px (hors personnalisation).
-        id === "service" && !editing && "xl:hidden",
-        isDragging && "z-10 opacity-80",
-        hidden && "opacity-50",
+        wide && "md:col-span-2",
+        // « Fin de service » est dans la colonne droite de l'accueil dès 1280 px.
+        id === "service" && "xl:hidden",
       )}
     >
-      <Card className={cn("h-full", editing && "[--frame:var(--border-strong)]")}>
+      <Card className="h-full">
         <CardHeader
           eyebrow={meta.eyebrow}
           title={meta.title}
           actions={
-            editing ? (
-              <>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label={`Monter « ${meta.title} »`}
-                  disabled={index === 0}
-                  onClick={() => onMove(id, -1)}
-                >
-                  <ArrowUp />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label={`Descendre « ${meta.title} »`}
-                  disabled={index === count - 1}
-                  onClick={() => onMove(id, 1)}
-                >
-                  <ArrowDown />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label={hidden ? `Afficher « ${meta.title} »` : `Masquer « ${meta.title} »`}
-                  aria-pressed={hidden}
-                  onClick={() =>
-                    onLayout({
-                      ...layout,
-                      hidden: hidden
-                        ? layout.hidden.filter((h) => h !== id)
-                        : [...layout.hidden, id],
-                    })
-                  }
-                >
-                  {hidden ? <EyeOff /> : <Eye />}
-                </Button>
-                <Button
-                  ref={setActivatorNodeRef}
-                  size="icon"
-                  variant="ghost"
-                  className="cursor-grab touch-none active:cursor-grabbing"
-                  aria-label={`Déplacer « ${meta.title} » (glisser, ou Espace puis flèches)`}
-                  {...attributes}
-                  {...listeners}
-                >
-                  <GripVertical />
-                </Button>
-              </>
-            ) : id === "commandes" || id === "a-confirmer" ? (
+            id === "commandes" || id === "a-confirmer" ? (
               <LiveRefresh quiet topics={["bus_orders"]} />
             ) : id === "impacts" || id === "pmr-jour" ? (
               <LiveRefresh quiet topics={["mission_trains", "pmr_assists"]} />
@@ -337,6 +242,9 @@ function Widget({
     </div>
   );
 }
+
+const sameLayout = (a: DashboardLayout, b: DashboardLayout) =>
+  JSON.stringify([a.order, a.hidden, a.wide]) === JSON.stringify([b.order, b.hidden, b.wide]);
 
 export function Dashboard({
   firstName,
@@ -353,40 +261,54 @@ export function Dashboard({
   initialLayout: DashboardLayout;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  // `saved` = dernière disposition enregistrée (« Annuler » y revient, même après un premier enregistrement).
+  const [saved, setSaved] = useState(initialLayout);
   const [layout, setLayout] = useState(initialLayout);
   const [editing, setEditing] = useState(false);
   const [saving, startSaving] = useTransition();
+  const editTitle = useRef<HTMLHeadingElement>(null);
+  const customize = useRef<HTMLButtonElement>(null);
+  const toggled = useRef(false);
   useStaggerIn(ref);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
+  // Focus : sur le titre de l'éditeur à l'ouverture, sur « Personnaliser » à la fermeture (jamais au premier rendu).
+  useEffect(() => {
+    if (!toggled.current) return;
+    toggled.current = false;
+    (editing ? editTitle.current : customize.current)?.focus();
+  }, [editing]);
 
-  const onDragEnd = ({ active, over }: DragEndEvent) => {
-    if (!over || active.id === over.id) return;
-    const from = layout.order.indexOf(active.id as WidgetId);
-    const to = layout.order.indexOf(over.id as WidgetId);
-    setLayout({ ...layout, order: arrayMove(layout.order, from, to) });
+  const open = () => {
+    toggled.current = true;
+    setEditing(true);
+  };
+  const close = () => {
+    toggled.current = true;
+    setEditing(false);
   };
 
-  const finish = () =>
+  const finish = () => {
+    if (sameLayout(layout, saved)) return close();
     startSaving(async () => {
       try {
         await saveDashboardLayout(layout);
-        setEditing(false);
+        setSaved(layout);
+        close();
         toast.success("Disposition enregistrée");
       } catch {
         toast.error("Enregistrement impossible", { description: "Réessaie dans un instant." });
       }
     });
+  };
 
   // « Vue du jour » et « À envoyer » sont repris par la bande de compteurs et la file « À traiter » (11 oct. 2026).
   const absorbed = (id: WidgetId) => id === "commandes" || id === "a-confirmer";
-  const shown: WidgetId[] = (
-    editing ? layout.order : layout.order.filter((id) => !layout.hidden.includes(id))
-  ).filter((id) => !absorbed(id));
+  const shown: WidgetId[] = layout.order.filter(
+    (id) => !absorbed(id) && !layout.hidden.includes(id),
+  );
+  const hiddenIds: WidgetId[] = layout.order.filter(
+    (id) => !absorbed(id) && layout.hidden.includes(id),
+  );
   // Colonne droite (≥ 1280 px) : « Fin de service » si le widget est affiché (il quitte alors la grille à cette largeur),
   // « Prochaines prises en charge » avec le droit des missions.
   const showShift = !layout.hidden.includes("service");
@@ -402,119 +324,139 @@ export function Dashboard({
       <div className="md:hidden">
         <ModuleTabs moduleId="accueil" />
       </div>
-      {/* En-tête d'une ligne (11 oct. 2026 ; v4 : date + service du jour) : salutation, personnalisation. */}
-      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
-          <h1 className="display truncate text-h3 text-fg md:text-h2">
-            Bonjour{firstName ? `, ${firstName}` : ""}
-          </h1>
-          <p className="text-small text-fg-muted first-letter:uppercase" data-testid="today-line">
-            {dateLabel.format(new Date())}
-            {service ? ` · ${service}` : ""}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {editing ? (
-            <>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setLayout(initialLayout);
-                  setEditing(false);
-                }}
-              >
-                Annuler
-              </Button>
-              <Button variant="primary" loading={saving} onClick={finish}>
-                Terminer
-              </Button>
-            </>
-          ) : (
-            <Button variant="ghost" onClick={() => setEditing(true)}>
-              <SlidersHorizontal /> Personnaliser
-            </Button>
-          )}
-        </div>
+      {/* En-tête d'une ligne (11 oct. 2026 ; v4 : date + service du jour). */}
+      <header className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+        <h1 className="display truncate text-h3 text-fg md:text-h2">
+          Bonjour{firstName ? `, ${firstName}` : ""}
+        </h1>
+        <p className="text-small text-fg-muted first-letter:uppercase" data-testid="today-line">
+          {dateLabel.format(new Date())}
+          {service ? ` · ${service}` : ""}
+        </p>
       </header>
-      {!editing ? (
-        <>
-          {incident ? <IncidentBanner incident={incident} /> : null}
-          <KpiStrip stats={stats} today={ops.today} impacts={ops.impacts} />
-          {/* File « À traiter » ; dès 1280 px, colonne droite « Fin de service » + « Prochaines prises en charge »
-              (v4, lot 4). Les widgets restent personnalisables en dessous. */}
-          <div className="flex flex-col gap-4 xl:grid xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start xl:gap-5">
-            <TodoQueue
-              items={todoItems({
-                stats,
-                impacts: ops.impacts,
-                mentions: ops.mentions,
-                log: ops.log,
-              })}
-            />
-            {aside ? (
-              <aside
-                className="hidden flex-col gap-4 xl:flex"
-                aria-label="Mon service et prochaines prises en charge"
-                data-testid="home-aside"
-              >
-                {showShift ? (
-                  <Card className="min-w-0">
-                    <CardHeader title="Fin de service" />
-                    <CardContent className="pt-3">
-                      <ShiftWidget
-                        initial={ops.shift}
-                        quinyx={ops.quinyx}
-                        renderedAt={ops.renderedAt}
-                      />
-                    </CardContent>
-                  </Card>
-                ) : null}
-                {ops.today ? <NextPickups data={ops.today} /> : null}
-              </aside>
+      {incident ? <IncidentBanner incident={incident} /> : null}
+      <KpiStrip stats={stats} today={ops.today} impacts={ops.impacts} />
+      {/* File « À traiter » ; dès 1280 px, colonne droite « Fin de service » + « Prochaines prises en charge »
+          (v4, lot 4). Les widgets restent personnalisables en dessous. */}
+      <div className="flex flex-col gap-4 xl:grid xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start xl:gap-5">
+        <TodoQueue
+          items={todoItems({
+            stats,
+            impacts: ops.impacts,
+            mentions: ops.mentions,
+            log: ops.log,
+          })}
+        />
+        {aside ? (
+          <aside
+            className="hidden flex-col gap-4 xl:flex"
+            aria-label="Mon service et prochaines prises en charge"
+            data-testid="home-aside"
+          >
+            {showShift ? (
+              <Card className="min-w-0">
+                <CardHeader title="Fin de service" />
+                <CardContent className="pt-3">
+                  <ShiftWidget
+                    initial={ops.shift}
+                    quinyx={ops.quinyx}
+                    renderedAt={ops.renderedAt}
+                  />
+                </CardContent>
+              </Card>
+            ) : null}
+            {ops.today ? <NextPickups data={ops.today} /> : null}
+          </aside>
+        ) : null}
+      </div>
+      {/* Widgets (4 nov. 2026) : la personnalisation se fait sur place, au-dessus de la grille qu'elle modifie. */}
+      <section
+        aria-labelledby="widgets-title"
+        className={cn(
+          "flex flex-col gap-3",
+          editing && "rounded-box border border-border-strong bg-surface-2 p-3 md:p-4",
+        )}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h2
+              id="widgets-title"
+              ref={editTitle}
+              tabIndex={-1}
+              className="text-panel font-semibold text-fg outline-none"
+            >
+              {editing ? "Personnaliser les widgets" : "Mes widgets"}
+            </h2>
+            {editing ? (
+              <p className="text-small text-fg-muted" role="status">
+                Glisse une ligne (appui long au doigt) ou utilise les flèches. Enregistré quand tu
+                cliques sur Terminé.
+              </p>
             ) : null}
           </div>
-        </>
-      ) : null}
-      {editing ? (
-        <p className="text-body text-fg-muted" role="status">
-          Glisse les widgets par la poignée, ou utilise les flèches. L&apos;œil masque un widget.
-        </p>
-      ) : null}
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <SortableContext items={shown} strategy={rectSortingStrategy}>
+          <div className="flex flex-wrap gap-2">
+            {editing ? (
+              <>
+                <Button
+                  variant="ghost"
+                  onClick={() => setLayout(DEFAULT_LAYOUT)}
+                  disabled={sameLayout(layout, DEFAULT_LAYOUT)}
+                >
+                  <RotateCcw /> Par défaut
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setLayout(saved);
+                    close();
+                  }}
+                >
+                  Annuler
+                </Button>
+                <Button variant="primary" loading={saving} onClick={finish}>
+                  <Check /> Terminé
+                </Button>
+              </>
+            ) : (
+              <Button ref={customize} onClick={open}>
+                <SlidersHorizontal /> Personnaliser
+              </Button>
+            )}
+          </div>
+        </div>
+        {editing ? (
+          <WidgetEditor
+            layout={layout}
+            visible={shown}
+            hidden={hiddenIds}
+            meta={(id) => ({
+              ...TITLES[id],
+              note:
+                id === "service"
+                  ? "Sur grand écran, affiché dans la colonne de droite."
+                  : undefined,
+            })}
+            onChange={setLayout}
+          />
+        ) : shown.length === 0 ? (
+          <EmptyState
+            title="Aucun widget affiché"
+            description="Clique sur Personnaliser pour en ajouter."
+          />
+        ) : (
           <div
             className="grid grid-flow-row-dense grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3"
             data-testid="dashboard-grid"
             data-compact-empty
           >
-            {shown.map((id, i) => (
-              <Widget
-                key={id}
-                id={id}
-                index={i}
-                count={shown.length}
-                editing={editing}
-                hidden={layout.hidden.includes(id)}
-                layout={layout}
-                onLayout={setLayout}
-                onMove={(wid, dir) => {
-                  // Échange avec le voisin AFFICHÉ (les widgets repris par l'accueil restent dans l'ordre enregistré).
-                  const j = shown.indexOf(wid) + dir;
-                  const other = shown[j];
-                  if (!other) return;
-                  const order = [...layout.order];
-                  const a = order.indexOf(wid);
-                  const b = order.indexOf(other);
-                  [order[a], order[b]] = [order[b]!, order[a]!];
-                  setLayout({ ...layout, order });
-                }}
-              >
+            {shown.map((id) => (
+              <Widget key={id} id={id} wide={isWide(layout, id)}>
                 <WidgetBody id={id} stats={stats} ops={ops} />
               </Widget>
             ))}
           </div>
-        </SortableContext>
-      </DndContext>
+        )}
+      </section>
     </div>
   );
 }
