@@ -99,7 +99,7 @@ function dicosStaleAlert(app, at) {
 			targets[i],
 			'systeme',
 			'Synchro DICOS en retard',
-			`Aucune synchro DICOS depuis ${ago}. Ouvre DICOS et lance la synchro depuis l'extension.`,
+			`Aucune synchro DICOS depuis ${ago}. Garde un onglet DICOS ouvert (session connectée) : l'extension synchronise seule.`,
 			'/pmr',
 			'dicos-sync',
 			sourceId,

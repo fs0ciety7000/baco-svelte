@@ -950,6 +950,18 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   URL `?q=&district=&zone=&ligne=&pn=&zones=1&vue=carte` par `history.replaceState`), fiche de ligne (section PN triée
   par BK, `data-testid="line-crossings"`), `/admin/referentiels/zones-spi` (`SpiZonesAdmin`). E2E `e2e/reseau-pn.spec.ts`.
 
+## Synchro automatique par l'extension (4 nov. 2026, extension 1.13.0)
+
+- `GET /api/connecteur/taches` (jeton de connecteur, 30 / min) → `{ tasks, waiting, poll: 5, lease: 10 }` ; `POST` `{ action:
+  "claim", id }` → `{ granted }` (tâche encore à faire, bail de 10 min) ; `{ action: "done", id, ok, code }` (code ∈
+  `OUTCOME_CODES` ; un « no-* » n'écrase pas un succès de moins de 15 min). Ids : `dicos:AAAA-MM-JJ`, `quinyx`.
+- Logique pure `lib/connector/tasks.ts` (`computeTasks`, `parseHours`, `claimLease`, `releaseLease`, `freeTasks`,
+  `outcomeText`, type `SyncHealth`) ; serveur `server/connector-tasks.ts` (`registry` sur `globalThis`, `readFreshness` :
+  `dicos_syncs` missions complètes du jour et du lendemain, `quinyx_groups.last_sync` des groupes activés ; `currentTasks` ;
+  `syncHealth()` pour /tv). Variable `CSM_AUTO_SYNC_HOURS` (`6-22` par défaut, `off`). Une seule instance Next (comme la
+  présence) : passer par PocketBase si un jour plusieurs répliques.
+- /tv : `TvBoard sync` → `SyncStrip` (`data-testid` `tv-sync`, `tv-sync-problem`).
+
 ## Identité « Encre et sable » (4 nov. 2026, dépôt `csm-brand`)
 
 - Thèmes par défaut `jour` / `nuit` = direction **`csm`** (`DIRECTIONS[0]`, « Automatique » = `auto`) : forme `csm` (14 / 10 px,

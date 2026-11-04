@@ -5,6 +5,7 @@ import { TvBoard, type TvStationBoards } from "@/components/ops/tv-board";
 import { brusselsDay, brusselsTime } from "@/lib/orders/time";
 import { can, isScreen } from "@/lib/permissions";
 import { requireUser } from "@/server/auth";
+import { syncHealth } from "@/server/connector-tasks";
 import { buildHandover, handoverDistricts } from "@/server/data/handover";
 import { board, stations } from "@/server/irail";
 
@@ -30,9 +31,10 @@ export default async function Page({
   if (!screen && !can(user, "journal:read")) notFound();
   const { district, gare, theme } = await searchParams;
   const codes = handoverDistricts(user, district);
-  const [data, boards] = await Promise.all([
+  const [data, boards, sync] = await Promise.all([
     buildHandover(user, codes, { screen }),
     stationBoards((gare ?? "Mons").trim().slice(0, 60) || "Mons"),
+    syncHealth().catch(() => null),
   ]);
   return (
     <main
@@ -44,6 +46,7 @@ export default async function Page({
         data={data}
         boards={boards}
         scope={codes.length ? codes.join(" · ") : "Tous districts"}
+        sync={sync}
       />
       <div className="fixed right-4 bottom-3 opacity-70">
         <LiveRefresh

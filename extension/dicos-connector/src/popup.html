@@ -70,6 +70,15 @@
       <button class="secondary" id="openCsm2">Ouvrir CSM</button>
     </div>
 
+    <h2 class="sub">Synchro automatique pour l'équipe</h2>
+    <div class="check">
+      <input type="checkbox" id="autoWorker" checked />
+      <label for="autoWorker">Synchroniser seul quand CSM le demande</label>
+    </div>
+    <div class="hint">Toutes les 5 min, CSM indique ce qui est à mettre à jour (DICOS du jour et du lendemain, Quinyx). Si un onglet DICOS ou Quinyx connecté est ouvert sur ce poste, l'extension s'en charge, sans clic. Un seul poste à la fois.</div>
+    <div class="status" id="autoStatus">Pas encore de passage automatique.</div>
+    <button class="secondary" id="autoNow">Vérifier maintenant</button>
+
     <label for="csmUrl">URL CSM</label>
     <input type="text" id="csmUrl" placeholder="https://test-csm.fs0ciety.org" autocomplete="off" />
 

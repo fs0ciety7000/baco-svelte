@@ -12,6 +12,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
+import { outcomeText, type SyncHealth } from "@/lib/connector/tasks";
 import { animateFrom } from "@/lib/motion-core";
 import type { Handover, HandoverLeg } from "@/lib/ops/handover";
 import type { BoardRow } from "@/lib/ops/irail";
@@ -198,14 +199,80 @@ function Leg({ l }: { l: HandoverLeg }) {
   );
 }
 
+/** Âge d'une synchro (« 4 min », « 2 h 05 »), `null` si jamais. */
+function syncAge(iso: string | null, now: number): { text: string; minutes: number } | null {
+  if (!iso) return null;
+  const m = Math.max(0, Math.round((now - new Date(iso).getTime()) / 60_000));
+  return {
+    text: m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")}`,
+    minutes: m,
+  };
+}
+
+/**
+ * État des synchros (4 nov. 2026, synchro automatique par l'extension) : DICOS du jour, DICOS de demain, Quinyx, et le
+ * dernier passage automatique quand il a échoué (« aucun onglet DICOS ouvert »…). Aucun nom. Couleurs : à jour (< 1 h ;
+ * Quinyx < 4 h), en retard, jamais.
+ */
+function SyncStrip({ sync }: { sync: SyncHealth }) {
+  const now = useNow();
+  const items: { label: string; age: ReturnType<typeof syncAge>; limit: number }[] = [
+    { label: "DICOS", age: syncAge(sync.dicos.at, now), limit: 60 },
+    { label: "DICOS demain", age: syncAge(sync.dicos.tomorrowAt, now), limit: 240 },
+  ];
+  if (sync.quinyx.enabled)
+    items.push({ label: "Quinyx", age: syncAge(sync.quinyx.at, now), limit: 240 });
+  const failing = [sync.auto.dicos, sync.auto.quinyx].find(
+    (o) => o && !o.ok && now - new Date(o.at).getTime() < 30 * 60_000,
+  );
+  return (
+    <div
+      className="flex flex-wrap items-center gap-x-5 gap-y-1 pb-1 text-[1.1rem]"
+      data-testid="tv-sync"
+      aria-label="État des synchronisations"
+    >
+      {items.map((it) => {
+        const late = !it.age || it.age.minutes >= it.limit;
+        return (
+          <span key={it.label} className="inline-flex items-center gap-2">
+            <span aria-hidden className={cn("size-2.5 rounded-full", late ? "bg-warn" : "bg-ok")} />
+            <span className="text-fg-muted">{it.label}</span>
+            <span className={late ? "text-warn" : "text-fg"}>
+              {it.age ? `il y a ${it.age.text}` : "jamais"}
+            </span>
+          </span>
+        );
+      })}
+      {failing ? (
+        <span className="text-warn" data-testid="tv-sync-problem">
+          Synchro auto :{" "}
+          {outcomeText({ ...failing, id: "", kind: "dicos", at: 0, by: "", version: "" })}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function useNow(): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(t);
+  }, []);
+  return now;
+}
+
 export function TvBoard({
   data,
   boards,
   scope,
+  sync = null,
 }: {
   data: Handover;
   boards: TvStationBoards;
   scope: string;
+  /** État des synchros DICOS / Quinyx (compte de service, sans nom) ; `null` si indisponible. */
+  sync?: SyncHealth | null;
 }) {
   const router = useRouter();
   const clock = useClock();
@@ -243,6 +310,7 @@ export function TvBoard({
         <span className="pb-1 text-[1.5rem] text-fg-muted first-letter:uppercase">
           {clock?.day ?? ""}
         </span>
+        {sync ? <SyncStrip sync={sync} /> : null}
         <span className="ml-auto pb-1 text-[1.25rem] text-fg-muted">
           CSM · <span className="text-fg">{scope}</span>
         </span>

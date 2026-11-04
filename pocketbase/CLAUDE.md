@@ -199,7 +199,7 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   de production) ; seulement pour `serve` ; `CSM_BACKUP_KEEP` pour la conservation ; une erreur de réglage n'empêche pas
   le démarrage.
 - **Alerte synchro DICOS** : cron `dicos-stale` (10 min, `lib/operations.js` → `dicosStaleAlert`), notification
-  `systeme` (`source = "dicos-sync"`, `source_id` = dernière synchro) ; `CSM_DICOS_ALERT_HOURS` (`6-22`, `off`).
+  `systeme` (texte du 4 nov. 2026 : « garde un onglet DICOS ouvert, l'extension synchronise seule ») (`source = "dicos-sync"`, `source_id` = dernière synchro) ; `CSM_DICOS_ALERT_HOURS` (`6-22`, `off`).
 - `PREPROD_PB_*` désigne une autre instance (jeu) : **n'y jamais écrire**, ne pas y lancer `test-rules.mjs`.
 - **Groupes DICOS** (`1760001500_group_missions.js`) : `group_missions` = une ligne par trajet de réservation de groupe
   (`dicos_id = j<journeyId>`, unique), écrite par le connecteur (`dicos:write`, `dicos_id` figé), lue avec `pmr:read`

@@ -356,7 +356,139 @@ async function syncDayFromCsm(day, sender) {
   };
 }
 
+// --- Synchro automatique (1.13.0, 4 nov. 2026) ---
+// CSM tient la liste de ce qu'il faut synchroniser (DICOS du jour et du lendemain, Quinyx) selon la fraîcheur des dernières
+// synchros. Toutes les 5 min, l'extension la demande ; si un onglet DICOS ou Quinyx connecté est ouvert sur ce poste, elle
+// réserve la tâche (un seul poste à la fois, bail de 10 min côté CSM), la lance comme une synchro manuelle, puis rapporte
+// le résultat (un code, aucune donnée). Activée par défaut, désactivable dans le popup. Aucun onglet n'est rechargé ni ouvert.
+const AUTO_ALARM = "csm-auto-sync";
+function scheduleAuto() {
+  // Créée une seule fois (le service worker se réveille à chaque alarme : la recréer décalerait le cycle).
+  try {
+    chrome.alarms.get(AUTO_ALARM, (a) => {
+      if (!a) chrome.alarms.create(AUTO_ALARM, { delayInMinutes: 1, periodInMinutes: 5 });
+    });
+  } catch (_) {}
+}
+chrome.runtime.onInstalled.addListener(scheduleAuto);
+chrome.runtime.onStartup.addListener(scheduleAuto);
+scheduleAuto();
+
+async function autoEnabled() {
+  const v = await chrome.storage.local.get(["autoWorker"]);
+  return v.autoWorker !== false;
+}
+
+async function tasksCall(csmUrl, token, body) {
+  const res = await fetch(`${csmUrl}/api/connecteur/taches`, {
+    method: body ? "POST" : "GET",
+    headers: headers(token),
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) throw { code: res.status === 401 ? "token" : "csm", status: res.status };
+  return res.json();
+}
+
+function sessionLike(text) {
+  return /session|jeton dicos|périmètre de gares|recharge l'onglet/i.test(String(text || ""));
+}
+
+async function autoDicos(day) {
+  const tabs = await chrome.tabs.query({ url: DICOS_TABS });
+  if (!tabs.length) return { ok: false, code: "no-dicos" };
+  tabs.sort((a, b) => Number(b.active) - Number(a.active) || (b.lastAccessed || 0) - (a.lastAccessed || 0));
+  let r;
+  try {
+    r = await chrome.tabs.sendMessage(tabs[0].id, { cmd: "sync", day, days: 1, fresh: false });
+  } catch (_) {
+    return { ok: false, code: "session", detail: "Onglet DICOS à recharger (F5)." };
+  }
+  if (!r) return { ok: false, code: "error" };
+  if (r.busy) return { ok: false, code: "busy" };
+  if (r.error) return { ok: false, code: sessionLike(r.error) ? "session" : "error", detail: String(r.error).slice(0, 160) };
+  return { ok: true, code: "ok", detail: `${Number(r.received) || 0} mission(s)` };
+}
+
+async function autoQuinyx() {
+  if (!(await quinyxTab())) return { ok: false, code: "no-quinyx" };
+  const r = await runQuinyx();
+  if (r && r.error)
+    return {
+      ok: false,
+      code: /injoignable : recharge/i.test(r.error) ? "session" : /CSM injoignable/i.test(r.error) ? "csm" : "error",
+      detail: String(r.error).slice(0, 160),
+    };
+  const groups = (r && r.groups) || [];
+  const failed = groups.filter((g) => g.error);
+  if (groups.length && failed.length === groups.length)
+    return { ok: false, code: "error", detail: String(failed[0].error).slice(0, 160) };
+  return { ok: true, code: "ok", detail: `${groups.length - failed.length} groupe(s)` };
+}
+
+async function autoPass() {
+  const state = { at: Date.now(), tasks: [], waiting: 0, error: "" };
+  try {
+    if (!(await autoEnabled())) return { ...state, disabled: true };
+    const { csmUrl, token } = await config();
+    if (!csmUrl || !token) return { ...state, error: "Extension non connectée à CSM." };
+    if (!(await hasPermission(csmUrl))) return { ...state, error: NO_PERMISSION };
+    const list = await tasksCall(csmUrl, token);
+    state.waiting = Number(list && list.waiting) || 0;
+    const tasks = Array.isArray(list && list.tasks) ? list.tasks.slice(0, 3) : [];
+    for (const t of tasks) {
+      const id = String((t && t.id) || "");
+      if (!/^(dicos:\d{4}-\d{2}-\d{2}|quinyx)$/.test(id)) continue;
+      // Rien à faire sur ce poste sans onglet : on ne réserve pas la tâche (un autre poste la prendra).
+      const kind = id === "quinyx" ? "quinyx" : "dicos";
+      const hasTab = kind === "quinyx" ? !!(await quinyxTab()) : (await chrome.tabs.query({ url: DICOS_TABS })).length > 0;
+      if (!hasTab) {
+        const code = kind === "quinyx" ? "no-quinyx" : "no-dicos";
+        // Signalé sans réserver (CSM n'écrase pas un succès récent d'un autre poste) : l'écran commun l'affiche.
+        await tasksCall(csmUrl, token, { action: "done", id, ok: false, code }).catch(() => null);
+        state.tasks.push({ id, reason: String(t.reason || ""), ok: false, code, skipped: true });
+        continue;
+      }
+      const claim = await tasksCall(csmUrl, token, { action: "claim", id });
+      if (!claim || !claim.granted) continue;
+      const out = kind === "quinyx" ? await autoQuinyx() : await autoDicos(id.slice(6));
+      await tasksCall(csmUrl, token, { action: "done", id, ok: !!out.ok, code: out.code }).catch(() => null);
+      state.tasks.push({ id, reason: String(t.reason || ""), ...out });
+    }
+  } catch (e) {
+    state.error =
+      e && e.code === "token"
+        ? "Jeton de connecteur refusé par CSM."
+        : e && e.code === "csm"
+          ? `CSM a répondu HTTP ${e.status}.`
+          : "CSM injoignable (URL ou réseau).";
+  }
+  return state;
+}
+
+let autoRunning = null;
+function runAuto() {
+  if (!autoRunning)
+    autoRunning = autoPass()
+      .then(async (state) => {
+        try {
+          await chrome.storage.local.set({ autoLast: state });
+        } catch (_) {}
+        return state;
+      })
+      .finally(() => {
+        autoRunning = null;
+      });
+  return autoRunning;
+}
+chrome.alarms.onAlarm.addListener((a) => {
+  if (a && a.name === AUTO_ALARM) runAuto();
+});
+
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
+  if (msg && msg.cmd === "auto-now") {
+    runAuto().then(reply);
+    return true;
+  }
   if (msg && msg.cmd === "dicos-sync") {
     syncDayFromCsm(msg.day, sender).then(reply, (e) => reply({ ok: false, error: String((e && e.message) || e).slice(0, 160) }));
     return true;

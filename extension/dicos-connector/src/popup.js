@@ -289,3 +289,52 @@ try {
     if (area === "local" && ch.quinyxLast && ch.quinyxLast.newValue) setQuinyx(fmtQuinyx(ch.quinyxLast.newValue));
   });
 } catch (_) {}
+
+// --- 1.13.0 : synchro automatique pour l'équipe ---
+const AUTO_TEXT = {
+  "no-dicos": "aucun onglet DICOS ouvert sur ce poste",
+  "no-quinyx": "aucun onglet Quinyx ouvert sur ce poste",
+  session: "session à rafraîchir : recharge l'onglet (F5) ou reconnecte-toi",
+  busy: "une synchro était déjà en cours",
+  csm: "CSM injoignable",
+  error: "échec",
+};
+function fmtAuto(st) {
+  if (!st) return "Pas encore de passage automatique.";
+  if (st.disabled) return "Synchro automatique coupée sur ce poste.";
+  const when = st.at ? new Date(st.at).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" }) : "";
+  if (st.error) return `<span class="err">${escapeHtml(String(st.error))}</span>${when ? ` <small>(${escapeHtml(when)})</small>` : ""}`;
+  const tasks = Array.isArray(st.tasks) ? st.tasks : [];
+  if (!tasks.length)
+    return `<span class="ok">✓ Tout est à jour</span>${when ? ` <small>(vérifié à ${escapeHtml(when)})</small>` : ""}`;
+  const lines = tasks.slice(0, 5).map((t) => {
+    const label = String(t.id || "").startsWith("dicos:") ? `DICOS ${String(t.id).slice(6)}` : "Quinyx";
+    return t.ok
+      ? `<span class="ok">✓</span> ${escapeHtml(label)} : synchronisé${t.detail ? ` (${escapeHtml(String(t.detail))})` : ""}`
+      : `${escapeHtml(label)} : <span class="err">${escapeHtml(AUTO_TEXT[t.code] || "échec")}</span>`;
+  });
+  return `${lines.join("<br>")}${when ? `<br><small>${escapeHtml(when)}</small>` : ""}`;
+}
+chrome.storage.local.get(["autoWorker", "autoLast"]).then((v) => {
+  $("autoWorker").checked = v.autoWorker !== false;
+  $("autoStatus").innerHTML = fmtAuto(v.autoLast);
+});
+$("autoWorker").addEventListener("change", () => {
+  chrome.storage.local.set({ autoWorker: $("autoWorker").checked });
+});
+$("autoNow").addEventListener("click", async () => {
+  $("autoNow").disabled = true;
+  $("autoStatus").textContent = "Vérification auprès de CSM…";
+  try {
+    $("autoStatus").innerHTML = fmtAuto(await chrome.runtime.sendMessage({ cmd: "auto-now" }));
+  } catch (_) {
+    $("autoStatus").innerHTML = '<span class="err">Extension indisponible : réessaie.</span>';
+  } finally {
+    $("autoNow").disabled = false;
+  }
+});
+try {
+  chrome.storage.onChanged.addListener((ch, area) => {
+    if (area === "local" && ch.autoLast && ch.autoLast.newValue) $("autoStatus").innerHTML = fmtAuto(ch.autoLast.newValue);
+  });
+} catch (_) {}

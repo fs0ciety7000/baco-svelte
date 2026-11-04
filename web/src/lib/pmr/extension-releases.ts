@@ -5,6 +5,15 @@ export type ExtensionNote = { version: string; date: string; notes: string[] };
 
 export const EXTENSION_NOTES: ExtensionNote[] = [
   {
+    version: "1.13.0",
+    date: "2026-11-04",
+    notes: [
+      "Synchro automatique pour l'équipe : toutes les 5 min, l'extension demande à CSM ce qui est à mettre à jour (DICOS du jour et du lendemain, Quinyx). Si un onglet DICOS ou Quinyx connecté est ouvert sur ce poste, elle s'en charge seule, sans clic, même onglet en arrière-plan.",
+      "Un seul poste à la fois : CSM réserve la tâche pour 10 min au premier poste qui la prend.",
+      "Activée par défaut ; le popup montre le dernier passage et permet de la couper sur ce poste. Aucun onglet n'est ouvert ni rechargé.",
+    ],
+  },
+  {
     version: "1.12.0",
     date: "2026-10-23",
     notes: [

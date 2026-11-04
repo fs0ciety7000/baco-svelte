@@ -1,24 +1,18 @@
 {
-  "version": "1.12.0",
-  "builtAt": "2026-10-23T09:51:40.963Z",
+  "version": "1.13.0",
+  "builtAt": "2026-11-04T10:14:38.435Z",
   "files": [
     {
-      "name": "csm-dicos-connector-chrome-v1.12.0.zip",
+      "name": "csm-dicos-connector-chrome-v1.13.0.zip",
       "browser": "chrome",
-      "bytes": 35839,
-      "sha256": "7f815b861acbb80cd33176f751d5994b54dc325949f51ef25864bfeb65ac8de4"
+      "bytes": 38110,
+      "sha256": "ef491c5920ce5414f492ac9f8649214c6f170a13c93492a8d636fe4853b54bbf"
     },
     {
-      "name": "csm-dicos-connector-firefox-v1.12.0.zip",
+      "name": "csm-dicos-connector-firefox-v1.13.0.zip",
       "browser": "firefox",
-      "bytes": 35955,
-      "sha256": "21941f057bda24e077352a99078b8992cab922d9308b880cc07c917e6dc7f894"
-    },
-    {
-      "name": "csm-dicos-connector-firefox-v1.12.0.xpi",
-      "browser": "firefox-signed",
-      "bytes": 44144,
-      "sha256": "a10d39a4cac5539b1201fbc3fab82808c84fe8027c124aa008afb1bbcb37a4b3"
+      "bytes": 38227,
+      "sha256": "dcec9cca43bd38772181cb331d390b8ba450d42ebbf10345627bfc074e623306"
     }
   ]
 }

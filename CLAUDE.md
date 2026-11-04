@@ -1457,6 +1457,18 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   jour « brouillon » + urgences du Journal 6 h (perturbations iRail seules = comptées, pas d'incident) ; **marge du bas
   `--safe-bottom`** = `env(safe-area-max-inset-bottom)` (Chrome Android bord à bord faisait varier `safe-area-inset-bottom` :
   barre d'onglets qui sautait). Carte « Correspondances menacées » non faite (source à définir).
+- 2026-11-04 — **Synchro automatique DICOS / Quinyx sans dépendre d'un agent** (demande : « si je ne suis pas disponible, les
+  collègues ne pourront pas le faire »). Job serveur pur écarté (DICOS interne SNCB + Entra ID sans accès technique, MFA ;
+  aucun mot de passe d'agent dans un robot) : **CSM orchestre, l'extension exécute**. Route `GET/POST /api/connecteur/taches`
+  (jeton de connecteur) : tâches selon la fraîcheur (`lib/connector/tasks.ts`, testé : DICOS jour 30 min, lendemain 2 h,
+  Quinyx 3 h, heures `CSM_AUTO_SYNC_HOURS` sinon `CSM_DICOS_ALERT_HOURS`, défaut 6-22), **baux de 10 min en mémoire**
+  (`server/connector-tasks.ts`, `globalThis`, une instance Next), dernier passage par type (code seulement). Extension
+  **1.13.0** : permission `alarms`, passage toutes les 5 min (`autoPass` du service worker) si un onglet DICOS / Quinyx est
+  ouvert, réserve → synchro (même message `sync` que le popup) → rapporte ; sans onglet : signalé sans réserver ; activée par
+  défaut (`autoWorker`), popup « Synchro automatique pour l'équipe ». Écran `/tv` : bandeau `tv-sync` (`syncHealth()`, compte de
+  service, sans nom). Texte de l'alerte `dicos-stale` mis à jour. Testé : logique pure, worker avec `chrome` simulé, route et /tv
+  en local (secret partagé + compte connecteur fictifs). Limites : il faut au moins un poste avec une session DICOS / Quinyx
+  ouverte ; une session expirée ne se renouvelle pas seule (aucun onglet n'est rechargé d'office).
 
 ---
 

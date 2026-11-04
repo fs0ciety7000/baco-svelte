@@ -19,6 +19,10 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 - **Accueil → « Temps réel »** et **Commandes → « Bus et taxis »** : les deux modules changent de nom (adresses inchangées, l'onglet mobile reste « Bons »).
 - **Bandeau « Incident en cours »** en haut de Temps réel, seulement quand il se passe quelque chose : bons bus du jour en cours ou urgence au Journal dans les 6 dernières heures. Trajet, motif, bus encore sur la route, voyageurs reportés, urgences et perturbations iRail, avec un schéma de la voie coupée que les bus contournent. Boutons « Suivre les bus » (Suivi du jour) et « Ouvrir le Journal ».
 
+- **Synchro automatique DICOS et Quinyx pour toute l'équipe** (extension CSM 1.13.0) : CSM sait ce qui est à mettre à jour (DICOS du jour et du lendemain, planning Quinyx). Toutes les 5 min, l'extension de chaque agent connecté le lui demande et, si un onglet DICOS ou Quinyx est ouvert sur son poste (même en arrière-plan), elle synchronise seule, sans clic. Un seul poste à la fois. Plus besoin qu'une personne précise lance la synchro. Mets à jour l'extension depuis la page Extension CSM.
+- **Écran commun (/tv)** : l'état des synchros s'affiche en haut (DICOS, DICOS de demain, Quinyx : « il y a 4 min » ou en orange si en retard) et un message apparaît si aucun poste ne peut synchroniser (aucun onglet DICOS ouvert, session à rafraîchir).
+- L'alerte « Synchro DICOS en retard » rappelle simplement de garder un onglet DICOS ouvert : l'extension fait le reste.
+
 ### Corrections
 
 - **Mobile : la barre d'onglets du bas ne « saute » plus** quand la barre d'adresse du navigateur se replie ou réapparaît (Chrome Android) ; même correction pour le Journal, la barre d'actions des bons et les messages en bas d'écran.
