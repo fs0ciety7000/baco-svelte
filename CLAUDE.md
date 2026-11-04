@@ -1508,6 +1508,8 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   saisie puis minuscules) ; **synchro automatique DICOS du jour toutes les ~10 min** (seuil `FRESHNESS.dicosToday` 30 → 8 min,
   demandes toutes les 5 min ; retour : dossiers de l'après-midi absents). L'ancien mode « Synchroniser automatiquement toutes les
   N min » du popup se met en pause quand l'onglet DICOS est caché : c'est le travail de la synchro d'équipe.
+- 2026-11-04 — **Poussé en production** (demande de l'utilisateur) : `csm-prod` = 3d09045 (connexion insensible à la casse,
+  synchro DICOS du jour ~10 min ; aucune migration). Déploiement confirmé par l'utilisateur.
 
 ---
 
