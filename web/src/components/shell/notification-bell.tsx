@@ -46,12 +46,12 @@ export function NotificationBell() {
 
   const load = useCallback(async () => {
     const res = await safeCall(loadNotifications());
-    if (!res.ok) return;
+    if (!res.ok) return 0;
     setItems(res.data.items);
     setUnread(res.data.unread);
     const seen = known.current;
     known.current = new Set(res.data.items.map((n) => n.id));
-    if (!seen) return;
+    if (!seen) return res.data.unread;
     const enabled = browserNotifyEnabled();
     for (const n of res.data.items) {
       if (seen.has(n.id) || n.readAt || !shouldNotify(n, document.hidden, enabled)) continue;
@@ -61,6 +61,7 @@ export function NotificationBell() {
         if (n.link) router.push(n.link);
       });
     }
+    return res.data.unread;
   }, [router]);
 
   useEffect(() => {
@@ -94,8 +95,24 @@ export function NotificationBell() {
     if (n.link) router.push(n.link);
   };
 
+  // Ouvrir la cloche vaut lecture (4 nov. 2026) : la pastille tombe à zéro, les notifications gardent leur marque
+  // « non lu » le temps de l'ouverture (pour voir lesquelles sont nouvelles), puis passent lues à la fermeture.
+  const onOpenChange = (o: boolean) => {
+    if (o) {
+      void load().then((count) => {
+        if (count > 0) {
+          setUnread(0);
+          void safeCall(markNotifications({ ids: "all" }));
+        }
+      });
+      return;
+    }
+    const now = new Date().toISOString();
+    setItems((list) => list.map((x) => (x.readAt ? x : { ...x, readAt: now })));
+  };
+
   return (
-    <Menu.Root onOpenChange={(o) => o && void load()}>
+    <Menu.Root onOpenChange={onOpenChange}>
       <Menu.Trigger asChild>
         <Button
           size="icon"

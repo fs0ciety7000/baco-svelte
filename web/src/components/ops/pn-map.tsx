@@ -122,10 +122,24 @@ export function PnMap({
         maxZoom: 18,
         attribution: "© contributeurs OpenStreetMap",
       })
-        .on("tileerror", () => {
-          errors++;
-          if (errors > 6) setTilesDown(true);
-        })
+        .on(
+          "tileerror",
+          (ev: { tile: HTMLImageElement; coords: { x: number; y: number; z: number } }) => {
+            // Tuile refusée (débit) ou réseau lent : jusqu'à 3 nouveaux essais espacés avant de la laisser en gris.
+            const tile = ev.tile as HTMLImageElement & { csmRetry?: number };
+            const n = (tile.csmRetry ?? 0) + 1;
+            if (n <= 3) {
+              tile.csmRetry = n;
+              const { x, y, z } = ev.coords;
+              setTimeout(() => {
+                tile.src = `/api/operations/tuiles/${z}/${x}/${y}?r=${n}`;
+              }, 700 * n);
+              return;
+            }
+            errors++;
+            if (errors > 6) setTilesDown(true);
+          },
+        )
         .on("tileload", () => setTilesDown(false))
         .addTo(m);
       zoneLayer.current = lf.layerGroup().addTo(m);
