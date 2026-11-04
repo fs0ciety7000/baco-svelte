@@ -9,7 +9,7 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 - **N° de commande CMD-XXXXXX** : chaque bon bus et taxi reçoit un numéro de commande unique, indépendant du n° TC (qui reste à part). Il remplace l'ancien numéro partout : fiche, listes, Suivi, PDF, e-mail au fournisseur, Ctrl K.
 - **Archives › Récap par semaine** : les bons semaine par semaine (« Semaine 45 · du 2 au 8 novembre 2026 »), avec « Télécharger la semaine » (zip des PDF bus et taxi + récapitulatif, à déposer sur le SharePoint) et le récapitulatif du mois en PDF.
-- **Fichier facturation (Excel)** : le fichier « Transports alternatifs » (BUS par société, TAXI, TAXI PMR) généré par district, pour le mois ou une semaine, prêt à compléter par la facturation.
+- **Fichier facturation (Excel)** : le fichier « Transports alternatifs » (BUS par société, TAXI, TAXI PMR) généré par district, pour le mois ou une semaine, prêt à compléter par la facturation. Même mise en forme que le fichier actuel (couleurs, bordures, largeurs, titres), vraies dates Excel, totaux calculés.
 - **PMR & Groupes** : l'onglet Planificateur n'apparaît plus dans les menus (en préparation).
 
 - **Visite guidée** : à ta première connexion, CSM te propose une courte visite animée en trois chapitres (Prise en main, Bus et taxis, PMR et Groupes) ; tu peux la passer ou la reporter. Relance-la quand tu veux depuis le menu de ton compte (« Visite guidée ») ou avec Ctrl K (« Revoir la visite guidée »).
