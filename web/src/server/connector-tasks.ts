@@ -78,7 +78,7 @@ export async function currentTasks(pb: PocketBase, now = new Date()): Promise<Co
     ...f,
     now,
     hour: brusselsHour(now),
-    hours: parseHours(process.env.CSM_AUTO_SYNC_HOURS ?? process.env.CSM_DICOS_ALERT_HOURS),
+    hours: parseHours(process.env.CSM_AUTO_SYNC_HOURS),
   });
 }
 
@@ -96,7 +96,7 @@ export async function syncHealth(now = new Date()): Promise<SyncHealth | null> {
       ...f,
       now,
       hour: brusselsHour(now),
-      hours: parseHours(process.env.CSM_AUTO_SYNC_HOURS ?? process.env.CSM_DICOS_ALERT_HOURS),
+      hours: parseHours(process.env.CSM_AUTO_SYNC_HOURS),
     });
     const iso = (d: Date | null | undefined) => (d ? d.toISOString() : null);
     const out = (o: TaskOutcome | undefined) =>

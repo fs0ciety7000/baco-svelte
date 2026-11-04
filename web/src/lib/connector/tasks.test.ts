@@ -51,20 +51,21 @@ describe("computeTasks", () => {
     ).toBe("quinyx");
   });
 
-  it("hors des heures de service ou coupé : rien", () => {
-    expect(computeTasks(base({ hour: 5 }))).toEqual([]);
-    expect(computeTasks(base({ hour: 22 }))).toEqual([]);
+  it("24 h / 24 par défaut ; plage réglée ou coupée respectée", () => {
+    expect(computeTasks(base({ hour: 3 }))).toHaveLength(2);
+    expect(computeTasks(base({ hour: 23 }))).toHaveLength(2);
+    expect(computeTasks(base({ hour: 5, hours: { from: 6, to: 22 } }))).toEqual([]);
+    expect(computeTasks(base({ hour: 22, hours: { from: 6, to: 22 } }))).toEqual([]);
     expect(computeTasks(base({ hours: null }))).toEqual([]);
-    expect(computeTasks(base({ hour: 5, hours: { from: 0, to: 24 } }))).toHaveLength(2);
   });
 });
 
 describe("parseHours", () => {
   it("défaut, off, invalide", () => {
-    expect(parseHours(undefined)).toEqual({ from: 6, to: 22 });
+    expect(parseHours(undefined)).toEqual({ from: 0, to: 24 });
     expect(parseHours("off")).toBeNull();
     expect(parseHours("5-23")).toEqual({ from: 5, to: 23 });
-    expect(parseHours("22-6")).toEqual({ from: 6, to: 22 });
+    expect(parseHours("22-6")).toEqual({ from: 0, to: 24 });
   });
 });
 

@@ -32,7 +32,7 @@ export type Freshness = {
   /** Dernière synchro Quinyx réussie (le plus ancien des groupes activés), null si jamais ; `undefined` = aucun groupe. */
   quinyx: Date | null | undefined;
   now: Date;
-  /** Heures de service « 6-22 » par défaut (même réglage que l'alerte `CSM_DICOS_ALERT_HOURS`). */
+  /** Plage horaire « 0-24 » par défaut (l'équipe travaille 24 h / 24) ; `null` = coupée. */
   hours?: { from: number; to: number } | null;
 };
 
@@ -45,18 +45,18 @@ function ago(min: number | null): string {
   return `dernière synchro il y a ${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")}`;
 }
 
-/** « 6-22 » → { from: 6, to: 22 } ; « off » → null (synchro automatique coupée) ; invalide → 6-22. */
+/** « 6-22 » → { from: 6, to: 22 } ; « off » → null (synchro automatique coupée) ; absent ou invalide → 0-24. */
 export function parseHours(raw: string | undefined): { from: number; to: number } | null {
-  const v = String(raw ?? "6-22").trim();
+  const v = String(raw ?? "0-24").trim();
   if (v === "off") return null;
   const m = /^(\d{1,2})-(\d{1,2})$/.exec(v);
-  if (!m || +m[1]! >= +m[2]! || +m[2]! > 24) return { from: 6, to: 22 };
+  if (!m || +m[1]! >= +m[2]! || +m[2]! > 24) return { from: 0, to: 24 };
   return { from: +m[1]!, to: +m[2]! };
 }
 
 /** Tâches à faire maintenant (DICOS aujourd'hui, DICOS demain, Quinyx), selon la fraîcheur. */
 export function computeTasks(f: Freshness): ConnectorTask[] {
-  const hours = f.hours === undefined ? { from: 6, to: 22 } : f.hours;
+  const hours = f.hours === undefined ? { from: 0, to: 24 } : f.hours;
   if (!hours || f.hour < hours.from || f.hour >= hours.to) return [];
   const out: ConnectorTask[] = [];
   const day = (d: string, limit: number, label: string) => {

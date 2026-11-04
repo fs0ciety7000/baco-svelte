@@ -958,7 +958,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - Logique pure `lib/connector/tasks.ts` (`computeTasks`, `parseHours`, `claimLease`, `releaseLease`, `freeTasks`,
   `outcomeText`, type `SyncHealth`) ; serveur `server/connector-tasks.ts` (`registry` sur `globalThis`, `readFreshness` :
   `dicos_syncs` missions complètes du jour et du lendemain, `quinyx_groups.last_sync` des groupes activés ; `currentTasks` ;
-  `syncHealth()` pour /tv). Variable `CSM_AUTO_SYNC_HOURS` (`6-22` par défaut, `off`). Une seule instance Next (comme la
+  `syncHealth()` pour /tv). Variable `CSM_AUTO_SYNC_HOURS` (`0-24` par défaut : équipe 24 h / 24 ; `off`). Une seule instance Next (comme la
   présence) : passer par PocketBase si un jour plusieurs répliques.
 - /tv : `TvBoard sync` → `SyncStrip` (`data-testid` `tv-sync`, `tv-sync-problem`).
 

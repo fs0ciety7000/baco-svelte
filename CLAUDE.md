@@ -1461,7 +1461,7 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   collègues ne pourront pas le faire »). Job serveur pur écarté (DICOS interne SNCB + Entra ID sans accès technique, MFA ;
   aucun mot de passe d'agent dans un robot) : **CSM orchestre, l'extension exécute**. Route `GET/POST /api/connecteur/taches`
   (jeton de connecteur) : tâches selon la fraîcheur (`lib/connector/tasks.ts`, testé : DICOS jour 30 min, lendemain 2 h,
-  Quinyx 3 h, heures `CSM_AUTO_SYNC_HOURS` sinon `CSM_DICOS_ALERT_HOURS`, défaut 6-22), **baux de 10 min en mémoire**
+  Quinyx 3 h, plage `CSM_AUTO_SYNC_HOURS`, défaut **0-24** : « on bosse h24 »), **baux de 10 min en mémoire**
   (`server/connector-tasks.ts`, `globalThis`, une instance Next), dernier passage par type (code seulement). Extension
   **1.13.0** : permission `alarms`, passage toutes les 5 min (`autoPass` du service worker) si un onglet DICOS / Quinyx est
   ouvert, réserve → synchro (même message `sync` que le popup) → rapporte ; sans onglet : signalé sans réserver ; activée par

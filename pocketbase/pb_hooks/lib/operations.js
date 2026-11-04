@@ -36,12 +36,13 @@ function brusselsHour(at) {
 	return d.getUTCHours() + d.getUTCMinutes() / 60;
 }
 
-// Plage de service de l'alerte de synchro DICOS : `CSM_DICOS_ALERT_HOURS` = « 6-22 » (défaut), « off » = coupée.
+// Plage de service de l'alerte de synchro DICOS : `CSM_DICOS_ALERT_HOURS` = « 0-24 » (défaut depuis le 4 nov. 2026 :
+// l'équipe travaille 24 h / 24), « 6-22 » pour une plage, « off » = coupée.
 function alertHours(raw) {
-	const v = String(raw || '6-22').trim();
+	const v = String(raw || '0-24').trim();
 	if (v === 'off') return null;
 	const m = /^(\d{1,2})-(\d{1,2})$/.exec(v);
-	if (!m || +m[1] >= +m[2] || +m[2] > 24) return { from: 6, to: 22 };
+	if (!m || +m[1] >= +m[2] || +m[2] > 24) return { from: 0, to: 24 };
 	return { from: +m[1], to: +m[2] };
 }
 
@@ -56,7 +57,9 @@ function dicosStaleAlert(app, at) {
 	if (!hours) return 0;
 	const h = brusselsHour(date);
 	// Une heure de marge après l'ouverture du service : la synchro de la veille n'alerte pas dès l'ouverture.
-	if (h < hours.from + 1 || h >= hours.to) return 0;
+	// Plage continue (0-24) : pas de marge, l'alerte vaut à toute heure.
+	const margin = hours.from === 0 && hours.to === 24 ? 0 : 1;
+	if (h < hours.from + margin || h >= hours.to) return 0;
 	const last = app.findRecordsByFilter('dicos_syncs', 'kind = "missions" || kind = "groups"', '-created', 1, 0);
 	if (!last.length) return 0;
 	const lastAt = new Date(last[0].getString('created').replace(' ', 'T')).getTime();
