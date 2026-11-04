@@ -409,6 +409,27 @@ export function PnBoard({
       zones={zones}
       showZones={showZones}
       fitKey={fitKey}
+      overlay={
+        <>
+          <p className="text-fg-muted" aria-live="polite">
+            <span className="font-medium text-fg tabular">{shown.length}</span>{" "}
+            {pl(shown.length, "passage à niveau", "passages à niveau")}
+            {active ? ` · ${active} ${pl(active, "filtre")}` : ""}
+          </p>
+          <div>
+            <ToggleChip
+              pressed={showZones}
+              onPressedChange={(v) => {
+                setShowZones(v);
+                syncUrl({ zones: v ? "1" : null });
+              }}
+            >
+              <Layers aria-hidden className="size-3.5" /> Zones SPI
+            </ToggleChip>
+          </div>
+          {legend}
+        </>
+      }
     />
   );
 

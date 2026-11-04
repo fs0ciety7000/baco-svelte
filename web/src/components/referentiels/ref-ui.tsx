@@ -1,3 +1,4 @@
+import { Settings2 } from "lucide-react";
 import Link from "next/link";
 
 import { pl } from "@/lib/utils";
@@ -89,6 +90,21 @@ export function AbbrBadge({ abbr }: { abbr: string }) {
     <span className="inline-flex items-center rounded-[min(var(--r-control),5px)] bg-surface-2 px-1.5 py-0.5 font-mono text-small font-medium text-fg">
       {abbr || "—"}
     </span>
+  );
+}
+
+/**
+ * Lien « Modifier dans l'administration » des écrans de consultation du Réseau (zones SPI, points SPI, PN), affiché
+ * seulement avec `referentiels:manage` (la page passe le résultat de `can`).
+ */
+export function AdminEditLink({ href, show }: { href: string; show: boolean }) {
+  if (!show) return null;
+  return (
+    <Button asChild variant="secondary" size="sm">
+      <Link href={href} data-testid="admin-edit-link">
+        <Settings2 aria-hidden /> Modifier dans l&apos;administration
+      </Link>
+    </Button>
   );
 }
 

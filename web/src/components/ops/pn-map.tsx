@@ -3,9 +3,13 @@
 import "leaflet/dist/leaflet.css";
 
 import type * as Leaflet from "leaflet";
-import { useEffect, useRef, useState } from "react";
+import { Maximize2, Minimize2 } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
+import { Button } from "@/components/ui/button";
+import { useBlockFullscreen } from "@/lib/fullscreen";
 import { clusterPoints } from "@/lib/network/pn";
+import { cn } from "@/lib/utils";
 import type { ZoneShapes } from "@/lib/network/voronoi";
 
 export type MapZone = { code: string; name: string; color: string; polygon?: unknown };
@@ -47,6 +51,7 @@ export function PnMap({
   fitKey,
   ariaLabel = "Carte des passages à niveau",
   testId = "pn-map",
+  overlay,
 }: {
   points: MapPoint[];
   selected: string | null;
@@ -59,6 +64,8 @@ export function PnMap({
   fitKey: string;
   ariaLabel?: string;
   testId?: string;
+  /** Contenu affiché par-dessus la carte en plein écran seulement (nombre, couches, légende). */
+  overlay?: ReactNode;
 }) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<Leaflet.Map | null>(null);
@@ -76,6 +83,10 @@ export function PnMap({
   const cb = useRef({ onSelect, onHover });
   cb.current = { onSelect, onHover };
   const lastFit = useRef<string | null>(null);
+  // Plein écran (4 nov. 2026) : la carte garde son centre, Leaflet relit sa taille une fois le bloc redimensionné.
+  const { full, toggle } = useBlockFullscreen(() => {
+    requestAnimationFrame(() => map.current?.invalidateSize({ pan: false }));
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -327,7 +338,20 @@ export function PnMap({
   }, [showZones, shapesState, ready, zones, zoom >= 8]);
 
   return (
-    <div className="relative h-full min-h-80 w-full overflow-hidden rounded-box border border-(--card-frame) shadow-rest">
+    // `isolate` : les calques de Leaflet (z-index 400 à 1000) restent dans la carte ; sans lui, les listes des filtres
+    // (portails en z-50) passaient derrière la carte. En plein écran, le bloc couvre la fenêtre (sous le bandeau « Voir en
+    // tant que ») ; les panneaux et listes ouverts ensuite sont rendus par-dessus (portails plus loin dans le DOM).
+    <div
+      className={cn(
+        "pn-map-frame isolate w-full overflow-hidden",
+        full
+          ? "fixed inset-x-0 bottom-0 z-50 bg-surface"
+          : "relative h-full min-h-80 rounded-box border border-(--card-frame) shadow-rest",
+      )}
+      style={full ? { top: "var(--acting-h, 0px)" } : undefined}
+      data-fullscreen={full ? "" : undefined}
+      data-testid={`${testId}-frame`}
+    >
       <div
         ref={el}
         className="pn-map absolute inset-0"
@@ -335,6 +359,27 @@ export function PnMap({
         aria-label={ariaLabel}
         data-testid={testId}
       />
+      <Button
+        type="button"
+        size="icon"
+        variant="secondary"
+        aria-pressed={full}
+        aria-label={full ? "Quitter le plein écran" : "Afficher la carte en plein écran"}
+        title={full ? "Quitter le plein écran (Échap)" : "Plein écran"}
+        onClick={toggle}
+        className="pn-map-fs absolute right-2 z-[800] shadow-float"
+        data-testid={`${testId}-fullscreen`}
+      >
+        {full ? <Minimize2 aria-hidden /> : <Maximize2 aria-hidden />}
+      </Button>
+      {full && overlay ? (
+        <div
+          className="pn-map-overlay absolute right-2 z-[800] flex max-h-[45%] w-[min(20rem,calc(100%-4.5rem))] flex-col gap-2 overflow-y-auto rounded-box border border-border bg-surface p-3 text-small shadow-float"
+          data-testid={`${testId}-overlay`}
+        >
+          {overlay}
+        </div>
+      ) : null}
       {tilesDown ? (
         <p
           role="status"

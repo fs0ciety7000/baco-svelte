@@ -53,6 +53,8 @@ describe("navigation", () => {
       "PtCar",
       "EBP",
       "Carte PN",
+      "Zones SPI",
+      "Points SPI",
     ]);
     expect(tabs("ressources")).toEqual([
       "Contacts",

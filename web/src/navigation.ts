@@ -278,7 +278,21 @@ export const MODULES: NavModule[] = [
         href: "/reseau/pn",
         label: "Carte PN",
         permission: "carte_pn:read",
-        keywords: ["passages à niveau", "PN"],
+        keywords: ["passages à niveau", "PN", "liste des PN", "carte", "plein écran"],
+      },
+      {
+        // Consultation des zones SPI (4 nov. 2026, copie en lecture d'Administration › Référentiels › Zones SPI) : lecture
+        // des gares (`stations`), comme l'onglet Gares. La modification reste dans l'administration.
+        href: "/reseau/zones-spi",
+        label: "Zones SPI",
+        permission: "timetable:read",
+        keywords: ["SPI", "COI", "zones", "carte des zones", "gares par zone", "districts"],
+      },
+      {
+        href: "/reseau/spi",
+        label: "Points SPI",
+        permission: "spi:read",
+        keywords: ["SPI", "points SPI", "zones par ligne", "adresses"],
       },
     ],
   },

@@ -576,6 +576,30 @@
   color: var(--fg);
 }
 
+/* Carte en plein écran (4 nov. 2026, `useBlockFullscreen`) : bouton et légende sous l'encoche, contrôles du bas au-dessus de
+   la barre système (marge du bas : toujours `--safe-bottom`). */
+.pn-map-fs {
+  top: 0.5rem;
+}
+.pn-map-overlay {
+  top: 3.5rem;
+}
+[data-fullscreen] .pn-map-fs {
+  top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
+  right: calc(env(safe-area-inset-right, 0px) + 0.5rem);
+}
+[data-fullscreen] .pn-map-overlay {
+  top: calc(env(safe-area-inset-top, 0px) + 3.5rem);
+  right: calc(env(safe-area-inset-right, 0px) + 0.5rem);
+}
+[data-fullscreen] .pn-map .leaflet-top {
+  top: env(safe-area-inset-top, 0px);
+  left: env(safe-area-inset-left, 0px);
+}
+[data-fullscreen] .pn-map .leaflet-bottom {
+  bottom: var(--safe-bottom);
+}
+
 /* Emblèmes de l'éditeur (StudioCredit, components/shell/brand-mark.tsx) : monochromes au repos (couleur du texte),
    couleurs de la charte CARDOR Media au survol ou au focus du conteneur (`initial` = repli sur la couleur du SVG). */
 .brand-mark {
