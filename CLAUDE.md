@@ -1527,6 +1527,14 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   actif d'une fenêtre au premier plan, 1 fois / 15 min / onglet, `healAt`), cause : le Bearer n'est capté qu'en vol par `inject.js`.
 - 2026-11-04 — **Poussé en production** (demande de l'utilisateur) : `csm-prod` = 9354097 (carte, cloche, extension 1.13.1 ; aucune
   migration ni hook). Déploiement `csm-web-prod` terminé, santé 200.
+- 2026-11-04 — **Visite guidée animée** (demande : tutoriel avant le gel ; choix « dans CSM », chapitres Prise en main, Bus et taxis,
+  PMR et Groupes) : moteur maison `components/tour/` + logique `lib/tour/` (steps, position, seek ; testés), à la première connexion
+  (`preferences.tour`, jamais pour l'Écran ni en « voir en tant que », remplace ce jour-là la fenêtre « CSM a été mis à jour »),
+  relance menu du compte / ⌘K ; E2E `tour.spec.ts`, comptes E2E marqués « vu » (`TOUR_SEEN`). Vérifié sur la préversion avec le compte
+  de test : 15 étapes en bureau, 16 en mobile (1er essai bloqué en mobile : « Suivant » perdu pendant la recherche d'une cible,
+  découpe périmée après changement de page → corrigé). E-mail du jour J sans étape « extension » (synchro automatique). **Gel de
+  BACO préparé** sur la branche locale `baco-transition` (gelé par défaut, `BACO_FROZEN=0` = retour arrière, relais `/api-proxy`
+  retiré) : envoi sur `main` refusé par le contrôle de la session, en attente du feu vert explicite de l'utilisateur.
 
 ---
 

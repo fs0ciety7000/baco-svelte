@@ -1110,3 +1110,15 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   `status != 'annulee'`, ni dans le Gantt ni dans « À attribuer » ni dans les compteurs) ; la fiche reste en base avec son
   agent et revient si DICOS rétablit la mission. Remplace « annulée barrée, agent gardé » de l'audit.
 
+## Visite guidée (4 nov. 2026)
+
+- Logique pure `lib/tour/` : `steps.ts` (chapitres `prise-en-main`, `bus-taxis`, `pmr`, étapes filtrées par droits / format),
+  `position.ts` (découpe et carte jamais hors écran, feuille mobile), `seek.ts` (`seekDecision` : 2,5 s après l'arrivée, 10 s au plus,
+  puis carte centrée ou étape sautée ; `shouldPush`, `stepAfter`, `skipFrom`) ; tests `tour.test.ts`, `seek.test.ts`.
+- Moteur `components/tour/` (`tour-provider.tsx` : accueil `tour-welcome`, chapitres `tour-chapter-<id>` ; `tour-runner.tsx` :
+  `tour-card`, `tour-counter`, `tour-next|prev|skip`, `tour-spotlight` ; `dom.ts` `isShown` : taille nulle / ancêtre masqué = absent).
+  Cibles par `data-testid` existants ou `data-tour="nav|more|search|account|alea"` : ne pas les retirer.
+- Démarrage : `shouldAutoStartTour(user)` dans `(app)/layout.tsx` ; `markTourSeen()` (`app/tour-actions.ts`) écrit
+  `preferences.tour = { seen, version: 1 }` et marque la version du changelog vue (une écriture, en file). Relance : menu du compte
+  `user-menu-tour`, ⌘K `palette-tour`. E2E : `TOUR_SEEN` dans `e2e/global-setup.ts` pour tout compte qui ne teste pas la visite.
+
