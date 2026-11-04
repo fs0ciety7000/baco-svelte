@@ -528,7 +528,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   accroche ; en tête, remplace le titre = objet et sert de texte d'aperçu caché), `bouton [Libellé](https://…)` (une ligne ; sans
   bouton, « Ouvrir CSM » est ajouté en fin d'e-mail comme avant), `cartes` (`### 🧭 Titre` par carte, emoji de tête = icône
   `aria-hidden`, colonnes « hybrides » de 270 px : 2 en bureau, 1 sur téléphone, tableau fantôme `<!--[if mso]>` pour Outlook),
-  `etapes` (« 1. … » ou « - … »), `encadre Titre`. Couleurs du thème Signal · Jour (pétrole), `@media (prefers-color-scheme:
+  `etapes` (« 1. … » ou « - … »), `encadre Titre`. Couleurs « Encre et sable » (encre + sable, 4 nov. 2026 ; Onest en tête de la pile de polices, jamais chargée à distance), `@media (prefers-color-scheme:
   dark)` par classes `csm-*` (`csm-text` sur toute cellule de texte hors `<p>` / `<li>`, sinon invisible en sombre),
   `@media (max-width:520px)`. Aucune image, aucun script, aucune police web ; tout est échappé (`esc`, `safeHref`), un prénom
   perd `: #` (ne peut ouvrir ni bloc ni titre). Aperçu : iframe `sandbox` en 640 ou 375 px.
