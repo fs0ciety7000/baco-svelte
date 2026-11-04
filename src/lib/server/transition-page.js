@@ -70,7 +70,7 @@ const NEWS = [
 	[
 		'accessibility',
 		'Missions PMR et Groupes',
-		'Synchronisés depuis DICOS par l’extension CSM : trajet, embarquement (IN) et débarquement (OUT), retard du train et Export ALEA prêt à encoder.'
+		'Synchronisés automatiquement depuis DICOS, tu n’as rien à lancer : trajet, embarquement (IN) et débarquement (OUT), retard du train et Export ALEA prêt à encoder.'
 	],
 	[
 		'bus',
