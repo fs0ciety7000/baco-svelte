@@ -93,13 +93,20 @@ export const MODULES: NavModule[] = [
     icon: Radio,
     mobile: true,
     tabs: [
-      // Le Journal ouvre le module et porte la pastille des non-lus (navigation v3).
+      // Journal en deux onglets (4 nov. 2026) : « Infos » (messages des agents) ouvre le module et porte la pastille des
+      // non-lus ; « Perturbations » reçoit les perturbations et travaux iRail.
       {
         href: "/operations/journal",
-        label: "Journal",
+        label: "Infos",
         count: "operations",
         permission: "journal:read",
-        keywords: ["main courante", "messages", "consignes"],
+        keywords: ["journal", "main courante", "messages", "consignes", "infos"],
+      },
+      {
+        href: "/operations/perturbations",
+        label: "Perturbations",
+        permission: "journal:read",
+        keywords: ["journal", "iRail", "travaux", "perturbations", "incidents réseau"],
       },
       {
         href: "/operations/journee",

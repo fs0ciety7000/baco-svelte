@@ -370,7 +370,8 @@ export function JournalChat({
     const irail = r.source === "irail";
     const newDay = !prev || dayOf(prev.created) !== dayOf(r.created);
     const read = r.readers.some((x) => x.id === me);
-    const tone = toneVar[CATEGORY[r.category].tone];
+    // Infos (messages des agents) : ton neutre ; Perturbations (iRail) : ton de la catégorie (travaux / perturbation).
+    const tone = toneVar[irail ? CATEGORY[r.category].tone : "neutral"];
     // Heure de l'événement affichée à part si elle diffère de l'envoi de plus de 5 minutes.
     const gap = Math.abs(
       (pbDate(r.occurredAt)?.getTime() ?? 0) - (pbDate(r.created)?.getTime() ?? 0),
@@ -475,7 +476,9 @@ export function JournalChat({
               )}
             >
               <div className="flex flex-wrap items-center gap-1.5">
-                <Badge tone={CATEGORY[r.category].tone}>{CATEGORY[r.category].label}</Badge>
+                {irail ? (
+                  <Badge tone={CATEGORY[r.category].tone}>{CATEGORY[r.category].label}</Badge>
+                ) : null}
                 {r.urgent ? (
                   <Badge tone="danger">
                     <TriangleAlert aria-hidden className="size-3" /> Urgent

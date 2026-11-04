@@ -53,10 +53,14 @@ export async function shellStatus(): Promise<ShellStatus | null> {
       (async () => {
         const since = toPbInstant(brusselsToUtc(addDays(brusselsDay(), -1)));
         const recent = await pb.collection("ops_log").getList(1, 200, {
-          filter: pb.filter('status = "active" && created >= {:s} && author != {:me}', {
-            s: since,
-            me: user.id,
-          }),
+          // Non-lus de l'onglet Infos seulement (4 nov. 2026) : les messages iRail vont dans Perturbations.
+          filter: pb.filter(
+            'status = "active" && source != "irail" && created >= {:s} && author != {:me}',
+            {
+              s: since,
+              me: user.id,
+            },
+          ),
           fields: "id",
           skipTotal: true,
         });

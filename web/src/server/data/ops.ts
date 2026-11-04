@@ -261,7 +261,13 @@ async function readersOf(entryIds: string[]) {
 
 /** Fil continu (décision du 9 oct. 2026 : pas de sélection par jour) : les `n` derniers messages par heure d'envoi, ou
  * les résultats d'une recherche sur 180 jours. */
-export async function listLog(input: LogFilters, ctx: { coordinator: boolean }) {
+/** Vues du Journal (4 nov. 2026) : « infos » = messages des agents (et repris de BACO), « perturbations » = iRail. */
+export type JournalView = "infos" | "perturbations";
+
+export async function listLog(
+  input: LogFilters,
+  ctx: { coordinator: boolean; view?: JournalView },
+) {
   const f = logListSchema.parse(input);
   const pb = await pbForRequest();
   const parts: string[] = [];
@@ -280,6 +286,8 @@ export async function listLog(input: LogFilters, ctx: { coordinator: boolean }) 
   } else if (f.pn)
     parts.push(pb.filter("occurred_at >= {:a} && level_crossing = {:p}", { a: since, p: f.pn }));
   if (f.categorie) parts.push(pb.filter("category = {:c}", { c: f.categorie }));
+  if (ctx.view === "infos") parts.push('source != "irail"');
+  else if (ctx.view === "perturbations") parts.push('source = "irail"');
   if (f.auteur) parts.push(pb.filter("author = {:u}", { u: f.auteur }));
   if (f.urgentes) parts.push("urgent = true");
   if (f.agents) parts.push('source != "irail"');

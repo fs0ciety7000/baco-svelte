@@ -1469,6 +1469,13 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   service, sans nom). Texte de l'alerte `dicos-stale` mis à jour. Testé : logique pure, worker avec `chrome` simulé, route et /tv
   en local (secret partagé + compte connecteur fictifs). Limites : il faut au moins un poste avec une session DICOS / Quinyx
   ouverte ; une session expirée ne se renouvelle pas seule (aucun onglet n'est rechargé d'office).
+- 2026-11-04 — **Journal en deux onglets** (demande : « trop fourre-tout ») : **Infos** (`/operations/journal`, messages des agents
+  et repris de BACO, `source != "irail"`, seul onglet où l'on écrit, pastille des non-lus 24 h = `counts.operations`, iRail
+  exclu) et **Perturbations** (`/operations/perturbations`, `source = "irail"`, travaux + perturbations). Catégories
+  **retirées de l'écran** (composer sans choix : nouveau message = `info`, un message modifié garde la sienne ; badge de
+  catégorie seulement pour iRail ; filtres « Tout / catégories / Sans iRail » retirés ; restent Urgents (Infos) et Avec les
+  retirés) ; valeurs en base inchangées (aucune migration). `?entree=` d'un message de l'autre type redirige vers le bon
+  onglet. `JournalScreen` (`operations/journal/journal-screen.tsx`) partagé ; `listLog(…, { view })`.
 
 ---
 

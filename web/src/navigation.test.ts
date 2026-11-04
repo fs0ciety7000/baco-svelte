@@ -33,7 +33,7 @@ describe("navigation", () => {
       "ressources",
     ]);
     expect(tabs("accueil")).toEqual(["À traiter", "Statistiques"]);
-    expect(tabs("operations")).toEqual(["Journal", "Ma journée", "B201"]);
+    expect(tabs("operations")).toEqual(["Infos", "Perturbations", "Ma journée", "B201"]);
     expect(tabs("commandes")).toEqual(["Suivi", "Bus", "Taxi", "Archives", "Fournisseurs"]);
     expect(tabs("pmr")).toEqual([
       "Missions",

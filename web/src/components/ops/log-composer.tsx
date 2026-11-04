@@ -40,11 +40,11 @@ import { Input, Textarea } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { TimeField } from "@/components/ui/time-field";
 import { toast } from "@/components/ui/toast";
-import { CATEGORY, LOG_CATEGORIES, ATTACHMENT_MAX, type LogCategory } from "@/lib/ops/log";
+import { ATTACHMENT_MAX, type LogCategory } from "@/lib/ops/log";
 import { safeCall } from "@/lib/orders/safe-call";
 import { brusselsDay, brusselsTime, dayOf, pbDate } from "@/lib/orders/time";
 import { cn } from "@/lib/utils";
-import { CHIP_BASE, CHIP_OFF, CHIP_ON } from "@/components/ui/chip-styles";
+import { CHIP_BASE, CHIP_OFF } from "@/components/ui/chip-styles";
 import type { Agent, Linkable, LinkedObject, LogEntry } from "@/server/data/ops";
 
 import { EmojiPicker } from "./emoji-picker";
@@ -105,9 +105,9 @@ export function LogComposer({
   const chat = variant === "chat";
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [category, setCategory] = useState<LogCategory>(
-    entry?.category ?? preset?.category ?? "info",
-  );
+  // Plus de choix de catégorie (4 nov. 2026 : Journal en deux onglets, Infos / Perturbations) : un nouveau message
+  // d'agent est une « Info », un message existant garde la sienne (anciennes catégories BACO / CSM).
+  const [category] = useState<LogCategory>(entry?.category ?? preset?.category ?? "info");
   const [body, setBody] = useState(entry?.body ?? preset?.body ?? "");
   const [day, setDay] = useState(entry ? dayOf(entry.occurredAt) : brusselsDay());
   const [time, setTime] = useState(entry ? hhmm(entry.occurredAt) : brusselsTime());
@@ -352,31 +352,6 @@ export function LogComposer({
       router.refresh();
       onDone?.(id);
     });
-
-  const categoryChips = (
-    <div
-      className={cn("flex gap-1.5", chat ? "-mx-1 overflow-x-auto px-1 pb-0.5" : "flex-wrap")}
-      role="radiogroup"
-      aria-label="Catégorie"
-    >
-      {LOG_CATEGORIES.map((c) => (
-        <button
-          key={c}
-          type="button"
-          role="radio"
-          aria-checked={category === c}
-          onClick={() => setCategory(c)}
-          className={cn(
-            CHIP_BASE,
-            "h-control-sm min-w-11 justify-center",
-            category === c ? CHIP_ON : CHIP_OFF,
-          )}
-        >
-          {CATEGORY[c].label}
-        </button>
-      ))}
-    </div>
-  );
 
   const mentionList = mention ? (
     <ul
@@ -693,16 +668,7 @@ export function LogComposer({
           </div>
         ) : null}
         <div className="flex items-center gap-2">
-          <div className="min-w-0 flex-1 max-sm:hidden">{categoryChips}</div>
-          <label className="min-w-0 flex-1 sm:hidden">
-            <span className="sr-only">Catégorie</span>
-            <Select
-              value={category}
-              onValueChange={(v) => v && setCategory(v)}
-              data-testid="log-category-select"
-              options={LOG_CATEGORIES.map((c) => ({ value: c, label: CATEGORY[c].label }))}
-            />
-          </label>
+          <span className="min-w-0 flex-1" />
           <button
             type="button"
             aria-pressed={urgent}
@@ -861,11 +827,6 @@ export function LogComposer({
       }}
       onKeyDown={onKeys}
     >
-      <fieldset className="flex flex-col gap-1.5">
-        <legend className="mb-1.5 text-small font-medium text-fg">Catégorie</legend>
-        {categoryChips}
-      </fieldset>
-
       <div className="relative">
         <Field
           label="Message"

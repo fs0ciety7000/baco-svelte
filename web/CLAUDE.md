@@ -338,6 +338,12 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 
 ## Journal (ex-main courante, 9 oct. 2026)
 
+- **Deux onglets depuis le 4 nov. 2026** : `JournalScreen({ view })` (`app/(app)/operations/journal/journal-screen.tsx`) rendu par
+  `/operations/journal` (**Infos** : `source != "irail"`, composer, consignes, filtre Urgents) et `/operations/perturbations`
+  (**Perturbations** : iRail, lecture seule). `listLog(input, { coordinator, view })`. Plus de choix de catégorie (le composer
+  envoie `info` ou garde la catégorie d'un message modifié), badge de catégorie pour iRail seulement. Pastille de l'onglet Infos :
+  `counts.operations` (`shell-actions.ts`, non-lus 24 h hors iRail). Un `?entree=` de l'autre type redirige vers le bon onglet.
+
 - `components/ops/journal-chat.tsx` (fil, bandeau des consignes, plein écran, panneau de détail), `log-composer.tsx`
   (`variant="chat"` : barre d'écriture ; `form` : modification), `chat-markdown.tsx` + `lib/ops/chat-markdown.ts`
   (Markdown SÛR en éléments React : gras, italique, barré, code, liens http(s), mentions, listes, citations ; testé),

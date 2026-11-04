@@ -153,7 +153,7 @@ test("journal : publier (Markdown), lu, corriger, pièce jointe, retirer", async
     await expect(dialog).toBeHidden();
   }
   await expect(page.getByTestId("duty-chip").first()).toContainText("DSO");
-  await page.getByRole("radio", { name: "Incident" }).click();
+  // Plus de catégorie à choisir (4 nov. 2026) : un message d'agent est une « Info ».
   await page.getByTestId("log-body").fill(`${MARK} **dérangement** de signalisation à Jurbise 🚨`);
   await page.getByTestId("log-options-toggle").click();
   await page.getByLabel("Train (facultatif)").fill("ic 2134");
