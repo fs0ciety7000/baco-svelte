@@ -30,6 +30,7 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 - **Mobile : la barre d'onglets du bas ne « saute » plus** quand la barre d'adresse du navigateur se replie ou réapparaît (Chrome Android) ; même correction pour le Journal, la barre d'actions des bons et les messages en bas d'écran.
 - **Connexion : l'adresse e-mail n'est plus sensible aux majuscules** (« Prenom.Nom@… » refusé alors que le compte existait).
+- **Synchro automatique DICOS plus fréquente** : les missions et groupes du jour sont relus toutes les ~10 min (au lieu de 30) dès qu'un poste a un onglet DICOS ouvert, même en arrière-plan.
 
 ## [2026.11.02] — Copie des réquisitoires bus C3
 

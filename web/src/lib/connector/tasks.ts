@@ -15,8 +15,11 @@ export type ConnectorTask = {
   reason: string;
 };
 
-/** Seuils : DICOS du jour 30 min, DICOS du lendemain 2 h, Quinyx 3 h. */
-export const FRESHNESS = { dicosToday: 30, dicosTomorrow: 120, quinyx: 180 } as const;
+/**
+ * Seuils : DICOS du jour 8 min (demandé toutes les 5 min → une synchro toutes les ~10 min, retour du 4 nov. 2026 : 30 min
+ * laissait des dossiers récents absents), DICOS du lendemain 2 h, Quinyx 3 h.
+ */
+export const FRESHNESS = { dicosToday: 8, dicosTomorrow: 120, quinyx: 180 } as const;
 /** Durée d'un bail : une tâche réservée par un poste n'est pas proposée aux autres pendant ce temps. */
 export const LEASE_MINUTES = 10;
 /** Intervalle conseillé à l'extension entre deux demandes (minutes). */

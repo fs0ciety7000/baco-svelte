@@ -29,10 +29,15 @@ describe("computeTasks", () => {
     expect(computeTasks(base()).map((t) => t.id)).toEqual(["dicos:2026-11-04", "dicos:2026-11-05"]);
   });
 
-  it("seuils : 30 min aujourd'hui, 2 h demain, 3 h Quinyx", () => {
+  it("seuils : 8 min aujourd'hui, 2 h demain, 3 h Quinyx", () => {
+    expect(
+      computeTasks(base({ dicos: { "2026-11-04": minAgo(8), "2026-11-05": minAgo(1) } })).map(
+        (t) => t.id,
+      ),
+    ).toEqual(["dicos:2026-11-04"]);
     const t = computeTasks(
       base({
-        dicos: { "2026-11-04": minAgo(29), "2026-11-05": minAgo(121) },
+        dicos: { "2026-11-04": minAgo(7), "2026-11-05": minAgo(121) },
         quinyx: minAgo(181),
       }),
     );

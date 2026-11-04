@@ -1463,7 +1463,7 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
 - 2026-11-04 — **Synchro automatique DICOS / Quinyx sans dépendre d'un agent** (demande : « si je ne suis pas disponible, les
   collègues ne pourront pas le faire »). Job serveur pur écarté (DICOS interne SNCB + Entra ID sans accès technique, MFA ;
   aucun mot de passe d'agent dans un robot) : **CSM orchestre, l'extension exécute**. Route `GET/POST /api/connecteur/taches`
-  (jeton de connecteur) : tâches selon la fraîcheur (`lib/connector/tasks.ts`, testé : DICOS jour 30 min, lendemain 2 h,
+  (jeton de connecteur) : tâches selon la fraîcheur (`lib/connector/tasks.ts`, testé : DICOS jour 30 min (8 min depuis le 4 nov.), lendemain 2 h,
   Quinyx 3 h, plage `CSM_AUTO_SYNC_HOURS`, défaut **0-24** : « on bosse h24 »), **baux de 10 min en mémoire**
   (`server/connector-tasks.ts`, `globalThis`, une instance Next), dernier passage par type (code seulement). Extension
   **1.13.0** : permission `alarms`, passage toutes les 5 min (`autoPass` du service worker) si un onglet DICOS / Quinyx est
@@ -1504,6 +1504,10 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   relance = 39 identiques. Sauvegarde `pre_delta_20261104.zip` avant ; `/pb_data/delta` et `/tmp` nettoyés, tâches supprimées.
   BACO restant ouvert, **refaire l'import jusqu'au gel** (idempotent ; vérifier d'abord les numéros CSM > 365 : sinon
   renuméroter les bons BACO importés, choix de l'utilisateur).
+- 2026-11-04 — **Connexion insensible à la casse** (« Nicolas.dessenius@… » refusé, fiche en minuscules : `lib/auth-identity.ts`,
+  saisie puis minuscules) ; **synchro automatique DICOS du jour toutes les ~10 min** (seuil `FRESHNESS.dicosToday` 30 → 8 min,
+  demandes toutes les 5 min ; retour : dossiers de l'après-midi absents). L'ancien mode « Synchroniser automatiquement toutes les
+  N min » du popup se met en pause quand l'onglet DICOS est caché : c'est le travail de la synchro d'équipe.
 
 ---
 
