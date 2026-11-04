@@ -34,7 +34,8 @@ import {
 } from "@/components/ops/dashboard-widgets";
 import { ShiftWidget, type QuinyxShift } from "@/components/dashboard/shift-widget";
 import { IncidentBanner } from "@/components/dashboard/incident-banner";
-import { KpiStrip, NextPickups, TodoQueue, todoItems } from "@/components/dashboard/todo";
+import { KpiStrip, NextPickups, todoItems } from "@/components/dashboard/todo";
+import { TodoQueue } from "@/components/dashboard/todo-queue";
 import type { Incident } from "@/lib/ops/incident";
 import { ModuleTabs } from "@/components/shell/module-tabs";
 import { useShell } from "@/components/shell/shell-context";
@@ -89,6 +90,8 @@ export type OpsDigest = {
   quinyx: QuinyxShift | null;
   /** Heure du rendu serveur (ms), premier rendu du widget « Fin de service » identique serveur / client. */
   renderedAt: number;
+  /** Clés « vu » de la file « À traiter » (`preferences.todoSeen`, 4 nov. 2026). */
+  todoSeen?: string[];
 };
 
 function WidgetBody({
@@ -439,7 +442,7 @@ export function Dashboard({
       {!editing ? (
         <>
           {incident ? <IncidentBanner incident={incident} /> : null}
-          <KpiStrip stats={stats} today={ops.today} impacts={ops.impacts} />
+          <KpiStrip stats={stats} today={ops.today} impacts={ops.impacts} seen={ops.todoSeen} />
           {/* File « À traiter » ; dès 1280 px, colonne droite « Fin de service » + « Prochaines prises en charge »
               (v4, lot 4). Les widgets restent personnalisables en dessous. */}
           <div className="flex flex-col gap-4 xl:grid xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start xl:gap-5">
@@ -450,6 +453,7 @@ export function Dashboard({
                 mentions: ops.mentions,
                 log: ops.log,
               })}
+              seen={ops.todoSeen ?? []}
             />
             {aside ? (
               <aside

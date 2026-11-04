@@ -1,5 +1,6 @@
 "use server";
 
+import { impactSeenKey, readTodoSeen } from "@/lib/dashboard/todo-seen";
 import { addDays, brusselsDay, brusselsToUtc } from "@/lib/orders/time";
 import { can } from "@/lib/permissions";
 import { requireUser } from "@/server/auth";
@@ -43,7 +44,12 @@ export async function shellStatus(): Promise<ShellStatus | null> {
     );
   if (can(user, "deplacements:read"))
     tasks.push(
-      impactedMissions(user).then((l) => void (out.counts.pmr = l?.length ?? 0)),
+      // Compteur d'alerte : les impacts que l'agent a marqués « Vu » à l'accueil ne comptent plus (même clé, état compris).
+      impactedMissions(user).then((l) => {
+        const seen = readTodoSeen(user.preferences);
+        const day = brusselsDay();
+        out.counts.pmr = (l ?? []).filter((m) => !(impactSeenKey(m, day) in seen)).length;
+      }),
       dicosSyncState("missions", brusselsDay(), brusselsDay()).then(
         (s) => void (out.dicosAt = s?.lastAt ?? null),
       ),

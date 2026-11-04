@@ -13,7 +13,7 @@ import { cn, pl } from "@/lib/utils";
 import type { OnlineMember } from "@/server/data/team";
 
 import { Avatar } from "./avatar";
-import { SHELL_ICON, SHELL_MENU } from "./shell-ui";
+import { SHELL_MENU } from "./shell-ui";
 
 // « En ligne maintenant » (demande du 11 oct. 2026) : agents qui ont un onglet CSM ouvert, en direct (sujet SSE
 // « presence » produit par le serveur Next, server/presence.ts). Pastille verte qui pulse ; liste au clic.
@@ -69,10 +69,10 @@ export function OnlinePresence() {
           aria-label={label}
           title={label}
           data-testid="online-presence"
-          className={cn(
-            SHELL_ICON,
-            "relative w-auto min-w-11 gap-1.5 px-2 md:pointer-fine:min-w-[2.125rem] md:pointer-fine:px-2",
-          )}
+          // Largeur du contenu (icône, puis pastille + nombre dès 1536 px) : surtout pas `SHELL_ICON`, dont la taille fixe
+          // `md:pointer-fine:size-[2.125rem]` survivait à `w-auto` (tailwind-merge ne retire pas `size-*` pour un `w-*`) ;
+          // le contenu de 2xl débordait alors de 34 px, centré, et passait sous la recherche ou « Nouveau » (4 nov. 2026).
+          className="relative h-11 min-w-11 gap-1.5 px-2 text-fg-muted hover:text-fg md:pointer-fine:h-[2.125rem] md:pointer-fine:min-w-[2.125rem] [&_svg]:size-[1.125rem]"
         >
           <Users className="size-5" aria-hidden />
           <Pulse className="absolute top-1.5 right-1.5 2xl:static" />

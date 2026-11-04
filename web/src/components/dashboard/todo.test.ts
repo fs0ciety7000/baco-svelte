@@ -88,7 +88,13 @@ describe("todoItems", () => {
       severity: "info",
     });
     expect(items.some((i) => i.key === "notif-n2")).toBe(false);
-    expect(items.find((i) => i.key === "pin-l1")).toMatchObject({ group: "info", action: "Lire" });
+    expect(items.find((i) => i.key === "pin-l1")).toMatchObject({
+      group: "info",
+      action: "Lire",
+      seenKey: "pin:l1",
+    });
+    expect(items.find((i) => i.key === "bus-b1")?.seenKey).toBeUndefined();
+    expect(items.find((i) => i.key === "bus-b1")?.notifId).toBeUndefined();
     // Une seule primaire : le premier bon à envoyer.
     expect(primaryTodo(items)).toBe("bus-b2");
     expect(groupTodo(items).map((g) => [g.label, g.items.length])).toEqual([
@@ -133,6 +139,9 @@ describe("todoItems", () => {
       delay: { label: "supprimé", tone: "danger" },
     });
     expect(items[3]!.detail).toBe("iRail · Travaux");
+    // « Vu » : impacts (clé avec l'état) et notifications masquables, pas les bons à envoyer.
+    expect(items[0]!.seenKey).toBe("impact:g1:2026-10-11:L6458:supprime");
+    expect(items[1]!.notifId).toBe("u");
     expect(primaryTodo(items)).toBe("impact-g1");
     expect(primaryTodo([])).toBeNull();
     expect(groupTodo(items.slice(0, 2)).map((g) => g.id)).toEqual(["urgent"]);
