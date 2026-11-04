@@ -172,28 +172,39 @@ test("palette ⌘K : s'ouvre au raccourci, jamais sur un « K » tapé, et navig
 test("tableau de bord : personnaliser, réordonner, masquer, mémoriser", async ({ page }) => {
   await login(page);
   const widgets = page.getByTestId("dashboard-grid").locator("[data-widget]");
+  // Mode « Personnaliser » (4 nov. 2026) : une ligne par widget affiché, les masqués à part.
+  const rows = page.getByTestId("dashboard-editor").locator("[data-widget-row]");
   const first = await widgets.first().getAttribute("data-widget");
   await page.getByRole("button", { name: "Personnaliser" }).click();
-  const second = await widgets.nth(1).getAttribute("data-widget");
+  await expect(page.getByRole("heading", { name: "Personnaliser les widgets" })).toBeFocused();
+  await expect(rows.first()).toHaveAttribute("data-widget-row", first!);
+  const second = await rows.nth(1).getAttribute("data-widget-row");
   await page
     .getByRole("button", { name: /^Monter/ })
     .nth(1)
     .click();
-  await expect(widgets.first()).toHaveAttribute("data-widget", second!);
+  await expect(rows.first()).toHaveAttribute("data-widget-row", second!);
   await page.getByRole("button", { name: /^Masquer « Trains perturbés »/ }).click();
-  await page.getByRole("button", { name: "Terminer" }).click();
+  await expect(page.locator('[data-widget-hidden="trains"]')).toBeVisible();
+  await page.getByRole("button", { name: "Terminé" }).click();
   await expect(page.getByText("Disposition enregistrée")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Personnaliser" })).toBeFocused();
   await page.reload();
   await expect(widgets.first()).toHaveAttribute("data-widget", second!);
   await expect(page.locator('[data-widget="trains"]')).toHaveCount(0);
-  // Remise en état pour les autres tests.
+  // Remise en état pour les autres tests, au clavier (poignée : Espace, flèche, Espace).
   await page.getByRole("button", { name: "Personnaliser" }).click();
-  await page
-    .getByRole("button", { name: /^Monter/ })
+  await rows
     .nth(1)
-    .click();
-  await expect(widgets.first()).toHaveAttribute("data-widget", first!);
+    .getByRole("button", { name: /^Déplacer/ })
+    .focus();
+  await page.keyboard.press("Space");
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("Space");
+  await expect(rows.first()).toHaveAttribute("data-widget-row", first!);
   await page.getByRole("button", { name: /^Afficher « Trains perturbés »/ }).click();
-  await page.getByRole("button", { name: "Terminer" }).click();
+  await expect(page.locator('[data-widget-row="trains"]')).toBeVisible();
+  await noHorizontalScroll(page);
+  await page.getByRole("button", { name: "Terminé" }).click();
   await expect(page.getByText("Disposition enregistrée")).toBeVisible();
 });
