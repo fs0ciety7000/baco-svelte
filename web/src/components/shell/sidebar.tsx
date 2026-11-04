@@ -214,7 +214,7 @@ function ModuleLink({ module: m, active }: { module: NavModule; active: boolean 
         style={{ "--mod": modColor(m.id) } as React.CSSProperties}
         className={itemClass(
           active,
-          "flex flex-col items-center gap-1 px-1 py-2 text-small xl:h-9 xl:flex-row xl:gap-3 xl:px-3 xl:py-0 xl:text-body xl:font-medium compact:xl:h-8",
+          "flex flex-col items-center gap-1 px-1 py-2 text-small xl:min-h-9 xl:flex-row xl:gap-3 xl:px-3 xl:py-1.5 xl:text-body xl:font-medium compact:xl:min-h-8 compact:xl:py-1",
         )}
       >
         <ActiveMark on={active} />
@@ -223,7 +223,8 @@ function ModuleLink({ module: m, active }: { module: NavModule; active: boolean 
           strokeWidth={1.75}
           aria-hidden
         />
-        <span className="text-center leading-tight">{m.label}</span>
+        {/* Centré sous l'icône dans le rail, aligné à gauche en largeur normale (un nom long passe à la ligne sans décaler). */}
+        <span className="min-w-0 text-center leading-tight xl:text-left">{m.label}</span>
         {value ? (
           <CountPill
             countKey={countKey}
