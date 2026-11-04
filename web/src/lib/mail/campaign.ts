@@ -49,16 +49,16 @@ const JOUR_J: CampaignTemplate = {
     "",
     "::: cartes",
     "### 🧭 Des menus clairs et Ctrl K",
-    "Six modules : Accueil, Opérations, Commandes, PMR & Groupes, Réseau et Ressources. **Ctrl K** trouve un train, une gare, un bon, un collègue ou une procédure depuis n'importe quelle page.",
+    "Sept entrées : Temps réel, Journal, Opérations, Bus et taxis, PMR & Groupes, Réseau et Ressources. **Ctrl K** trouve un train, une gare, un bon, un collègue ou une procédure depuis n'importe quelle page.",
     "",
     "### ♿ Missions PMR et Groupes",
     "Synchronisés depuis DICOS par l'extension CSM : trajet, embarquement (IN) et débarquement (OUT), retard du train et **Export ALEA** prêt à encoder.",
     "",
-    "### 🚌 Bons bus et taxi",
+    "### 🚌 Bus et taxis",
     "Brouillon → Terminé → Envoyé. **«\u00a0Valider l'envoi\u00a0»** prépare le brouillon Outlook avec le PDF joint. Lignes et arrêts proposés d'après les horaires, PDF archivés.",
     "",
     "### 💬 Journal, B201 et Ma journée",
-    "Le Journal en fil de discussion (réponses, recherche, mentions @DSO), la B201 avec des notes par district et la frise de tes prises en charge du jour.",
+    "Le Journal en deux onglets, Infos et Perturbations (réponses, recherche, mentions @DSO), la B201 avec des notes par district et la frise de tes prises en charge du jour.",
     "",
     "### 🗺️ Réseau",
     "Trains en direct, horaires et relations (IC 14, S1…), lignes, gares, carte des passages à niveau avec leur borne kilométrique et zones SPI.",
@@ -67,7 +67,7 @@ const JOUR_J: CampaignTemplate = {
     "Recherche dès la première lettre (accents et fautes tolérés), favoris, et appel en un clic avec Genesys Cloud.",
     ":::",
     "",
-    "**Et aussi** : connexion par passkey (empreinte ou code de ton appareil), CSM installable comme une application, et un nouveau design avec trois styles au choix (Signal, Quai, Cabine).",
+    "**Et aussi** : connexion par passkey (empreinte ou code de ton appareil), CSM installable comme une application, et la nouvelle identité de CSM, « Encre et sable », en thème Jour ou Nuit.",
     "",
     "## À faire à ta première connexion",
     "",
@@ -77,7 +77,7 @@ const JOUR_J: CampaignTemplate = {
     "3. **Coche tes districts du jour** : la cloche et les filtres suivent tes districts.",
     ":::",
     "",
-    "Envie d'un autre look ? Choisis ton style dans le menu de ton compte › **Affichage**.",
+    "Jour, Nuit ou automatique : choisis ton thème dans le menu de ton compte › **Affichage**.",
     "",
     "::: encadre Besoin d'aide ?",
     "Toutes les nouveautés sont expliquées sur la page **Nouveautés** (en bas de la barre latérale) : https://csm.fs0ciety.org/changelog",
@@ -119,33 +119,40 @@ const ANNONCE: CampaignTemplate = {
 export const CAMPAIGN_TEMPLATES: readonly CampaignTemplate[] = [JOUR_J, ANNONCE];
 export const DEFAULT_CAMPAIGN = JOUR_J;
 
-// Couleurs du design « Signal · Jour » (design/tokens.ts : accent pétrole) ; variantes sombres dans DARK_CSS.
+// Couleurs de l'identité « Encre et sable » (design/tokens.ts, thèmes `jour` / `nuit` ; charte csm-brand) : encre pour l'action et
+// le bandeau, sable (jamais du texte sur fond clair) pour les filets et la marque ; variantes « Nuit » dans DARK_CSS.
 const C = {
-  page: "#F4F8F8",
-  panel: "#FFFFFF",
-  bar: "#14191C",
-  fg: "#14191C",
-  muted: "#4F575B",
-  border: "#DADFDF",
-  accent: "#00666B",
-  accentFg: "#FFFFFF",
-  soft: "#E6F1F1",
-  iconBg: "#E0EEEE",
-  heroText: "#D5ECEC",
-  signal: "#F8BC49",
+  page: "#F5F2EB",
+  panel: "#FDFCF9",
+  bar: "#1C1B19",
+  barText: "#ABA393",
+  fg: "#1C1B19",
+  muted: "#5F5A51",
+  border: "#E3DDD1",
+  accent: "#1C1B19",
+  accentFg: "#FBF9F4",
+  link: "#7F664E",
+  sable: "#C9B48A",
+  soft: "#F0ECE3",
+  iconBg: "#EFE7D6",
+  heroTitle: "#FBF9F4",
+  heroText: "#D9D2C4",
 };
-const FONT = "'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif";
+const FONT = "Onest,'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif";
 
 const DARK_CSS = `@media (prefers-color-scheme: dark){
-.csm-page{background:#0C0E12!important}
-.csm-panel{background:#14161A!important;border-color:#2C2F35!important}
-.csm-fg,.csm-fg p,.csm-fg li,.csm-text{color:#EBEDF0!important}
-.csm-muted,.csm-muted a{color:#AFB3B9!important}
-.csm-soft{background:#17282A!important}
-.csm-icon{background:#1D3335!important}
-.csm-link{color:#6CC9CE!important}
-.csm-rule{border-color:#2C2F35!important}
-.csm-hero{background:#0B5357!important}
+.csm-page{background:#141311!important}
+.csm-panel{background:#1B1A17!important;border-color:#33302B!important}
+.csm-fg,.csm-fg p,.csm-fg li,.csm-text{color:#EDE8DD!important}
+.csm-muted,.csm-muted a{color:#ABA393!important}
+.csm-soft{background:#23211E!important}
+.csm-icon{background:#2E2A22!important}
+.csm-link{color:#D9C7A3!important}
+.csm-rule{border-color:#33302B!important}
+.csm-bar{background:#0E0D0C!important}
+.csm-hero{background:#23211E!important}
+.csm-btn{background:#C9B48A!important;color:#141311!important}
+.csm-btn-a{color:#141311!important}
 }`;
 const MOBILE_CSS = `@media (max-width:520px){
 .csm-col{max-width:100%!important}
@@ -267,8 +274,8 @@ export function parseCampaign(src: string): CampaignSegment[] {
 // Rendu HTML
 
 type Tone = { color: string; link: string; linkClass: string };
-const BODY_TONE: Tone = { color: C.fg, link: C.accent, linkClass: "csm-link" };
-const HERO_TONE: Tone = { color: C.heroText, link: "#FFFFFF", linkClass: "" };
+const BODY_TONE: Tone = { color: C.fg, link: C.link, linkClass: "csm-link" };
+const HERO_TONE: Tone = { color: C.heroText, link: C.heroTitle, linkClass: "" };
 
 function inlineHtml(nodes: Inline[], tone: Tone = BODY_TONE): string {
   const a = (href: string, label: string) =>
@@ -321,9 +328,9 @@ function blocksHtml(blocks: Block[], size = 15): string {
         case "p":
           return `<p style="${P}">${inlineHtml(b.c)}</p>`;
         case "h":
-          return `<p style="margin:28px 0 14px;font-size:${size + 3}px;line-height:1.3;font-weight:700;color:${C.fg};border-left:4px solid ${C.accent};padding-left:10px">${inlineHtml(b.c)}</p>`;
+          return `<p style="margin:28px 0 14px;font-size:${size + 3}px;line-height:1.3;font-weight:700;color:${C.fg};border-left:4px solid ${C.sable};padding-left:10px">${inlineHtml(b.c)}</p>`;
         case "quote":
-          return `<p class="csm-muted" style="${P};border-left:3px solid ${C.accent};padding-left:12px;color:${C.muted}">${inlineHtml(b.c)}</p>`;
+          return `<p class="csm-muted" style="${P};border-left:3px solid ${C.sable};padding-left:12px;color:${C.muted}">${inlineHtml(b.c)}</p>`;
         case "code":
           return `<pre style="${P};font-family:Consolas,monospace;background:${C.soft};padding:10px;white-space:pre-wrap">${esc(b.v)}</pre>`;
         case "ul":
@@ -340,25 +347,25 @@ function blocksHtml(blocks: Block[], size = 15): string {
 
 /** Bouton « à l'épreuve d'Outlook » : couleur sur la cellule, marge interne aussi pour Outlook (mso-padding-alt). */
 function buttonHtml(label: string, href: string): string {
-  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:6px 0 22px"><tr><td bgcolor="${C.accent}" style="background:${C.accent};border-radius:6px;mso-padding-alt:13px 26px">
-<a href="${esc(href)}" style="display:inline-block;padding:13px 26px;color:${C.accentFg};font-weight:700;font-size:16px;line-height:1.2;text-decoration:none;font-family:${FONT};border-radius:6px">${esc(label)}</a>
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:6px 0 22px"><tr><td class="csm-btn" bgcolor="${C.accent}" style="background:${C.accent};border-radius:999px;mso-padding-alt:14px 30px">
+<a class="csm-btn-a" href="${esc(href)}" style="display:inline-block;padding:14px 30px;color:${C.accentFg};font-weight:600;font-size:16px;line-height:1.2;text-decoration:none;font-family:${FONT};border-radius:999px">${esc(label)}</a>
 </td></tr></table>`;
 }
 
 function heroHtml(s: { title: string; text: string }, flush: boolean): string {
   const t = parseInline(s.title);
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"${flush ? "" : ' style="margin:0 0 22px"'}><tr><td class="csm-hero csm-pad" bgcolor="${C.accent}" style="background:${C.accent};padding:34px 30px 30px;${flush ? "" : "border-radius:8px;"}font-family:${FONT}">
-<p class="csm-hero-title" style="margin:0;font-size:27px;line-height:1.25;font-weight:700;color:#FFFFFF">${inlineHtml(t, { ...HERO_TONE, color: "#FFFFFF" })}</p>
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"${flush ? "" : ' style="margin:0 0 22px"'}><tr><td class="csm-hero csm-pad" bgcolor="${C.bar}" style="background:${C.bar};padding:34px 30px 30px;${flush ? "" : "border-radius:14px;"}font-family:${FONT}">
+<p class="csm-hero-title" style="margin:0;font-size:28px;line-height:1.2;font-weight:700;letter-spacing:-0.02em;color:${C.heroTitle}">${inlineHtml(t, { ...HERO_TONE, color: C.heroTitle })}</p>
 ${s.text ? `<p style="margin:12px 0 0;font-size:16px;line-height:1.5;color:${C.heroText}">${inlineHtml(linesInline(s.text), HERO_TONE)}</p>` : ""}
 </td></tr>
-<tr><td height="4" bgcolor="${C.signal}" style="background:${C.signal};height:4px;line-height:4px;font-size:0">&nbsp;</td></tr></table>`;
+<tr><td height="4" bgcolor="${C.sable}" style="background:${C.sable};height:4px;line-height:4px;font-size:0">&nbsp;</td></tr></table>`;
 }
 
 function cardHtml(c: CampaignCard): string {
   const icon = c.icon
-    ? `<td width="40" valign="top" style="padding:0 12px 0 0"><table role="presentation" cellpadding="0" cellspacing="0"><tr><td class="csm-icon" width="40" height="40" align="center" valign="middle" bgcolor="${C.iconBg}" style="background:${C.iconBg};border-radius:8px;width:40px;height:40px;font-size:20px;line-height:40px;text-align:center" aria-hidden="true">${esc(c.icon)}</td></tr></table></td>`
+    ? `<td width="40" valign="top" style="padding:0 12px 0 0"><table role="presentation" cellpadding="0" cellspacing="0"><tr><td class="csm-icon" width="40" height="40" align="center" valign="middle" bgcolor="${C.iconBg}" style="background:${C.iconBg};border-radius:10px;width:40px;height:40px;font-size:20px;line-height:40px;text-align:center" aria-hidden="true">${esc(c.icon)}</td></tr></table></td>`
     : "";
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td class="csm-rule" style="border-top:3px solid ${C.accent};padding:14px 14px 18px 0;font-family:${FONT}">
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="border-top:3px solid ${C.sable};padding:14px 14px 18px 0;font-family:${FONT}">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px"><tr>${icon}<td class="csm-text" valign="middle" style="font-size:16px;line-height:1.3;font-weight:700;color:${C.fg}">${inlineHtml(parseInline(c.title))}</td></tr></table>
 ${blocksHtml(parseChatMarkdown(c.body), 14).replace(/margin:0 0 14px/g, "margin:0 0 8px")}
 </td></tr></table>`;
@@ -387,7 +394,7 @@ function stepsHtml(steps: string[]): string {
       (
         s,
         k,
-      ) => `<tr><td width="30" valign="top" style="padding:0 14px 14px 0"><table role="presentation" cellpadding="0" cellspacing="0"><tr><td width="30" height="30" align="center" valign="middle" bgcolor="${C.accent}" style="background:${C.accent};border-radius:15px;width:30px;height:30px;color:${C.accentFg};font-size:15px;line-height:30px;font-weight:700;text-align:center;font-family:${FONT}">${k + 1}</td></tr></table></td>
+      ) => `<tr><td width="30" valign="top" style="padding:0 14px 14px 0"><table role="presentation" cellpadding="0" cellspacing="0"><tr><td class="csm-btn" width="30" height="30" align="center" valign="middle" bgcolor="${C.accent}" style="background:${C.accent};border-radius:15px;width:30px;height:30px;color:${C.accentFg};font-size:15px;line-height:30px;font-weight:700;text-align:center;font-family:${FONT}">${k + 1}</td></tr></table></td>
 <td class="csm-text" valign="top" style="padding:4px 0 14px;font-size:15px;line-height:1.55;color:${C.fg};font-family:${FONT}">${inlineHtml(linesInline(s))}</td></tr>`,
     )
     .join("")}</table>`;
@@ -395,7 +402,7 @@ function stepsHtml(steps: string[]): string {
 
 function calloutHtml(title: string, src: string): string {
   const body = blocksHtml(parseChatMarkdown(src));
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 22px"><tr><td class="csm-soft" bgcolor="${C.soft}" style="background:${C.soft};border-left:4px solid ${C.accent};border-radius:6px;padding:16px 18px 4px;font-family:${FONT}">
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 22px"><tr><td class="csm-soft" bgcolor="${C.soft}" style="background:${C.soft};border-left:4px solid ${C.sable};border-radius:10px;padding:16px 18px 4px;font-family:${FONT}">
 ${title ? `<p style="margin:0 0 10px;font-size:16px;line-height:1.3;font-weight:700;color:${C.fg}">${inlineHtml(parseInline(title))}</p>` : ""}${body}
 </td></tr></table>`;
 }
@@ -517,10 +524,11 @@ ${preheader}
 <table role="presentation" class="csm-page" width="100%" cellpadding="0" cellspacing="0" bgcolor="${C.page}" style="background:${C.page}"><tr><td class="csm-wrap" align="center" style="padding:24px 12px">
 <!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0"><tr><td><![endif]-->
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;font-family:${FONT}">
-<tr><td class="csm-pad" bgcolor="${C.bar}" style="background:${C.bar};padding:16px 28px">
+<tr><td class="csm-pad csm-bar" bgcolor="${C.bar}" style="background:${C.bar};padding:16px 28px">
 <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-<td bgcolor="${C.accent}" style="background:${C.accent};color:${C.accentFg};font-weight:800;font-size:18px;letter-spacing:1px;padding:6px 10px;border-radius:4px;font-family:${FONT}">CSM</td>
-<td style="padding-left:12px;color:#C9D1D3;font-size:14px;font-family:${FONT}">Client Solutions · SNCB</td>
+<td width="6" bgcolor="${C.sable}" style="background:${C.sable};width:6px;border-radius:3px;font-size:0;line-height:0" aria-hidden="true">&nbsp;</td>
+<td style="padding-left:10px;color:${C.heroTitle};font-weight:700;font-size:22px;line-height:26px;letter-spacing:-0.02em;font-family:${FONT}">csm</td>
+<td style="padding-left:14px;color:${C.barText};font-size:14px;font-family:${FONT}">Client Solutions · SNCB</td>
 </tr></table></td></tr>
 ${hero ? `<tr><td>${heroHtml(hero, true)}</td></tr>` : ""}
 <tr><td class="csm-panel csm-pad csm-fg" bgcolor="${C.panel}" style="background:${C.panel};padding:28px 28px 12px;border-left:1px solid ${C.border};border-right:1px solid ${C.border};color:${C.fg}">

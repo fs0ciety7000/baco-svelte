@@ -24,6 +24,14 @@ describe("campagne d'e-mail", () => {
     // Un seul bouton (celui du texte), pas de bouton ajouté en fin d'e-mail.
     expect(r.html.match(/>Ouvrir CSM<\/a>/g)).toHaveLength(1);
     expect(r.html).toContain("prefers-color-scheme: dark");
+    // Identité « Encre et sable » : fond pierre, action encre, filets sable ; sable en action la nuit.
+    expect(r.html).toContain("background:#F5F2EB");
+    expect(r.html).toMatch(/class="csm-btn" bgcolor="#1C1B19"[^>]*border-radius:999px/);
+    expect(r.html).toContain("border-top:3px solid #C9B48A");
+    expect(r.html).toContain(".csm-btn{background:#C9B48A!important");
+    expect(r.html).not.toMatch(/#00666B|#F8BC49/i);
+    expect(r.text).toContain("Nicolas & Thomas");
+    expect(r.text).toContain("Il est fermé à partir d'aujourd'hui");
     expect(r.html).not.toMatch(/<img|<script|url\(/i);
     expect(r.text).toContain("À partir d'aujourd'hui, BACO devient CSM\n=====");
     expect(r.text).toContain("Ouvrir CSM : https://csm.fs0ciety.org/");
@@ -129,7 +137,7 @@ describe("campagne d'e-mail", () => {
     ).html;
     // Bandeau hors tête : bloc arrondi dans le contenu, le titre (objet) reste en haut.
     expect(html).toContain(">Objet</p>");
-    expect(html).toContain("border-radius:8px");
+    expect(html).toContain("border-radius:14px");
     expect(html).toContain(">Titre du bandeau</p>");
     expect(html).toContain('aria-hidden="true">📞</td>');
     expect(html).toContain("Appel <strong>en un clic</strong>");
