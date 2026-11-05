@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 
 import { saveShift } from "@/app/dashboard-actions";
 
+import { RollingTime, ShiftProgress, useLazyGsap, useSwapIn } from "./shift-motion";
+
 // Widget « Fin de service » (11 oct. 2026) : l'agent choisit son service, l'accueil décompte le temps restant.
 // Premier rendu (serveur ET hydratation) à l'heure du rendu serveur (`renderedAt`) : même contenu des deux côtés, donc
 // ni erreur d'hydratation ni saut de mise en page (CLS de 54 px en mobile avec l'ancien espace réservé, 15 oct.) ;
@@ -51,6 +53,7 @@ export function ShiftWidget({
   const [choice, setChoice] = useState(initial);
   const [now, setNow] = useState<Date | null>(() => (renderedAt ? new Date(renderedAt) : null));
   const [pending, start] = useTransition();
+  const gsap = useLazyGsap();
 
   useEffect(() => {
     let id: ReturnType<typeof setInterval> | null = null;
@@ -89,6 +92,9 @@ export function ShiftWidget({
       ? windowState(new Date(quinyx.start), new Date(quinyx.end), now)
       : null;
   const state = active && now ? shiftState(active, now) : real;
+  const swapKey = `${state?.phase ?? "aucun"}-${active?.kind ?? quinyx?.kind ?? ""}`;
+  const body = useSwapIn<HTMLDivElement>(gsap, swapKey);
+  const ending = state?.phase === "en-cours" && state.remaining <= 15 * 60_000;
 
   const chooser = (
     <div
@@ -104,7 +110,15 @@ export function ShiftWidget({
             type="button"
             aria-pressed={on}
             disabled={pending}
-            onClick={() => pick(on ? null : k)}
+            onClick={(e) => {
+              if (gsap && !on)
+                gsap.fromTo(
+                  e.currentTarget,
+                  { scale: 0.92 },
+                  { scale: 1, duration: 0.5, ease: "back.out(3)", clearProps: "transform" },
+                );
+              pick(on ? null : k);
+            }}
             className={cn(
               "flex min-h-11 cursor-pointer flex-col items-center justify-center rounded-control border px-1 py-1 transition-colors disabled:cursor-wait",
               on
@@ -139,15 +153,17 @@ export function ShiftWidget({
         {/* Heure actuelle en grand (demande du 5 nov. 2026 : « augmenter la taille de l'heure »). */}
         <div className="flex flex-col">
           <span className="text-small text-fg-muted">Il est</span>
-          <time
-            className="font-mono text-[2.25rem] leading-none font-semibold tracking-tight tabular md:text-[3.5rem]"
-            data-testid="shift-clock"
-            suppressHydrationWarning
-          >
-            {now ? secondsFmt.format(now) : "--:--:--"}
+          <time className="font-mono text-[2.25rem] leading-none font-semibold tracking-tight md:text-[3.5rem]">
+            <RollingTime
+              value={now ? secondsFmt.format(now) : "--:--:--"}
+              label={now ? secondsFmt.format(now) : "heure en chargement"}
+              gsap={gsap}
+              testId="shift-clock"
+              secondsClassName="ml-0.5 text-[0.5em] font-medium text-fg-muted"
+            />
           </time>
         </div>
-        <div className="flex min-w-0 flex-col justify-center gap-1.5">
+        <div ref={body} className="flex min-w-0 flex-col justify-center gap-1.5">
           {!now ? (
             <div className="h-12" aria-hidden />
           ) : !state ? (
@@ -158,37 +174,33 @@ export function ShiftWidget({
             <>
               <p className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                 <span className="text-small text-fg-muted">Fin de service dans</span>
-                <span
-                  className={cn(
-                    "font-mono text-[1.75rem] leading-none font-semibold tabular",
-                    state.remaining <= 15 * 60_000 ? "text-ok" : "text-fg",
-                  )}
-                  aria-hidden
-                >
-                  {clockLabel(state.remaining)}
+                <span aria-hidden>
+                  <RollingTime
+                    value={clockLabel(state.remaining)}
+                    label=""
+                    gsap={gsap}
+                    className={cn(
+                      "font-mono text-[1.75rem] leading-none font-semibold transition-colors duration-700",
+                      ending ? "text-ok" : "text-fg",
+                    )}
+                    secondsClassName="ml-0.5 text-[0.6em] font-medium opacity-70"
+                  />
                 </span>
                 <span className="text-small text-fg-muted">
                   fin à <span className="font-mono tabular text-fg">{brusselsTime(state.end)}</span>
-                  {" · "}
-                  {Math.round(state.progress * 100)} %
                 </span>
               </p>
               <p className="sr-only">
                 Il te reste {durationLabel(state.remaining)}, fin à {brusselsTime(state.end)}.
               </p>
-              <div
-                role="progressbar"
-                aria-label="Service écoulé"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={Math.round(state.progress * 100)}
-                className="h-2.5 overflow-hidden rounded-control bg-surface-2"
-              >
-                <div
-                  className="h-full w-full origin-left bg-progress transition-transform duration-1000 ease-linear motion-reduce:transition-none"
-                  style={{ transform: `scaleX(${state.progress.toFixed(4)})` }}
-                />
-              </div>
+              <ShiftProgress
+                progress={state.progress}
+                start={state.start}
+                end={state.end}
+                ending={ending}
+                gsap={gsap}
+                size="lg"
+              />
             </>
           ) : state.phase === "avant" ? (
             <p className="text-body text-fg">
@@ -221,16 +233,19 @@ export function ShiftWidget({
       ) : !state ? (
         <p className="text-small text-fg-muted">Choisis ton service pour voir le temps restant.</p>
       ) : state.phase === "en-cours" ? (
-        <div className="flex flex-col gap-2">
+        <div ref={body} className="flex flex-col gap-2">
           <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-            <p
-              className={cn(
-                "font-mono text-stat leading-none font-semibold tabular",
-                state.remaining <= 15 * 60_000 ? "text-ok" : "text-fg",
-              )}
-              aria-hidden
-            >
-              {clockLabel(state.remaining)}
+            <p aria-hidden>
+              <RollingTime
+                value={clockLabel(state.remaining)}
+                label=""
+                gsap={gsap}
+                className={cn(
+                  "font-mono text-stat leading-none font-semibold transition-colors duration-700",
+                  ending ? "text-ok" : "text-fg",
+                )}
+                secondsClassName="ml-0.5 text-[0.6em] font-medium opacity-70"
+              />
             </p>
             <p className="text-small text-fg-muted">
               fin à <span className="font-mono tabular text-fg">{brusselsTime(state.end)}</span>
@@ -240,22 +255,13 @@ export function ShiftWidget({
           <p className="sr-only">
             Il te reste {durationLabel(state.remaining)}, fin à {brusselsTime(state.end)}.
           </p>
-          <div
-            role="progressbar"
-            aria-label="Service écoulé"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.round(state.progress * 100)}
-            className="h-2 overflow-hidden rounded-control bg-surface-2"
-          >
-            <div
-              className="h-full w-full origin-left bg-progress transition-transform duration-1000 ease-linear motion-reduce:transition-none"
-              style={{ transform: `scaleX(${state.progress.toFixed(4)})` }}
-            />
-          </div>
-          <p className="text-small text-fg-muted">
-            {Math.round(state.progress * 100)} % du service · commencé à {brusselsTime(state.start)}
-          </p>
+          <ShiftProgress
+            progress={state.progress}
+            start={state.start}
+            end={state.end}
+            ending={ending}
+            gsap={gsap}
+          />
         </div>
       ) : state.phase === "avant" ? (
         <p className="text-body text-fg">

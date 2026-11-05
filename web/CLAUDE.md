@@ -751,6 +751,11 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   (premier rendu à l'heure du serveur `renderedAt`, identique serveur / hydratation, puis chaque seconde, arrêté onglet
   caché ; l'ancien espace réservé de 72 px faisait sauter l'accueil mobile de 54 px, 15 oct. 2026). `normalizeLayout` le place en tête des dispositions
   existantes ; les autres nouveaux widgets vont à la fin.
+  **Mouvement (5 nov. 2026)** : `components/dashboard/shift-motion.tsx` — `useLazyGsap()` (GSAP par `import()`, jamais en
+  mouvement réduit), `RollingTime` (chiffres qui défilent, secondes à part, texte lisible en `sr-only`, `data-testid` sur le
+  conteneur : son `textContent` peut contenir deux chiffres pendant l'animation), `ShiftProgress` (`shift-progress` : dévoilement,
+  reflet GSAP `repeat: -1` toutes les ~7 s, repère, graduations `hourTicks`, couleur `ok` dans le dernier quart d'heure),
+  `useSwapIn` (changement de phase / de service).
 - **Statut par bout (IN / OUT)** (12 oct. 2026) : `pmr_assists` / `group_missions` ont `in_status` et `out_status`
   (`1760003300`). `endStatus`, `combineStatus`, `mergeEnds` (`lib/pmr/dicos-mission.ts`, testés) : un trajet n'est
   « réalisé » que si **chaque bout assisté** l'est ; un bout absent du lot (vue DICOS limitée à une gare) garde le statut
