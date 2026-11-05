@@ -1570,6 +1570,10 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
 - 2026-11-05 — **Poussé en production** (demande de l'utilisateur) : `csm-prod` = 2fc4c7f (panneau ancré corrigé, logo en boucle,
   Genesys, Temps réel réorganisé ; aucune migration). 1er déploiement de `csm-web-prod` échoué (police Google, passager), relancé
   seul par `POST /deploy` : terminé, santé 200.
+- 2026-11-05 — **Genesys Cloud (appli de bureau)** : au clic sur un numéro, une autre application s'ouvrait (retour de
+  l'utilisateur). Vérifié sur la préversion : lien `tel:+32…` visible, clic non intercepté → c'est l'association Windows du
+  protocole TEL (Paramètres › Applications › Applications par défaut › « TEL » → Genesys Cloud), hors de portée de CSM ; rappel
+  dans « Téléphonie » corrigé (il citait à tort l'option « Dynamic Content » de l'extension).
 
 ---
 

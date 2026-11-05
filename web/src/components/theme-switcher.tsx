@@ -228,10 +228,10 @@ function TelephonyChoice() {
         ]}
       />
       <span className="text-small text-fg-muted">
-        Genesys Cloud : installe l&apos;extension Genesys Cloud du navigateur et coche, dans ses
-        options, « Enable Click-to-Dial » et « Enable Click-to-Dial in Dynamic Content » (CSM
-        affiche les numéros après le chargement de la page : sans cette 2e case, le clic ne compose
-        rien). Sur mobile, le téléphone compose toujours le numéro.
+        Genesys Cloud : CSM envoie le numéro au format international (lien tel:). C&apos;est Windows
+        qui choisit l&apos;application : si Teams ou une autre s&apos;ouvre, va dans Paramètres ›
+        Applications › Applications par défaut, cherche « TEL » et choisis Genesys Cloud. Sur
+        mobile, le téléphone compose toujours le numéro.
       </span>
     </div>
   );

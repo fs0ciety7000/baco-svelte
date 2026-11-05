@@ -15,7 +15,7 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 - **Logo animé** : dans la barre latérale (et la barre du haut sur mobile), le point de correspondance parcourt le logo en boucle, avec une pause entre deux passages. Rien ne bouge si le mouvement réduit est activé.
 - **Bande des compteurs** : les compteurs se partagent toute la largeur, sans case vide à droite.
-- **Appels Genesys Cloud** : tous les numéros cliquables (bons bus et taxi compris) sont au format international. Le réglage « Téléphonie » rappelle de cocher « Enable Click-to-Dial in Dynamic Content » dans l'extension Genesys Cloud, sans quoi le clic ne compose rien dans CSM.
+- **Appels Genesys Cloud** : tous les numéros cliquables (bons bus et taxi compris) sont au format international. Si un clic sur un numéro ouvre Teams ou une autre application, c'est le réglage de Windows : Paramètres › Applications › Applications par défaut, type de lien « TEL » → Genesys Cloud (rappel dans le réglage « Téléphonie »).
 
 ### Corrections
 
