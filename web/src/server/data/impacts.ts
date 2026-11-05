@@ -180,6 +180,6 @@ export async function todayPmr(user: SessionUser): Promise<TodayPmr | null> {
     groups: groups.rows.length,
     impacted,
     lastSync: sync?.lastAt ?? null,
-    next: legs.slice(0, 6),
+    next: legs.slice(0, 12),
   };
 }

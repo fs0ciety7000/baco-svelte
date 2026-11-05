@@ -53,15 +53,18 @@ describe("WidgetEditor", () => {
     expect(order()).toEqual(["trains", "service", "impacts"]);
   });
 
-  it("poignée nommée et focalisable, bascule de largeur", () => {
+  it("poignée nommée et focalisable, redimensionnement au clavier", () => {
     render(<Harness initial={initial} />);
     const handle = screen.getByRole("button", { name: "Déplacer « Missions impactées »" });
     expect(handle).toHaveAttribute("aria-roledescription", "widget déplaçable");
-    const size = screen.getByRole("button", { name: /^Largeur de « Missions impactées »/ });
-    expect(size).toHaveAttribute("aria-pressed", "true");
-    fireEvent.click(size);
-    expect(
-      screen.getByRole("button", { name: /^Largeur de « Missions impactées »/ }),
-    ).toHaveAttribute("aria-pressed", "false");
+    const resize = screen.getByRole("button", { name: /^Redimensionner « Missions impactées »/ });
+    // jsdom n'a pas de grille CSS : `gridMetrics` retombe sur 6 colonnes (une colonne = 2 sur 12).
+    const before = resize.getAttribute("aria-label");
+    fireEvent.keyDown(resize, { key: "ArrowDown" });
+    const after = screen
+      .getByRole("button", { name: /^Redimensionner « Missions impactées »/ })
+      .getAttribute("aria-label");
+    expect(after).not.toBe(before);
+    expect(after).toMatch(/6 rangées/);
   });
 });

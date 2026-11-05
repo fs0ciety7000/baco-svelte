@@ -345,7 +345,7 @@ export function TodayPmrWidget({ data }: { data: TodayPmr | null }) {
       </p>
       {data.next.length ? (
         <ul className="flex flex-col gap-1.5">
-          {data.next.map((m) => (
+          {data.next.slice(0, 6).map((m) => (
             <li key={m.id}>
               <Link
                 href={m.href}

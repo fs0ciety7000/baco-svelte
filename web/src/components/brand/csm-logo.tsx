@@ -44,7 +44,12 @@ export function CsmSymbol({
       role={decorative ? undefined : "img"}
       aria-label={decorative ? undefined : "CSM"}
       aria-hidden={decorative || undefined}
-      className={cn("csm-logo overflow-visible", animate && "csm-logo-play", animate === "loop" && "csm-logo-loop", className)}
+      className={cn(
+        "csm-logo overflow-visible",
+        animate && "csm-logo-play",
+        animate === "loop" && "csm-logo-loop",
+        className,
+      )}
     >
       <path d={SYMBOL_LINES} fill="var(--brand-line, var(--fg))" />
       <path d={SYMBOL_PASSAGE} fill="var(--brand-sable)" />
@@ -70,7 +75,12 @@ export function CsmLogo({
       role={decorative ? undefined : "img"}
       aria-label={decorative ? undefined : "CSM"}
       aria-hidden={decorative || undefined}
-      className={cn("csm-logo overflow-visible", animate && "csm-logo-play", animate === "loop" && "csm-logo-loop", className)}
+      className={cn(
+        "csm-logo overflow-visible",
+        animate && "csm-logo-play",
+        animate === "loop" && "csm-logo-loop",
+        className,
+      )}
     >
       <path d={LOCKUP_LINES} fill="var(--brand-line, var(--fg))" />
       <path d={LOCKUP_PASSAGE} fill="var(--brand-sable)" />

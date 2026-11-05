@@ -14,6 +14,8 @@ export const WIDGET_IDS = [
   "perturbations",
   "travaux",
   "mentions",
+  // « Prochaines prises en charge » (5 nov. 2026) : ex-colonne de droite de l'accueil, devenue un widget.
+  "prochaines",
 ] as const;
 // « equipe » (Présents aujourd'hui) retiré le 9 oct. 2026 : pas de source fiable sans planning.
 export type WidgetId = (typeof WIDGET_IDS)[number];
@@ -21,16 +23,60 @@ export type WidgetId = (typeof WIDGET_IDS)[number];
 /** Widgets sur deux colonnes par défaut (≥ 768 px). */
 export const DEFAULT_WIDE: readonly WidgetId[] = ["commandes", "impacts", "a-confirmer"];
 
+/**
+ * Taille d'un widget (5 nov. 2026, redimensionnement à la souris) : `w` = colonnes sur une grille de 12 (≥ 1280 px ;
+ * moitié arrondie sur la grille de 6 entre 768 et 1279 px), `h` = rangées de `--dash-row` (grille en `globals.css`).
+ * Sous 768 px : une colonne, hauteur du contenu.
+ */
+export const SIZE_LIMITS = { minW: 3, maxW: 12, minH: 2, maxH: 16 } as const;
+export const sizeSchema = z.object({
+  w: z.number().int().min(SIZE_LIMITS.minW).max(SIZE_LIMITS.maxW),
+  h: z.number().int().min(SIZE_LIMITS.minH).max(SIZE_LIMITS.maxH),
+});
+export type WidgetSize = z.infer<typeof sizeSchema>;
+
 export const layoutSchema = z.object({
   order: z.array(z.enum(WIDGET_IDS)),
   hidden: z.array(z.enum(WIDGET_IDS)),
   // Taille choisie par l'agent (4 nov. 2026) : facultative, les dispositions enregistrées avant restent valides.
   wide: z.array(z.enum(WIDGET_IDS)).optional(),
+  // Taille libre (5 nov. 2026) : remplace `wide` pour les widgets présents ici.
+  sizes: z.partialRecord(z.enum(WIDGET_IDS), sizeSchema).optional(),
 });
 export type DashboardLayout = z.infer<typeof layoutSchema>;
 
+/** Taille par défaut : trois rangées pleines sans trou sur 12 colonnes (4 + 4 + 4, 6 + 6, 3 × 4). */
+export const DEFAULT_SIZES: Record<WidgetId, WidgetSize> = {
+  service: { w: 12, h: 3 },
+  commandes: { w: 8, h: 4 },
+  "a-confirmer": { w: 8, h: 6 },
+  "pmr-jour": { w: 4, h: 8 },
+  prochaines: { w: 4, h: 8 },
+  mentions: { w: 4, h: 8 },
+  "main-courante": { w: 6, h: 7 },
+  travaux: { w: 6, h: 7 },
+  raccourcis: { w: 3, h: 5 },
+  impacts: { w: 3, h: 5 },
+  trains: { w: 3, h: 5 },
+  perturbations: { w: 3, h: 5 },
+};
+
 export const DEFAULT_LAYOUT: DashboardLayout = {
-  order: [...WIDGET_IDS],
+  // « service » (bandeau en tête), « commandes » et « a-confirmer » (repris par l'accueil) ne sont pas dans la grille.
+  order: [
+    "service",
+    "pmr-jour",
+    "prochaines",
+    "mentions",
+    "main-courante",
+    "travaux",
+    "raccourcis",
+    "impacts",
+    "trains",
+    "perturbations",
+    "commandes",
+    "a-confirmer",
+  ],
   hidden: [],
   wide: [...DEFAULT_WIDE],
 };
@@ -40,7 +86,7 @@ export function normalizeLayout(value: unknown): DashboardLayout {
   // Widgets retirés depuis (ex. « equipe ») : ignorés au lieu de faire perdre toute la disposition.
   const known = (list: unknown) =>
     Array.isArray(list) ? list.filter((x) => (WIDGET_IDS as readonly unknown[]).includes(x)) : list;
-  const v = value as { order?: unknown; hidden?: unknown; wide?: unknown } | null;
+  const v = value as { order?: unknown; hidden?: unknown; wide?: unknown; sizes?: unknown } | null;
   const parsed = layoutSchema.safeParse(
     v && typeof v === "object"
       ? {
@@ -48,6 +94,7 @@ export function normalizeLayout(value: unknown): DashboardLayout {
           hidden: known(v.hidden),
           // Taille absente ou illisible : tailles par défaut, sans perdre l'ordre.
           wide: Array.isArray(v.wide) ? known(v.wide) : undefined,
+          sizes: knownSizes(v.sizes),
         }
       : value,
   );
@@ -55,15 +102,87 @@ export function normalizeLayout(value: unknown): DashboardLayout {
   const order = [...new Set(parsed.data.order)];
   // « Fin de service » (11 oct. 2026) apparaît en tête chez les agents qui ont déjà une disposition ; les autres
   // nouveaux widgets à la fin.
+  // « Prochaines prises en charge » (5 nov. 2026) juste après : elle quitte la colonne de droite pour la grille.
   for (const id of WIDGET_IDS) {
     if (order.includes(id)) continue;
     if (id === "service") order.unshift(id);
+    else if (id === "prochaines") order.splice(order[0] === "service" ? 1 : 0, 0, id);
     else order.push(id);
   }
-  return {
+  const out: DashboardLayout = {
     order,
     hidden: [...new Set(parsed.data.hidden)],
     wide: parsed.data.wide ? [...new Set(parsed.data.wide)] : [...DEFAULT_WIDE],
+  };
+  if (parsed.data.sizes && Object.keys(parsed.data.sizes).length) out.sizes = parsed.data.sizes;
+  return out;
+}
+
+/** Tailles enregistrées lisibles seulement (widget connu, taille valide) ; les autres retombent sur le défaut. */
+function knownSizes(value: unknown): Partial<Record<WidgetId, WidgetSize>> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const out: Partial<Record<WidgetId, WidgetSize>> = {};
+  for (const [k, v] of Object.entries(value)) {
+    if (!(WIDGET_IDS as readonly string[]).includes(k)) continue;
+    const size = sizeSchema.safeParse(v);
+    if (size.success) out[k as WidgetId] = size.data;
+  }
+  return out;
+}
+
+const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+
+/**
+ * Taille affichée : choix de l'agent, sinon la taille par défaut ; une disposition d'avant le 5 nov. garde sa largeur
+ * « Large » / « Normal » (8 / 4 colonnes) avec la hauteur par défaut.
+ */
+export function sizeOf(layout: DashboardLayout, id: WidgetId): WidgetSize {
+  const chosen = layout.sizes?.[id];
+  if (chosen) return chosen;
+  const base = DEFAULT_SIZES[id];
+  if (!layout.wide || layout.sizes) return base;
+  return { w: layout.wide.includes(id) ? Math.max(base.w, 8) : Math.min(base.w, 4), h: base.h };
+}
+
+export function setSize(layout: DashboardLayout, id: WidgetId, size: WidgetSize): DashboardLayout {
+  const next = {
+    w: clamp(Math.round(size.w), SIZE_LIMITS.minW, SIZE_LIMITS.maxW),
+    h: clamp(Math.round(size.h), SIZE_LIMITS.minH, SIZE_LIMITS.maxH),
+  };
+  const current = sizeOf(layout, id);
+  if (current.w === next.w && current.h === next.h && layout.sizes?.[id]) return layout;
+  // Première taille libre : on fige celles des autres widgets (sinon l'ancienne largeur « Large » serait perdue).
+  const sizes = layout.sizes
+    ? { ...layout.sizes }
+    : Object.fromEntries(WIDGET_IDS.map((w) => [w, sizeOf(layout, w)]));
+  return { ...layout, sizes: { ...sizes, [id]: next } };
+}
+
+/** Colonnes occupées par un widget sur une grille de `cols` colonnes (12 dès 1280 px, 6 entre 768 et 1279 px). */
+export function spanOf(size: WidgetSize, cols: 6 | 12): number {
+  return cols === 12 ? size.w : clamp(Math.round(size.w / 2), 2, 6);
+}
+
+/**
+ * Taille après un glisser de la poignée (`dx`, `dy` en px depuis le début) : arrondie à la case la plus proche de la
+ * grille affichée (`cols` colonnes de `colPx`, rangées de `rowPx`, écarts compris).
+ */
+export function resizeBy(
+  start: WidgetSize,
+  dx: number,
+  dy: number,
+  grid: { cols: 6 | 12; colPx: number; rowPx: number },
+): WidgetSize {
+  const span = clamp(
+    Math.round(spanOf(start, grid.cols) + dx / grid.colPx),
+    grid.cols === 12 ? SIZE_LIMITS.minW : 2,
+    grid.cols,
+  );
+  const w = grid.cols === 12 ? span : span * 2;
+  // Sur la grille de 6, une largeur inchangée garde sa valeur fine (3, 5…) : pas de saut en passant la souris.
+  return {
+    w: clamp(span === spanOf(start, grid.cols) ? start.w : w, SIZE_LIMITS.minW, SIZE_LIMITS.maxW),
+    h: clamp(Math.round(start.h + dy / grid.rowPx), SIZE_LIMITS.minH, SIZE_LIMITS.maxH),
   };
 }
 

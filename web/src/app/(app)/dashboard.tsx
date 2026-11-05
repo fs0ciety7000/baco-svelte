@@ -16,7 +16,7 @@ import {
 } from "@/components/ops/dashboard-widgets";
 import { ShiftWidget, type QuinyxShift } from "@/components/dashboard/shift-widget";
 import { IncidentBanner } from "@/components/dashboard/incident-banner";
-import { KpiStrip, NextPickups, todoItems } from "@/components/dashboard/todo";
+import { KpiStrip, NextPickupsList, todoItems } from "@/components/dashboard/todo";
 import { TodoQueue } from "@/components/dashboard/todo-queue";
 import type { Incident } from "@/lib/ops/incident";
 import { ModuleTabs } from "@/components/shell/module-tabs";
@@ -28,10 +28,11 @@ import { StatCard } from "@/components/ui/stat-card";
 import { StatusBadge, statusColor } from "@/components/ui/status-badge";
 import { ListCard } from "@/components/ui/table";
 import { toast } from "@/components/ui/toast";
-import { WidgetEditor } from "@/components/dashboard/widget-editor";
+import { gridVars, WidgetEditor } from "@/components/dashboard/widget-editor";
 import {
   DEFAULT_LAYOUT,
-  isWide,
+  setHidden,
+  sizeOf,
   type DashboardLayout,
   type WidgetId,
 } from "@/design/dashboard-layout";
@@ -60,6 +61,7 @@ const TITLES: Record<WidgetId, { eyebrow: string; title: string }> = {
   "main-courante": { eyebrow: "Opérations", title: "Journal" },
   perturbations: { eyebrow: "Opérations", title: "Perturbations" },
   travaux: { eyebrow: "Opérations", title: "Travaux" },
+  prochaines: { eyebrow: "PMR et groupes", title: "Prochaines prises en charge" },
 };
 
 const dateLabel = new Intl.DateTimeFormat("fr-BE", {
@@ -210,44 +212,57 @@ function WidgetBody({
       return <DisturbanceWidget kind="incident" allowed={ops.favorites !== null} />;
     case "travaux":
       return <DisturbanceWidget kind="travaux" allowed={ops.favorites !== null} />;
+    case "prochaines":
+      return ops.today ? (
+        <NextPickupsList data={ops.today} max={12} />
+      ) : (
+        <EmptyState title="Accès restreint" description="Tu n'as pas accès aux missions PMR." />
+      );
   }
 }
 
-function Widget({ id, wide, children }: { id: WidgetId; wide: boolean; children: ReactNode }) {
+function Widget({
+  id,
+  layout,
+  children,
+}: {
+  id: WidgetId;
+  layout: DashboardLayout;
+  children: ReactNode;
+}) {
   const meta = TITLES[id];
   return (
     <div
       data-stagger
       data-widget={id}
-      className={cn(
-        "@container min-w-0",
-        wide && "md:col-span-2",
-        // « Fin de service » est dans la colonne droite de l'accueil dès 1280 px.
-        id === "service" && "xl:hidden",
-      )}
+      // Taille choisie dans « Personnaliser » (5 nov. 2026) : colonnes et rangées de `.dash-grid` ; contenu plus haut que
+      // le widget = défilement dans le widget (positionné : voir CLAUDE.md, conteneur à défilement interne).
+      style={gridVars(sizeOf(layout, id))}
+      className="dash-item @container min-w-0"
     >
-      <Card className="h-full">
+      <Card className="flex h-full flex-col">
         <CardHeader
           eyebrow={meta.eyebrow}
           title={meta.title}
           actions={
             id === "commandes" || id === "a-confirmer" ? (
               <LiveRefresh quiet topics={["bus_orders"]} />
-            ) : id === "impacts" || id === "pmr-jour" ? (
+            ) : id === "impacts" || id === "pmr-jour" || id === "prochaines" ? (
               <LiveRefresh quiet topics={["mission_trains", "pmr_assists"]} />
             ) : id === "mentions" ? (
               <LiveRefresh quiet topics={["notifications"]} />
             ) : null
           }
         />
-        <CardContent>{children}</CardContent>
+        <CardContent className="relative min-h-0 flex-1 md:overflow-y-auto">{children}</CardContent>
       </Card>
     </div>
   );
 }
 
 const sameLayout = (a: DashboardLayout, b: DashboardLayout) =>
-  JSON.stringify([a.order, a.hidden, a.wide]) === JSON.stringify([b.order, b.hidden, b.wide]);
+  JSON.stringify([a.order, a.hidden, a.wide, a.sizes ?? null]) ===
+  JSON.stringify([b.order, b.hidden, b.wide, b.sizes ?? null]);
 
 export function Dashboard({
   firstName,
@@ -304,18 +319,16 @@ export function Dashboard({
     });
   };
 
-  // « Vue du jour » et « À envoyer » sont repris par la bande de compteurs et la file « À traiter » (11 oct. 2026).
-  const absorbed = (id: WidgetId) => id === "commandes" || id === "a-confirmer";
+  // « Vue du jour » et « À envoyer » sont repris par la bande de compteurs et la file « À traiter » (11 oct. 2026) ;
+  // « Fin de service » est le bandeau en tête (5 nov. 2026), masquable dans « Personnaliser ».
+  const absorbed = (id: WidgetId) => id === "commandes" || id === "a-confirmer" || id === "service";
   const shown: WidgetId[] = layout.order.filter(
     (id) => !absorbed(id) && !layout.hidden.includes(id),
   );
   const hiddenIds: WidgetId[] = layout.order.filter(
     (id) => !absorbed(id) && layout.hidden.includes(id),
   );
-  // Colonne droite (≥ 1280 px) : « Fin de service » si le widget est affiché (il quitte alors la grille à cette largeur),
-  // « Prochaines prises en charge » avec le droit des missions.
   const showShift = !layout.hidden.includes("service");
-  const aside = showShift || !!ops.today;
   const service = serviceLabel(ops.shift, ops.quinyx);
 
   return (
@@ -337,42 +350,26 @@ export function Dashboard({
           {service ? ` · ${service}` : ""}
         </p>
       </header>
+      {/* « Fin de service » en bandeau pleine largeur (5 nov. 2026 : l'ancienne colonne de droite est supprimée). */}
+      {showShift ? (
+        <ShiftWidget
+          variant="banner"
+          initial={ops.shift}
+          quinyx={ops.quinyx}
+          renderedAt={ops.renderedAt}
+        />
+      ) : null}
       {incident ? <IncidentBanner incident={incident} /> : null}
       <KpiStrip stats={stats} today={ops.today} impacts={ops.impacts} seen={ops.todoSeen} />
-      {/* File « À traiter » ; dès 1280 px, colonne droite « Fin de service » + « Prochaines prises en charge »
-          (v4, lot 4). Les widgets restent personnalisables en dessous. */}
-      <div className="flex flex-col gap-4 xl:grid xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start xl:gap-5">
-        <TodoQueue
-          items={todoItems({
-            stats,
-            impacts: ops.impacts,
-            mentions: ops.mentions,
-            log: ops.log,
-          })}
-          seen={ops.todoSeen ?? []}
-        />
-        {aside ? (
-          <aside
-            className="hidden flex-col gap-4 xl:flex"
-            aria-label="Mon service et prochaines prises en charge"
-            data-testid="home-aside"
-          >
-            {showShift ? (
-              <Card className="min-w-0">
-                <CardHeader title="Fin de service" />
-                <CardContent className="pt-3">
-                  <ShiftWidget
-                    initial={ops.shift}
-                    quinyx={ops.quinyx}
-                    renderedAt={ops.renderedAt}
-                  />
-                </CardContent>
-              </Card>
-            ) : null}
-            {ops.today ? <NextPickups data={ops.today} /> : null}
-          </aside>
-        ) : null}
-      </div>
+      <TodoQueue
+        items={todoItems({
+          stats,
+          impacts: ops.impacts,
+          mentions: ops.mentions,
+          log: ops.log,
+        })}
+        seen={ops.todoSeen ?? []}
+      />
       {/* Widgets (4 nov. 2026) : la personnalisation se fait sur place, au-dessus de la grille qu'elle modifie. */}
       <section
         aria-labelledby="widgets-title"
@@ -393,8 +390,8 @@ export function Dashboard({
             </h2>
             {editing ? (
               <p className="text-small text-fg-muted" role="status">
-                Glisse une ligne (appui long au doigt) ou utilise les flèches. Enregistré quand tu
-                cliques sur Terminé.
+                Glisse un widget pour le déplacer (appui long au doigt), tire sa poignée en bas à
+                droite pour l&apos;agrandir ou le réduire. Enregistré quand tu cliques sur Terminé.
               </p>
             ) : null}
           </div>
@@ -429,32 +426,39 @@ export function Dashboard({
           </div>
         </div>
         {editing ? (
-          <WidgetEditor
-            layout={layout}
-            visible={shown}
-            hidden={hiddenIds}
-            meta={(id) => ({
-              ...TITLES[id],
-              note:
-                id === "service"
-                  ? "Sur grand écran, affiché dans la colonne de droite."
-                  : undefined,
-            })}
-            onChange={setLayout}
-          />
+          <>
+            <WidgetEditor
+              layout={layout}
+              visible={shown}
+              hidden={hiddenIds}
+              meta={(id) => TITLES[id]}
+              preview={(id) => <WidgetBody id={id} stats={stats} ops={ops} />}
+              onChange={setLayout}
+            />
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-box border border-dashed border-border-strong py-1.5 pr-1.5 pl-3">
+              <span className="min-w-0 text-small">
+                <span className="font-medium text-fg">Bandeau « Fin de service »</span>
+                <span className="text-fg-muted"> · en tête de la page</span>
+              </span>
+              <Button
+                size="sm"
+                data-testid="toggle-shift-banner"
+                aria-pressed={showShift}
+                onClick={() => setLayout(setHidden(layout, "service", showShift))}
+              >
+                {showShift ? "Masquer" : "Afficher"}
+              </Button>
+            </div>
+          </>
         ) : shown.length === 0 ? (
           <EmptyState
             title="Aucun widget affiché"
             description="Clique sur Personnaliser pour en ajouter."
           />
         ) : (
-          <div
-            className="grid grid-flow-row-dense grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3"
-            data-testid="dashboard-grid"
-            data-compact-empty
-          >
+          <div className="dash-grid" data-testid="dashboard-grid" data-compact-empty>
             {shown.map((id) => (
-              <Widget key={id} id={id} wide={isWide(layout, id)}>
+              <Widget key={id} id={id} layout={layout}>
                 <WidgetBody id={id} stats={stats} ops={ops} />
               </Widget>
             ))}

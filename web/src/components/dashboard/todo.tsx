@@ -319,6 +319,48 @@ export function KpiStrip({
 }
 
 /** Prochaines prises en charge (colonne droite de l'accueil ≥ 1280 px) : heure, gare, sens, train et retard. Sans nom. */
+/** Liste des prochaines prises en charge (corps du widget « Prochaines prises en charge », 5 nov. 2026). */
+export function NextPickupsList({ data, max = 5 }: { data: TodayPmr; max?: number }) {
+  if (!data.next.length)
+    return <EmptyState title="Plus aucune prise en charge prévue aujourd'hui" />;
+  return (
+    <ul className="flex flex-col" data-testid="next-pickups-list">
+      {data.next.slice(0, max).map((m) => (
+        <li
+          key={m.id}
+          className="border-t border-[color-mix(in_oklab,var(--border)_70%,transparent)] first:border-t-0"
+        >
+          <Link
+            href={m.href}
+            className="-mx-2 grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-2.5 rounded-control px-2 py-2 hover:bg-surface-2"
+          >
+            <span className="font-mono text-body font-medium tabular">{m.time}</span>
+            <span className="min-w-0 text-small">
+              <span className="block truncate">
+                <span className="font-medium text-fg">{m.station}</span>
+                <span className="text-fg-muted"> · {m.io}</span>
+              </span>
+              {m.impact ? (
+                <span
+                  className={cn(
+                    "block font-mono tabular",
+                    m.impact.cancelled || m.impact.delay >= 15 ? "text-danger" : "text-warn",
+                  )}
+                >
+                  {m.impact.cancelled ? "train supprimé" : `retard +${m.impact.delay} min`}
+                </span>
+              ) : (
+                <span className="block truncate text-fg-subtle">{m.detail}</span>
+              )}
+            </span>
+            <TrainChip train={m.train} taxi={m.train === "Taxi"} size="sm" />
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function NextPickups({ data }: { data: TodayPmr }) {
   return (
     <Card data-testid="next-pickups" className="min-w-0">
@@ -330,46 +372,9 @@ export function NextPickups({ data }: { data: TodayPmr }) {
           </Link>
         }
       />
-      {data.next.length ? (
-        <ul className="flex flex-col px-4 pt-1 pb-3">
-          {data.next.slice(0, 5).map((m) => (
-            <li
-              key={m.id}
-              className="border-t border-[color-mix(in_oklab,var(--border)_70%,transparent)] first:border-t-0"
-            >
-              <Link
-                href={m.href}
-                className="-mx-2 grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-2.5 rounded-control px-2 py-2 hover:bg-surface-2"
-              >
-                <span className="font-mono text-body font-medium tabular">{m.time}</span>
-                <span className="min-w-0 text-small">
-                  <span className="block truncate">
-                    <span className="font-medium text-fg">{m.station}</span>
-                    <span className="text-fg-muted"> · {m.io}</span>
-                  </span>
-                  {m.impact ? (
-                    <span
-                      className={cn(
-                        "block font-mono tabular",
-                        m.impact.cancelled || m.impact.delay >= 15 ? "text-danger" : "text-warn",
-                      )}
-                    >
-                      {m.impact.cancelled ? "train supprimé" : `retard +${m.impact.delay} min`}
-                    </span>
-                  ) : (
-                    <span className="block truncate text-fg-subtle">{m.detail}</span>
-                  )}
-                </span>
-                <TrainChip train={m.train} taxi={m.train === "Taxi"} size="sm" />
-              </Link>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="px-4 pt-1 pb-4">
-          <EmptyState title="Plus aucune prise en charge prévue aujourd'hui" />
-        </div>
-      )}
+      <div className="px-4 pt-1 pb-3">
+        <NextPickupsList data={data} />
+      </div>
     </Card>
   );
 }

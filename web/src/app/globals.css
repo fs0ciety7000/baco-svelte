@@ -237,6 +237,36 @@
   }
 }
 
+/* Grille des widgets de Temps réel (5 nov. 2026, redimensionnement à la souris) : 12 colonnes dès 1280 px, 6 entre 768 et
+   1279 px, rangées de --dash-row ; un widget occupe --w-xl / --w-md colonnes et --h rangées (dashboard-layout.ts).
+   Placement dense : un petit widget comble le trou laissé par un grand. Sous 768 px : une colonne, hauteur du contenu. */
+.dash-grid {
+  --dash-row: 2.5rem;
+  --dash-gap: 1rem;
+  display: grid;
+  gap: var(--dash-gap);
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-flow: row dense;
+}
+@media (min-width: 48rem) {
+  .dash-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-auto-rows: var(--dash-row);
+  }
+  .dash-item {
+    grid-column: span var(--w-md) / span var(--w-md);
+    grid-row: span var(--h) / span var(--h);
+  }
+}
+@media (min-width: 80rem) {
+  .dash-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+  .dash-item {
+    grid-column: span var(--w-xl) / span var(--w-xl);
+  }
+}
+
 [data-density="compact"] {
   --control-h: 2rem;
   --control-h-sm: 1.75rem;

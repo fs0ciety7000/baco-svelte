@@ -8,6 +8,10 @@ import {
   reorder,
   setHidden,
   setWide,
+  resizeBy,
+  setSize,
+  sizeOf,
+  spanOf,
   step,
 } from "./dashboard-layout";
 
@@ -19,19 +23,23 @@ describe("disposition du tableau de bord", () => {
 
   it("complète les widgets manquants et dédoublonne", () => {
     const l = normalizeLayout({ order: ["trains", "trains", "commandes"], hidden: ["travaux"] });
-    expect(l.order.slice(0, 3)).toEqual(["service", "trains", "commandes"]);
+    // « Prochaines prises en charge » (5 nov. 2026) juste après « Fin de service ».
+    expect(l.order.slice(0, 4)).toEqual(["service", "prochaines", "trains", "commandes"]);
     expect(l.order).toHaveLength(DEFAULT_LAYOUT.order.length);
     expect(l.hidden).toEqual(["travaux"]);
   });
 
   it("ignore un widget retiré (« equipe ») sans perdre la disposition", () => {
     const l = normalizeLayout({ order: ["equipe", "trains"], hidden: ["equipe", "travaux"] });
-    expect(l.order.slice(0, 2)).toEqual(["service", "trains"]);
+    expect(l.order.slice(0, 3)).toEqual(["service", "prochaines", "trains"]);
     expect(l.hidden).toEqual(["travaux"]);
   });
 
   it("déplace d'un cran, sans sortir des bornes", () => {
-    expect(move(DEFAULT_LAYOUT, "impacts", -1).order.slice(1, 3)).toEqual(["impacts", "commandes"]);
+    expect(move(DEFAULT_LAYOUT, "prochaines", -1).order.slice(1, 3)).toEqual([
+      "prochaines",
+      "pmr-jour",
+    ]);
     expect(move(DEFAULT_LAYOUT, "service", -1)).toBe(DEFAULT_LAYOUT);
   });
 });
@@ -39,7 +47,7 @@ describe("disposition du tableau de bord", () => {
 describe("personnalisation (4 nov. 2026)", () => {
   const visible = ["service", "impacts", "trains", "travaux"] as const;
   const base = normalizeLayout({
-    order: ["service", "commandes", "impacts", "trains", "a-confirmer", "travaux"],
+    order: ["service", "commandes", "impacts", "trains", "a-confirmer", "travaux", "prochaines"],
     hidden: [],
   });
 
@@ -51,7 +59,7 @@ describe("personnalisation (4 nov. 2026)", () => {
     expect(isWide(l, "impacts")).toBe(false);
     // Taille illisible : défauts, sans perdre l'ordre.
     const odd = normalizeLayout({ order: ["trains"], hidden: [], wide: "x" });
-    expect(odd.order[1]).toBe("trains");
+    expect(odd.order[2]).toBe("trains");
     expect(isWide(odd, "impacts")).toBe(true);
   });
 
@@ -88,5 +96,45 @@ describe("personnalisation (4 nov. 2026)", () => {
     ]);
     expect(step(base, visible, "service", -1)).toBe(base);
     expect(step(base, visible, "travaux", 1)).toBe(base);
+  });
+});
+
+describe("taille libre (5 nov. 2026)", () => {
+  it("dérive la taille d'une ancienne disposition « Large / Normal », puis la fige au premier redimensionnement", () => {
+    const old = normalizeLayout({ order: [], hidden: [], wide: ["trains"] });
+    expect(sizeOf(old, "trains").w).toBe(8);
+    expect(sizeOf(old, "mentions").w).toBe(4);
+    const l = setSize(old, "mentions", { w: 6, h: 9 });
+    expect(sizeOf(l, "mentions")).toEqual({ w: 6, h: 9 });
+    // La largeur « Large » de « trains » est gardée.
+    expect(sizeOf(l, "trains").w).toBe(8);
+    expect(normalizeLayout(l).sizes?.mentions).toEqual({ w: 6, h: 9 });
+  });
+
+  it("borne les tailles et ignore une taille illisible", () => {
+    expect(sizeOf(setSize(DEFAULT_LAYOUT, "trains", { w: 40, h: 0 }), "trains")).toEqual({
+      w: 12,
+      h: 2,
+    });
+    const l = normalizeLayout({ order: [], hidden: [], sizes: { trains: { w: 1 }, x: {} } });
+    expect(l.sizes).toBeUndefined();
+  });
+
+  it("colonnes occupées sur 12 et sur 6", () => {
+    expect(spanOf({ w: 4, h: 5 }, 12)).toBe(4);
+    expect(spanOf({ w: 4, h: 5 }, 6)).toBe(2);
+    expect(spanOf({ w: 3, h: 5 }, 6)).toBe(2);
+    expect(spanOf({ w: 12, h: 5 }, 6)).toBe(6);
+  });
+
+  it("aimante le glisser de la poignée aux cases de la grille", () => {
+    const grid = { cols: 12 as const, colPx: 100, rowPx: 56 };
+    expect(resizeBy({ w: 4, h: 5 }, 140, 30, grid)).toEqual({ w: 5, h: 6 });
+    expect(resizeBy({ w: 4, h: 5 }, 40, -20, grid)).toEqual({ w: 4, h: 5 });
+    expect(resizeBy({ w: 4, h: 5 }, -900, -900, grid)).toEqual({ w: 3, h: 2 });
+    // Grille de 6 : une colonne = 2 sur 12 ; largeur fine gardée tant que la colonne ne change pas.
+    const md = { cols: 6 as const, colPx: 120, rowPx: 56 };
+    expect(resizeBy({ w: 5, h: 5 }, 30, 0, md)).toEqual({ w: 5, h: 5 });
+    expect(resizeBy({ w: 4, h: 5 }, 130, 0, md)).toEqual({ w: 6, h: 5 });
   });
 });

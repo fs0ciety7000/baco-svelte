@@ -38,7 +38,9 @@ test("navigation principale et onglets en routes", async ({ page, isMobile }, te
     const sheet = page.getByRole("dialog", { name: "Plus" });
     await expect(sheet.getByRole("link", { name: "Opérations", exact: true })).toBeVisible();
     await expect(sheet.getByRole("link", { name: "Réseau", exact: true })).toBeVisible();
-    await expect(sheet.getByRole("link", { name: "Annuaire et ressources", exact: true })).toBeVisible();
+    await expect(
+      sheet.getByRole("link", { name: "Annuaire et ressources", exact: true }),
+    ).toBeVisible();
     // Module Équipe supprimé ; PACO/RCCA : pas d'administration.
     await expect(sheet.getByRole("link", { name: "Équipe", exact: true })).toHaveCount(0);
     await expect(sheet.getByRole("link", { name: "Administration" })).toHaveCount(0);
@@ -172,7 +174,7 @@ test("palette ⌘K : s'ouvre au raccourci, jamais sur un « K » tapé, et navig
 test("tableau de bord : personnaliser, réordonner, masquer, mémoriser", async ({ page }) => {
   await login(page);
   const widgets = page.getByTestId("dashboard-grid").locator("[data-widget]");
-  // Mode « Personnaliser » (4 nov. 2026) : une ligne par widget affiché, les masqués à part.
+  // Mode « Personnaliser » (5 nov. 2026) : la grille, un cadre par widget affiché, les masqués à part.
   const rows = page.getByTestId("dashboard-editor").locator("[data-widget-row]");
   const first = await widgets.first().getAttribute("data-widget");
   await page.getByRole("button", { name: "Personnaliser" }).click();
@@ -199,7 +201,8 @@ test("tableau de bord : personnaliser, réordonner, masquer, mémoriser", async 
     .getByRole("button", { name: /^Déplacer/ })
     .focus();
   await page.keyboard.press("Space");
-  await page.keyboard.press("ArrowUp");
+  // Grille (5 nov. 2026) : le voisin de gauche en bureau, celui du dessus sur une colonne (mobile).
+  await page.keyboard.press(page.viewportSize()!.width >= 768 ? "ArrowLeft" : "ArrowUp");
   await page.keyboard.press("Space");
   await expect(rows.first()).toHaveAttribute("data-widget-row", first!);
   await page.getByRole("button", { name: /^Afficher « Trains perturbés »/ }).click();
