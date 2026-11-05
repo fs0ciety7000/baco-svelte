@@ -34,10 +34,11 @@ function lastOrigin(): DOMRect | null {
 const KEEP_OPEN =
   'a, button, input, select, textarea, label, summary, [role="button"], [role="link"], [role="option"], [role="tab"], [role="dialog"], [role="menu"], [role="listbox"], [data-radix-popper-content-wrapper], [data-sonner-toaster], tr, li, [data-hl], [data-sheet-keep]';
 
-function keepDockedOpen(e: Event) {
+/** Clic hors du panneau ancré : vrai si la cible doit le garder ouvert (élément interactif, ligne de liste). */
+function keepsDockedOpen(e: Event): boolean {
   const target =
     (e as CustomEvent<{ originalEvent?: Event }>).detail?.originalEvent?.target ?? e.target;
-  if (target instanceof Element && target.closest(KEEP_OPEN)) e.preventDefault();
+  return target instanceof Element && Boolean(target.closest(KEEP_OPEN));
 }
 
 /**
@@ -140,7 +141,10 @@ function Sheet({
           // Ancré : la liste reste utilisable. Un clic sur une ligne, un bouton, un lien ou un champ de la page ne ferme
           // pas le panneau (la ligne ouvre sa fiche à la place : sinon la page se réagençait sous le curseur) ; un clic
           // ailleurs (fond, en-têtes, marges) le ferme, comme Échap et la croix (5 nov. 2026).
-          onInteractOutside={docked ? (e) => keepDockedOpen(e) : undefined}
+          // Vaul n'en ferme jamais un non modal : on le fait nous-mêmes.
+          onPointerDownOutside={
+            docked ? (e) => (keepsDockedOpen(e) ? undefined : onOpenChange?.(false)) : undefined
+          }
           className={cn(
             "fixed z-50 flex flex-col border-border bg-surface shadow-float outline-none",
             docked
