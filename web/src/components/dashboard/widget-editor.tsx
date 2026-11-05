@@ -179,7 +179,7 @@ function EditTile({
         resizing && "ring-2 ring-accent",
       )}
     >
-      <div className="flex min-w-0 items-center gap-1.5 border-b border-border py-1 pr-1 pl-1">
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5 border-b border-border py-1 pr-1 pl-1">
         <button
           ref={setActivatorNodeRef}
           type="button"
@@ -196,11 +196,11 @@ function EditTile({
         >
           {index + 1}
         </span>
-        <span className="flex min-w-0 flex-1 flex-col leading-tight">
+        <span className="flex min-w-0 flex-1 basis-32 flex-col leading-tight">
           <span className="truncate text-label text-fg-muted">{meta.eyebrow}</span>
           <span className="truncate text-small font-medium text-fg">{meta.title}</span>
         </span>
-        <div className="flex shrink-0 items-center" onMouseDown={stop} onTouchStart={stop}>
+        <div className="ml-auto flex shrink-0 items-center" onMouseDown={stop} onTouchStart={stop}>
           <Button
             size="icon"
             variant="ghost"

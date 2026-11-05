@@ -133,15 +133,11 @@ function knownSizes(value: unknown): Partial<Record<WidgetId, WidgetSize>> | und
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
 /**
- * Taille affichée : choix de l'agent, sinon la taille par défaut ; une disposition d'avant le 5 nov. garde sa largeur
- * « Large » / « Normal » (8 / 4 colonnes) avec la hauteur par défaut.
+ * Taille affichée : choix de l'agent, sinon la taille par défaut (prévue pour remplir la grille sans trou). L'ancien
+ * réglage « Large / Normal » (`wide`, 4 nov. 2026) n'est plus lu : il donnait des tailles qui laissaient des trous.
  */
 export function sizeOf(layout: DashboardLayout, id: WidgetId): WidgetSize {
-  const chosen = layout.sizes?.[id];
-  if (chosen) return chosen;
-  const base = DEFAULT_SIZES[id];
-  if (!layout.wide || layout.sizes) return base;
-  return { w: layout.wide.includes(id) ? Math.max(base.w, 8) : Math.min(base.w, 4), h: base.h };
+  return layout.sizes?.[id] ?? DEFAULT_SIZES[id];
 }
 
 export function setSize(layout: DashboardLayout, id: WidgetId, size: WidgetSize): DashboardLayout {
@@ -150,12 +146,8 @@ export function setSize(layout: DashboardLayout, id: WidgetId, size: WidgetSize)
     h: clamp(Math.round(size.h), SIZE_LIMITS.minH, SIZE_LIMITS.maxH),
   };
   const current = sizeOf(layout, id);
-  if (current.w === next.w && current.h === next.h && layout.sizes?.[id]) return layout;
-  // Première taille libre : on fige celles des autres widgets (sinon l'ancienne largeur « Large » serait perdue).
-  const sizes = layout.sizes
-    ? { ...layout.sizes }
-    : Object.fromEntries(WIDGET_IDS.map((w) => [w, sizeOf(layout, w)]));
-  return { ...layout, sizes: { ...sizes, [id]: next } };
+  if (current.w === next.w && current.h === next.h) return layout;
+  return { ...layout, sizes: { ...layout.sizes, [id]: next } };
 }
 
 /** Colonnes occupées par un widget sur une grille de `cols` colonnes (12 dès 1280 px, 6 entre 768 et 1279 px). */

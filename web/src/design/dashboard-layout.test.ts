@@ -100,15 +100,14 @@ describe("personnalisation (4 nov. 2026)", () => {
 });
 
 describe("taille libre (5 nov. 2026)", () => {
-  it("dérive la taille d'une ancienne disposition « Large / Normal », puis la fige au premier redimensionnement", () => {
+  it("ignore l'ancien « Large / Normal » et garde une taille choisie", () => {
     const old = normalizeLayout({ order: [], hidden: [], wide: ["trains"] });
-    expect(sizeOf(old, "trains").w).toBe(8);
-    expect(sizeOf(old, "mentions").w).toBe(4);
+    expect(sizeOf(old, "trains")).toEqual({ w: 3, h: 5 });
     const l = setSize(old, "mentions", { w: 6, h: 9 });
     expect(sizeOf(l, "mentions")).toEqual({ w: 6, h: 9 });
-    // La largeur « Large » de « trains » est gardée.
-    expect(sizeOf(l, "trains").w).toBe(8);
+    expect(sizeOf(l, "trains")).toEqual({ w: 3, h: 5 });
     expect(normalizeLayout(l).sizes?.mentions).toEqual({ w: 6, h: 9 });
+    expect(setSize(l, "mentions", { w: 6, h: 9 })).toBe(l);
   });
 
   it("borne les tailles et ignore une taille illisible", () => {

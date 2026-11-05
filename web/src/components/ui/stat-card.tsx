@@ -64,7 +64,7 @@ function StatStrip({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="stat-strip"
       className={cn(
-        "grid grid-cols-[repeat(auto-fill,minmax(min(100%,9.5rem),1fr))] overflow-hidden rounded-box border border-border border-t-(length:--strip-rule) border-t-accent bg-surface shadow-rest",
+        "grid grid-cols-[repeat(auto-fit,minmax(min(100%,9.5rem),1fr))] overflow-hidden rounded-box border border-border border-t-(length:--strip-rule) border-t-accent bg-surface shadow-rest",
         className,
       )}
       {...props}
