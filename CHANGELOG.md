@@ -17,6 +17,7 @@ Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
 ### Améliorations
 
+- **Bandeau « Incident en cours »** : un petit bus dessiné parcourt la déviation entre les deux gares (à la place du point), en suivant la courbe.
 - **Fin de service plus vivant** : l'heure et le décompte défilent chiffre par chiffre (secondes en plus petit), la barre d'avancement est plus épaisse, en dégradé, avec un repère lumineux, une graduation par heure, les heures de début et de fin et un reflet qui la parcourt de temps en temps ; elle passe au vert dans le dernier quart d'heure. Rien ne bouge si le mouvement réduit est activé.
 - **Logo animé** : dans la barre latérale (et la barre du haut sur mobile), le point de correspondance parcourt le logo en boucle, avec une pause entre deux passages. Rien ne bouge si le mouvement réduit est activé.
 - **Bande des compteurs** : les compteurs se partagent toute la largeur, sans case vide à droite.

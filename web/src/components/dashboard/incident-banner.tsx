@@ -88,6 +88,25 @@ const SLEEPERS = Array.from({ length: 24 }, (_, i) => 28 + i * 16).filter(
 );
 const BYPASS = "M60 112 C 110 20, 300 20, 360 112";
 
+/**
+ * Petit bus de remplacement (5 nov. 2026, demande : « un petit bus au lieu du point ») : dessiné autour de l'origine, roues
+ * sur le trajet, avant à droite (sens origine → destination) ; il suit l'arc et s'incline avec lui (`offset-rotate: auto`).
+ */
+function BusGlyph({ second = false }: { second?: boolean }) {
+  return (
+    <g className={second ? "incident-bus incident-bus-2" : "incident-bus"} aria-hidden>
+      <rect className="incident-bus-body" x="-15" y="-17" width="30" height="13" rx="3.5" />
+      <rect className="incident-bus-glass" x="-12" y="-14.5" width="5.5" height="5" rx="1" />
+      <rect className="incident-bus-glass" x="-5" y="-14.5" width="5.5" height="5" rx="1" />
+      <rect className="incident-bus-glass" x="2" y="-14.5" width="4" height="8.5" rx="1" />
+      <rect className="incident-bus-glass" x="8" y="-14.5" width="5" height="5" rx="1" />
+      <rect className="incident-bus-light" x="13.2" y="-8.2" width="1.8" height="2" rx="0.6" />
+      <circle className="incident-bus-wheel" cx="-8" cy="-3.5" r="3" />
+      <circle className="incident-bus-wheel" cx="8" cy="-3.5" r="3" />
+    </g>
+  );
+}
+
 function TrackDiagram({
   origin,
   destination,
@@ -113,19 +132,8 @@ function TrackDiagram({
       <line className="incident-cut" x1="196" y1="106" x2="214" y2="140" />
       <line className="incident-cut" x1="214" y1="106" x2="196" y2="140" />
       <path className="incident-bypass" d={BYPASS} pathLength={1} />
-      {buses > 0 ? (
-        <rect className="incident-bus" width="22" height="12" rx="4" x="-11" y="-6" />
-      ) : null}
-      {buses > 1 ? (
-        <rect
-          className="incident-bus incident-bus-2"
-          width="22"
-          height="12"
-          rx="4"
-          x="-11"
-          y="-6"
-        />
-      ) : null}
+      {buses > 0 ? <BusGlyph /> : null}
+      {buses > 1 ? <BusGlyph second /> : null}
       <circle className="incident-station" cx="60" cy="123" r="8" />
       <circle className="incident-station" cx="360" cy="123" r="8" />
       <text x="20" y="158" className="incident-label">

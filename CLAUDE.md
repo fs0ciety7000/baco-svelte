@@ -1605,6 +1605,14 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   Service `smtp-fs0ciety` (projet Dev) passé en Stalwart **v1.0.1** avec migration le 30 oct. : écouteurs SMTP probablement
   perdus. Hors du projet CSM : rien modifié, accord de l'utilisateur demandé. Touche aussi « mot de passe oublié » et les
   autres services qui envoient par Stalwart.
+- 2026-11-05 — **Envoi d'e-mails rétabli** (accord de l'utilisateur pour intervenir sur Stalwart, projet Dev) : Stalwart v1.0.1
+  rejetait toute connexion arrivant par l'adresse publique (vue depuis la passerelle Docker `10.0.28.1`) ; l'utilisateur a ajouté
+  `10.0.0.0/8` et `152.53.176.13` aux « Allowed IP addresses », effectif seulement après **redémarrage** du service. CSM passe par
+  **465** (`CSM_SMTP_PORT=465` sur `csm-pocketbase` prod et preview, redémarrés). Gmail : SPF / DKIM (RSA) / DMARC PASS ; l'ed25519
+  « no key » est normal (Gmail ne le gère pas) ; le message de test PocketBase par défaut (anglais, lien à jeton) arrive en spam.
+  Diagnostic par tâches Coolify ponctuelles dans le conteneur Stalwart (`openssl s_client`, `/proc/net/tcp`). Piège : 465 local
+  OK mais public coupé = liste d'adresses de Stalwart, pas les écouteurs. **Bandeau d'incident** : petit bus dessiné (`BusGlyph`,
+  `offset-rotate: auto`) à la place du rectangle.
 
 ---
 

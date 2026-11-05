@@ -844,10 +844,23 @@ html[data-acting] .fixed.top-12.bottom-0 {
   font: 500 12px var(--font-ui, sans-serif);
 }
 .incident-bus {
-  fill: var(--brand-sable);
   offset-path: path("M60 112 C 110 20, 300 20, 360 112");
-  offset-rotate: 0deg;
+  offset-rotate: auto;
   opacity: 0;
+}
+.incident-bus-body {
+  fill: var(--brand-sable);
+}
+.incident-bus-glass {
+  fill: #2a2722;
+}
+.incident-bus-light {
+  fill: #fff6d8;
+}
+.incident-bus-wheel {
+  fill: #1b1916;
+  stroke: var(--brand-sable);
+  stroke-width: 1.2;
 }
 @media (prefers-reduced-motion: no-preference) {
   .incident-bypass {
