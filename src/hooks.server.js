@@ -22,10 +22,10 @@ function isValidGatePass(pass) {
   }
 }
 
-// Gel de BACO (bascule vers CSM) : BACO_FROZEN=1 (variable Vercel, lue à l'exécution) → toutes les pages mènent à la
-// page « BACO devient CSM », l'API interne refuse tout (410). Sans la variable, rien ne change (page visible en aperçu
-// sur /transition). Les fichiers statiques (/_app, /brand-csm…) ne passent pas par ici sur Vercel.
-const isFrozen = () => /^(1|true|on|oui)$/i.test(String(env.BACO_FROZEN ?? '').trim())
+// Gel de BACO (bascule vers CSM, 4 nov. 2026) : BACO est gelé PAR DÉFAUT → toutes les pages mènent à la page « BACO devient
+// CSM », l'API interne refuse tout (410). Retour arrière d'urgence : variable Vercel BACO_FROZEN=0 puis redéploiement.
+// Les fichiers statiques (/_app, /brand-csm…) ne passent pas par ici sur Vercel.
+const isFrozen = () => !/^(0|false|off|non)$/i.test(String(env.BACO_FROZEN ?? '').trim())
 
 function transitionResponse(frozen) {
   return new Response(transitionPage({ frozen }), {
