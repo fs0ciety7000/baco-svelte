@@ -1613,6 +1613,9 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   Diagnostic par tâches Coolify ponctuelles dans le conteneur Stalwart (`openssl s_client`, `/proc/net/tcp`). Piège : 465 local
   OK mais public coupé = liste d'adresses de Stalwart, pas les écouteurs. **Bandeau d'incident** : petit bus dessiné (`BusGlyph`,
   `offset-rotate: auto`) à la place du rectangle.
+- 2026-11-05 — **Poussé en production** (demande de l'utilisateur) : `csm-prod` = 43a648d (petit bus du bandeau d'incident ; aucune
+  migration), santé 200. Piège : **Coolify masque les adresses e-mail dans la sortie des tâches** (`<REDACTED>`) : lire les e-mails
+  des comptes par l'administration CSM, pas par une tâche.
 
 ---
 
