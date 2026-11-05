@@ -1560,7 +1560,13 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   modal par-dessus) et se ferme sur un clic hors panneau qui n'est ni une ligne ni un élément interactif (`KEEP_OPEN`,
   `data-sheet-keep`). **Genesys Cloud** : liens `tel:` déjà en E.164 ; l'extension ne voit les liens rendus après le
   chargement qu'avec l'option « Enable Click-to-Dial in Dynamic Content » (doc Genesys « click to dial ») → rappel dans
-  « Téléphonie », `tel:` des bons bus / taxi passés en E.164. Widgets de Temps réel : refonte à proposer.
+  « Téléphonie », `tel:` des bons bus / taxi passés en E.164.
+- 2026-11-05 — **Temps réel réorganisé** (réponses de l'utilisateur : redimensionner **à la souris**, « Fin de service » en **bandeau
+  en tête**, **colonne de droite supprimée**) : grille `.dash-grid` (12 colonnes ≥ 1280 px, 6 dès 768 px, rangées de 2,5 rem,
+  placement dense), taille par widget `layout.sizes` (`w` sur 12, `h` en rangées ; `sizeOf`, `setSize`, `resizeBy`, `spanOf`),
+  défauts en tiers (4 / 8 colonnes, hauteurs 4 / 8 : 3 rangées pleines), l'ancien `wide` n'est plus lu ; éditeur = la vraie grille
+  (glisser pour l'ordre, poignée en bas à droite pour la taille, flèches au clavier) ; `ShiftWidget variant="banner"` ; widget
+  `prochaines` (ex-colonne de droite) ; `StatStrip` en `auto-fit`.
 
 ---
 

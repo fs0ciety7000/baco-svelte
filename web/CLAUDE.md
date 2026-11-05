@@ -95,8 +95,14 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
 - Les icônes ne traversent pas la frontière serveur → client : la navigation est calculée côté client
   (`ShellProvider`) à partir de l'agent, avec les mêmes fonctions que les gardes serveur.
 - Palette ⌘K / Ctrl+K uniquement (jamais un « K » seul). Groupes Créer, Aller à, Administration, Affichage.
-- Tableau de bord : widgets en `@container`, grille dense, réorganisables (dnd-kit + flèches + masquer), disposition
-  dans `users.preferences.dashboard` (Server Action avec le jeton de l'agent). Dates « du jour » en Europe/Brussels.
+- Tableau de bord (Temps réel) : widgets en `@container` dans `.dash-grid` (`globals.css` : 12 colonnes ≥ 1280 px, 6 dès 768 px,
+  une colonne en mobile, rangées `--dash-row`, placement dense), variables `--w-xl` / `--w-md` / `--h` posées par `gridVars`
+  (`components/dashboard/widget-editor.tsx`) ; taille `layout.sizes[id] = { w (sur 12), h (rangées) }`, défaut `DEFAULT_SIZES`
+  (`design/dashboard-layout.ts` : `sizeOf`, `setSize`, `resizeBy`, `spanOf`, testés) ; « Personnaliser » = la grille elle-même
+  (dnd-kit `rectSortingStrategy`, Monter / Descendre, Masquer, poignée `data-resize` souris + flèches, aperçu inerte) ; contenu
+  plus haut que le widget = défilement interne. « Fin de service » = bandeau (`ShiftWidget variant="banner"`, masquable,
+  `toggle-shift-banner`) ; `service`, `commandes`, `a-confirmer` hors de la grille. Disposition dans
+  `users.preferences.dashboard` (Server Action avec le jeton de l'agent). Dates « du jour » en Europe/Brussels.
 - CSP avec nonce posée par `middleware.ts` (`connect-src 'self'`).
 
 ## Module Commandes (étape 5)

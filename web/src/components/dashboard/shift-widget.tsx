@@ -140,7 +140,7 @@ export function ShiftWidget({
         <div className="flex flex-col">
           <span className="text-small text-fg-muted">Il est</span>
           <time
-            className="font-mono text-[2.75rem] leading-none font-semibold tracking-tight tabular md:text-[3.5rem]"
+            className="font-mono text-[2.25rem] leading-none font-semibold tracking-tight tabular md:text-[3.5rem]"
             data-testid="shift-clock"
             suppressHydrationWarning
           >

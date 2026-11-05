@@ -3,11 +3,18 @@
 Toutes les évolutions de CSM visibles par les agents, de la plus récente à la plus ancienne.
 Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
-## [2026.11.05] — Panneau de détail, logo, appels
+## [2026.11.05] — Temps réel réorganisé, panneau de détail, logo, appels
+
+### Nouveautés
+
+- **Temps réel : widgets redimensionnables** : dans « Personnaliser », la vraie grille s'affiche. Glisse un widget pour le déplacer et tire sa poignée en bas à droite pour l'agrandir ou le réduire (flèches au clavier). Les tailles par défaut remplissent la grille sans trou.
+- **Bandeau « Fin de service »** en tête de Temps réel : l'heure en grand, le temps restant, la barre de progression et le choix du service sur une ligne. Il se masque dans « Personnaliser ».
+- **« Prochaines prises en charge »** devient un widget comme les autres (la colonne de droite disparaît, la file « À traiter » prend toute la largeur).
 
 ### Améliorations
 
 - **Logo animé** : dans la barre latérale (et la barre du haut sur mobile), le point de correspondance parcourt le logo en boucle, avec une pause entre deux passages. Rien ne bouge si le mouvement réduit est activé.
+- **Bande des compteurs** : les compteurs se partagent toute la largeur, sans case vide à droite.
 - **Appels Genesys Cloud** : tous les numéros cliquables (bons bus et taxi compris) sont au format international. Le réglage « Téléphonie » rappelle de cocher « Enable Click-to-Dial in Dynamic Content » dans l'extension Genesys Cloud, sans quoi le clic ne compose rien dans CSM.
 
 ### Corrections
