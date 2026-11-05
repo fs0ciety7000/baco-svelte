@@ -5,6 +5,7 @@ import {
   activeModule,
   activeTab,
   adminModule,
+  LIVE_MAP_LINK,
   MODULES,
   quickActions,
   routeAllowed,
@@ -157,5 +158,14 @@ describe("navigation", () => {
     ).toBe(false);
     expect(routeAllowed({ role: "admin" }, "/pmr/planificateur")).toBe(true);
     expect(routeAllowed({ role: "guest" }, "/pmr/planificateur")).toBe(false);
+  });
+
+  it("carte en direct : lien extérieur de Réseau, jamais une route (5 nov. 2026)", () => {
+    const reseau = visibleModules({ role: "paco" }).find((m) => m.id === "reseau");
+    expect(reseau?.links?.map((l) => l.href)).toEqual([LIVE_MAP_LINK.href]);
+    expect(reseau?.tabs.some((t) => t.href === LIVE_MAP_LINK.href)).toBe(false);
+    expect(routeAllowed({ role: "admin" }, LIVE_MAP_LINK.href)).toBe(false);
+    const guest = visibleModules({ role: "guest" }).find((m) => m.id === "reseau");
+    expect(guest?.links ?? []).toEqual([]);
   });
 });

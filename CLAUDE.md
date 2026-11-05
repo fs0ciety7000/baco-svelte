@@ -1585,6 +1585,9 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
 - 2026-11-05 — **Annuaire v2 poussé en production** (demande de l'utilisateur) : `csm-prod` = ef45da3 (migration `1760005200`).
   Sauvegarde `pre_prod_annuaire_20261105.zip` avant ; déploiements terminés, santé 200 ; vérifié en lecture : 6 services,
   0 contact sans service.
+- 2026-11-05 — **Carte en direct** (demande de l'utilisateur) : lien vers https://reseau.fs0ciety.org/ (cadre impossible :
+  X-Frame-Options DENY) dans Réseau et la section « Référence » de la barre latérale ; `NavModule.links` (`LIVE_MAP_LINK`,
+  `live:read`), nouvel onglet, jamais traité comme une route ; aussi dans « Plus » mobile et ⌘K.
 
 ---
 

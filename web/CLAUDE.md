@@ -92,6 +92,10 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   (groupes titrés repliables ≥ 1280 px, menu latéral sur le rail, `data-testid` `sidebar-admin`, `sidebar-admin-<page>`),
   « Plus » mobile groupé, barre du haut « Administration › page » (`topbar-admin-page`) sans onglets). Barre latérale (rail 96 px dès 768 px, 232 px dès 1280 px), barre du haut (fil, ⌘K, + Nouveau,
   menu utilisateur), mobile : 4 onglets + « Plus » (Sheet). Composants dans `src/components/shell/`.
+- **Liens extérieurs d'un module** (5 nov. 2026) : `NavModule.links` (ex. `LIVE_MAP_LINK`, carte du réseau en direct, sous Réseau),
+  filtrés par `tabAllowed` dans `visibleModules`, rendus après les onglets (`ModuleTabs` : largeur retirée de la place des onglets,
+  jamais dans « Plus »), sous la section du module dans la barre latérale (`ExternalNavLink`), dans « Plus » mobile et ⌘K ;
+  `target="_blank"`, jamais une route (ni `activeTab`, ni `routeAllowed`, ni redirection).
 - Les icônes ne traversent pas la frontière serveur → client : la navigation est calculée côté client
   (`ShellProvider`) à partir de l'agent, avec les mêmes fonctions que les gardes serveur.
 - Palette ⌘K / Ctrl+K uniquement (jamais un « K » seul). Groupes Créer, Aller à, Administration, Affichage.

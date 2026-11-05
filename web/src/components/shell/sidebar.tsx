@@ -5,7 +5,7 @@ import type * as React from "react";
 
 import * as Menu from "@radix-ui/react-dropdown-menu";
 import { modColor } from "@/design/module-color";
-import { ChevronDown, Sparkles } from "lucide-react";
+import { ArrowUpRight, ChevronDown, Sparkles, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useState } from "react";
@@ -18,6 +18,7 @@ import {
   CHANGELOG_LINK,
   tabGroups,
   type NavModule,
+  type NavTab,
   type ShellCountKey,
 } from "@/navigation";
 
@@ -239,6 +240,35 @@ function ModuleLink({ module: m, active }: { module: NavModule; active: boolean 
   );
 }
 
+/** Lien vers un site extérieur (section « Référence », 5 nov. 2026 : carte en direct), ouvert dans un nouvel onglet. */
+function ExternalNavLink({ link }: { link: NavTab & { icon: LucideIcon } }) {
+  const Icon = link.icon;
+  return (
+    <li>
+      <a
+        href={link.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        data-testid="sidebar-external-link"
+        className={itemClass(
+          false,
+          "flex flex-col items-center gap-1 px-1 py-2 text-small xl:min-h-9 xl:flex-row xl:gap-3 xl:px-3 xl:py-1.5 xl:text-body xl:font-medium compact:xl:min-h-8 compact:xl:py-1",
+        )}
+      >
+        <Icon className="size-5 shrink-0 xl:size-[1.125rem]" strokeWidth={1.75} aria-hidden />
+        <span className="min-w-0 text-center leading-tight xl:text-left">
+          {link.label}
+          <span className="sr-only"> (nouvel onglet)</span>
+        </span>
+        <ArrowUpRight
+          aria-hidden
+          className="absolute top-1 right-1 size-3.5 text-fg-subtle xl:static xl:ml-auto"
+        />
+      </a>
+    </li>
+  );
+}
+
 function ago(iso: string, now: number): { text: string; stale: boolean } {
   const min = Math.max(0, Math.round((now - new Date(iso.replace(" ", "T")).getTime()) / 60_000));
   const text =
@@ -364,6 +394,11 @@ export function Sidebar() {
             {s.modules.map((m) => (
               <ModuleLink key={m.id} module={m} active={active?.id === m.id} />
             ))}
+            {s.modules
+              .flatMap((m) => m.links ?? [])
+              .map((l) => (
+                <ExternalNavLink key={l.href} link={l} />
+              ))}
           </ul>
         </div>
       ))}

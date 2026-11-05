@@ -9,6 +9,7 @@ import {
   KeyRound,
   Home,
   Library,
+  MapPinned,
   MessagesSquare,
   Mail,
   MonitorSmartphone,
@@ -68,6 +69,20 @@ export type NavModule = {
   /** Section de la barre latérale (lot 3, v4) : « Travail » (temps réel, à traiter) ou « Référence » (consultation). */
   section?: "travail" | "reference";
   tabs: NavTab[];
+  /**
+   * Liens vers un site extérieur (5 nov. 2026 : carte en direct du réseau) : affichés après les onglets, ouverts dans un
+   * nouvel onglet, jamais traités comme une route (ni garde de page, ni onglet actif, ni redirection).
+   */
+  links?: (NavTab & { icon: LucideIcon })[];
+};
+
+/** Carte du réseau en temps réel (site fs0ciety, hors CSM ; ne s'intègre pas en cadre : X-Frame-Options DENY). */
+export const LIVE_MAP_LINK: NavTab & { icon: LucideIcon } = {
+  href: "https://reseau.fs0ciety.org/",
+  label: "Carte en direct",
+  permission: "live:read",
+  icon: MapPinned,
+  keywords: ["carte", "temps réel", "trains", "position", "réseau", "map"],
 };
 
 export const MODULES: NavModule[] = [
@@ -254,6 +269,7 @@ export const MODULES: NavModule[] = [
     href: "/reseau",
     label: "Réseau",
     icon: Train,
+    links: [LIVE_MAP_LINK],
     tabs: [
       {
         href: "/reseau",
@@ -473,6 +489,7 @@ export function visibleModules(user: PermissionSubject): NavModule[] {
   return MODULES.map((m) => ({
     ...m,
     tabs: m.tabs.filter((t) => !t.hidden && tabAllowed(user, t)),
+    links: m.links?.filter((l) => tabAllowed(user, l)),
   }))
     .filter((m) => m.id === "accueil" || m.tabs.length > 0)
     .map((m) =>

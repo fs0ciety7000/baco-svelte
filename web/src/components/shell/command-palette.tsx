@@ -237,6 +237,25 @@ export function CommandPalette() {
                         </CommandItem>
                       )),
                 )}
+                {modules.flatMap((m) =>
+                  (m.links ?? []).map((l) => (
+                    <CommandItem
+                      key={l.href}
+                      value={`${m.label} ${l.label} ${(l.keywords ?? []).join(" ")}`}
+                      onSelect={() => {
+                        setPaletteOpen(false);
+                        window.open(l.href, "_blank", "noopener,noreferrer");
+                      }}
+                    >
+                      <l.icon /> <span className="text-fg-muted">{m.label}</span>
+                      <span aria-hidden className="text-fg-muted">
+                        ›
+                      </span>
+                      {l.label}
+                      <span className="text-fg-muted">↗</span>
+                    </CommandItem>
+                  )),
+                )}
                 {account.map((l) => (
                   <CommandItem
                     key={`compte-${l.href}`}

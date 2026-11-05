@@ -3,7 +3,7 @@
 import type * as React from "react";
 
 import { modColor } from "@/design/module-color";
-import { LayoutGrid, Sparkles } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useId, useState } from "react";
@@ -155,6 +155,25 @@ export function MobileTabBar() {
                     </ul>
                   </div>
                 ))}
+                {m.links?.length ? (
+                  <ul className="ml-8 flex flex-col border-l border-border">
+                    {m.links.map((l) => (
+                      <li key={l.href}>
+                        <a
+                          href={l.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => setMore(false)}
+                          className="flex h-11 items-center gap-1.5 px-3 text-body text-fg-muted hover:text-fg"
+                        >
+                          {l.label}
+                          <ArrowUpRight className="size-4" aria-hidden />
+                          <span className="sr-only"> (nouvel onglet)</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </li>
             );
           })}

@@ -1,7 +1,7 @@
 "use client";
 
 import * as Menu from "@radix-ui/react-dropdown-menu";
-import { ChevronDown } from "lucide-react";
+import { ArrowUpRight, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type CSSProperties, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
@@ -42,6 +42,7 @@ export function ModuleTabs({
   const bar = useRef<HTMLSpanElement>(null);
   const current = mod ? activeTab(pathname, mod) : undefined;
   const tabs = mod?.tabs ?? [];
+  const links = mod?.links ?? [];
   const activeIndex = tabs.findIndex((t) => t.href === current?.href);
   // La répartition est liée à la liste d'onglets qui l'a produite : en changeant de module, l'ancienne (indices d'un autre
   // module) est ignorée jusqu'à la nouvelle mesure. Sinon `tabs[i]` valait undefined → « reading 'href' », page en erreur
@@ -78,8 +79,11 @@ export function ModuleTabs({
     const ruler = measure.current;
     if (!box || !ruler) return;
     const compute = () => {
-      const widths = Array.from(ruler.children).map((c) => (c as HTMLElement).offsetWidth);
-      setFit({ ...fitTabs(widths, box.clientWidth, activeIndex), sig });
+      const all = Array.from(ruler.children).map((c) => (c as HTMLElement).offsetWidth);
+      // Les liens extérieurs restent toujours visibles : leur largeur est retirée de la place des onglets.
+      const widths = all.slice(0, tabs.length);
+      const linksWidth = all.slice(tabs.length).reduce((a, w) => a + w, 0);
+      setFit({ ...fitTabs(widths, box.clientWidth - linksWidth, activeIndex), sig });
     };
     compute();
     const ro = new ResizeObserver(compute);
@@ -87,7 +91,7 @@ export function ModuleTabs({
     return () => ro.disconnect();
   }, [variant, activeIndex, sig, countSig]);
 
-  if (!mod || tabs.length < 2) return null;
+  if (!mod || tabs.length + links.length < 2) return null;
   const counts = (status?.counts ?? {}) as Record<string, number | undefined>;
   const countOf = (t: NavTab) => (t.count ? (counts[t.count] ?? 0) : 0);
   const tabClass = (isActive: boolean) =>
@@ -168,6 +172,20 @@ export function ModuleTabs({
           </Menu.Portal>
         </Menu.Root>
       ) : null}
+      {links.map((l) => (
+        <a
+          key={l.href}
+          href={l.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-testid="module-external-link"
+          className={tabClass(false)}
+        >
+          {l.label}
+          <ArrowUpRight className="size-3.5" aria-hidden />
+          <span className="sr-only"> (nouvel onglet)</span>
+        </a>
+      ))}
       {variant === "bar" ? (
         // Copie invisible pour mesurer la largeur de chaque onglet (même police, mêmes marges).
         <div
@@ -184,6 +202,12 @@ export function ModuleTabs({
               </span>
             );
           })}
+          {links.map((l) => (
+            <span key={l.href} className={tabClass(false)}>
+              {l.label}
+              <ArrowUpRight className="size-3.5" aria-hidden />
+            </span>
+          ))}
         </div>
       ) : null}
       <span
