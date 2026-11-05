@@ -30,6 +30,16 @@ function lastOrigin(): DOMRect | null {
   return origin && Date.now() - origin.at < 800 ? origin.rect : null;
 }
 
+/** Cibles de la page qui gardent le panneau ancré ouvert : éléments interactifs et lignes de liste cliquables. */
+const KEEP_OPEN =
+  'a, button, input, select, textarea, label, summary, [role="button"], [role="link"], [role="option"], [role="tab"], [role="dialog"], [role="menu"], [role="listbox"], [data-radix-popper-content-wrapper], [data-sonner-toaster], tr, li, [data-hl], [data-sheet-keep]';
+
+function keepDockedOpen(e: Event) {
+  const target =
+    (e as CustomEvent<{ originalEvent?: Event }>).detail?.originalEvent?.target ?? e.target;
+  if (target instanceof Element && target.closest(KEEP_OPEN)) e.preventDefault();
+}
+
 /**
  * Panneau de détail : bottom sheet avec poignée sur mobile, panneau latéral droit sur desktop (≥ 768 px).
  * Dès 1280 px (11 oct. 2026), panneau **ancré** : sans voile ni piège du focus, sous la barre du haut, la page se
@@ -68,6 +78,28 @@ function Sheet({
       else delete root.dataset.sheetDocked;
     };
   }, [open, docked]);
+  // Panneau ancré ouvert depuis la page (`open` piloté de l'extérieur) : Vaul laisse `pointer-events: none` sur <body>,
+  // la liste ne recevait plus ni molette ni clic (retour du 5 nov. 2026 : « le défilement de la liste est bloqué »). On le
+  // retire tant que le panneau est ancré, sauf si un vrai dialogue modal est ouvert par-dessus (il en a besoin).
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (!(open && docked)) return;
+    const body = document.body;
+    const fix = () => {
+      if (body.style.pointerEvents !== "none") return;
+      const modal = [...document.querySelectorAll('[role="dialog"][data-state="open"]')].some(
+        (el) => el !== contentRef.current && !contentRef.current?.contains(el),
+      );
+      if (!modal) body.style.pointerEvents = "";
+    };
+    const raf = requestAnimationFrame(fix);
+    const observer = new MutationObserver(fix);
+    observer.observe(body, { attributes: true, attributeFilter: ["style"] });
+    return () => {
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+    };
+  }, [open, docked]);
   // Continuité ligne → panneau : à l'ouverture, cadre fantôme depuis la ligne (ou la carte) qui vient d'être cliquée.
   const wasOpen = React.useRef(open);
   React.useEffect(() => {
@@ -104,9 +136,11 @@ function Sheet({
           <Drawer.Overlay className="fixed inset-0 z-50 bg-[color-mix(in_oklab,var(--bg)_65%,transparent)]" />
         ) : null}
         <Drawer.Content
-          // Ancré : la liste reste utilisable ; fermeture par la croix ou Échap seulement (sinon un clic sur un bouton de
-          // la liste fermait le panneau et la page se réagençait sous le curseur).
-          onInteractOutside={docked ? (e) => e.preventDefault() : undefined}
+          ref={contentRef}
+          // Ancré : la liste reste utilisable. Un clic sur une ligne, un bouton, un lien ou un champ de la page ne ferme
+          // pas le panneau (la ligne ouvre sa fiche à la place : sinon la page se réagençait sous le curseur) ; un clic
+          // ailleurs (fond, en-têtes, marges) le ferme, comme Échap et la croix (5 nov. 2026).
+          onInteractOutside={docked ? (e) => keepDockedOpen(e) : undefined}
           className={cn(
             "fixed z-50 flex flex-col border-border bg-surface shadow-float outline-none",
             docked

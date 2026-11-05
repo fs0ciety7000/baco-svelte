@@ -1,5 +1,6 @@
 "use client";
 
+import { e164 } from "@/lib/telephony";
 import { pl } from "@/lib/utils";
 import { ExternalLink, Search, UserPlus, X } from "lucide-react";
 import Link from "next/link";
@@ -541,7 +542,7 @@ export function TaxiForm(props: TaxiFormProps) {
               <p className="text-small text-fg-muted">
                 Tél.{" "}
                 {company.phones.map((p, i) => (
-                  <a key={p + i} className="mr-3 link" href={`tel:${p.replace(/\s/g, "")}`}>
+                  <a key={p + i} className="mr-3 link" href={`tel:${e164(p)}`}>
                     {p}
                   </a>
                 ))}

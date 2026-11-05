@@ -342,8 +342,8 @@ export function Sidebar() {
       >
         {/* Identité CSM « Encre et sable » : symbole sur le rail, logo complet dès 1280 px (le point de correspondance
             parcourt le symbole au premier affichage). */}
-        <CsmSymbol animate decorative className="h-[22px] w-auto shrink-0 xl:hidden" />
-        <CsmLogo animate decorative className="hidden h-[22px] w-auto shrink-0 xl:block" />
+        <CsmSymbol animate="loop" decorative className="h-[22px] w-auto shrink-0 xl:hidden" />
+        <CsmLogo animate="loop" decorative className="hidden h-[22px] w-auto shrink-0 xl:block" />
       </Link>
       {sections.map((s, i) => (
         <div key={s.id} className="px-2">

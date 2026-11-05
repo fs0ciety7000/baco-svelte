@@ -46,7 +46,7 @@ export function Topbar() {
         className="flex h-11 shrink-0 items-center gap-2 rounded-control px-1 md:hidden"
         aria-label="Accueil CSM"
       >
-        <CsmSymbol decorative className="h-5 w-auto" />
+        <CsmSymbol animate="loop" decorative className="h-5 w-auto" />
       </Link>
       <p className="min-w-0 truncate text-body-lg font-semibold tracking-[-0.01em] text-fg md:shrink-0">
         {mod?.label ??

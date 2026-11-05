@@ -1,5 +1,6 @@
 "use client";
 
+import { e164 } from "@/lib/telephony";
 import { Plus, Trash2, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -715,7 +716,7 @@ export function BusForm(props: BusFormProps) {
             {company?.phone ? (
               <p className="text-small text-fg-muted">
                 Tél.{" "}
-                <a className="link" href={`tel:${company.phone.replace(/\s/g, "")}`}>
+                <a className="link" href={`tel:${e164(company.phone)}`}>
                   {company.phone}
                 </a>
               </p>

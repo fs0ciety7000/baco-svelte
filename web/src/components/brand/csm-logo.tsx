@@ -6,7 +6,9 @@ import { cn } from "@/lib/utils";
  * maîtres de la charte (police Onest vectorisée, licence OFL) : ne pas les redessiner.
  *
  * Couleurs : lignes et logotype en `--fg` (encre le jour, ivoire la nuit), passage en `--brand-sable` (fixe). `animate` :
- * le point de correspondance parcourt le symbole une fois (CSS `.csm-logo-dot`, rien en mouvement réduit).
+ * le point de correspondance parcourt le symbole une fois ; `animate="loop"` (version animée de la charte, barre latérale et
+ * barre du haut mobile, 5 nov. 2026) : il repart en boucle, avec une pause entre deux passages (CSS `.csm-logo-dot`, rien en
+ * mouvement réduit).
  */
 const SYMBOL_LINES =
   "M16 66L40 66L40 76C40 81.523 44.477 86 50 86C55.523 86 60 81.523 60 76L60 67.999C62.429 69.824 64 72.728 64 76C64 81.523 59.523 86 54 86L16 86C10.477 86 6 81.523 6 76C6 70.477 10.477 66 16 66ZM50 14L84 14C89.523 14 94 18.477 94 24C94 29.523 89.523 34 84 34L60 34L60 24C60 18.477 55.523 14 50 14ZM46 14L50 14C44.477 14 40 18.477 40 24L40 32.001C37.571 30.176 36 27.272 36 24C36 18.477 40.477 14 46 14Z";
@@ -32,7 +34,7 @@ export function CsmSymbol({
   decorative = false,
 }: {
   className?: string;
-  animate?: boolean;
+  animate?: boolean | "loop";
   /** Dans un lien déjà nommé (« CSM, accueil ») : masqué aux lecteurs d'écran. */
   decorative?: boolean;
 }) {
@@ -42,7 +44,7 @@ export function CsmSymbol({
       role={decorative ? undefined : "img"}
       aria-label={decorative ? undefined : "CSM"}
       aria-hidden={decorative || undefined}
-      className={cn("csm-logo overflow-visible", animate && "csm-logo-play", className)}
+      className={cn("csm-logo overflow-visible", animate && "csm-logo-play", animate === "loop" && "csm-logo-loop", className)}
     >
       <path d={SYMBOL_LINES} fill="var(--brand-line, var(--fg))" />
       <path d={SYMBOL_PASSAGE} fill="var(--brand-sable)" />
@@ -58,7 +60,7 @@ export function CsmLogo({
   decorative = false,
 }: {
   className?: string;
-  animate?: boolean;
+  animate?: boolean | "loop";
   /** Dans un lien déjà nommé (« CSM, accueil ») : masqué aux lecteurs d'écran. */
   decorative?: boolean;
 }) {
@@ -68,7 +70,7 @@ export function CsmLogo({
       role={decorative ? undefined : "img"}
       aria-label={decorative ? undefined : "CSM"}
       aria-hidden={decorative || undefined}
-      className={cn("csm-logo overflow-visible", animate && "csm-logo-play", className)}
+      className={cn("csm-logo overflow-visible", animate && "csm-logo-play", animate === "loop" && "csm-logo-loop", className)}
     >
       <path d={LOCKUP_LINES} fill="var(--brand-line, var(--fg))" />
       <path d={LOCKUP_PASSAGE} fill="var(--brand-sable)" />

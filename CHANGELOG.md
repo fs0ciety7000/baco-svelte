@@ -3,6 +3,17 @@
 Toutes les évolutions de CSM visibles par les agents, de la plus récente à la plus ancienne.
 Une version par mise à jour livrée, datée (AAAA.MM.JJ).
 
+## [2026.11.05] — Panneau de détail, logo, appels
+
+### Améliorations
+
+- **Logo animé** : dans la barre latérale (et la barre du haut sur mobile), le point de correspondance parcourt le logo en boucle, avec une pause entre deux passages. Rien ne bouge si le mouvement réduit est activé.
+- **Appels Genesys Cloud** : tous les numéros cliquables (bons bus et taxi compris) sont au format international. Le réglage « Téléphonie » rappelle de cocher « Enable Click-to-Dial in Dynamic Content » dans l'extension Genesys Cloud, sans quoi le clic ne compose rien dans CSM.
+
+### Corrections
+
+- **Panneau de détail (PMR, groupes, bons…)** : quand il était ouvert sur grand écran, la liste ne défilait plus et ne répondait plus aux clics. Elle reste maintenant utilisable, et un clic hors du panneau (ailleurs que sur une ligne ou un bouton) le ferme, comme Échap ou la croix.
+
 ## [2026.11.04] — Nouvelle identité visuelle
 
 ### Nouveautés

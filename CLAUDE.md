@@ -1554,6 +1554,13 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
 - 2026-11-04 — **Poussé en production** (demande de l'utilisateur) : `csm-prod` = c6fe797 (CMD- retiré du PDF et de l'e-mail
   fournisseur, « Annuaire et ressources », libellé de module aligné à gauche dans la barre latérale large ; aucune migration).
   Déploiement `csm-web-prod` terminé, santé 200.
+- 2026-11-05 — **Retours** : logo en boucle (`animate="loop"`, `.csm-logo-loop`, 6,5 s avec pause ; barre latérale + barre du
+  haut mobile ; E2E motion l'autorise) ; **panneau ancré** (≥ 1280 px) : Vaul laissait `body { pointer-events: none }` quand
+  `open` est piloté par la page → liste ni défilable ni cliquable ; `Sheet` le retire tant qu'il est ancré (sauf dialogue
+  modal par-dessus) et se ferme sur un clic hors panneau qui n'est ni une ligne ni un élément interactif (`KEEP_OPEN`,
+  `data-sheet-keep`). **Genesys Cloud** : liens `tel:` déjà en E.164 ; l'extension ne voit les liens rendus après le
+  chargement qu'avec l'option « Enable Click-to-Dial in Dynamic Content » (doc Genesys « click to dial ») → rappel dans
+  « Téléphonie », `tel:` des bons bus / taxi passés en E.164. Widgets de Temps réel : refonte à proposer.
 
 ---
 

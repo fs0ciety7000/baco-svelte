@@ -25,7 +25,7 @@ test("la palette ⌘K s'ouvre sans glisser en diagonale", async ({ page, isMobil
   expect(Math.max(...lefts) - Math.min(...lefts)).toBeLessThanOrEqual(2);
 });
 
-test("aucune animation infinie hors « en direct » et chargement", async ({ page }) => {
+test("aucune animation infinie hors « en direct », chargement et logo", async ({ page }) => {
   await login(page);
   await page.waitForTimeout(1200);
   const loops = await page.evaluate(() =>
@@ -36,7 +36,7 @@ test("aucune animation infinie hors « en direct » et chargement", async ({ pag
         const target = (a.effect as KeyframeEffect | null)?.target as Element | null;
         return target?.getAttribute("class") ?? "";
       })
-      .filter((cls) => !/animate-pulse-dot|animate-spin|live-dot/.test(cls)),
+      .filter((cls) => !/animate-pulse-dot|animate-spin|live-dot|csm-logo-dot/.test(cls)),
   );
   expect(loops).toEqual([]);
 });
