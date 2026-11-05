@@ -1567,6 +1567,9 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   défauts en tiers (4 / 8 colonnes, hauteurs 4 / 8 : 3 rangées pleines), l'ancien `wide` n'est plus lu ; éditeur = la vraie grille
   (glisser pour l'ordre, poignée en bas à droite pour la taille, flèches au clavier) ; `ShiftWidget variant="banner"` ; widget
   `prochaines` (ex-colonne de droite) ; `StatStrip` en `auto-fit`.
+- 2026-11-05 — **Poussé en production** (demande de l'utilisateur) : `csm-prod` = 2fc4c7f (panneau ancré corrigé, logo en boucle,
+  Genesys, Temps réel réorganisé ; aucune migration). 1er déploiement de `csm-web-prod` échoué (police Google, passager), relancé
+  seul par `POST /deploy` : terminé, santé 200.
 
 ---
 
