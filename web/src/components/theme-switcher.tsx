@@ -228,9 +228,11 @@ function TelephonyChoice() {
         ]}
       />
       <span className="text-small text-fg-muted">
-        Genesys Cloud : CSM envoie le numéro au format international (lien tel:). C&apos;est Windows
-        qui choisit l&apos;application : si Teams ou une autre s&apos;ouvre, va dans Paramètres ›
-        Applications › Applications par défaut, cherche « TEL » et choisis Genesys Cloud. Sur
+        Genesys Cloud : CSM envoie le numéro au format international (lien tel:). C&apos;est le
+        navigateur, puis Windows, qui choisit l&apos;application. Si une page CRM / Dynamics
+        s&apos;ouvre : dans le navigateur, Paramètres › Confidentialité et sécurité › Paramètres des
+        sites › Gestionnaires de protocoles, retire celui des liens « tel ». Si Teams ou une autre
+        appli s&apos;ouvre : Windows › Applications par défaut › « TEL » → Genesys Cloud. Sur
         mobile, le téléphone compose toujours le numéro.
       </span>
     </div>
