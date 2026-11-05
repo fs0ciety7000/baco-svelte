@@ -45,20 +45,23 @@ export const layoutSchema = z.object({
 });
 export type DashboardLayout = z.infer<typeof layoutSchema>;
 
-/** Taille par défaut : trois rangées pleines sans trou sur 12 colonnes (4 + 4 + 4, 6 + 6, 3 × 4). */
+/**
+ * Taille par défaut, en tiers (4 ou 8 colonnes) et en hauteurs 4 / 8 : deux petits widgets s'empilent à côté d'un grand,
+ * et la grille dense se remplit sans trou quel que soit l'ordre (3 rangées pleines avec l'ordre par défaut).
+ */
 export const DEFAULT_SIZES: Record<WidgetId, WidgetSize> = {
   service: { w: 12, h: 3 },
   commandes: { w: 8, h: 4 },
-  "a-confirmer": { w: 8, h: 6 },
+  "a-confirmer": { w: 8, h: 8 },
   "pmr-jour": { w: 4, h: 8 },
   prochaines: { w: 4, h: 8 },
   mentions: { w: 4, h: 8 },
-  "main-courante": { w: 6, h: 7 },
-  travaux: { w: 6, h: 7 },
-  raccourcis: { w: 3, h: 5 },
-  impacts: { w: 3, h: 5 },
-  trains: { w: 3, h: 5 },
-  perturbations: { w: 3, h: 5 },
+  "main-courante": { w: 8, h: 8 },
+  travaux: { w: 8, h: 8 },
+  raccourcis: { w: 4, h: 4 },
+  impacts: { w: 4, h: 4 },
+  trains: { w: 4, h: 4 },
+  perturbations: { w: 4, h: 4 },
 };
 
 export const DEFAULT_LAYOUT: DashboardLayout = {
@@ -69,9 +72,9 @@ export const DEFAULT_LAYOUT: DashboardLayout = {
     "prochaines",
     "mentions",
     "main-courante",
-    "travaux",
     "raccourcis",
     "impacts",
+    "travaux",
     "trains",
     "perturbations",
     "commandes",

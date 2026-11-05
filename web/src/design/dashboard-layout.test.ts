@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   DEFAULT_LAYOUT,
+  DEFAULT_SIZES,
   isWide,
   move,
   normalizeLayout,
@@ -102,10 +103,10 @@ describe("personnalisation (4 nov. 2026)", () => {
 describe("taille libre (5 nov. 2026)", () => {
   it("ignore l'ancien « Large / Normal » et garde une taille choisie", () => {
     const old = normalizeLayout({ order: [], hidden: [], wide: ["trains"] });
-    expect(sizeOf(old, "trains")).toEqual({ w: 3, h: 5 });
+    expect(sizeOf(old, "trains")).toEqual({ w: 4, h: 4 });
     const l = setSize(old, "mentions", { w: 6, h: 9 });
     expect(sizeOf(l, "mentions")).toEqual({ w: 6, h: 9 });
-    expect(sizeOf(l, "trains")).toEqual({ w: 3, h: 5 });
+    expect(sizeOf(l, "trains")).toEqual({ w: 4, h: 4 });
     expect(normalizeLayout(l).sizes?.mentions).toEqual({ w: 6, h: 9 });
     expect(setSize(l, "mentions", { w: 6, h: 9 })).toBe(l);
   });
@@ -119,10 +120,19 @@ describe("taille libre (5 nov. 2026)", () => {
     expect(l.sizes).toBeUndefined();
   });
 
+  it("tailles par défaut : trois rangées pleines de 12 colonnes, sans trou", () => {
+    const grid = DEFAULT_LAYOUT.order.filter(
+      (id) => !["service", "commandes", "a-confirmer"].includes(id),
+    );
+    const area = grid.reduce((n, id) => n + DEFAULT_SIZES[id].w * DEFAULT_SIZES[id].h, 0);
+    expect(area).toBe(12 * 8 * 3);
+    for (const id of grid) expect(DEFAULT_SIZES[id].w % 4).toBe(0);
+  });
+
   it("colonnes occupées sur 12 et sur 6", () => {
     expect(spanOf({ w: 4, h: 5 }, 12)).toBe(4);
     expect(spanOf({ w: 4, h: 5 }, 6)).toBe(2);
-    expect(spanOf({ w: 3, h: 5 }, 6)).toBe(2);
+    expect(spanOf({ w: 4, h: 4 }, 6)).toBe(2);
     expect(spanOf({ w: 12, h: 5 }, 6)).toBe(6);
   });
 

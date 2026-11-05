@@ -65,6 +65,6 @@ describe("WidgetEditor", () => {
       .getByRole("button", { name: /^Redimensionner « Missions impactées »/ })
       .getAttribute("aria-label");
     expect(after).not.toBe(before);
-    expect(after).toMatch(/6 rangées/);
+    expect(after).toMatch(/5 rangées/);
   });
 });
