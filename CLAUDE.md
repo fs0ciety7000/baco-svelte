@@ -1588,6 +1588,8 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
 - 2026-11-05 — **Carte en direct** (demande de l'utilisateur) : lien vers https://reseau.fs0ciety.org/ (cadre impossible :
   X-Frame-Options DENY) dans Réseau et la section « Référence » de la barre latérale ; `NavModule.links` (`LIVE_MAP_LINK`,
   `live:read`), nouvel onglet, jamais traité comme une route ; aussi dans « Plus » mobile et ⌘K.
+- 2026-11-05 — **Poussé en production** (demande de l'utilisateur) : `csm-prod` = 3928dd9 (carte en direct) puis 0efcceb (fin de
+  service animée : chiffres qui défilent, barre d'avancement GSAP chargé à la demande) ; aucune migration, santé 200.
 
 ---
 
