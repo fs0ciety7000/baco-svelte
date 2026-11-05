@@ -1590,6 +1590,11 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   `live:read`), nouvel onglet, jamais traité comme une route ; aussi dans « Plus » mobile et ⌘K.
 - 2026-11-05 — **Poussé en production** (demande de l'utilisateur) : `csm-prod` = 3928dd9 (carte en direct) puis 0efcceb (fin de
   service animée : chiffres qui défilent, barre d'avancement GSAP chargé à la demande) ; aucune migration, santé 200.
+- 2026-11-05 — **BACO gelé** (« go gel de baco ») : `main` = d51122a (branche `baco-transition` + gel par défaut, retour arrière
+  par la variable Vercel `BACO_FROZEN=0` puis redéploiement ; relais `/api-proxy` vers Supabase retiré de `vercel.json`).
+  Vérifié : `/` → 307 `/transition` (« BACO devient CSM »), API et `/api-proxy/*` → 410. Lecture Supabase : 1 bon bus BACO
+  absent de CSM (n° 366, créé le 4 nov. au soir), aucun taxi ; n° 366 libre dans CSM (dernier = 365). Import final en attente
+  de l'accord de l'utilisateur (même procédure que le 4 nov.).
 
 ---
 
