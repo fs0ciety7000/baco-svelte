@@ -9,11 +9,17 @@ export type DirectoryEntry = {
   name: string;
   phone: string;
   email: string;
+  /** Anciens champs BACO (annuaire v2 du 5 nov. 2026) : plus affichés, encore cherchés. */
   category: string;
-  zone: string;
   group: string;
+  zone: string;
   note: string;
   aliases: string[];
+  /** Annuaire v2 : clé du service (`directory_services`, vide = à classer), fonction, libellés pour la recherche. */
+  service?: string;
+  function?: string;
+  serviceLabel?: string;
+  zoneName?: string;
 };
 
 // ---------------------------------------------------------------------------------------------------
@@ -159,7 +165,9 @@ const words = (s: string) => s.split(" ").filter(Boolean);
 function indexEntry(e: DirectoryEntry): Indexed {
   const name = foldText(e.name);
   const aliases = e.aliases.map(foldText).filter(Boolean);
-  const facets = foldText([e.category, e.group, e.zone].join(" "));
+  const facets = foldText(
+    [e.function, e.serviceLabel, e.zone, e.zoneName, e.category, e.group].filter(Boolean).join(" "),
+  );
   const note = foldText(e.note);
   return {
     e,

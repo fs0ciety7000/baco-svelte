@@ -51,12 +51,19 @@ export function SegmentedNav({
    * tronquer les libellés.
    */
   scroll?: boolean;
+  /**
+   * `href` : lien (filtre GET partageable, `aria-current`). `onSelect` sans `href` : bouton (état tenu par la page, comme
+   * l'annuaire qui filtre dans le navigateur, `aria-pressed`).
+   */
   items: {
     label: React.ReactNode;
-    href: string;
+    href?: string;
+    onSelect?: () => void;
     current: boolean;
     testId?: string;
     count?: number;
+    /** Nom accessible quand le libellé visible est abrégé. */
+    ariaLabel?: string;
   }[];
   className?: string;
   "data-testid"?: string;
@@ -74,28 +81,49 @@ export function SegmentedNav({
       )}
       {...props}
     >
-      {items.map((it) => (
-        <Link
-          key={it.href}
-          href={it.href}
-          aria-current={it.current ? "true" : undefined}
-          data-testid={it.testId}
-          className={cn(
-            "inline-flex h-control-sm min-w-0 flex-1 items-center justify-center truncate rounded-control px-3 text-small font-medium whitespace-nowrap transition-colors duration-150 md:flex-none",
-            scroll && "max-md:min-w-max max-md:flex-none",
-            it.current
-              ? "bg-(--control-on) font-semibold text-fg shadow-rest ring-1 ring-border-strong"
-              : "text-fg-muted hover:bg-surface-3 hover:text-fg",
-          )}
-        >
-          {it.label}
-          {it.count !== undefined ? (
-            <span className="ml-1.5 inline-grid h-5 min-w-5 place-items-center rounded-pill bg-surface-2 px-1.5 text-label font-semibold text-fg-muted tabular">
-              {it.count}
-            </span>
-          ) : null}
-        </Link>
-      ))}
+      {items.map((it, i) => {
+        const cls = cn(
+          "inline-flex h-control-sm min-w-0 flex-1 cursor-pointer items-center justify-center truncate rounded-control px-3 text-small font-medium whitespace-nowrap transition-colors duration-150 md:flex-none",
+          scroll && "max-md:min-w-max max-md:flex-none",
+          it.current
+            ? "bg-(--control-on) font-semibold text-fg shadow-rest ring-1 ring-border-strong"
+            : "text-fg-muted hover:bg-surface-3 hover:text-fg",
+        );
+        const inner = (
+          <>
+            {it.label}
+            {it.count !== undefined ? (
+              <span className="ml-1.5 inline-grid h-5 min-w-5 place-items-center rounded-pill bg-surface-2 px-1.5 text-label font-semibold text-fg-muted tabular">
+                {it.count}
+              </span>
+            ) : null}
+          </>
+        );
+        return it.href !== undefined ? (
+          <Link
+            key={it.href}
+            href={it.href}
+            aria-current={it.current ? "true" : undefined}
+            aria-label={it.ariaLabel}
+            data-testid={it.testId}
+            className={cls}
+          >
+            {inner}
+          </Link>
+        ) : (
+          <button
+            key={it.testId ?? i}
+            type="button"
+            onClick={it.onSelect}
+            aria-pressed={it.current}
+            aria-label={it.ariaLabel}
+            data-testid={it.testId}
+            className={cls}
+          >
+            {inner}
+          </button>
+        );
+      })}
     </div>
   );
 }

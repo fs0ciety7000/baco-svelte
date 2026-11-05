@@ -570,18 +570,29 @@ async function ptcar({ pb, q, terms }: Ctx): Promise<SearchGroup> {
 }
 
 async function contacts({ pb, q }: Ctx): Promise<SearchGroup> {
-  const r = await pb.collection("directory_contacts").getList(1, LIMIT, {
-    filter: pb.filter("(name ~ {:q} || phone ~ {:q} || group ~ {:q})", { q }),
-    sort: "name",
-    fields: "id,name,phone,group",
-    skipTotal: true,
-  });
+  // Annuaire v2 (5 nov. 2026) : fonction · service · zone (les anciens catégorie / groupe ne sont plus affichés).
+  const [r, services] = await Promise.all([
+    pb.collection("directory_contacts").getList(1, LIMIT, {
+      filter: pb.filter(
+        "(name ~ {:q} || phone ~ {:q} || function ~ {:q} || zone = {:z} || group ~ {:q})",
+        { q, z: q.toUpperCase() },
+      ),
+      sort: "name",
+      fields: "id,name,phone,function,service,zone",
+      skipTotal: true,
+    }),
+    pb
+      .collection("directory_services")
+      .getFullList({ fields: "key,label", batch: 50 })
+      .catch(() => []),
+  ]);
+  const label = new Map(services.map((s) => [str(s.key), str(s.label)]));
   return group(
     "contacts",
     r.items.map((c) => ({
       kind: "contacts",
-      label: str(c.name),
-      meta: join(c.group, c.phone) || "Contacts",
+      label: str(c.function) ? `${str(c.function)} · ${str(c.name)}` : str(c.name),
+      meta: join(label.get(str(c.service)) ?? "", c.zone, c.phone) || "Contacts",
       // Fiche ouverte directement dans l'annuaire (panneau, refonte du 14 oct. 2026).
       href: `/ressources?q=${enc(str(c.name) || q)}&id=${c.id}`,
     })),

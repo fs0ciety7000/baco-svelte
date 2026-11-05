@@ -9,20 +9,26 @@ import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { Combobox } from "@/components/ui/combobox";
 import { Input, Textarea } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { toast } from "@/components/ui/toast";
 import { safeCall } from "@/lib/orders/safe-call";
+import type { DirectoryService, DirectoryZone } from "@/lib/referentiels/directory-model";
 import type { ContactInput } from "@/lib/referentiels/model";
 import type { Contact } from "@/server/data/referentiels";
 
-export type Facets = { categories: string[]; zones: string[]; groups: string[] };
+/**
+ * Listes du formulaire (annuaire v2, 5 nov. 2026) : services (`directory_services`, fonctions proposées), zones SPI connues
+ * et codes de zone déjà en base hors de cette liste (« FB », « FR / LK » : gardés à l'affichage).
+ */
+export type Facets = { services: DirectoryService[]; zones: DirectoryZone[]; extraZones: string[] };
 
 export const toInput = (c?: Contact | null): ContactInput => ({
   name: c?.name ?? "",
   phone: c?.phone ?? "",
   email: c?.email ?? "",
-  category: c?.category ?? "",
+  service: c?.service ?? "",
+  function: c?.function ?? "",
   zone: c?.zone ?? "",
-  group: c?.group ?? "",
   note: c?.note ?? "",
 });
 
@@ -164,41 +170,42 @@ export function ContactForm({
             maxLength={200}
           />
         </Field>
-        <Field label="Catégorie" required>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Service">
+          <Select
+            value={f.service}
+            onValueChange={(v) => setF({ ...f, service: v })}
+            options={[
+              { value: "", label: "À classer" },
+              ...facets.services.map((s) => ({ value: s.key, label: s.label })),
+            ]}
+            data-testid="contact-service"
+          />
+        </Field>
+        <Field label="Fonction" hint="Choisis dans la liste ou tape une autre fonction.">
           <Combobox
             allowFree
             openOnFocus
-            value={f.category}
-            onValueChange={(v) => setF({ ...f, category: v })}
-            options={facets.categories.map((v) => ({ value: v, label: v }))}
-            createLabel={(q) => `Nouvelle catégorie « ${q} »`}
-            required
+            value={f.function}
+            onValueChange={(v) => setF({ ...f, function: v })}
+            options={functionsOf(facets, f.service, f.function).map((v) => ({
+              value: v,
+              label: v,
+            }))}
             maxLength={60}
+            data-testid="contact-function"
           />
         </Field>
         <Field label="Zone">
-          <Combobox
-            allowFree
-            openOnFocus
+          <Select
             value={f.zone}
             onValueChange={(v) => setF({ ...f, zone: v })}
-            options={facets.zones.map((v) => ({ value: v, label: v }))}
-            createLabel={(q) => `Nouvelle zone « ${q} »`}
-            maxLength={60}
+            options={zoneOptions(facets, f.zone)}
+            data-testid="contact-zone"
           />
         </Field>
       </div>
-      <Field label="Groupe">
-        <Combobox
-          allowFree
-          openOnFocus
-          value={f.group}
-          onValueChange={(v) => setF({ ...f, group: v })}
-          options={facets.groups.map((v) => ({ value: v, label: v }))}
-          createLabel={(q) => `Nouveau groupe « ${q} »`}
-          maxLength={120}
-        />
-      </Field>
       <Field label="Remarque">
         <Textarea
           value={f.note}
@@ -235,4 +242,24 @@ export function ContactForm({
       </DialogFooter>
     </form>
   );
+}
+
+/** Fonctions proposées pour le service choisi (toutes si aucun), plus la valeur actuelle si elle est hors liste. */
+function functionsOf(facets: Facets, service: string, current: string): string[] {
+  const list = service
+    ? (facets.services.find((s) => s.key === service)?.functions ?? [])
+    : facets.services.flatMap((s) => s.functions);
+  const out = [...new Set(list)];
+  if (current && !out.some((f) => f.toLowerCase() === current.toLowerCase())) out.unshift(current);
+  return out;
+}
+
+/** Zones SPI connues + « Aucune » ; un code déjà en base hors de la liste reste proposé (tel quel). */
+function zoneOptions(facets: Facets, current: string) {
+  const known = facets.zones.map((z) => ({ value: z.code, label: `${z.code} · ${z.name}` }));
+  const extra = [...new Set([...facets.extraZones, current])]
+    .filter((c) => c && !facets.zones.some((z) => z.code === c))
+    .sort((a, b) => a.localeCompare(b, "fr"))
+    .map((c) => ({ value: c, label: `${c} (hors carte SPI)` }));
+  return [{ value: "", label: "Aucune" }, ...known, ...extra];
 }

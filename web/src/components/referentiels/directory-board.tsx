@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Mail, Phone, Plus, Search, Star, X } from "lucide-react";
+import { ChevronRight, Clock, Mail, Phone, Plus, Search, Star, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   Fragment,
@@ -26,11 +26,12 @@ import {
 } from "@/components/referentiels/contact-board";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { ChipRow, FilterChip } from "@/components/ui/filters";
+import { FilterChip, SegmentedNav } from "@/components/ui/filters";
 import { Input } from "@/components/ui/input";
+import { ListStatus, TOOLBAR } from "@/components/ui/list-toolbar";
 import { LiveHighlight } from "@/components/ui/live-highlight";
 import { EmptyState, Kbd } from "@/components/ui/misc";
-import { Select } from "@/components/ui/select";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { Sheet } from "@/components/ui/sheet";
 import { toast } from "@/components/ui/toast";
 import { safeCall } from "@/lib/orders/safe-call";
@@ -52,22 +53,50 @@ import {
   type Query,
   type Segment,
 } from "@/lib/referentiels/directory";
+import {
+  contactTitle,
+  groupByService,
+  groupByZone,
+  mineFilter,
+  NO_ZONE,
+  sameZones,
+  serviceCounts,
+  shortServiceLabel,
+  zoneLabel,
+  zoneMatches,
+  zoneParam,
+  type DirectoryService,
+  type DirectoryZone,
+  type Groupable,
+  type ZoneFilter,
+} from "@/lib/referentiels/directory-model";
 import { cn, pl } from "@/lib/utils";
 import type { Contact } from "@/server/data/referentiels";
 
-// Annuaire (Ressources › Annuaire), refonte du 14 oct. 2026 (`docs/design/REFONTE-ANNUAIRE.md`) : l'agent au téléphone
-// doit trouver un numéro en 3 secondes. Toutes les fiches (≈ 400) sont chargées une fois ; la recherche tourne dans le
-// navigateur à chaque frappe (accents, fautes, mots dans le désordre, numéro, abréviation de gare), classée par
-// pertinence et surlignée. Favoris et récents suivent le compte (`users.preferences.directory`). L'état (saisie,
-// filtres, fiche ouverte) est recopié dans l'URL par `history.replaceState` (lien partageable, retour arrière).
+// Annuaire (Ressources › Contacts), refonte du 14 oct. 2026 (`docs/design/REFONTE-ANNUAIRE.md`) puis annuaire v2 du
+// 5 nov. 2026 (Service / Fonction / Zone séparés) : l'agent au téléphone doit trouver un numéro en 3 secondes. Toutes les
+// fiches (≈ 400) sont chargées une fois ; la recherche tourne dans le navigateur à chaque frappe (accents, fautes, mots
+// dans le désordre, numéro, abréviation de gare), classée par pertinence et surlignée. Sans recherche : vue « Par zone »
+// (par défaut, zones des districts de l'agent) ou « Par service ». Favoris et récents suivent le compte
+// (`users.preferences.directory`). L'état (saisie, filtres, vue, fiche ouverte) est recopié dans l'URL par
+// `history.replaceState` (lien partageable, retour arrière).
 
-type Initial = { q: string; category: string; zone: string; group: string; id: string };
+/** Filtre « service » : `""` = tous, `"-"` = à classer, sinon la clé. */
+const UNCLASSIFIED = "-";
+/** Valeur de la liste des zones pour « Sans zone ». */
+const NO_ZONE_OPT = "-";
+
+type View = "zone" | "service";
+type Initial = { q: string; service: string; zone: ZoneFilter; view: View; id: string };
+type Row = DirectoryEntry & Groupable;
 
 const RECENT_SHOWN = 5;
 
 export function DirectoryBoard({
   entries,
-  facets,
+  services,
+  zones,
+  mine,
   updated,
   initial,
   prefs,
@@ -76,7 +105,10 @@ export function DirectoryBoard({
   canDelete,
 }: {
   entries: DirectoryEntry[];
-  facets: Facets;
+  services: DirectoryService[];
+  zones: DirectoryZone[];
+  /** Zones des districts de l'agent (« Mes zones »). */
+  mine: string[];
   updated: Record<string, string>;
   initial: Initial;
   prefs: DirectoryPrefs;
@@ -86,9 +118,10 @@ export function DirectoryBoard({
 }) {
   const router = useRouter();
   const [query, setQuery] = useState(initial.q);
-  const [category, setCategory] = useState(initial.category);
-  const [zone, setZone] = useState(initial.zone);
-  const [group, setGroup] = useState(initial.group);
+  const [service, setService] = useState(initial.service);
+  const [zoneFilter, setZoneFilter] = useState<ZoneFilter>(initial.zone);
+  const [view, setView] = useState<View>(initial.view);
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [favorites, setFavorites] = useState(prefs.favorites);
   const [recent, setRecent] = useState(prefs.recent);
   const [openId, setOpenId] = useState<string | null>(initial.id || null);
@@ -98,34 +131,58 @@ export function DirectoryBoard({
   const listRef = useRef<HTMLDivElement>(null);
   const wanted = useRef<string | null>(null);
 
-  const index = useMemo(() => buildIndex(entries), [entries]);
-  const byId = useMemo(() => new Map(entries.map((e) => [e.id, e])), [entries]);
+  const rows = useMemo<Row[]>(
+    () => entries.map((e) => ({ ...e, service: e.service ?? "", function: e.function ?? "" })),
+    [entries],
+  );
+  const zoneMap = useMemo(() => new Map(zones.map((z) => [z.code, z])), [zones]);
+  const serviceMap = useMemo(() => new Map(services.map((s) => [s.key, s])), [services]);
+  const index = useMemo(() => buildIndex(rows), [rows]);
+  const byId = useMemo(() => new Map(rows.map((e) => [e.id, e])), [rows]);
   const deferred = useDeferredValue(query);
   const q = useMemo(() => parseQuery(deferred), [deferred]);
   const browsing = isEmptyQuery(q);
-  const filtered = !!(category || zone || group);
+  const defaultZones = useMemo(() => mineFilter(mine), [mine]);
+  const zoneIsDefault = sameZones(zoneFilter, defaultZones);
+  const filtered = !!service || !zoneIsDefault;
+
+  const serviceOk = useCallback(
+    (e: DirectoryEntry) =>
+      !service || (service === UNCLASSIFIED ? !e.service : e.service === service),
+    [service],
+  );
   // Bonus de classement tirés des préférences au chargement : une étoile ou une fiche ouverte ne réordonne pas la liste
   // sous les yeux de l'agent.
   const hits = useMemo(
     () =>
       searchDirectory(index, q, {
         ...prefs,
-        keep: (e) =>
-          (!category || e.category === category) &&
-          (!zone || e.zone === zone) &&
-          (!group || e.group === group),
+        keep: (e) => serviceOk(e) && zoneMatches(e.zone, zoneFilter),
       }),
-    [index, q, prefs, category, zone, group],
+    [index, q, prefs, serviceOk, zoneFilter],
+  );
+  // Avec une recherche, les fiches hors des zones choisies sont comptées (« 3 autres hors de tes zones »).
+  const outside = useMemo(
+    () =>
+      browsing || zoneFilter === null
+        ? 0
+        : searchDirectory(index, q, { keep: serviceOk }).length - hits.length,
+    [browsing, zoneFilter, index, q, serviceOk, hits.length],
   );
   const suggestion = useMemo(
-    () => (hits.length ? null : suggestQuery(index, q)),
-    [hits.length, index, q],
+    () => (hits.length || outside ? null : suggestQuery(index, q)),
+    [hits.length, outside, index, q],
   );
-  const catCounts = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const e of entries) if (e.category) m.set(e.category, (m.get(e.category) ?? 0) + 1);
-    return m;
-  }, [entries]);
+  const counts = useMemo(
+    () => serviceCounts(rows.filter((e) => zoneMatches(e.zone, zoneFilter))),
+    [rows, zoneFilter],
+  );
+  const sections = useMemo(() => {
+    if (!browsing) return [];
+    const list = hits.map((h) => h.entry as Row);
+    const ctx = { services, zones: zoneMap, mine };
+    return view === "service" ? groupByService(list, ctx) : groupByZone(list, ctx);
+  }, [browsing, hits, view, services, zoneMap, mine]);
 
   // État → URL (sans rendu serveur : `replaceState`, voir CLAUDE.md « Paramètre d'URL d'un panneau »).
   useEffect(() => {
@@ -134,15 +191,16 @@ export function DirectoryBoard({
       const set = (k: string, v: string) =>
         v ? url.searchParams.set(k, v) : url.searchParams.delete(k);
       set("q", query.trim());
-      set("category", category);
-      set("zone", zone);
-      set("group", group);
+      set("service", service);
+      url.searchParams.delete("zone");
+      for (const z of zoneParam(zoneFilter, mine)) url.searchParams.append("zone", z);
+      set("vue", view === "service" ? "service" : "");
       set("id", openId ?? "");
-      url.searchParams.delete("page");
+      for (const k of ["page", "category", "group"]) url.searchParams.delete(k);
       if (url.href !== window.location.href) window.history.replaceState(null, "", url);
     }, 250);
     return () => window.clearTimeout(t);
-  }, [query, category, zone, group, openId]);
+  }, [query, service, zoneFilter, view, openId, mine]);
 
   // Fiche ouverte : affichée tout de suite depuis la liste, complétée (auteur, date) par le serveur.
   const load = useCallback(async (id: string) => {
@@ -198,12 +256,22 @@ export function DirectoryBoard({
     },
     [enqueue],
   );
+  const toggleFold = useCallback((key: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
 
+  const resetFilters = () => {
+    setService("");
+    setZoneFilter(defaultZones);
+  };
   const clearAll = () => {
     setQuery("");
-    setCategory("");
-    setZone("");
-    setGroup("");
+    resetFilters();
     inputRef.current?.focus();
   };
 
@@ -228,55 +296,94 @@ export function DirectoryBoard({
     }
   };
 
-  const favEntries = favorites.map((id) => byId.get(id)).filter(Boolean) as DirectoryEntry[];
+  const favEntries = favorites.map((id) => byId.get(id)).filter(Boolean) as Row[];
   const recentEntries = recent
     .map((id) => byId.get(id))
-    .filter((e): e is DirectoryEntry => !!e && !favorites.includes(e.id))
+    .filter((e): e is Row => !!e && !favorites.includes(e.id))
     .slice(0, RECENT_SHOWN);
   const showShortcuts =
     browsing && !filtered && (favEntries.length > 0 || recentEntries.length > 0);
 
+  const labels = { services: serviceMap, zones: zoneMap };
   const rowProps = {
     q,
+    labels,
     favorites,
     selectedId: openId,
     onOpen: open,
     onToggleFav: toggleFav,
     onTouch: touch,
   };
-  const groups = useMemo(() => {
-    if (!browsing) return [];
-    const m = new Map<string, Hit[]>();
-    for (const h of hits) {
-      const g = h.entry.group || "Sans groupe";
-      m.set(g, [...(m.get(g) ?? []), h]);
-    }
-    return [...m.entries()].sort(([a], [b]) =>
-      a === "Sans groupe" ? 1 : b === "Sans groupe" ? -1 : a.localeCompare(b, "fr"),
-    );
-  }, [browsing, hits]);
 
   const detailEntry = openId ? byId.get(openId) : undefined;
   const shown = detail && detail.id === openId ? detail : null;
+  const facets: Facets = useMemo(
+    () => ({
+      services,
+      zones,
+      extraZones: [...new Set(rows.map((e) => e.zone).filter((z) => z && !zoneMap.has(z)))],
+    }),
+    [services, zones, rows, zoneMap],
+  );
+
+  // Zones proposées dans le filtre : sans zone, zones connues (mes zones d'abord), codes hors carte.
+  const zoneOptions = useMemo(() => {
+    const used = new Set(rows.map((e) => e.zone));
+    const mineSet = new Set(mine);
+    const known = [...zones]
+      .sort(
+        (a, b) =>
+          Number(mineSet.has(b.code)) - Number(mineSet.has(a.code)) ||
+          a.name.localeCompare(b.name, "fr"),
+      )
+      .map((z) => ({
+        value: z.code,
+        label: `${z.code} · ${z.name}`,
+        hint: z.district || undefined,
+      }));
+    const extra = [...used]
+      .filter((z) => z && !zoneMap.has(z))
+      .sort((a, b) => a.localeCompare(b, "fr"))
+      .map((z) => ({ value: z, label: z, hint: "hors carte SPI" }));
+    return [{ value: NO_ZONE_OPT, label: "Sans zone" }, ...known, ...extra];
+  }, [rows, zones, zoneMap, mine]);
+  const zoneValues = (zoneFilter ?? []).map((z) => (z === NO_ZONE ? NO_ZONE_OPT : z));
+  const zoneSummary =
+    zoneFilter === null
+      ? "Toutes les zones"
+      : zoneIsDefault && mine.length
+        ? "Mes zones"
+        : undefined;
+
+  const serviceItems = [
+    { key: "", label: "Tous", count: [...counts.values()].reduce((a, b) => a + b, 0) },
+    ...services.map((s) => ({
+      key: s.key,
+      label: shortServiceLabel(s.key, s.label),
+      full: s.label,
+      count: counts.get(s.key) ?? 0,
+    })),
+    ...(counts.get("") ? [{ key: UNCLASSIFIED, label: "À classer", count: counts.get("")! }] : []),
+  ];
 
   return (
-    <section className="flex flex-col gap-4" aria-label="Annuaire">
-      <div className="flex flex-col gap-3">
+    <section className="flex flex-col gap-4" aria-label="Contacts">
+      <div className="flex flex-col gap-2">
         <form
           role="search"
           action="/ressources"
-          className="flex items-center gap-2"
+          className={cn(TOOLBAR, "md:flex-nowrap")}
           onSubmit={(e) => {
             e.preventDefault();
             const first = hits[0];
             if (!browsing && first) open(first.entry.id);
           }}
         >
-          <label className="relative min-w-0 flex-1">
+          <label className="relative min-w-0 basis-full md:flex-1 md:basis-auto">
             <span className="sr-only">Rechercher dans l&apos;annuaire</span>
             <Search
               aria-hidden
-              className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-fg-muted"
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted"
             />
             <Input
               ref={inputRef}
@@ -304,7 +411,7 @@ export function DirectoryBoard({
               aria-describedby="annuaire-count"
               aria-controls="annuaire-results"
               data-testid="directory-search"
-              className="h-12 pr-12 pl-11 text-body-lg [&::-webkit-search-cancel-button]:hidden"
+              className="pr-11 pl-9 [&::-webkit-search-cancel-button]:hidden"
             />
             {query ? (
               <button
@@ -314,7 +421,7 @@ export function DirectoryBoard({
                   inputRef.current?.focus();
                 }}
                 aria-label="Effacer la recherche"
-                className="absolute top-1/2 right-1 grid size-10 -translate-y-1/2 cursor-pointer place-items-center rounded-control text-fg-muted hover:bg-surface-2 hover:text-fg"
+                className="absolute top-1/2 right-0.5 grid size-10 -translate-y-1/2 cursor-pointer place-items-center rounded-control text-fg-muted hover:bg-surface-2 hover:text-fg"
               >
                 <X aria-hidden className="size-4" />
               </button>
@@ -327,11 +434,61 @@ export function DirectoryBoard({
               </Kbd>
             )}
           </label>
+          <div className="flex min-w-0 basis-full items-center gap-2 md:basis-auto">
+            <label className="w-full min-w-0 flex-1 md:w-56 md:flex-none">
+              <span className="sr-only">Zone</span>
+              <MultiSelect
+                label="Zones"
+                options={zoneOptions}
+                values={zoneValues}
+                onValuesChange={(vals) => {
+                  const next = vals.map((v) => (v === NO_ZONE_OPT ? NO_ZONE : v));
+                  setZoneFilter(
+                    next.length === 0 || next.length === zoneOptions.length ? null : next,
+                  );
+                }}
+                allLabel="Toutes les zones"
+                noun="zone"
+                summary={zoneSummary}
+                searchable
+                data-testid="directory-zone"
+              />
+            </label>
+            {mine.length ? (
+              <FilterChip
+                pressed={zoneIsDefault}
+                onClick={() => setZoneFilter(zoneIsDefault ? null : defaultZones)}
+                data-testid="directory-mine"
+                title="Zones de tes districts du jour, et contacts sans zone"
+              >
+                Mes zones
+              </FilterChip>
+            ) : null}
+          </div>
+          <SegmentedNav
+            label="Affichage"
+            className="min-w-0 flex-1 md:flex-none"
+            data-testid="directory-view"
+            items={[
+              {
+                label: "Par zone",
+                current: view === "zone",
+                onSelect: () => setView("zone"),
+                testId: "view-zone",
+              },
+              {
+                label: "Par service",
+                current: view === "service",
+                onSelect: () => setView("service"),
+                testId: "view-service",
+              },
+            ]}
+          />
           {canWrite ? (
             <Button
               type="button"
               variant="secondary"
-              className="h-12 shrink-0"
+              className="shrink-0"
               onClick={() => setCreateOpen(true)}
               data-testid="contact-new"
               data-shortcut="new"
@@ -339,90 +496,73 @@ export function DirectoryBoard({
               aria-label="Nouveau contact"
             >
               <Plus aria-hidden />
-              <span className="hidden sm:inline">Nouveau contact</span>
+              <span className="hidden lg:inline">Nouveau contact</span>
             </Button>
           ) : null}
         </form>
-        <p className="-mt-1 hidden text-small text-fg-muted md:block">
-          Accents et fautes de frappe tolérés · abréviation de gare (FMS) · numéro avec ou sans
-          espaces ni +32 · <Kbd>↓</Kbd> pour parcourir les résultats, <Kbd>Entrée</Kbd> pour ouvrir
-          le premier
-        </p>
-
-        {facets.categories.length ? (
-          <ChipRow role="group" aria-label="Catégorie">
-            <FilterChip pressed={!category} onClick={() => setCategory("")}>
-              Toutes
-            </FilterChip>
-            {facets.categories.map((c) => (
-              <FilterChip
-                key={c}
-                pressed={category === c}
-                onClick={() => setCategory(category === c ? "" : c)}
-              >
-                {c}
-                <span className="tabular text-fg-subtle">{catCounts.get(c) ?? 0}</span>
-              </FilterChip>
-            ))}
-          </ChipRow>
-        ) : null}
-
-        <div className="grid grid-cols-2 items-center gap-2 md:flex md:flex-wrap">
-          {facets.zones.length ? (
-            <div className="min-w-0 md:w-52">
-              <Select
-                aria-label="Zone"
-                label="Zone"
-                clearable
-                placeholder="Toutes les zones"
-                value={zone}
-                onValueChange={setZone}
-                options={facets.zones.map((z) => ({ value: z, label: z }))}
-                className="md:min-h-control-sm md:text-small"
-              />
-            </div>
-          ) : null}
-          {facets.groups.length ? (
-            <div className="min-w-0 md:w-60">
-              <Select
-                aria-label="Groupe"
-                label="Groupe"
-                clearable
-                placeholder="Tous les groupes"
-                value={group}
-                onValueChange={setGroup}
-                options={facets.groups.map((g) => ({ value: g, label: g }))}
-                className="md:min-h-control-sm md:text-small"
-              />
-            </div>
-          ) : null}
-          <div className="col-span-2 flex min-h-control-sm items-center gap-3 whitespace-nowrap md:ml-auto">
-            <p
-              id="annuaire-count"
-              aria-live="polite"
-              className="text-small text-fg-muted"
-              data-testid="contacts-count"
-            >
-              {browsing && !filtered ? (
+        <SegmentedNav
+          label="Service"
+          scroll
+          className="md:flex-wrap"
+          data-testid="directory-service"
+          items={serviceItems.map((it) => ({
+            label: it.label,
+            count: it.count,
+            current: service === it.key,
+            onSelect: () => setService(it.key),
+            testId: `service-${it.key === UNCLASSIFIED ? "a-classer" : it.key || "tous"}`,
+            ariaLabel:
+              "full" in it && it.full !== it.label ? `${it.full} (${it.count})` : undefined,
+          }))}
+        />
+        <ListStatus
+          count={
+            <span id="annuaire-count" aria-live="polite" data-testid="contacts-count">
+              {browsing ? (
                 <>
-                  <span className="font-medium text-fg tabular">{entries.length}</span>{" "}
-                  {pl(entries.length, "contact")}
+                  <span className="font-medium text-fg tabular">{hits.length}</span>{" "}
+                  {pl(hits.length, "contact")}
+                  {filtered || zoneFilter !== null ? (
+                    <>
+                      {" "}
+                      sur <span className="tabular">{rows.length}</span>
+                    </>
+                  ) : null}
                 </>
               ) : (
                 <>
                   <span className="font-medium text-fg tabular">{hits.length}</span>{" "}
-                  {pl(hits.length, "résultat")} sur{" "}
-                  <span className="tabular">{entries.length}</span>
+                  {pl(hits.length, "résultat")} sur <span className="tabular">{rows.length}</span>
                 </>
               )}
-            </p>
-            {!browsing || filtered ? (
+            </span>
+          }
+          sync={
+            outside > 0 ? (
+              <Button
+                variant="link"
+                size="sm"
+                className="text-small"
+                onClick={() => setZoneFilter(null)}
+                data-testid="directory-outside"
+              >
+                {outside} {pl(outside, "autre")} hors de ces zones
+              </Button>
+            ) : (
+              <span className="max-md:hidden">
+                Accents et fautes tolérés · abréviation de gare (FMS) · numéro avec ou sans +32 ·{" "}
+                <Kbd>↓</Kbd> parcourt, <Kbd>Entrée</Kbd> ouvre le premier
+              </span>
+            )
+          }
+          live={
+            !browsing || filtered ? (
               <Button variant="link" size="sm" className="text-small" onClick={clearAll}>
                 Tout effacer
               </Button>
-            ) : null}
-          </div>
-        </div>
+            ) : undefined
+          }
+        />
       </div>
 
       <div
@@ -433,7 +573,7 @@ export function DirectoryBoard({
         className="flex flex-col gap-6"
       >
         <LiveHighlight scope="annuaire" sigs={updated} swap={false} />
-        {entries.length === 0 ? (
+        {rows.length === 0 ? (
           <EmptyState
             framed
             title="Annuaire vide"
@@ -449,9 +589,11 @@ export function DirectoryBoard({
                 : `Aucun résultat pour « ${q.raw.trim()} »`
             }
             description={
-              browsing
-                ? "Retire un filtre pour élargir la liste."
-                : "Essaie une partie du nom, l'abréviation de la gare (FMS), quelques chiffres du numéro ou la fonction (dispatching, securail…)."
+              outside
+                ? `${outside} ${pl(outside, "contact")} hors des zones choisies.`
+                : browsing
+                  ? "Choisis une autre zone ou un autre service."
+                  : "Essaie une partie du nom, l'abréviation de la gare (FMS), quelques chiffres du numéro ou la fonction (PACO, SPI…)."
             }
             action={
               <div className="flex flex-wrap justify-center gap-2">
@@ -460,13 +602,12 @@ export function DirectoryBoard({
                     Chercher « {suggestion} »
                   </Button>
                 ) : null}
-                {filtered ? (
+                {filtered || zoneFilter !== null ? (
                   <Button
                     variant="secondary"
                     onClick={() => {
-                      setCategory("");
-                      setZone("");
-                      setGroup("");
+                      setService("");
+                      setZoneFilter(null);
                     }}
                   >
                     Chercher dans tout l&apos;annuaire
@@ -486,7 +627,14 @@ export function DirectoryBoard({
                     testId="directory-favorites"
                   >
                     {favEntries.map((e) => (
-                      <ContactRow key={e.id} entry={e} via={[]} {...rowProps} />
+                      <ContactRow
+                        key={e.id}
+                        entry={e}
+                        via={[]}
+                        showZone
+                        showService
+                        {...rowProps}
+                      />
                     ))}
                   </RowSection>
                 ) : null}
@@ -497,7 +645,14 @@ export function DirectoryBoard({
                     testId="directory-recent"
                   >
                     {recentEntries.map((e) => (
-                      <ContactRow key={e.id} entry={e} via={[]} {...rowProps} />
+                      <ContactRow
+                        key={e.id}
+                        entry={e}
+                        via={[]}
+                        showZone
+                        showService
+                        {...rowProps}
+                      />
                     ))}
                   </RowSection>
                 ) : null}
@@ -505,45 +660,75 @@ export function DirectoryBoard({
             ) : null}
 
             {browsing ? (
-              <>
-                {groups.length > 1 ? (
-                  <nav aria-label="Aller à un groupe">
-                    <ChipRow className="md:flex-nowrap md:overflow-x-auto md:pb-1">
-                      {groups.map(([g, list]) => (
-                        <FilterChip key={g} asChild>
-                          <a href={`#groupe-${slug(g)}`}>
-                            {g}
-                            <span className="tabular text-fg-subtle">{list.length}</span>
-                          </a>
-                        </FilterChip>
-                      ))}
-                    </ChipRow>
-                  </nav>
-                ) : null}
-                {groups.map(([g, list]) => (
-                  <RowSection
-                    key={g}
-                    id={`groupe-${slug(g)}`}
-                    title={g}
-                    count={list.length}
-                    testId="directory-group"
-                  >
-                    {list.map((h) => (
-                      <ContactRow
-                        key={h.entry.id}
-                        entry={h.entry}
-                        via={h.via}
-                        grouped
-                        {...rowProps}
-                      />
-                    ))}
-                  </RowSection>
-                ))}
-              </>
+              sections.map((sec) => (
+                <section
+                  key={sec.key || "_"}
+                  aria-label={sec.label}
+                  className="flex min-w-0 scroll-mt-28 flex-col gap-3"
+                  data-testid="directory-section"
+                  data-key={sec.key}
+                >
+                  <h2 className="flex items-center gap-2 text-body font-semibold text-fg">
+                    {view === "zone" ? <ZoneMark color={sec.color} /> : null}
+                    <span className="min-w-0 truncate">{sec.label}</span>
+                    {sec.district ? (
+                      <span className="text-small font-normal text-fg-muted">{sec.district}</span>
+                    ) : null}
+                    <span className="text-small font-normal text-fg-subtle tabular">
+                      {sec.count}
+                    </span>
+                  </h2>
+                  {sec.groups.map((g) => (
+                    <RowSection
+                      key={g.key || "_"}
+                      title={g.label}
+                      count={g.count}
+                      testId="directory-group"
+                      level={3}
+                      icon={
+                        view === "service" ? (
+                          <ZoneMark color={zoneMap.get(g.key)?.color} />
+                        ) : undefined
+                      }
+                    >
+                      {g.items.map((it) => {
+                        if (it.kind === "contact")
+                          return (
+                            <ContactRow key={it.entry.id} entry={it.entry} via={[]} {...rowProps} />
+                          );
+                        const fk = `${view}|${sec.key}|${g.key}|${it.fn}`;
+                        const isOpen = expanded.has(fk);
+                        return (
+                          <Fragment key={fk}>
+                            <FoldRow
+                              fn={it.fn}
+                              count={it.entries.length}
+                              open={isOpen}
+                              onToggle={() => toggleFold(fk)}
+                            />
+                            {isOpen
+                              ? it.entries.map((e) => (
+                                  <ContactRow key={e.id} entry={e} via={[]} nested {...rowProps} />
+                                ))
+                              : null}
+                          </Fragment>
+                        );
+                      })}
+                    </RowSection>
+                  ))}
+                </section>
+              ))
             ) : (
               <RowSection title="Résultats" hideTitle testId="directory-results">
                 {hits.map((h) => (
-                  <ContactRow key={h.entry.id} entry={h.entry} via={h.via} {...rowProps} />
+                  <ContactRow
+                    key={h.entry.id}
+                    entry={h.entry as Row}
+                    via={h.via}
+                    showZone
+                    showService
+                    {...rowProps}
+                  />
                 ))}
               </RowSection>
             )}
@@ -561,16 +746,22 @@ export function DirectoryBoard({
           }
         }}
         eyebrow="Annuaire"
-        title={detailEntry?.name ?? shown?.name ?? "Contact"}
+        title={detailEntry ? contactTitle(detailEntry) : (shown?.name ?? "Contact")}
         description={
           detailEntry
-            ? [detailEntry.category, detailEntry.zone].filter(Boolean).join(" · ")
+            ? [
+                serviceMap.get(detailEntry.service)?.label,
+                detailEntry.zone ? zoneLabel(detailEntry.zone, zoneMap) : "",
+              ]
+                .filter(Boolean)
+                .join(" · ")
             : undefined
         }
       >
         {detailEntry ? (
           <ContactPanel
             entry={detailEntry}
+            labels={labels}
             detail={shown}
             favorite={favorites.includes(detailEntry.id)}
             onToggleFav={() => void toggleFav(detailEntry.id)}
@@ -608,7 +799,10 @@ export function DirectoryBoard({
         >
           <ContactForm
             id={null}
-            initial={toInput(null)}
+            initial={{
+              ...toInput(null),
+              service: service && service !== UNCLASSIFIED ? service : "",
+            }}
             facets={facets}
             onOpen={(id) => {
               setCreateOpen(false);
@@ -626,26 +820,81 @@ export function DirectoryBoard({
   );
 }
 
-const slug = (s: string) =>
-  s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "") || "groupe";
+/** Repère de couleur d'une zone (couleur de la carte SPI ; neutre si la zone est inconnue). */
+function ZoneMark({ color }: { color?: string }) {
+  return (
+    <span
+      aria-hidden
+      className="inline-block size-2.5 shrink-0 rounded-pill border border-border-strong bg-surface-3"
+      style={color ? { backgroundColor: color, borderColor: color } : undefined}
+    />
+  );
+}
 
-const contactOf = (e: DirectoryEntry): Contact => ({
+/** Fonction repliée (plus de 3 contacts : « SPI (8) ») ; ouverte, ses contacts suivent en retrait. */
+function FoldRow({
+  fn,
+  count,
+  open,
+  onToggle,
+}: {
+  fn: string;
+  count: number;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <li className="border-b border-border last:border-b-0" data-testid="contact-fold">
+      <button
+        type="button"
+        data-row-open
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex min-h-11 w-full cursor-pointer items-center gap-2 px-2 text-left hover:bg-surface-2 focus-visible:outline-1 focus-visible:outline-accent md:px-3"
+      >
+        <ChevronRight
+          aria-hidden
+          className={cn("size-4 shrink-0 text-fg-muted transition-transform", open && "rotate-90")}
+        />
+        <FunctionBadge fn={fn} />
+        <span className="text-small text-fg-muted">
+          <span className="tabular">{count}</span> {pl(count, "contact")}
+        </span>
+      </button>
+    </li>
+  );
+}
+
+function FunctionBadge({ fn, segs }: { fn: string; segs?: Segment[] }) {
+  return (
+    <span
+      className="inline-flex h-6 max-w-40 shrink-0 items-center truncate rounded-control border border-border bg-surface-2 px-1.5 text-label font-semibold text-fg"
+      data-testid="contact-function-badge"
+    >
+      {segs ? <Hl segs={segs} /> : fn}
+    </span>
+  );
+}
+
+const contactOf = (e: Row): Contact => ({
   id: e.id,
   name: e.name,
   phone: e.phone,
   email: e.email,
-  category: e.category,
+  service: e.service,
+  function: e.function,
   zone: e.zone,
+  category: e.category,
   group: e.group,
   note: e.note,
   author: "",
   updated: "",
 });
+
+type Labels = {
+  services: ReadonlyMap<string, DirectoryService>;
+  zones: ReadonlyMap<string, DirectoryZone>;
+};
 
 function Hl({ segs }: { segs: Segment[] }) {
   return (
@@ -667,35 +916,31 @@ function Hl({ segs }: { segs: Segment[] }) {
 }
 
 function RowSection({
-  id,
   title,
   count,
   icon,
   hideTitle,
   testId,
+  level = 2,
   children,
 }: {
-  id?: string;
   title: string;
   count?: number;
   icon?: React.ReactNode;
   hideTitle?: boolean;
   testId?: string;
+  level?: 2 | 3;
   children: React.ReactNode;
 }) {
+  const H = level === 3 ? "h3" : "h2";
   return (
-    <section
-      id={id}
-      aria-label={title}
-      className="flex min-w-0 scroll-mt-28 flex-col gap-2"
-      data-testid={testId}
-    >
+    <section aria-label={title} className="flex min-w-0 flex-col gap-2" data-testid={testId}>
       {hideTitle ? null : (
-        <h2 className="flex items-center gap-2 text-small font-medium text-fg-muted">
+        <H className="flex items-center gap-2 text-small font-medium text-fg-muted">
           {icon}
           {title}
           {count != null ? <span className="tabular text-fg-subtle">{count}</span> : null}
-        </h2>
+        </H>
       )}
       <ul className="overflow-hidden rounded-box border border-(--card-frame) bg-surface shadow-rest">
         {children}
@@ -727,31 +972,38 @@ function ContactRow({
   entry,
   via,
   q,
+  labels,
   favorites,
   selectedId,
   onOpen,
   onToggleFav,
   onTouch,
-  grouped = false,
+  showZone = false,
+  showService = false,
+  nested = false,
 }: {
-  entry: DirectoryEntry;
+  entry: Row;
   via: Hit["via"];
-  grouped?: boolean;
   q: Query;
+  labels: Labels;
   favorites: string[];
   selectedId: string | null;
   onOpen: (id: string) => void;
   onToggleFav: (id: string) => void;
   onTouch: (id: string) => void;
+  /** La vue ne donne pas la zone / le service (recherche, favoris) : ils s'affichent sous le nom. */
+  showZone?: boolean;
+  showService?: boolean;
+  /** Contact d'une fonction repliée, ouverte : en retrait. */
+  nested?: boolean;
 }) {
   const fav = favorites.includes(entry.id);
   const href = entry.phone ? callHrefs(entry.phone) : null;
   const { copied, copy } = useCopy();
-  // Dans une section de groupe, le groupe n'est pas répété.
+  const title = contactTitle(entry);
   const meta = [
-    entry.category,
-    grouped || entry.group === entry.category ? "" : entry.group,
-    entry.zone,
+    showService ? (labels.services.get(entry.service)?.label ?? "") : "",
+    showZone && entry.zone ? zoneLabel(entry.zone, labels.zones) : "",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -759,12 +1011,15 @@ function ContactRow({
     ? entry.aliases.find((a) => /^[A-Z0-9]{2,6}$/.test(a))
     : undefined;
   const phoneSegs = highlightPhone(entry.phone, q);
+  // Badge = fonction, sauf si le nom la contient déjà (« PACO Mons » reste tel quel) : « PACO » + « Mons ».
+  const badge = entry.function && title !== entry.name ? entry.function : "";
   return (
     <li
       data-testid="contact-row"
       data-hl={entry.id}
       className={cn(
         "flex items-center gap-1 border-b border-border px-1 last:border-b-0 hover:bg-surface-2 md:gap-2 md:px-2",
+        nested && "pl-4 md:pl-8",
         selectedId === entry.id && "bg-accent-soft hover:bg-accent-soft",
       )}
     >
@@ -772,7 +1027,7 @@ function ContactRow({
         type="button"
         onClick={() => onToggleFav(entry.id)}
         aria-pressed={fav}
-        aria-label={fav ? `Retirer ${entry.name} des favoris` : `Ajouter ${entry.name} aux favoris`}
+        aria-label={fav ? `Retirer ${title} des favoris` : `Ajouter ${title} aux favoris`}
         title={fav ? "Retirer des favoris" : "Ajouter aux favoris"}
         data-testid="contact-fav"
         className={cn(
@@ -786,9 +1041,10 @@ function ContactRow({
         type="button"
         data-row-open
         onClick={() => onOpen(entry.id)}
-        className="flex min-h-14 min-w-0 flex-1 cursor-pointer flex-col justify-center py-2 text-left focus-visible:outline-1 focus-visible:outline-accent md:min-h-12"
+        className="flex min-h-12 min-w-0 flex-1 cursor-pointer flex-col justify-center py-1.5 text-left focus-visible:outline-1 focus-visible:outline-accent md:min-h-11"
       >
         <span className="flex min-w-0 items-center gap-2">
+          {badge ? <FunctionBadge fn={badge} segs={highlightText(badge, q)} /> : null}
           <span className="truncate text-body font-medium text-fg">
             <Hl segs={highlightText(entry.name, q)} />
           </span>
@@ -799,7 +1055,7 @@ function ContactRow({
           ) : null}
         </span>
         {meta ? (
-          <span className="truncate text-small text-fg-muted">
+          <span className="truncate text-small text-fg-muted" data-testid="contact-meta">
             <Hl segs={highlightText(meta, q)} />
           </span>
         ) : null}
@@ -829,7 +1085,7 @@ function ContactRow({
               onTouch(entry.id);
             }}
             className="inline-flex h-8 w-48 items-center gap-2 rounded-control px-2 font-mono text-body text-fg tabular hover:bg-surface hover:underline"
-            aria-label={`Appeler ${entry.name} au ${entry.phone}`}
+            aria-label={`Appeler ${title} au ${entry.phone}`}
             data-testid="contact-call"
           >
             <Phone aria-hidden className="size-4 shrink-0 text-fg-muted" />
@@ -849,7 +1105,7 @@ function ContactRow({
             void copy(entry.phone);
             onTouch(entry.id);
           }}
-          aria-label={copied ? "Numéro copié" : `Copier le numéro de ${entry.name}`}
+          aria-label={copied ? "Numéro copié" : `Copier le numéro de ${title}`}
           title="Copier le numéro"
           data-testid="contact-copy"
           className="grid size-8 cursor-pointer place-items-center rounded-control text-fg-muted hover:bg-surface hover:text-fg disabled:invisible"
@@ -878,7 +1134,7 @@ function ContactRow({
         <a
           href={href.mobile}
           onClick={() => onTouch(entry.id)}
-          aria-label={`Appeler ${entry.name} au ${entry.phone}`}
+          aria-label={`Appeler ${title} au ${entry.phone}`}
           className="mr-1 grid size-11 shrink-0 place-items-center rounded-control border border-border-strong text-fg md:hidden"
           data-testid="contact-call-mobile"
         >
@@ -891,13 +1147,15 @@ function ContactRow({
 
 function ContactPanel({
   entry,
+  labels,
   detail,
   favorite,
   onToggleFav,
   onTouch,
   children,
 }: {
-  entry: DirectoryEntry;
+  entry: Row;
+  labels: Labels;
   detail: Contact | null;
   favorite: boolean;
   onToggleFav: () => void;
@@ -996,12 +1254,14 @@ function ContactPanel({
         </Button>
       </div>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-body">
-        <dt className="text-small text-fg-muted">Catégorie</dt>
-        <dd>{entry.category || "—"}</dd>
-        <dt className="text-small text-fg-muted">Groupe</dt>
-        <dd>{entry.group || "—"}</dd>
+        <dt className="text-small text-fg-muted">Service</dt>
+        <dd data-testid="contact-panel-service">
+          {labels.services.get(entry.service)?.label ?? (entry.service || "À classer")}
+        </dd>
+        <dt className="text-small text-fg-muted">Fonction</dt>
+        <dd>{entry.function || "—"}</dd>
         <dt className="text-small text-fg-muted">Zone</dt>
-        <dd>{entry.zone || "—"}</dd>
+        <dd>{entry.zone ? zoneLabel(entry.zone, labels.zones) : "—"}</dd>
         {abbr.length ? (
           <>
             <dt className="text-small text-fg-muted">Gare</dt>

@@ -20,9 +20,11 @@ export const contactSchema = z.object({
     .max(200)
     .default("")
     .refine((v) => v === "" || /^[^\s@?&]+@[^\s@?&]+\.[^\s@?&]+$/.test(v), "E-mail invalide"),
-  category: line(60).pipe(z.string().min(1, "Catégorie obligatoire")),
-  zone: line(60),
-  group: line(120),
+  // Annuaire v2 (5 nov. 2026) : service (clé de `directory_services`, vérifiée par le hook ; vide = à classer), fonction,
+  // zone (code en majuscules). Les anciens `category` / `group` ne sont plus saisis (gardés en base tels quels).
+  service: line(30).pipe(z.string().regex(/^$|^[a-z][a-z0-9_-]{1,29}$/, "Service inconnu")),
+  function: line(60),
+  zone: line(60).transform((v) => v.toUpperCase()),
   note: z.string().trim().max(1000).default(""),
 });
 export type ContactInput = z.infer<typeof contactSchema>;

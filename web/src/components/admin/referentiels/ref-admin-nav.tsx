@@ -15,6 +15,7 @@ export const REF_ADMIN_SCREENS = [
   { href: "/admin/referentiels/zones-spi", label: "Zones SPI" },
   { href: "/admin/referentiels/spi", label: "Points SPI" },
   { href: "/admin/referentiels/pn", label: "Passages à niveau" },
+  { href: "/admin/referentiels/annuaire", label: "Services de l'annuaire" },
   { href: "/admin/referentiels/imports", label: "Imports" },
 ] as const;
 

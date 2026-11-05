@@ -17,6 +17,7 @@
 // d'import des référentiels du 8 octobre (hors dépôt), reprises ici.
 
 const imp = require(`${__hooks}/lib/import.js`);
+const directory = require(`${__hooks}/lib/directory.js`);
 
 // Tables BACO non reprises dans CSM (gamification supprimée, modules abandonnés, données recalculées) : le rapport
 // signale seulement leurs lignes nouvelles ou modifiées.
@@ -255,14 +256,21 @@ const SPECS = [
 	{ coll: 'audit_log', table: 'audit_logs', ts: ['timestamp'], custom: 'audit', keyLabel: 'date + table + fiche + action' },
 	{
 		coll: 'directory_contacts', table: 'contacts_repertoire', ts: [], audit: true,
+		// Annuaire v2 (1760005200) : service / fonction / zone tirés de `mapLegacy`, la même fonction que la reprise de la
+		// migration → une fiche migrée et la ligne BACO qui l'a produite restent « identiques » (pas de faux écart). La zone
+		// est donc écrite en majuscules (comme après la migration). La remarque n'est pas un champ repris.
 		fill: (r, c) => {
+			const category = norm(c.categorie_principale) || 'Autre';
+			const m = directory.mapLegacy(category, norm(c.groupe), norm(c.zone));
 			r.set('legacy_id', Number(c.id) || 0);
 			r.set('name', norm(c.nom) || '(sans nom)');
 			r.set('phone', norm(c.tel));
 			r.set('email', norm(c.email));
-			r.set('category', norm(c.categorie_principale) || 'Autre');
-			r.set('zone', norm(c.zone));
+			r.set('category', category);
+			r.set('zone', m.zone);
 			r.set('group', norm(c.groupe));
+			r.set('service', m.service);
+			r.set('function', m.function);
 		}
 	},
 	{

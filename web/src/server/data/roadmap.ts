@@ -135,7 +135,7 @@ export async function buildRoadmap(user: SessionUser, day: string, gare: string)
           .getList(1, 15, {
             filter: pb.filter("name ~ {:s} || group ~ {:s} || note ~ {:s}", { s: station }),
             sort: "name",
-            fields: "name,phone,group",
+            fields: "name,phone,function,group",
           })
           .then((r) =>
             r.items
@@ -144,7 +144,12 @@ export async function buildRoadmap(user: SessionUser, day: string, gare: string)
                   ` ${stationKey(t)} `.includes(` ${stationKey(station)} `),
                 ),
               )
-              .map((c) => ({ name: str(c.name), phone: str(c.phone), group: str(c.group) })),
+              // Annuaire v2 (5 nov. 2026) : la fonction (« Borne PMR », « SPI ») remplace l'ancien groupe à l'affichage.
+              .map((c) => ({
+                name: str(c.name),
+                phone: str(c.phone),
+                group: str(c.function) || str(c.group),
+              })),
           )
           .catch(() => [])
       : Promise.resolve([]),

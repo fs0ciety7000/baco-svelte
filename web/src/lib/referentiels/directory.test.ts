@@ -220,3 +220,33 @@ describe("favoris et récents", () => {
     expect(pushRecent(many, a)).toHaveLength(MAX_RECENT);
   });
 });
+
+describe("annuaire v2 : fonction, service et zone cherchés", () => {
+  const paco = entry({
+    name: "Mons",
+    function: "PACO",
+    service: "trafic",
+    serviceLabel: "Trafic RCC-OCC",
+    zone: "FMS",
+    zoneName: "Mons",
+    category: "RCC-OCC",
+    group: "PACO",
+    phone: "02 999 10 01",
+  });
+  const spi = entry({
+    name: "Gare de Charleroi",
+    function: "SPI",
+    service: "gares",
+    serviceLabel: "Gares & accueil",
+    zone: "FCR",
+    zoneName: "Charleroi",
+  });
+  const idx = buildIndex([paco, spi]);
+
+  it("fonction + nom, service, code de zone", () => {
+    expect(searchDirectory(idx, parseQuery("paco mons")).map((h) => h.entry.id)).toEqual([paco.id]);
+    expect(searchDirectory(idx, parseQuery("trafic")).map((h) => h.entry.id)).toEqual([paco.id]);
+    expect(searchDirectory(idx, parseQuery("fcr spi")).map((h) => h.entry.id)).toEqual([spi.id]);
+    expect(searchDirectory(idx, parseQuery("accueil")).map((h) => h.entry.id)).toEqual([spi.id]);
+  });
+});

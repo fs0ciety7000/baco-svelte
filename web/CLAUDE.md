@@ -237,7 +237,7 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   casse / ligatures, mots dans le désordre tous requis, numéro en forme nationale `+32` / `0032` → `0`, fautes tolérées
   **seulement au second passage** si rien ne correspond exactement, `keep` = filtres de la page appliqués avant ce second
   passage, classement, surlignage `highlightText` / `highlightPhone`, `suggestQuery` pour l'état vide). État dans l'URL
-  (`q`, `category`, `zone`, `group`, `id`) par `history.replaceState`, rejoué au rendu serveur (lien partageable, ⌘K ouvre
+  (`q`, `service`, `zone`, `vue`, `id` depuis l'annuaire v2) par `history.replaceState`, rejoué au rendu serveur (lien partageable, ⌘K ouvre
   la fiche par `?id=`). Favoris (60) et « Consultés récemment » (8) dans **`users.preferences.directory`**
   (`readDirectoryPrefs`, actions `toggleContactFavorite` / `noteContactViewed`, jamais en « Voir en tant que ») ; les
   écritures de préférences passent **en file** côté client (lire-modifier-écrire : deux actions simultanées s'écrasaient) ;
@@ -245,6 +245,24 @@ Playwright est figé en **1.56.1** : seule version compatible avec le Chromium d
   Lignes : étoile, nom + catégorie / groupe / zone, numéro (`etrali:` desktop, bouton `tel:` 44 px mobile), copie, e-mail ;
   clavier : « / » focalise, ↓ / ↑ parcourent, Entrée ouvre le premier, Échap efface. E2E `e2e/annuaire.spec.ts` (attendre
   la Server Action **qui porte l'id de la fiche** avant de recharger : la barre latérale poste aussi ses compteurs).
+- **Annuaire v2 (5 nov. 2026, Ressources › Contacts)** : Service / Fonction / Zone séparés (`directory_contacts.service` = clé
+  de `directory_services`, `function`, `zone` en majuscules ; `category` / `group` gardés en base, plus affichés, encore
+  cherchés). Logique pure `lib/referentiels/directory-model.ts` (testée, `directory-model.test.ts`) : `mapLegacy` (miroir de
+  `pocketbase/pb_hooks/lib/directory.js`, le test compare les deux), `zoneLabel` (« FMS · Mons », code inconnu tel quel),
+  `zonesOfDistricts` + `mineFilter` (« Mes zones » = zones SPI des districts du jour **+ sans zone** ; `null` = toutes),
+  `parseZoneParam` / `zoneParam` (`zone` répété ; absent = mes zones, `tous`, `-` = sans zone), `groupByZone` /
+  `groupByService` (sections → sous-groupes → fiches, fonction repliée au-delà de `FOLD_OVER` = 3), `serviceCounts`,
+  `shortServiceLabel`, `contactTitle` (« PACO · Mons »). `listDirectory()` renvoie `entries` (+ `service`, `function`,
+  `serviceLabel`, `zoneName` pour la recherche), `services`, `zones` (`spi_zones` : code, nom, district, couleur ; vide sans
+  droit de lecture). La page calcule `mine` (`userDistricts` → `parseDistricts` en codes → zones). Barre d'outils : recherche,
+  `MultiSelect` des zones + puce « Mes zones », `SegmentedNav` « Par zone / Par service » et « Service » (segments
+  **boutons** : `items[].onSelect` sans `href`, `aria-pressed`), « N autres hors de ces zones » pendant une recherche
+  (`directory-outside`). URL : `q`, `service` (`-` = à classer), `zone`, `vue=service`, `id`. Formulaire (`contact-board.tsx`) :
+  `Select` Service, `Combobox allowFree` Fonction (fonctions du service), `Select` Zone (zones SPI + codes hors carte déjà en
+  base). ⌘K : « fonction · nom », méta service · zone · numéro. Feuille de route PDF : fonction à la place du groupe.
+  **Administration › Référentiels › Services de l'annuaire** (`/admin/referentiels/annuaire`, `REF_ADMIN_SCREENS`,
+  `admin/referentiels/directory-actions.ts`, `components/admin/referentiels/directory-services-admin.tsx`). E2E
+  `e2e/annuaire.spec.ts` : vue par zone (`directory-section[data-key]`, `contact-fold`), filtres, vue par service, formulaire.
 - **Markdown** : `markdown-view.tsx` rend un sous-ensemble SÛR en **éléments React** (aucun `dangerouslySetInnerHTML`,
   liens bornés http(s)) — pas de dépendance ni de surface XSS.
 - **Fichiers** : servis par `GET /api/referentiels/documents/[id]` avec le jeton de l'agent (fichier PocketBase

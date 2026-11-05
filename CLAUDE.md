@@ -1574,6 +1574,14 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   l'utilisateur). Vérifié sur la préversion : lien `tel:+32…` visible, clic non intercepté → c'est l'association Windows du
   protocole TEL (Paramètres › Applications › Applications par défaut › « TEL » → Genesys Cloud), hors de portée de CSM ; rappel
   dans « Téléphonie » corrigé (il citait à tort l'option « Dynamic Content » de l'extension).
+- 2026-11-05 — **Annuaire v2 : Service / Fonction / Zone** (décisions de l'utilisateur) : collection `directory_services`
+  (6 services, fonctions proposées, `referentiels:manage`), `directory_contacts.service` + `function`, zone en majuscules ;
+  `category` / `group` gardés en base, plus affichés. Reprise par `mapLegacy` (`pocketbase/pb_hooks/lib/directory.js`, miroir web
+  testé) en SQL sans toucher `updated` ; l'import différentiel pose les mêmes valeurs (pas de faux écart). Page Contacts : vue
+  **Par zone** par défaut (« Mes zones » = zones SPI des districts du jour + sans zone), **Par service**, filtre service en
+  segments avec compteurs, zones en sélection multiple, fonction repliée au-delà de 3 contacts, « PACO · Mons », « N autres
+  hors de ces zones » pendant une recherche ; formulaire Service / Fonction / Zone ; ⌘K et feuille de route PDF sur la
+  fonction ; Administration › Référentiels › Services de l'annuaire. Migration `1760005200`, 766 contrôles de règles.
 
 ---
 

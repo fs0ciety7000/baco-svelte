@@ -1,10 +1,12 @@
 import { expect, test, type Page, type Response } from "@playwright/test";
 
-import { identity, login, noHorizontalScroll, password } from "./helpers";
+import { chooseOption, identity, login, noHorizontalScroll, password } from "./helpers";
 
 // Annuaire (Ressources › Annuaire, refonte du 14 oct. 2026) : recherche instantanée sans accent ni majuscule, mots dans
 // le désordre, faute de frappe, numéro avec espaces / +32, appel (tel: international, Genesys Cloud par défaut ; etrali: au choix), copie du
-// numéro, favori qui persiste au rechargement. Fiches FICTIVES créées par le superuser, supprimées à la fin.
+// numéro, favori qui persiste au rechargement. Annuaire v2 (5 nov. 2026) : vue par zone (« Mes zones » = zones des districts
+// de l'agent E2E, Sud-Ouest), fonction repliée, filtre service, vue par service, formulaire Service / Fonction / Zone.
+// Fiches FICTIVES créées par le superuser (numéros 02 999 …), supprimées à la fin.
 
 const PB = (process.env.PB_URL ?? "http://127.0.0.1:8090").replace(/\/$/, "");
 const suEmail = process.env.PB_SUPERUSER_EMAIL ?? "";
@@ -39,7 +41,7 @@ test.beforeAll(async ({}, info) => {
     () => letters[Math.floor(Math.random() * letters.length)],
   ).join("")}`;
   digits = String(Math.floor(1_000_000 + Math.random() * 8_999_999));
-  const rows = [
+  const rows: Record<string, string>[] = [
     {
       name: `Gare de Liège-Guillemins ${tag}`,
       phone: `+32 4 ${digits.slice(0, 3)} ${digits.slice(3, 5)} ${digits.slice(5)}`,
@@ -56,6 +58,24 @@ test.beforeAll(async ({}, info) => {
       note: "Fiche fictive (E2E)",
     },
   ];
+  // Annuaire v2 : 4 SPI à Mons (fonction repliée au-delà de 3), un PACO à Namur (hors des zones de l'agent).
+  for (let i = 0; i < 4; i++)
+    rows.push({
+      name: `Quai ${i + 1} ${tag}`,
+      phone: `02 999 0${i} 0${i}`,
+      service: "gares",
+      function: "SPI",
+      zone: "FMS",
+      note: "Fiche fictive (E2E)",
+    });
+  rows.push({
+    name: `Namur ${tag}`,
+    phone: "02 999 10 10",
+    service: "trafic",
+    function: "PACO",
+    zone: "FNR",
+    note: "Fiche fictive (E2E)",
+  });
   for (const r of rows) {
     const rec = await pb("POST", "/api/collections/directory_contacts/records", r);
     created.push(rec.id);
@@ -64,6 +84,13 @@ test.beforeAll(async ({}, info) => {
 
 test.afterAll(async () => {
   for (const id of created) await pb("DELETE", `/api/collections/directory_contacts/records/${id}`);
+  // Fiche créée par le formulaire.
+  const made = await pb(
+    "GET",
+    `/api/collections/directory_contacts/records?perPage=10&filter=${encodeURIComponent(`name ~ "${tag}"`)}`,
+  );
+  for (const r of made?.items ?? [])
+    await pb("DELETE", `/api/collections/directory_contacts/records/${r.id}`);
 });
 
 const search = (page: Page) => page.getByTestId("directory-search");
@@ -178,4 +205,82 @@ test("favori qui persiste et consultés récemment", async ({ page }, info) => {
   await saved;
   await page.reload();
   await expect(page.getByTestId("directory-recent")).toContainText(`Dispatching Sécurité ${tag}`);
+});
+
+test("vue par zone, fonction repliée, filtres service / zone, vue par service", async ({
+  page,
+}) => {
+  await login(page, "/ressources");
+  await expect(search(page)).toBeVisible();
+  // Par zone (défaut) : « Mes zones » (Sud-Ouest) → Mons présent, Namur absent.
+  await expect(page.getByTestId("directory-mine")).toHaveAttribute("aria-pressed", "true");
+  const fms = page.locator('[data-testid="directory-section"][data-key="FMS"]');
+  await expect(fms).toBeVisible();
+  await expect(fms.getByRole("heading", { level: 2 })).toContainText("FMS · Mons");
+  await expect(page.locator('[data-testid="directory-section"][data-key="FNR"]')).toHaveCount(0);
+  // SPI × 4 (et plus si l'autre projet tourne) : une ligne repliée « SPI », ouverte au clic.
+  const fold = fms.getByTestId("contact-fold").filter({ hasText: "SPI" }).getByRole("button");
+  await expect(fold).toHaveAttribute("aria-expanded", "false");
+  await expect(fms.getByTestId("contact-row").filter({ hasText: `Quai 1 ${tag}` })).toHaveCount(0);
+  await fold.click();
+  await expect(fold).toHaveAttribute("aria-expanded", "true");
+  const quai = fms.getByTestId("contact-row").filter({ hasText: `Quai 1 ${tag}` });
+  await expect(quai).toBeVisible();
+  await expect(quai.getByTestId("contact-function-badge")).toHaveText("SPI");
+  await noHorizontalScroll(page);
+
+  // Recherche : le PACO de Namur est compté hors des zones, puis affiché avec service et zone.
+  await search(page).fill(`namur ${tag.toLowerCase()}`);
+  await expect(rows(page)).toHaveCount(0);
+  await page.getByTestId("directory-outside").first().click();
+  await expect(rows(page)).toHaveCount(1);
+  await expect(rows(page).first()).toContainText("PACO");
+  await expect(rows(page).first().getByTestId("contact-meta")).toContainText("Trafic RCC-OCC");
+  await expect(page).toHaveURL(/zone=tous/);
+
+  // Filtre service : Trafic seulement.
+  await search(page).fill("");
+  await page.getByTestId("service-trafic").click();
+  await expect(page.getByTestId("service-trafic")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('[data-testid="directory-section"][data-key="FNR"]')).toContainText(
+    `Namur ${tag}`,
+  );
+  await expect(page.locator('[data-testid="directory-section"][data-key="FMS"]')).not.toContainText(
+    `Quai`,
+  );
+
+  // Par service : une section par service, sous-groupes par zone ; l'URL garde la vue.
+  await page.getByTestId("service-tous").click();
+  await page.getByTestId("view-service").click();
+  await expect(page.locator('[data-testid="directory-section"][data-key="gares"]')).toBeVisible();
+  await expect(
+    page.locator('[data-testid="directory-section"][data-key="gares"]').getByRole("heading", {
+      level: 3,
+      name: /FMS · Mons/,
+    }),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/vue=service/);
+  await page.reload();
+  await expect(page.getByTestId("view-service")).toHaveAttribute("aria-pressed", "true");
+  await noHorizontalScroll(page);
+});
+
+test("formulaire : service, fonction proposée, zone", async ({ page }, info) => {
+  await login(page, "/ressources");
+  await page.getByTestId("contact-new").click();
+  const dialog = page.getByRole("dialog", { name: "Nouveau contact" });
+  await expect(dialog).toBeVisible();
+  const name = `Formulaire ${info.project.name} ${tag}`;
+  await dialog.getByLabel("Nom").fill(name);
+  await dialog.getByLabel("Téléphone").fill("02 999 20 20");
+  await chooseOption(page, "Service", "Trafic RCC-OCC");
+  await dialog.getByTestId("contact-function").fill("PAC");
+  await page.getByRole("option", { name: "PACO", exact: true }).click();
+  await chooseOption(page, "Zone", "FMS · Mons");
+  await dialog.getByTestId("contact-save").click();
+  const panel = page.getByTestId("contact-panel");
+  await expect(panel).toBeVisible();
+  await expect(page.getByTestId("contact-panel-service")).toHaveText("Trafic RCC-OCC");
+  await expect(panel).toContainText("FMS · Mons");
+  await expect(panel).toContainText("PACO");
 });

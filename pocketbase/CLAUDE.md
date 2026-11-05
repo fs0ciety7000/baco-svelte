@@ -444,4 +444,16 @@ pocketbase csm-import-delta /home/user/csm-backup-gel --base /home/user/csm-back
   commentaire Quinyx porte « +SE » / « +SO », n° figé, groupe, jour, début, fin, code, section, type, fonction, district,
   `cover` = district de l'autre poste couvert) ; ni agent ni texte du commentaire. Mêmes règles que `quinyx_open_shifts`,
   purge 2 ans. 762 contrôles de règles.
-
+- **Annuaire v2** (`1760005200_directory_v2.js`, `directory.pb.js`, `lib/directory.js`, 5 nov. 2026) : **`directory_services`**
+  (`key` unique figée, `label`, `sort`, `functions` JSON = fonctions proposées, `updated_by` posé par hook ; lecture = la
+  `listRule` de `directory_contacts` recopiée à la migration (`repertoire:read`, Écran exclu), écriture `referentiels:manage`,
+  suppression refusée par hook (400) tant qu'un contact l'utilise ; 6 services amorcés `SEED`). `directory_contacts.service`
+  (clé validée par hook, vide = à classer ; seul un service **changé** est revérifié) et `function` (60) ; `zone` remise en
+  majuscules par hook ; `category` / `group` gardés (archive, import, retour arrière). Reprise par `mapLegacy(category, group,
+  zone)` **en SQL** (`updated` et audit intacts) ; remarque des B-Clean UP préfixée « 9 h – 17 h » (`legacyNote`, une fois).
+  **Import différentiel** : `fill` de `directory_contacts` pose `service` / `function` / `zone` par la même `mapLegacy` → une
+  fiche migrée et sa ligne BACO restent « identiques » (pas de faux écart) ; une fiche dont le service a été changé dans CSM
+  après la migration est un **conflit** si BACO l'a modifiée (jamais écrasée). Les empreintes du registre écrites avant
+  cette migration (aucune pour l'annuaire en prod au 5 nov.) ne couvrent pas `service` / `function`. L'import complet ne
+  touche pas l'annuaire (script hors dépôt du 8 oct.). Audit de `directory_services`. `down` testé sur une copie (champs et
+  collection retirés, re-`up` sans doublon de remarque). 766 contrôles de règles (sans le secret interne).

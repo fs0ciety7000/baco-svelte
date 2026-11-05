@@ -10,6 +10,7 @@ import {
   stationAliasIndex,
   type DirectoryEntry,
 } from "@/lib/referentiels/directory";
+import type { DirectoryService, DirectoryZone } from "@/lib/referentiels/directory-model";
 import { foldStation, stationMatchesAny, type StationRef } from "@/lib/stations/search";
 import { lineDistrict } from "@/lib/timetable/lines";
 import { railStations, type RailBranch, type RailStation } from "@/lib/timetable/rail-segments";
@@ -33,8 +34,12 @@ export type Contact = {
   name: string;
   phone: string;
   email: string;
-  category: string;
+  /** Annuaire v2 (5 nov. 2026) : clé du service (`directory_services`, vide = à classer) et fonction. */
+  service: string;
+  function: string;
   zone: string;
+  /** Anciens champs BACO, gardés en base (archive), plus affichés. */
+  category: string;
   group: string;
   note: string;
   author: string;
@@ -47,8 +52,10 @@ function contact(r: RecordModel): Contact {
     name: str(r.name),
     phone: str(r.phone),
     email: str(r.email),
-    category: str(r.category),
+    service: str(r.service),
+    function: str(r.function),
     zone: str(r.zone),
+    category: str(r.category),
     group: str(r.group),
     note: str(r.note),
     author: str(exp(r).updated_by?.name),
@@ -56,22 +63,60 @@ function contact(r: RecordModel): Contact {
   };
 }
 
+const ZONE_COLOR = /^#[0-9a-f]{6}$/;
+
+/** Services de l'annuaire, dans l'ordre (`directory_services`, mêmes droits de lecture que les contacts). */
+export async function listDirectoryServices(): Promise<DirectoryService[]> {
+  const pb = await pbForRequest();
+  const rows = await pb
+    .collection("directory_services")
+    .getFullList({ fields: "key,label,sort,functions", sort: "sort,label", batch: 200 })
+    .catch(() => [] as RecordModel[]);
+  return rows.map((r) => ({
+    key: str(r.key),
+    label: str(r.label),
+    sort: num(r.sort),
+    functions: Array.isArray(r.functions)
+      ? r.functions.filter((f): f is string => typeof f === "string")
+      : [],
+  }));
+}
+
+/**
+ * Zones SPI (code, nom, district, couleur) pour l'annuaire. Lecture `spi:read` / `carte_pn:read` / `timetable:read` :
+ * un agent sans ces droits reçoit une liste vide (les codes restent affichés tels quels).
+ */
+export async function listDirectoryZones(): Promise<DirectoryZone[]> {
+  const pb = await pbForRequest();
+  const rows = await pb
+    .collection("spi_zones")
+    .getFullList({ fields: "code,name,district,color", sort: "code", batch: 100 })
+    .catch(() => [] as RecordModel[]);
+  return rows.map((r) => ({
+    code: str(r.code),
+    name: str(r.name),
+    district: str(r.district),
+    color: ZONE_COLOR.test(str(r.color)) ? str(r.color) : "",
+  }));
+}
+
 /**
  * Annuaire complet (≈ 400 fiches, borné) pour la recherche instantanée du navigateur (refonte du 14 oct. 2026) : chaque
  * fiche porte les alias des gares qu'elle cite (abréviation PtCar, nom NL, alias : « Chef de gare Mons » ← « FMS »,
  * « Bergen »), tirés du référentiel `stations` (gares et gares étrangères ; les PANG portent des noms trop communs).
- * Valeurs distinctes des filtres calculées sur la même lecture.
+ * Annuaire v2 (5 nov. 2026) : services et zones SPI lus en même temps (regroupements par zone / par service).
  */
 export async function listDirectory(): Promise<{
   entries: DirectoryEntry[];
-  facets: { categories: string[]; zones: string[]; groups: string[] };
+  services: DirectoryService[];
+  zones: DirectoryZone[];
   /** Dernière modification par fiche (signal visuel après un enregistrement). */
   updated: Record<string, string>;
 }> {
   const pb = await pbForRequest();
-  const [items, stations] = await Promise.all([
+  const [items, stations, services, zones] = await Promise.all([
     pb.collection("directory_contacts").getFullList({
-      fields: "id,name,phone,email,category,zone,group,note,updated",
+      fields: "id,name,phone,email,service,function,category,zone,group,note,updated",
       sort: "name",
       batch: 1000,
     }),
@@ -79,6 +124,8 @@ export async function listDirectory(): Promise<{
       .collection("stations")
       .getFullList({ fields: "abbr,name,name_nl,aliases", filter: 'kind != "pang"', batch: 1000 })
       .catch(() => [] as RecordModel[]),
+    listDirectoryServices(),
+    listDirectoryZones(),
   ]);
   const aliasIdx = stationAliasIndex(
     stations.map((r) => ({
@@ -88,22 +135,27 @@ export async function listDirectory(): Promise<{
         .filter(Boolean),
     })),
   );
+  const serviceLabel = new Map(services.map((s) => [s.key, s.label]));
+  const zoneName = new Map(zones.map((z) => [z.code, z.name]));
   const entries: DirectoryEntry[] = items.map((r) => ({
     id: r.id,
     name: str(r.name),
     phone: str(r.phone),
     email: str(r.email),
+    service: str(r.service),
+    function: str(r.function),
+    serviceLabel: serviceLabel.get(str(r.service)) ?? "",
     category: str(r.category),
     zone: str(r.zone),
+    zoneName: zoneName.get(str(r.zone)) ?? "",
     group: str(r.group),
     note: str(r.note),
     aliases: stationAliasesFor(str(r.name), aliasIdx),
   }));
-  const set = (k: "category" | "zone" | "group") =>
-    [...new Set(entries.map((e) => e[k]).filter(Boolean))].sort((x, y) => x.localeCompare(y, "fr"));
   return {
     entries,
-    facets: { categories: set("category"), zones: set("zone"), groups: set("group") },
+    services,
+    zones,
     updated: Object.fromEntries(items.map((r) => [r.id, str(r.updated)])),
   };
 }

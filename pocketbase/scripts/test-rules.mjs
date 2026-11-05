@@ -835,6 +835,53 @@ try {
 	check('document détaché supprimable (admin)', rfDelFree.status === 204, `HTTP ${rfDelFree.status}`);
 	for (const [c, id] of [['procedures', rfPid], ['ptcar', rfPc.json?.id], ['directory_contacts', rfCt.json?.id]]) if (id) { await api('DELETE', `/api/collections/${c}/records/${id}`, { token: root }); auditIds.push(id); }
 
+	// --- Annuaire v2 (1760005200) : services de l'annuaire (lecture = annuaire, écriture referentiels:manage), service validé ---
+	{
+		const dsRead = await api('GET', '/api/collections/directory_services/records?perPage=50&sort=sort', { token: u.token });
+		const dsKeys = (dsRead.json?.items ?? []).map((x) => x.key).join(',');
+		check('PACO/RCCA lit les services de l annuaire (amorce)', dsRead.status === 200 && dsKeys.startsWith('gares,trafic,triage,pmr,support,etranger'), dsKeys);
+		const dsGuest = await api('GET', '/api/collections/directory_services/records?perPage=1', { token: roles.reader.token });
+		check("l'invité ne lit pas les services de l annuaire", dsGuest.status !== 200 || dsGuest.json.totalItems === 0, `HTTP ${dsGuest.status}`);
+		const spass = `Test-${suffix}-dsscreen`;
+		const scr = await api('POST', '/api/collections/users/records', {
+			token: root,
+			body: { email: `test-dsscreen-${suffix}@csm.invalid`, password: spass, passwordConfirm: spass, name: 'Écran annuaire', username: `tdsscreen${suffix}`, role: 'screen', verified: true }
+		});
+		if (scr.json?.id) created.push(scr.json.id);
+		const scrTok = (await api('POST', '/api/collections/users/auth-with-password', { body: { identity: `test-dsscreen-${suffix}@csm.invalid`, password: spass } })).json?.token;
+		const dsScreen = await api('GET', '/api/collections/directory_services/records?perPage=1', { token: scrTok });
+		check("l'Écran ne lit pas les services de l annuaire", dsScreen.status !== 200 || dsScreen.json.totalItems === 0, `HTTP ${dsScreen.status}`);
+		const key = `t${suffix}`.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20);
+		for (const [who, tok] of [['PACO/RCCA', u.token], ['modérateur', roles.modo.token], ['écran', scrTok]]) {
+			const r = await api('POST', '/api/collections/directory_services/records', { token: tok, body: { key: `${key}x`, label: 'Refusé' } });
+			check(`${who} ne crée pas de service de l annuaire (referentiels:manage)`, r.status >= 400, `HTTP ${r.status}`);
+		}
+		const dsNew = await api('POST', '/api/collections/directory_services/records', {
+			token: roles.admin.token,
+			body: { key, label: ' Service test ', sort: 99, functions: [' Alpha ', 'alpha', '', 'Bêta'], updated_by: u.id }
+		});
+		check('admin crée un service de l annuaire', dsNew.status === 200, `HTTP ${dsNew.status} ${JSON.stringify(dsNew.json).slice(0, 80)}`);
+		check('service : fonctions nettoyées, auteur = appelant', JSON.stringify(dsNew.json?.functions) === '["Alpha","Bêta"]' && dsNew.json?.updated_by === roles.admin.id && dsNew.json?.label === 'Service test', JSON.stringify(dsNew.json?.functions));
+		const dsBad = await api('POST', '/api/collections/directory_services/records', { token: roles.admin.token, body: { key: `${key}y`, label: 'X', functions: 'pas une liste' } });
+		check('service : fonctions qui ne sont pas une liste refusées', dsBad.status >= 400, `HTTP ${dsBad.status}`);
+		const dsKey = await api('PATCH', `/api/collections/directory_services/records/${dsNew.json?.id}`, { token: roles.admin.token, body: { key: `${key}z` } });
+		check('service : clé figée', dsKey.status >= 400, `HTTP ${dsKey.status}`);
+		const dsPaco = await api('PATCH', `/api/collections/directory_services/records/${dsNew.json?.id}`, { token: u.token, body: { label: 'Pirate' } });
+		check('PACO/RCCA ne modifie pas un service de l annuaire', dsPaco.status >= 400, `HTTP ${dsPaco.status}`);
+		const ctBad = await api('POST', '/api/collections/directory_contacts/records', { token: rfMod.token, body: { name: 'Contact v2', service: 'inconnu-x', updated_by: rfMod.id } });
+		check('contact : service inconnu refusé', ctBad.status === 400, `HTTP ${ctBad.status}`);
+		const ctOk = await api('POST', '/api/collections/directory_contacts/records', { token: rfMod.token, body: { name: 'Contact v2', phone: '02 999 00 01', service: key, function: ' PACO ', zone: ' fms ', updated_by: rfMod.id } });
+		check('contact : service connu, zone en majuscules, fonction nettoyée', ctOk.status === 200 && ctOk.json.zone === 'FMS' && ctOk.json.function === 'PACO' && ctOk.json.service === key, `HTTP ${ctOk.status} ${ctOk.json?.zone} ${ctOk.json?.function}`);
+		const ctUp = await api('PATCH', `/api/collections/directory_contacts/records/${ctOk.json?.id}`, { token: rfMod.token, body: { service: 'inconnu-y', updated_by: rfMod.id } });
+		check('contact : passage à un service inconnu refusé', ctUp.status === 400, `HTTP ${ctUp.status}`);
+		const dsUsed = await api('DELETE', `/api/collections/directory_services/records/${dsNew.json?.id}`, { token: roles.admin.token });
+		check('service utilisé par un contact : non supprimable (même admin)', dsUsed.status === 400, `HTTP ${dsUsed.status}`);
+		if (ctOk.json?.id) { await api('DELETE', `/api/collections/directory_contacts/records/${ctOk.json.id}`, { token: root }); auditIds.push(ctOk.json.id); }
+		const dsDel = await api('DELETE', `/api/collections/directory_services/records/${dsNew.json?.id}`, { token: roles.admin.token });
+		check('service inutilisé : supprimable (admin)', dsDel.status === 204, `HTTP ${dsDel.status}`);
+		if (dsNew.json?.id) auditIds.push(dsNew.json.id);
+	}
+
 	// --- Équipe et Admin (1760001400) : comptes gérés par admin/sysop seuls, Nouveautés, réglages ---
 	const eaMail = `ea-${suffix}@csm.invalid`;
 	const eaPass = 'Ea-test-123456';
