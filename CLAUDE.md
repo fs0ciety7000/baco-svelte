@@ -1595,6 +1595,16 @@ navigateur (SSE relayé par `/api/events`), `prefers-reduced-motion` respecté.
   Vérifié : `/` → 307 `/transition` (« BACO devient CSM »), API et `/api-proxy/*` → 410. Lecture Supabase : 1 bon bus BACO
   absent de CSM (n° 366, créé le 4 nov. au soir), aucun taxi ; n° 366 libre dans CSM (dernier = 365). Import final en attente
   de l'accord de l'utilisateur (même procédure que le 4 nov.).
+- 2026-11-05 — **Bon BACO n° 366 importé en prod** (« importe le bon 366 ») : **sans jeton Supabase dans le conteneur** — ligne lue
+  ici (GET clé de service), envoyée en morceaux base64 + gzip par tâches Coolify **une à une** (des tâches créées ensemble
+  s'exécutent en parallèle : l'ordre des morceaux n'est pas garanti) dans `/pb_data/delta366/data/otto_commandes.json`, puis
+  `csm-import-delta /pb_data/delta366 --since 2026-11-04T00:00:00Z --only bus_orders` (essai à blanc puis réel, verrou `mkdir`).
+  Sauvegarde `pre_bon366_20261105.zip` avant ; 1 créé, 0 conflit ; `CMD-NT8S6Q` posé ; dossier effacé ; compteur → 367.
+- 2026-11-05 — **Envoi de test des campagnes : « EOF »** : depuis le conteneur PocketBase prod, aucun port du serveur mail
+  (`CSM_SMTP_HOST`, 25 / 587) ne renvoie de bannière SMTP alors que Coolify le dit `running:healthy` (sonde HTTP seule).
+  Service `smtp-fs0ciety` (projet Dev) passé en Stalwart **v1.0.1** avec migration le 30 oct. : écouteurs SMTP probablement
+  perdus. Hors du projet CSM : rien modifié, accord de l'utilisateur demandé. Touche aussi « mot de passe oublié » et les
+  autres services qui envoient par Stalwart.
 
 ---
 
