@@ -24,8 +24,7 @@
 
 ## En cours / en attente de l'utilisateur
 
-- **E-mail de campagne « BACO devient CSM »** : l'utilisateur l'envoie à la main depuis sa boîte professionnelle. Les fichiers `.eml`, `.html` et `.txt` lui ont été remis (hors dépôt).
-- **Liste des adresses e-mail des comptes** : Coolify masque les e-mails dans la sortie des tâches. Deux options proposées : l'utilisateur la lit dans Administration › Utilisateurs, ou elle est relevée en lecture par l'interface admin. Pas encore de réponse. Ne jamais la mettre dans Git ni dans un artefact.
+- **E-mail de campagne « BACO devient CSM »** et **liste des adresses des comptes** : faits par l'utilisateur (10 nov.).
 - **Script de configuration de l'environnement cloud « CSM »** : il échoue au démarrage (code 128).
   - Cause : `git clone … ~/claude-kit 2>/dev/null || git -C ~/claude-kit pull` ; quand le clonage échoue, le `pull` part dans un dossier absent.
   - Correctif proposé (garder le `pull` si `.git` existe, sinon cloner, puis `install.sh` seulement s'il est présent) : refusé par l'utilisateur pour l'instant. Ne pas le reproposer sans demande.
